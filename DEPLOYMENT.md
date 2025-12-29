@@ -26,7 +26,7 @@ Update `wrangler.toml` with the namespace IDs.
 
 ```bash
 # Set OpenAI API key (if needed)
-wrangler secret put OPENAI_API_KEY
+wrangler secret put OPENAI_API_KEY=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
 # Enter your API key when prompted
 ```
 
@@ -56,7 +56,7 @@ After deployment, note your Workers URL (e.g., `https://privatenote-api.your-sub
    - **Project name**: `privatenote-frontend` (or your preferred name)
    - **Production branch**: `main` (or `master`)
    - **Build command**: `npm run build`
-   - **Build output directory**: `dist/public`
+   - **Build output directory**: `dist`
    - **Root directory**: `/` (leave empty or set to root)
 
 4. **Environment Variables** (if needed)
