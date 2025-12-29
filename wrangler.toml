@@ -1,0 +1,14 @@
+name = "privatenote-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# KV namespace binding
+[[kv_namespaces]]
+binding = "NOTES_KV"
+id = "f19b8957a39b422486311962ca759563"
+
+# Environment variables (set via wrangler secret put or dashboard)
+# OPENAI_API_KEY will be set via: wrangler secret put OPENAI_API_KEY
+
+[build]
+command = "npm run build"

@@ -1,42 +1,42 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  isAdmin: boolean("is_admin").default(false),
+  isAdmin: integer("is_admin", { mode: "boolean" }).default(false),
 });
 
-export const notes = pgTable("notes", {
+export const notes = sqliteTable("notes", {
   id: text("id").primaryKey(),
   content: text("content").notNull(),
   iv: text("iv").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   maxReads: integer("max_reads").default(1),
   currentReads: integer("current_reads").default(0),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   // Password protection fields
-  isPasswordProtected: boolean("is_password_protected").default(false),
+  isPasswordProtected: integer("is_password_protected", { mode: "boolean" }).default(false),
   encryptedKey: text("encrypted_key"), // The encrypted version of the actual encryption key
   encryptedKeyIv: text("encrypted_key_iv"), // IV used to encrypt the key
   salt: text("salt"), // Salt used for password derivation
 });
 
-export const blogPosts = pgTable("blog_posts", {
-  id: serial("id").primaryKey(),
+export const blogPosts = sqliteTable("blog_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   content: text("content").notNull(),
   excerpt: text("excerpt").notNull(),
   coverImage: text("cover_image"),
   author: text("author").notNull(),
-  published: boolean("published").default(false),
-  publishedAt: timestamp("published_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  tags: text("tags").array(),
+  published: integer("published", { mode: "boolean" }).default(false),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  tags: text("tags"), // Store as JSON string in SQLite
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -67,11 +67,11 @@ export type User = typeof users.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
 
-export const analyticsData = pgTable("analytics_data", {
-  id: serial("id").primaryKey(),
-  date: date("date").notNull().defaultNow(),
+export const analyticsData = sqliteTable("analytics_data", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  date: text("date").notNull().$defaultFn(() => new Date().toISOString().split('T')[0]),
   metricsType: text("metrics_type").notNull(),
-  metrics: jsonb("metrics").notNull(),
+  metrics: text("metrics").notNull(), // Store as JSON string in SQLite
 });
 
 // Analytics types
