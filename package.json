@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "dev:workers": "wrangler dev",
+    "dev:pages": "npm run build && node scripts/serve-pages.js",
     "build": "vite build",
     "build:workers": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",

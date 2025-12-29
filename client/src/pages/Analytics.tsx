@@ -23,9 +23,18 @@ export default function Analytics() {
   const monthlyStartDate = startOfMonth(today);
   const monthlyEndDate = endOfMonth(today);
   
+  // Get API base URL
+  const getApiUrl = (url: string): string => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return apiBaseUrl + url;
+  };
+
   // Custom query function to handle admin endpoints with token
   const fetchWithAdminToken = async (url: string) => {
-    const response = await fetch(url, {
+    const response = await fetch(getApiUrl(url), {
       headers: { 'x-admin-token': 'admin-secret-token' },
       credentials: 'include',
     });

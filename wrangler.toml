@@ -12,3 +12,6 @@ id = "f19b8957a39b422486311962ca759563"
 
 [build]
 command = "npm run build"
+
+# Pages configuration (for Pages deployments)
+pages_build_output_dir = "dist"

@@ -59,10 +59,12 @@ After deployment, note your Workers URL (e.g., `https://privatenote-api.your-sub
    - **Build output directory**: `dist`
    - **Root directory**: `/` (leave empty or set to root)
 
-4. **Environment Variables** (if needed)
-   - Add any environment variables in the dashboard
-   - For example, if you need to configure API URL:
-     - `VITE_API_URL` = `https://privatenote-api.your-subdomain.workers.dev`
+4. **Environment Variables** (Required if Pages and Workers are on different domains)
+   - Go to **Settings** → **Environment variables**
+   - Add production variable:
+     - **Variable name**: `VITE_API_URL`
+     - **Value**: `https://privatenote-api.your-subdomain.workers.dev` (your Workers URL)
+   - If using same domain with Workers Routes, leave this empty (relative URLs will work)
 
 5. **Deploy**
    - Click **Save and Deploy**

@@ -2,11 +2,16 @@ import { CompositeStorage } from "./storage";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import type { Env } from "./types";
 
-// Helper to create JSON response
+// Helper to create JSON response with CORS headers
 function jsonResponse(data: any, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    },
   });
 }
 
@@ -44,6 +49,18 @@ function parsePathParams(pathname: string, pattern: string): Record<string, stri
 }
 
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+  // Handle CORS preflight requests
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+      },
+    });
+  }
+
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
@@ -188,7 +205,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       // Delete note by ID
       await storage.deleteNote(id);
       
-      return new Response(null, { status: 204 });
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
     } catch (error) {
       console.error("Error deleting note:", error);
       return jsonResponse({ message: "Failed to delete note" }, 500);
@@ -441,7 +463,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       // Delete the blog post
       await storage.deleteBlogPost(id);
       
-      return new Response(null, { status: 204 });
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
     } catch (error) {
       console.error("Error deleting blog post:", error);
       return jsonResponse({ message: "Failed to delete blog post" }, 500);

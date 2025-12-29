@@ -29,6 +29,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 // This is a simple implementation for demonstration purposes
 const ADMIN_TOKEN = 'admin-secret-token';
 
+// Get API base URL from environment variable
+const getApiUrl = (url: string): string => {
+  const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  return apiBaseUrl + url;
+};
+
 // Extend the blog post form schema with validation
 const blogPostFormSchema = insertBlogPostSchema.extend({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -61,7 +70,9 @@ export default function BlogAdmin() {
     queryKey: ['/api/admin/blog'], 
     queryFn: async () => {
       // Add admin token to request headers
-      const response = await fetch('/api/admin/blog', {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const url = apiBaseUrl + '/api/admin/blog';
+      const response = await fetch(url, {
         headers: {
           'X-Admin-Token': ADMIN_TOKEN
         }
@@ -278,7 +289,7 @@ function BlogPostsTable({
   // Mutations for publish/unpublish
   const publishMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/blog/${id}/publish`, {
+      const response = await fetch(getApiUrl(`/api/admin/blog/${id}/publish`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -310,7 +321,7 @@ function BlogPostsTable({
 
   const unpublishMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/blog/${id}/unpublish`, {
+      const response = await fetch(getApiUrl(`/api/admin/blog/${id}/unpublish`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -504,7 +515,7 @@ function CreatePostDialog({
   // Handle form submission
   const handleSubmit = async (values: z.infer<typeof blogPostFormSchema>) => {
     try {
-      const response = await fetch('/api/admin/blog', {
+      const response = await fetch(getApiUrl('/api/admin/blog'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -786,7 +797,7 @@ function EditPostDialog({
   // Handle form submission
   const handleSubmit = async (values: z.infer<typeof blogPostFormSchema>) => {
     try {
-      const response = await fetch(`/api/admin/blog/${post.id}`, {
+      const response = await fetch(getApiUrl(`/api/admin/blog/${post.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1040,7 +1051,7 @@ function DeletePostDialog({
   
   const handleDelete = async () => {
     try {
-      const response = await fetch(`/api/admin/blog/${post.id}`, {
+      const response = await fetch(getApiUrl(`/api/admin/blog/${post.id}`), {
         method: 'DELETE',
         headers: {
           'X-Admin-Token': ADMIN_TOKEN
