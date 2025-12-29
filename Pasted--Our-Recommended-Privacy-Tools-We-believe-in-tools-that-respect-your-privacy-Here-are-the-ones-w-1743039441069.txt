@@ -1,0 +1,77 @@
+🔐 Our Recommended Privacy Tools
+
+We believe in tools that respect your privacy. Here are the ones we personally use and trust.
+These services are open-source, transparent, and recommended by digital rights groups like the Electronic Frontier Foundation (EFF) and Consumer Reports Digital Lab. Some links may be affiliate links — at no extra cost to you.
+
+🛡️ VPNs — Keep your connection private
+
+🟣 Proton VPN
+
+Try Proton VPN →
+
+Secure, fast VPN with no logs. Based in Switzerland. Open source.
+Badges: ✅ No Logs · 🇨🇭 Swiss-based · 🧠 Open Source
+
+🟢 Mullvad VPN
+
+Try Mullvad VPN →
+
+One of the most trusted VPNs. No account needed. Pay anonymously.
+Badges: ✅ No Logs · 🧾 No Account Needed · 🧠 Open Source
+
+✉️ Private Email Providers
+
+🟣 Proton Mail
+
+Try Proton Mail →
+
+End-to-end encrypted email based in Switzerland. Clean interface.
+Badges: 🔒 E2EE · 🇨🇭 Swiss-based · 🧠 Open Source
+
+🔴 Tutanota
+
+Try Tutanota →
+
+Secure German-based email with encryption built-in. Free plan available.
+Badges: 🔒 Encrypted · 🇩🇪 Germany · 🧠 Open Source
+
+🧭 Secure Browsing & Web
+
+🧅 Tor Browser
+
+Download Tor Browser →
+
+Free, censorship-resistant browsing over the Tor network.
+Badges: 🧅 Onion Routing · 🧠 Open Source · 🌍 Global Access
+
+🛠️ Let’s Encrypt
+
+Visit Let’s Encrypt →
+
+Free, automated SSL/TLS certificates for a safer web.
+Badges: 🔐 HTTPS · 🧠 Open Source · 🤝 Non-Profit
+
+📞 Private Messaging
+
+🔵 Signal
+
+Get Signal →
+
+Truly private messaging. End-to-end encrypted. Open source.
+Badges: 🔐 E2EE · 🧠 Open Source · 🧾 No Ads or Trackers
+
+❤️ Why These Tools?
+
+✅ No tracking, no data selling
+🧠 Open source & independently audited
+💸 Free or fair pricing
+🌐 Trusted by journalists, activists, and security experts worldwide
+✨ Help Us Grow
+
+If you found these tools helpful, consider supporting us or sharing privatenote.ai with a friend.
+Together, we can build a better, more private web.
+
+🌱 Want to learn more?
+
+📚 Check out EFF’s Surveillance Self-Defense Guide
+🛠️ Or dive into Consumer Reports’ Privacy Tools Guide
