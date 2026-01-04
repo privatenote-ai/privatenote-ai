@@ -13,6 +13,20 @@ export default {
       const pathname = url.pathname;
       console.log(`[WORKER-ENTRY] Pathname: ${pathname}`);
 
+      // Handle CORS preflight requests FIRST, before any routing
+      if (request.method === "OPTIONS") {
+        console.log(`[WORKER-ENTRY] Handling OPTIONS preflight request for: ${pathname}`);
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+            "Access-Control-Max-Age": "86400",
+          },
+        });
+      }
+
       // Handle API routes
       if (pathname.startsWith("/api")) {
         console.log(`[WORKER-ENTRY] ✅ Path starts with /api, routing to registerRoutes`);

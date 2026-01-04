@@ -9,7 +9,20 @@ function getApiUrl(url: string): string {
     return url;
   }
   // Otherwise, prepend API base URL if configured
-  return API_BASE_URL + url;
+  if (API_BASE_URL) {
+    // Ensure API_BASE_URL has protocol
+    let baseUrl = API_BASE_URL;
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      console.warn(`[CLIENT] ⚠️ VITE_API_URL is missing protocol, adding https://`);
+      baseUrl = `https://${baseUrl}`;
+    }
+    // Remove trailing slash from base URL and leading slash from path
+    baseUrl = baseUrl.replace(/\/$/, '');
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+  // If no API_BASE_URL, use relative URL
+  return url;
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -32,6 +45,19 @@ export async function apiRequest<T = any>(
   console.log(`[CLIENT] API_BASE_URL: "${import.meta.env.VITE_API_URL || '(empty)'}"`);
   console.log(`[CLIENT] Full URL: ${fullUrl}`);
   console.log(`[CLIENT] Method: ${method}`);
+  
+  // Warn if API URL might be incorrect in production
+  if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
+    const currentHost = window.location.hostname;
+    const isPagesDev = currentHost.includes('.pages.dev');
+    
+    if (isPagesDev && fullUrl.startsWith('http')) {
+      console.warn(`[CLIENT] ⚠️ WARNING: VITE_API_URL is not set in production!`);
+      console.warn(`[CLIENT] Requests are going to: ${fullUrl}`);
+      console.warn(`[CLIENT] If this is a Pages deployment, set VITE_API_URL to your Worker URL`);
+      console.warn(`[CLIENT] See FIX_405_ERROR.md for instructions`);
+    }
+  }
   console.log(`[CLIENT] Has data: ${!!data}`);
   if (data) {
     console.log(`[CLIENT] Data keys:`, Object.keys(data as Record<string, any>));
