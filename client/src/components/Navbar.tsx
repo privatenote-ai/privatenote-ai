@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Globe, Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail } from 'lucide-react';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -36,9 +35,7 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children, className, closeMenu 
 
 export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const languageRef = useRef<HTMLDivElement>(null);
   
   const closeMenu = () => {
     setIsMenuOpen(false);
@@ -47,11 +44,6 @@ export const Navbar: React.FC = () => {
   // Handle clicks outside of menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close language menu when clicking outside
-      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
-        setIsLanguageOpen(false);
-      }
-      
       // Close main menu when clicking outside (mobile view only)
       if (menuRef.current && !menuRef.current.contains(event.target as Node) && window.innerWidth < 768) {
         setIsMenuOpen(false);
@@ -65,7 +57,6 @@ export const Navbar: React.FC = () => {
   // Close menus on route change
   useEffect(() => {
     setIsMenuOpen(false);
-    setIsLanguageOpen(false);
   }, [window.location.pathname]);
 
   return (
@@ -146,41 +137,8 @@ export const Navbar: React.FC = () => {
             </span>
           </NavLink>
 
-          {/* Right: Language Selector - Modern Dropdown */}
-          <div className="relative" ref={languageRef}>
-            <div 
-              onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-              className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-            >
-              <Globe className="h-5 w-5" />
-              <span className="text-xs font-medium hidden sm:inline-block">EN</span>
-            </div>
-            
-            {isLanguageOpen && (
-              <div className="absolute top-12 right-0 w-48 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden transition-all duration-200 ease-in-out">
-                <div className="py-1.5">
-                  {['English', 'Deutsch', 'Español', 'Français'].map((language, index) => (
-                    <div 
-                      key={language}
-                      className={cn(
-                        "flex items-center px-4 py-2 text-sm cursor-pointer transition-colors",
-                        index === 0 
-                          ? "text-primary font-medium" 
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                      )}
-                    >
-                      {language}
-                      {index === 0 && (
-                        <span className="ml-auto">
-                          <span className="flex h-2 w-2 rounded-full bg-primary"></span>
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Language selector hidden for now */}
+          <div className="w-5 sm:w-12" aria-hidden="true" />
         </div>
       </div>
     </nav>
