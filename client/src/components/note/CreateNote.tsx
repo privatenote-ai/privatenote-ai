@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import bs58 from "bs58";
 import { QRCode } from "@/components/ui/qr-code";
@@ -284,7 +284,7 @@ export const CreateNote: React.FC = () => {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
-  const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
@@ -404,8 +404,8 @@ export const CreateNote: React.FC = () => {
       setNoteUrl(url);
       setTurnstileToken(null);
       setTurnstileError(null);
-      if (turnstileWidgetId !== null && window.turnstile) {
-        window.turnstile.reset(turnstileWidgetId);
+      if (turnstileWidgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
       }
     } catch (error) {
       console.error("[CreateNote] ❌❌❌ ERROR CREATING NOTE ❌❌❌");
@@ -461,6 +461,9 @@ export const CreateNote: React.FC = () => {
       if (!container) {
         return;
       }
+      if (turnstileWidgetIdRef.current) {
+        return;
+      }
       container.innerHTML = "";
       const widgetId = window.turnstile.render(container, {
         sitekey: siteKey,
@@ -476,7 +479,7 @@ export const CreateNote: React.FC = () => {
           setTurnstileToken(null);
         },
       });
-      setTurnstileWidgetId(widgetId);
+      turnstileWidgetIdRef.current = widgetId;
     };
 
     if (!window.turnstile) {
@@ -496,11 +499,12 @@ export const CreateNote: React.FC = () => {
       if (intervalId !== null) {
         window.clearInterval(intervalId);
       }
-      if (turnstileWidgetId !== null && window.turnstile) {
-        window.turnstile.reset(turnstileWidgetId);
+      if (turnstileWidgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+        turnstileWidgetIdRef.current = null;
       }
     };
-  }, [isAiMode, turnstileWidgetId]);
+  }, [isAiMode]);
 
   const copyToClipboard = () => {
     if (noteUrl) {
