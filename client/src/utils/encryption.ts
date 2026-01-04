@@ -100,8 +100,16 @@ export function arrayBufferToBase64(buffer: ArrayBuffer) {
 }
 
 // Helper function to convert Base64 to ArrayBuffer
+function normalizeBase64(input: string) {
+  let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (normalized.length % 4 !== 0) {
+    normalized += '=';
+  }
+  return normalized;
+}
+
 export function base64ToArrayBuffer(base64: string) {
-  const binaryString = atob(base64);
+  const binaryString = atob(normalizeBase64(base64));
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);

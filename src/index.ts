@@ -1,8 +1,8 @@
-import { SecureNoteStorage } from "./durable_objects/secure_note_storage";
+import { SecureNoteStorage, SecureNoteStorageSql } from "./durable_objects/secure_note_storage";
 import { registerRoutes } from "./routes";
 import type { Env } from "./types";
 
-export { SecureNoteStorage };
+export { SecureNoteStorage, SecureNoteStorageSql };
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -26,11 +26,19 @@ export default {
         'http://127.0.0.1:5173',
       ];
       
+      function normalizeOrigin(origin: string): string {
+        return origin.replace(/\/$/, '');
+      }
+
       function getAllowedOrigin(request: Request): string | null {
         const origin = request.headers.get('Origin');
         if (!origin) return ALLOWED_ORIGINS[0];
-        if (ALLOWED_ORIGINS.includes(origin)) return origin;
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) return origin;
+        const normalized = normalizeOrigin(origin);
+        const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
+        if (normalizedAllowed.includes(normalized)) return origin;
+        if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return origin;
+        if (normalized.endsWith('.pages.dev')) return origin;
+        if (normalized.endsWith('.privatenote.ai')) return origin;
         return null;
       }
       
@@ -107,7 +115,10 @@ export default {
         }),
         { 
           status: 500,
-          headers: { "Content-Type": "application/json" }
+          headers: { 
+            "Content-Type": "application/json",
+            ...getCorsHeaders(request),
+          }
         }
       );
     }

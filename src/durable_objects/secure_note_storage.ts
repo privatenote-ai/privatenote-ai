@@ -17,10 +17,6 @@ interface StoredCiphertext {
   content: string;
   iv: string;
   alg: string;
-  expiresAt: string;
-  maxReads: number;
-  currentReads: number;
-  createdAt: string;
   isPasswordProtected: boolean;
   salt: string | null;
   encryptedKey: string | null;
@@ -29,6 +25,8 @@ interface StoredCiphertext {
 
 const MIN_TTL_SECONDS = 60;
 const MAX_TTL_SECONDS = 2147483647;
+const MIN_EXPIRY_DAYS = 1;
+const MAX_EXPIRY_DAYS = 30;
 
 function calculateTTL(expiresAt: Date): number | undefined {
   const now = Date.now();
@@ -42,32 +40,41 @@ function getCiphertextKey(id: string): string {
   return `note:${id}`;
 }
 
-function getOneRow<T>(cursor: any): T | null {
+async function getOneRow<T>(cursor: any): Promise<T | null> {
   if (!cursor) return null;
-  if (typeof cursor.one === "function") {
-    return cursor.one() as T | null;
-  }
   if (typeof cursor.toArray === "function") {
-    const rows = cursor.toArray() as T[];
+    const rows = await Promise.resolve(cursor.toArray() as T[]);
     return rows.length > 0 ? rows[0] : null;
+  }
+  if (typeof cursor.one === "function") {
+    try {
+      return cursor.one() as T | null;
+    } catch {
+      return null;
+    }
   }
   return null;
 }
 
-export class SecureNoteStorage {
+export class SecureNoteStorageSql {
   state: DurableObjectState;
   env: Env;
+  private schemaReady: boolean;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
+    this.schemaReady = false;
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const segments = url.pathname.split("/").filter(Boolean);
 
-    if (segments.length !== 3 || segments[0] !== "api" || segments[1] !== "notes") {
+    const isNotePath = segments.length >= 3 && segments[0] === "api" && segments[1] === "notes";
+    const isRevealPath = segments.length === 4 && segments[3] === "reveal";
+
+    if (!isNotePath || (segments.length !== 3 && !isRevealPath)) {
       return new Response(JSON.stringify({ error: "Invalid API path" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -78,10 +85,13 @@ export class SecureNoteStorage {
     this.ensureSchema();
 
     if (request.method === "POST") {
+      if (isRevealPath) {
+        return this.revealNote(noteId);
+      }
       return this.createNote(request, noteId);
     }
     if (request.method === "GET") {
-      return this.getNote(noteId);
+      return this.getNoteMeta(noteId);
     }
     if (request.method === "DELETE") {
       return this.deleteNote(noteId);
@@ -94,6 +104,9 @@ export class SecureNoteStorage {
   }
 
   private ensureSchema(): void {
+    if (this.schemaReady) {
+      return;
+    }
     this.state.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS notes_meta (" +
         "note_id TEXT PRIMARY KEY," +
@@ -103,26 +116,31 @@ export class SecureNoteStorage {
         "consumed INTEGER NOT NULL" +
         ")",
     );
+    this.schemaReady = true;
   }
 
-  private getMeta(noteId: string): NoteMetaRow | null {
+  private async getMeta(noteId: string): Promise<NoteMetaRow | null> {
     const cursor = this.state.storage.sql.exec(
-      "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?1",
-      [noteId],
+      "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?",
+      noteId,
     );
-    return getOneRow<NoteMetaRow>(cursor);
+    return await getOneRow<NoteMetaRow>(cursor);
   }
 
   private upsertMeta(meta: NoteMetaRow): void {
     this.state.storage.sql.exec(
       "INSERT OR REPLACE INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5)",
-      [meta.note_id, meta.expires_at, meta.max_reads, meta.current_reads, meta.consumed],
+        "VALUES (?, ?, ?, ?, ?)",
+      meta.note_id,
+      meta.expires_at,
+      meta.max_reads,
+      meta.current_reads,
+      meta.consumed,
     );
   }
 
   private deleteMeta(noteId: string): void {
-    this.state.storage.sql.exec("DELETE FROM notes_meta WHERE note_id = ?1", [noteId]);
+    this.state.storage.sql.exec("DELETE FROM notes_meta WHERE note_id = ?", noteId);
   }
 
   private async loadLegacyFromKV(noteId: string): Promise<NoteMetaRow | null> {
@@ -149,16 +167,11 @@ export class SecureNoteStorage {
       consumed: 0,
     };
 
-    const createdAt = parsed.createdAt ? new Date(parsed.createdAt) : new Date();
     const ciphertext: StoredCiphertext = {
       v: typeof parsed.v === "number" ? parsed.v : 1,
       content: parsed.content,
       iv: parsed.iv,
       alg: typeof parsed.alg === "string" ? parsed.alg : "AES-GCM",
-      expiresAt: expiresAt.toISOString(),
-      maxReads: meta.max_reads,
-      currentReads: meta.current_reads,
-      createdAt: createdAt.toISOString(),
       isPasswordProtected: !!parsed.isPasswordProtected,
       salt: parsed.salt ?? null,
       encryptedKey: parsed.encryptedKey ?? null,
@@ -186,7 +199,7 @@ export class SecureNoteStorage {
   }
 
   private async createNote(request: Request, noteId: string): Promise<Response> {
-    const existing = this.getMeta(noteId);
+    const existing = await this.getMeta(noteId);
     if (existing) {
       return new Response(JSON.stringify({ error: "Note already exists" }), {
         status: 409,
@@ -223,13 +236,23 @@ export class SecureNoteStorage {
       );
     }
 
-    const expiresAt = new Date(Date.now() + Number(expiryDays) * 24 * 60 * 60 * 1000);
-    const createdAt = new Date();
+    const parsedExpiryDays = Number(expiryDays);
+    const safeExpiryDays = Number.isFinite(parsedExpiryDays)
+      ? Math.min(MAX_EXPIRY_DAYS, Math.max(MIN_EXPIRY_DAYS, Math.floor(parsedExpiryDays)))
+      : MIN_EXPIRY_DAYS;
+    const expiresAt = new Date(Date.now() + safeExpiryDays * 24 * 60 * 60 * 1000);
+    const parsedMaxReads = Number(maxReads);
+    const isUnlimitedExplicit = parsedMaxReads === 0 || maxReads === "0";
+    const safeMaxReads = isUnlimitedExplicit
+      ? 0
+      : Number.isFinite(parsedMaxReads) && parsedMaxReads > 0
+        ? Math.floor(parsedMaxReads)
+        : 1;
 
     const meta: NoteMetaRow = {
       note_id: noteId,
       expires_at: expiresAt.toISOString(),
-      max_reads: Number(maxReads) || 0,
+      max_reads: safeMaxReads,
       current_reads: 0,
       consumed: 0,
     };
@@ -239,10 +262,6 @@ export class SecureNoteStorage {
       content,
       iv,
       alg: "AES-GCM",
-      expiresAt: expiresAt.toISOString(),
-      maxReads: meta.max_reads,
-      currentReads: meta.current_reads,
-      createdAt: createdAt.toISOString(),
       isPasswordProtected: !!isPasswordProtected,
       salt,
       encryptedKey,
@@ -258,8 +277,8 @@ export class SecureNoteStorage {
     });
   }
 
-  private async getNote(noteId: string): Promise<Response> {
-    let meta = this.getMeta(noteId);
+  private async getNoteMeta(noteId: string): Promise<Response> {
+    let meta = await this.getMeta(noteId);
     if (!meta) {
       meta = await this.loadLegacyFromKV(noteId);
     }
@@ -275,7 +294,7 @@ export class SecureNoteStorage {
       meta.consumed = 1;
       this.upsertMeta(meta);
       await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note has expired" }), {
+      return new Response(JSON.stringify({ error: "Note not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
@@ -285,7 +304,52 @@ export class SecureNoteStorage {
       meta.consumed = 1;
       this.upsertMeta(meta);
       await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note has reached maximum read count" }), {
+      return new Response(JSON.stringify({ error: "Note not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const responseBody = {
+      readCount: meta.current_reads,
+      maxReads: meta.max_reads,
+      expiresAt: meta.expires_at,
+    };
+
+    return new Response(JSON.stringify(responseBody), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  private async revealNote(noteId: string): Promise<Response> {
+    let meta = await this.getMeta(noteId);
+    if (!meta) {
+      meta = await this.loadLegacyFromKV(noteId);
+    }
+    if (!meta || meta.consumed) {
+      return new Response(JSON.stringify({ error: "Note not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const expiresAt = new Date(meta.expires_at);
+    if (expiresAt < new Date()) {
+      meta.consumed = 1;
+      this.upsertMeta(meta);
+      await this.deleteCiphertext(noteId);
+      return new Response(JSON.stringify({ error: "Note not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (meta.max_reads > 0 && meta.current_reads >= meta.max_reads) {
+      meta.consumed = 1;
+      this.upsertMeta(meta);
+      await this.deleteCiphertext(noteId);
+      return new Response(JSON.stringify({ error: "Note not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
@@ -312,33 +376,17 @@ export class SecureNoteStorage {
     meta.current_reads += 1;
     this.upsertMeta(meta);
 
-    const updatedCiphertext: StoredCiphertext = {
-      ...ciphertext,
-      v: typeof ciphertext.v === "number" ? ciphertext.v : 1,
-      alg: typeof ciphertext.alg === "string" ? ciphertext.alg : "AES-GCM",
-      expiresAt: meta.expires_at,
-      maxReads: meta.max_reads,
-      currentReads: meta.current_reads,
-      createdAt: ciphertext.createdAt || new Date().toISOString(),
-      isPasswordProtected: ciphertext.isPasswordProtected ?? false,
-      salt: ciphertext.salt ?? null,
-      encryptedKey: ciphertext.encryptedKey ?? null,
-      encryptedKeyIv: ciphertext.encryptedKeyIv ?? null,
-    };
-
-    await this.persistCiphertext(noteId, updatedCiphertext, expiresAt);
-
     const responseBody = {
       content: ciphertext.content,
       iv: ciphertext.iv,
       readCount: meta.current_reads,
       maxReads: meta.max_reads,
       expiresAt: meta.expires_at,
-      isPasswordProtected: updatedCiphertext.isPasswordProtected,
-      ...(updatedCiphertext.isPasswordProtected && {
-        salt: updatedCiphertext.salt,
-        encryptedKey: updatedCiphertext.encryptedKey,
-        encryptedKeyIv: updatedCiphertext.encryptedKeyIv,
+      isPasswordProtected: ciphertext.isPasswordProtected ?? false,
+      ...(ciphertext.isPasswordProtected && {
+        salt: ciphertext.salt,
+        encryptedKey: ciphertext.encryptedKey,
+        encryptedKeyIv: ciphertext.encryptedKeyIv,
       }),
     };
 
@@ -360,6 +408,23 @@ export class SecureNoteStorage {
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
+export class SecureNoteStorage {
+  state: DurableObjectState;
+  env: Env;
+
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(): Promise<Response> {
+    return new Response(JSON.stringify({ error: "Legacy Durable Object is deprecated" }), {
+      status: 410,
       headers: { "Content-Type": "application/json" },
     });
   }

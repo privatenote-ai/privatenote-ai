@@ -21,17 +21,29 @@ const RATE_LIMIT = {
 };
 
 // Get allowed origin for CORS
+function normalizeOrigin(origin: string): string {
+  return origin.replace(/\/$/, '');
+}
+
 function getAllowedOrigin(request: Request): string | null {
   const origin = request.headers.get('Origin');
   if (!origin) return ALLOWED_ORIGINS[0]; // Default to first allowed origin
-  
+
+  const normalized = normalizeOrigin(origin);
+  const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
+
   // Check if origin is in allowed list
-  if (ALLOWED_ORIGINS.includes(origin)) {
+  if (normalizedAllowed.includes(normalized)) {
     return origin;
   }
-  
+
   // For development, allow localhost variations
-  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+  if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) {
+    return origin;
+  }
+
+  // Allow Pages preview and custom subdomains
+  if (normalized.endsWith('.pages.dev') || normalized.endsWith('.privatenote.ai')) {
     return origin;
   }
   
@@ -309,14 +321,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     return applyCorsHeaders(doResponse, request);
   }
 
-  const noteParams = parsePathParams(pathname, "/api/notes/:id");
-  if (noteParams && (method === "GET" || method === "DELETE")) {
-    const { id } = noteParams;
+  const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
+  if (noteRevealParams && method === "POST") {
+    const { id } = noteRevealParams;
+    const clientId = getClientIdentifier(request);
+    const revealKey = `${clientId}:reveal:${id}`;
+    const revealLimit = await checkRateLimit(request, env, revealKey);
+
+    if (!revealLimit.allowed) {
+      return jsonResponse({
+        error: 'Rate limit exceeded',
+        message: `Too many reveal attempts. Please try again in ${revealLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+        resetAt: revealLimit.resetAt,
+      }, 429, request);
+    }
+
     const doId = env.SECURE_NOTES.idFromName(id);
     const stub = env.SECURE_NOTES.get(doId);
     const doResponse = await stub.fetch(request);
 
-    if (method === "GET" && doResponse.ok) {
+    if (doResponse.ok) {
       try {
         const data = await doResponse.clone().json();
         const noteForAnalytics: Note = {
@@ -334,9 +358,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         };
         await storage.trackNoteView(noteForAnalytics);
       } catch (error) {
-        console.warn("[ROUTES] Skipping analytics for note view:", error);
+        console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
     }
+
+    return applyCorsHeaders(doResponse, request);
+  }
+
+  const noteParams = parsePathParams(pathname, "/api/notes/:id");
+  if (noteParams && (method === "GET" || method === "DELETE")) {
+    const { id } = noteParams;
+    const doId = env.SECURE_NOTES.idFromName(id);
+    const stub = env.SECURE_NOTES.get(doId);
+    const doResponse = await stub.fetch(request);
     return applyCorsHeaders(doResponse, request);
   }
 

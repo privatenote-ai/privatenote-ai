@@ -7,6 +7,11 @@ compatibility_date = "2024-01-01"
 binding = "NOTES_KV"
 id = "f19b8957a39b422486311962ca759563"
 
+# Durable Objects binding
+[[durable_objects.bindings]]
+name = "SECURE_NOTES"
+class_name = "SecureNoteStorageSql"
+
 # Environment variables (set via wrangler secret put or dashboard)
 # OPENAI_API_KEY will be set via: wrangler secret put OPENAI_API_KEY
 
@@ -31,9 +36,17 @@ enabled = false
 persist = true
 head_sampling_rate = 1
 
-[durable_objects]
-bindings = [{ name = "SECURE_NOTES", class_name = "SecureNoteStorage" }]
-
+# Migration configuration
+# v1 migration was already applied in production with SQLite support
+# We keep it here to match the deployed state
 [[migrations]]
 tag = "v1"
 new_classes = ["SecureNoteStorage"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["SecureNoteStorageSql"]
+
+[[migrations]]
+tag = "v3"
+delete_classes = ["SecureNoteStorage"]

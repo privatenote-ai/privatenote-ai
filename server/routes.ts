@@ -89,32 +89,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (note.maxReads && note.maxReads > 0 && note.currentReads && note.currentReads >= note.maxReads) {
         return res.status(404).json({ message: 'Note has reached maximum read count' });
       }
-      
+
+      // Return metadata only (no ciphertext, no consumption)
+      res.json({
+        readCount: note.currentReads || 0,
+        maxReads: note.maxReads || 0,
+        expiresAt: note.expiresAt,
+        isPasswordProtected: note.isPasswordProtected || false,
+      });
+    } catch (error) {
+      console.error('Error fetching note:', error);
+      res.status(500).json({ message: 'Failed to fetch note' });
+    }
+  });
+
+  app.post('/api/notes/:id/reveal', async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Get note by ID
+      let note = await storage.getNoteById(id);
+
+      if (!note) {
+        return res.status(404).json({ message: 'Note not found' });
+      }
+
+      // Check if note has expired
+      if (note.expiresAt && new Date(note.expiresAt) < new Date()) {
+        await storage.deleteNote(id);
+        return res.status(404).json({ message: 'Note has expired' });
+      }
+
+      // Check read count limit (note: maxReads 0 means unlimited)
+      if (note.maxReads && note.maxReads > 0 && note.currentReads && note.currentReads >= note.maxReads) {
+        return res.status(404).json({ message: 'Note has reached maximum read count' });
+      }
+
       // Increment read count
       const updatedNote = await storage.updateNoteReadCount(id);
-      
+
       if (!updatedNote) {
         return res.status(404).json({ message: 'Failed to update note read count' });
       }
-      
+
       // If note has reached max reads, delete it
       if (updatedNote.maxReads && updatedNote.maxReads > 0 && 
           updatedNote.currentReads && updatedNote.currentReads >= updatedNote.maxReads) {
-        // We'll delete this note after sending the response
         setTimeout(() => {
           storage.deleteNote(id).catch(err => 
             console.error(`Error deleting note after reaching read limit: ${err}`)
           );
         }, 100);
       }
-      
-      // Use the updated note for the response
+
       note = updatedNote;
-      
+
       // Track note view in analytics
       await storage.trackNoteView(note);
-      
-      // Return the encrypted content and IV, and any password protection fields
+
+      // Return encrypted content and IV
       res.json({
         content: note.content,
         iv: note.iv,
@@ -129,8 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       });
     } catch (error) {
-      console.error('Error fetching note:', error);
-      res.status(500).json({ message: 'Failed to fetch note' });
+      console.error('Error revealing note:', error);
+      res.status(500).json({ message: 'Failed to reveal note' });
     }
   });
   
