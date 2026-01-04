@@ -45,7 +45,8 @@ function getCorsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
-    "Access-Control-Allow-Credentials": "false",
+    // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
+    // If you need credentials later, set this to "true" and ensure Origin is specific (not *)
   };
 }
 

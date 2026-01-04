@@ -37,7 +37,7 @@ export default {
           "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
-          "Access-Control-Allow-Credentials": "false",
+          // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
         };
       }
 
