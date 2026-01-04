@@ -3,14 +3,23 @@ import type { Env } from "./types";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    console.log(`[WORKER-ENTRY] ========== WORKER ENTRY POINT ==========`);
+    console.log(`[WORKER-ENTRY] Request method: ${request.method}`);
+    console.log(`[WORKER-ENTRY] Request URL: ${request.url}`);
+    console.log(`[WORKER-ENTRY] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
+    
     try {
       const url = new URL(request.url);
       const pathname = url.pathname;
+      console.log(`[WORKER-ENTRY] Pathname: ${pathname}`);
 
       // Handle API routes
       if (pathname.startsWith("/api")) {
+        console.log(`[WORKER-ENTRY] ✅ Path starts with /api, routing to registerRoutes`);
         return await registerRoutes(request, env);
       }
+      
+      console.log(`[WORKER-ENTRY] Path does not start with /api`);
 
       // For non-API routes, return helpful message (frontend should be served by Cloudflare Pages)
       if (pathname === "/") {

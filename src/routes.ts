@@ -49,8 +49,14 @@ function parsePathParams(pathname: string, pattern: string): Record<string, stri
 }
 
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+  console.log(`[ROUTES] ========== REGISTER ROUTES ==========`);
+  console.log(`[ROUTES] Request method: ${request.method}`);
+  console.log(`[ROUTES] Request URL: ${request.url}`);
+  console.log(`[ROUTES] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
+  
   // Handle CORS preflight requests
   if (request.method === "OPTIONS") {
+    console.log(`[ROUTES] Handling OPTIONS preflight request`);
     return new Response(null, {
       status: 204,
       headers: {
@@ -64,7 +70,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
+  console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
+  
   const storage = new CompositeStorage(env.NOTES_KV);
+  console.log(`[ROUTES] Storage initialized`);
 
   // AI API routes
   if (pathname === "/api/ai/config" && method === "GET") {
@@ -76,9 +85,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   // Notes API routes
+  console.log(`[ROUTES] Checking notes route: pathname=${pathname}, method=${method}`);
   if (pathname === "/api/notes" && method === "POST") {
+    console.log(`[ROUTES] ✅ Matched POST /api/notes route`);
     try {
+      console.log(`[ROUTES] Attempting to parse request body...`);
       const body = await request.json();
+      console.log(`[ROUTES] ✅ Successfully parsed JSON body`);
+      console.log(`[ROUTES] Body keys:`, Object.keys(body));
       const { 
         content, 
         iv, 
@@ -120,13 +134,23 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       });
       
       // Track note creation in analytics
+      console.log(`[ROUTES] Tracking note creation in analytics...`);
       await storage.trackNoteCreation(note);
+      console.log(`[ROUTES] ✅ Note created successfully with ID: ${note.id}`);
       
       return jsonResponse({ id: note.id }, 201);
     } catch (error) {
-      console.error("Error creating note:", error);
-      return jsonResponse({ message: "Failed to create note" }, 500);
+      console.error(`[ROUTES] ❌❌❌ ERROR CREATING NOTE ❌❌❌`);
+      console.error(`[ROUTES] Error type: ${error?.constructor?.name || 'Unknown'}`);
+      console.error(`[ROUTES] Error message: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`[ROUTES] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+      return jsonResponse({ 
+        message: "Failed to create note",
+        error: error instanceof Error ? error.message : String(error)
+      }, 500);
     }
+  } else {
+    console.log(`[ROUTES] ❌ No route matched for pathname=${pathname}, method=${method}`);
   }
 
   // GET /api/notes/:id
@@ -574,6 +598,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   // 404 for unmatched routes
-  return jsonResponse({ message: "Not Found" }, 404);
+  console.log(`[ROUTES] ❌ No route handler matched. Returning 404`);
+  console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
+  return jsonResponse({ message: "Not Found", pathname, method }, 404);
 }
 

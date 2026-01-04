@@ -20,12 +20,17 @@ export class SecureNoteStorage {
         const path = url.pathname;
         const segments = path.split('/').filter(Boolean);
 
+        console.log("[DO] ========== DURABLE OBJECT FETCH ==========");
         console.log("[DO] Received request:", request.method, path);
+        console.log("[DO] Full URL:", request.url);
         console.log("[DO] Path segments:", segments);
+        console.log("[DO] Segments length:", segments.length);
+        console.log("[DO] Request headers:", JSON.stringify(Object.fromEntries(request.headers.entries())));
 
         // Ensure API path starts with /api/notes
         if (segments.length < 2 || segments[0] !== 'api' || segments[1] !== 'notes') {
-            console.log("[DO] Invalid API path: unauthorized access");
+            console.log("[DO] ❌ Invalid API path: unauthorized access");
+            console.log("[DO] Segment 0:", segments[0], "Segment 1:", segments[1]);
             return new Response(JSON.stringify({ error: 'Unauthorized access' }), {
                 status: 403,
                 headers: { 
@@ -37,7 +42,9 @@ export class SecureNoteStorage {
 
         // Expecting only /api/notes/:id
         if (segments.length !== 3) {
-            console.log("[DO] Invalid API path: wrong segment count", segments.length);
+            console.log("[DO] ❌ Invalid API path: wrong segment count", segments.length);
+            console.log("[DO] Expected 3 segments, got:", segments.length);
+            console.log("[DO] Segments:", JSON.stringify(segments));
             return new Response(JSON.stringify({ error: 'Invalid API path' }), {
                 status: 400,
                 headers: { 
@@ -48,22 +55,24 @@ export class SecureNoteStorage {
         }
 
         const noteId = segments[2];
-        console.log(`[DO] Processing note ID: ${noteId}`);
+        console.log(`[DO] ✅ Processing note ID: ${noteId}`);
+        console.log(`[DO] Request method: ${request.method}`);
 
         if (request.method === 'POST') {
-            console.log(`[DO] Creating note with ID: ${noteId}`);
+            console.log(`[DO] → Routing to createNote for ID: ${noteId}`);
             return await this.createNote(request, noteId);
         } else if (request.method === 'GET') {
-            console.log(`[DO] Getting note with ID: ${noteId}`);
+            console.log(`[DO] → Routing to getNote for ID: ${noteId}`);
             return await this.getNote(noteId);
         } else if (request.method === 'DELETE') {
-            console.log(`[DO] Deleting note with ID: ${noteId}`);
+            console.log(`[DO] → Routing to deleteNote for ID: ${noteId}`);
             // Run background cleanup
             this.cleanupExpiredNotes();
             return await this.deleteNote(noteId);
         }
 
-        console.log(`[DO] Method not allowed: ${request.method}`);
+        console.log(`[DO] ❌ Method not allowed: ${request.method}`);
+        console.log(`[DO] Allowed methods: POST, GET, DELETE`);
         return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
             status: 405,
             headers: { 
@@ -75,18 +84,42 @@ export class SecureNoteStorage {
 
     async createNote(request: Request, noteId: string): Promise<Response> {
         try {
+            console.log(`[DO] ========== CREATE NOTE ==========`);
             console.log(`[DO] Creating note with ID: ${noteId}`);
+            console.log(`[DO] Request URL: ${request.url}`);
+            console.log(`[DO] Request method: ${request.method}`);
 
             // Read body and check content type
             const contentType = request.headers.get('Content-Type') || '';
-            console.log(`[DO] Content-Type header: ${contentType}`);
+            console.log(`[DO] Content-Type header: "${contentType}"`);
+            console.log(`[DO] All request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
 
             let noteData: any;
             
             if (contentType.includes('application/json')) {
+                console.log(`[DO] ✅ Detected JSON content type`);
                 // Handle JSON format (from client)
-                const body = await request.json();
-                console.log(`[DO] Received JSON body:`, JSON.stringify(body).substring(0, 200));
+                console.log(`[DO] Attempting to parse JSON body...`);
+                let body;
+                try {
+                    body = await request.json();
+                    console.log(`[DO] ✅ Successfully parsed JSON body`);
+                    console.log(`[DO] Body keys:`, Object.keys(body));
+                    console.log(`[DO] Body preview (first 500 chars):`, JSON.stringify(body).substring(0, 500));
+                } catch (jsonError) {
+                    console.error(`[DO] ❌ Error parsing JSON:`, jsonError);
+                    console.error(`[DO] Error details:`, jsonError.toString());
+                    return new Response(JSON.stringify({ 
+                        error: 'Invalid JSON body', 
+                        details: jsonError.toString() 
+                    }), {
+                        status: 400,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
                 
                 const { 
                     content, 
@@ -99,20 +132,38 @@ export class SecureNoteStorage {
                     encryptedKeyIv = null
                 } = body;
                 
+                console.log(`[DO] Extracted fields:`, {
+                    hasContent: !!content,
+                    hasIv: !!iv,
+                    expiryDays,
+                    maxReads,
+                    isPasswordProtected
+                });
+                
                 if (!content || !iv) {
+                    console.log(`[DO] ❌ Validation failed: Missing content or IV`);
+                    console.log(`[DO] Content present: ${!!content}, IV present: ${!!iv}`);
                     return new Response(JSON.stringify({ error: 'Content and IV are required' }), {
                         status: 400,
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
                     });
                 }
                 
                 // Check if password protection fields are provided when needed
                 if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
+                    console.log(`[DO] ❌ Password protection validation failed`);
+                    console.log(`[DO] Salt present: ${!!salt}, encryptedKey present: ${!!encryptedKey}, encryptedKeyIv present: ${!!encryptedKeyIv}`);
                     return new Response(JSON.stringify({ 
                         error: 'Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes' 
                     }), {
                         status: 400,
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
                     });
                 }
                 
@@ -134,6 +185,7 @@ export class SecureNoteStorage {
                     })
                 };
             } else if (contentType.includes('application/octet-stream')) {
+                console.log(`[DO] ✅ Detected binary content type (legacy)`);
                 // Handle binary format (legacy support)
                 const buffer = await request.arrayBuffer();
                 console.log(`[DO] Received body size: ${buffer.byteLength} bytes`);
@@ -144,34 +196,73 @@ export class SecureNoteStorage {
                     createdAt: new Date(createdAt).toISOString()
                 };
             } else {
-                return new Response(JSON.stringify({ error: 'Invalid Content-Type. Expected application/json or application/octet-stream' }), {
+                console.log(`[DO] ❌ Invalid Content-Type: "${contentType}"`);
+                console.log(`[DO] Expected: application/json or application/octet-stream`);
+                return new Response(JSON.stringify({ 
+                    error: 'Invalid Content-Type. Expected application/json or application/octet-stream',
+                    received: contentType
+                }), {
                     status: 400,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
                 });
             }
 
             const metaKey = `${noteId}-meta`;
             console.log(`[DO] Creating metadata with key: ${metaKey}`);
+            console.log(`[DO] Note data structure:`, {
+                hasContent: !!noteData.content,
+                hasIv: !!noteData.iv,
+                expiresAt: noteData.expiresAt,
+                maxReads: noteData.maxReads,
+                isPasswordProtected: noteData.isPasswordProtected
+            });
 
             // Store note data as JSON
-            await this.state.storage.put(noteId, JSON.stringify(noteData));
-            await this.state.storage.put(metaKey, JSON.stringify({ createdAt: noteData.createdAt }));
+            console.log(`[DO] Storing note data to storage...`);
+            try {
+                await this.state.storage.put(noteId, JSON.stringify(noteData));
+                console.log(`[DO] ✅ Note data stored`);
+                await this.state.storage.put(metaKey, JSON.stringify({ createdAt: noteData.createdAt }));
+                console.log(`[DO] ✅ Metadata stored`);
+            } catch (storageError) {
+                console.error(`[DO] ❌ Storage error:`, storageError);
+                throw storageError;
+            }
 
-            console.log(`[DO] Note and metadata stored successfully`);
+            console.log(`[DO] ✅ Note and metadata stored successfully`);
+            console.log(`[DO] Returning success response with ID: ${noteId}`);
 
-            return new Response(JSON.stringify({ id: noteId }), {
+            const response = new Response(JSON.stringify({ id: noteId }), {
                 status: 201,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 }
             });
+            console.log(`[DO] Response status: ${response.status}`);
+            return response;
         } catch (e) {
-            console.error(`[DO] Error creating note: ${e.toString()}`);
+            console.error(`[DO] ❌❌❌ ERROR CREATING NOTE ❌❌❌`);
+            console.error(`[DO] Error type: ${e.constructor.name}`);
+            console.error(`[DO] Error message: ${e.toString()}`);
             console.error(`[DO] Error stack: ${e.stack}`);
-            return new Response(JSON.stringify({ error: 'Error creating note', details: e.toString() }), {
+            if (e instanceof Error) {
+                console.error(`[DO] Error name: ${e.name}`);
+                console.error(`[DO] Error message: ${e.message}`);
+            }
+            return new Response(JSON.stringify({ 
+                error: 'Error creating note', 
+                details: e.toString(),
+                type: e.constructor.name
+            }), {
                 status: 500,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
             });
         }
     }
