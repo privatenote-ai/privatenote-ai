@@ -21,7 +21,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { 
         content, 
         iv, 
-        expiryDays = 1, 
+        expiryDays = 1,
+        expirySeconds,
         maxReads = 1,
         isPasswordProtected = false,
         salt = null,
@@ -40,8 +41,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Calculate expiration date based on expiryDays
-      const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+      // Calculate expiration date based on expirySeconds (fallback to expiryDays)
+      const parsedExpirySeconds = Number(expirySeconds);
+      const parsedExpiryDays = Number(expiryDays);
+      const rawExpirySeconds = Number.isFinite(parsedExpirySeconds)
+        ? parsedExpirySeconds
+        : Number.isFinite(parsedExpiryDays)
+          ? parsedExpiryDays * 24 * 60 * 60
+          : 24 * 60 * 60;
+      const expiresAt = new Date(Date.now() + rawExpirySeconds * 1000);
       
       // Create a new note with encrypted content
       const note = await storage.createNote({

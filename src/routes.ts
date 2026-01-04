@@ -312,14 +312,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     let noteForAnalytics: Note | null = null;
     try {
       requestBody = await request.clone().json();
-      const expiryDays = Number(requestBody?.expiryDays ?? 1);
+      const expirySecondsRaw = Number(requestBody?.expirySeconds ?? NaN);
+      const expiryDaysRaw = Number(requestBody?.expiryDays ?? 1);
+      const expirySeconds = Number.isFinite(expirySecondsRaw)
+        ? expirySecondsRaw
+        : expiryDaysRaw * 24 * 60 * 60;
       const maxReads = Number(requestBody?.maxReads ?? 1);
       if (requestBody?.content && requestBody?.iv) {
         noteForAnalytics = {
           id: "pending",
           content: requestBody.content,
           iv: requestBody.iv,
-          expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
+          expiresAt: new Date(Date.now() + expirySeconds * 1000),
           maxReads,
           currentReads: 0,
           createdAt: new Date(),

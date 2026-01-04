@@ -25,8 +25,8 @@ interface StoredCiphertext {
 
 const MIN_TTL_SECONDS = 60;
 const MAX_TTL_SECONDS = 2147483647;
-const MIN_EXPIRY_DAYS = 1;
-const MAX_EXPIRY_DAYS = 30;
+const MIN_EXPIRY_SECONDS = 60;
+const MAX_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 
 function calculateTTL(expiresAt: Date): number | undefined {
   const now = Date.now();
@@ -212,6 +212,7 @@ export class SecureNoteStorageSql {
       content,
       iv,
       expiryDays = 1,
+      expirySeconds,
       maxReads = 1,
       isPasswordProtected = false,
       salt = null,
@@ -236,11 +237,18 @@ export class SecureNoteStorageSql {
       );
     }
 
+    const parsedExpirySeconds = Number(expirySeconds);
     const parsedExpiryDays = Number(expiryDays);
-    const safeExpiryDays = Number.isFinite(parsedExpiryDays)
-      ? Math.min(MAX_EXPIRY_DAYS, Math.max(MIN_EXPIRY_DAYS, Math.floor(parsedExpiryDays)))
-      : MIN_EXPIRY_DAYS;
-    const expiresAt = new Date(Date.now() + safeExpiryDays * 24 * 60 * 60 * 1000);
+    const rawExpirySeconds = Number.isFinite(parsedExpirySeconds)
+      ? parsedExpirySeconds
+      : Number.isFinite(parsedExpiryDays)
+        ? parsedExpiryDays * 24 * 60 * 60
+        : 24 * 60 * 60;
+    const safeExpirySeconds = Math.min(
+      MAX_EXPIRY_SECONDS,
+      Math.max(MIN_EXPIRY_SECONDS, Math.floor(rawExpirySeconds)),
+    );
+    const expiresAt = new Date(Date.now() + safeExpirySeconds * 1000);
     const parsedMaxReads = Number(maxReads);
     const isUnlimitedExplicit = parsedMaxReads === 0 || maxReads === "0";
     const safeMaxReads = isUnlimitedExplicit

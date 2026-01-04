@@ -72,21 +72,21 @@ const secureRandomInt = (max: number): number => {
   return randomBuffer[0] % max;
 };
 
-// Function to convert expiry value to days for API
-const convertExpiryToDays = (expiryValue: string): number => {
+// Function to convert expiry value to seconds for API
+const convertExpiryToSeconds = (expiryValue: string): number => {
   // Format is like "5m", "1h", "7d" etc.
   const value = parseInt(expiryValue.slice(0, -1));
   const unit = expiryValue.slice(-1);
   
   switch(unit) {
     case 'm': // minutes
-      return value / (24 * 60); // Convert minutes to days
+      return value * 60;
     case 'h': // hours
-      return value / 24; // Convert hours to days
+      return value * 60 * 60;
     case 'd': // days
-      return value;
+      return value * 24 * 60 * 60;
     default:
-      return 1; // Default to 1 day
+      return 24 * 60 * 60; // Default to 1 day
   }
 };
 
@@ -366,9 +366,9 @@ export const CreateNote: React.FC = () => {
         ivBase64 = arrayBufferToBase64(iv);
       }
 
-      // Convert expiryValue to days for API
-      const expiryDays = convertExpiryToDays(expiryValue);
-
+      // Convert expiryValue to seconds for API
+      const expirySeconds = convertExpiryToSeconds(expiryValue);
+      
       if (isAiMode) {
         if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
           throw new Error("Human verification is not configured.");
@@ -382,7 +382,7 @@ export const CreateNote: React.FC = () => {
       const { id } = await apiRequest("/api/notes", "POST", {
         content: encryptedBase64,
         iv: ivBase64,
-        expiryDays,
+        expirySeconds,
         maxReads: readCount,
         aiMode: isAiMode,
         turnstileToken: turnstileToken || undefined,
