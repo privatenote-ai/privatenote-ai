@@ -5,27 +5,27 @@ import { Lock, Timer, Shield, DollarSign, Zap } from 'lucide-react';
 const features = [
   {
     title: "End-to-End Encryption",
-    description: "Your note is encrypted in your browser before being sent to our servers. We never see your unencrypted data.",
+    description: "Encrypted in your browser before it leaves your device. We never see or store plaintext.",
     icon: <Lock className="h-6 w-6 text-primary" />
   },
   {
     title: "Self-Destructing",
-    description: "Once read, the note is permanently deleted from our servers. Notes automatically expire after 24 hours.",
+    description: "Read-once by default, with automatic expiry you control — from minutes to days.",
     icon: <Timer className="h-6 w-6 text-primary" />
   },
   {
     title: "Easy to Use",
-    description: "Simple interface makes sharing secure notes quick and intuitive. No technical knowledge required.",
+    description: "Share a link and you're done. No accounts, no setup, no friction.",
     icon: <Shield className="h-6 w-6 text-primary" />
   },
   {
     title: "Free for All",
-    description: "All core security features are completely free. No subscriptions or payment required to keep your data safe.",
+    description: "All core privacy features are free. No subscriptions required to keep your data safe.",
     icon: <DollarSign className="h-6 w-6 text-primary" />
   },
   {
     title: "Write with AI",
-    description: "Create notes with AI assistance for speed and precision. Improve, summarize, or secure your content with a click.",
+    description: "Draft, refine, or redact with AI — then encrypt locally before sending.",
     icon: <Zap className="h-6 w-6 text-primary" />
   }
 ];
@@ -67,6 +67,10 @@ export const SecurityFeatures: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
+        Built for privacy-first sharing — no tracking, no ads, no data resale.
       </div>
     </section>
   );

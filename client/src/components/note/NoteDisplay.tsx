@@ -38,6 +38,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
   const [hasRevealed, setHasRevealed] = useState(false);
   const { toast } = useToast();
 
+  const getUserFriendlyError = (message: string) => {
+    if (message.startsWith("404:") || message.includes("Note not found")) {
+      return "This note is unavailable or has already been read.";
+    }
+    if (message.includes("Note has expired")) {
+      return "This note has expired.";
+    }
+    return message;
+  };
+
   const base64ToUint8Array = (value: string) => {
     const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
     let padded = normalized;
@@ -108,10 +118,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
     } catch (error) {
       console.error('Error revealing note:', error);
       if (error instanceof Error) {
-        setError(error.message);
+        const friendlyMessage = getUserFriendlyError(error.message);
+        setError(friendlyMessage);
         toast({
           title: "Error",
-          description: error.message,
+          description: friendlyMessage,
           variant: "destructive",
         });
       } else {
