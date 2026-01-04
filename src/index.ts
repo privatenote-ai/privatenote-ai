@@ -13,15 +13,55 @@ export default {
       const pathname = url.pathname;
       console.log(`[WORKER-ENTRY] Pathname: ${pathname}`);
 
+      // Import CORS helpers (defined in routes.ts but we need them here too)
+      const ALLOWED_ORIGINS = [
+        'https://privatenote-ai.pages.dev',
+        'https://privatenote.ai',
+        'http://localhost:5000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5000',
+        'http://127.0.0.1:5173',
+      ];
+      
+      function getAllowedOrigin(request: Request): string | null {
+        const origin = request.headers.get('Origin');
+        if (!origin) return ALLOWED_ORIGINS[0];
+        if (ALLOWED_ORIGINS.includes(origin)) return origin;
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) return origin;
+        return null;
+      }
+      
+      function getCorsHeaders(request: Request): Record<string, string> {
+        const allowedOrigin = getAllowedOrigin(request);
+        return {
+          "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+          "Access-Control-Allow-Credentials": "false",
+        };
+      }
+
       // Handle CORS preflight requests FIRST, before any routing
       if (request.method === "OPTIONS") {
         console.log(`[WORKER-ENTRY] Handling OPTIONS preflight request for: ${pathname}`);
+        const origin = request.headers.get('Origin');
+        const allowedOrigin = getAllowedOrigin(request);
+        
+        if (origin && !allowedOrigin) {
+          console.log(`[WORKER-ENTRY] ❌ CORS: Origin not allowed: ${origin}`);
+          return new Response(JSON.stringify({ error: 'CORS policy: Origin not allowed' }), {
+            status: 403,
+            headers: {
+              "Content-Type": "application/json",
+              ...getCorsHeaders(request),
+            },
+          });
+        }
+        
         return new Response(null, {
           status: 204,
           headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+            ...getCorsHeaders(request),
             "Access-Control-Max-Age": "86400",
           },
         });

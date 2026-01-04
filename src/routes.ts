@@ -2,17 +2,146 @@ import { CompositeStorage } from "./storage";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import type { Env } from "./types";
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://privatenote-ai.pages.dev',
+  'https://privatenote.ai',
+  'http://localhost:5000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:5173',
+];
+
+// Rate limiting configuration
+const RATE_LIMIT = {
+  MAX_REQUESTS: 20, // requests per window
+  WINDOW_SECONDS: 60, // 1 minute window
+  KEY_PREFIX: 'rate_limit:',
+};
+
+// Get allowed origin for CORS
+function getAllowedOrigin(request: Request): string | null {
+  const origin = request.headers.get('Origin');
+  if (!origin) return ALLOWED_ORIGINS[0]; // Default to first allowed origin
+  
+  // Check if origin is in allowed list
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+  
+  // For development, allow localhost variations
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    return origin;
+  }
+  
+  return null; // Origin not allowed
+}
+
+// Get CORS headers
+function getCorsHeaders(request: Request): Record<string, string> {
+  const allowedOrigin = getAllowedOrigin(request);
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Credentials": "false",
+  };
+}
+
 // Helper to create JSON response with CORS headers
-function jsonResponse(data: any, status: number = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
+function jsonResponse(data: any, status: number = 200, request?: Request): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(request ? getCorsHeaders(request) : {
+      "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
-    },
+    }),
+  };
+  
+  return new Response(JSON.stringify(data), {
+    status,
+    headers,
   });
+}
+
+// Rate limiting helper
+async function checkRateLimit(
+  request: Request,
+  env: Env,
+  identifier: string
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const kv = env.RATE_LIMIT_KV || env.NOTES_KV;
+  const key = `${RATE_LIMIT.KEY_PREFIX}${identifier}`;
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - (now % RATE_LIMIT.WINDOW_SECONDS);
+  
+  try {
+    const stored = await kv.get(key, { type: 'json' });
+    
+    if (stored && stored.windowStart === windowStart) {
+      // Same window, check count
+      if (stored.count >= RATE_LIMIT.MAX_REQUESTS) {
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+        };
+      }
+      
+      // Increment count
+      const newCount = stored.count + 1;
+      await kv.put(key, JSON.stringify({
+        count: newCount,
+        windowStart,
+      }), {
+        expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10, // Add buffer
+      });
+      
+      return {
+        allowed: true,
+        remaining: RATE_LIMIT.MAX_REQUESTS - newCount,
+        resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+      };
+    } else {
+      // New window, reset count
+      await kv.put(key, JSON.stringify({
+        count: 1,
+        windowStart,
+      }), {
+        expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10,
+      });
+      
+      return {
+        allowed: true,
+        remaining: RATE_LIMIT.MAX_REQUESTS - 1,
+        resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+      };
+    }
+  } catch (error) {
+    console.error('[RATE_LIMIT] Error checking rate limit:', error);
+    // On error, allow the request (fail open)
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT.MAX_REQUESTS,
+      resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+    };
+  }
+}
+
+// Get client identifier for rate limiting
+function getClientIdentifier(request: Request): string {
+  // Try to get IP from Cloudflare headers
+  const cfConnectingIp = request.headers.get('CF-Connecting-IP');
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+  
+  // Fallback to user agent + origin (less reliable)
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+  const origin = request.headers.get('Origin') || 'unknown';
+  return `${origin}:${userAgent}`.substring(0, 100);
 }
 
 // Helper to check admin authentication
@@ -20,7 +149,7 @@ function requireAdmin(request: Request): Response | null {
   const adminToken = request.headers.get("x-admin-token");
   
   if (!adminToken || adminToken !== "admin-secret-token") {
-    return jsonResponse({ message: "Unauthorized - Admin access required" }, 401);
+    return jsonResponse({ message: "Unauthorized - Admin access required" }, 401, request);
   }
   
   return null;
@@ -54,17 +183,50 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] Request URL: ${request.url}`);
   console.log(`[ROUTES] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
   
+  // Check CORS origin
+  const allowedOrigin = getAllowedOrigin(request);
+  if (!allowedOrigin && request.headers.get('Origin')) {
+    console.log(`[ROUTES] ❌ CORS: Origin not allowed: ${request.headers.get('Origin')}`);
+    return new Response(JSON.stringify({ 
+      error: 'CORS policy: Origin not allowed' 
+    }), {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        ...getCorsHeaders(request),
+      },
+    });
+  }
+  
   // Handle CORS preflight requests
   if (request.method === "OPTIONS") {
     console.log(`[ROUTES] Handling OPTIONS preflight request`);
     return new Response(null, {
       status: 204,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+        ...getCorsHeaders(request),
+        "Access-Control-Max-Age": "86400",
       },
     });
+  }
+  
+  // Apply rate limiting to POST requests (note creation)
+  if (request.method === "POST") {
+    const clientId = getClientIdentifier(request);
+    console.log(`[ROUTES] Checking rate limit for: ${clientId}`);
+    
+    const rateLimit = await checkRateLimit(request, env, clientId);
+    
+    if (!rateLimit.allowed) {
+      console.log(`[ROUTES] ❌ Rate limit exceeded for: ${clientId}`);
+      return jsonResponse({
+        error: 'Rate limit exceeded',
+        message: `Too many requests. Please try again in ${rateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+        resetAt: rateLimit.resetAt,
+      }, 429, request);
+    }
+    
+    console.log(`[ROUTES] ✅ Rate limit OK. Remaining: ${rateLimit.remaining}`);
   }
 
   const url = new URL(request.url);
@@ -78,9 +240,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // AI API routes
   if (pathname === "/api/ai/config" && method === "GET") {
     if (env.OPENAI_API_KEY) {
-      return jsonResponse({ apiKey: env.OPENAI_API_KEY });
+      return jsonResponse({ apiKey: env.OPENAI_API_KEY }, 200, request);
     } else {
-      return jsonResponse({ message: "OpenAI API key not configured on server" }, 500);
+      return jsonResponse({ message: "OpenAI API key not configured on server" }, 500, request);
     }
   }
 
@@ -105,14 +267,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } = body;
       
       if (!content || !iv) {
-        return jsonResponse({ message: "Content and IV are required" }, 400);
+        return jsonResponse({ message: "Content and IV are required" }, 400, request);
       }
       
       // Check if password protection fields are provided when needed
       if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
         return jsonResponse({ 
           message: "Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes" 
-        }, 400);
+        }, 400, request);
       }
       
       // Calculate expiration date based on expiryDays
@@ -138,7 +300,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       await storage.trackNoteCreation(note);
       console.log(`[ROUTES] ✅ Note created successfully with ID: ${note.id}`);
       
-      return jsonResponse({ id: note.id }, 201);
+      return jsonResponse({ id: note.id }, 201, request);
     } catch (error) {
       console.error(`[ROUTES] ❌❌❌ ERROR CREATING NOTE ❌❌❌`);
       console.error(`[ROUTES] Error type: ${error?.constructor?.name || 'Unknown'}`);
@@ -147,7 +309,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ 
         message: "Failed to create note",
         error: error instanceof Error ? error.message : String(error)
-      }, 500);
+      }, 500, request);
     }
   } else {
     console.log(`[ROUTES] ❌ No route matched for pathname=${pathname}, method=${method}`);
@@ -163,25 +325,25 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       let note = await storage.getNoteById(id);
       
       if (!note) {
-        return jsonResponse({ message: "Note not found" }, 404);
+        return jsonResponse({ message: "Note not found" }, 404, request);
       }
       
       // Check if note has expired (KV should handle this, but double-check)
       if (note.expiresAt && new Date(note.expiresAt) < new Date()) {
         await storage.deleteNote(id);
-        return jsonResponse({ message: "Note has expired" }, 404);
+        return jsonResponse({ message: "Note has expired" }, 404, request);
       }
       
       // Check read count limit (note: maxReads 0 means unlimited)
       if (note.maxReads && note.maxReads > 0 && note.currentReads && note.currentReads >= note.maxReads) {
-        return jsonResponse({ message: "Note has reached maximum read count" }, 404);
+        return jsonResponse({ message: "Note has reached maximum read count" }, 404, request);
       }
       
       // Increment read count
       const updatedNote = await storage.updateNoteReadCount(id);
       
       if (!updatedNote) {
-        return jsonResponse({ message: "Failed to update note read count" }, 404);
+        return jsonResponse({ message: "Failed to update note read count" }, 404, request);
       }
       
       // If note has reached max reads, delete it (use waitUntil for background task)
@@ -214,10 +376,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           encryptedKey: note.encryptedKey,
           encryptedKeyIv: note.encryptedKeyIv
         })
-      });
+      }, 200, request);
     } catch (error) {
       console.error("Error fetching note:", error);
-      return jsonResponse({ message: "Failed to fetch note" }, 500);
+      return jsonResponse({ message: "Failed to fetch note" }, 500, request);
     }
   }
 
@@ -231,13 +393,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       
       return new Response(null, {
         status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
+        headers: getCorsHeaders(request),
       });
     } catch (error) {
       console.error("Error deleting note:", error);
-      return jsonResponse({ message: "Failed to delete note" }, 500);
+      return jsonResponse({ message: "Failed to delete note" }, 500, request);
     }
   }
 
@@ -246,10 +406,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     try {
       // Only get published posts for public endpoint
       const posts = await storage.getBlogPosts(false);
-      return jsonResponse(posts);
+      return jsonResponse(posts, 200, request);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
-      return jsonResponse({ message: "Failed to fetch blog posts" }, 500);
+      return jsonResponse({ message: "Failed to fetch blog posts" }, 500, request);
     }
   }
 
@@ -261,21 +421,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const post = await storage.getBlogPostBySlug(slug);
       
       if (!post) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
       // Only return published posts to the public
       if (!post.published) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
       // Track blog post view in analytics
       await storage.trackBlogView(post.slug);
       
-      return jsonResponse(post);
+      return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error fetching blog post:", error);
-      return jsonResponse({ message: "Failed to fetch blog post" }, 500);
+      return jsonResponse({ message: "Failed to fetch blog post" }, 500, request);
     }
   }
 
@@ -287,10 +447,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     try {
       // Admin can see all posts including unpublished
       const posts = await storage.getBlogPosts(true);
-      return jsonResponse(posts);
+      return jsonResponse(posts, 200, request);
     } catch (error) {
       console.error("Error fetching admin blog posts:", error);
-      return jsonResponse({ message: "Failed to fetch blog posts" }, 500);
+      return jsonResponse({ message: "Failed to fetch blog posts" }, 500, request);
     }
   }
 
@@ -307,7 +467,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ 
           message: "Invalid blog post data", 
           errors: result.error.errors 
-        }, 400);
+        }, 400, request);
       }
       
       // Create slug from title if not provided
@@ -323,7 +483,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       if (existing) {
         return jsonResponse({ 
           message: "A blog post with this slug already exists" 
-        }, 400);
+        }, 400, request);
       }
       
       // Create new blog post (default to unpublished)
@@ -332,10 +492,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         published: false
       });
       
-      return jsonResponse(post, 201);
+      return jsonResponse(post, 201, request);
     } catch (error) {
       console.error("Error creating blog post:", error);
-      return jsonResponse({ message: "Failed to create blog post" }, 500);
+      return jsonResponse({ message: "Failed to create blog post" }, 500, request);
     }
   }
 
@@ -349,19 +509,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const id = parseInt(adminBlogIdParams.id, 10);
       
       if (isNaN(id)) {
-        return jsonResponse({ message: "Invalid ID format" }, 400);
+        return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
       
       const post = await storage.getBlogPostById(id);
       
       if (!post) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
-      return jsonResponse(post);
+      return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error fetching admin blog post:", error);
-      return jsonResponse({ message: "Failed to fetch blog post" }, 500);
+      return jsonResponse({ message: "Failed to fetch blog post" }, 500, request);
     }
   }
 
@@ -374,7 +534,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const id = parseInt(adminBlogIdParams.id, 10);
       
       if (isNaN(id)) {
-        return jsonResponse({ message: "Invalid ID format" }, 400);
+        return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
       
       const body = await request.json();
@@ -385,13 +545,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ 
           message: "Invalid blog post data", 
           errors: result.error.errors 
-        }, 400);
+        }, 400, request);
       }
       
       // Check if the post exists
       const existing = await storage.getBlogPostById(id);
       if (!existing) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
       // If slug is being changed, check it doesn't conflict
@@ -400,7 +560,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         if (slugExists && slugExists.id !== id) {
           return jsonResponse({ 
             message: "A blog post with this slug already exists" 
-          }, 400);
+          }, 400, request);
         }
       }
       
@@ -408,13 +568,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const updated = await storage.updateBlogPost(id, result.data);
       
       if (!updated) {
-        return jsonResponse({ message: "Failed to update blog post" }, 404);
+        return jsonResponse({ message: "Failed to update blog post" }, 404, request);
       }
       
-      return jsonResponse(updated);
+      return jsonResponse(updated, 200, request);
     } catch (error) {
       console.error("Error updating blog post:", error);
-      return jsonResponse({ message: "Failed to update blog post" }, 500);
+      return jsonResponse({ message: "Failed to update blog post" }, 500, request);
     }
   }
 
@@ -428,20 +588,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const id = parseInt(publishParams.id, 10);
       
       if (isNaN(id)) {
-        return jsonResponse({ message: "Invalid ID format" }, 400);
+        return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
       
       // Publish the blog post
       const post = await storage.publishBlogPost(id);
       
       if (!post) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
-      return jsonResponse(post);
+      return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error publishing blog post:", error);
-      return jsonResponse({ message: "Failed to publish blog post" }, 500);
+      return jsonResponse({ message: "Failed to publish blog post" }, 500, request);
     }
   }
 
@@ -455,20 +615,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const id = parseInt(unpublishParams.id, 10);
       
       if (isNaN(id)) {
-        return jsonResponse({ message: "Invalid ID format" }, 400);
+        return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
       
       // Unpublish the blog post
       const post = await storage.unpublishBlogPost(id);
       
       if (!post) {
-        return jsonResponse({ message: "Blog post not found" }, 404);
+        return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
       
-      return jsonResponse(post);
+      return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error unpublishing blog post:", error);
-      return jsonResponse({ message: "Failed to unpublish blog post" }, 500);
+      return jsonResponse({ message: "Failed to unpublish blog post" }, 500, request);
     }
   }
 
@@ -481,7 +641,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const id = parseInt(adminBlogIdParams.id, 10);
       
       if (isNaN(id)) {
-        return jsonResponse({ message: "Invalid ID format" }, 400);
+        return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
       
       // Delete the blog post
@@ -489,13 +649,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       
       return new Response(null, {
         status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
+        headers: getCorsHeaders(request),
       });
     } catch (error) {
       console.error("Error deleting blog post:", error);
-      return jsonResponse({ message: "Failed to delete blog post" }, 500);
+      return jsonResponse({ message: "Failed to delete blog post" }, 500, request);
     }
   }
 
@@ -509,14 +667,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const date = dateParam ? new Date(dateParam) : new Date();
       
       if (isNaN(date.getTime())) {
-        return jsonResponse({ message: "Invalid date format" }, 400);
+        return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
       
       const metrics = await storage.getDailyMetrics(date);
-      return jsonResponse(metrics || { message: "No metrics available for this date" });
+      return jsonResponse(metrics || { message: "No metrics available for this date" }, 200, request);
     } catch (error) {
       console.error("Error fetching daily metrics:", error);
-      return jsonResponse({ message: "Failed to fetch metrics" }, 500);
+      return jsonResponse({ message: "Failed to fetch metrics" }, 500, request);
     }
   }
 
@@ -529,14 +687,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const date = dateParam ? new Date(dateParam) : new Date();
       
       if (isNaN(date.getTime())) {
-        return jsonResponse({ message: "Invalid date format" }, 400);
+        return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
       
       const metrics = await storage.getWeeklyMetrics(date);
-      return jsonResponse(metrics || { message: "No metrics available for this week" });
+      return jsonResponse(metrics || { message: "No metrics available for this week" }, 200, request);
     } catch (error) {
       console.error("Error fetching weekly metrics:", error);
-      return jsonResponse({ message: "Failed to fetch metrics" }, 500);
+      return jsonResponse({ message: "Failed to fetch metrics" }, 500, request);
     }
   }
 
@@ -549,14 +707,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const date = dateParam ? new Date(dateParam) : new Date();
       
       if (isNaN(date.getTime())) {
-        return jsonResponse({ message: "Invalid date format" }, 400);
+        return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
       
       const metrics = await storage.getMonthlyMetrics(date);
-      return jsonResponse(metrics || { message: "No metrics available for this month" });
+      return jsonResponse(metrics || { message: "No metrics available for this month" }, 200, request);
     } catch (error) {
       console.error("Error fetching monthly metrics:", error);
-      return jsonResponse({ message: "Failed to fetch metrics" }, 500);
+      return jsonResponse({ message: "Failed to fetch metrics" }, 500, request);
     }
   }
 
@@ -572,7 +730,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       if (!startDate || !endDate || !type) {
         return jsonResponse({ 
           message: "Start date, end date, and metrics type are required" 
-        }, 400);
+        }, 400, request);
       }
       
       const start = new Date(startDate);
@@ -580,26 +738,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const metricsType = type as AnalyticsMetricsType;
       
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        return jsonResponse({ message: "Invalid date format" }, 400);
+        return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
       
       if (!Object.values(AnalyticsMetricsType).includes(metricsType)) {
         return jsonResponse({ 
           message: "Invalid metrics type. Must be daily, weekly, or monthly"
-        }, 400);
+        }, 400, request);
       }
       
       const metrics = await storage.getAnalyticsData(start, end, metricsType);
-      return jsonResponse(metrics);
+      return jsonResponse(metrics, 200, request);
     } catch (error) {
       console.error("Error fetching analytics range:", error);
-      return jsonResponse({ message: "Failed to fetch analytics" }, 500);
+      return jsonResponse({ message: "Failed to fetch analytics" }, 500, request);
     }
   }
 
   // 404 for unmatched routes
   console.log(`[ROUTES] ❌ No route handler matched. Returning 404`);
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
-  return jsonResponse({ message: "Not Found", pathname, method }, 404);
+  return jsonResponse({ message: "Not Found", pathname, method }, 404, request);
 }
 

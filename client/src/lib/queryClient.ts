@@ -72,7 +72,8 @@ export async function apiRequest<T = any>(
       method,
       headers,
       body: data ? JSON.stringify(data) : undefined,
-      credentials: "include",
+      // Removed credentials: "include" because we use wildcard CORS (*)
+      // If you need credentials, change server to return specific origin instead of *
     });
 
     console.log(`[CLIENT] Response status: ${res.status} ${res.statusText}`);
@@ -111,7 +112,7 @@ export const getQueryFn: <T>(options: {
     const url = queryKey[0] as string;
     const fullUrl = getApiUrl(url);
     const res = await fetch(fullUrl, {
-      credentials: "include",
+      // Removed credentials: "include" because we use wildcard CORS (*)
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
