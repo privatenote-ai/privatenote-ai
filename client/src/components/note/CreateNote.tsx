@@ -379,10 +379,27 @@ export const CreateNote: React.FC = () => {
       // Set the URL for display
       setNoteUrl(url);
     } catch (error) {
-      console.error("Error creating note:", error);
+      console.error("[CreateNote] ❌❌❌ ERROR CREATING NOTE ❌❌❌");
+      console.error("[CreateNote] Error type:", error?.constructor?.name || 'Unknown');
+      console.error("[CreateNote] Error message:", error instanceof Error ? error.message : String(error));
+      console.error("[CreateNote] Full error:", error);
+      
+      let errorMessage = "Failed to create encrypted note. Please try again.";
+      if (error instanceof Error) {
+        // Extract status code from error message (format: "405: ...")
+        const statusMatch = error.message.match(/^(\d+):/);
+        if (statusMatch) {
+          const status = statusMatch[1];
+          errorMessage = `Server error (${status}). Please check the console for details.`;
+          console.error(`[CreateNote] HTTP Status: ${status}`);
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create encrypted note. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

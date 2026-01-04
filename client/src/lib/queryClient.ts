@@ -25,15 +25,55 @@ export async function apiRequest<T = any>(
   data?: unknown | undefined,
 ): Promise<T> {
   const fullUrl = getApiUrl(url);
-  const res = await fetch(fullUrl, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  
+  // Client-side logging
+  console.log(`[CLIENT] ========== API REQUEST ==========`);
+  console.log(`[CLIENT] Original URL: ${url}`);
+  console.log(`[CLIENT] API_BASE_URL: "${import.meta.env.VITE_API_URL || '(empty)'}"`);
+  console.log(`[CLIENT] Full URL: ${fullUrl}`);
+  console.log(`[CLIENT] Method: ${method}`);
+  console.log(`[CLIENT] Has data: ${!!data}`);
+  if (data) {
+    console.log(`[CLIENT] Data keys:`, Object.keys(data as Record<string, any>));
+    console.log(`[CLIENT] Data preview:`, JSON.stringify(data).substring(0, 200));
+  }
+  
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  console.log(`[CLIENT] Request headers:`, headers);
+  
+  try {
+    const res = await fetch(fullUrl, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    });
 
-  await throwIfResNotOk(res);
-  return await res.json() as T;
+    console.log(`[CLIENT] Response status: ${res.status} ${res.statusText}`);
+    console.log(`[CLIENT] Response headers:`, JSON.stringify(Object.fromEntries(res.headers.entries())));
+    
+    // Read response text for logging
+    const responseText = await res.text();
+    console.log(`[CLIENT] Response body: ${responseText.substring(0, 500)}`);
+    
+    // Recreate response for throwIfResNotOk
+    const responseClone = new Response(responseText, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers
+    });
+
+    await throwIfResNotOk(responseClone);
+    
+    // Parse JSON from the text we already read
+    return JSON.parse(responseText) as T;
+  } catch (error) {
+    console.error(`[CLIENT] ❌❌❌ API REQUEST ERROR ❌❌❌`);
+    console.error(`[CLIENT] Error type: ${error?.constructor?.name || 'Unknown'}`);
+    console.error(`[CLIENT] Error message:`, error instanceof Error ? error.message : String(error));
+    console.error(`[CLIENT] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
