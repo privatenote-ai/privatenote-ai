@@ -28,7 +28,10 @@ export class SecureNoteStorage {
             console.log("[DO] Invalid API path: unauthorized access");
             return new Response(JSON.stringify({ error: 'Unauthorized access' }), {
                 status: 403,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
             });
         }
 
@@ -37,7 +40,10 @@ export class SecureNoteStorage {
             console.log("[DO] Invalid API path: wrong segment count", segments.length);
             return new Response(JSON.stringify({ error: 'Invalid API path' }), {
                 status: 400,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
             });
         }
 
@@ -60,7 +66,10 @@ export class SecureNoteStorage {
         console.log(`[DO] Method not allowed: ${request.method}`);
         return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
             status: 405,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
         });
     }
 
@@ -68,46 +77,94 @@ export class SecureNoteStorage {
         try {
             console.log(`[DO] Creating note with ID: ${noteId}`);
 
-            // Read body **before** returning any response
-            const buffer = await request.arrayBuffer();
-            console.log(`[DO] Received body size: ${buffer.byteLength} bytes`);
-
-            // Validate content type AFTER reading
-            const contentType = request.headers.get('Content-Type');
+            // Read body and check content type
+            const contentType = request.headers.get('Content-Type') || '';
             console.log(`[DO] Content-Type header: ${contentType}`);
 
-            if (contentType !== 'application/octet-stream') {
-                console.log(`[DO] Invalid Content-Type: ${contentType}`);
-                return new Response(JSON.stringify({ error: 'Invalid Content-Type' }), {
+            let noteData: any;
+            
+            if (contentType.includes('application/json')) {
+                // Handle JSON format (from client)
+                const body = await request.json();
+                console.log(`[DO] Received JSON body:`, JSON.stringify(body).substring(0, 200));
+                
+                const { 
+                    content, 
+                    iv, 
+                    expiryDays = 1, 
+                    maxReads = 1,
+                    isPasswordProtected = false,
+                    salt = null,
+                    encryptedKey = null,
+                    encryptedKeyIv = null
+                } = body;
+                
+                if (!content || !iv) {
+                    return new Response(JSON.stringify({ error: 'Content and IV are required' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                // Check if password protection fields are provided when needed
+                if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
+                    return new Response(JSON.stringify({ 
+                        error: 'Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes' 
+                    }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                // Calculate expiration date based on expiryDays
+                const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+                
+                noteData = {
+                    content,
+                    iv,
+                    expiresAt: expiresAt.toISOString(),
+                    maxReads: maxReads || 0,
+                    currentReads: 0,
+                    isPasswordProtected,
+                    createdAt: new Date().toISOString(),
+                    ...(isPasswordProtected && {
+                        salt,
+                        encryptedKey,
+                        encryptedKeyIv
+                    })
+                };
+            } else if (contentType.includes('application/octet-stream')) {
+                // Handle binary format (legacy support)
+                const buffer = await request.arrayBuffer();
+                console.log(`[DO] Received body size: ${buffer.byteLength} bytes`);
+                
+                const createdAt = Date.now();
+                noteData = {
+                    data: Array.from(new Uint8Array(buffer)),
+                    createdAt: new Date(createdAt).toISOString()
+                };
+            } else {
+                return new Response(JSON.stringify({ error: 'Invalid Content-Type. Expected application/json or application/octet-stream' }), {
                     status: 400,
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            const createdAt = Date.now(); // Store timestamp in milliseconds
             const metaKey = `${noteId}-meta`;
-            const metaValue = JSON.stringify({ createdAt });
-
-            console.log(`[DO] Creating note with ID: ${noteId}`);
             console.log(`[DO] Creating metadata with key: ${metaKey}`);
-            console.log(`[DO] Metadata value: ${metaValue}`);
 
-            // Store encrypted note and metadata separately
-            await this.state.storage.put(noteId, buffer);
-            await this.state.storage.put(metaKey, metaValue);
+            // Store note data as JSON
+            await this.state.storage.put(noteId, JSON.stringify(noteData));
+            await this.state.storage.put(metaKey, JSON.stringify({ createdAt: noteData.createdAt }));
 
             console.log(`[DO] Note and metadata stored successfully`);
 
-            // List all keys to verify storage
-            console.log(`[DO] Verifying storage - listing all keys:`);
-            const allKeys = await this.state.storage.list({ prefix: "" });
-            for (const key of allKeys.keys()) {
-                console.log(`[DO] Storage key after creation: ${key}`);
-            }
-
-            return new Response(JSON.stringify({ id: noteId, url: `/note/${noteId}` }), {
+            return new Response(JSON.stringify({ id: noteId }), {
                 status: 201,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
             });
         } catch (e) {
             console.error(`[DO] Error creating note: ${e.toString()}`);
@@ -123,88 +180,121 @@ export class SecureNoteStorage {
         try {
             console.log(`[DO] Attempting to get note with ID: ${noteId}`);
             const metaKey = `${noteId}-meta`;
-            console.log(`[DO] Looking for metadata with key: ${metaKey}`);
 
-            // List all keys to help debug
-            console.log(`[DO] Current storage keys:`);
-            const allKeysBeforeGet = await this.state.storage.list({ prefix: "" });
-            for (const key of allKeysBeforeGet.keys()) {
-                console.log(`[DO] Storage key: ${key}`);
+            // Get note data
+            const noteDataStr = await this.state.storage.get(noteId);
+            
+            if (!noteDataStr) {
+                console.log(`[DO] Note not found for ID: ${noteId}`);
+                return new Response(JSON.stringify({ error: 'Note not found' }), {
+                    status: 404,
+                    headers: { 'Content-Type': 'application/json' }
+                });
             }
 
-            // Get metadata as string and parse it manually
-            const metaStr = await this.state.storage.get(metaKey);
-            console.log(`[DO] Raw metadata string: ${metaStr}`);
-
-            let meta;
-            if (metaStr) {
-                try {
-                    meta = JSON.parse(metaStr as string);
-                    console.log(`[DO] Parsed metadata: ${JSON.stringify(meta)}`);
-                } catch (parseError) {
-                    console.error(`[DO] Error parsing metadata: ${parseError}`);
-                    console.error(`[DO] Error stack: ${parseError.stack}`);
+            let noteData: any;
+            try {
+                noteData = JSON.parse(noteDataStr as string);
+            } catch (parseError) {
+                // Legacy format: try to read as binary
+                console.log(`[DO] Attempting to read as legacy binary format`);
+                const buffer = await this.state.storage.get(noteId, { type: "arrayBuffer" });
+                if (!buffer) {
+                    return new Response(JSON.stringify({ error: 'Note not found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
                 }
-            } else {
-                console.log(`[DO] No metadata found for key: ${metaKey}`);
-            }
-
-            if (!meta || !meta.createdAt) {
-                console.log(`[DO] Note metadata not found or invalid for ID: ${noteId}`);
-                return new Response(JSON.stringify({ error: 'Note metadata not found' }), {
-                    status: 404,
+                
+                // Convert to base64 for legacy format
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const base64Data = btoa(binary);
+                
+                return new Response(JSON.stringify({ data: base64Data }), {
+                    status: 200,
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
 
-            const createdAt = meta.createdAt;
-            const now = Date.now();
-            const ONE_DAY = 24 * 60 * 60 * 1000; // 1 day in milliseconds
-
-            console.log(`[DO] Note creation timestamp: ${createdAt}, current time: ${now}`);
-            console.log(`[DO] Note age: ${(now - createdAt) / 1000 / 60} minutes`);
-
-            // If expired, delete it
-            if (now - createdAt > ONE_DAY) {
-                console.log(`[DO] Note expired and will be deleted`);
-                await this.deleteNote(noteId);
-                return new Response(JSON.stringify({ error: 'Note expired and deleted' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+            // Check expiration
+            if (noteData.expiresAt) {
+                const expiresAt = new Date(noteData.expiresAt);
+                const now = new Date();
+                
+                if (now > expiresAt) {
+                    console.log(`[DO] Note expired and will be deleted`);
+                    await this.deleteNote(noteId);
+                    return new Response(JSON.stringify({ error: 'Note has expired' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+            } else if (noteData.createdAt) {
+                // Legacy: check 1 day expiration
+                const createdAt = new Date(noteData.createdAt).getTime();
+                const now = Date.now();
+                const ONE_DAY = 24 * 60 * 60 * 1000;
+                
+                if (now - createdAt > ONE_DAY) {
+                    console.log(`[DO] Note expired and will be deleted`);
+                    await this.deleteNote(noteId);
+                    return new Response(JSON.stringify({ error: 'Note expired and deleted' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
             }
 
-            // Retrieve the encrypted note
-            console.log(`[DO] Retrieving note content for ID: ${noteId}`);
-            const buffer = await this.state.storage.get(noteId, { type: "arrayBuffer" });
-
-            if (!buffer) {
-                console.log(`[DO] Note content not found for ID: ${noteId}`);
-                return new Response(JSON.stringify({ error: 'Note content not found' }), {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+            // Check read count limit
+            if (noteData.maxReads && noteData.maxReads > 0) {
+                const currentReads = (noteData.currentReads || 0) + 1;
+                
+                if (currentReads > noteData.maxReads) {
+                    return new Response(JSON.stringify({ error: 'Note has reached maximum read count' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+                
+                // Update read count
+                noteData.currentReads = currentReads;
+                await this.state.storage.put(noteId, JSON.stringify(noteData));
+                
+                // If reached max reads, delete after response
+                if (currentReads >= noteData.maxReads) {
+                    this.deleteNote(noteId).catch(err => 
+                        console.error(`Error deleting note after reaching read limit: ${err}`)
+                    );
+                }
             }
 
-            console.log(`[DO] Note content retrieved, size: ${buffer.byteLength} bytes`);
-
-            // Convert ArrayBuffer to Base64 string without using Node.js Buffer
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            const base64Data = btoa(binary);
-
-            console.log(`[DO] Note content encoded to base64, length: ${base64Data.length}`);
-
-            const response = new Response(JSON.stringify({ data: base64Data }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            });
+            // Return note data in expected format
+            const response = {
+                content: noteData.content,
+                iv: noteData.iv,
+                readCount: noteData.currentReads || 0,
+                maxReads: noteData.maxReads || 0,
+                expiresAt: noteData.expiresAt,
+                isPasswordProtected: noteData.isPasswordProtected || false,
+                ...(noteData.isPasswordProtected && {
+                    salt: noteData.salt,
+                    encryptedKey: noteData.encryptedKey,
+                    encryptedKeyIv: noteData.encryptedKeyIv
+                })
+            };
 
             console.log(`[DO] Sending successful response for note: ${noteId}`);
-            return response;
+            return new Response(JSON.stringify(response), {
+                status: 200,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
 
         } catch (e) {
             console.error(`[DO] Error retrieving note: ${e.toString()}`);
@@ -252,7 +342,8 @@ export class SecureNoteStorage {
             console.log("[DO] Starting cleanup process for expired notes");
 
             // Fetch the last cleanup timestamp
-            const lastCleanup = await this.state.storage.get("last-cleanup", { type: "json" });
+            const lastCleanupStr = await this.state.storage.get("last-cleanup");
+            const lastCleanup = lastCleanupStr ? parseInt(lastCleanupStr as string, 10) : null;
             console.log(`[DO] Last cleanup timestamp: ${lastCleanup || 'never'}`);
 
             const now = Date.now();
@@ -267,7 +358,7 @@ export class SecureNoteStorage {
             console.log("[DO] Running cleanup for expired notes...");
 
             // Store new cleanup timestamp
-            await this.state.storage.put("last-cleanup", now);
+            await this.state.storage.put("last-cleanup", now.toString());
             console.log(`[DO] Updated last-cleanup timestamp to: ${now}`);
 
             // List stored notes (limit to 100 per cleanup)
@@ -281,17 +372,52 @@ export class SecureNoteStorage {
             for (const key of keys.keys()) {
                 console.log(`[DO] Checking key: ${key}`);
 
-                if (key.endsWith("-meta")) {
-                    const meta = await this.state.storage.get(key, { type: "json" });
-                    console.log(`[DO] Metadata for ${key}: ${JSON.stringify(meta)}`);
+                // Skip metadata keys and cleanup timestamp
+                if (key.endsWith("-meta") || key === "last-cleanup") {
+                    continue;
+                }
 
-                    if (meta && meta.createdAt && now - meta.createdAt > ONE_DAY) {
-                        const noteId = key.replace("-meta", "");
-                        console.log(`[DO] Note expired and will be deleted: ${noteId}, age: ${(now - meta.createdAt) / 1000 / 60 / 60} hours`);
-                        await this.deleteNote(noteId);
+                try {
+                    const noteDataStr = await this.state.storage.get(key);
+                    if (!noteDataStr) continue;
+
+                    const noteData = JSON.parse(noteDataStr as string);
+                    
+                    // Check expiration using expiresAt if available, otherwise use createdAt
+                    let isExpired = false;
+                    if (noteData.expiresAt) {
+                        const expiresAt = new Date(noteData.expiresAt);
+                        isExpired = new Date() > expiresAt;
+                    } else if (noteData.createdAt) {
+                        const createdAt = new Date(noteData.createdAt).getTime();
+                        isExpired = now - createdAt > ONE_DAY;
+                    }
+
+                    if (isExpired) {
+                        console.log(`[DO] Note expired and will be deleted: ${key}`);
+                        await this.deleteNote(key);
                         expiredCount++;
-                    } else if (meta && meta.createdAt) {
-                        console.log(`[DO] Note not expired: ${key.replace("-meta", "")}, age: ${(now - meta.createdAt) / 1000 / 60 / 60} hours`);
+                    }
+                } catch (parseError) {
+                    // Legacy format: check metadata
+                    const metaKey = `${key}-meta`;
+                    const metaStr = await this.state.storage.get(metaKey);
+                    if (metaStr) {
+                        try {
+                            const meta = JSON.parse(metaStr as string);
+                            if (meta && meta.createdAt) {
+                                const createdAt = typeof meta.createdAt === 'string' 
+                                    ? new Date(meta.createdAt).getTime() 
+                                    : meta.createdAt;
+                                if (now - createdAt > ONE_DAY) {
+                                    console.log(`[DO] Legacy note expired and will be deleted: ${key}`);
+                                    await this.deleteNote(key);
+                                    expiredCount++;
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`[DO] Error parsing metadata for ${key}: ${e}`);
+                        }
                     }
                 }
             }
