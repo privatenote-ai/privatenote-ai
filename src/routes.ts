@@ -80,6 +80,39 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
   });
 }
 
+async function verifyTurnstile(
+  token: string | undefined,
+  request: Request,
+  env: Env,
+): Promise<boolean> {
+  if (!token || !env.TURNSTILE_SECRET_KEY) {
+    return false;
+  }
+
+  const formData = new FormData();
+  formData.append("secret", env.TURNSTILE_SECRET_KEY);
+  formData.append("response", token);
+
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (ip) {
+    formData.append("remoteip", ip);
+  }
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const data = await response.json<{ success?: boolean }>();
+    return !!data.success;
+  } catch {
+    return false;
+  }
+}
+
 function applyCorsHeaders(response: Response, request: Request): Response {
   const headers = new Headers(response.headers);
   const corsHeaders = getCorsHeaders(request);
@@ -275,28 +308,37 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // Notes API routes (Durable Object authority)
   if (pathname === "/api/notes" && method === "POST") {
+    let requestBody: any | null = null;
     let noteForAnalytics: Note | null = null;
     try {
-      const body = await request.clone().json();
-      const expiryDays = Number(body?.expiryDays ?? 1);
-      const maxReads = Number(body?.maxReads ?? 1);
-      if (body?.content && body?.iv) {
+      requestBody = await request.clone().json();
+      const expiryDays = Number(requestBody?.expiryDays ?? 1);
+      const maxReads = Number(requestBody?.maxReads ?? 1);
+      if (requestBody?.content && requestBody?.iv) {
         noteForAnalytics = {
           id: "pending",
-          content: body.content,
-          iv: body.iv,
+          content: requestBody.content,
+          iv: requestBody.iv,
           expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
           maxReads,
           currentReads: 0,
           createdAt: new Date(),
-          isPasswordProtected: !!body?.isPasswordProtected,
-          salt: body?.salt ?? null,
-          encryptedKey: body?.encryptedKey ?? null,
-          encryptedKeyIv: body?.encryptedKeyIv ?? null,
+          isPasswordProtected: !!requestBody?.isPasswordProtected,
+          salt: requestBody?.salt ?? null,
+          encryptedKey: requestBody?.encryptedKey ?? null,
+          encryptedKeyIv: requestBody?.encryptedKeyIv ?? null,
         };
       }
     } catch (error) {
       console.warn("[ROUTES] Skipping analytics for note creation:", error);
+    }
+
+    const aiMode = !!requestBody?.aiMode;
+    if (aiMode) {
+      const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
+      if (!isHuman) {
+        return jsonResponse({ error: "Human verification failed" }, 403, request);
+      }
     }
 
     const id = crypto.randomUUID();

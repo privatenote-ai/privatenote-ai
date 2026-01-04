@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import bs58 from "bs58";
 import { QRCode } from "@/components/ui/qr-code";
@@ -34,6 +34,15 @@ import {
   Mail,
 } from "lucide-react";
 import { SecurityRecommendations } from "@/components/features/SecurityRecommendations";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement | string, options: Record<string, unknown>) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
 
 // Function to get shorter name for template pills
 const getShortName = (name: string): string => {
@@ -272,6 +281,10 @@ export const CreateNote: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [noteUrl, setNoteUrl] = useState<string | null>(null);
   const [isAiMode, setIsAiMode] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileWidgetId, setTurnstileWidgetId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
@@ -355,13 +368,24 @@ export const CreateNote: React.FC = () => {
 
       // Convert expiryValue to days for API
       const expiryDays = convertExpiryToDays(expiryValue);
-      
+
+      if (isAiMode) {
+        if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
+          throw new Error("Human verification is not configured.");
+        }
+        if (!turnstileToken) {
+          throw new Error("Please complete the human verification.");
+        }
+      }
+
       // Send encrypted note to server
       const { id } = await apiRequest("/api/notes", "POST", {
         content: encryptedBase64,
         iv: ivBase64,
         expiryDays,
         maxReads: readCount,
+        aiMode: isAiMode,
+        turnstileToken: turnstileToken || undefined,
         // Include password protection fields if enabled
         isPasswordProtected,
         ...(isPasswordProtected && {
@@ -378,6 +402,11 @@ export const CreateNote: React.FC = () => {
       
       // Set the URL for display
       setNoteUrl(url);
+      setTurnstileToken(null);
+      setTurnstileError(null);
+      if (turnstileWidgetId !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
     } catch (error) {
       console.error("[CreateNote] ❌❌❌ ERROR CREATING NOTE ❌❌❌");
       console.error("[CreateNote] Error type:", error?.constructor?.name || 'Unknown');
@@ -406,6 +435,72 @@ export const CreateNote: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAiMode) {
+      setTurnstileToken(null);
+      setTurnstileError(null);
+      setTurnstileReady(false);
+      return;
+    }
+
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    if (!siteKey) {
+      setTurnstileError("Human verification is not configured.");
+      return;
+    }
+
+    let intervalId: number | null = null;
+
+    const initTurnstile = () => {
+      if (!window.turnstile) {
+        return;
+      }
+      setTurnstileReady(true);
+      const container = document.getElementById("turnstile-container");
+      if (!container) {
+        return;
+      }
+      container.innerHTML = "";
+      const widgetId = window.turnstile.render(container, {
+        sitekey: siteKey,
+        callback: (token: string) => {
+          setTurnstileToken(token);
+          setTurnstileError(null);
+        },
+        "error-callback": () => {
+          setTurnstileToken(null);
+          setTurnstileError("Human verification failed. Please try again.");
+        },
+        "expired-callback": () => {
+          setTurnstileToken(null);
+        },
+      });
+      setTurnstileWidgetId(widgetId);
+    };
+
+    if (!window.turnstile) {
+      intervalId = window.setInterval(() => {
+        if (window.turnstile) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+          initTurnstile();
+        }
+      }, 200);
+    } else {
+      initTurnstile();
+    }
+
+    return () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      if (turnstileWidgetId !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
+    };
+  }, [isAiMode, turnstileWidgetId]);
 
   const copyToClipboard = () => {
     if (noteUrl) {
@@ -1059,44 +1154,25 @@ export const CreateNote: React.FC = () => {
 
                     {/* Write with AI Mode Notice - moved here from top */}
                     <div className="mt-3 space-y-3">
-                      {/* Cloudflare-style human verification */}
-                      <div className="flex items-center p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex-shrink-0 mr-3">
-                          <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4 text-white"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
+                      {/* Cloudflare Turnstile (AI mode only) */}
+                      {isAiMode && (
+                        <div className="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-3">
+                          <div className="text-sm text-gray-700 dark:text-gray-300">
+                            Verify you are human to use AI mode.
                           </div>
+                          <div id="turnstile-container" className="min-h-[65px]" />
+                          {!turnstileReady && !turnstileError && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Loading verification...
+                            </div>
+                          )}
+                          {turnstileError && (
+                            <div className="text-xs text-red-600 dark:text-red-400">
+                              {turnstileError}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-grow">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            I'm a human - Verified by Cloudflare
-                          </span>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 text-orange-500"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                      </div>
+                      )}
 
                       {/* Original AI notice */}
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200">
