@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, User, GraduationCap, Heart, Coffee, Github, Linkedin, Twitter } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Heart, Coffee, Github, Linkedin, Twitter } from 'lucide-react';
 
 export default function About() {
   return (
@@ -15,8 +15,13 @@ export default function About() {
       <div className="space-y-6">
         <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mx-auto md:mx-0">
-              <User className="h-12 w-12 text-primary" />
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center flex-shrink-0 mx-auto md:mx-0">
+              <img
+                src="/mare.jpeg"
+                alt="Marjan Skrobot"
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
             </div>
             <div>
               <h2 className="text-xl font-medium mb-2 text-center md:text-left">Marjan Skrobot, Ph.D.</h2>

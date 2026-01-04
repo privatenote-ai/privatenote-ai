@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Globe, Menu, X, Lock, Sparkles, Shield, Key, FileText, Info, Mail, BarChart, UserCog } from 'lucide-react';
+import { Globe, Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Custom NavLink component that closes the menu when clicked
@@ -102,24 +102,6 @@ export const Navbar: React.FC = () => {
                     <span>Share Private Note</span>
                   </NavLink>
                   
-                  <NavLink 
-                    href="/password-generator" 
-                    closeMenu={closeMenu}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-                  >
-                    <Key className="h-4 w-4" />
-                    <span>Password Generator</span>
-                  </NavLink>
-                  
-                  <NavLink 
-                    href="/privacy-tools" 
-                    closeMenu={closeMenu}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
-                  >
-                    <Shield className="h-4 w-4" />
-                    <span>Privacy Tools</span>
-                  </NavLink>
-                  
                   <div className="my-2 border-t border-gray-100 dark:border-gray-800"></div>
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Information
@@ -147,20 +129,6 @@ export const Navbar: React.FC = () => {
                     <span>Buy Me Coffee</span>
                   </a>
                   
-                  <div className="my-2 border-t border-gray-100 dark:border-gray-800"></div>
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Admin
-                  </div>
-                  
-                  <NavLink href="/admin/blog" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                    <UserCog className="h-4 w-4" />
-                    <span>Blog Management</span>
-                  </NavLink>
-                  
-                  <NavLink href="/admin/analytics" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                    <BarChart className="h-4 w-4" />
-                    <span>Analytics Dashboard</span>
-                  </NavLink>
                 </div>
               </div>
             )}
