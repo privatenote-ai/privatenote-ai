@@ -1,5 +1,8 @@
+import { SecureNoteStorage } from "./durable_objects/secure_note_storage";
 import { registerRoutes } from "./routes";
 import type { Env } from "./types";
+
+export { SecureNoteStorage };
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

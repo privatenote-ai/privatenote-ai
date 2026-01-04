@@ -15,3 +15,25 @@ command = "npm run build"
 
 # Pages configuration (for Pages deployments)
 pages_build_output_dir = "dist"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
+[durable_objects]
+bindings = [{ name = "SECURE_NOTES", class_name = "SecureNoteStorage" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SecureNoteStorage"]

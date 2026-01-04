@@ -1,4 +1,5 @@
 import { CompositeStorage } from "./storage";
+import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import type { Env } from "./types";
 
@@ -63,6 +64,19 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
   
   return new Response(JSON.stringify(data), {
     status,
+    headers,
+  });
+}
+
+function applyCorsHeaders(response: Response, request: Request): Response {
+  const headers = new Headers(response.headers);
+  const corsHeaders = getCorsHeaders(request);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
     headers,
   });
 }
@@ -247,159 +261,83 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
-  // Notes API routes
-  console.log(`[ROUTES] Checking notes route: pathname=${pathname}, method=${method}`);
+  // Notes API routes (Durable Object authority)
   if (pathname === "/api/notes" && method === "POST") {
-    console.log(`[ROUTES] ✅ Matched POST /api/notes route`);
+    let noteForAnalytics: Note | null = null;
     try {
-      console.log(`[ROUTES] Attempting to parse request body...`);
-      const body = await request.json();
-      console.log(`[ROUTES] ✅ Successfully parsed JSON body`);
-      console.log(`[ROUTES] Body keys:`, Object.keys(body));
-      const { 
-        content, 
-        iv, 
-        expiryDays = 1, 
-        maxReads = 1,
-        isPasswordProtected = false,
-        salt = null,
-        encryptedKey = null,
-        encryptedKeyIv = null
-      } = body;
-      
-      if (!content || !iv) {
-        return jsonResponse({ message: "Content and IV are required" }, 400, request);
+      const body = await request.clone().json();
+      const expiryDays = Number(body?.expiryDays ?? 1);
+      const maxReads = Number(body?.maxReads ?? 1);
+      if (body?.content && body?.iv) {
+        noteForAnalytics = {
+          id: "pending",
+          content: body.content,
+          iv: body.iv,
+          expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
+          maxReads,
+          currentReads: 0,
+          createdAt: new Date(),
+          isPasswordProtected: !!body?.isPasswordProtected,
+          salt: body?.salt ?? null,
+          encryptedKey: body?.encryptedKey ?? null,
+          encryptedKeyIv: body?.encryptedKeyIv ?? null,
+        };
       }
-      
-      // Check if password protection fields are provided when needed
-      if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
-        return jsonResponse({ 
-          message: "Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes" 
-        }, 400, request);
-      }
-      
-      // Calculate expiration date based on expiryDays
-      const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
-      
-      // Create a new note with encrypted content
-      const note = await storage.createNote({
-        content,
-        iv,
-        expiresAt,
-        maxReads: maxReads || 0, // 0 means no limit, default is 1
-        currentReads: 0,
-        isPasswordProtected,
-        ...(isPasswordProtected && {
-          salt,
-          encryptedKey,
-          encryptedKeyIv
-        })
-      });
-      
-      // Track note creation in analytics
-      console.log(`[ROUTES] Tracking note creation in analytics...`);
-      await storage.trackNoteCreation(note);
-      console.log(`[ROUTES] ✅ Note created successfully with ID: ${note.id}`);
-      
-      return jsonResponse({ id: note.id }, 201, request);
     } catch (error) {
-      console.error(`[ROUTES] ❌❌❌ ERROR CREATING NOTE ❌❌❌`);
-      console.error(`[ROUTES] Error type: ${error?.constructor?.name || 'Unknown'}`);
-      console.error(`[ROUTES] Error message: ${error instanceof Error ? error.message : String(error)}`);
-      console.error(`[ROUTES] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
-      return jsonResponse({ 
-        message: "Failed to create note",
-        error: error instanceof Error ? error.message : String(error)
-      }, 500, request);
+      console.warn("[ROUTES] Skipping analytics for note creation:", error);
     }
-  } else {
-    console.log(`[ROUTES] ❌ No route matched for pathname=${pathname}, method=${method}`);
+
+    const id = crypto.randomUUID();
+    const doId = env.SECURE_NOTES.idFromName(id);
+    const stub = env.SECURE_NOTES.get(doId);
+    const doUrl = new URL(request.url);
+    doUrl.pathname = `/api/notes/${id}`;
+
+    const doResponse = await stub.fetch(
+      new Request(doUrl.toString(), {
+        method: "POST",
+        headers: request.headers,
+        body: request.body,
+      }),
+    );
+
+    if (doResponse.ok && noteForAnalytics) {
+      noteForAnalytics.id = id;
+      await storage.trackNoteCreation(noteForAnalytics);
+    }
+
+    return applyCorsHeaders(doResponse, request);
   }
 
-  // GET /api/notes/:id
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
-  if (noteParams && method === "GET") {
-    try {
-      const { id } = noteParams;
-      
-      // Get note by ID
-      let note = await storage.getNoteById(id);
-      
-      if (!note) {
-        return jsonResponse({ message: "Note not found" }, 404, request);
-      }
-      
-      // Check if note has expired (KV should handle this, but double-check)
-      if (note.expiresAt && new Date(note.expiresAt) < new Date()) {
-        await storage.deleteNote(id);
-        return jsonResponse({ message: "Note has expired" }, 404, request);
-      }
-      
-      // Check read count limit (note: maxReads 0 means unlimited)
-      if (note.maxReads && note.maxReads > 0 && note.currentReads && note.currentReads >= note.maxReads) {
-        return jsonResponse({ message: "Note has reached maximum read count" }, 404, request);
-      }
-      
-      // Increment read count
-      const updatedNote = await storage.updateNoteReadCount(id);
-      
-      if (!updatedNote) {
-        return jsonResponse({ message: "Failed to update note read count" }, 404, request);
-      }
-      
-      // If note has reached max reads, delete it (use waitUntil for background task)
-      if (updatedNote.maxReads && updatedNote.maxReads > 0 && 
-          updatedNote.currentReads && updatedNote.currentReads >= updatedNote.maxReads) {
-        // Delete after a short delay (use waitUntil for background task)
-        // Note: In Workers, we can't use setTimeout, so we'll delete it immediately after response
-        // The client will get the note, then it will be deleted
-        storage.deleteNote(id).catch(err => 
-          console.error(`Error deleting note after reaching read limit: ${err}`)
-        );
-      }
-      
-      // Use the updated note for the response
-      note = updatedNote;
-      
-      // Track note view in analytics
-      await storage.trackNoteView(note);
-      
-      // Return the encrypted content and IV, and any password protection fields
-      return jsonResponse({
-        content: note.content,
-        iv: note.iv,
-        readCount: note.currentReads,
-        maxReads: note.maxReads,
-        expiresAt: note.expiresAt,
-        isPasswordProtected: note.isPasswordProtected || false,
-        ...(note.isPasswordProtected && {
-          salt: note.salt,
-          encryptedKey: note.encryptedKey,
-          encryptedKeyIv: note.encryptedKeyIv
-        })
-      }, 200, request);
-    } catch (error) {
-      console.error("Error fetching note:", error);
-      return jsonResponse({ message: "Failed to fetch note" }, 500, request);
-    }
-  }
+  if (noteParams && (method === "GET" || method === "DELETE")) {
+    const { id } = noteParams;
+    const doId = env.SECURE_NOTES.idFromName(id);
+    const stub = env.SECURE_NOTES.get(doId);
+    const doResponse = await stub.fetch(request);
 
-  // DELETE /api/notes/:id
-  if (noteParams && method === "DELETE") {
-    try {
-      const { id } = noteParams;
-      
-      // Delete note by ID
-      await storage.deleteNote(id);
-      
-      return new Response(null, {
-        status: 204,
-        headers: getCorsHeaders(request),
-      });
-    } catch (error) {
-      console.error("Error deleting note:", error);
-      return jsonResponse({ message: "Failed to delete note" }, 500, request);
+    if (method === "GET" && doResponse.ok) {
+      try {
+        const data = await doResponse.clone().json();
+        const noteForAnalytics: Note = {
+          id,
+          content: data.content,
+          iv: data.iv,
+          expiresAt: new Date(data.expiresAt),
+          maxReads: data.maxReads ?? 0,
+          currentReads: data.readCount ?? 0,
+          createdAt: new Date(),
+          isPasswordProtected: !!data.isPasswordProtected,
+          salt: data.salt ?? null,
+          encryptedKey: data.encryptedKey ?? null,
+          encryptedKeyIv: data.encryptedKeyIv ?? null,
+        };
+        await storage.trackNoteView(noteForAnalytics);
+      } catch (error) {
+        console.warn("[ROUTES] Skipping analytics for note view:", error);
+      }
     }
+    return applyCorsHeaders(doResponse, request);
   }
 
   // Blog API routes - Public
@@ -761,4 +699,3 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
   return jsonResponse({ message: "Not Found", pathname, method }, 404, request);
 }
-
