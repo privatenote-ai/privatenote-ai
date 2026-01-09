@@ -314,15 +314,85 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const method = request.method;
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
   
-  const storage = new CompositeStorage(env.NOTES_KV);
+  const analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
+  const storage = new CompositeStorage(env.NOTES_KV, analyticsKv);
   console.log(`[ROUTES] Storage initialized`);
 
   // AI API routes
-  if (pathname === "/api/ai/config" && method === "GET") {
-    if (env.OPENAI_API_KEY) {
-      return jsonResponse({ apiKey: env.OPENAI_API_KEY }, 200, request);
-    } else {
+  if (pathname === "/api/ai/enhance" && method === "POST") {
+    if (!env.OPENAI_API_KEY) {
       return jsonResponse({ message: "OpenAI API key not configured on server" }, 500, request);
+    }
+
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON payload" }, 400, request);
+    }
+
+    const content = typeof body?.content === "string" ? body.content.trim() : "";
+    const enhancementType = body?.enhancementType;
+    const turnstileToken = body?.turnstileToken;
+
+    if (!content) {
+      return jsonResponse({ message: "Content is required" }, 400, request);
+    }
+
+    const MAX_INPUT_CHARS = 4000;
+    if (content.length > MAX_INPUT_CHARS) {
+      return jsonResponse({ message: `Content is too long (max ${MAX_INPUT_CHARS} characters)` }, 413, request);
+    }
+
+    if (!["improve", "summarize", "secure"].includes(enhancementType)) {
+      return jsonResponse({ message: "Invalid enhancement type" }, 400, request);
+    }
+
+    const isHuman = await verifyTurnstile(turnstileToken, request, env);
+    if (!isHuman) {
+      return jsonResponse({ error: "Human verification failed" }, 403, request);
+    }
+
+    const systemPrompts: Record<string, string> = {
+      improve: "You are an expert editor. Improve the text by fixing grammar, enhancing clarity, and making it more professional while maintaining the original meaning. Return only the improved text with no additional explanations.",
+      summarize: "You are a skilled summarizer. Create a concise summary of the text while preserving all key points. Return only the summary with no additional explanations.",
+      secure: "You are a security expert. Analyze the text and remove any potentially sensitive information (like personal data, passwords, credit card numbers, etc.) while maintaining the main message. Return only the sanitized text with no additional explanations.",
+    };
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompts[enhancementType] },
+            { role: "user", content },
+          ],
+          response_format: { type: "text" },
+          max_tokens: 800,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[AI] OpenAI error:", response.status, errorText);
+        return jsonResponse({ message: "AI request failed" }, 502, request);
+      }
+
+      const data = await response.json<{ choices?: Array<{ message?: { content?: string } }> }>();
+      const output = data.choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        return jsonResponse({ message: "AI response was empty" }, 502, request);
+      }
+
+      return jsonResponse({ content: output }, 200, request);
+    } catch (error) {
+      console.error("[AI] Error calling OpenAI:", error);
+      return jsonResponse({ message: "AI request failed" }, 502, request);
     }
   }
 
@@ -381,7 +451,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     if (doResponse.ok && noteForAnalytics) {
       noteForAnalytics.id = id;
-      await storage.trackNoteCreation(noteForAnalytics);
+      await storage.trackNoteCreation(noteForAnalytics, { aiEnhanced: aiMode });
     }
 
     return applyCorsHeaders(doResponse, request);

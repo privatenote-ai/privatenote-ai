@@ -11,6 +11,55 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const EMPTY_DAILY_METRICS: DailyMetrics = {
+  notesCreated: 0,
+  notesViewed: 0,
+  passwordProtectedNotes: 0,
+  aiEnhancedNotes: 0,
+  blogViews: {},
+  averageExpirationDays: 0,
+  expiryRangeDistribution: {
+    oneHourOrLess: 0,
+    oneDayOrLess: 0,
+    oneWeekOrLess: 0,
+    moreThanWeek: 0
+  },
+  viewLimitsDistribution: {
+    once: 0,
+    twice: 0,
+    threeToFive: 0,
+    moreThanFive: 0,
+    unlimited: 0
+  },
+  contentLengthDistribution: {
+    short: 0,
+    medium: 0,
+    long: 0
+  }
+};
+
+const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
+  if (!metrics) {
+    return EMPTY_DAILY_METRICS;
+  }
+  return {
+    ...EMPTY_DAILY_METRICS,
+    ...metrics,
+    blogViews: metrics.blogViews || {},
+    expiryRangeDistribution: {
+      ...EMPTY_DAILY_METRICS.expiryRangeDistribution,
+      ...(metrics.expiryRangeDistribution || {})
+    },
+    viewLimitsDistribution: {
+      ...EMPTY_DAILY_METRICS.viewLimitsDistribution,
+      ...(metrics.viewLimitsDistribution || {})
+    },
+    contentLengthDistribution: {
+      ...EMPTY_DAILY_METRICS.contentLengthDistribution,
+      ...(metrics.contentLengthDistribution || {})
+    }
+  };
+};
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -79,7 +128,19 @@ export default function Analytics() {
   const isLoading = currentQuery.isLoading;
   const error = currentQuery.error;
   const data = currentQuery.data as AnalyticsData | undefined;
-  const metrics = data?.metrics as DailyMetrics | undefined;
+  let parsedMetrics: DailyMetrics | null = null;
+  if (data?.metrics) {
+    if (typeof data.metrics === 'string') {
+      try {
+        parsedMetrics = JSON.parse(data.metrics) as DailyMetrics;
+      } catch {
+        parsedMetrics = null;
+      }
+    } else {
+      parsedMetrics = data.metrics as DailyMetrics;
+    }
+  }
+  const metrics = parsedMetrics ? normalizeMetrics(parsedMetrics) : undefined;
   
   // Convert metrics to chart data
   const prepareViewLimitsData = () => {

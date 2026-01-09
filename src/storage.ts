@@ -14,6 +14,69 @@ import {
 import { KVNoteStorage } from "./kv-storage";
 import type { KVNamespace } from "@cloudflare/workers-types";
 
+interface AnalyticsContext {
+  aiEnhanced?: boolean;
+}
+
+const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
+
+function getDateKey(date: Date): string {
+  return date.toISOString().split('T')[0] || '';
+}
+
+function createEmptyDailyMetrics(): DailyMetrics {
+  return {
+    notesCreated: 0,
+    notesViewed: 0,
+    passwordProtectedNotes: 0,
+    aiEnhancedNotes: 0,
+    blogViews: {},
+    averageExpirationDays: 0,
+    expiryRangeDistribution: {
+      oneHourOrLess: 0,
+      oneDayOrLess: 0,
+      oneWeekOrLess: 0,
+      moreThanWeek: 0
+    },
+    viewLimitsDistribution: {
+      once: 0,
+      twice: 0,
+      threeToFive: 0,
+      moreThanFive: 0,
+      unlimited: 0
+    },
+    contentLengthDistribution: {
+      short: 0,
+      medium: 0,
+      long: 0
+    }
+  };
+}
+
+function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetrics {
+  const base = createEmptyDailyMetrics();
+  if (!metrics) {
+    return base;
+  }
+  return {
+    ...base,
+    ...metrics,
+    blogViews: metrics.blogViews || {},
+    expiryRangeDistribution: {
+      ...base.expiryRangeDistribution,
+      ...(metrics.expiryRangeDistribution || {})
+    },
+    viewLimitsDistribution: {
+      ...base.viewLimitsDistribution,
+      ...(metrics.viewLimitsDistribution || {})
+    },
+    contentLengthDistribution: {
+      ...base.contentLengthDistribution,
+      ...(metrics.contentLengthDistribution || {})
+    }
+  };
+}
+
 // Storage interface
 export interface IStorage {
   // User methods
@@ -42,7 +105,7 @@ export interface IStorage {
   getWeeklyMetrics(date: Date): Promise<AnalyticsData | undefined>;
   getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined>;
   saveMetrics(metrics: InsertAnalytics): Promise<AnalyticsData>;
-  trackNoteCreation(note: Note): Promise<void>;
+  trackNoteCreation(note: Note, context?: AnalyticsContext): Promise<void>;
   trackNoteView(note: Note): Promise<void>;
   trackBlogView(slug: string): Promise<void>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
@@ -69,27 +132,8 @@ class MemStorage {
     
     // Initialize today's metrics with an empty object
     const today = new Date();
-    const todayKey = today.toISOString().split('T')[0];
-    this.dailyMetrics.set(todayKey, {
-      notesCreated: 0,
-      notesViewed: 0,
-      passwordProtectedNotes: 0,
-      aiEnhancedNotes: 0,
-      blogViews: {},
-      averageExpirationDays: 0,
-      viewLimitsDistribution: {
-        once: 0,
-        twice: 0,
-        threeToFive: 0,
-        moreThanFive: 0,
-        unlimited: 0
-      },
-      contentLengthDistribution: {
-        short: 0,
-        medium: 0,
-        long: 0
-      }
-    });
+    const todayKey = getDateKey(today);
+    this.dailyMetrics.set(todayKey, createEmptyDailyMetrics());
   }
 
   // User methods
@@ -228,57 +272,29 @@ class MemStorage {
     this.blogPosts.delete(id);
   }
 
-  // Analytics helper methods
-  private createEmptyDailyMetrics(): DailyMetrics {
-    return {
-      notesCreated: 0,
-      notesViewed: 0,
-      passwordProtectedNotes: 0,
-      aiEnhancedNotes: 0,
-      blogViews: {},
-      averageExpirationDays: 0,
-      viewLimitsDistribution: {
-        once: 0,
-        twice: 0,
-        threeToFive: 0,
-        moreThanFive: 0,
-        unlimited: 0
-      },
-      contentLengthDistribution: {
-        short: 0,
-        medium: 0,
-        long: 0
-      }
-    };
-  }
-
-  private getDateKey(date: Date): string {
-    return date.toISOString().split('T')[0] || '';
-  }
-
   private getOrCreateDailyMetrics(date: Date): DailyMetrics {
-    const dateKey = this.getDateKey(date);
+    const dateKey = getDateKey(date);
     if (!this.dailyMetrics.has(dateKey)) {
-      this.dailyMetrics.set(dateKey, this.createEmptyDailyMetrics());
+      this.dailyMetrics.set(dateKey, createEmptyDailyMetrics());
     }
     return this.dailyMetrics.get(dateKey)!;
   }
 
   // Analytics methods
   async getDailyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = this.getDateKey(date);
+    const dateKey = getDateKey(date);
     const analyticsKey = `${AnalyticsMetricsType.DAILY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
 
   async getWeeklyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = this.getDateKey(date);
+    const dateKey = getDateKey(date);
     const analyticsKey = `${AnalyticsMetricsType.WEEKLY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
 
   async getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = this.getDateKey(date);
+    const dateKey = getDateKey(date);
     const analyticsKey = `${AnalyticsMetricsType.MONTHLY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
@@ -299,12 +315,12 @@ class MemStorage {
       metrics: metricsValue
     };
     
-    const analyticsKey = `${metrics.metricsType}_${this.getDateKey(metricDate)}`;
+    const analyticsKey = `${metrics.metricsType}_${getDateKey(metricDate)}`;
     this.analytics.set(analyticsKey, metrics);
     return metrics;
   }
 
-  async trackNoteCreation(note: Note): Promise<void> {
+  async trackNoteCreation(note: Note, context?: AnalyticsContext): Promise<void> {
     const today = new Date();
     const metrics = this.getOrCreateDailyMetrics(today);
     
@@ -315,6 +331,10 @@ class MemStorage {
     if (note.isPasswordProtected) {
       metrics.passwordProtectedNotes++;
     }
+
+    if (context?.aiEnhanced) {
+      metrics.aiEnhancedNotes++;
+    }
     
     // Track expiration days
     const expirationDate = new Date(note.expiresAt);
@@ -323,6 +343,17 @@ class MemStorage {
     // Recalculate average expiration days
     const totalExpirationDays = metrics.averageExpirationDays * (metrics.notesCreated - 1) + expirationDays;
     metrics.averageExpirationDays = totalExpirationDays / metrics.notesCreated;
+
+    const expirySeconds = Math.max(0, Math.floor((expirationDate.getTime() - today.getTime()) / 1000));
+    if (expirySeconds <= 60 * 60) {
+      metrics.expiryRangeDistribution.oneHourOrLess++;
+    } else if (expirySeconds <= 24 * 60 * 60) {
+      metrics.expiryRangeDistribution.oneDayOrLess++;
+    } else if (expirySeconds <= 7 * 24 * 60 * 60) {
+      metrics.expiryRangeDistribution.oneWeekOrLess++;
+    } else {
+      metrics.expiryRangeDistribution.moreThanWeek++;
+    }
     
     // Track view limits distribution
     const maxReads = note.maxReads || 1;
@@ -353,7 +384,7 @@ class MemStorage {
   }
   
   private async saveDailyMetrics(date: Date): Promise<void> {
-    const dateKey = this.getDateKey(date);
+    const dateKey = getDateKey(date);
     const metrics = this.dailyMetrics.get(dateKey);
     
     if (metrics) {
@@ -402,6 +433,231 @@ class MemStorage {
   }
 }
 
+function addDaysUtc(date: Date, days: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+}
+
+function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMetrics): DailyMetrics {
+  const base = normalizeDailyMetrics(baseMetrics);
+  const add = normalizeDailyMetrics(addMetrics);
+  const totalNotes = base.notesCreated + add.notesCreated;
+  const totalExpirationDays =
+    base.averageExpirationDays * base.notesCreated +
+    add.averageExpirationDays * add.notesCreated;
+
+  const merged: DailyMetrics = {
+    ...base,
+    notesCreated: totalNotes,
+    notesViewed: base.notesViewed + add.notesViewed,
+    passwordProtectedNotes: base.passwordProtectedNotes + add.passwordProtectedNotes,
+    aiEnhancedNotes: base.aiEnhancedNotes + add.aiEnhancedNotes,
+    averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
+    blogViews: { ...base.blogViews },
+    expiryRangeDistribution: {
+      oneHourOrLess: base.expiryRangeDistribution.oneHourOrLess + add.expiryRangeDistribution.oneHourOrLess,
+      oneDayOrLess: base.expiryRangeDistribution.oneDayOrLess + add.expiryRangeDistribution.oneDayOrLess,
+      oneWeekOrLess: base.expiryRangeDistribution.oneWeekOrLess + add.expiryRangeDistribution.oneWeekOrLess,
+      moreThanWeek: base.expiryRangeDistribution.moreThanWeek + add.expiryRangeDistribution.moreThanWeek
+    },
+    viewLimitsDistribution: {
+      once: base.viewLimitsDistribution.once + add.viewLimitsDistribution.once,
+      twice: base.viewLimitsDistribution.twice + add.viewLimitsDistribution.twice,
+      threeToFive: base.viewLimitsDistribution.threeToFive + add.viewLimitsDistribution.threeToFive,
+      moreThanFive: base.viewLimitsDistribution.moreThanFive + add.viewLimitsDistribution.moreThanFive,
+      unlimited: base.viewLimitsDistribution.unlimited + add.viewLimitsDistribution.unlimited
+    },
+    contentLengthDistribution: {
+      short: base.contentLengthDistribution.short + add.contentLengthDistribution.short,
+      medium: base.contentLengthDistribution.medium + add.contentLengthDistribution.medium,
+      long: base.contentLengthDistribution.long + add.contentLengthDistribution.long
+    }
+  };
+
+  for (const [slug, views] of Object.entries(add.blogViews)) {
+    merged.blogViews[slug] = (merged.blogViews[slug] || 0) + views;
+  }
+
+  return merged;
+}
+
+class KVAnalyticsStorage {
+  constructor(private kv: KVNamespace) {}
+
+  private getDailyKey(date: Date): string {
+    return `${ANALYTICS_DAILY_PREFIX}${getDateKey(date)}`;
+  }
+
+  private async loadDailyMetrics(date: Date): Promise<DailyMetrics | null> {
+    const key = this.getDailyKey(date);
+    const stored = await this.kv.get<DailyMetrics>(key, { type: "json" });
+    return stored ? normalizeDailyMetrics(stored) : null;
+  }
+
+  private async saveDailyMetrics(date: Date, metrics: DailyMetrics): Promise<void> {
+    const key = this.getDailyKey(date);
+    await this.kv.put(key, JSON.stringify(metrics));
+  }
+
+  private buildAnalyticsData(date: Date, metricsType: AnalyticsMetricsType, metrics: DailyMetrics): AnalyticsData {
+    return {
+      id: 0,
+      date,
+      metricsType,
+      metrics: JSON.stringify(metrics)
+    } as AnalyticsData;
+  }
+
+  private async aggregateRange(startDate: Date, endDate: Date): Promise<DailyMetrics | null> {
+    let cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+    let aggregated: DailyMetrics | null = null;
+
+    while (cursor <= end) {
+      const daily = await this.loadDailyMetrics(cursor);
+      if (daily) {
+        aggregated = aggregated ? mergeDailyMetrics(aggregated, daily) : normalizeDailyMetrics(daily);
+      }
+      cursor = addDaysUtc(cursor, 1);
+    }
+
+    return aggregated;
+  }
+
+  async getDailyMetrics(date: Date): Promise<AnalyticsData | undefined> {
+    const metrics = await this.loadDailyMetrics(date);
+    if (!metrics) {
+      return undefined;
+    }
+    return this.buildAnalyticsData(date, AnalyticsMetricsType.DAILY, metrics);
+  }
+
+  async getWeeklyMetrics(date: Date): Promise<AnalyticsData | undefined> {
+    const endDate = new Date(date);
+    const startDate = addDaysUtc(endDate, -6);
+    const metrics = await this.aggregateRange(startDate, endDate);
+    if (!metrics) {
+      return undefined;
+    }
+    return this.buildAnalyticsData(endDate, AnalyticsMetricsType.WEEKLY, metrics);
+  }
+
+  async getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined> {
+    const startDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+    const metrics = await this.aggregateRange(startDate, date);
+    if (!metrics) {
+      return undefined;
+    }
+    return this.buildAnalyticsData(date, AnalyticsMetricsType.MONTHLY, metrics);
+  }
+
+  async saveMetrics(metricsData: InsertAnalytics): Promise<AnalyticsData> {
+    const metricDate = metricsData.date ? new Date(metricsData.date) : new Date();
+    let metricsValue: DailyMetrics | null = null;
+
+    if (typeof metricsData.metrics === "string") {
+      try {
+        metricsValue = JSON.parse(metricsData.metrics) as DailyMetrics;
+      } catch {
+        metricsValue = null;
+      }
+    } else if (metricsData.metrics) {
+      metricsValue = metricsData.metrics as DailyMetrics;
+    }
+
+    const normalized = normalizeDailyMetrics(metricsValue);
+    await this.saveDailyMetrics(metricDate, normalized);
+    return this.buildAnalyticsData(metricDate, AnalyticsMetricsType.DAILY, normalized);
+  }
+
+  async trackNoteCreation(note: Note, context?: AnalyticsContext): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+
+    metrics.notesCreated++;
+    if (note.isPasswordProtected) {
+      metrics.passwordProtectedNotes++;
+    }
+    if (context?.aiEnhanced) {
+      metrics.aiEnhancedNotes++;
+    }
+
+    const expirationDate = new Date(note.expiresAt);
+    const expirationDays = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const totalExpirationDays = metrics.averageExpirationDays * (metrics.notesCreated - 1) + expirationDays;
+    metrics.averageExpirationDays = metrics.notesCreated > 0
+      ? totalExpirationDays / metrics.notesCreated
+      : 0;
+
+    const expirySeconds = Math.max(0, Math.floor((expirationDate.getTime() - today.getTime()) / 1000));
+    if (expirySeconds <= 60 * 60) {
+      metrics.expiryRangeDistribution.oneHourOrLess++;
+    } else if (expirySeconds <= 24 * 60 * 60) {
+      metrics.expiryRangeDistribution.oneDayOrLess++;
+    } else if (expirySeconds <= 7 * 24 * 60 * 60) {
+      metrics.expiryRangeDistribution.oneWeekOrLess++;
+    } else {
+      metrics.expiryRangeDistribution.moreThanWeek++;
+    }
+
+    const maxReads = note.maxReads || 1;
+    if (maxReads === 1) {
+      metrics.viewLimitsDistribution.once++;
+    } else if (maxReads === 2) {
+      metrics.viewLimitsDistribution.twice++;
+    } else if (maxReads >= 3 && maxReads <= 5) {
+      metrics.viewLimitsDistribution.threeToFive++;
+    } else if (maxReads > 5) {
+      metrics.viewLimitsDistribution.moreThanFive++;
+    } else {
+      metrics.viewLimitsDistribution.unlimited++;
+    }
+
+    const contentLength = note.content.length;
+    if (contentLength < 100) {
+      metrics.contentLengthDistribution.short++;
+    } else if (contentLength >= 100 && contentLength <= 1000) {
+      metrics.contentLengthDistribution.medium++;
+    } else {
+      metrics.contentLengthDistribution.long++;
+    }
+
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackNoteView(_note: Note): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    metrics.notesViewed++;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackBlogView(slug: string): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    metrics.blogViews[slug] = (metrics.blogViews[slug] || 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
+    if (metricsType !== AnalyticsMetricsType.DAILY) {
+      return [];
+    }
+    let cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+    const results: AnalyticsData[] = [];
+
+    while (cursor <= end) {
+      const metrics = await this.loadDailyMetrics(cursor);
+      if (metrics) {
+        results.push(this.buildAnalyticsData(cursor, AnalyticsMetricsType.DAILY, metrics));
+      }
+      cursor = addDaysUtc(cursor, 1);
+    }
+
+    return results;
+  }
+}
+
 // Generate random ID using Web Crypto API (available in Workers)
 function generateNoteId(): string {
   const array = new Uint8Array(8);
@@ -413,10 +669,12 @@ function generateNoteId(): string {
 export class CompositeStorage implements IStorage {
   private kvNoteStorage: KVNoteStorage;
   private memStorage: MemStorage;
+  private analyticsStorage: KVAnalyticsStorage;
 
-  constructor(kv: KVNamespace) {
-    this.kvNoteStorage = new KVNoteStorage(kv);
+  constructor(notesKv: KVNamespace, analyticsKv?: KVNamespace) {
+    this.kvNoteStorage = new KVNoteStorage(notesKv);
     this.memStorage = new MemStorage();
+    this.analyticsStorage = new KVAnalyticsStorage(analyticsKv || notesKv);
   }
 
   // User methods - delegate to MemStorage
@@ -485,35 +743,34 @@ export class CompositeStorage implements IStorage {
 
   // Analytics methods - delegate to MemStorage
   async getDailyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    return this.memStorage.getDailyMetrics(date);
+    return this.analyticsStorage.getDailyMetrics(date);
   }
 
   async getWeeklyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    return this.memStorage.getWeeklyMetrics(date);
+    return this.analyticsStorage.getWeeklyMetrics(date);
   }
 
   async getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    return this.memStorage.getMonthlyMetrics(date);
+    return this.analyticsStorage.getMonthlyMetrics(date);
   }
 
   async saveMetrics(metrics: InsertAnalytics): Promise<AnalyticsData> {
-    return this.memStorage.saveMetrics(metrics);
+    return this.analyticsStorage.saveMetrics(metrics);
   }
 
-  async trackNoteCreation(note: Note): Promise<void> {
-    return this.memStorage.trackNoteCreation(note);
+  async trackNoteCreation(note: Note, context?: AnalyticsContext): Promise<void> {
+    return this.analyticsStorage.trackNoteCreation(note, context);
   }
 
   async trackNoteView(note: Note): Promise<void> {
-    return this.memStorage.trackNoteView(note);
+    return this.analyticsStorage.trackNoteView(note);
   }
 
   async trackBlogView(slug: string): Promise<void> {
-    return this.memStorage.trackBlogView(slug);
+    return this.analyticsStorage.trackBlogView(slug);
   }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
-    return this.memStorage.getAnalyticsData(startDate, endDate, metricsType);
+    return this.analyticsStorage.getAnalyticsData(startDate, endDate, metricsType);
   }
 }
-

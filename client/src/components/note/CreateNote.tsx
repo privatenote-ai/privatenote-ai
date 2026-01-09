@@ -657,6 +657,7 @@ export const CreateNote: React.FC = () => {
       const aiGeneratedContent = await enhanceNoteWithAI(
         aiPrompt,
         aiEnhancementType,
+        turnstileToken,
       );
 
       setNoteContent(aiGeneratedContent);
@@ -671,21 +672,11 @@ export const CreateNote: React.FC = () => {
     } catch (error) {
       console.error("Error generating AI content:", error);
 
-      // Check if it's an API key error
-      if (error instanceof Error && error.message.includes("API key")) {
-        toast({
-          title: "API Key Required",
-          description:
-            "Please ensure your OpenAI API key is properly configured.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to generate AI content. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to generate AI content. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsGeneratingContent(false);
     }
@@ -737,7 +728,7 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const improvedContent = await enhanceNoteWithAI(noteContent, "improve");
+      const improvedContent = await enhanceNoteWithAI(noteContent, "improve", turnstileToken);
       setNoteContent(improvedContent);
       toast({
         title: "Content Improved",
@@ -769,6 +760,7 @@ export const CreateNote: React.FC = () => {
       const summarizedContent = await enhanceNoteWithAI(
         noteContent,
         "summarize",
+        turnstileToken,
       );
       setNoteContent(summarizedContent);
       toast({
@@ -797,7 +789,7 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const simplifiedContent = await enhanceNoteWithAI(noteContent, "improve");
+      const simplifiedContent = await enhanceNoteWithAI(noteContent, "improve", turnstileToken);
       setNoteContent(simplifiedContent);
       toast({
         title: "Content Simplified",
@@ -828,6 +820,7 @@ export const CreateNote: React.FC = () => {
       const newContent = await enhanceNoteWithAI(
         originalPrompt,
         aiEnhancementType,
+        turnstileToken,
       );
       setNoteContent(newContent);
       toast({

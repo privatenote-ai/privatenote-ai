@@ -7,6 +7,10 @@ compatibility_date = "2024-01-01"
 binding = "NOTES_KV"
 id = "f19b8957a39b422486311962ca759563"
 
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "af52edc654a844ae999cc4fc35ba5a38"
+
 # Durable Objects binding
 [[durable_objects.bindings]]
 name = "SECURE_NOTES"

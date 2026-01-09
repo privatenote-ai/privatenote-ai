@@ -113,7 +113,7 @@ export default {
             endpoints: {
               notes: "/api/notes",
               blog: "/api/blog",
-              ai: "/api/ai/config",
+              ai: "/api/ai/enhance",
               admin: "/api/admin/*"
             }
           }),

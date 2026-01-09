@@ -7,4 +7,6 @@ export interface Env {
   TURNSTILE_SECRET_KEY?: string;
   // Rate limiting KV namespace (can use same as NOTES_KV or separate)
   RATE_LIMIT_KV?: KVNamespace;
+  // Analytics KV namespace (can use same as NOTES_KV or separate)
+  ANALYTICS_KV?: KVNamespace;
 }

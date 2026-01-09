@@ -88,6 +88,12 @@ export interface DailyMetrics {
   aiEnhancedNotes: number;
   blogViews: Record<string, number>; // slug -> views
   averageExpirationDays: number;
+  expiryRangeDistribution: {
+    oneHourOrLess: number;
+    oneDayOrLess: number;
+    oneWeekOrLess: number;
+    moreThanWeek: number;
+  };
   viewLimitsDistribution: {
     once: number;
     twice: number;
