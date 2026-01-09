@@ -183,9 +183,12 @@ export class SecureNoteStorageSql {
     return meta;
   }
 
-  private async persistCiphertext(noteId: string, ciphertext: StoredCiphertext, expiresAt: Date): Promise<void> {
+  private async persistCiphertext(noteId: string, ciphertext: StoredCiphertext, expiresAt: Date, ttlSeconds?: number): Promise<void> {
     const key = getCiphertextKey(noteId);
-    const ttl = calculateTTL(expiresAt);
+    // Use provided TTL if available (exact value), otherwise calculate from expiresAt (for legacy compatibility)
+    const ttl = ttlSeconds !== undefined 
+      ? Math.max(MIN_TTL_SECONDS, Math.min(MAX_TTL_SECONDS, Math.floor(ttlSeconds)))
+      : calculateTTL(expiresAt);
     const value = JSON.stringify(ciphertext);
     if (ttl === undefined) {
       await this.env.NOTES_KV.put(key, value);
@@ -249,6 +252,9 @@ export class SecureNoteStorageSql {
       Math.max(MIN_EXPIRY_SECONDS, Math.floor(rawExpirySeconds)),
     );
     const expiresAt = new Date(Date.now() + safeExpirySeconds * 1000);
+    // Calculate TTL directly from expiry seconds to avoid timing discrepancy
+    // This ensures the KV TTL exactly matches what the UI specified
+    const ttlSeconds = safeExpirySeconds;
     const parsedMaxReads = Number(maxReads);
     const isUnlimitedExplicit = parsedMaxReads === 0 || maxReads === "0";
     const safeMaxReads = isUnlimitedExplicit
@@ -277,7 +283,7 @@ export class SecureNoteStorageSql {
     };
 
     this.upsertMeta(meta);
-    await this.persistCiphertext(noteId, ciphertext, expiresAt);
+    await this.persistCiphertext(noteId, ciphertext, expiresAt, ttlSeconds);
 
     return new Response(JSON.stringify({ id: noteId }), {
       status: 201,

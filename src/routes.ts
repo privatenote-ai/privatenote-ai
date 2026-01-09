@@ -50,6 +50,25 @@ function getAllowedOrigin(request: Request): string | null {
   return null; // Origin not allowed
 }
 
+// Get Content Security Policy header
+function getCSPHeader(): string {
+  // Strict CSP to prevent XSS and code injection
+  // Note: 'unsafe-inline' for styles is needed for React/Vite, but we avoid it for scripts
+  return [
+    "default-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com", // Turnstile only on creation page
+    "style-src 'self' 'unsafe-inline'", // React inline styles
+    "font-src 'self'",
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com", // API endpoints
+    "img-src 'self' data: https:", // Images (data: for inline images, https: for external)
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'", // Prevent clickjacking
+    "object-src 'none'", // Block plugins
+    "upgrade-insecure-requests", // Upgrade HTTP to HTTPS
+  ].join("; ");
+}
+
 // Get CORS headers
 function getCorsHeaders(request: Request): Record<string, string> {
   const allowedOrigin = getAllowedOrigin(request);
@@ -58,6 +77,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Content-Security-Policy": getCSPHeader(),
     // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
     // If you need credentials later, set this to "true" and ensure Origin is specific (not *)
   };

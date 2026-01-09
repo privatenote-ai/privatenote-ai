@@ -190,12 +190,84 @@ export default function Privacy() {
           </p>
         </section>
 
+        {/* Client-Side Security */}
+        <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
+          <div className="flex items-start gap-3">
+            <Shield className="h-6 w-6 text-primary mt-1" />
+            <div>
+              <h2 className="text-xl font-medium mb-3">Client-Side Security & Limitations</h2>
+              <p className="mb-3">
+                PrivateNote.ai uses end-to-end encryption where encryption and decryption happen entirely in your browser. 
+                However, like all client-side encryption systems, there are inherent security considerations:
+              </p>
+              
+              <h3 className="font-medium mb-2 mt-4">Security Measures We Implement</h3>
+              <ul className="list-disc pl-5 space-y-2 mb-4">
+                <li>
+                  <strong>Content Security Policy (CSP):</strong> Strict CSP headers prevent unauthorized script execution 
+                  and reduce XSS attack surface
+                </li>
+                <li>
+                  <strong>Subresource Integrity (SRI):</strong> External resources are verified with cryptographic hashes 
+                  to ensure they haven't been tampered with
+                </li>
+                <li>
+                  <strong>No third-party analytics:</strong> Note viewing pages load no tracking scripts or analytics
+                </li>
+                <li>
+                  <strong>Fragment-based keys:</strong> Encryption keys are passed via URL fragments (never sent to server) 
+                  and immediately removed from browser history
+                </li>
+                <li>
+                  <strong>Rate limiting:</strong> API endpoints are protected against abuse and automated attacks
+                </li>
+                <li>
+                  <strong>CORS restrictions:</strong> Only approved origins can access the API
+                </li>
+              </ul>
+
+              <h3 className="font-medium mb-2 mt-4">Inherent Limitations</h3>
+              <p className="mb-3">
+                Even with perfect cryptography, client-side encryption is vulnerable to:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 mb-4">
+                <li>
+                  <strong>Compromised JavaScript delivery:</strong> If our JavaScript is compromised (supply chain attack, 
+                  CDN compromise, XSS), malicious code could potentially read encryption keys from URL fragments
+                </li>
+                <li>
+                  <strong>Browser extensions:</strong> Malicious browser extensions could intercept or modify page content
+                </li>
+                <li>
+                  <strong>Compromised device:</strong> Malware on your device could read keys from memory or screen
+                </li>
+              </ul>
+
+              <h3 className="font-medium mb-2 mt-4">Best Practices for Maximum Security</h3>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Use password-protected notes for highly sensitive content (adds an additional encryption layer)</li>
+                <li>Verify the URL matches <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">privatenote.ai</code> or <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">privatenote-ai.pages.dev</code></li>
+                <li>Check browser console for unexpected errors or warnings</li>
+                <li>Use a privacy-focused browser with script blocking capabilities</li>
+                <li>Avoid accessing notes on shared or untrusted devices</li>
+                <li>Keep your browser and operating system updated</li>
+                <li>Consider reviewing our source code if it becomes open-source</li>
+              </ul>
+
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <strong>Note:</strong> For maximum security, we recommend using password-protected notes and verifying 
+                the website URL before entering sensitive information.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Changes */}
         <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
           <h2 className="text-xl font-medium mb-3">Changes to This Policy</h2>
           <p>
-            We may update this Privacy Policy to reflect changes in the service or legal requirements. The “Last
-            updated” date will indicate the latest revision.
+            We may update this Privacy Policy to reflect changes in the service or legal requirements. The "Last
+            updated" date will indicate the latest revision.
           </p>
         </section>
       </div>

@@ -5,9 +5,24 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="PrivateNote.ai - Create end-to-end encrypted notes that self-destruct after reading. Secure messaging with client-side encryption." />
+  
+  <!-- Content Security Policy -->
+  <!-- Note: CSP is also set via HTTP headers in Worker for API responses -->
+  <!-- frame-ancestors only works in HTTP headers, not meta tags -->
+  <!-- upgrade-insecure-requests removed for local development (causes SSL errors with Vite) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com; img-src 'self' data: https:; base-uri 'self'; form-action 'self'; object-src 'none';" />
+  
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  
+  <!-- Cloudflare Turnstile (only loaded on creation page, not note viewing) -->
+  <!-- Note: Turnstile uses dynamic versioned URLs, so SRI is not practical -->
+  <!-- The script is only loaded on pages that use AI features, not on note viewing pages -->
+  <script 
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+    async 
+    defer
+    crossorigin="anonymous">
+  </script>
 </head>
 <body>
   <div id="root"></div>

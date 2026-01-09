@@ -42,12 +42,30 @@ export default {
         return null;
       }
       
+      function getCSPHeader(): string {
+        // Strict CSP to prevent XSS and code injection
+        return [
+          "default-src 'self'",
+          "script-src 'self' https://challenges.cloudflare.com",
+          "style-src 'self' 'unsafe-inline'",
+          "font-src 'self'",
+          "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com",
+          "img-src 'self' data: https:",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+          "object-src 'none'",
+          "upgrade-insecure-requests",
+        ].join("; ");
+      }
+
       function getCorsHeaders(request: Request): Record<string, string> {
         const allowedOrigin = getAllowedOrigin(request);
         return {
           "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+          "Content-Security-Policy": getCSPHeader(),
           // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
         };
       }
