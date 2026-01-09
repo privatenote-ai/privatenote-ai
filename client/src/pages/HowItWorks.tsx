@@ -285,6 +285,17 @@ export default function HowItWorks() {
                     removed from browser history after extraction.
                   </p>
                 </div>
+
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <h3 className="font-semibold mb-2 flex items-center text-green-700 dark:text-green-300">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    AI Prompt Handling
+                  </h3>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    AI mode sends your prompt to our Worker for processing and Turnstile verification. We do not store
+                    prompts and avoid logging request bodies.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

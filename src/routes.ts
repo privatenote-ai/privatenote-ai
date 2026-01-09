@@ -258,10 +258,19 @@ function parsePathParams(pathname: string, pattern: string): Record<string, stri
 }
 
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const method = request.method;
+  const isAiRequest = pathname.startsWith("/api/ai/");
+
   console.log(`[ROUTES] ========== REGISTER ROUTES ==========`);
-  console.log(`[ROUTES] Request method: ${request.method}`);
+  console.log(`[ROUTES] Request method: ${method}`);
   console.log(`[ROUTES] Request URL: ${request.url}`);
-  console.log(`[ROUTES] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
+  if (!isAiRequest) {
+    console.log(`[ROUTES] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
+  } else {
+    console.log(`[ROUTES] Request headers: [redacted for AI request]`);
+  }
   
   // Check CORS origin
   const allowedOrigin = getAllowedOrigin(request);
@@ -309,9 +318,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     console.log(`[ROUTES] ✅ Rate limit OK. Remaining: ${rateLimit.remaining}`);
   }
 
-  const url = new URL(request.url);
-  const pathname = url.pathname;
-  const method = request.method;
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
   
   const analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
