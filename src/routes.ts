@@ -61,6 +61,7 @@ function getCSPHeader(): string {
     "font-src 'self'",
     "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com", // API endpoints
     "img-src 'self' data: https:", // Images (data: for inline images, https: for external)
+    "frame-src https://challenges.cloudflare.com", // Turnstile iframe
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'", // Prevent clickjacking
