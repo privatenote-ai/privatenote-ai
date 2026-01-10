@@ -230,9 +230,9 @@ export class SecureNoteStorageSql {
       });
     }
 
-    if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
+    if (isPasswordProtected && (!salt || !encryptedKeyIv)) {
       return new Response(
-        JSON.stringify({ error: "Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes" }),
+        JSON.stringify({ error: "Salt and encryptedKeyIv are required for password-protected notes" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -278,7 +278,7 @@ export class SecureNoteStorageSql {
       alg: "AES-GCM",
       isPasswordProtected: !!isPasswordProtected,
       salt,
-      encryptedKey,
+      encryptedKey: null,
       encryptedKeyIv,
     };
 
@@ -399,7 +399,7 @@ export class SecureNoteStorageSql {
       isPasswordProtected: ciphertext.isPasswordProtected ?? false,
       ...(ciphertext.isPasswordProtected && {
         salt: ciphertext.salt,
-        encryptedKey: ciphertext.encryptedKey,
+        ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),
         encryptedKeyIv: ciphertext.encryptedKeyIv,
       }),
     };

@@ -153,11 +153,11 @@ export class SecureNoteStorage {
                 }
                 
                 // Check if password protection fields are provided when needed
-                if (isPasswordProtected && (!salt || !encryptedKey || !encryptedKeyIv)) {
+                if (isPasswordProtected && (!salt || !encryptedKeyIv)) {
                     console.log(`[DO] ❌ Password protection validation failed`);
-                    console.log(`[DO] Salt present: ${!!salt}, encryptedKey present: ${!!encryptedKey}, encryptedKeyIv present: ${!!encryptedKeyIv}`);
+                    console.log(`[DO] Salt present: ${!!salt}, encryptedKeyIv present: ${!!encryptedKeyIv}`);
                     return new Response(JSON.stringify({ 
-                        error: 'Salt, encryptedKey, and encryptedKeyIv are required for password-protected notes' 
+                        error: 'Salt and encryptedKeyIv are required for password-protected notes' 
                     }), {
                         status: 400,
                         headers: { 
@@ -180,7 +180,6 @@ export class SecureNoteStorage {
                     createdAt: new Date().toISOString(),
                     ...(isPasswordProtected && {
                         salt,
-                        encryptedKey,
                         encryptedKeyIv
                     })
                 };

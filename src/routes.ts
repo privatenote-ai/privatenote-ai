@@ -15,7 +15,7 @@ const ALLOWED_ORIGINS = [
 
 // Rate limiting configuration
 const RATE_LIMIT = {
-  MAX_REQUESTS: 20, // requests per window
+  MAX_REQUESTS: 10, // requests per window
   WINDOW_SECONDS: 60, // 1 minute window
   KEY_PREFIX: 'rate_limit:',
 };
@@ -426,7 +426,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           createdAt: new Date(),
           isPasswordProtected: !!requestBody?.isPasswordProtected,
           salt: requestBody?.salt ?? null,
-          encryptedKey: requestBody?.encryptedKey ?? null,
+          encryptedKey: null,
           encryptedKeyIv: requestBody?.encryptedKeyIv ?? null,
         };
       }
@@ -496,7 +496,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           createdAt: new Date(),
           isPasswordProtected: !!data.isPasswordProtected,
           salt: data.salt ?? null,
-          encryptedKey: data.encryptedKey ?? null,
+          encryptedKey: null,
           encryptedKeyIv: data.encryptedKeyIv ?? null,
         };
         await storage.trackNoteView(noteForAnalytics);

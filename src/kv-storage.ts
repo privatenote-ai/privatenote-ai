@@ -120,7 +120,7 @@ export class KVNoteStorage {
       currentReads: 0,
       createdAt: new Date(),
       isPasswordProtected: noteData.isPasswordProtected || false,
-      encryptedKey: noteData.encryptedKey || null,
+      encryptedKey: null,
       encryptedKeyIv: noteData.encryptedKeyIv || null,
       salt: noteData.salt || null,
     };
@@ -173,4 +173,3 @@ export class KVNoteStorage {
     await this.kv.delete(key);
   }
 }
-

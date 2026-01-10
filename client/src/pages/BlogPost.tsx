@@ -7,10 +7,15 @@ import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
 
 export default function BlogPostPage() {
   const [_, params] = useRoute('/blog/:slug');
   const slug = params?.slug;
+
+  if (slug === 'privacy-tools') {
+    return <PrivacyToolsPost />;
+  }
   
   const { 
     data: post, 

@@ -77,8 +77,8 @@ const convertExpiryToSeconds = (expiryValue: string): number => {
   // Format is like "5m", "1h", "7d" etc.
   const value = parseInt(expiryValue.slice(0, -1));
   const unit = expiryValue.slice(-1);
-  
-  switch(unit) {
+
+  switch (unit) {
     case 'm': // minutes
       return value * 60;
     case 'h': // hours
@@ -94,8 +94,8 @@ const convertExpiryToSeconds = (expiryValue: string): number => {
 const getExpiryTimeDisplay = (expiryValue: string): string => {
   const value = parseInt(expiryValue.slice(0, -1));
   const unit = expiryValue.slice(-1);
-  
-  switch(unit) {
+
+  switch (unit) {
     case 'm':
       return `${value} minute${value !== 1 ? 's' : ''}`;
     case 'h':
@@ -340,35 +340,40 @@ export const CreateNote: React.FC = () => {
         saltBase64,
         encryptedKeyBase64,
         encryptedKeyIvBase64;
-
-      // First, always generate a standard encryption key (first layer of security)
-      const { key, exportedKey: generatedKey } = await generateKey();
-      exportedKey = generatedKey;
+      const encodeBase64 = (value: ArrayBuffer | Uint8Array) => {
+        const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+        const copy = new Uint8Array(bytes.byteLength);
+        copy.set(bytes);
+        return arrayBufferToBase64(copy.buffer);
+      };
 
       if (isPasswordProtected) {
-        // Use password-based encryption as second layer (double-encryption)
+        // Password-based encryption wraps the content key for URL-only storage
         const { encryptedData, iv, salt, encryptedKey, encryptedKeyIv } =
           await encryptWithPassword(noteContent, password);
 
         // Convert encrypted data to base64 for transmission
-        encryptedBase64 = arrayBufferToBase64(encryptedData);
-        ivBase64 = arrayBufferToBase64(iv);
-        saltBase64 = arrayBufferToBase64(salt);
-        encryptedKeyBase64 = arrayBufferToBase64(encryptedKey);
-        encryptedKeyIvBase64 = arrayBufferToBase64(encryptedKeyIv);
+        encryptedBase64 = encodeBase64(encryptedData);
+        ivBase64 = encodeBase64(iv);
+        saltBase64 = encodeBase64(salt);
+        encryptedKeyBase64 = encodeBase64(encryptedKey);
+        encryptedKeyIvBase64 = encodeBase64(encryptedKeyIv);
       } else {
         // Standard encryption without password
+        const { key, exportedKey: generatedKey } = await generateKey();
+        exportedKey = generatedKey;
+
         // Encrypt the note content
         const { encryptedData, iv } = await encryptNote(noteContent, key);
 
         // Convert encrypted data to base64 for transmission
-        encryptedBase64 = arrayBufferToBase64(encryptedData);
-        ivBase64 = arrayBufferToBase64(iv);
+        encryptedBase64 = encodeBase64(encryptedData);
+        ivBase64 = encodeBase64(iv);
       }
 
       // Convert expiryValue to seconds for API
       const expirySeconds = convertExpiryToSeconds(expiryValue);
-      
+
       if (isAiMode) {
         if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
           throw new Error("Human verification is not configured.");
@@ -390,16 +395,17 @@ export const CreateNote: React.FC = () => {
         isPasswordProtected,
         ...(isPasswordProtected && {
           salt: saltBase64,
-          encryptedKey: encryptedKeyBase64,
           encryptedKeyIv: encryptedKeyIvBase64,
         }),
       });
 
       // Generate the secure note URL
       const baseUrl = window.location.origin;
-      // Always include the key in the URL for both password-protected and standard notes
-      const url = `${baseUrl}/note/${id}#${exportedKey}`;
-      
+      const urlKey = isPasswordProtected
+        ? encryptedKeyBase64?.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+        : exportedKey;
+      const url = `${baseUrl}/note/${id}#${urlKey}`;
+
       // Set the URL for display
       setNoteUrl(url);
       setTurnstileToken(null);
@@ -412,7 +418,7 @@ export const CreateNote: React.FC = () => {
       console.error("[CreateNote] Error type:", error?.constructor?.name || 'Unknown');
       console.error("[CreateNote] Error message:", error instanceof Error ? error.message : String(error));
       console.error("[CreateNote] Full error:", error);
-      
+
       let errorMessage = "Failed to create encrypted note. Please try again.";
       if (error instanceof Error) {
         // Extract status code from error message (format: "405: ...")
@@ -425,7 +431,7 @@ export const CreateNote: React.FC = () => {
           errorMessage = error.message || errorMessage;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -528,7 +534,7 @@ export const CreateNote: React.FC = () => {
       });
     }
   };
-  
+
   // Function to copy QR code as image to clipboard
   const copyQrCodeToClipboard = async () => {
     try {
@@ -541,22 +547,22 @@ export const CreateNote: React.FC = () => {
           // Create a temporary canvas
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           // Set canvas dimensions (with some padding)
           canvas.width = 200;
           canvas.height = 200;
-          
+
           // Draw white background
           if (ctx) {
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // Convert SVG to data URL
             const svgData = new XMLSerializer().serializeToString(svgElement);
-            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
             const DOMURL = window.URL || window.webkitURL || window;
             const url = DOMURL.createObjectURL(svgBlob);
-            
+
             // Create download link
             const downloadLink = document.createElement('a');
             downloadLink.href = url;
@@ -564,12 +570,12 @@ export const CreateNote: React.FC = () => {
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
-            
+
             // Release the object URL
             setTimeout(() => {
               DOMURL.revokeObjectURL(url);
             }, 100);
-            
+
             toast({
               title: "QR Code Downloaded",
               description: "QR code saved as SVG file. You can now share it.",
@@ -586,14 +592,14 @@ export const CreateNote: React.FC = () => {
       });
     }
   };
-  
+
   // Function to email QR code without link
   const emailQrCode = () => {
     if (noteUrl) {
       const subject = "Secure Private Note";
       const body = `I've shared a secure, encrypted note with you. Scan the attached QR code to view it.`;
       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
+
       toast({
         title: "Email App Opened",
         description: "Your default email app should open. Attach the QR code manually to your email.",
@@ -968,11 +974,10 @@ export const CreateNote: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAiMode(false)}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
-                !isAiMode
+              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${!isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center">
                 <Lock className="h-4 w-4 mr-2" />
@@ -982,11 +987,10 @@ export const CreateNote: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAiMode(true)}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
-                isAiMode
+              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center">
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -1018,10 +1022,9 @@ export const CreateNote: React.FC = () => {
                         type="button"
                         onClick={() => selectTemplate(template)}
                         className={`h-8 px-3 rounded-full text-xs font-medium border transition-colors text-center inline-flex items-center
-                          ${
-                            selectedTemplateId === template.id
-                              ? "bg-primary/10 text-primary border-primary/30"
-                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+                          ${selectedTemplateId === template.id
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
                           }`}
                       >
                         {template.name}
@@ -1039,10 +1042,9 @@ export const CreateNote: React.FC = () => {
                             type="button"
                             onClick={() => selectTemplate(template)}
                             className={`h-8 px-3 rounded-full text-xs font-medium border transition-colors text-center inline-flex items-center
-                              ${
-                                selectedTemplateId === template.id
-                                  ? "bg-primary/10 text-primary border-primary/30"
-                                  : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+                              ${selectedTemplateId === template.id
+                                ? "bg-primary/10 text-primary border-primary/30"
+                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
                               }`}
                           >
                             {template.name}
@@ -1320,11 +1322,10 @@ export const CreateNote: React.FC = () => {
 
           {/* Advanced options panel - with animation and modern styling */}
           <div
-            className={`mb-6 overflow-hidden transition-all duration-300 ease-in-out ${
-              showAdvancedOptions
+            className={`mb-6 overflow-hidden transition-all duration-300 ease-in-out ${showAdvancedOptions
                 ? "max-h-[500px] opacity-100"
                 : "max-h-0 opacity-0"
-            }`}
+              }`}
           >
             <div className="max-w-2xl mx-auto">
               <div className="flex items-center mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
@@ -1363,80 +1364,80 @@ export const CreateNote: React.FC = () => {
                         placeholder="Enter a secure password (optional)"
                         className="w-full px-2.5 py-1.5 text-sm rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="px-2 py-1.5 bg-gray-100 dark:bg-gray-600 border-t border-b border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
+                        title={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <div className="flex">
                         <button
                           type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="px-2 py-1.5 bg-gray-100 dark:bg-gray-600 border-t border-b border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
-                          title={
-                            showPassword ? "Hide password" : "Show password"
+                          onClick={() =>
+                            setPassword(generateHumanFriendlyPassword())
                           }
+                          className="px-2 py-1.5 bg-green-50 dark:bg-green-900/30 border border-gray-300 dark:border-gray-600 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center"
+                          title="Generate human-friendly password (easy to remember)"
                         >
-                          {showPassword ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                          )}
+                          <User className="h-4 w-4 mr-1" />
+                          <span>Simple</span>
                         </button>
-                        <div className="flex">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPassword(generateHumanFriendlyPassword())
-                            }
-                            className="px-2 py-1.5 bg-green-50 dark:bg-green-900/30 border border-gray-300 dark:border-gray-600 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center"
-                            title="Generate human-friendly password (easy to remember)"
-                          >
-                            <User className="h-4 w-4 mr-1" />
-                            <span>Simple</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPassword(generateStrongPassword())
-                            }
-                            className="px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-t border-r border-b border-gray-300 dark:border-gray-600 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-r-md flex items-center"
-                            title="Generate strong password (very secure)"
-                          >
-                            <Shield className="h-4 w-4 mr-1" />
-                            <span>Strong</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPassword(generateStrongPassword())
+                          }
+                          className="px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-t border-r border-b border-gray-300 dark:border-gray-600 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-r-md flex items-center"
+                          title="Generate strong password (very secure)"
+                        >
+                          <Shield className="h-4 w-4 mr-1" />
+                          <span>Strong</span>
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
 
               {/* Time settings with improved design */}
               <div className="mt-3 flex flex-col space-y-2">

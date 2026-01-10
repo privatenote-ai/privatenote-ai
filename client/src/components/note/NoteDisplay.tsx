@@ -159,8 +159,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
       return;
     }
     
+    const wrappedKey = encryptionKey || null;
+    
     // Check if we have all the required fields for password decryption
-    if (!noteData.encryptedKey || !noteData.encryptedKeyIv || !noteData.salt) {
+    if (!wrappedKey || !noteData.encryptedKeyIv || !noteData.salt) {
       toast({
         title: "Error",
         description: "This note is missing required password protection fields",
@@ -176,7 +178,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
       // Convert base64 strings to Uint8Array objects
       const encryptedData = base64ToUint8Array(noteData.content);
       const ivArray = base64ToUint8Array(noteData.iv);
-      const encryptedKey = base64ToArrayBuffer(noteData.encryptedKey!);
+      const encryptedKey = base64ToArrayBuffer(wrappedKey);
       const encryptedKeyIv = base64ToUint8Array(noteData.encryptedKeyIv!);
       const salt = base64ToUint8Array(noteData.salt!);
       

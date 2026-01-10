@@ -4,6 +4,55 @@ import type { Env } from "./types";
 
 export { SecureNoteStorage, SecureNoteStorageSql };
 
+const ALLOWED_ORIGINS = [
+  'https://privatenote-ai.pages.dev',
+  'https://privatenote.ai',
+  'http://localhost:5000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:5173',
+];
+
+const normalizeOrigin = (origin: string): string => origin.replace(/\/$/, '');
+
+const getAllowedOrigin = (request: Request): string | null => {
+  const origin = request.headers.get('Origin');
+  if (!origin) return ALLOWED_ORIGINS[0];
+  const normalized = normalizeOrigin(origin);
+  const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
+  if (normalizedAllowed.includes(normalized)) return origin;
+  if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return origin;
+  if (normalized.endsWith('.pages.dev')) return origin;
+  if (normalized.endsWith('.privatenote.ai')) return origin;
+  return null;
+};
+
+const getCSPHeader = (): string =>
+  [
+    "default-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com",
+    "img-src 'self' data: https:",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+
+const getCorsHeaders = (request: Request): Record<string, string> => {
+  const allowedOrigin = getAllowedOrigin(request);
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Content-Security-Policy": getCSPHeader(),
+    // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
+  };
+};
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     console.log(`[WORKER-ENTRY] ========== WORKER ENTRY POINT ==========`);
@@ -15,60 +64,6 @@ export default {
       const url = new URL(request.url);
       const pathname = url.pathname;
       console.log(`[WORKER-ENTRY] Pathname: ${pathname}`);
-
-      // Import CORS helpers (defined in routes.ts but we need them here too)
-      const ALLOWED_ORIGINS = [
-        'https://privatenote-ai.pages.dev',
-        'https://privatenote.ai',
-        'http://localhost:5000',
-        'http://localhost:5173',
-        'http://127.0.0.1:5000',
-        'http://127.0.0.1:5173',
-      ];
-      
-      function normalizeOrigin(origin: string): string {
-        return origin.replace(/\/$/, '');
-      }
-
-      function getAllowedOrigin(request: Request): string | null {
-        const origin = request.headers.get('Origin');
-        if (!origin) return ALLOWED_ORIGINS[0];
-        const normalized = normalizeOrigin(origin);
-        const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
-        if (normalizedAllowed.includes(normalized)) return origin;
-        if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return origin;
-        if (normalized.endsWith('.pages.dev')) return origin;
-        if (normalized.endsWith('.privatenote.ai')) return origin;
-        return null;
-      }
-      
-      function getCSPHeader(): string {
-        // Strict CSP to prevent XSS and code injection
-        return [
-          "default-src 'self'",
-          "script-src 'self' https://challenges.cloudflare.com",
-          "style-src 'self' 'unsafe-inline'",
-          "font-src 'self'",
-          "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com",
-          "img-src 'self' data: https:",
-          "base-uri 'self'",
-          "form-action 'self'",
-          "frame-ancestors 'none'",
-          "object-src 'none'",
-          "upgrade-insecure-requests",
-        ].join("; ");
-      }
-
-      function getCorsHeaders(request: Request): Record<string, string> {
-        const allowedOrigin = getAllowedOrigin(request);
-        return {
-          "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
-          "Content-Security-Policy": getCSPHeader(),
-          // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
-        };
-      }
 
       // Handle CORS preflight requests FIRST, before any routing
       if (request.method === "OPTIONS") {
