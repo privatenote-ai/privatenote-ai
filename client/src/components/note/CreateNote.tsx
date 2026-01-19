@@ -465,6 +465,13 @@ export const CreateNote: React.FC = () => {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
+
+  const resetTurnstile = () => {
+    setTurnstileToken(null);
+    if (turnstileWidgetIdRef.current !== null && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetIdRef.current);
+    }
+  };
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
@@ -946,6 +953,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      resetTurnstile();
     }
   };
 
@@ -1010,6 +1018,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      resetTurnstile();
     }
   };
 
@@ -1042,6 +1051,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      resetTurnstile();
     }
   };
 
@@ -1070,6 +1080,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      resetTurnstile();
     }
   };
 
@@ -1103,6 +1114,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      resetTurnstile();
     }
   };
 
