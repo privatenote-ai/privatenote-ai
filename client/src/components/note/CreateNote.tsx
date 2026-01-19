@@ -469,8 +469,20 @@ export const CreateNote: React.FC = () => {
 
   const resetTurnstile = () => {
     setTurnstileToken(null);
+    setTurnstileError(null);
     if (turnstileWidgetIdRef.current !== null && window.turnstile) {
-      window.turnstile.reset(turnstileWidgetIdRef.current);
+      try {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+      } catch (e) {
+        // If reset fails, remove the widget completely
+        console.warn("Turnstile reset failed, removing widget:", e);
+      }
+      turnstileWidgetIdRef.current = null;
+    }
+    // Clear the container
+    const container = document.getElementById("turnstile-container");
+    if (container) {
+      container.innerHTML = "";
     }
   };
 
@@ -488,7 +500,9 @@ export const CreateNote: React.FC = () => {
     if (error instanceof Error && error.message.includes("Human verification")) {
       setAiUsesRemaining(0);
       setTurnstileError("Human verification required. Please try again.");
+      // Reset Turnstile and force re-initialization
       resetTurnstile();
+      setTurnstileReady(false);
     }
   };
 
@@ -758,15 +772,21 @@ export const CreateNote: React.FC = () => {
       if (!window.turnstile) {
         return;
       }
-      setTurnstileReady(true);
       const container = document.getElementById("turnstile-container");
       if (!container) {
         return;
       }
-      if (turnstileWidgetIdRef.current) {
-        return;
+      // Clean up any existing widget before creating a new one
+      if (turnstileWidgetIdRef.current !== null) {
+        try {
+          window.turnstile.reset(turnstileWidgetIdRef.current);
+        } catch (e) {
+          console.warn("Failed to reset existing Turnstile widget:", e);
+        }
+        turnstileWidgetIdRef.current = null;
       }
       container.innerHTML = "";
+      setTurnstileReady(true);
       const widgetId = window.turnstile.render(container, {
         sitekey: siteKey,
         callback: (token: string) => {
@@ -776,6 +796,8 @@ export const CreateNote: React.FC = () => {
         "error-callback": () => {
           setTurnstileToken(null);
           setTurnstileError("Human verification failed. Please try again.");
+          // Reset widget ID so it can be recreated
+          turnstileWidgetIdRef.current = null;
         },
         "expired-callback": () => {
           setTurnstileToken(null);
@@ -1569,7 +1591,6 @@ export const CreateNote: React.FC = () => {
                         Back
                       </button>
                     </div>
-                    {aiVerificationPanel}
                     {/* Size indicator */}
                     <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 text-right">
                       {(
