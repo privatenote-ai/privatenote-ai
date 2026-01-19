@@ -30,7 +30,7 @@ const features = [
   },
   {
     title: "Post‑Quantum by Design",
-    description: "Notes are protected by symmetric encryption; only the key matters.",
+    description: "AES-GCM in the browser. The server never sees the encryption key or plaintext.",
     icon: <Shield className="h-6 w-6 text-primary" />
   }
 ];

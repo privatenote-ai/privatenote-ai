@@ -326,6 +326,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] Storage initialized`);
 
   // AI API routes
+  if (pathname === "/api/ai/config" && method === "GET") {
+    return jsonResponse({
+      hasApiKey: Boolean(env.OPENAI_API_KEY),
+    }, 200, request);
+  }
+
   if (pathname === "/api/ai/enhance" && method === "POST") {
     if (!env.OPENAI_API_KEY) {
       return jsonResponse({ message: "OpenAI API key not configured on server" }, 500, request);
@@ -367,7 +373,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     };
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
@@ -375,23 +381,46 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompts[enhancementType] },
-            { role: "user", content },
+          input: [
+            {
+              role: "system",
+              content: [{ type: "text", text: systemPrompts[enhancementType] }],
+            },
+            {
+              role: "user",
+              content: [{ type: "text", text: content }],
+            },
           ],
-          response_format: { type: "text" },
-          max_tokens: 800,
+          max_output_tokens: 800,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        let upstreamMessage = errorText || response.statusText;
+        try {
+          const parsed = JSON.parse(errorText);
+          upstreamMessage = parsed?.error?.message || upstreamMessage;
+        } catch {
+          // Use raw error text if it's not JSON.
+        }
         console.error("[AI] OpenAI error:", response.status, errorText);
-        return jsonResponse({ message: "AI request failed" }, 502, request);
+        return jsonResponse({
+          message: "AI request failed",
+          upstreamStatus: response.status,
+          details: typeof upstreamMessage === "string" ? upstreamMessage.slice(0, 500) : "Unknown error",
+        }, 502, request);
       }
 
-      const data = await response.json<{ choices?: Array<{ message?: { content?: string } }> }>();
-      const output = data.choices?.[0]?.message?.content?.trim();
+      const data = await response.json<{
+        output?: Array<{
+          content?: Array<{ type?: string; text?: string }>;
+        }>;
+      }>();
+      const output = data.output
+        ?.flatMap((item) => item.content ?? [])
+        .find((item) => item.type === "output_text" && item.text)
+        ?.text?.trim();
       if (!output) {
         return jsonResponse({ message: "AI response was empty" }, 502, request);
       }

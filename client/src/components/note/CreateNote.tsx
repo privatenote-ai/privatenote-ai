@@ -9,6 +9,7 @@ import {
   arrayBufferToBase64,
   encryptWithPassword,
 } from "@/utils/encryption";
+import { checkHIBP } from "@/utils/hibp";
 import { enhanceNoteWithAI } from "@/utils/openai";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -120,6 +121,66 @@ const generateHumanFriendlyPassword = (): string => {
     "mighty",
     "golden",
     "swift",
+    "quiet",
+    "steady",
+    "bright",
+    "crisp",
+    "silver",
+    "calm",
+    "bold",
+    "chill",
+    "fresh",
+    "smart",
+    "ancient",
+    "autumn",
+    "azure",
+    "blazing",
+    "brisk",
+    "breezy",
+    "candid",
+    "carbon",
+    "cerulean",
+    "cosmic",
+    "copper",
+    "curious",
+    "daring",
+    "distant",
+    "dusky",
+    "eager",
+    "electric",
+    "ember",
+    "faded",
+    "fierce",
+    "glowing",
+    "granite",
+    "hollow",
+    "icy",
+    "iron",
+    "jaded",
+    "lunar",
+    "mellow",
+    "midnight",
+    "misty",
+    "navy",
+    "nimble",
+    "olive",
+    "polished",
+    "quietly",
+    "rapid",
+    "rich",
+    "rugged",
+    "sacred",
+    "silent",
+    "sleek",
+    "soft",
+    "solstice",
+    "sturdy",
+    "tender",
+    "tidal",
+    "timber",
+    "tranquil",
+    "vivid",
+    "wild",
   ];
   const nouns = [
     "tiger",
@@ -132,16 +193,74 @@ const generateHumanFriendlyPassword = (): string => {
     "dragon",
     "castle",
     "sunset",
+    "comet",
+    "valley",
+    "rocket",
+    "harbor",
+    "meadow",
+    "storm",
+    "island",
+    "falcon",
+    "prairie",
+    "ember",
+    "anchor",
+    "apex",
+    "arcade",
+    "atlas",
+    "aurora",
+    "beacon",
+    "blizzard",
+    "brook",
+    "canyon",
+    "cascade",
+    "citadel",
+    "cliff",
+    "cobalt",
+    "crater",
+    "crescent",
+    "delta",
+    "dune",
+    "echo",
+    "fjord",
+    "frost",
+    "glade",
+    "glacier",
+    "grove",
+    "horizon",
+    "hollow",
+    "lagoon",
+    "lantern",
+    "marsh",
+    "monsoon",
+    "nebula",
+    "nexus",
+    "obelisk",
+    "orbit",
+    "orchard",
+    "pinnacle",
+    "quartz",
+    "quill",
+    "reef",
+    "ridge",
+    "saffron",
+    "sierra",
+    "summit",
+    "temple",
+    "thunder",
+    "tundra",
+    "vista",
+    "willow",
+    "zephyr",
   ];
-  const numbers = Math.floor(Math.random() * 100)
-    .toString()
-    .padStart(2, "0");
 
-  const randomAdjective =
-    adjectives[Math.floor(Math.random() * adjectives.length)];
-  const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+  const randomAdjective = adjectives[secureRandomInt(adjectives.length)];
+  const randomNoun = nouns[secureRandomInt(nouns.length)];
+  let numbers = "";
+  for (let i = 0; i < 4; i += 1) {
+    numbers += secureRandomInt(10).toString();
+  }
 
-  return `${randomAdjective}${randomNoun}${numbers}`;
+  return `${randomAdjective}-${randomNoun}-${numbers}`;
 };
 
 // Function to generate a strong, secure password (hard to remember but very secure)
@@ -158,6 +277,67 @@ const generateStrongPassword = (): string => {
 
   return password;
 };
+
+const strengthLabels = [
+  "Very weak",
+  "Weak",
+  "Fair",
+  "Strong",
+  "Very strong",
+];
+
+const strengthColors = [
+  "text-rose-500",
+  "text-orange-500",
+  "text-yellow-600",
+  "text-green-600",
+  "text-emerald-600",
+];
+
+const getPasswordStrength = (value: string) => {
+  const length = value.length;
+  if (!length) return null;
+
+  const hasLower = /[a-z]/.test(value);
+  const hasUpper = /[A-Z]/.test(value);
+  const hasDigit = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  const variety = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean)
+    .length;
+
+  let score = 0;
+  if (length >= 8) score += 1;
+  if (length >= 12) score += 1;
+  if (length >= 16) score += 1;
+  if (length >= 20) score += 1;
+  if (variety >= 3) score += 1;
+  if (variety === 4) score += 1;
+
+  if (/^(.)\1+$/.test(value)) {
+    score = 0;
+  }
+
+  if (
+    /(0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef|defg|qwer|asdf|zxcv)/i.test(
+      value,
+    )
+  ) {
+    score = Math.max(0, score - 1);
+  }
+
+  if (!hasUpper && !hasSymbol) {
+    score = Math.min(score, 2);
+  }
+
+  score = Math.min(4, score);
+
+  return {
+    score,
+    label: strengthLabels[score],
+    color: strengthColors[score],
+  };
+};
+
 
 // Prompt templates for common use cases
 interface PromptTemplate {
@@ -303,11 +483,92 @@ export const CreateNote: React.FC = () => {
   // Password field and related state
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false); // Toggle password visibility
+  const [passwordSource, setPasswordSource] = useState<
+    "simple" | "strong" | "manual" | null
+  >(null);
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    label: string;
+    color: string;
+  } | null>(null);
+  const [breachState, setBreachState] = useState<
+    "idle" | "checking" | "safe" | "pwned" | "error"
+  >("idle");
+  const [breachCount, setBreachCount] = useState<number | null>(null);
+  const breachTimeoutRef = useRef<number | null>(null);
+  const breachAbortRef = useRef<AbortController | null>(null);
   // Password protection is determined by whether the password field has a value
   const isPasswordProtected = password.trim().length > 0;
   const [sharePassword, setSharePassword] = useState<boolean>(true); // Whether to include password in shared URL
   const [_, navigate] = useLocation();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (breachTimeoutRef.current) {
+      window.clearTimeout(breachTimeoutRef.current);
+    }
+    if (breachAbortRef.current) {
+      breachAbortRef.current.abort();
+      breachAbortRef.current = null;
+    }
+
+    const trimmed = password.trim();
+    if (!trimmed) {
+      setPasswordStrength(null);
+      setBreachState("idle");
+      setBreachCount(null);
+      return;
+    }
+
+    breachTimeoutRef.current = window.setTimeout(async () => {
+      const controller = new AbortController();
+      breachAbortRef.current = controller;
+      const strength = getPasswordStrength(trimmed);
+      if (strength && passwordSource === "simple") {
+        setPasswordStrength({
+          score: 1,
+          label: strengthLabels[1],
+          color: strengthColors[1],
+        });
+      } else {
+        setPasswordStrength(strength);
+      }
+      setBreachState("checking");
+      try {
+        const result = await checkHIBP(trimmed, controller.signal, {
+          timeoutMs: 8000,
+        });
+        if (controller.signal.aborted || result.status === "error") {
+          if (result.status === "error" && result.reason !== "aborted") {
+            setBreachState("error");
+            setBreachCount(null);
+          }
+          return;
+        }
+        if (result.status === "found") {
+          setBreachState("pwned");
+          setBreachCount(result.count ?? null);
+          return;
+        }
+        setBreachState("safe");
+        setBreachCount(0);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setBreachState("error");
+        setBreachCount(null);
+      }
+    }, 600);
+
+    return () => {
+      if (breachTimeoutRef.current) {
+        window.clearTimeout(breachTimeoutRef.current);
+      }
+      if (breachAbortRef.current) {
+        breachAbortRef.current.abort();
+        breachAbortRef.current = null;
+      }
+    };
+  }, [password, passwordSource]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -964,12 +1225,45 @@ export const CreateNote: React.FC = () => {
     );
   }
 
+  const privacyBannerItems = (
+    <>
+      <span className="flex items-center whitespace-nowrap">
+        <Eye className="h-3 w-3 mr-1 text-orange-500" />
+        Expires after {getExpiryTimeDisplay(expiryValue)} or 1 read
+      </span>
+      {isPasswordProtected && (
+        <>
+          <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
+          <span className="flex items-center whitespace-nowrap">
+            <Key className="h-3 w-3 mr-1 text-yellow-500" />
+            Password protected
+          </span>
+        </>
+      )}
+      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
+      <span className="flex items-center whitespace-nowrap">
+        <Shield className="h-3 w-3 mr-1 text-green-500" />
+        End-to-end encrypted
+      </span>
+      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
+      <span className="flex items-center whitespace-nowrap">
+        <Lock className="h-3 w-3 mr-1 text-blue-500" />
+        AES-256 GCM
+      </span>
+      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
+      <span className="flex items-center whitespace-nowrap">
+        <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
+        No tracking
+      </span>
+    </>
+  );
+
   // Otherwise show the create form
   return (
     <section className="max-w-3xl mx-auto">
       <div className="pt-4">
         {/* Mode toggle */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
             <button
               type="button"
@@ -981,7 +1275,7 @@ export const CreateNote: React.FC = () => {
             >
               <div className="flex items-center justify-center">
                 <Lock className="h-4 w-4 mr-2" />
-                Write Manually
+                Write
               </div>
             </button>
             <button
@@ -994,7 +1288,8 @@ export const CreateNote: React.FC = () => {
             >
               <div className="flex items-center justify-center">
                 <Sparkles className="h-4 w-4 mr-2" />
-                Write with AI
+                <span className="inline md:hidden">AI</span>
+                <span className="hidden md:inline">Write with AI</span>
                 <span className="ml-1 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
                   Beta
                 </span>
@@ -1178,10 +1473,13 @@ export const CreateNote: React.FC = () => {
                         <p className="flex items-center">
                           <Sparkles className="h-4 w-4 mr-2 flex-shrink-0" />
                           <span>
-                            <strong>Write with AI:</strong> Your prompts will be
-                            processed privately. Note that final content will
-                            still be encrypted in your browser. No data is
-                            stored on our servers.
+                            <strong>Write with AI:</strong> Prompts are processed
+                            under OpenAI&apos;s terms of use, so we cannot
+                            guarantee complete privacy. OpenAI states it does
+                            not train on your data under its policy, but we
+                            cannot independently verify this. Final note content
+                            is still encrypted in your browser, and we do not
+                            store prompts on our servers.
                           </span>
                         </p>
                       </div>
@@ -1205,6 +1503,13 @@ export const CreateNote: React.FC = () => {
                         Back
                       </button>
                     </div>
+                    {/* Size indicator */}
+                    <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 text-right">
+                      {(
+                        new TextEncoder().encode(noteContent).length / 1024
+                      ).toFixed(1)}{" "}
+                      KB / 100 KB
+                    </div>
                     <textarea
                       value={noteContent}
                       onChange={(e) => {
@@ -1222,12 +1527,8 @@ export const CreateNote: React.FC = () => {
                       rows={6}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     />
-                    {/* Size indicator */}
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
-                      {(
-                        new TextEncoder().encode(noteContent).length / 1024
-                      ).toFixed(1)}{" "}
-                      KB / 100 KB
+                    <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      {privacyBannerItems}
                     </div>
                   </div>
                 ) : null}
@@ -1288,6 +1589,13 @@ export const CreateNote: React.FC = () => {
             </div>
           ) : (
             <div className="mb-4">
+              {/* Size indicator */}
+              <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 text-right">
+                {(new TextEncoder().encode(noteContent).length / 1024).toFixed(
+                  1,
+                )}{" "}
+                KB / 50 KB
+              </div>
               <textarea
                 value={noteContent}
                 onChange={(e) => {
@@ -1307,12 +1615,8 @@ export const CreateNote: React.FC = () => {
                 placeholder="Type your confidential message here..."
                 required
               />
-              {/* Size indicator */}
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
-                {(new TextEncoder().encode(noteContent).length / 1024).toFixed(
-                  1,
-                )}{" "}
-                KB / 50 KB
+              <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
+                {privacyBannerItems}
               </div>
             </div>
           )}
@@ -1322,36 +1626,29 @@ export const CreateNote: React.FC = () => {
 
           {/* Advanced options panel - with animation and modern styling */}
           <div
-            className={`mb-6 overflow-hidden transition-all duration-300 ease-in-out ${showAdvancedOptions
+            className={`mb-3 overflow-hidden transition-all duration-300 ease-in-out ${showAdvancedOptions
                 ? "max-h-[500px] opacity-100"
                 : "max-h-0 opacity-0"
               }`}
           >
             <div className="max-w-2xl mx-auto">
-              <div className="flex items-center mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
-                <Shield className="w-5 h-5 text-primary mr-2" />
-                <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">
-                  Custom Settings
-                </h3>
-              </div>
-
               {/* Password protection - just the input field */}
-              <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 mb-3 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-md transition-colors">
+              <div className="mt-2 grid grid-cols-3 gap-2 items-start py-2 px-1 mb-3 transition-colors">
                 <div className="col-span-1">
-                  <label
-                    htmlFor="note-password"
-                    className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    <span className="bg-green-50 dark:bg-green-900/30 p-1 rounded mr-2">
-                      <Lock className="w-4 h-4 text-green-500 dark:text-green-400" />
-                    </span>
-                    <div>
-                      <span className="block">Password</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">
-                        Recipients will need a password to decrypt
+                  <div className="flex flex-col">
+                    <label
+                      htmlFor="note-password"
+                      className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 pt-0.5"
+                    >
+                      <span className="bg-green-50 dark:bg-green-900/30 p-1 rounded mr-2">
+                        <Lock className="w-4 h-4 text-green-500 dark:text-green-400" />
                       </span>
+                      <span className="block">Password</span>
+                    </label>
+                    <div className="mt-1 text-[10px] text-gray-400">
+                      Powered by passwords.lu
                     </div>
-                  </label>
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <div className="relative">
@@ -1360,7 +1657,10 @@ export const CreateNote: React.FC = () => {
                         id="note-password"
                         type={showPassword ? "text" : "password"}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setPasswordSource("manual");
+                        }}
                         placeholder="Enter a secure password (optional)"
                         className="w-full px-2.5 py-1.5 text-sm rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
                       />
@@ -1413,9 +1713,10 @@ export const CreateNote: React.FC = () => {
                       <div className="flex">
                         <button
                           type="button"
-                          onClick={() =>
-                            setPassword(generateHumanFriendlyPassword())
-                          }
+                          onClick={() => {
+                            setPassword(generateHumanFriendlyPassword());
+                            setPasswordSource("simple");
+                          }}
                           className="px-2 py-1.5 bg-green-50 dark:bg-green-900/30 border border-gray-300 dark:border-gray-600 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center"
                           title="Generate human-friendly password (easy to remember)"
                         >
@@ -1424,9 +1725,10 @@ export const CreateNote: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setPassword(generateStrongPassword())
-                          }
+                          onClick={() => {
+                            setPassword(generateStrongPassword());
+                            setPasswordSource("strong");
+                          }}
                           className="px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-t border-r border-b border-gray-300 dark:border-gray-600 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-r-md flex items-center"
                           title="Generate strong password (very secure)"
                         >
@@ -1435,13 +1737,40 @@ export const CreateNote: React.FC = () => {
                         </button>
                       </div>
                     </div>
+                    {password.trim() && (
+                      <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {passwordStrength && (
+                            <span className="whitespace-nowrap">
+                              Strength{" "}
+                              <span className={`font-medium ${passwordStrength.color}`}>
+                                {passwordStrength.label}
+                              </span>
+                            </span>
+                          )}
+                          <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full"></span>
+                          <span className="whitespace-nowrap">
+                            {breachState === "checking" && "Checking breaches"}
+                            {breachState === "safe" && "Not found in breaches"}
+                            {breachState === "pwned" &&
+                              `Found in breaches${
+                                breachCount ? ` (${breachCount.toLocaleString()})` : ""
+                              }`}
+                            {breachState === "error" && "Breach check unavailable"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Recipients will need a password to decrypt
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Time settings with improved design */}
               <div className="mt-3 flex flex-col space-y-2">
-                <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-md transition-colors">
+                <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 transition-colors">
                   <div className="col-span-1">
                     <label
                       htmlFor="expiry-days"
@@ -1492,7 +1821,7 @@ export const CreateNote: React.FC = () => {
                 </div>
 
                 {/* View Limit is now fixed to once, so we display info about this instead of a selector */}
-                <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-md transition-colors">
+                <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 transition-colors">
                   <div className="col-span-1">
                     <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                       <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
@@ -1528,7 +1857,7 @@ export const CreateNote: React.FC = () => {
               2. We're in AI mode and content has been finalized (accepted)
           */}
           {!isAiMode || (noteContent && isAiMode && contentFinalized) ? (
-            <div className="space-y-4 mt-3">
+            <div className="space-y-3 mt-1">
               {/* Button row - Settings and Create together */}
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:justify-between">
                 {/* Custom Settings button - same size as create button, aligned left */}
@@ -1589,42 +1918,6 @@ export const CreateNote: React.FC = () => {
                 </button>
               </div>
 
-              {/* Privacy info banner with expiration info */}
-              <div className="flex flex-wrap items-start justify-start gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400 py-1">
-                <span className="flex items-center whitespace-nowrap">
-                  <Eye className="h-3 w-3 mr-1 text-orange-500" />
-                  Expires after {getExpiryTimeDisplay(expiryValue)} or 1 read
-                </span>
-                {isPasswordProtected && (
-                  <>
-                    <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
-                    <span className="flex items-center whitespace-nowrap">
-                      <Key className="h-3 w-3 mr-1 text-yellow-500" />
-                      Password protected
-                    </span>
-                  </>
-                )}
-                <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
-                <span className="flex items-center whitespace-nowrap">
-                  <Shield className="h-3 w-3 mr-1 text-green-500" />
-                  End-to-end encrypted
-                </span>
-                <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
-                <span className="flex items-center whitespace-nowrap">
-                  <Lock className="h-3 w-3 mr-1 text-blue-500" />
-                  AES-256 GCM
-                </span>
-                <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
-                <span className="flex items-center whitespace-nowrap">
-                  <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
-                  No tracking
-                </span>
-                <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block"></span>
-                <span className="flex items-center whitespace-nowrap">
-                  <Shield className="h-3 w-3 mr-1 text-red-500 opacity-20" />
-                  No ads
-                </span>
-              </div>
             </div>
           ) : null}
 
