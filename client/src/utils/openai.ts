@@ -2,13 +2,14 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface AiEnhanceResponse {
   content: string;
+  remainingUses?: number;
 }
 
 export async function enhanceNoteWithAI(
   noteContent: string,
   enhancementType: 'improve' | 'summarize' | 'secure',
   turnstileToken?: string | null,
-): Promise<string> {
+): Promise<AiEnhanceResponse> {
   try {
     const response = await apiRequest<AiEnhanceResponse>("/api/ai/enhance", "POST", {
       content: noteContent,
@@ -16,7 +17,10 @@ export async function enhanceNoteWithAI(
       turnstileToken: turnstileToken || undefined,
     });
 
-    return response.content || noteContent;
+    return {
+      content: response.content || noteContent,
+      remainingUses: response.remainingUses,
+    };
   } catch (error) {
     console.error("Error enhancing note with AI:", error);
     if (error instanceof Error) {

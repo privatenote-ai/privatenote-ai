@@ -1,6 +1,7 @@
 import { CompositeStorage } from "./storage";
 import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
+import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 
 // Allowed origins for CORS
@@ -18,6 +19,12 @@ const RATE_LIMIT = {
   MAX_REQUESTS: 10, // requests per window
   WINDOW_SECONDS: 60, // 1 minute window
   KEY_PREFIX: 'rate_limit:',
+};
+
+const AI_VERIFICATION = {
+  USES: 5,
+  TTL_SECONDS: 10 * 60,
+  KEY_PREFIX: "ai_verify:",
 };
 
 // Get allowed origin for CORS
@@ -99,6 +106,42 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     status,
     headers,
   });
+}
+
+async function getAiVerificationRemaining(
+  kv: KVNamespace,
+  clientId: string,
+): Promise<number | null> {
+  const key = `${AI_VERIFICATION.KEY_PREFIX}${clientId}`;
+  try {
+    const raw = await kv.get(key);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { remaining?: number };
+    if (typeof parsed.remaining === "number" && parsed.remaining > 0) {
+      return parsed.remaining;
+    }
+    return null;
+  } catch (error) {
+    console.warn("[AI] Failed to read verification cache:", error);
+    return null;
+  }
+}
+
+async function setAiVerificationRemaining(
+  kv: KVNamespace,
+  clientId: string,
+  remaining: number,
+): Promise<void> {
+  const key = `${AI_VERIFICATION.KEY_PREFIX}${clientId}`;
+  try {
+    await kv.put(key, JSON.stringify({ remaining }), {
+      expirationTtl: AI_VERIFICATION.TTL_SECONDS,
+    });
+  } catch (error) {
+    console.warn("[AI] Failed to write verification cache:", error);
+  }
 }
 
 async function verifyTurnstile(
@@ -361,10 +404,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ message: "Invalid enhancement type" }, 400, request);
     }
 
-    const isHuman = await verifyTurnstile(turnstileToken, request, env);
-    if (!isHuman) {
-      return jsonResponse({ error: "Human verification failed" }, 403, request);
+    const clientId = getClientIdentifier(request);
+    const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
+    let remainingUses = 0;
+
+    if (turnstileToken) {
+      const isHuman = await verifyTurnstile(turnstileToken, request, env);
+      if (!isHuman) {
+        return jsonResponse({ error: "Human verification failed" }, 403, request);
+      }
+      remainingUses = AI_VERIFICATION.USES;
+    } else {
+      const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
+      if (!cachedRemaining) {
+        return jsonResponse({ error: "Human verification required" }, 403, request);
+      }
+      remainingUses = cachedRemaining;
     }
+
+    remainingUses = Math.max(remainingUses - 1, 0);
+    await setAiVerificationRemaining(verificationKv, clientId, remainingUses);
 
     const systemPrompts: Record<string, string> = {
       improve: "You are an expert editor. Improve the text by fixing grammar, enhancing clarity, and making it more professional while maintaining the original meaning. Return only the improved text with no additional explanations.",
@@ -425,7 +484,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ message: "AI response was empty" }, 502, request);
       }
 
-      return jsonResponse({ content: output }, 200, request);
+      return jsonResponse({ content: output, remainingUses }, 200, request);
     } catch (error) {
       console.error("[AI] Error calling OpenAI:", error);
       return jsonResponse({ message: "AI request failed" }, 502, request);
@@ -465,9 +524,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const aiMode = !!requestBody?.aiMode;
     if (aiMode) {
-      const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
-      if (!isHuman) {
-        return jsonResponse({ error: "Human verification failed" }, 403, request);
+      const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
+      const clientId = getClientIdentifier(request);
+
+      if (requestBody?.turnstileToken) {
+        const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
+        if (!isHuman) {
+          return jsonResponse({ error: "Human verification failed" }, 403, request);
+        }
+        await setAiVerificationRemaining(verificationKv, clientId, AI_VERIFICATION.USES);
+      } else {
+        const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
+        if (!cachedRemaining) {
+          return jsonResponse({ error: "Human verification required" }, 403, request);
+        }
       }
     }
 

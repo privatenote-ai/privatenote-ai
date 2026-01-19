@@ -465,6 +465,7 @@ export const CreateNote: React.FC = () => {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [aiUsesRemaining, setAiUsesRemaining] = useState<number>(0);
 
   const resetTurnstile = () => {
     setTurnstileToken(null);
@@ -472,6 +473,27 @@ export const CreateNote: React.FC = () => {
       window.turnstile.reset(turnstileWidgetIdRef.current);
     }
   };
+
+  const handleAiUsageUpdate = (remaining?: number) => {
+    if (typeof remaining === "number") {
+      setAiUsesRemaining(remaining);
+      setTurnstileToken(null);
+      if (remaining <= 0) {
+        resetTurnstile();
+      }
+    }
+  };
+
+  const handleAiVerificationError = (error: unknown) => {
+    if (error instanceof Error && error.message.includes("Human verification")) {
+      setAiUsesRemaining(0);
+      setTurnstileError("Human verification required. Please try again.");
+      resetTurnstile();
+    }
+  };
+
+  const shouldShowTurnstile = isAiMode && aiUsesRemaining <= 0;
+  const getAiRequestToken = () => (shouldShowTurnstile ? turnstileToken : null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
@@ -715,6 +737,12 @@ export const CreateNote: React.FC = () => {
       setTurnstileToken(null);
       setTurnstileError(null);
       setTurnstileReady(false);
+      setAiUsesRemaining(0);
+      return;
+    }
+
+    if (!shouldShowTurnstile) {
+      setTurnstileReady(false);
       return;
     }
 
@@ -778,7 +806,7 @@ export const CreateNote: React.FC = () => {
         turnstileWidgetIdRef.current = null;
       }
     };
-  }, [isAiMode]);
+  }, [isAiMode, shouldShowTurnstile]);
 
   const copyToClipboard = () => {
     if (noteUrl) {
@@ -928,13 +956,14 @@ export const CreateNote: React.FC = () => {
 
     try {
       // Use our OpenAI integration to generate content with the selected enhancement type
-      const aiGeneratedContent = await enhanceNoteWithAI(
+      const aiResponse = await enhanceNoteWithAI(
         aiPrompt,
         aiEnhancementType,
-        turnstileToken,
+        getAiRequestToken(),
       );
 
-      setNoteContent(aiGeneratedContent);
+      setNoteContent(aiResponse.content);
+      handleAiUsageUpdate(aiResponse.remainingUses);
 
       // Hide prompt and show generated content
       setShowPrompt(false);
@@ -945,6 +974,7 @@ export const CreateNote: React.FC = () => {
       });
     } catch (error) {
       console.error("Error generating AI content:", error);
+      handleAiVerificationError(error);
 
       toast({
         title: "Error",
@@ -953,7 +983,6 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
-      resetTurnstile();
     }
   };
 
@@ -1003,14 +1032,20 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const improvedContent = await enhanceNoteWithAI(noteContent, "improve", turnstileToken);
-      setNoteContent(improvedContent);
+      const aiResponse = await enhanceNoteWithAI(
+        noteContent,
+        "improve",
+        getAiRequestToken(),
+      );
+      setNoteContent(aiResponse.content);
+      handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
         title: "Content Improved",
         description:
           "The AI has refined your content for better clarity and style.",
       });
     } catch (error) {
+      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to improve content. Please try again.",
@@ -1018,7 +1053,6 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
-      resetTurnstile();
     }
   };
 
@@ -1033,17 +1067,19 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const summarizedContent = await enhanceNoteWithAI(
+      const aiResponse = await enhanceNoteWithAI(
         noteContent,
         "summarize",
-        turnstileToken,
+        getAiRequestToken(),
       );
-      setNoteContent(summarizedContent);
+      setNoteContent(aiResponse.content);
+      handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
         title: "Content Summarized",
         description: "The AI has summarized your content to its key points.",
       });
     } catch (error) {
+      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to summarize content. Please try again.",
@@ -1051,7 +1087,6 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
-      resetTurnstile();
     }
   };
 
@@ -1066,13 +1101,19 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const simplifiedContent = await enhanceNoteWithAI(noteContent, "improve", turnstileToken);
-      setNoteContent(simplifiedContent);
+      const aiResponse = await enhanceNoteWithAI(
+        noteContent,
+        "improve",
+        getAiRequestToken(),
+      );
+      setNoteContent(aiResponse.content);
+      handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
         title: "Content Simplified",
         description: "The AI has simplified your content for easier reading.",
       });
     } catch (error) {
+      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to simplify content. Please try again.",
@@ -1080,7 +1121,6 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
-      resetTurnstile();
     }
   };
 
@@ -1095,18 +1135,20 @@ export const CreateNote: React.FC = () => {
 
     setIsGeneratingContent(true);
     try {
-      const newContent = await enhanceNoteWithAI(
+      const aiResponse = await enhanceNoteWithAI(
         originalPrompt,
         aiEnhancementType,
-        turnstileToken,
+        getAiRequestToken(),
       );
-      setNoteContent(newContent);
+      setNoteContent(aiResponse.content);
+      handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
         title: "Content Regenerated",
         description:
           "The AI has created a new version based on your original prompt.",
       });
     } catch (error) {
+      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to regenerate content. Please try again.",
@@ -1114,7 +1156,6 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
-      resetTurnstile();
     }
   };
 
@@ -1125,6 +1166,36 @@ export const CreateNote: React.FC = () => {
       description: "You can now proceed to create an encrypted note.",
     });
   };
+
+  const aiVerificationPanel = isAiMode ? (
+    <div className="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-3">
+      <div className="text-sm text-gray-700 dark:text-gray-300">
+        {shouldShowTurnstile
+          ? "Verify you are human to use AI mode."
+          : "AI verification active."}
+      </div>
+      {shouldShowTurnstile ? (
+        <>
+          <div id="turnstile-container" className="min-h-[65px]" />
+          {!turnstileReady && !turnstileError && (
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Loading verification...
+            </div>
+          )}
+          {turnstileError && (
+            <div className="text-xs text-red-600 dark:text-red-400">
+              {turnstileError}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-xs text-gray-600 dark:text-gray-400">
+          Verification active for {aiUsesRemaining} more prompt
+          {aiUsesRemaining === 1 ? "" : "s"}.
+        </div>
+      )}
+    </div>
+  ) : null;
 
   // If we have a note URL, show the result page
   if (noteUrl) {
@@ -1461,24 +1532,7 @@ export const CreateNote: React.FC = () => {
                     {/* Write with AI Mode Notice - moved here from top */}
                     <div className="mt-3 space-y-3">
                       {/* Cloudflare Turnstile (AI mode only) */}
-                      {isAiMode && (
-                        <div className="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-3">
-                          <div className="text-sm text-gray-700 dark:text-gray-300">
-                            Verify you are human to use AI mode.
-                          </div>
-                          <div id="turnstile-container" className="min-h-[65px]" />
-                          {!turnstileReady && !turnstileError && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              Loading verification...
-                            </div>
-                          )}
-                          {turnstileError && (
-                            <div className="text-xs text-red-600 dark:text-red-400">
-                              {turnstileError}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {aiVerificationPanel}
 
                       {/* Original AI notice */}
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200">
@@ -1515,6 +1569,7 @@ export const CreateNote: React.FC = () => {
                         Back
                       </button>
                     </div>
+                    {aiVerificationPanel}
                     {/* Size indicator */}
                     <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 text-right">
                       {(
