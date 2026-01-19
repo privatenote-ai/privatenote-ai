@@ -30,103 +30,165 @@ export function SecureNoteIllustration({
         <div className="motion-reduce:transform-none motion-reduce:animate-none">
           <svg
             viewBox="0 0 360 200"
-            className="h-44 w-full max-w-md text-gray-700 dark:text-gray-200 animate-[floatSlow_6s_ease-in-out_infinite] motion-reduce:animate-none"
-            aria-hidden="true"
+            className="h-44 w-full max-w-md animate-[floatSlow_6s_ease-in-out_infinite] motion-reduce:animate-none"
+            role="img"
+            aria-label="Secure note with encryption illustration"
             focusable="false"
           >
-            {/* Card */}
-            <rect
-              x="12"
-              y="18"
-              width="220"
-              height="150"
-              rx="18"
-              fill="currentColor"
-              fillOpacity="0.04"
-            />
-            <rect
-              x="28"
-              y="36"
-              width="188"
-              height="20"
-              rx="10"
-              fill="currentColor"
-              fillOpacity="0.1"
-            />
-            <rect
-              x="28"
-              y="68"
-              width="156"
-              height="16"
-              rx="8"
-              fill="currentColor"
-              fillOpacity="0.08"
-            />
-            <rect
-              x="28"
-              y="96"
-              width="168"
-              height="16"
-              rx="8"
-              fill="currentColor"
-              fillOpacity="0.08"
-            />
-            <rect
-              x="28"
-              y="124"
-              width="120"
-              height="16"
-              rx="8"
-              fill="currentColor"
-              fillOpacity="0.08"
-            />
+            {/* Document Card */}
+            <g id="doc">
+              <rect
+                x="30"
+                y="40"
+                width="120"
+                height="120"
+                rx="12"
+                fill="hsl(var(--secondary))"
+                stroke="hsl(var(--border))"
+                strokeWidth="2"
+              />
+            </g>
 
-            {/* Lock halo (pulse) */}
-            <circle
-              cx="270"
-              cy="92"
-              r="40"
-              fill="currentColor"
-              fillOpacity="0.06"
-              className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
-            />
+            {/* Text Bars */}
+            <g id="bars">
+              {/* Title bar */}
+              <rect
+                x="50"
+                y="65"
+                width="60"
+                height="8"
+                rx="4"
+                fill="hsl(var(--muted-foreground))"
+                fillOpacity="0.7"
+              />
 
-            {/* Shackle */}
-            <path
-              d="M252 96v-12c0-8.3 6.7-15 15-15s15 6.7 15 15v12"
-              stroke="currentColor"
-              strokeOpacity="0.5"
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
+              {/* Content bars */}
+              <rect
+                x="50"
+                y="85"
+                width="80"
+                height="6"
+                rx="3"
+                fill="hsl(var(--muted))"
+              />
+              <rect
+                x="50"
+                y="100"
+                width="75"
+                height="6"
+                rx="3"
+                fill="hsl(var(--muted))"
+              />
+              <rect
+                x="50"
+                y="115"
+                width="70"
+                height="6"
+                rx="3"
+                fill="hsl(var(--muted))"
+              />
+              <rect
+                x="50"
+                y="130"
+                width="55"
+                height="6"
+                rx="3"
+                fill="hsl(var(--border))"
+              />
+            </g>
 
-            {/* Lock body (pulse) */}
-            <rect
-              x="248"
-              y="96"
-              width="38"
-              height="32"
-              rx="8"
-              fill="currentColor"
-              fillOpacity="0.12"
-              stroke="currentColor"
-              strokeOpacity="0.4"
-              strokeWidth="3"
-              className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
-            />
-            <circle cx="267" cy="112" r="3.5" fill="currentColor" fillOpacity="0.45" />
+            {/* Transfer Line (curved dashed) */}
+            <g id="transfer">
+              <path
+                d="M 165 100 Q 215 80, 250 100"
+                stroke="hsl(var(--primary))"
+                strokeOpacity="0.6"
+                strokeWidth="2"
+                strokeDasharray="6 8"
+                fill="none"
+                strokeLinecap="round"
+                className="animate-[shimmer_4s_linear_infinite] motion-reduce:animate-none"
+                style={{ strokeDashoffset: 120 }}
+              />
+            </g>
 
-            {/* Encryption flow (dashed shimmer) */}
-            <path
-              d="M200 154c18 8 38 12 60 12 36 0 68-11 96-32"
-              stroke="currentColor"
-              strokeOpacity="0.25"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray="6 10"
-              className="animate-[shimmer_4s_linear_infinite] motion-reduce:animate-none"
-              style={{ strokeDashoffset: 120 }}
-            />
+            {/* Lock Halo */}
+            <g id="halo">
+              <circle
+                cx="290"
+                cy="100"
+                r="35"
+                fill="hsl(var(--primary))"
+                opacity="0.12"
+                className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
+              />
+            </g>
+
+            {/* Lock */}
+            <g id="lock">
+              {/* Lock body */}
+              <rect
+                x="275"
+                y="100"
+                width="30"
+                height="25"
+                rx="4"
+                fill="hsl(var(--primary))"
+                className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
+              />
+
+              {/* Lock shackle */}
+              <path
+                d="M 280 100 V 92 Q 280 85, 287 85 H 293 Q 300 85, 300 92 V 100"
+                stroke="hsl(var(--primary))"
+                strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+              />
+
+              {/* Keyhole accent */}
+              <circle
+                cx="290"
+                cy="109"
+                r="3"
+                fill="hsl(var(--primary-foreground))"
+                fillOpacity="0.9"
+              />
+              <rect
+                x="289"
+                y="110"
+                width="2"
+                height="6"
+                rx="1"
+                fill="hsl(var(--primary-foreground))"
+                fillOpacity="0.9"
+              />
+            </g>
+
+            {/* Spark Dots */}
+            <g id="dots">
+              <circle
+                cx="318"
+                cy="80"
+                r="2.5"
+                fill="hsl(var(--primary))"
+                fillOpacity="0.7"
+              />
+              <circle
+                cx="326"
+                cy="95"
+                r="2"
+                fill="hsl(var(--primary))"
+                fillOpacity="0.5"
+              />
+              <circle
+                cx="322"
+                cy="118"
+                r="2.5"
+                fill="hsl(var(--primary))"
+                fillOpacity="0.8"
+              />
+            </g>
           </svg>
         </div>
 
