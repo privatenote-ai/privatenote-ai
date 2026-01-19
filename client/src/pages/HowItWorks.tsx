@@ -16,6 +16,7 @@ import {
   Timer,
   XCircle,
 } from 'lucide-react';
+import { SecureNoteIllustration } from '@/components/SecureNoteIllustration';
 
 export default function HowItWorks() {
   const [mode, setMode] = useState<'manual' | 'ai'>('manual');
@@ -127,49 +128,7 @@ export default function HowItWorks() {
 
           <div className="mt-6">
             <div className="flex flex-col items-center text-center">
-              <svg
-                viewBox="0 0 360 200"
-                className="h-44 w-full max-w-md text-gray-700 dark:text-gray-200"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <rect x="12" y="18" width="220" height="150" rx="18" fill="currentColor" fillOpacity="0.04" />
-                <rect x="28" y="36" width="188" height="20" rx="10" fill="currentColor" fillOpacity="0.1" />
-                <rect x="28" y="68" width="156" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
-                <rect x="28" y="96" width="168" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
-                <rect x="28" y="124" width="120" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
-                <circle cx="270" cy="92" r="40" fill="currentColor" fillOpacity="0.06" />
-                <path
-                  d="M252 96v-12c0-8.3 6.7-15 15-15s15 6.7 15 15v12"
-                  stroke="currentColor"
-                  strokeOpacity="0.5"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                <rect
-                  x="248"
-                  y="96"
-                  width="38"
-                  height="32"
-                  rx="8"
-                  fill="currentColor"
-                  fillOpacity="0.12"
-                  stroke="currentColor"
-                  strokeOpacity="0.4"
-                  strokeWidth="3"
-                />
-                <circle cx="267" cy="112" r="3.5" fill="currentColor" fillOpacity="0.45" />
-                <path
-                  d="M200 154c18 8 38 12 60 12 36 0 68-11 96-32"
-                  stroke="currentColor"
-                  strokeOpacity="0.2"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-                Your words stay on your device. They are encrypted before anything leaves it.
-              </p>
+              <SecureNoteIllustration caption="Your words stay on your device. They are encrypted before anything leaves it." />
             </div>
 
             {mode === 'ai' && (
