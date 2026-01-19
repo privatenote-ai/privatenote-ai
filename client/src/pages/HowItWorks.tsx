@@ -79,7 +79,7 @@ export default function HowItWorks() {
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
         </Link>
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight -mt-6">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight mt-2">
             How PrivateNote Works
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -125,59 +125,66 @@ export default function HowItWorks() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            <div>
-              {mode === 'ai' && (
-                <div className="rounded-xl border border-amber-200/60 bg-amber-50/80 p-4 text-sm text-amber-900 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-100">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <p className="font-semibold">AI mode shares your prompt with a third-party model provider.</p>
-                      <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-100/80">
-                        We don’t store prompts, but third-party processing means it is less private than manual mode.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-900/70 p-4 shadow-sm">
+          <div className="mt-6">
+            <div className="flex flex-col items-center text-center">
               <svg
-                viewBox="0 0 320 180"
-                className="h-40 w-full"
+                viewBox="0 0 360 200"
+                className="h-44 w-full max-w-md text-gray-700 dark:text-gray-200"
                 aria-hidden="true"
                 focusable="false"
               >
-                <rect x="6" y="8" width="308" height="164" rx="18" fill="none" stroke="currentColor" strokeOpacity="0.15" />
-                <path d="M40 60h120" stroke="currentColor" strokeOpacity="0.25" strokeWidth="8" strokeLinecap="round" />
-                <path d="M40 90h200" stroke="currentColor" strokeOpacity="0.2" strokeWidth="8" strokeLinecap="round" />
-                <path d="M40 120h150" stroke="currentColor" strokeOpacity="0.18" strokeWidth="8" strokeLinecap="round" />
-                <circle cx="250" cy="70" r="26" fill="currentColor" fillOpacity="0.06" />
+                <rect x="12" y="18" width="220" height="150" rx="18" fill="currentColor" fillOpacity="0.04" />
+                <rect x="28" y="36" width="188" height="20" rx="10" fill="currentColor" fillOpacity="0.1" />
+                <rect x="28" y="68" width="156" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
+                <rect x="28" y="96" width="168" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
+                <rect x="28" y="124" width="120" height="16" rx="8" fill="currentColor" fillOpacity="0.08" />
+                <circle cx="270" cy="92" r="40" fill="currentColor" fillOpacity="0.06" />
                 <path
-                  d="M238 74v-8c0-6.6 5.4-12 12-12s12 5.4 12 12v8"
+                  d="M252 96v-12c0-8.3 6.7-15 15-15s15 6.7 15 15v12"
                   stroke="currentColor"
-                  strokeOpacity="0.4"
+                  strokeOpacity="0.5"
                   strokeWidth="4"
                   strokeLinecap="round"
                 />
                 <rect
-                  x="236"
-                  y="74"
-                  width="28"
-                  height="26"
-                  rx="6"
+                  x="248"
+                  y="96"
+                  width="38"
+                  height="32"
+                  rx="8"
                   fill="currentColor"
-                  fillOpacity="0.1"
+                  fillOpacity="0.12"
                   stroke="currentColor"
-                  strokeOpacity="0.35"
+                  strokeOpacity="0.4"
                   strokeWidth="3"
                 />
-                <circle cx="250" cy="87" r="3" fill="currentColor" fillOpacity="0.4" />
+                <circle cx="267" cy="112" r="3.5" fill="currentColor" fillOpacity="0.45" />
+                <path
+                  d="M200 154c18 8 38 12 60 12 36 0 68-11 96-32"
+                  stroke="currentColor"
+                  strokeOpacity="0.2"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
               </svg>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Your words stay local. Encryption happens before anything leaves your device.
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 max-w-sm">
+                Your words stay on your device. They are encrypted before anything leaves it.
               </p>
             </div>
+
+            {mode === 'ai' && (
+              <div className="mt-4 text-sm text-amber-900/90 dark:text-amber-100/90">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="font-semibold">AI mode shares your prompt with a third-party model provider.</p>
+                    <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-100/80">
+                      We don’t store prompts, but third-party processing means it is less private than manual mode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
