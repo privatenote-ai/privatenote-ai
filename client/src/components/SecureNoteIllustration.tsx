@@ -20,20 +20,17 @@ export function SecureNoteIllustration({
   return (
     <div className={`mt-6 ${className}`}>
       <div className="flex flex-col items-center text-center">
-        {/* Local keyframes (scoped, no global CSS needed) */}
-        <style>{`
-          @keyframes floatSlow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-          @keyframes lockPulse { 0%,100% { opacity: .35; } 50% { opacity: .65; } }
-          @keyframes shimmer { 0% { stroke-dashoffset: 120; } 100% { stroke-dashoffset: 0; } }
-        `}</style>
-
-        <div className="motion-reduce:transform-none motion-reduce:animate-none">
+        <div>
           <svg
+            width="360"
+            height="200"
             viewBox="0 0 360 200"
-            className="h-44 w-full max-w-md animate-[floatSlow_6s_ease-in-out_infinite] motion-reduce:animate-none"
+            fill="none"
+            className="h-44 w-full max-w-md"
             role="img"
             aria-label="Secure note with encryption illustration"
             focusable="false"
+            xmlns="http://www.w3.org/2000/svg"
           >
             {/* Document Card */}
             <g id="doc">
@@ -107,8 +104,6 @@ export function SecureNoteIllustration({
                 strokeDasharray="6 8"
                 fill="none"
                 strokeLinecap="round"
-                className="animate-[shimmer_4s_linear_infinite] motion-reduce:animate-none"
-                style={{ strokeDashoffset: 120 }}
               />
             </g>
 
@@ -120,7 +115,6 @@ export function SecureNoteIllustration({
                 r="35"
                 fill="hsl(var(--primary))"
                 opacity="0.12"
-                className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
               />
             </g>
 
@@ -134,7 +128,6 @@ export function SecureNoteIllustration({
                 height="25"
                 rx="4"
                 fill="hsl(var(--primary))"
-                className="animate-[lockPulse_3.5s_ease-in-out_infinite] motion-reduce:animate-none"
               />
 
               {/* Lock shackle */}
