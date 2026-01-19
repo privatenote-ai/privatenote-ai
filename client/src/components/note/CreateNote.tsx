@@ -348,6 +348,13 @@ interface PromptTemplate {
   enhancementType: "improve" | "summarize" | "secure";
 }
 
+type AiAction =
+  | { kind: "generate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" }
+  | { kind: "improve"; content: string }
+  | { kind: "summarize"; content: string }
+  | { kind: "simplify"; content: string }
+  | { kind: "regenerate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" };
+
 const promptTemplates: PromptTemplate[] = [
   // Top 5 most frequently used templates displayed by default
   {
@@ -466,8 +473,11 @@ export const CreateNote: React.FC = () => {
   const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const [aiUsesRemaining, setAiUsesRemaining] = useState<number>(0);
+  const [aiVerificationRequested, setAiVerificationRequested] = useState(false);
+  const [pendingAiAction, setPendingAiAction] = useState<AiAction | null>(null);
 
   const resetTurnstile = () => {
+    console.log("[AI][Turnstile] Reset requested");
     setTurnstileToken(null);
     setTurnstileError(null);
     if (turnstileWidgetIdRef.current !== null && window.turnstile) {
@@ -488,26 +498,45 @@ export const CreateNote: React.FC = () => {
 
   const handleAiUsageUpdate = (remaining?: number) => {
     if (typeof remaining === "number") {
+      console.log("[AI] Remaining uses updated:", remaining);
       setAiUsesRemaining(remaining);
+      setAiVerificationRequested(false);
       setTurnstileToken(null);
-      if (remaining <= 0) {
-        resetTurnstile();
-      }
+      resetTurnstile();
     }
   };
 
   const handleAiVerificationError = (error: unknown) => {
     if (error instanceof Error && error.message.includes("Human verification")) {
+      console.warn("[AI] Verification error:", error.message);
       setAiUsesRemaining(0);
       setTurnstileError("Human verification required. Please try again.");
+      setAiVerificationRequested(true);
       // Reset Turnstile and force re-initialization
       resetTurnstile();
       setTurnstileReady(false);
     }
   };
 
-  const shouldShowTurnstile = isAiMode && aiUsesRemaining <= 0;
+  const shouldShowTurnstile = isAiMode && aiUsesRemaining <= 0 && aiVerificationRequested;
   const getAiRequestToken = () => (shouldShowTurnstile ? turnstileToken : null);
+  const shouldRequireVerification = isAiMode && aiUsesRemaining <= 0;
+
+  const requestAiVerification = () => {
+    console.log("[AI] Verification requested (no action queued)");
+    setAiVerificationRequested(true);
+    setPendingAiAction(null);
+    setTurnstileError(null);
+    setTurnstileReady(false);
+  };
+
+  const queueAiVerification = (action: AiAction) => {
+    console.log("[AI] Verification requested; action queued:", action.kind);
+    setAiVerificationRequested(true);
+    setPendingAiAction(action);
+    setTurnstileError(null);
+    setTurnstileReady(false);
+  };
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
@@ -682,7 +711,9 @@ export const CreateNote: React.FC = () => {
         if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
           throw new Error("Human verification is not configured.");
         }
-        if (!turnstileToken) {
+        if (shouldRequireVerification && !turnstileToken) {
+          console.log("[AI] Note creation blocked; verification required");
+          requestAiVerification();
           throw new Error("Please complete the human verification.");
         }
       }
@@ -694,7 +725,7 @@ export const CreateNote: React.FC = () => {
         expirySeconds,
         maxReads: readCount,
         aiMode: isAiMode,
-        turnstileToken: turnstileToken || undefined,
+        turnstileToken: getAiRequestToken() || undefined,
         // Include password protection fields if enabled
         isPasswordProtected,
         ...(isPasswordProtected && {
@@ -711,9 +742,11 @@ export const CreateNote: React.FC = () => {
       const url = `${baseUrl}/note/${id}#${urlKey}`;
 
       // Set the URL for display
+      console.log("[AI] Note created; resetting verification state");
       setNoteUrl(url);
       setTurnstileToken(null);
       setTurnstileError(null);
+      setAiVerificationRequested(false);
       if (turnstileWidgetIdRef.current !== null && window.turnstile) {
         window.turnstile.reset(turnstileWidgetIdRef.current);
       }
@@ -752,11 +785,15 @@ export const CreateNote: React.FC = () => {
       setTurnstileError(null);
       setTurnstileReady(false);
       setAiUsesRemaining(0);
+      setAiVerificationRequested(false);
+      setPendingAiAction(null);
+      console.log("[AI] AI mode disabled; reset verification state");
       return;
     }
 
     if (!shouldShowTurnstile) {
       setTurnstileReady(false);
+      console.log("[AI] Turnstile hidden");
       return;
     }
 
@@ -772,6 +809,7 @@ export const CreateNote: React.FC = () => {
       if (!window.turnstile) {
         return;
       }
+      console.log("[AI][Turnstile] Rendering widget");
       const container = document.getElementById("turnstile-container");
       if (!container) {
         return;
@@ -790,16 +828,19 @@ export const CreateNote: React.FC = () => {
       const widgetId = window.turnstile.render(container, {
         sitekey: siteKey,
         callback: (token: string) => {
+          console.log("[AI][Turnstile] Token received");
           setTurnstileToken(token);
           setTurnstileError(null);
         },
         "error-callback": () => {
+          console.warn("[AI][Turnstile] Error callback");
           setTurnstileToken(null);
           setTurnstileError("Human verification failed. Please try again.");
           // Reset widget ID so it can be recreated
           turnstileWidgetIdRef.current = null;
         },
         "expired-callback": () => {
+          console.warn("[AI][Turnstile] Token expired");
           setTurnstileToken(null);
         },
       });
@@ -943,8 +984,14 @@ export const CreateNote: React.FC = () => {
     // Removed notification toast for cleaner UX
   };
 
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) {
+  const handleAiGenerate = async (override?: {
+    prompt?: string;
+    enhancementType?: "improve" | "summarize" | "secure";
+  }) => {
+    const promptToUse = override?.prompt ?? aiPrompt;
+    const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
+
+    if (!promptToUse.trim()) {
       toast({
         title: "Error",
         description: "Please enter a prompt for the AI",
@@ -953,11 +1000,21 @@ export const CreateNote: React.FC = () => {
       return;
     }
 
+    if (shouldRequireVerification && !turnstileToken) {
+      console.log("[AI] Generate blocked; verification required");
+      queueAiVerification({
+        kind: "generate",
+        prompt: promptToUse,
+        enhancementType: enhancementTypeToUse,
+      });
+      return;
+    }
+
     setIsGeneratingContent(true);
 
     // If this is the first prompt, store it as the original prompt
     if (!originalPrompt) {
-      setOriginalPrompt(aiPrompt);
+      setOriginalPrompt(promptToUse);
     }
 
     // Only add the prompt to history if it's not already the last entry
@@ -966,9 +1023,9 @@ export const CreateNote: React.FC = () => {
       // If history is empty or the last entry is different from current prompt
       if (
         prevHistory.length === 0 ||
-        prevHistory[prevHistory.length - 1] !== aiPrompt
+        prevHistory[prevHistory.length - 1] !== promptToUse
       ) {
-        return [...prevHistory, aiPrompt];
+        return [...prevHistory, promptToUse];
       }
       return prevHistory;
     });
@@ -979,10 +1036,11 @@ export const CreateNote: React.FC = () => {
     try {
       // Use our OpenAI integration to generate content with the selected enhancement type
       const aiResponse = await enhanceNoteWithAI(
-        aiPrompt,
-        aiEnhancementType,
+        promptToUse,
+        enhancementTypeToUse,
         getAiRequestToken(),
       );
+      console.log("[AI] Generate success");
 
       setNoteContent(aiResponse.content);
       handleAiUsageUpdate(aiResponse.remainingUses);
@@ -992,7 +1050,7 @@ export const CreateNote: React.FC = () => {
 
       toast({
         title: "Success",
-        description: `AI content ${aiEnhancementType}d successfully using gpt-4o-mini.`,
+        description: `AI content ${enhancementTypeToUse}d successfully using gpt-4o-mini.`,
       });
     } catch (error) {
       console.error("Error generating AI content:", error);
@@ -1049,22 +1107,30 @@ export const CreateNote: React.FC = () => {
   };
 
   // Functions for post-generation options
-  const handleImprove = async () => {
-    if (!noteContent) return;
+  const handleImprove = async (override?: { content?: string }) => {
+    const contentToUse = override?.content ?? noteContent;
+    if (!contentToUse) return;
 
     // Save current content before improving
-    const improvePrompt = `Improve this text for clarity and style: ${noteContent}`;
+    const improvePrompt = `Improve this text for clarity and style: ${contentToUse}`;
 
     // Add the improvement action to prompt history
     setPromptHistory((prevHistory) => [...prevHistory, improvePrompt]);
 
+    if (shouldRequireVerification && !turnstileToken) {
+      console.log("[AI] Improve blocked; verification required");
+      queueAiVerification({ kind: "improve", content: contentToUse });
+      return;
+    }
+
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
-        noteContent,
+        contentToUse,
         "improve",
         getAiRequestToken(),
       );
+      console.log("[AI] Improve success");
       setNoteContent(aiResponse.content);
       handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
@@ -1084,22 +1150,30 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  const handleSummarize = async () => {
-    if (!noteContent) return;
+  const handleSummarize = async (override?: { content?: string }) => {
+    const contentToUse = override?.content ?? noteContent;
+    if (!contentToUse) return;
 
     // Save current content before summarizing
-    const summarizePrompt = `Summarize this text into key points: ${noteContent}`;
+    const summarizePrompt = `Summarize this text into key points: ${contentToUse}`;
 
     // Add the summarize action to prompt history
     setPromptHistory((prevHistory) => [...prevHistory, summarizePrompt]);
 
+    if (shouldRequireVerification && !turnstileToken) {
+      console.log("[AI] Summarize blocked; verification required");
+      queueAiVerification({ kind: "summarize", content: contentToUse });
+      return;
+    }
+
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
-        noteContent,
+        contentToUse,
         "summarize",
         getAiRequestToken(),
       );
+      console.log("[AI] Summarize success");
       setNoteContent(aiResponse.content);
       handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
@@ -1118,22 +1192,30 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  const handleSimplify = async () => {
-    if (!noteContent) return;
+  const handleSimplify = async (override?: { content?: string }) => {
+    const contentToUse = override?.content ?? noteContent;
+    if (!contentToUse) return;
 
     // Save current content before simplifying
-    const simplifyPrompt = `Simplify this text and make it easier to understand: ${noteContent}`;
+    const simplifyPrompt = `Simplify this text and make it easier to understand: ${contentToUse}`;
 
     // Add the simplify action to prompt history
     setPromptHistory((prevHistory) => [...prevHistory, simplifyPrompt]);
 
+    if (shouldRequireVerification && !turnstileToken) {
+      console.log("[AI] Simplify blocked; verification required");
+      queueAiVerification({ kind: "simplify", content: contentToUse });
+      return;
+    }
+
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
-        noteContent,
+        contentToUse,
         "improve",
         getAiRequestToken(),
       );
+      console.log("[AI] Simplify success");
       setNoteContent(aiResponse.content);
       handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
@@ -1152,22 +1234,38 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!originalPrompt) return;
+  const handleRegenerate = async (override?: {
+    prompt?: string;
+    enhancementType?: "improve" | "summarize" | "secure";
+  }) => {
+    const promptToUse = override?.prompt ?? originalPrompt;
+    const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
+    if (!promptToUse) return;
 
     // Add a regeneration entry to the prompt history
-    const regeneratePrompt = `Regenerate from original prompt: ${originalPrompt}`;
+    const regeneratePrompt = `Regenerate from original prompt: ${promptToUse}`;
 
     // Record this action in the prompt history
     setPromptHistory((prevHistory) => [...prevHistory, regeneratePrompt]);
 
+    if (shouldRequireVerification && !turnstileToken) {
+      console.log("[AI] Regenerate blocked; verification required");
+      queueAiVerification({
+        kind: "regenerate",
+        prompt: promptToUse,
+        enhancementType: enhancementTypeToUse,
+      });
+      return;
+    }
+
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
-        originalPrompt,
-        aiEnhancementType,
+        promptToUse,
+        enhancementTypeToUse,
         getAiRequestToken(),
       );
+      console.log("[AI] Regenerate success");
       setNoteContent(aiResponse.content);
       handleAiUsageUpdate(aiResponse.remainingUses);
       toast({
@@ -1187,6 +1285,52 @@ export const CreateNote: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!isAiMode) {
+      return;
+    }
+    if (shouldRequireVerification && !aiVerificationRequested) {
+      console.log("[AI] Auto-requesting verification");
+      requestAiVerification();
+    }
+  }, [isAiMode, shouldRequireVerification, aiVerificationRequested]);
+
+  useEffect(() => {
+    if (!turnstileToken || !pendingAiAction) {
+      return;
+    }
+
+    console.log("[AI] Token received; running queued action:", pendingAiAction.kind);
+    const action = pendingAiAction;
+    setPendingAiAction(null);
+
+    switch (action.kind) {
+      case "generate":
+        void handleAiGenerate({
+          prompt: action.prompt,
+          enhancementType: action.enhancementType,
+        });
+        break;
+      case "improve":
+        void handleImprove({ content: action.content });
+        break;
+      case "summarize":
+        void handleSummarize({ content: action.content });
+        break;
+      case "simplify":
+        void handleSimplify({ content: action.content });
+        break;
+      case "regenerate":
+        void handleRegenerate({
+          prompt: action.prompt,
+          enhancementType: action.enhancementType,
+        });
+        break;
+      default:
+        break;
+    }
+  }, [pendingAiAction, turnstileToken]);
+
   const handleAccept = () => {
     setContentFinalized(true);
     toast({
@@ -1195,31 +1339,20 @@ export const CreateNote: React.FC = () => {
     });
   };
 
-  const aiVerificationPanel = isAiMode ? (
+  const aiVerificationPanel = isAiMode && aiVerificationRequested ? (
     <div className="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-3">
       <div className="text-sm text-gray-700 dark:text-gray-300">
-        {shouldShowTurnstile
-          ? "Verify you are human to use AI mode."
-          : "AI verification active."}
+        To protect against abuse, please verify you're human to continue.
       </div>
-      {shouldShowTurnstile ? (
-        <>
-          <div id="turnstile-container" className="min-h-[65px]" />
-          {!turnstileReady && !turnstileError && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Loading verification...
-            </div>
-          )}
-          {turnstileError && (
-            <div className="text-xs text-red-600 dark:text-red-400">
-              {turnstileError}
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          Verification active for {aiUsesRemaining} more prompt
-          {aiUsesRemaining === 1 ? "" : "s"}.
+      <div id="turnstile-container" className="min-h-[65px]" />
+      {!turnstileReady && !turnstileError && (
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          Loading verification...
+        </div>
+      )}
+      {turnstileError && (
+        <div className="text-xs text-red-600 dark:text-red-400">
+          {turnstileError}
         </div>
       )}
     </div>
@@ -1678,6 +1811,11 @@ export const CreateNote: React.FC = () => {
                       Accept
                     </button>
                   </div>
+                  {aiVerificationPanel && (
+                    <div className="mt-3">
+                      {aiVerificationPanel}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -376,7 +376,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   if (pathname === "/api/ai/enhance" && method === "POST") {
+    console.log("[AI] Enhance request received");
     if (!env.OPENAI_API_KEY) {
+      console.warn("[AI] Missing OpenAI API key");
       return jsonResponse({ message: "OpenAI API key not configured on server" }, 500, request);
     }
 
@@ -390,8 +392,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const content = typeof body?.content === "string" ? body.content.trim() : "";
     const enhancementType = body?.enhancementType;
     const turnstileToken = body?.turnstileToken;
+    console.log("[AI] Enhancement type:", enhancementType, "Token present:", !!turnstileToken);
 
     if (!content) {
+      console.warn("[AI] Missing content");
       return jsonResponse({ message: "Content is required" }, 400, request);
     }
 
@@ -401,25 +405,31 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (!["improve", "summarize", "secure"].includes(enhancementType)) {
+      console.warn("[AI] Invalid enhancement type:", enhancementType);
       return jsonResponse({ message: "Invalid enhancement type" }, 400, request);
     }
 
     const clientId = getClientIdentifier(request);
     const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
     let remainingUses = 0;
+    console.log("[AI] Client ID:", clientId);
 
     if (turnstileToken) {
       const isHuman = await verifyTurnstile(turnstileToken, request, env);
       if (!isHuman) {
+        console.warn("[AI] Turnstile verification failed");
         return jsonResponse({ error: "Human verification failed" }, 403, request);
       }
       remainingUses = AI_VERIFICATION.USES;
+      console.log("[AI] Turnstile verified; granting uses:", remainingUses);
     } else {
       const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
       if (!cachedRemaining) {
+        console.warn("[AI] No cached verification; rejecting");
         return jsonResponse({ error: "Human verification required" }, 403, request);
       }
       remainingUses = cachedRemaining;
+      console.log("[AI] Cached verification remaining:", remainingUses);
     }
 
     // Store original remaining uses before API call
@@ -432,6 +442,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     };
 
     try {
+      console.log("[AI] Calling OpenAI responses API");
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
@@ -483,6 +494,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         .find((item) => item.type === "output_text" && item.text)
         ?.text?.trim();
       if (!output) {
+        console.warn("[AI] OpenAI response missing output text");
         // Return original remaining uses since the API call didn't produce valid output
         return jsonResponse({ 
           message: "AI response was empty",
@@ -493,6 +505,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       // Only decrement remaining uses AFTER successful API call
       remainingUses = Math.max(remainingUses - 1, 0);
       await setAiVerificationRemaining(verificationKv, clientId, remainingUses);
+      console.log("[AI] OpenAI success; remaining uses:", remainingUses);
 
       return jsonResponse({ content: output, remainingUses }, 200, request);
     } catch (error) {
@@ -538,20 +551,25 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const aiMode = !!requestBody?.aiMode;
     if (aiMode) {
+      console.log("[AI] Note creation with AI mode");
       const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
       const clientId = getClientIdentifier(request);
 
       if (requestBody?.turnstileToken) {
         const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
         if (!isHuman) {
+          console.warn("[AI] Turnstile verification failed for note creation");
           return jsonResponse({ error: "Human verification failed" }, 403, request);
         }
         await setAiVerificationRemaining(verificationKv, clientId, AI_VERIFICATION.USES);
+        console.log("[AI] Turnstile verified for note creation; uses granted");
       } else {
         const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
         if (!cachedRemaining) {
+          console.warn("[AI] No cached verification for note creation");
           return jsonResponse({ error: "Human verification required" }, 403, request);
         }
+        console.log("[AI] Cached verification for note creation; remaining:", cachedRemaining);
       }
     }
 
