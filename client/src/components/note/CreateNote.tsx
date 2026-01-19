@@ -10,7 +10,7 @@ import {
   encryptWithPassword,
 } from "@/utils/encryption";
 import { checkHIBP } from "@/utils/hibp";
-import { enhanceNoteWithAI } from "@/utils/openai";
+import { enhanceNoteWithAI, AiEnhanceError } from "@/utils/openai";
 import { useToast } from "@/hooks/use-toast";
 import {
   Shield,
@@ -996,6 +996,12 @@ export const CreateNote: React.FC = () => {
       });
     } catch (error) {
       console.error("Error generating AI content:", error);
+      
+      // Extract remaining uses from error if available
+      if (error instanceof AiEnhanceError && typeof error.remainingUses === 'number') {
+        handleAiUsageUpdate(error.remainingUses);
+      }
+      
       handleAiVerificationError(error);
 
       toast({

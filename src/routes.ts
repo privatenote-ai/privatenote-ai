@@ -422,8 +422,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       remainingUses = cachedRemaining;
     }
 
-    remainingUses = Math.max(remainingUses - 1, 0);
-    await setAiVerificationRemaining(verificationKv, clientId, remainingUses);
+    // Store original remaining uses before API call
+    const originalRemainingUses = remainingUses;
 
     const systemPrompts: Record<string, string> = {
       improve: "You are an expert editor. Improve the text by fixing grammar, enhancing clarity, and making it more professional while maintaining the original meaning. Return only the improved text with no additional explanations.",
@@ -464,10 +464,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           // Use raw error text if it's not JSON.
         }
         console.error("[AI] OpenAI error:", response.status, errorText);
+        // Return original remaining uses since the API call failed
         return jsonResponse({
           message: "AI request failed",
           upstreamStatus: response.status,
           details: typeof upstreamMessage === "string" ? upstreamMessage.slice(0, 500) : "Unknown error",
+          remainingUses: originalRemainingUses,
         }, 502, request);
       }
 
@@ -481,13 +483,25 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         .find((item) => item.type === "output_text" && item.text)
         ?.text?.trim();
       if (!output) {
-        return jsonResponse({ message: "AI response was empty" }, 502, request);
+        // Return original remaining uses since the API call didn't produce valid output
+        return jsonResponse({ 
+          message: "AI response was empty",
+          remainingUses: originalRemainingUses,
+        }, 502, request);
       }
+
+      // Only decrement remaining uses AFTER successful API call
+      remainingUses = Math.max(remainingUses - 1, 0);
+      await setAiVerificationRemaining(verificationKv, clientId, remainingUses);
 
       return jsonResponse({ content: output, remainingUses }, 200, request);
     } catch (error) {
       console.error("[AI] Error calling OpenAI:", error);
-      return jsonResponse({ message: "AI request failed" }, 502, request);
+      // Return original remaining uses since the API call failed
+      return jsonResponse({ 
+        message: "AI request failed",
+        remainingUses: originalRemainingUses,
+      }, 502, request);
     }
   }
 
