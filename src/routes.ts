@@ -454,11 +454,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           input: [
             {
               role: "system",
-              content: [{ type: "text", text: systemPrompts[enhancementType] }],
+              content: [{ type: "input_text", text: systemPrompts[enhancementType] }],
             },
             {
               role: "user",
-              content: [{ type: "text", text: content }],
+              content: [{ type: "input_text", text: content }],
             },
           ],
           max_output_tokens: 800,

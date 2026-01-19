@@ -1735,18 +1735,18 @@ export const CreateNote: React.FC = () => {
                       {(
                         new TextEncoder().encode(noteContent).length / 1024
                       ).toFixed(1)}{" "}
-                      KB / 100 KB
+                      KB / 20 KB
                     </div>
                     <textarea
                       value={noteContent}
                       onChange={(e) => {
-                        // Check if content is within the 100KB limit (approximately 102,400 characters)
-                        if (e.target.value.length <= 102400) {
+                        // Check if content is within the 20KB limit (approximately 20,480 characters)
+                        if (e.target.value.length <= 20480) {
                           setNoteContent(e.target.value);
                         } else {
                           toast({
                             title: "Content too large",
-                            description: "Notes are limited to 100KB in size",
+                            description: "Notes are limited to 20KB in size",
                             variant: "destructive",
                           });
                         }
