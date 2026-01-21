@@ -8,6 +8,8 @@ import { type BlogPost } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
+import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
+import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
 
 export default function BlogPostPage() {
   const [_, params] = useRoute('/blog/:slug');
@@ -16,13 +18,19 @@ export default function BlogPostPage() {
   if (slug === 'privacy-tools') {
     return <PrivacyToolsPost />;
   }
-  
-  const { 
-    data: post, 
-    isLoading, 
-    error 
+  if (slug === 'myth-good-enough-security') {
+    return <GoodEnoughSecurityPost />;
+  }
+  if (slug === 'how-we-generate-passwords') {
+    return <PasswordGenerationPost />;
+  }
+
+  const {
+    data: post,
+    isLoading,
+    error
   } = useQuery({
-    queryKey: ['/api/blog', slug], 
+    queryKey: ['/api/blog', slug],
     queryFn: getQueryFn<BlogPost>({ on401: 'returnNull' }),
     enabled: !!slug
   });
@@ -48,9 +56,6 @@ export default function BlogPostPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto max-w-3xl px-4 py-8 mt-16">
-        <Link href="/blog" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Blog
-        </Link>
         <Skeleton className="h-10 w-3/4 mb-4" />
         <div className="flex items-center mb-6">
           <Skeleton className="h-4 w-32 mr-4" />
@@ -69,9 +74,6 @@ export default function BlogPostPage() {
   if (!post) {
     return (
       <div className="container mx-auto max-w-3xl px-4 py-8 mt-16">
-        <Link href="/blog" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Blog
-        </Link>
         <div className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 rounded-lg p-8 text-center">
           <h2 className="text-xl font-medium mb-2">Blog post not found</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -82,20 +84,16 @@ export default function BlogPostPage() {
     );
   }
 
-  const formattedDate = post.publishedAt 
+  const formattedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
     : '';
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 mt-16 mb-20">
-      <Link href="/blog" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Blog
-      </Link>
-      
       <article>
         <header className="mb-8">
           <h1 className="text-3xl font-bold mb-3">{post.title}</h1>
-          
+
           <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-4 mb-6">
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-1" />
@@ -106,7 +104,7 @@ export default function BlogPostPage() {
               <span>{post.author}</span>
             </div>
           </div>
-          
+
           {post.tags && post.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
               {post.tags.map((tag, i) => (
@@ -117,18 +115,18 @@ export default function BlogPostPage() {
             </div>
           )}
         </header>
-        
+
         {post.coverImage && (
           <div className="mb-8 rounded-lg overflow-hidden">
-            <img 
-              src={post.coverImage} 
-              alt={post.title} 
+            <img
+              src={post.coverImage}
+              alt={post.title}
               className="w-full h-auto object-cover"
             />
           </div>
         )}
-        
-        <div 
+
+        <div
           className="prose dark:prose-invert max-w-none"
           dangerouslySetInnerHTML={{ __html: formatPostContent(post.content) }}
         />

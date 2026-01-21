@@ -20,6 +20,10 @@ interface NoteData {
   salt?: string;
   encryptedKey?: string;
   encryptedKeyIv?: string;
+  aad?: string; // Additional Authenticated Data
+  kdfVersion?: number; // Key Derivation Function version
+  kdfIterations?: number; // KDF iteration count
+  kdfHash?: string; // KDF hash algorithm
 }
 
 export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) => {
@@ -70,16 +74,23 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
       const encryptedData = base64ToUint8Array(data.content);
       const ivArray = base64ToUint8Array(data.iv);
       
+      // Fixed: Decode AAD if available for context validation
+      let aadArray: Uint8Array | undefined;
+      if (data.aad) {
+        aadArray = base64ToUint8Array(data.aad);
+      }
+      
       console.log("Importing key:", key);
       const cryptoKey = await importKey(key);
       
-      // Decrypt the note
+      // Decrypt the note with AAD for context validation
+      // Fixed: Added AAD support
       console.log("Decrypting content with key");
-      const decryptedContent = await decryptNote(encryptedData, cryptoKey, ivArray);
+      const decryptedContent = await decryptNote(encryptedData, cryptoKey, ivArray, aadArray);
       setNoteContent(decryptedContent);
     } catch (cryptoError) {
       console.error("Crypto error:", cryptoError);
-      throw new Error("Failed to decrypt the note. The encryption key may be invalid.");
+      throw new Error("Failed to decrypt the note. The encryption key may be invalid or the data may have been tampered with.");
     } finally {
       setIsLoading(false);
     }
@@ -182,14 +193,25 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({ id, encryptionKey }) =
       const encryptedKeyIv = base64ToUint8Array(noteData.encryptedKeyIv!);
       const salt = base64ToUint8Array(noteData.salt!);
       
-      // Decrypt using password
+      // Fixed: Decode AAD if available for context validation
+      let aadArray: Uint8Array | undefined;
+      if (noteData.aad) {
+        aadArray = base64ToUint8Array(noteData.aad);
+      }
+      
+      // Decrypt using password with AAD and KDF parameter validation
+      // Fixed: Added AAD and KDF parameter support
       const decryptedContent = await decryptWithPassword(
         encryptedData,
         ivArray,
         encryptedKey,
         encryptedKeyIv,
         salt,
-        password
+        password,
+        aadArray,
+        noteData.kdfVersion,
+        noteData.kdfIterations,
+        noteData.kdfHash
       );
       
       setNoteContent(decryptedContent);

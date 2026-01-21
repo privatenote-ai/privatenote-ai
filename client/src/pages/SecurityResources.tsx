@@ -1,254 +1,235 @@
 import React from 'react';
 import { Link } from 'wouter';
+import { motion, MotionConfig } from 'framer-motion';
 import {
   ArrowLeft,
-  Globe,
   Lock,
-  Cloud,
   Database,
   Key,
-  Code,
-  Server,
-  Cpu,
+  Binary,
+  Layers,
+  ShieldCheck,
   Zap,
-  Shield,
-  CheckCircle,
   AlertTriangle,
-  XCircle
+  Check,
 } from 'lucide-react';
 
-const SecurityResources: React.FC = () => {
+const SecurityOverview: React.FC = () => {
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-10 mt-12 mb-20">
-      <div className="mb-8">
-        <Link
-          href="/"
-          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
-        </Link>
-        <h1 className="text-4xl font-bold mb-3">Security Overview</h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl">
-          Architecture, cryptography, and operational controls that keep notes private.
-        </p>
+    <MotionConfig reducedMotion="user">
+      <div className="container mx-auto max-w-6xl px-4 py-16 mb-24 relative">
+        {/* Ambient Background Glows */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] -z-10" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 blur-[100px] -z-10" />
+
+        {/* Header Section */}
+        <div className="max-w-4xl mx-auto text-center mb-24 relative z-10">
+          <h1 className="text-5xl md:text-7xl font-extrabold mb-10 pb-2 leading-[1.05] tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
+            Security <span className="text-primary italic text-5xl md:text-7xl">Architecture.</span>
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+            Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.
+          </p>
+        </div>
+
+        <div className="grid gap-20">
+
+          {/* 1. Core Architecture Section */}
+          <section className="relative">
+            <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+              <Layers className="h-64 w-64 text-primary" />
+            </div>
+
+            <div className="relative z-10 space-y-24">
+              <div className="text-center max-w-3xl mx-auto">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">E2EE Model</h2>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                  We utilize an End-to-End Encrypted (E2EE) model where the server is treated as an untrusted storage medium. Plaintext content is never transmitted.
+                </p>
+                <p className="mt-3 text-sm text-amber-800/90 dark:text-amber-200/90">
+                  AI mode is an exception: your prompt is sent to our AI provider to generate a response.
+                </p>
+              </div>
+
+              <div className="grid gap-8 md:grid-cols-3">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Client-Side Encryption</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.
+                  </p>
+                </div>
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
+                    <Database className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Atomic State Management</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.
+                  </p>
+                </div>
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
+                    <Key className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Key Handling</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Decryption keys are generated locally in your browser using the Web Crypto API’s cryptographically secure random source and encoded in Base58 for safe transmission.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 2. Cryptographic Specifications */}
+          <section className=" py-10 max-w-4xl mx-auto">
+            <div className="rounded-[2rem] bg-blue-600 text-white p-8 md:p-10 shadow-lg">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-white/15 text-white flex items-center justify-center">
+                  <Binary className="h-5 w-5" />
+                </div>
+                <h2 className="text-2xl font-bold text-white">Cryptographic Primitives</h2>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-10">
+                <div>
+                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">Symmetric Encryption</h3>
+                  <ul className="space-y-4">
+                    <li className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">AES-256-GCM</span>
+                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">Authenticated encryption with 128-bit auth tags. This prevents ciphertext manipulation by the server or middle-men.</span>
+                    </li>
+                    <li className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">12-Byte Cryptographic IV</span>
+                      <span className="text-xs text-blue-100 mt-1">Unique Initialization Vectors prevent pattern recognition across multiple notes.</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">Key Derivation (KDF)</h3>
+                  <ul className="space-y-4">
+                    <li className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">PBKDF2-HMAC-SHA256</span>
+                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">310,000 iterations for password-protected notes, making brute-force attacks computationally expensive.</span>
+                    </li>
+                    <li className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">16-Byte Cryptographic Salt</span>
+                      <span className="text-xs text-blue-100 mt-1">Unique salt per note ensures protection against rainbow table attacks.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+
+          {/* 3. Operational Security Section */}
+          <section className="flex flex-col gap-12 py-10">
+            <div className="w-full lg:w-1/2 lg:self-start border border-blue-200 dark:border-blue-800 rounded-[2rem]">
+              <div className="px-6 sm:px-8 lg:px-10 py-12 md:py-12">
+                <motion.h2
+                  className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                >
+                  Infrastructure
+                </motion.h2>
+                <div className="space-y-5">
+                  {[
+                    {
+                      title: "Strict CSP Policy",
+                      body: "Content Security Policy blocks third-party scripts and cross-site injections.",
+                    },
+                    {
+                      title: "No Tracking Cookies",
+                      body: "Stateless API. No advertising or tracking pixels ever loaded.",
+                    },
+                    {
+                      title: "Turnstile Verification",
+                      body: "Human-only request verification prevents brute-force note enumeration.",
+                    },
+                  ].map((item, idx) => (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, y: 12 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.4 }}
+                      transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.05 }}
+                    >
+                      <h4 className="font-semibold text-base text-gray-900 dark:text-white">{item.title}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">{item.body}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full lg:w-[52%] lg:self-end border border-blue-200 dark:border-blue-800 rounded-[2rem] p-6 sm:p-8">
+              <motion.h2
+                className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
+                Threat Model
+              </motion.h2>
+              <motion.p
+                className="text-base text-gray-600 dark:text-gray-400 mb-6 italic"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
+              >
+                No system is unbreakable. Our architecture addresses server-side threats, but client-side risks remain:
+              </motion.p>
+              <div className="space-y-4 w-full">
+                {[
+                  { label: "Device Compromise", sub: "Malware can access browser RAM or screen content." },
+                  { label: "Browser Extensions", sub: "Extensions with broad permissions can read page data." },
+                  { label: "Bundle Manipulation", sub: "Compromised JS delivery could leak decryption keys." },
+                ].map((item, idx) => (
+                  <motion.div
+                    key={item.label}
+                    className="text-base"
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.4 }}
+                    transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 + idx * 0.06 }}
+                  >
+                    <span className="font-semibold block text-gray-900 dark:text-white">{item.label}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item.sub}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* 4. Footer & Trust Footer */}
+          <div className="p-12 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-primary/5 -z-10" />
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Technical Integrity</h3>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md">We prioritize clarity and measurable security guarantees over marketing claims.</p>
+            </div>
+            <Link
+              href="/"
+              className="px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all hover:-translate-y-1 active:scale-95"
+            >
+              Start Secure Session
+            </Link>
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-8 text-gray-700 dark:text-gray-300">
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <Globe className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Architecture Overview</h2>
-              <p className="mb-4">
-                PrivateNote.ai runs on Cloudflare&apos;s edge network. Notes are encrypted in the browser and stored as ciphertext.
-              </p>
-              <div className="grid md:grid-cols-3 gap-4 mt-6">
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center mb-2">
-                    <Lock className="h-5 w-5 text-primary mr-2" />
-                    <h3 className="font-semibold">Client-Side Encryption</h3>
-                  </div>
-                  <p className="text-sm">All encryption happens before data leaves your device.</p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center mb-2">
-                    <Cloud className="h-5 w-5 text-primary mr-2" />
-                    <h3 className="font-semibold">Cloudflare Edge</h3>
-                  </div>
-                  <p className="text-sm">Global edge network for low latency and availability.</p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center mb-2">
-                    <Database className="h-5 w-5 text-primary mr-2" />
-                    <h3 className="font-semibold">Durable Objects</h3>
-                  </div>
-                  <p className="text-sm">Strong consistency for read limits and expiration.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <Key className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Encryption Flow</h2>
-              <div className="space-y-3 text-sm">
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <strong>Key generation:</strong> Browser generates a random 256-bit AES-GCM key (Web Crypto).
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <strong>Encrypt locally:</strong> Note content is encrypted with a random 12-byte IV.
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <strong>Store ciphertext:</strong> Only encrypted data and IV are sent to the server; the key stays in the URL fragment.
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                  <strong>Decrypt locally:</strong> The recipient decrypts in the browser with the fragment key.
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <Code className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Cryptography Specifications</h2>
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-semibold mb-2">Encryption Algorithm</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    <li><strong>AES-GCM</strong> authenticated encryption</li>
-                    <li>Key size: <strong>256-bit</strong></li>
-                    <li>IV size: <strong>12 bytes</strong> per encryption</li>
-                  </ul>
-                </div>
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Password Protection (Optional)</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    <li><strong>PBKDF2</strong> with SHA-256</li>
-                    <li>Iterations: <strong>310,000</strong></li>
-                    <li>Salt: <strong>16 bytes</strong> random per note</li>
-                    <li>Key wrapped with AES-GCM</li>
-                  </ul>
-                </div>
-                <div className="mt-4">
-                  <h3 className="font-semibold mb-2">Key Handling</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    <li>Keys encoded in <strong>Base58</strong> for URL safety</li>
-                    <li>Keys sent via <strong>URL fragment</strong> only</li>
-                    <li>Fragment removed from history after extraction</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <Server className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Cloudflare Infrastructure</h2>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center">
-                    <Cpu className="h-5 w-5 text-primary mr-2" />
-                    Durable Objects
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm ml-7">
-                    <li>Metadata stored in SQLite</li>
-                    <li>Strong consistency for read limits</li>
-                    <li>Prevents race conditions</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center">
-                    <Database className="h-5 w-5 text-primary mr-2" />
-                    KV Storage
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm ml-7">
-                    <li>Ciphertext stored with TTL</li>
-                    <li>Opaque to Cloudflare</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2 flex items-center">
-                    <Zap className="h-5 w-5 text-primary mr-2" />
-                    Workers API
-                  </h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm ml-7">
-                    <li>Rate limiting: 10 requests per minute per IP</li>
-                    <li>CORS allowlist</li>
-                    <li>Turnstile for AI endpoints</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <Shield className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Client-Side Protections</h2>
-              <div className="space-y-4">
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-green-700 dark:text-green-300">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    Content Security Policy
-                  </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    Strict CSP blocks inline scripts and limits resource origins.
-                  </p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-green-700 dark:text-green-300">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    Self-Hosted Fonts
-                  </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    Fonts are served locally; no external font CDNs on note pages.
-                  </p>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-green-700 dark:text-green-300">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    No Third-Party Analytics
-                  </h3>
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    No client-side tracking scripts. Server metrics are aggregate only.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3 mb-4">
-            <AlertTriangle className="h-6 w-6 text-yellow-500 mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-3">Security Limitations</h2>
-              <div className="space-y-3">
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-yellow-700 dark:text-yellow-300">
-                    <XCircle className="h-5 w-5 mr-2" />
-                    Compromised JavaScript Delivery
-                  </h3>
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    If the client bundle is compromised, an attacker could read fragments or plaintext in memory.
-                  </p>
-                </div>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-yellow-700 dark:text-yellow-300">
-                    <XCircle className="h-5 w-5 mr-2" />
-                    Browser Extensions
-                  </h3>
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    Extensions can observe or modify page content.
-                  </p>
-                </div>
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                  <h3 className="font-semibold mb-2 flex items-center text-yellow-700 dark:text-yellow-300">
-                    <XCircle className="h-5 w-5 mr-2" />
-                    Compromised Device
-                  </h3>
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    Malware can access keys from memory, screen, or clipboard.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
+    </MotionConfig>
   );
 };
 
-export default SecurityResources;
+export default SecurityOverview;

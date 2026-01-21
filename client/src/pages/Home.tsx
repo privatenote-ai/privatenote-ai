@@ -3,22 +3,23 @@ import { ShieldCheck, EyeOff, Timer, Shield, Check } from 'lucide-react';
 import { CreateNote } from '@/components/note/CreateNote';
 import { NoteResult } from '@/components/note/NoteResult';
 import { SecurityFeatures } from '@/components/features/SecurityFeatures';
+import { FAQSection } from '@/components/features/FAQSection';
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const [noteUrl, setNoteUrl] = useState('');
-  
+
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
     setShowCreateNote(true);
   };
-  
+
   // This would be used when a note is created and we want to show the result
   const handleNoteCreated = (url: string) => {
     setNoteUrl(url);
     setShowCreateNote(false);
   };
-  
+
   return (
     <div className="pt-12 pb-20">
       {/* Hero Section */}
@@ -49,95 +50,53 @@ const Home: React.FC = () => {
       {/* Security Features */}
       <SecurityFeatures />
 
-      {/* Why PrivateNote */}
-      <section className="px-4 py-12 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div>
-            <div className="inline-flex items-center rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
-              Why PrivateNote
-            </div>
-            <h2 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
-              Share sensitive notes with confidence.
-            </h2>
-            <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
-              PrivateNote keeps your messages private by encrypting in the browser and
-              letting the note disappear after it’s read. No accounts, no friction,
-              and no ads following you around.
-            </p>
-            <ul className="mt-6 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Check className="h-4 w-4" />
-                </span>
-                Client-side encryption means the server never sees your plaintext.
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Check className="h-4 w-4" />
-                </span>
-                Read-once and expiring notes reduce exposure over time.
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Check className="h-4 w-4" />
-                </span>
-                No tracking cookies, no ads, and no third-party analytics on notes.
-              </li>
-            </ul>
-          </div>
-          <div className="grid gap-4">
-            <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <EyeOff className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    No tracking or ads
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    We don’t monetize your data. Privacy is the product.
-                  </p>
-                </div>
+      {/* Why + How wrapper (enables overlap) */}
+      <section className="relative">
+        {/* Background treatment */}
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,#00000012_1px,transparent_1px),linear-gradient(to_bottom,#00000012_1px,transparent_1px)] [background-size:56px_56px] dark:opacity-[0.10]" />
+        </div>
+
+        {/* Why PrivateNote */}
+        <div className="px-4 pt-14 pb-20 sm:px-6 lg:px-8 max-w-5xl mx-auto relative z-10">
+          <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300 shadow-sm">
+                Why PrivateNote
               </div>
+
+              <h2 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Share sensitive notes with confidence.
+              </h2>
+
+              <p className="mt-3 text-base text-gray-600 dark:text-gray-300 max-w-xl">
+                PrivateNote keeps your messages private by encrypting in the browser and
+                letting the note disappear after it’s read. No accounts, no friction,
+                and no ads following you around.
+              </p>
+
+              <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                {[
+                  'Client-side encryption means the server never sees your plaintext.',
+                  'Read-once and expiring notes reduce exposure over time.',
+                  'No tracking cookies, no ads, and no third-party analytics on notes.',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
+                      <Check className="h-4 w-4" />
+                    </span>
+                    <span className="leading-relaxed">{t}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Timer className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Disappearing by default
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Automatic expiration keeps notes from lingering.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <ShieldCheck className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Verified security flow
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Encryption happens in your browser before anything is sent.
-                  </p>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
-      </section>
 
-      {/* How It Stays Private */}
-      <section className="px-4 pb-16 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="rounded-3xl border border-gray-200/60 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/60 p-6 sm:p-8 shadow-sm">
+        {/* How It Stays Private */}
+        <div className="px-4 pt-8 pb-20 sm:px-6 lg:px-8 max-w-5xl mx-auto mt-10 sm:mt-16 relative z-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -147,39 +106,37 @@ const Home: React.FC = () => {
                 Clear steps, no hidden data collection.
               </p>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
               <Shield className="h-4 w-4" />
               Privacy-first by design
             </div>
           </div>
+
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[
-              {
-                title: 'Write',
-                detail: 'Compose your note in the browser — nothing is stored yet.',
-              },
-              {
-                title: 'Encrypt',
-                detail: 'Your device encrypts the note before it leaves your screen.',
-              },
-              {
-                title: 'Share',
-                detail: 'Send the link. The note disappears after it’s read or expires.',
-              },
-            ].map((step) => (
+              { title: 'Write', detail: 'Compose your note in the browser — nothing is stored yet.' },
+              { title: 'Encrypt', detail: 'Your device encrypts the note before it leaves your screen.' },
+              { title: 'Share', detail: 'Send the link. The note disappears after it’s read or expires.' },
+            ].map((step, idx) => (
               <div
                 key={step.title}
-                className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-4 shadow-sm"
+                className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               >
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {step.title}
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold ring-1 ring-primary/15">
+                    {idx + 1}
+                  </span>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {step.title}
+                  </p>
+                </div>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   {step.detail}
                 </p>
               </div>
             ))}
           </div>
+
           <div className="mt-6 grid gap-3 text-xs text-gray-600 dark:text-gray-300 sm:grid-cols-2">
             {[
               'No tracking cookies on note pages.',
@@ -197,6 +154,8 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <FAQSection />
     </div>
   );
 };

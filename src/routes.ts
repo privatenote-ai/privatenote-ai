@@ -27,6 +27,11 @@ const AI_VERIFICATION = {
   KEY_PREFIX: "ai_verify:",
 };
 
+const NOTE_RESERVATION = {
+  TTL_SECONDS: 5 * 60,
+  KEY_PREFIX: "note_reserve:",
+};
+
 // Get allowed origin for CORS
 function normalizeOrigin(origin: string): string {
   return origin.replace(/\/$/, '');
@@ -252,6 +257,36 @@ async function checkRateLimit(
       resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
     };
   }
+}
+
+function isValidNoteId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getReservationKey(id: string): string {
+  return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
+}
+
+async function reserveNoteId(env: Env, clientId: string): Promise<string> {
+  const id = crypto.randomUUID();
+  const kv = env.NOTES_KV;
+  await kv.put(
+    getReservationKey(id),
+    JSON.stringify({ clientId, createdAt: new Date().toISOString() }),
+    { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
+  );
+  return id;
+}
+
+async function hasReservation(env: Env, id: string): Promise<boolean> {
+  const kv = env.NOTES_KV;
+  const raw = await kv.get(getReservationKey(id));
+  return !!raw;
+}
+
+async function clearReservation(env: Env, id: string): Promise<void> {
+  const kv = env.NOTES_KV;
+  await kv.delete(getReservationKey(id));
 }
 
 // Get client identifier for rate limiting
@@ -518,6 +553,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
+  // Reserve note ID (client encrypts with noteId-bound AAD)
+  if (pathname === "/api/notes/reserve" && method === "POST") {
+    try {
+      const clientId = getClientIdentifier(request);
+      const id = await reserveNoteId(env, clientId);
+      return jsonResponse({ id, expiresIn: NOTE_RESERVATION.TTL_SECONDS }, 200, request);
+    } catch (error) {
+      console.error("[ROUTES] Failed to reserve note ID:", error);
+      return jsonResponse({ error: "Failed to reserve note ID" }, 500, request);
+    }
+  }
+
   // Notes API routes (Durable Object authority)
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
@@ -535,6 +582,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           id: "pending",
           content: requestBody.content,
           iv: requestBody.iv,
+          aad: requestBody?.aad ?? null,
           expiresAt: new Date(Date.now() + expirySeconds * 1000),
           maxReads,
           currentReads: 0,
@@ -543,6 +591,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           salt: requestBody?.salt ?? null,
           encryptedKey: null,
           encryptedKeyIv: requestBody?.encryptedKeyIv ?? null,
+          kdfVersion: requestBody?.kdfVersion ?? null,
+          kdfIterations: requestBody?.kdfIterations ?? null,
+          kdfHash: requestBody?.kdfHash ?? null,
         };
       }
     } catch (error) {
@@ -573,7 +624,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    const id = crypto.randomUUID();
+    const requestedId = typeof requestBody?.id === "string" ? requestBody.id : null;
+    if (requestedId && !isValidNoteId(requestedId)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+
+    if (requestedId) {
+      const reserved = await hasReservation(env, requestedId);
+      if (!reserved) {
+        return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
+      }
+    }
+
+    const id = requestedId || crypto.randomUUID();
     const doId = env.SECURE_NOTES.idFromName(id);
     const stub = env.SECURE_NOTES.get(doId);
     const doUrl = new URL(request.url);
@@ -590,6 +653,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (doResponse.ok && noteForAnalytics) {
       noteForAnalytics.id = id;
       await storage.trackNoteCreation(noteForAnalytics, { aiEnhanced: aiMode });
+    }
+
+    if (doResponse.ok && requestedId) {
+      await clearReservation(env, requestedId);
     }
 
     return applyCorsHeaders(doResponse, request);
@@ -621,6 +688,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           id,
           content: data.content,
           iv: data.iv,
+          aad: data.aad ?? null,
           expiresAt: new Date(data.expiresAt),
           maxReads: data.maxReads ?? 0,
           currentReads: data.readCount ?? 0,
@@ -629,6 +697,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           salt: data.salt ?? null,
           encryptedKey: null,
           encryptedKeyIv: data.encryptedKeyIv ?? null,
+          kdfVersion: data.kdfVersion ?? null,
+          kdfIterations: data.kdfIterations ?? null,
+          kdfHash: data.kdfHash ?? null,
         };
         await storage.trackNoteView(noteForAnalytics);
       } catch (error) {

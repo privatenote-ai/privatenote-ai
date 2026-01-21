@@ -1,252 +1,369 @@
-import React, { useState } from 'react';
-import { Link } from 'wouter';
+import React from "react";
+import { Link } from "wouter";
 import {
-  ArrowLeft,
-  AlertTriangle,
   Check,
-  CheckCircle,
-  Eye,
-  EyeOff,
-  Key,
   Lock,
   PenLine,
+  Share2,
   Shield,
-  ShieldCheck,
   Sparkles,
-  Timer,
-  XCircle,
-} from 'lucide-react';
-import { SecureNoteIllustration } from '@/components/SecureNoteIllustration';
+} from "lucide-react";
 
 export default function HowItWorks() {
-  const [mode, setMode] = useState<'manual' | 'ai'>('manual');
-
-  const manualSteps = [
+  const flowSteps = [
     {
-      title: 'Write your note',
-      detail: 'Type your message locally. No account, no tracking cookies.',
-      icon: <PenLine className="h-5 w-5" />
+      title: "Write",
+      detail: "Compose your note in the browser — nothing is stored yet.",
+      icon: <PenLine className="h-5 w-5" />,
     },
     {
-      title: 'Encrypt in your browser',
-      detail: 'Your device creates a random AES-GCM key and encrypts before sending.',
-      icon: <Lock className="h-5 w-5" />
+      title: "Encrypt",
+      detail: "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
+      icon: <Lock className="h-5 w-5" />,
     },
     {
-      title: 'Share the link',
-      detail: 'The key lives in the link fragment so the server never sees it.',
-      icon: <Key className="h-5 w-5" />
+      title: "Share",
+      detail: "Send the link. The note disappears after it’s read or expires.",
+      icon: <Share2 className="h-5 w-5" />,
     },
-    {
-      title: 'Reveal and decrypt',
-      detail: 'The recipient decrypts locally. The note disappears after it’s read.',
-      icon: <Timer className="h-5 w-5" />
-    }
   ];
-
-  const aiSteps = [
-    {
-      title: 'Ask for a draft',
-      detail: 'Send a short prompt to draft, summarize, or clean up a note.',
-      icon: <Sparkles className="h-5 w-5" />
-    },
-    {
-      title: 'Human check',
-      detail: 'Turnstile verifies the request to reduce automated abuse.',
-      icon: <ShieldCheck className="h-5 w-5" />
-    },
-    {
-      title: 'Review before sharing',
-      detail: 'Edit the draft so you control what gets encrypted.',
-      icon: <Eye className="h-5 w-5" />
-    },
-    {
-      title: 'Encrypt and share',
-      detail: 'The final note is encrypted locally and shared like manual mode.',
-      icon: <Lock className="h-5 w-5" />
-    }
+  const flowDetails = [
+    "No tracking cookies on note pages.",
+    "No third-party analytics scripts on notes.",
+    "Encryption keys stay in the link, not on our servers.",
+    "Minimal metadata stored only to enforce expiration.",
   ];
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-10 mt-10 mb-24 relative">
-      <div className="absolute -top-8 right-8 h-48 w-48 rounded-full bg-gradient-to-br from-blue-200/40 to-transparent blur-3xl pointer-events-none" />
-      <div className="absolute top-40 left-6 h-40 w-40 rounded-full bg-gradient-to-br from-cyan-100/50 to-transparent blur-3xl pointer-events-none" />
+    <div className="container mx-auto max-w-6xl px-4 py-14 mb-20 relative">
+      {/* Reduced background glows (less noise) */}
+      <div className="absolute top-[-80px] right-1/4 w-80 h-80 bg-primary/10 blur-[130px] -z-10" />
+      <div className="absolute bottom-[120px] left-1/4 w-56 h-56 bg-blue-500/10 blur-[120px] -z-10" />
 
-      <div className="mb-6">
-        <Link
-          href="/"
-          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-3"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
-        </Link>
-        <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-tight mt-2">
-            How PrivateNote Works
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            The same calm, private flow every time: write, encrypt, share. AI is optional,
-            and you’re always in control.
-          </p>
-        </div>
+      {/* Hero Header (slightly tighter) */}
+      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
+        <h1 className="text-5xl md:text-7xl font-extrabold mb-10 pb-2 leading-[1.05] tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
+          Security by <span className="text-primary italic">Design.</span>
+        </h1>
+        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+          Choose absolute privacy with Standard mode, or enable AI Assist for optional productivity.
+        </p>
       </div>
 
-      <div className="space-y-10 text-gray-700 dark:text-gray-300">
-        <section className="relative overflow-hidden backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-gradient-to-br from-blue-200/50 to-transparent blur-2xl pointer-events-none" />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Tighter vertical rhythm overall */}
+      <div className="space-y-16">
+        <section className="py-6 mt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Choose your flow</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Manual mode keeps everything on-device. AI mode adds a helper, with a tradeoff.
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                A simple privacy flow you can trust.
+              </h2>
+              <p className="mt-4 mb-6 text-sm text-gray-600 dark:text-gray-300">
+                Clear steps, no hidden data collection.
               </p>
             </div>
-            <div className="flex rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/70 p-1">
-              <button
-                type="button"
-                onClick={() => setMode('manual')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-                  mode === 'manual'
-                    ? 'bg-primary text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-primary'
-                }`}
-              >
-                Manual Mode
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('ai')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-                  mode === 'ai'
-                    ? 'bg-primary text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-primary'
-                }`}
-              >
-                AI Mode
-              </button>
-            </div>
           </div>
 
-          <div className="mt-6">
-            <div className="flex flex-col items-center text-center">
-              <SecureNoteIllustration caption="Your words stay on your device. They are encrypted before anything leaves it." />
-            </div>
-
-            {mode === 'ai' && (
-              <div className="mt-4 text-sm text-amber-900/90 dark:text-amber-100/90">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-600 dark:text-amber-400" />
-                  <div>
-                    <p className="font-semibold">AI mode shares your prompt with a third-party model provider.</p>
-                    <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-100/80">
-                      We don’t store prompts, but third-party processing means it is less private than manual mode.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {(mode === 'manual' ? manualSteps : aiSteps).map((step, index) => (
-              <div
-                key={step.title}
-                className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-4 shadow-sm"
-              >
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
+            {flowSteps.map((step) => (
+              <div key={step.title} className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
                     {step.icon}
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-400">Step {index + 1}</p>
-                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">{step.title}</h3>
-                  </div>
+                  </span>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {step.title}
+                  </p>
                 </div>
-                <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{step.detail}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {step.detail}
+                </p>
               </div>
             ))}
           </div>
+
         </section>
 
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3">
-            <Shield className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-2">What We Store (And What We Don&apos;t)</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Minimal storage keeps the system reliable without keeping your secrets.
+        {/* Infrastructure & Manual Reveal */}
+        <section className="space-y-20 pt-10">
+          <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+            <div className="max-w-2xl md:w-1/2">
+              <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+                Infrastructure
+              </h2>
+              <p className="max-w-xl text-base text-gray-600 dark:text-gray-400 mb-5 leading-relaxed">
+                Utilizing Cloudflare&apos;s edge (Workers, KV, Durable Objects) to reduce latency and improve availability.
+              </p>
+
+              <div className="space-y-3">
+                {[
+                  "Notes stored as encrypted ciphertext",
+                  "Minimized data collection & short retention",
+                  "Future: EU-only storage (Premium feature)",
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 text-base text-gray-700 dark:text-gray-300"
+                  >
+                    <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                      <Check className="h-4 w-4 text-blue-600" />
+                    </div>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-center md:justify-end md:w-1/2">
+              <div className="relative">
+                <svg
+                  className="h-56 w-96 md:h-60 md:w-[28rem]"
+                  viewBox="0 0 360 200"
+                  fill="none"
+                  role="img"
+                  aria-label="Robust infrastructure illustration"
+                >
+                  <g id="servers">
+                    <rect
+                      x="100"
+                      y="80"
+                      width="45"
+                      height="70"
+                      rx="6"
+                      fill="hsl(var(--secondary))"
+                      stroke="hsl(var(--border))"
+                      strokeWidth="2"
+                    />
+                    <rect x="110" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect x="110" y="102" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <rect x="110" y="112" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <circle cx="113" cy="130" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="122" cy="130" r="3" fill="hsl(var(--primary))" opacity="0.5" />
+                    <circle cx="132" cy="130" r="3" fill="hsl(var(--primary))" opacity="0.5" />
+
+                    <rect
+                      x="157"
+                      y="50"
+                      width="45"
+                      height="100"
+                      rx="6"
+                      fill="hsl(var(--secondary))"
+                      stroke="hsl(var(--border))"
+                      strokeWidth="2"
+                    />
+                    <rect x="167" y="62" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect x="167" y="72" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect x="167" y="82" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <rect x="167" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <circle cx="170" cy="110" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="179" cy="110" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="189" cy="110" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="170" cy="125" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="179" cy="125" r="3" fill="hsl(var(--primary))" opacity="0.5" />
+                    <circle cx="189" cy="125" r="3" fill="hsl(var(--primary))" opacity="0.5" />
+
+                    <rect
+                      x="214"
+                      y="80"
+                      width="45"
+                      height="70"
+                      rx="6"
+                      fill="hsl(var(--secondary))"
+                      stroke="hsl(var(--border))"
+                      strokeWidth="2"
+                    />
+                    <rect x="224" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect x="224" y="102" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <rect x="224" y="112" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
+                    <circle cx="227" cy="130" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="236" cy="130" r="3" fill="hsl(var(--primary))" />
+                    <circle cx="246" cy="130" r="3" fill="hsl(var(--primary))" opacity="0.5" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+            <div className="flex justify-center md:order-1 md:justify-start md:w-1/2 md:-mt-6">
+              <svg
+                className="h-56 w-96 md:h-60 md:w-[28rem]"
+                viewBox="0 0 360 200"
+                fill="none"
+                role="img"
+                aria-label="Manual reveal protection from link preview bots"
+              >
+                <g id="note">
+                  <rect
+                    x="130"
+                    y="60"
+                    width="100"
+                    height="80"
+                    rx="8"
+                    fill="hsl(var(--secondary))"
+                    stroke="hsl(var(--border))"
+                    strokeWidth="2"
+                  />
+                  <rect x="145" y="80" width="70" height="4" rx="2" fill="hsl(var(--border))" />
+                  <rect x="145" y="92" width="60" height="4" rx="2" fill="hsl(var(--border))" opacity="0.7" />
+                  <rect x="145" y="104" width="65" height="4" rx="2" fill="hsl(var(--border))" opacity="0.7" />
+                </g>
+
+                <g id="bot">
+                  <rect
+                    x="80"
+                    y="140"
+                    width="40"
+                    height="40"
+                    rx="8"
+                    fill="hsl(var(--primary))"
+                    opacity="0.14"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                  />
+                  <circle cx="90" cy="153" r="4" fill="hsl(var(--primary))" />
+                  <circle cx="110" cy="153" r="4" fill="hsl(var(--primary))" />
+                  <line
+                    x1="100"
+                    y1="140"
+                    x2="100"
+                    y2="128"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="100" cy="125" r="3" fill="hsl(var(--primary))" />
+                  <line
+                    x1="120"
+                    y1="150"
+                    x2="145"
+                    y2="110"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    strokeDasharray="4 4"
+                    opacity="0.4"
+                  />
+                </g>
+
+                <g id="blocked">
+                  <line
+                    x1="195"
+                    y1="95"
+                    x2="215"
+                    y2="115"
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1="215"
+                    y1="95"
+                    x2="195"
+                    y2="115"
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <div className="mt-10max-w-2xl md:order-2 md:w-1/2">
+              <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+                Manual Reveal
+              </h2>
+              <p className="text-base text-gray-600 dark:text-gray-400 mb-5 leading-relaxed">
+                Link preview bots in apps like Slack or iMessage can accidentally “read” a one-time note before your recipient sees it.
+              </p>
+              <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                “Our manual reveal step forces human interaction, ensuring only the intended recipient consumes the note.”
               </p>
             </div>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-              <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 dark:text-white">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Stored
-              </h3>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                {[
-                  'Encrypted note content (ciphertext)',
-                  'Initialization vectors (IVs)',
-                  'Expiration and read limits',
-                  'Password-protection metadata (salt, wrap IV)',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-primary mt-0.5" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-              <h3 className="font-semibold mb-2 flex items-center gap-2 text-gray-900 dark:text-white">
-                <XCircle className="h-4 w-4 text-rose-500" />
-                Not stored
-              </h3>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                {[
-                  'Encryption keys',
-                  'Wrapped key (stays in the URL fragment)',
-                  'Plaintext notes',
-                  'AI prompts or outputs',
-                  'Analytics tied to identity',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <EyeOff className="h-4 w-4 text-rose-500 mt-0.5" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
 
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <div className="flex items-start gap-3">
-            <Shield className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-2xl font-medium mb-2">Why the Reveal Step</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                We require an explicit reveal action so link preview bots don&apos;t consume a note
-                before the intended recipient can open it.
+          <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl md:w-1/2">
+              <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+                AI Processing & Risk Disclosure
+              </h2>
+              <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+                If you enable AI Assist, your note is temporarily decrypted on our Cloudflare Worker to construct the prompt for the specific AI action you request.
+              </p>
+              <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+                That prompt is then sent to a third-party AI provider for processing. The response is returned through our infrastructure and re-encrypted before being stored or shared.
+              </p>
+              <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                During this process, plaintext exists transiently in server memory and is handled outside the strict end-to-end encryption guarantees of Standard mode.
               </p>
             </div>
+
+            <div className="flex justify-center md:justify-end md:w-1/2">
+              <svg
+                className="h-56 w-96 md:h-60 md:w-[28rem]"
+                viewBox="0 0 360 200"
+                fill="none"
+                role="img"
+                aria-label="AI processing illustration with secure chip"
+              >
+                <g id="chip">
+                  <rect
+                    x="130"
+                    y="55"
+                    width="100"
+                    height="90"
+                    rx="12"
+                    fill="hsl(var(--secondary))"
+                    stroke="hsl(var(--border))"
+                    strokeWidth="2"
+                  />
+                  <rect x="150" y="75" width="60" height="6" rx="3" fill="hsl(var(--primary))" />
+                  <rect x="150" y="88" width="60" height="6" rx="3" fill="hsl(var(--primary))" opacity="0.7" />
+                  <rect x="150" y="101" width="60" height="6" rx="3" fill="hsl(var(--primary))" opacity="0.5" />
+                  <circle cx="160" cy="122" r="4" fill="hsl(var(--primary))" />
+                  <circle cx="178" cy="122" r="4" fill="hsl(var(--primary))" opacity="0.7" />
+                  <circle cx="196" cy="122" r="4" fill="hsl(var(--primary))" opacity="0.5" />
+                </g>
+
+                <g id="pins" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" opacity="0.6">
+                  <line x1="120" y1="70" x2="110" y2="70" />
+                  <line x1="120" y1="90" x2="108" y2="90" />
+                  <line x1="120" y1="110" x2="110" y2="110" />
+                  <line x1="240" y1="70" x2="250" y2="70" />
+                  <line x1="240" y1="90" x2="252" y2="90" />
+                  <line x1="240" y1="110" x2="250" y2="110" />
+                </g>
+
+                <g id="spark">
+                  <circle cx="265" cy="55" r="10" fill="hsl(var(--primary))" opacity="0.12" />
+                  <path
+                    d="M265 44 L268 53 L277 56 L268 59 L265 68 L262 59 L253 56 L262 53 Z"
+                    fill="hsl(var(--primary))"
+                    opacity="0.6"
+                  />
+                </g>
+              </svg>
+            </div>
           </div>
         </section>
 
-        <section className="backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50">
-          <h2 className="text-xl font-medium mb-3 text-gray-900 dark:text-white">Learn More</h2>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <Link href="/security-resources" className="text-primary hover:underline">
-              Security Details →
-            </Link>
-            <Link href="/privacy" className="text-primary hover:underline">
-              Privacy Policy →
-            </Link>
-            <Link href="/terms" className="text-primary hover:underline">
-              Terms of Use →
+        {/* Call to Action (slightly tighter, less tall) */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8 p-10 rounded-[2.5rem] bg-primary text-white relative overflow-hidden group">
+          <Sparkles className="absolute -right-10 -top-10 h-56 w-56 text-white/10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
+          <div className="relative z-10">
+            <h3 className="text-3xl font-bold mb-2">Ready to secure your data?</h3>
+            <p className="text-primary-foreground/80 font-medium">
+              Fast, ephemeral, and legally compliant.
+            </p>
+          </div>
+          <div className="flex gap-4 relative z-10">
+            <Link
+              href="/"
+              className="px-8 py-4 bg-white text-primary rounded-2xl font-bold hover:shadow-xl transition-all hover:-translate-y-1"
+            >
+              Start Writing
             </Link>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

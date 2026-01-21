@@ -17,10 +17,14 @@ interface StoredCiphertext {
   content: string;
   iv: string;
   alg: string;
+  aad?: string;
   isPasswordProtected: boolean;
   salt: string | null;
   encryptedKey: string | null;
   encryptedKeyIv: string | null;
+  kdfVersion?: number;
+  kdfIterations?: number;
+  kdfHash?: string;
 }
 
 const MIN_TTL_SECONDS = 60;
@@ -172,10 +176,14 @@ export class SecureNoteStorageSql {
       content: parsed.content,
       iv: parsed.iv,
       alg: typeof parsed.alg === "string" ? parsed.alg : "AES-GCM",
+      aad: typeof parsed.aad === "string" ? parsed.aad : undefined,
       isPasswordProtected: !!parsed.isPasswordProtected,
       salt: parsed.salt ?? null,
       encryptedKey: parsed.encryptedKey ?? null,
       encryptedKeyIv: parsed.encryptedKeyIv ?? null,
+      kdfVersion: typeof parsed.kdfVersion === "number" ? parsed.kdfVersion : undefined,
+      kdfIterations: typeof parsed.kdfIterations === "number" ? parsed.kdfIterations : undefined,
+      kdfHash: typeof parsed.kdfHash === "string" ? parsed.kdfHash : undefined,
     };
 
     await this.persistCiphertext(noteId, ciphertext, expiresAt);
@@ -221,6 +229,10 @@ export class SecureNoteStorageSql {
       salt = null,
       encryptedKey = null,
       encryptedKeyIv = null,
+      aad = undefined,
+      kdfVersion = undefined,
+      kdfIterations = undefined,
+      kdfHash = undefined,
     } = body || {};
 
     if (!content || !iv) {
@@ -276,10 +288,14 @@ export class SecureNoteStorageSql {
       content,
       iv,
       alg: "AES-GCM",
+      aad: typeof aad === "string" ? aad : undefined,
       isPasswordProtected: !!isPasswordProtected,
       salt,
       encryptedKey: null,
       encryptedKeyIv,
+      kdfVersion: Number.isFinite(Number(kdfVersion)) ? Number(kdfVersion) : undefined,
+      kdfIterations: Number.isFinite(Number(kdfIterations)) ? Number(kdfIterations) : undefined,
+      kdfHash: typeof kdfHash === "string" ? kdfHash : undefined,
     };
 
     this.upsertMeta(meta);
@@ -397,6 +413,10 @@ export class SecureNoteStorageSql {
       maxReads: meta.max_reads,
       expiresAt: meta.expires_at,
       isPasswordProtected: ciphertext.isPasswordProtected ?? false,
+      ...(ciphertext.aad ? { aad: ciphertext.aad } : {}),
+      ...(ciphertext.kdfVersion !== undefined ? { kdfVersion: ciphertext.kdfVersion } : {}),
+      ...(ciphertext.kdfIterations !== undefined ? { kdfIterations: ciphertext.kdfIterations } : {}),
+      ...(ciphertext.kdfHash ? { kdfHash: ciphertext.kdfHash } : {}),
       ...(ciphertext.isPasswordProtected && {
         salt: ciphertext.salt,
         ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),
