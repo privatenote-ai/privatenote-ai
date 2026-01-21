@@ -150,10 +150,6 @@ export const FAQSection: React.FC = () => {
               share sensitive notes.
             </p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">
-            Still unsure? Just start by writing a test note and opening it yourself — you
-            can see the full flow in seconds.
-          </p>
         </div>
 
         <Accordion
@@ -184,6 +180,10 @@ export const FAQSection: React.FC = () => {
             </AccordionItem>
           ))}
         </Accordion>
+        <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 max-w-md">
+          Still unsure? Just start by writing a test note and opening it yourself — you
+          can see the full flow in seconds.
+        </p>
       </div>
     </section>
   );
