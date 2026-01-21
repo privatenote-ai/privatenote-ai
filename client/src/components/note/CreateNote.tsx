@@ -12,6 +12,7 @@ import {
 import { checkHIBP } from "@/utils/hibp";
 import { enhanceNoteWithAI, AiEnhanceError } from "@/utils/openai";
 import { useToast } from "@/hooks/use-toast";
+import { AiPrivacyWarningDialog } from "@/components/note/AiPrivacyWarningDialog";
 import {
   Shield,
   ShieldCheck,
@@ -467,6 +468,7 @@ export const CreateNote: React.FC = () => {
   const [noteContent, setNoteContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [noteUrl, setNoteUrl] = useState<string | null>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
@@ -474,7 +476,11 @@ export const CreateNote: React.FC = () => {
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const [aiUsesRemaining, setAiUsesRemaining] = useState<number>(0);
   const [aiVerificationRequested, setAiVerificationRequested] = useState(false);
+  const AI_NOTICE_KEY = "ai_notice_ack_v1";
+  const AI_PRIVACY_CONSENT_KEY = "ai_privacy_consent_v1";
   const [pendingAiAction, setPendingAiAction] = useState<AiAction | null>(null);
+  const [showPrivacyWarning, setShowPrivacyWarning] = useState(false);
+  const [pendingPrivacyAction, setPendingPrivacyAction] = useState<(() => void) | null>(null);
 
   const resetTurnstile = () => {
     console.log("[AI][Turnstile] Reset requested");
@@ -494,6 +500,39 @@ export const CreateNote: React.FC = () => {
     if (container) {
       container.innerHTML = "";
     }
+  };
+
+  // Check if user has consented to AI privacy warning
+  const hasAiPrivacyConsent = (): boolean => {
+    const consent = localStorage.getItem(AI_PRIVACY_CONSENT_KEY);
+    return consent === "accepted";
+  };
+
+  // Request AI privacy consent before executing action
+  const requestAiPrivacyConsent = (action: () => void) => {
+    if (hasAiPrivacyConsent()) {
+      // User already consented, execute immediately
+      action();
+    } else {
+      // Show privacy warning dialog
+      setPendingPrivacyAction(() => action);
+      setShowPrivacyWarning(true);
+    }
+  };
+
+  const handlePrivacyWarningConfirm = () => {
+    if (pendingPrivacyAction) {
+      pendingPrivacyAction();
+      setPendingPrivacyAction(null);
+    }
+  };
+
+  const handlePrivacyWarningCancel = () => {
+    setPendingPrivacyAction(null);
+    toast({
+      title: "AI Enhancement Cancelled",
+      description: "Your note content was not sent to any third-party service.",
+    });
   };
 
   const handleAiUsageUpdate = (remaining?: number) => {
@@ -680,10 +719,32 @@ export const CreateNote: React.FC = () => {
         return arrayBufferToBase64(copy.buffer);
       };
 
+      const { id: reservedId } = await apiRequest("/api/notes/reserve", "POST");
+
+      // Convert expiryValue to seconds for API (needed for AAD)
+      const expirySeconds = convertExpiryToSeconds(expiryValue);
+
+      // Declare variables for AAD and KDF parameters (used in both paths)
+      let aad: string | undefined;
+      let kdfVersion: number | undefined;
+      let kdfIterations: number | undefined;
+      let kdfHash: string | undefined;
+
       if (isPasswordProtected) {
         // Password-based encryption wraps the content key for URL-only storage
-        const { encryptedData, iv, salt, encryptedKey, encryptedKeyIv } =
-          await encryptWithPassword(noteContent, password);
+        // Fixed: Added AAD with expiry and maxReads for context binding
+        const encryptionResult = await encryptWithPassword(noteContent, password, {
+          expirySeconds,
+          maxReads: readCount,
+          noteId: reservedId,
+        });
+
+        // Extract values from encryption result
+        const { encryptedData, iv, salt, encryptedKey, encryptedKeyIv } = encryptionResult;
+        aad = encryptionResult.aad;
+        kdfVersion = encryptionResult.kdfVersion;
+        kdfIterations = encryptionResult.kdfIterations;
+        kdfHash = encryptionResult.kdfHash;
 
         // Convert encrypted data to base64 for transmission
         encryptedBase64 = encodeBase64(encryptedData);
@@ -696,16 +757,21 @@ export const CreateNote: React.FC = () => {
         const { key, exportedKey: generatedKey } = await generateKey();
         exportedKey = generatedKey;
 
-        // Encrypt the note content
-        const { encryptedData, iv } = await encryptNote(noteContent, key);
+        // Encrypt the note content with AAD for context binding
+        // Fixed: Added AAD with expiry and maxReads
+        const encryptionResult = await encryptNote(noteContent, key, {
+          expirySeconds,
+          maxReads: readCount,
+          noteId: reservedId,
+        });
+
+        const { encryptedData, iv } = encryptionResult;
+        aad = encryptionResult.aad;
 
         // Convert encrypted data to base64 for transmission
         encryptedBase64 = encodeBase64(encryptedData);
         ivBase64 = encodeBase64(iv);
       }
-
-      // Convert expiryValue to seconds for API
-      const expirySeconds = convertExpiryToSeconds(expiryValue);
 
       if (isAiMode) {
         if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
@@ -719,7 +785,9 @@ export const CreateNote: React.FC = () => {
       }
 
       // Send encrypted note to server
+      // Fixed: Include AAD and KDF parameters for password-protected notes
       const { id } = await apiRequest("/api/notes", "POST", {
+        id: reservedId,
         content: encryptedBase64,
         iv: ivBase64,
         expirySeconds,
@@ -731,6 +799,14 @@ export const CreateNote: React.FC = () => {
         ...(isPasswordProtected && {
           salt: saltBase64,
           encryptedKeyIv: encryptedKeyIvBase64,
+          aad: aad, // Additional Authenticated Data for context binding
+          kdfVersion: kdfVersion,
+          kdfIterations: kdfIterations,
+          kdfHash: kdfHash,
+        }),
+        // Include AAD for non-password-protected notes too (if available)
+        ...(aad && !isPasswordProtected && {
+          aad: aad,
         }),
       });
 
@@ -894,54 +970,40 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  // Function to copy QR code as image to clipboard
-  const copyQrCodeToClipboard = async () => {
+  const getQrSvgData = () => {
+    const qrCodeElement = document.getElementById('note-qr-code');
+    const svgElement = qrCodeElement?.querySelector('svg');
+    if (!svgElement) {
+      return null;
+    }
+    return new XMLSerializer().serializeToString(svgElement);
+  };
+
+  const downloadQrCode = async () => {
     try {
-      // Create a temporary canvas to render the QR code
-      const qrCodeElement = document.getElementById('note-qr-code');
-      if (qrCodeElement) {
-        // Since direct copy of SVG to clipboard is complex, create a download instead
-        const svgElement = qrCodeElement.querySelector('svg');
-        if (svgElement) {
-          // Create a temporary canvas
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-
-          // Set canvas dimensions (with some padding)
-          canvas.width = 200;
-          canvas.height = 200;
-
-          // Draw white background
-          if (ctx) {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Convert SVG to data URL
-            const svgData = new XMLSerializer().serializeToString(svgElement);
-            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-            const DOMURL = window.URL || window.webkitURL || window;
-            const url = DOMURL.createObjectURL(svgBlob);
-
-            // Create download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = "privatenote-qr.svg";
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-
-            // Release the object URL
-            setTimeout(() => {
-              DOMURL.revokeObjectURL(url);
-            }, 100);
-
-            toast({
-              title: "QR Code Downloaded",
-              description: "QR code saved as SVG file. You can now share it.",
-            });
-          }
-        }
+      const svgData = getQrSvgData();
+      if (!svgData) {
+        throw new Error("QR code not available.");
       }
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const DOMURL = window.URL || window.webkitURL || window;
+      const url = DOMURL.createObjectURL(svgBlob);
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = "privatenote-qr.svg";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      setTimeout(() => {
+        DOMURL.revokeObjectURL(url);
+      }, 100);
+
+      toast({
+        title: "QR Code Downloaded",
+        description: "Attach the file manually in your email.",
+      });
     } catch (error) {
       console.error("Error downloading QR code:", error);
       toast({
@@ -952,16 +1014,57 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  // Function to email QR code without link
-  const emailQrCode = () => {
-    if (noteUrl) {
-      const subject = "Secure Private Note";
-      const body = `I've shared a secure, encrypted note with you. Scan the attached QR code to view it.`;
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  // Function to copy QR code image to clipboard
+  const copyQrCodeToClipboard = async () => {
+    try {
+      const svgData = getQrSvgData();
+      if (!svgData) {
+        throw new Error("QR code not available.");
+      }
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const image = new Image();
+      image.src = url;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Failed to load QR image."));
+      });
 
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error("Canvas not supported.");
+      }
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+
+      const pngBlob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png')
+      );
+      if (!pngBlob) {
+        throw new Error("Could not create QR image.");
+      }
+
+      if (navigator.clipboard && (window as Window & { ClipboardItem?: typeof ClipboardItem }).ClipboardItem) {
+        const item = new ClipboardItem({ 'image/png': pngBlob });
+        await navigator.clipboard.write([item]);
+        toast({
+          title: "QR Image Copied",
+          description: "Paste it into chat, docs, or notes.",
+        });
+      } else {
+        await downloadQrCode();
+      }
+    } catch (error) {
+      console.error("Error copying QR code:", error);
       toast({
-        title: "Email App Opened",
-        description: "Your default email app should open. Attach the QR code manually to your email.",
+        title: "Error",
+        description: "Could not copy QR code. Try downloading it instead.",
+        variant: "destructive",
       });
     }
   };
@@ -1000,16 +1103,26 @@ export const CreateNote: React.FC = () => {
       return;
     }
 
-    if (shouldRequireVerification && !turnstileToken) {
-      console.log("[AI] Generate blocked; verification required");
-      queueAiVerification({
-        kind: "generate",
-        prompt: promptToUse,
-        enhancementType: enhancementTypeToUse,
-      });
-      return;
-    }
+    // Request privacy consent before proceeding
+    requestAiPrivacyConsent(async () => {
+      if (shouldRequireVerification && !turnstileToken) {
+        console.log("[AI] Generate blocked; verification required");
+        queueAiVerification({
+          kind: "generate",
+          prompt: promptToUse,
+          enhancementType: enhancementTypeToUse,
+        });
+        return;
+      }
 
+      await executeAiGenerate(promptToUse, enhancementTypeToUse);
+    });
+  };
+
+  const executeAiGenerate = async (
+    promptToUse: string,
+    enhancementTypeToUse: "improve" | "summarize" | "secure"
+  ) => {
     setIsGeneratingContent(true);
 
     // If this is the first prompt, store it as the original prompt
@@ -1111,18 +1224,25 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Save current content before improving
-    const improvePrompt = `Improve this text for clarity and style: ${contentToUse}`;
+    // Request privacy consent before proceeding
+    requestAiPrivacyConsent(async () => {
+      // Save current content before improving
+      const improvePrompt = `Improve this text for clarity and style: ${contentToUse}`;
 
-    // Add the improvement action to prompt history
-    setPromptHistory((prevHistory) => [...prevHistory, improvePrompt]);
+      // Add the improvement action to prompt history
+      setPromptHistory((prevHistory) => [...prevHistory, improvePrompt]);
 
-    if (shouldRequireVerification && !turnstileToken) {
-      console.log("[AI] Improve blocked; verification required");
-      queueAiVerification({ kind: "improve", content: contentToUse });
-      return;
-    }
+      if (shouldRequireVerification && !turnstileToken) {
+        console.log("[AI] Improve blocked; verification required");
+        queueAiVerification({ kind: "improve", content: contentToUse });
+        return;
+      }
 
+      await executeImprove(contentToUse);
+    });
+  };
+
+  const executeImprove = async (contentToUse: string) => {
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
@@ -1154,18 +1274,25 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Save current content before summarizing
-    const summarizePrompt = `Summarize this text into key points: ${contentToUse}`;
+    // Request privacy consent before proceeding
+    requestAiPrivacyConsent(async () => {
+      // Save current content before summarizing
+      const summarizePrompt = `Summarize this text into key points: ${contentToUse}`;
 
-    // Add the summarize action to prompt history
-    setPromptHistory((prevHistory) => [...prevHistory, summarizePrompt]);
+      // Add the summarize action to prompt history
+      setPromptHistory((prevHistory) => [...prevHistory, summarizePrompt]);
 
-    if (shouldRequireVerification && !turnstileToken) {
-      console.log("[AI] Summarize blocked; verification required");
-      queueAiVerification({ kind: "summarize", content: contentToUse });
-      return;
-    }
+      if (shouldRequireVerification && !turnstileToken) {
+        console.log("[AI] Summarize blocked; verification required");
+        queueAiVerification({ kind: "summarize", content: contentToUse });
+        return;
+      }
 
+      await executeSummarize(contentToUse);
+    });
+  };
+
+  const executeSummarize = async (contentToUse: string) => {
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
@@ -1196,18 +1323,25 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Save current content before simplifying
-    const simplifyPrompt = `Simplify this text and make it easier to understand: ${contentToUse}`;
+    // Request privacy consent before proceeding
+    requestAiPrivacyConsent(async () => {
+      // Save current content before simplifying
+      const simplifyPrompt = `Simplify this text and make it easier to understand: ${contentToUse}`;
 
-    // Add the simplify action to prompt history
-    setPromptHistory((prevHistory) => [...prevHistory, simplifyPrompt]);
+      // Add the simplify action to prompt history
+      setPromptHistory((prevHistory) => [...prevHistory, simplifyPrompt]);
 
-    if (shouldRequireVerification && !turnstileToken) {
-      console.log("[AI] Simplify blocked; verification required");
-      queueAiVerification({ kind: "simplify", content: contentToUse });
-      return;
-    }
+      if (shouldRequireVerification && !turnstileToken) {
+        console.log("[AI] Simplify blocked; verification required");
+        queueAiVerification({ kind: "simplify", content: contentToUse });
+        return;
+      }
 
+      await executeSimplify(contentToUse);
+    });
+  };
+
+  const executeSimplify = async (contentToUse: string) => {
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
@@ -1242,22 +1376,32 @@ export const CreateNote: React.FC = () => {
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse) return;
 
-    // Add a regeneration entry to the prompt history
-    const regeneratePrompt = `Regenerate from original prompt: ${promptToUse}`;
+    // Request privacy consent before proceeding
+    requestAiPrivacyConsent(async () => {
+      // Add a regeneration entry to the prompt history
+      const regeneratePrompt = `Regenerate from original prompt: ${promptToUse}`;
 
-    // Record this action in the prompt history
-    setPromptHistory((prevHistory) => [...prevHistory, regeneratePrompt]);
+      // Record this action in the prompt history
+      setPromptHistory((prevHistory) => [...prevHistory, regeneratePrompt]);
 
-    if (shouldRequireVerification && !turnstileToken) {
-      console.log("[AI] Regenerate blocked; verification required");
-      queueAiVerification({
-        kind: "regenerate",
-        prompt: promptToUse,
-        enhancementType: enhancementTypeToUse,
-      });
-      return;
-    }
+      if (shouldRequireVerification && !turnstileToken) {
+        console.log("[AI] Regenerate blocked; verification required");
+        queueAiVerification({
+          kind: "regenerate",
+          prompt: promptToUse,
+          enhancementType: enhancementTypeToUse,
+        });
+        return;
+      }
 
+      await executeRegenerate(promptToUse, enhancementTypeToUse);
+    });
+  };
+
+  const executeRegenerate = async (
+    promptToUse: string,
+    enhancementTypeToUse: "improve" | "summarize" | "secure"
+  ) => {
     setIsGeneratingContent(true);
     try {
       const aiResponse = await enhanceNoteWithAI(
@@ -1363,7 +1507,6 @@ export const CreateNote: React.FC = () => {
     return (
       <section className="max-w-3xl mx-auto">
         <div className="mb-4 mt-4"></div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
               <Shield className="h-5 w-5 mr-2 text-primary" />
@@ -1371,22 +1514,27 @@ export const CreateNote: React.FC = () => {
             </h2>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 whitespace-pre-wrap break-words border border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <div className="space-y-10">
+            <div className="whitespace-pre-wrap break-words">
+              <p className="text-base text-gray-700 dark:text-gray-200 mb-2">
                 Your note has been encrypted and stored securely. Share this
                 link with the recipient:
               </p>
-              <div className="flex flex-col space-y-2">
-                <div className="flex-grow flex items-center bg-gray-100 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-600">
-                  <div className="text-sm text-gray-800 dark:text-gray-200 truncate flex-grow">
-                    {noteUrl}
-                  </div>
+              <div className="flex flex-col space-y-4">
+                <div className="flex-grow flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700">
+                  <input
+                    type="text"
+                    readOnly
+                    value={noteUrl}
+                    className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text sm:whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm"
+                    aria-label="Encrypted note link"
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
                 </div>
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-3 justify-center">
                   <button
                     onClick={copyToClipboard}
-                    className="flex items-center px-3 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md transition-colors"
+                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
                     title="Copy link to clipboard"
                   >
                     <Copy className="h-4 w-4 mr-1.5" />
@@ -1394,61 +1542,85 @@ export const CreateNote: React.FC = () => {
                   </button>
                   <button
                     onClick={shareViaEmail}
-                    className="flex items-center px-3 py-2 text-sm font-medium bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-200 rounded-md transition-colors"
+                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
                     title="Email link to recipient"
                   >
                     <Mail className="h-4 w-4 mr-1.5" />
                     Email Link
                   </button>
                 </div>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowQrCode((prev) => !prev)}
+                    className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                    aria-expanded={showQrCode}
+                  >
+                    {showQrCode ? "Hide QR code" : "Show QR code"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col items-center my-4">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
-                <QRCode value={noteUrl} size={180} />
+            {showQrCode && (
+              <div className="flex flex-col items-center mt-8 mb-4">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
+                  <QRCode value={noteUrl} size={180} />
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={downloadQrCode}
+                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                    title="Download QR code as SVG image"
+                  >
+                    <FileText className="h-4 w-4 mr-1.5" />
+                    Download QR
+                  </button>
+                  <button
+                    onClick={copyQrCodeToClipboard}
+                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                    title="Copy QR image to clipboard"
+                  >
+                    <Mail className="h-4 w-4 mr-1.5" />
+                    Copy QR image
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                  Tip: Use Copy QR image to paste into chat or docs. Use Download QR to attach the file manually in email.
+                </p>
               </div>
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={copyQrCodeToClipboard}
-                  className="flex items-center px-3 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md transition-colors"
-                  title="Download QR code as SVG image"
-                >
-                  <FileText className="h-4 w-4 mr-1.5" />
-                  Save QR
-                </button>
-                <button
-                  onClick={emailQrCode}
-                  className="flex items-center px-3 py-2 text-sm font-medium bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-200 rounded-md transition-colors"
-                  title="Email the QR code"
-                >
-                  <Mail className="h-4 w-4 mr-1.5" />
-                  Email QR
-                </button>
-              </div>
-            </div>
+            )}
 
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-amber-800 dark:text-amber-200 text-sm">
+            <div
+              className={`rounded-lg p-4 text-sm border ${
+                isPasswordProtected
+                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+              }`}
+            >
               {isPasswordProtected ? (
                 <>
                   <p>
-                    <strong>Password protection enabled:</strong> The recipient
-                    will need to enter your password to decrypt this note.
+                    <strong>Password protection enabled.</strong> This note requires both the
+                    link and your password to decrypt.
                   </p>
                   <p className="mt-1">
-                    Make sure to securely share the password with the recipient
-                    using a different communication channel.
+                    For best security, send the password separately from the link.
                   </p>
                 </>
               ) : (
                 <p>
-                  <strong>Security notice:</strong> This link contains the
-                  encryption key. Anyone with this link can read the note.
+                  <strong>Link-only access.</strong> The decryption key is embedded in the
+                  link. Anyone who obtains the link can read the note.
                 </p>
               )}
-              <p className="mt-1">
-                The note will be permanently deleted after it has been read once
-                or after {getExpiryTimeDisplay(expiryValue)}.
+              <p className="mt-2">
+                The note will be permanently deleted after it is read once or after{" "}
+                <strong>{getExpiryTimeDisplay(expiryValue)}</strong>.
+              </p>
+              <p className="mt-2 text-xs italic opacity-80">
+                Tip: For sensitive notes, enable password protection and share credentials
+                separately.
               </p>
             </div>
 
@@ -1464,7 +1636,6 @@ export const CreateNote: React.FC = () => {
 
             <SecurityRecommendations type="compact" context="success" />
           </div>
-        </div>
       </section>
     );
   }
@@ -1524,7 +1695,17 @@ export const CreateNote: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setIsAiMode(true)}
+              onClick={() => {
+                if (!localStorage.getItem(AI_NOTICE_KEY)) {
+                  toast({
+                    title: "AI privacy notice",
+                    description:
+                      "Using AI sends this note to our provider to generate a response. Per their policy, it isn’t used for training and is retained only as needed to process the request.",
+                  });
+                  localStorage.setItem(AI_NOTICE_KEY, "1");
+                }
+                setIsAiMode(true);
+              }}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1700,13 +1881,13 @@ export const CreateNote: React.FC = () => {
                         <p className="flex items-center">
                           <Sparkles className="h-4 w-4 mr-2 flex-shrink-0" />
                           <span>
-                            <strong>Write with AI:</strong> Prompts are processed
-                            under OpenAI&apos;s terms of use, so we cannot
-                            guarantee complete privacy. OpenAI states it does
-                            not train on your data under its policy, but we
-                            cannot independently verify this. Final note content
-                            is still encrypted in your browser, and we do not
-                            store prompts on our servers.
+                            <strong>AI privacy notice:</strong> Using AI sends
+                            this note to our provider to generate a response.
+                            Per their policy, it isn&apos;t used for training
+                            and is retained only as needed to process the
+                            request. Final note content is still encrypted in
+                            your browser, and we do not store prompts on our
+                            servers.
                           </span>
                         </p>
                       </div>
@@ -2157,16 +2338,13 @@ export const CreateNote: React.FC = () => {
         </form>
       </div>
 
-      {/* Pro Tier Promotion (Placeholder) */}
-      {isAiMode && (
-        <div className="mt-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-            <span className="text-primary font-semibold">Coming soon:</span>{" "}
-            Upgrade to Pro for unlimited AI-powered notes with local AI
-            processing for maximum privacy.
-          </p>
-        </div>
-      )}
+      {/* AI Privacy Warning Dialog */}
+      <AiPrivacyWarningDialog
+        open={showPrivacyWarning}
+        onOpenChange={setShowPrivacyWarning}
+        onConfirm={handlePrivacyWarningConfirm}
+        onCancel={handlePrivacyWarningCancel}
+      />
     </section>
   );
 };

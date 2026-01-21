@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail, Key } from 'lucide-react';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -72,7 +72,7 @@ export const Navbar: React.FC = () => {
             closeMenu={closeMenu}
             className="flex items-center cursor-pointer"
           >
-            <span className="font-bold text-2xl gradient-text">
+            <span className="font-bold text-2xl text-primary">
               privateNote
               <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
             </span>
@@ -80,6 +80,13 @@ export const Navbar: React.FC = () => {
 
           {/* Center: Desktop Links */}
           <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm font-medium">
+            <NavLink
+              href="/"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Write a Note
+            </NavLink>
             <NavLink
               href="/how-it-works"
               closeMenu={closeMenu}
@@ -93,6 +100,13 @@ export const Navbar: React.FC = () => {
               className="text-primary hover:text-primary/80 transition-colors"
             >
               Security
+            </NavLink>
+            <NavLink
+              href="/password-generator"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Password Generator
             </NavLink>
             <NavLink
               href="/blog"
@@ -134,6 +148,11 @@ export const Navbar: React.FC = () => {
                 className="absolute top-16 right-4 w-64 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden z-50 transition-all duration-200 ease-in-out"
               >
                 <div className="py-2">
+                  <NavLink href="/" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <Lock className="h-4 w-4" />
+                    <span>Write a Note</span>
+                  </NavLink>
+
                   <NavLink href="/how-it-works" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                     <Shield className="h-4 w-4" />
                     <span>How It Works</span>
@@ -142,6 +161,11 @@ export const Navbar: React.FC = () => {
                   <NavLink href="/security-resources" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                     <Sparkles className="h-4 w-4" />
                     <span>Security</span>
+                  </NavLink>
+
+                  <NavLink href="/password-generator" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <Key className="h-4 w-4" />
+                    <span>Password Generator</span>
                   </NavLink>
 
                   <NavLink href="/blog" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">

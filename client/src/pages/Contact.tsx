@@ -1,18 +1,23 @@
 import React from 'react';
-import { Link } from 'wouter';
-import { ArrowLeft, Mail, MessageSquare } from 'lucide-react';
+import { Mail, MessageSquare } from 'lucide-react';
 
 export default function Contact() {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 mt-16 mb-20">
-      <div className="mb-8">
-        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
-        </Link>
-        <h1 className="text-3xl font-bold mb-2">Contact</h1>
+    <div className="container mx-auto max-w-6xl px-4 py-16 mb-24 relative">
+      {/* Ambient Background Glows */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] -z-10" />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 blur-[100px] -z-10" />
+
+      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
+        <h1 className="text-5xl md:text-7xl font-extrabold mb-10 pb-2 leading-[1.05] tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-primary to-blue-500 dark:from-blue-300 dark:to-blue-500 relative z-10">
+          Contact
+        </h1>
+        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+          Questions, feedback, or support? Reach out anytime.
+        </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
           <div className="flex items-start mb-4">
             <MessageSquare className="h-6 w-6 text-primary mr-3 mt-1" />

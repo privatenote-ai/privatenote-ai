@@ -151,35 +151,44 @@ const SecurityGuideDetail: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Link href="/security-resources" className="inline-flex items-center text-primary hover:underline mb-4">
+    <div className="container mx-auto max-w-6xl px-4 py-16 mb-24 relative">
+      {/* Ambient Background Glows */}
+      <div className="absolute top-0 left-1/4 w-80 h-80 bg-primary/10 blur-[120px] -z-10" />
+      <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-blue-500/10 blur-[100px] -z-10" />
+
+      <div className="max-w-4xl mx-auto text-center mb-12">
+        <Link href="/security-resources" className="inline-flex items-center text-sm font-semibold text-primary hover:gap-2 transition-all mb-8 group">
           <ChevronLeft className="h-4 w-4 mr-1" />
           Back to Security Resources
         </Link>
-        
-        <div className="flex items-center mb-3">
+
+        <div className="flex items-center justify-center mb-4">
           {guide.icon}
-          <h1 className="text-3xl font-bold ml-3">{guide.title}</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold ml-3 tracking-tight text-gray-900 dark:text-white">
+            {guide.title}
+          </h1>
         </div>
-        
-        <p className="text-lg text-gray-600 dark:text-gray-400">
+
+        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
           {guide.description}
         </p>
       </div>
-      
-      <div className="space-y-8 mb-12">
+
+      <div className="space-y-10 mb-16">
         {guide.sections.map((section, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-3">{section.title}</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{section.content}</p>
-            
+          <div
+            key={index}
+            className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-200/50 dark:border-gray-800/50 shadow-2xl shadow-gray-200/40 dark:shadow-none p-6 md:p-8"
+          >
+            <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">{section.title}</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{section.content}</p>
+
             {section.link && (
-              <a 
+              <a
                 href={section.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-primary hover:underline"
+                className="inline-flex items-center text-primary hover:underline font-medium"
               >
                 {section.linkText || 'Learn more'}
                 <ExternalLink className="h-4 w-4 ml-1" />
@@ -188,16 +197,16 @@ const SecurityGuideDetail: React.FC = () => {
           </div>
         ))}
       </div>
-      
-      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 mb-8">
-        <h3 className="text-xl font-bold mb-4">Explore Other Security Topics</h3>
+
+      <div className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-200/50 dark:border-gray-800/50 p-6 md:p-8 mb-12">
+        <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Explore Other Security Topics</h3>
         <div className="flex flex-wrap gap-2">
           {Object.entries(guides).map(([id, content]) => (
             id !== topicId && (
-              <Link 
+              <Link
                 key={id}
                 href={`/security-guides/${id}`}
-                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 bg-white/80 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {content.title}
               </Link>
@@ -211,7 +220,7 @@ const SecurityGuideDetail: React.FC = () => {
           </Link>
         </div>
       </div>
-      
+
       <div className="text-center text-sm text-gray-500 dark:text-gray-400">
         <p>
           This guide is provided for educational purposes. We may earn a commission from affiliate links

@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  BookOpen, 
   Fingerprint, 
   Globe, 
   MessageSquare, 
@@ -12,20 +11,21 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 export const SecurityEducation: React.FC = () => {
   return (
     <div className="space-y-6">
-      <p className="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
-        Understanding digital privacy is the first step to protecting yourself online. 
-        Learn about common threats and how to safeguard your information.
-      </p>
-      
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/50 backdrop-blur-sm overflow-hidden"
+      >
         <AccordionItem value="item-1">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <Wifi className="h-5 w-5 mr-3 text-primary" />
+          <AccordionTrigger className="text-lg font-medium px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Wifi className="h-5 w-5" />
+              </span>
               <span>Secure Your Network</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
+          <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
             <ul className="list-disc pl-5 space-y-2">
               <li>Use WPA3 encryption for your home Wi-Fi network</li>
               <li>Change default router credentials and update firmware regularly</li>
@@ -37,13 +37,15 @@ export const SecurityEducation: React.FC = () => {
         </AccordionItem>
         
         <AccordionItem value="item-2">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <Smartphone className="h-5 w-5 mr-3 text-primary" />
+          <AccordionTrigger className="text-lg font-medium px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Smartphone className="h-5 w-5" />
+              </span>
               <span>Mobile Device Security</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
+          <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
             <ul className="list-disc pl-5 space-y-2">
               <li>Use strong authentication (biometrics + PIN)</li>
               <li>Keep your OS and apps updated</li>
@@ -56,13 +58,15 @@ export const SecurityEducation: React.FC = () => {
         </AccordionItem>
         
         <AccordionItem value="item-3">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <Globe className="h-5 w-5 mr-3 text-primary" />
+          <AccordionTrigger className="text-lg font-medium px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Globe className="h-5 w-5" />
+              </span>
               <span>Secure Browsing Habits</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
+          <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
             <ul className="list-disc pl-5 space-y-2">
               <li>Use a privacy-focused browser with tracking protection</li>
               <li>Install browser extensions that block trackers and ads</li>
@@ -75,13 +79,15 @@ export const SecurityEducation: React.FC = () => {
         </AccordionItem>
         
         <AccordionItem value="item-4">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <MessageSquare className="h-5 w-5 mr-3 text-primary" />
+          <AccordionTrigger className="text-lg font-medium px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <MessageSquare className="h-5 w-5" />
+              </span>
               <span>Secure Communication</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
+          <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
             <ul className="list-disc pl-5 space-y-2">
               <li>Use end-to-end encrypted messaging apps for sensitive conversations</li>
               <li>Verify contact identities through security codes or QR codes</li>
@@ -94,13 +100,15 @@ export const SecurityEducation: React.FC = () => {
         </AccordionItem>
         
         <AccordionItem value="item-5">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <Fingerprint className="h-5 w-5 mr-3 text-primary" />
+          <AccordionTrigger className="text-lg font-medium px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Fingerprint className="h-5 w-5" />
+              </span>
               <span>Digital Privacy Best Practices</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
+          <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
             <ul className="list-disc pl-5 space-y-2">
               <li>Review privacy settings on all your accounts and services</li>
               <li>Opt out of data collection when possible</li>
@@ -112,51 +120,6 @@ export const SecurityEducation: React.FC = () => {
           </AccordionContent>
         </AccordionItem>
         
-        <AccordionItem value="item-6">
-          <AccordionTrigger className="text-lg font-medium">
-            <div className="flex items-center">
-              <BookOpen className="h-5 w-5 mr-3 text-primary" />
-              <span>Resources for Beginners</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="text-gray-600 dark:text-gray-400 pl-8 text-base">
-            <p className="mb-3">
-              If you're new to digital privacy and security, these resources will help you get started:
-            </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                <a 
-                  href="https://ssd.eff.org/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  EFF's Surveillance Self-Defense
-                </a> - Easy-to-understand guides for protecting your digital privacy
-              </li>
-              <li>
-                <a 
-                  href="https://privacytools.io/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  PrivacyTools
-                </a> - Recommendations for privacy-focused software and services
-              </li>
-              <li>
-                <a 
-                  href="https://www.consumerreports.org/digital-security/online-security-and-privacy-guide/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Consumer Reports Security Planner
-                </a> - Step-by-step guides tailored to your devices
-              </li>
-            </ul>
-          </AccordionContent>
-        </AccordionItem>
       </Accordion>
     </div>
   );

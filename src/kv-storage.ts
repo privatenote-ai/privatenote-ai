@@ -6,6 +6,7 @@ interface StoredNote {
   id: string;
   content: string;
   iv: string;
+  aad: string | null;
   expiresAt: string; // ISO timestamp
   maxReads: number;
   currentReads: number;
@@ -14,6 +15,9 @@ interface StoredNote {
   salt: string | null;
   encryptedKey: string | null;
   encryptedKeyIv: string | null;
+  kdfVersion: number | null;
+  kdfIterations: number | null;
+  kdfHash: string | null;
 }
 
 // KV TTL limits
@@ -51,6 +55,7 @@ export class KVNoteStorage {
       id: note.id,
       content: note.content,
       iv: note.iv,
+      aad: note.aad ?? null,
       expiresAt: note.expiresAt instanceof Date 
         ? note.expiresAt.toISOString() 
         : new Date(note.expiresAt).toISOString(),
@@ -63,6 +68,9 @@ export class KVNoteStorage {
       salt: note.salt || null,
       encryptedKey: note.encryptedKey || null,
       encryptedKeyIv: note.encryptedKeyIv || null,
+      kdfVersion: note.kdfVersion ?? null,
+      kdfIterations: note.kdfIterations ?? null,
+      kdfHash: note.kdfHash ?? null,
     };
   }
 
@@ -71,6 +79,7 @@ export class KVNoteStorage {
       id: stored.id,
       content: stored.content,
       iv: stored.iv,
+      aad: stored.aad ?? null,
       expiresAt: new Date(stored.expiresAt),
       maxReads: stored.maxReads,
       currentReads: stored.currentReads,
@@ -79,6 +88,9 @@ export class KVNoteStorage {
       salt: stored.salt,
       encryptedKey: stored.encryptedKey,
       encryptedKeyIv: stored.encryptedKeyIv,
+      kdfVersion: stored.kdfVersion ?? null,
+      kdfIterations: stored.kdfIterations ?? null,
+      kdfHash: stored.kdfHash ?? null,
     };
   }
 
@@ -113,6 +125,7 @@ export class KVNoteStorage {
       id,
       content: noteData.content,
       iv: noteData.iv,
+      aad: noteData.aad ?? null,
       expiresAt: noteData.expiresAt instanceof Date 
         ? noteData.expiresAt 
         : new Date(noteData.expiresAt),
@@ -123,6 +136,9 @@ export class KVNoteStorage {
       encryptedKey: null,
       encryptedKeyIv: noteData.encryptedKeyIv || null,
       salt: noteData.salt || null,
+      kdfVersion: noteData.kdfVersion ?? null,
+      kdfIterations: noteData.kdfIterations ?? null,
+      kdfHash: noteData.kdfHash ?? null,
     };
 
     const stored = this.noteToStored(note);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, ArrowRight, Tag, Clock } from 'lucide-react';
+import { Calendar, ArrowRight, Tag, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
@@ -12,52 +12,77 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Blog() {
   const featuredPost = {
-    title: 'Privacy and Security Tools We Recommend',
-    excerpt: 'A practical list of tools that reduce tracking and protect sensitive information.',
+    title: 'Why Privacy Matters',
+    excerpt: 'Privacy is not paranoia; it is good engineering and a basic human need for autonomy, experimentation, and dignity.',
     author: 'PrivateNote.ai',
     slug: 'privacy-tools',
     publishedAt: new Date().toISOString(),
     tags: ['privacy', 'tools', 'security'],
   };
-  
-  const { 
-    data: posts, 
-    isLoading, 
-    error 
+  const staticPosts: BlogPost[] = [
+    {
+      id: -1,
+      title: 'The Myth of "Good Enough" Security',
+      excerpt: 'Why modern threats demand architectural security, not just better habits.',
+      author: 'PrivateNote.ai',
+      slug: 'myth-good-enough-security',
+      publishedAt: new Date().toISOString(),
+      tags: ['security', 'privacy', 'authentication'],
+      content: '',
+      coverImage: null,
+      published: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: -2,
+      title: 'How We Generate Secure Passwords',
+      excerpt: 'Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.',
+      author: 'PrivateNote.ai',
+      slug: 'how-we-generate-passwords',
+      publishedAt: new Date().toISOString(),
+      tags: ['passwords', 'security', 'cryptography'],
+      content: '',
+      coverImage: null,
+      published: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ];
+
+  const {
+    data: posts,
+    isLoading,
+    error
   } = useQuery({
-    queryKey: ['/api/blog'], 
+    queryKey: ['/api/blog'],
     queryFn: getQueryFn<BlogPost[]>({ on401: 'returnNull' })
   });
-
-  if (error) {
-    return (
-      <div className="container mx-auto max-w-4xl px-4 py-8 mt-16">
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
-            Failed to load blog posts
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            We encountered an error while loading the blog. Please try again later.
-          </p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
+  const hasError = Boolean(error);
+  const combinedPosts = [
+    ...staticPosts,
+    ...(posts ?? []).filter((post) => !staticPosts.some((staticPost) => staticPost.slug === post.slug)),
+  ];
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <div className="mb-8">
-        <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
-        </Link>
-        <h1 className="text-3xl font-bold mb-2">Blog</h1>
-        <p className="text-gray-600 dark:text-gray-400">
+    <div className="container mx-auto max-w-4xl px-4 py-16 mb-24">
+      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
+        <h1 className="text-5xl md:text-7xl font-extrabold mb-12 pb-2 leading-[1.1] tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-primary to-blue-500 dark:from-blue-300 dark:to-blue-500 relative z-10">
+          Blog
+        </h1>
+        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
           Latest insights and tips about privacy, security, and encryption
         </p>
       </div>
 
-      {isLoading ? (
+      {hasError ? (
+        <div className="space-y-8">
+          <FeaturedPostCard post={featuredPost} />
+          {staticPosts.map((post) => (
+            <BlogPostCard key={post.id} post={post} />
+          ))}
+        </div>
+      ) : isLoading ? (
         <div className="space-y-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="backdrop-blur-sm rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -73,10 +98,10 @@ export default function Blog() {
             </div>
           ))}
         </div>
-      ) : posts && posts.length > 0 ? (
+      ) : combinedPosts.length > 0 ? (
         <div className="space-y-8">
           <FeaturedPostCard post={featuredPost} />
-          {posts.map((post) => (
+          {combinedPosts.map((post) => (
             <BlogPostCard key={post.id} post={post} />
           ))}
         </div>
@@ -96,7 +121,7 @@ export default function Blog() {
 }
 
 function BlogPostCard({ post }: { post: BlogPost }) {
-  const formattedDate = post.publishedAt 
+  const formattedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
     : '';
 

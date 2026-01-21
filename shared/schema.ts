@@ -13,6 +13,7 @@ export const notes = sqliteTable("notes", {
   id: text("id").primaryKey(),
   content: text("content").notNull(),
   iv: text("iv").notNull(),
+  aad: text("aad"),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   maxReads: integer("max_reads").default(1),
   currentReads: integer("current_reads").default(0),
@@ -22,6 +23,9 @@ export const notes = sqliteTable("notes", {
   encryptedKey: text("encrypted_key"), // The encrypted version of the actual encryption key
   encryptedKeyIv: text("encrypted_key_iv"), // IV used to encrypt the key
   salt: text("salt"), // Salt used for password derivation
+  kdfVersion: integer("kdf_version"),
+  kdfIterations: integer("kdf_iterations"),
+  kdfHash: text("kdf_hash"),
 });
 
 export const blogPosts = sqliteTable("blog_posts", {

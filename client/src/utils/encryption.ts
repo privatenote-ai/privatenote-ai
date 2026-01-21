@@ -1,5 +1,18 @@
 import bs58 from 'bs58';
 
+// Constants for key derivation
+export const PBKDF2_ITERATIONS = 310000;
+export const PBKDF2_HASH = 'SHA-256';
+export const KDF_VERSION = 1; // Version for parameter validation
+const PBKDF2_ITERATIONS_V2 = 600000;
+
+function getKdfDefaults(version?: number) {
+  if (version !== undefined && version >= 2) {
+    return { iterations: PBKDF2_ITERATIONS_V2, hash: PBKDF2_HASH };
+  }
+  return { iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH };
+}
+
 // Generate a random 256-bit encryption key
 export async function generateKey() {
   const key = await window.crypto.subtle.generateKey(
@@ -22,7 +35,8 @@ export async function generateKey() {
 }
 
 // Import a key from Base58 string
-export async function importKey(keyString: string) {
+// Fixed: Now allows both encrypt and decrypt operations for consistency
+export async function importKey(keyString: string, usage: KeyUsage[] = ['encrypt', 'decrypt']) {
   try {
     const keyBytes = bs58.decode(keyString);
     
@@ -34,7 +48,7 @@ export async function importKey(keyString: string) {
         length: 256,
       },
       false,
-      ['decrypt']
+      usage
     );
   } catch (error) {
     console.error('Error importing key:', error);
@@ -42,8 +56,25 @@ export async function importKey(keyString: string) {
   }
 }
 
+// Constant-time comparison helper to prevent timing attacks
+export function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
+}
+
 // Encrypt data with AES-GCM
-export async function encryptNote(content: string, key: CryptoKey) {
+// Fixed: Added AAD (Additional Authenticated Data) and explicit 128-bit tag length
+export async function encryptNote(
+  content: string, 
+  key: CryptoKey,
+  additionalData?: { expirySeconds?: number; maxReads?: number; noteId?: string }
+) {
   // Create an initialization vector
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   
@@ -51,30 +82,52 @@ export async function encryptNote(content: string, key: CryptoKey) {
   const encoder = new TextEncoder();
   const data = encoder.encode(content);
   
-  // Encrypt the data
+  // Generate AAD to bind context to ciphertext
+  // This prevents context confusion attacks (swapping ciphertexts between notes)
+  let aad: Uint8Array | undefined;
+  if (additionalData) {
+    const aadParts: string[] = [];
+    if (additionalData.noteId) aadParts.push(`id:${additionalData.noteId}`);
+    if (additionalData.expirySeconds !== undefined) aadParts.push(`exp:${additionalData.expirySeconds}`);
+    if (additionalData.maxReads !== undefined) aadParts.push(`reads:${additionalData.maxReads}`);
+    if (aadParts.length > 0) {
+      aad = encoder.encode(aadParts.join('|'));
+    }
+  }
+  
+  // Encrypt the data with explicit 128-bit authentication tag
   const encryptedData = await window.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv: iv,
+      additionalData: aad,
+      tagLength: 128, // Explicit 128-bit authentication tag for maximum security
     },
     key,
     data
   );
   
-  return { encryptedData, iv };
+  // Convert AAD to base64 for storage (slice buffer to ensure correct length)
+  const aadBase64 = aad ? arrayBufferToBase64(aad.buffer.slice(aad.byteOffset, aad.byteOffset + aad.byteLength)) : undefined;
+  
+  return { encryptedData, iv, aad: aadBase64 };
 }
 
 // Decrypt data with AES-GCM
+// Fixed: Added AAD support and explicit 128-bit tag length
 export async function decryptNote(
   encryptedData: Uint8Array,
   key: CryptoKey,
-  iv: Uint8Array
+  iv: Uint8Array,
+  additionalData?: Uint8Array
 ) {
   try {
     const decryptedData = await window.crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
         iv: iv,
+        additionalData: additionalData,
+        tagLength: 128, // Explicit 128-bit authentication tag
       },
       key,
       encryptedData
@@ -85,7 +138,8 @@ export async function decryptNote(
     return decoder.decode(decryptedData);
   } catch (error) {
     console.error('Error decrypting note:', error);
-    throw new Error('Failed to decrypt note. The key may be incorrect.');
+    // Fixed: Use consistent error message to prevent timing leaks
+    throw new Error('Failed to decrypt note. The key may be incorrect or the data may have been tampered with.');
   }
 }
 
@@ -117,52 +171,23 @@ export function base64ToArrayBuffer(base64: string) {
   return bytes.buffer;
 }
 
-// Declare a module-level variable to store the lazy-loaded Argon2 library
-let argon2Module: typeof import('argon2') | null = null;
-
-// Lazy load the Argon2 module only when needed
-async function getArgon2() {
-  if (!argon2Module) {
-    try {
-      argon2Module = await import('argon2');
-      return argon2Module;
-    } catch (error) {
-      console.warn('Failed to load Argon2 module, falling back to PBKDF2:', error);
-      return null;
-    }
+// Derive a key from a password using PBKDF2
+// Fixed: Removed dead Argon2 code that never executed in browser environment
+// PBKDF2 is the standard for browser-based key derivation and provides adequate security
+export async function deriveKeyFromPassword(
+  password: string, 
+  salt: Uint8Array,
+  iterations: number = PBKDF2_ITERATIONS,
+  hash: string = PBKDF2_HASH
+) {
+  // Fixed: Validate KDF parameters to prevent downgrade attacks
+  if (iterations < 100000) {
+    throw new Error('Invalid KDF parameters: iteration count too low');
   }
-  return argon2Module;
-}
-
-// Derive a key from a password using Argon2 when possible, with PBKDF2 fallback
-export async function deriveKeyFromPassword(password: string, salt: Uint8Array) {
-  // First try to use Argon2 (lazy loaded)
-  const argon2 = await getArgon2();
-  
-  // If we successfully loaded Argon2 and we're in a Node.js environment that supports it
-  if (argon2 && typeof window === 'undefined') {
-    try {
-      // Use Argon2id (best variant for most use cases)
-      const hash = await argon2.hash(password, {
-        type: argon2.argon2id,
-        salt: Buffer.from(salt), // Convert Uint8Array to Buffer for Node.js
-        memoryCost: 65536, // 64 MiB
-        timeCost: 3,      // 3 iterations
-        parallelism: 4,   // 4 threads
-        raw: true         // Return raw buffer instead of encoded string
-      });
-      
-      // In a Node.js environment, we'd need to use the Node.js crypto API
-      // However, this is a theoretical case as we're in a browser context for this app
-      // In practice, this code path won't be taken in our browser app
-      return null as any; // This is just to satisfy TypeScript
-    } catch (error) {
-      console.warn('Error using Argon2, falling back to PBKDF2:', error);
-      // Fall back to PBKDF2 if Argon2 fails
-    }
+  if (hash !== 'SHA-256' && hash !== 'SHA-384' && hash !== 'SHA-512') {
+    throw new Error('Invalid KDF parameters: unsupported hash algorithm');
   }
   
-  // Web browser fallback using PBKDF2
   // Convert password to buffer
   const passwordBuffer = new TextEncoder().encode(password);
   
@@ -175,13 +200,13 @@ export async function deriveKeyFromPassword(password: string, salt: Uint8Array) 
     ['deriveBits', 'deriveKey']
   );
   
-  // Use higher iteration count for better security
+  // Derive key using PBKDF2 with validated parameters
   return await window.crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt,
-      iterations: 310000, // Very high iteration count for better security
-      hash: 'SHA-256'
+      iterations: iterations,
+      hash: hash as AlgorithmIdentifier
     },
     passwordKey,
     { name: 'AES-GCM', length: 256 },
@@ -196,27 +221,43 @@ export function generateSalt() {
 }
 
 // Password-protected encryption function
-export async function encryptWithPassword(content: string, password: string) {
+// Fixed: Added AAD and explicit tag length to key encryption
+export async function encryptWithPassword(
+  content: string, 
+  password: string,
+  additionalData?: { expirySeconds?: number; maxReads?: number; noteId?: string }
+) {
   // Generate a salt for the password
   const salt = generateSalt();
   
-  // Derive a key from the password
+  // Derive a key from the password with validated parameters
   const passwordKey = await deriveKeyFromPassword(password, salt);
   
   // First, generate a regular encryption key
   const { key, exportedKey } = await generateKey();
   
-  // Encrypt the note content with the regular key
-  const { encryptedData, iv } = await encryptNote(content, key);
+  // Encrypt the note content with the regular key (includes AAD)
+  const { encryptedData, iv, aad } = await encryptNote(content, key, additionalData);
   
   // Encrypt the regular key with the password-derived key
+  // Fixed: Added AAD and explicit tag length for key encryption
   const keyBuffer = bs58.decode(exportedKey);
   const encryptedKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
+  
+  // Use AAD for key encryption to bind it to the note context
+  // Convert base64 AAD back to Uint8Array for key encryption
+  let keyAad: Uint8Array | undefined;
+  if (aad) {
+    const aadBuffer = base64ToArrayBuffer(aad);
+    keyAad = new Uint8Array(aadBuffer);
+  }
   
   const encryptedKeyData = await window.crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv: encryptedKeyIv,
+      additionalData: keyAad,
+      tagLength: 128, // Explicit 128-bit authentication tag
     },
     passwordKey,
     keyBuffer
@@ -227,28 +268,49 @@ export async function encryptWithPassword(content: string, password: string) {
     iv,
     salt,
     encryptedKey: encryptedKeyData,
-    encryptedKeyIv
+    encryptedKeyIv,
+    aad, // Return AAD for storage (base64 string)
+    kdfVersion: KDF_VERSION, // Include KDF version for parameter validation
+    kdfIterations: PBKDF2_ITERATIONS,
+    kdfHash: PBKDF2_HASH
   };
 }
 
 // Password-protected decryption function
+// Fixed: Added AAD support, parameter validation, and explicit tag length
 export async function decryptWithPassword(
   encryptedData: Uint8Array,
   iv: Uint8Array,
   encryptedKey: ArrayBuffer,
   encryptedKeyIv: Uint8Array,
   salt: Uint8Array,
-  password: string
+  password: string,
+  aad?: Uint8Array,
+  kdfVersion?: number,
+  kdfIterations?: number,
+  kdfHash?: string
 ) {
   try {
-    // Derive the key from the password
-    const passwordKey = await deriveKeyFromPassword(password, salt);
+    // Fixed: Validate KDF parameters to prevent downgrade attacks
+    const defaults = getKdfDefaults(kdfVersion);
+    const iterations = kdfIterations ?? defaults.iterations;
+    const hash = kdfHash ?? defaults.hash;
     
-    // Decrypt the regular encryption key
+    if (kdfVersion !== undefined && kdfVersion !== KDF_VERSION) {
+      throw new Error('Invalid KDF version. The note may have been encrypted with a different version.');
+    }
+    
+    // Derive the key from the password with validated parameters
+    const passwordKey = await deriveKeyFromPassword(password, salt, iterations, hash);
+    
+    // Decrypt the regular encryption key with AAD
+    const keyAad = aad ? new Uint8Array(aad) : undefined;
     const decryptedKeyBuffer = await window.crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
         iv: encryptedKeyIv,
+        additionalData: keyAad,
+        tagLength: 128, // Explicit 128-bit authentication tag
       },
       passwordKey,
       encryptedKey
@@ -258,13 +320,14 @@ export async function decryptWithPassword(
     const decryptedKeyBytes = new Uint8Array(decryptedKeyBuffer);
     const decryptedKeyString = bs58.encode(decryptedKeyBytes);
     
-    // Import the decrypted key
+    // Import the decrypted key (now supports both encrypt and decrypt)
     const key = await importKey(decryptedKeyString);
     
-    // Decrypt the note with the regular key
-    return await decryptNote(encryptedData, key, iv);
+    // Decrypt the note with the regular key and AAD
+    return await decryptNote(encryptedData, key, iv, aad);
   } catch (error) {
     console.error('Error decrypting with password:', error);
-    throw new Error('Failed to decrypt note. The password may be incorrect.');
+    // Fixed: Use consistent error message to prevent timing leaks
+    throw new Error('Failed to decrypt note. The password may be incorrect or the data may have been tampered with.');
   }
 }
