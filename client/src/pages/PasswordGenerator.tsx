@@ -237,6 +237,69 @@ const PasswordGenerator: React.FC = () => {
     }
   };
 
+  const getQrSvgData = () => {
+    const qrCodeElement = document.getElementById('password-qr-code');
+    const svgElement = qrCodeElement?.querySelector('svg') as SVGSVGElement | null;
+    if (!svgElement) {
+      return null;
+    }
+    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+    if (!svgClone.getAttribute('xmlns')) {
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+    const viewBox = svgClone.getAttribute('viewBox');
+    let size = 180;
+    if (viewBox) {
+      const parts = viewBox.split(' ').map((part) => Number(part));
+      if (parts.length === 4 && Number.isFinite(parts[2])) {
+        size = parts[2] || size;
+      }
+    }
+    if (!svgClone.getAttribute('width')) {
+      svgClone.setAttribute('width', String(size));
+    }
+    if (!svgClone.getAttribute('height')) {
+      svgClone.setAttribute('height', String(size));
+    }
+    return new XMLSerializer().serializeToString(svgClone);
+  };
+
+  const downloadQrCode = async () => {
+    try {
+      const svgData = getQrSvgData();
+      if (!svgData) {
+        throw new Error("QR code not available.");
+      }
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const DOMURL = window.URL || window.webkitURL || window;
+      const url = DOMURL.createObjectURL(svgBlob);
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = "privatenote-password-qr.svg";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      setTimeout(() => {
+        DOMURL.revokeObjectURL(url);
+      }, 100);
+
+      toast({
+        title: "QR Code Downloaded",
+        description: "Attach the file manually in your email.",
+      });
+    } catch (error) {
+      console.error("Error downloading QR code:", error);
+      toast({
+        title: "Error",
+        description: "Could not download QR code. Try using the link instead.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   // Generate password on initial load and when settings change
   useEffect(() => {
     generatePassword();
@@ -396,8 +459,17 @@ const PasswordGenerator: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   QR Code
                 </label>
-                <div className="w-48 h-48 bg-white p-2 rounded-lg">
+                <div className="w-48 h-48 bg-white p-2 rounded-lg" id="password-qr-code">
                   <QRCode value={sharedNoteUrl} size={180} />
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={downloadQrCode}
+                    className="flex items-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                    title="Download QR code as SVG image"
+                  >
+                    Download QR
+                  </button>
                 </div>
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   Scan this code to access your password
@@ -503,7 +575,7 @@ const PasswordGenerator: React.FC = () => {
 
       {/* Approach Explanation Cards - Summaries */}
       <div className="mt-12 grid gap-4 md:grid-cols-3">
-        <Link href="/blog/how-we-generate-passwords" className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer group">
+        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
               <Lock className="h-5 w-5" />
@@ -513,12 +585,9 @@ const PasswordGenerator: React.FC = () => {
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Uses the Crypto Web API for cryptographically secure randomness. All password generation happens entirely in your browser—your password never leaves your device.
           </p>
-          <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
-            Learn more <ArrowRight className="h-4 w-4 ml-1" />
-          </div>
-        </Link>
+        </div>
 
-        <Link href="/blog/how-we-generate-passwords" className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer group">
+        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
               <Zap className="h-5 w-5" />
@@ -528,12 +597,9 @@ const PasswordGenerator: React.FC = () => {
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Uses rejection sampling to ensure every character has an equal chance of being selected, eliminating bias and making passwords harder to predict or crack.
           </p>
-          <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
-            Learn more <ArrowRight className="h-4 w-4 ml-1" />
-          </div>
-        </Link>
+        </div>
 
-        <Link href="/blog/how-we-generate-passwords" className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer group">
+        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
               <BarChart3 className="h-5 w-5" />
@@ -543,10 +609,7 @@ const PasswordGenerator: React.FC = () => {
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Uses advanced password strength estimation that analyzes patterns, common words, and calculates realistic crack times to give you an accurate security assessment.
           </p>
-          <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
-            Learn more <ArrowRight className="h-4 w-4 ml-1" />
-          </div>
-        </Link>
+        </div>
       </div>
 
       {/* Learn More Link */}

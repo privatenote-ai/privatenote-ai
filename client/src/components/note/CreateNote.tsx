@@ -972,11 +972,29 @@ export const CreateNote: React.FC = () => {
 
   const getQrSvgData = () => {
     const qrCodeElement = document.getElementById('note-qr-code');
-    const svgElement = qrCodeElement?.querySelector('svg');
+    const svgElement = qrCodeElement?.querySelector('svg') as SVGSVGElement | null;
     if (!svgElement) {
       return null;
     }
-    return new XMLSerializer().serializeToString(svgElement);
+    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
+    if (!svgClone.getAttribute('xmlns')) {
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+    const viewBox = svgClone.getAttribute('viewBox');
+    let size = 180;
+    if (viewBox) {
+      const parts = viewBox.split(' ').map((part) => Number(part));
+      if (parts.length === 4 && Number.isFinite(parts[2])) {
+        size = parts[2] || size;
+      }
+    }
+    if (!svgClone.getAttribute('width')) {
+      svgClone.setAttribute('width', String(size));
+    }
+    if (!svgClone.getAttribute('height')) {
+      svgClone.setAttribute('height', String(size));
+    }
+    return new XMLSerializer().serializeToString(svgClone);
   };
 
   const downloadQrCode = async () => {
@@ -1014,60 +1032,6 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  // Function to copy QR code image to clipboard
-  const copyQrCodeToClipboard = async () => {
-    try {
-      const svgData = getQrSvgData();
-      if (!svgData) {
-        throw new Error("QR code not available.");
-      }
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      const image = new Image();
-      image.src = url;
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error("Failed to load QR image."));
-      });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 200;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error("Canvas not supported.");
-      }
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-
-      const pngBlob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png')
-      );
-      if (!pngBlob) {
-        throw new Error("Could not create QR image.");
-      }
-
-      if (navigator.clipboard && (window as Window & { ClipboardItem?: typeof ClipboardItem }).ClipboardItem) {
-        const item = new ClipboardItem({ 'image/png': pngBlob });
-        await navigator.clipboard.write([item]);
-        toast({
-          title: "QR Image Copied",
-          description: "Paste it into chat, docs, or notes.",
-        });
-      } else {
-        await downloadQrCode();
-      }
-    } catch (error) {
-      console.error("Error copying QR code:", error);
-      toast({
-        title: "Error",
-        description: "Could not copy QR code. Try downloading it instead.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const createNewNote = () => {
     setNoteUrl(null);
@@ -1576,18 +1540,7 @@ export const CreateNote: React.FC = () => {
                     <FileText className="h-4 w-4 mr-1.5" />
                     Download QR
                   </button>
-                  <button
-                    onClick={copyQrCodeToClipboard}
-                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                    title="Copy QR image to clipboard"
-                  >
-                    <Mail className="h-4 w-4 mr-1.5" />
-                    Copy QR image
-                  </button>
                 </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center max-w-sm">
-                  Tip: Use Copy QR image to paste into chat or docs. Use Download QR to attach the file manually in email.
-                </p>
               </div>
             )}
 
