@@ -37,7 +37,7 @@ export default function BlogPostPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-8 mt-16">
+      <div className="container mx-auto max-w-4xl px-4 pt-24 pb-16">
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
             Failed to load blog post
@@ -55,7 +55,7 @@ export default function BlogPostPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto max-w-3xl px-4 py-8 mt-16">
+      <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
         <Skeleton className="h-10 w-3/4 mb-4" />
         <div className="flex items-center mb-6">
           <Skeleton className="h-4 w-32 mr-4" />
@@ -73,7 +73,7 @@ export default function BlogPostPage() {
 
   if (!post) {
     return (
-      <div className="container mx-auto max-w-3xl px-4 py-8 mt-16">
+      <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
         <div className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 rounded-lg p-8 text-center">
           <h2 className="text-xl font-medium mb-2">Blog post not found</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -89,10 +89,10 @@ export default function BlogPostPage() {
     : '';
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 mt-16 mb-20">
+    <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16 mb-20">
       <article>
         <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-3">{post.title}</h1>
+          <h1 className="page-title mb-3">{post.title}</h1>
 
           <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-4 mb-6">
             <div className="flex items-center">

@@ -187,7 +187,7 @@ export default function Analytics() {
   
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto px-6 pt-24 pb-16">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -200,10 +200,10 @@ export default function Analytics() {
   }
   
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-6 pt-24 pb-16">
       <div className="flex flex-col space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <h1 className="page-title text-gray-900 dark:text-white">Analytics Dashboard</h1>
           <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select time range" />

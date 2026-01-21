@@ -17,15 +17,15 @@ import {
 const SecurityOverview: React.FC = () => {
   return (
     <MotionConfig reducedMotion="user">
-      <div className="container mx-auto max-w-6xl px-4 py-16 mb-24 relative">
+      <div className="container mx-auto max-w-6xl px-4 pt-24 pb-16 mb-24 relative">
         {/* Ambient Background Glows */}
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] -z-10" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 blur-[100px] -z-10" />
 
         {/* Header Section */}
         <div className="max-w-4xl mx-auto text-center mb-24 relative z-10">
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-10 pb-2 leading-[1.05] tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
-            Security <span className="text-primary italic text-5xl md:text-7xl">Architecture.</span>
+          <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
+            Security <span className="text-primary italic">Architecture.</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
             Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.
@@ -87,7 +87,7 @@ const SecurityOverview: React.FC = () => {
 
           {/* 2. Cryptographic Specifications */}
           <section className=" py-10 max-w-4xl mx-auto">
-            <div className="rounded-[2rem] bg-blue-600 text-white p-8 md:p-10 shadow-lg">
+            <div className="rounded-[2rem] bg-primary text-white p-8 md:p-10 shadow-lg">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-white/15 text-white flex items-center justify-center">
                   <Binary className="h-5 w-5" />

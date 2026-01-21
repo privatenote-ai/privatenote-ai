@@ -151,7 +151,7 @@ const SecurityGuideDetail: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-16 mb-24 relative">
+    <div className="container mx-auto max-w-6xl px-4 pt-24 pb-16 mb-24 relative">
       {/* Ambient Background Glows */}
       <div className="absolute top-0 left-1/4 w-80 h-80 bg-primary/10 blur-[120px] -z-10" />
       <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-blue-500/10 blur-[100px] -z-10" />
@@ -164,7 +164,7 @@ const SecurityGuideDetail: React.FC = () => {
 
         <div className="flex items-center justify-center mb-4">
           {guide.icon}
-          <h1 className="text-4xl md:text-5xl font-extrabold ml-3 tracking-tight text-gray-900 dark:text-white">
+          <h1 className="page-title ml-3 text-gray-900 dark:text-white">
             {guide.title}
           </h1>
         </div>

@@ -23,7 +23,7 @@ const PasswordGenerator: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [sharedNoteUrl, setSharedNoteUrl] = useState<string | null>(null);
-  
+
   const { toast } = useToast();
 
   // Character sets
@@ -32,19 +32,53 @@ const PasswordGenerator: React.FC = () => {
   const numberChars = "23456789"; // Excluding 0, 1
   const symbolChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
   const similarChars = "Il1O0";
-  
+
   // Rejection sampling for unbiased random selection
   const getUnbiasedRandomIndex = (max: number): number => {
     const maxValid = Math.floor(0xFFFFFFFF / max) * max; // Largest multiple of max that fits in 32 bits
     let randomValue: number;
     let randomBuffer = new Uint32Array(1);
-    
+
     do {
       window.crypto.getRandomValues(randomBuffer);
       randomValue = randomBuffer[0];
     } while (randomValue >= maxValid);
-    
+
     return randomValue % max;
+  };
+
+
+  const getHeuristicScore = (pass: string) => {
+    const length = pass.length;
+    const hasLower = /[a-z]/.test(pass);
+    const hasUpper = /[A-Z]/.test(pass);
+    const hasNumber = /[0-9]/.test(pass);
+    const hasSymbol = /[^A-Za-z0-9]/.test(pass);
+    const typeCount = [hasLower, hasUpper, hasNumber, hasSymbol].filter(Boolean).length;
+
+    if (length <= 7) return 0;
+
+    const lettersOnly = (hasLower || hasUpper) && !hasNumber && !hasSymbol;
+    const numbersOnly = hasNumber && !hasLower && !hasUpper && !hasSymbol;
+    const symbolsOnly = hasSymbol && !hasLower && !hasUpper && !hasNumber;
+
+    if (length <= 9) {
+      if (numbersOnly || symbolsOnly) return 0;
+      if (lettersOnly) return 1;
+      return 2;
+    }
+
+    if (length <= 12) {
+      if (numbersOnly || symbolsOnly) return 1;
+      if (lettersOnly) return 2;
+      if (typeCount >= 3) return 4;
+      return 3;
+    }
+
+    if (numbersOnly || symbolsOnly) return 2;
+    if (lettersOnly) return 2;
+    if (typeCount >= 3) return 4;
+    return 3;
   };
 
   // Calculate password strength using zxcvbn-ts
@@ -56,13 +90,16 @@ const PasswordGenerator: React.FC = () => {
     }
 
     const result = zxcvbn(pass);
-    // zxcvbn returns a score from 0-4
-    setPasswordScore(result.score);
-    
+    const heuristicScore = getHeuristicScore(pass);
+    const combinedScore = Math.min(result.score, heuristicScore);
+
+    // zxcvbn returns a score from 0-4; we apply the stricter heuristic score
+    setPasswordScore(combinedScore);
+
     // Map zxcvbn score (0-4) to our strength indicator (0-6 for display purposes)
     // Score 0 = Very Weak, 1 = Weak, 2 = Fair, 3 = Good, 4 = Strong
     const strengthMapping = [0, 1, 2, 4, 6];
-    setPasswordStrength(strengthMapping[result.score] || 0);
+    setPasswordStrength(strengthMapping[combinedScore] || 0);
   }, []);
 
   // Store calculatePasswordStrength in a ref to avoid dependency issues
@@ -108,7 +145,7 @@ const PasswordGenerator: React.FC = () => {
       // Ensure at least one character from each selected set
       let finalPassword = newPassword;
       const selectedSets: Array<{ chars: string; name: string }> = [];
-      
+
       if (useUppercase) selectedSets.push({ chars: uppercaseChars, name: 'uppercase' });
       if (useLowercase) selectedSets.push({ chars: lowercaseChars, name: 'lowercase' });
       if (useNumbers) selectedSets.push({ chars: numberChars, name: 'numbers' });
@@ -179,10 +216,10 @@ const PasswordGenerator: React.FC = () => {
 
       // Generate encryption key
       const { key, exportedKey } = await generateKey();
-      
+
       const expirySeconds = 24 * 60 * 60; // 1 day
       const maxReads = 1;
-      
+
       // Encrypt the password with AAD for context binding
       // Fixed: Added AAD with expiry and maxReads
       const { encryptedData, iv, aad } = await encryptNote(password, key, {
@@ -190,7 +227,7 @@ const PasswordGenerator: React.FC = () => {
         maxReads,
         noteId: reservedId,
       });
-      
+
       // Convert to base64
       const encodeBase64 = (value: ArrayBuffer | Uint8Array) => {
         const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
@@ -198,10 +235,10 @@ const PasswordGenerator: React.FC = () => {
         copy.set(bytes);
         return arrayBufferToBase64(copy.buffer);
       };
-      
+
       const encryptedBase64 = encodeBase64(encryptedData);
       const ivBase64 = encodeBase64(iv);
-      
+
       // Create note with 1 day expiry and 1 read
       // Fixed: Include AAD for context binding
       const { id } = await apiRequest("/api/notes", "POST", {
@@ -220,7 +257,7 @@ const PasswordGenerator: React.FC = () => {
 
       // Set the shared note URL to show success page
       setSharedNoteUrl(url);
-      
+
       toast({
         title: "Password shared!",
         description: "Your password has been encrypted and shared as a private note",
@@ -305,26 +342,25 @@ const PasswordGenerator: React.FC = () => {
     generatePassword();
   }, [generatePassword]);
 
-  // Strength text and color based on zxcvbn score
+  // Strength text and color based on combined score
   const getStrengthText = () => {
     // zxcvbn score: 0 = Very Weak, 1 = Weak, 2 = Fair, 3 = Good, 4 = Strong
     if (passwordScore === 0) return { text: 'Very Weak', color: 'text-red-600' };
     if (passwordScore === 1) return { text: 'Weak', color: 'text-red-500' };
     if (passwordScore === 2) return { text: 'Fair', color: 'text-yellow-600' };
-    if (passwordScore === 3) return { text: 'Good', color: 'text-green-500' };
-    if (passwordScore === 4) return { text: 'Strong', color: 'text-green-600' };
+    if (passwordScore === 3) return { text: 'Good', color: 'text-[#50C878]' };
+    if (passwordScore === 4) return { text: 'Strong', color: 'text-[#50C878]' };
     return { text: 'Very Weak', color: 'text-red-600' };
   };
 
   const strengthInfo = getStrengthText();
 
   return (
-    <div className="max-w-4xl mx-auto pt-12 pb-20 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       {/* Hero Section */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
-          <span className="block">Generate</span>
-          <span className="block mt-1 text-primary">Strong Passwords</span>
+        <h1 className="page-title text-gray-900 dark:text-white">
+          Strong <span className="text-primary italic">Password </span> Generator.
         </h1>
         <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
           Create cryptographically secure passwords with unbiased randomness and accurate strength estimation.
@@ -405,22 +441,22 @@ const PasswordGenerator: React.FC = () => {
               <Shield className="h-6 w-6 text-primary" />
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Password Shared Successfully</h2>
             </div>
-            
+
             <div className="space-y-6">
               <div>
                 <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Share this secure link
                 </label>
                 <div className="flex">
-                  <input 
-                    type="text" 
-                    id="note-url" 
+                  <input
+                    type="text"
+                    id="note-url"
                     value={sharedNoteUrl}
                     className="flex-1 rounded-l-xl border border-r-0 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:ring-primary focus:border-primary text-sm"
                     readOnly
                     onFocus={(e) => e.currentTarget.select()}
                   />
-                  <button 
+                  <button
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(sharedNoteUrl);
@@ -454,7 +490,7 @@ const PasswordGenerator: React.FC = () => {
                   The link contains the decryption key. Anyone with this link can read your password.
                 </p>
               </div>
-              
+
               <div className="flex flex-col items-center">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   QR Code
@@ -475,9 +511,9 @@ const PasswordGenerator: React.FC = () => {
                   Scan this code to access your password
                 </p>
               </div>
-              
+
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button 
+                <button
                   onClick={() => {
                     setSharedNoteUrl(null);
                     generatePassword();
@@ -491,83 +527,70 @@ const PasswordGenerator: React.FC = () => {
             </div>
           </div>
         ) : password && (
-          <div className="mt-6 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-800/50 p-6 relative overflow-hidden">
-            {/* Subtle background treatment */}
-            <div className="absolute inset-0 bg-primary/5 -z-10" />
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Your Password</h3>
+          <div className="mt-6 space-y-4">
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Password Strength</span>
+                <span className={`text-sm font-semibold ${strengthInfo.color}`}>
+                  {strengthInfo.text}
+                </span>
               </div>
 
-              <div className="rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-4 mb-4 overflow-x-auto font-mono text-lg text-center break-all text-gray-900 dark:text-white shadow-sm">
-                {password}
-              </div>
-
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Password Strength</span>
-                  <span className={`text-sm font-semibold ${strengthInfo.color}`}>
-                    {strengthInfo.text}
-                  </span>
-                </div>
-
-                <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`h-3 rounded-full transition-all duration-300 ${
-                      passwordScore === 0
-                        ? 'bg-red-600'
-                        : passwordScore === 1
+              <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-3 rounded-full transition-all duration-300 ${passwordScore === 0
+                      ? 'bg-red-600'
+                      : passwordScore === 1
                         ? 'bg-red-500'
                         : passwordScore === 2
-                        ? 'bg-yellow-600'
-                        : passwordScore === 3
-                        ? 'bg-green-500'
-                        : 'bg-green-600'
+                          ? 'bg-yellow-600'
+                          : passwordScore === 3
+                          ? 'bg-[#50C878]'
+                          : 'bg-[#50C878]'
                     }`}
-                    style={{ width: `${((passwordScore + 1) / 5) * 100}%` }}
-                  ></div>
-                </div>
+                  style={{ width: `${((passwordScore + 1) / 5) * 100}%` }}
+                ></div>
               </div>
-
-              <div className="flex gap-2 justify-center flex-wrap">
-                <button
-                  className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-                  onClick={sharePasswordAsNote}
-                  disabled={isSharing}
-                >
-                  {isSharing ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Sharing...
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="h-4 w-4 mr-2" /> Share as Note
-                    </>
-                  )}
-                </button>
-                <button
-                  className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-3 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-                  onClick={copyToClipboard}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1.5" /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-1.5" /> Copy
-                    </>
-                  )}
-                </button>
-                <button
-                  className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-3 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-                  onClick={generatePassword}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
-              </div>
+            </div>
+            <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-4 text-center text-lg text-gray-900 shadow-sm dark:border-primary/60 dark:bg-primary/15 dark:text-white">
+              {password}
+            </div>
+            <div className="flex gap-2 justify-center flex-wrap">
+              <button
+                className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+                onClick={sharePasswordAsNote}
+                disabled={isSharing}
+              >
+                {isSharing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Sharing...
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4 mr-2" /> Share as a Note
+                  </>
+                )}
+              </button>
+              <button
+                className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-3 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+                onClick={copyToClipboard}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1.5" /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-1.5" /> Copy
+                  </>
+                )}
+              </button>
+              <button
+                className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-3 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+                onClick={generatePassword}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
             </div>
           </div>
         )}
@@ -627,9 +650,9 @@ const PasswordGenerator: React.FC = () => {
       <div className="mt-4 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Powered by{' '}
-          <a 
-            href="https://passwords.lu" 
-            target="_blank" 
+          <a
+            href="https://passwords.lu"
+            target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:text-primary/80 font-medium transition-colors"
           >

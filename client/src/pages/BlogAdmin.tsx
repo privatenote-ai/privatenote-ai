@@ -108,12 +108,12 @@ export default function BlogAdmin() {
   // If not authenticated, show login form
   if (!isAuthenticated) {
     return (
-      <div className="container mx-auto max-w-md px-4 py-8 mt-16 mb-20">
+      <div className="container mx-auto max-w-md px-4 pt-24 pb-16 mb-20">
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Blog Admin</h1>
+          <h1 className="page-title mb-2 text-gray-900 dark:text-white">Blog Admin</h1>
           <p className="text-gray-600 dark:text-gray-400">
             Authentication required to manage blog posts
           </p>
@@ -149,13 +149,13 @@ export default function BlogAdmin() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8 mt-16 mb-20">
+    <div className="container mx-auto max-w-6xl px-4 pt-24 pb-16 mb-20">
       <div className="mb-8">
         <Link href="/" className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
         </Link>
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Blog Management</h1>
+          <h1 className="page-title text-gray-900 dark:text-white">Blog Management</h1>
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Post

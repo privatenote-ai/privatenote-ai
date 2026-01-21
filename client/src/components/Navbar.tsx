@@ -17,9 +17,9 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children, className, closeMenu 
     e.preventDefault();
     closeMenu();
 
-    // For the home path, force a full page reload to ensure we always return to home correctly
-    // This handles the case when we're in /note/[id] and need to get back to the home page
-    if (href === '/' && window.location.pathname.startsWith('/note/')) {
+    // For the home path, force a full reload if we're already on home or viewing a note
+    // This resets any in-page state (e.g., success view) back to the note editor.
+    if (href === '/' && (window.location.pathname === '/' || window.location.pathname.startsWith('/note/'))) {
       window.location.href = href;
     } else {
       navigate(href);
@@ -88,6 +88,13 @@ export const Navbar: React.FC = () => {
               Write a Note
             </NavLink>
             <NavLink
+              href="/password-generator"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Share a Password
+            </NavLink>
+            <NavLink
               href="/how-it-works"
               closeMenu={closeMenu}
               className="text-primary hover:text-primary/80 transition-colors"
@@ -100,13 +107,6 @@ export const Navbar: React.FC = () => {
               className="text-primary hover:text-primary/80 transition-colors"
             >
               Security
-            </NavLink>
-            <NavLink
-              href="/password-generator"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Password Generator
             </NavLink>
             <NavLink
               href="/blog"
@@ -165,7 +165,7 @@ export const Navbar: React.FC = () => {
 
                   <NavLink href="/password-generator" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                     <Key className="h-4 w-4" />
-                    <span>Password Generator</span>
+                    <span>Share a Password</span>
                   </NavLink>
 
                   <NavLink href="/blog" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">

@@ -21,11 +21,11 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="pt-12 pb-20">
+    <div className="pt-24 pb-20">
       {/* Hero Section */}
       <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-5xl mx-auto">
         <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
+          <h1 className="page-title text-gray-900 dark:text-white">
             <span className="block">Your Messages,</span>
             <span className="block mt-1 text-primary">Your Privacy.</span>
           </h1>
