@@ -6,9 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 type WebAuthnOptions = {
-  challenge: string;
+  challenge: string | ArrayBuffer | Uint8Array;
   rp?: { name: string; id?: string };
-  user?: { id: string; name: string; displayName: string };
+  user?: { id: string | ArrayBuffer | Uint8Array; name: string; displayName: string };
   pubKeyCredParams?: Array<{ type: string; alg: number }>;
   timeout?: number;
   attestation?: string;
@@ -17,6 +17,7 @@ type WebAuthnOptions = {
     residentKey?: string;
   };
   allowCredentials?: Array<{ id: string; type: string; transports?: string[] }>;
+  excludeCredentials?: Array<{ id: string; type: string; transports?: string[] }>;
   userVerification?: string;
   rpId?: string;
 };
@@ -36,6 +37,19 @@ const base64UrlToBuffer = (value: string): ArrayBuffer => {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes.buffer;
+};
+
+const coerceToBuffer = (value: unknown, label: string): ArrayBuffer => {
+  if (typeof value === "string" && value.length > 0) {
+    return base64UrlToBuffer(value);
+  }
+  if (value instanceof ArrayBuffer) {
+    return value;
+  }
+  if (ArrayBuffer.isView(value)) {
+    return value.buffer;
+  }
+  throw new Error(`Invalid WebAuthn ${label} from server.`);
 };
 
 const credentialToJson = (credential: PublicKeyCredential): Record<string, any> => {
@@ -72,13 +86,17 @@ const credentialToJson = (credential: PublicKeyCredential): Record<string, any> 
 const coerceRegisterOptions = (options: WebAuthnOptions): PublicKeyCredentialCreationOptions => {
   return {
     ...options,
-    challenge: base64UrlToBuffer(options.challenge),
+    challenge: coerceToBuffer(options.challenge, "challenge"),
     user: options.user
       ? {
           ...options.user,
-          id: base64UrlToBuffer(options.user.id),
+          id: coerceToBuffer(options.user.id, "user.id"),
         }
       : undefined,
+    excludeCredentials: options.excludeCredentials?.map((cred) => ({
+      ...cred,
+      id: coerceToBuffer(cred.id, "excludeCredentials.id"),
+    })),
     pubKeyCredParams: options.pubKeyCredParams || [
       { type: "public-key", alg: -7 },
       { type: "public-key", alg: -257 },
@@ -89,10 +107,10 @@ const coerceRegisterOptions = (options: WebAuthnOptions): PublicKeyCredentialCre
 const coerceLoginOptions = (options: WebAuthnOptions): PublicKeyCredentialRequestOptions => {
   return {
     ...options,
-    challenge: base64UrlToBuffer(options.challenge),
+    challenge: coerceToBuffer(options.challenge, "challenge"),
     allowCredentials: options.allowCredentials?.map((cred) => ({
       ...cred,
-      id: base64UrlToBuffer(cred.id),
+      id: coerceToBuffer(cred.id, "allowCredentials.id"),
     })),
   } as PublicKeyCredentialRequestOptions;
 };
@@ -119,6 +137,9 @@ export default function Auth() {
         "POST",
         { email }
       );
+      if (!data?.options) {
+        throw new Error("Missing WebAuthn options from server.");
+      }
       const publicKey = coerceRegisterOptions(data.options);
       const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
       if (!credential) {
@@ -153,6 +174,9 @@ export default function Auth() {
         "POST",
         { email }
       );
+      if (!data?.options) {
+        throw new Error("Missing WebAuthn options from server.");
+      }
       const publicKey = coerceLoginOptions(data.options);
       const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
       if (!credential) {
