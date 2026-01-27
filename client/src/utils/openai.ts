@@ -17,7 +17,7 @@ export class AiEnhanceError extends Error {
 
 export async function enhanceNoteWithAI(
   noteContent: string,
-  enhancementType: 'improve' | 'summarize' | 'secure',
+  enhancementType: 'improve' | 'summarize' | 'secure' | 'ask',
   turnstileToken?: string | null,
 ): Promise<AiEnhanceResponse> {
   try {

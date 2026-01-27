@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import bs58 from "bs58";
 import { QRCode } from "@/components/ui/qr-code";
@@ -10,9 +10,19 @@ import {
   encryptWithPassword,
 } from "@/utils/encryption";
 import { checkHIBP } from "@/utils/hibp";
-import { enhanceNoteWithAI, AiEnhanceError } from "@/utils/openai";
+import { enhanceNoteClientSide, initializeClientLLM, isEngineLoaded, isWebLLMSupported } from "@/utils/clientLLM";
 import { useToast } from "@/hooks/use-toast";
 import { AiPrivacyWarningDialog } from "@/components/note/AiPrivacyWarningDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Shield,
   ShieldCheck,
@@ -45,6 +55,8 @@ declare global {
     };
   }
 }
+
+const FREE_LOCAL_MODEL_ID = "Qwen3-0.6B-q4f16_1-MLC";
 
 // Function to get shorter name for template pills
 const getShortName = (name: string): string => {
@@ -346,15 +358,16 @@ interface PromptTemplate {
   name: string;
   description: string;
   template: string;
-  enhancementType: "improve" | "summarize" | "secure";
+  enhancementType: "improve" | "summarize" | "secure" | "ask";
 }
 
 type AiAction =
-  | { kind: "generate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" }
+  | { kind: "generate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" | "ask" }
   | { kind: "improve"; content: string }
   | { kind: "summarize"; content: string }
   | { kind: "simplify"; content: string }
-  | { kind: "regenerate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" };
+  | { kind: "ask"; prompt: string }
+  | { kind: "regenerate"; prompt: string; enhancementType: "improve" | "summarize" | "secure" | "ask" };
 
 const promptTemplates: PromptTemplate[] = [
   // Top 5 most frequently used templates displayed by default
@@ -363,7 +376,7 @@ const promptTemplates: PromptTemplate[] = [
     name: "Ask AI Anything",
     description: "Get help with any message using AI",
     template: "Help me write a message about [describe what you need]",
-    enhancementType: "improve",
+    enhancementType: "ask",
   },
   {
     id: "thank-you",
@@ -481,6 +494,11 @@ export const CreateNote: React.FC = () => {
   const [pendingAiAction, setPendingAiAction] = useState<AiAction | null>(null);
   const [showPrivacyWarning, setShowPrivacyWarning] = useState(false);
   const [pendingPrivacyAction, setPendingPrivacyAction] = useState<(() => void) | null>(null);
+  const [aiProgress, setAiProgress] = useState<{ progress: number; text: string } | null>(null);
+  const [preferClientSideAI, setPreferClientSideAI] = useState(true);
+  const [isAiModelLoading, setIsAiModelLoading] = useState(false);
+  const [aiModelProgress, setAiModelProgress] = useState<{ progress: number; text: string } | null>(null);
+  const [showCloudLitePrompt, setShowCloudLitePrompt] = useState(false);
 
   const resetTurnstile = () => {
     console.log("[AI][Turnstile] Reset requested");
@@ -508,13 +526,29 @@ export const CreateNote: React.FC = () => {
     return consent === "accepted";
   };
 
-  // Request AI privacy consent before executing action
-  const requestAiPrivacyConsent = (action: () => void) => {
+  // Check if client-side AI is available and preferred
+  const shouldUseClientSideAI = (): boolean => {
+    return isWebLLMSupported();
+  };
+
+  // Request AI privacy consent before executing action (only for server-side)
+  const requestAiPrivacyConsent = (action: () => void, useClientSide: boolean = false) => {
+    // Free tier: always run locally, no server privacy consent
+    if (!useClientSide) {
+      action();
+      return;
+    }
+
+    // Client-side AI doesn't need privacy consent (no data leaves device)
+    if (useClientSide && shouldUseClientSideAI()) {
+      action();
+      return;
+    }
+
+    // Server-side AI requires consent
     if (hasAiPrivacyConsent()) {
-      // User already consented, execute immediately
       action();
     } else {
-      // Show privacy warning dialog
       setPendingPrivacyAction(() => action);
       setShowPrivacyWarning(true);
     }
@@ -557,9 +591,9 @@ export const CreateNote: React.FC = () => {
     }
   };
 
-  const shouldShowTurnstile = isAiMode && aiUsesRemaining <= 0 && aiVerificationRequested;
+  const shouldShowTurnstile = false;
   const getAiRequestToken = () => (shouldShowTurnstile ? turnstileToken : null);
-  const shouldRequireVerification = isAiMode && aiUsesRemaining <= 0;
+  const shouldRequireVerification = false;
 
   const requestAiVerification = () => {
     console.log("[AI] Verification requested (no action queued)");
@@ -579,7 +613,7 @@ export const CreateNote: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
-    "improve" | "summarize" | "secure"
+    "improve" | "summarize" | "secure" | "ask"
   >("improve");
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [expiryValue, setExpiryValue] = useState("1d"); // Default to 1 day
@@ -613,6 +647,56 @@ export const CreateNote: React.FC = () => {
   const [sharePassword, setSharePassword] = useState<boolean>(true); // Whether to include password in shared URL
   const [_, navigate] = useLocation();
   const { toast } = useToast();
+
+  const triggerCloudLitePrompt = () => {
+    setShowCloudLitePrompt(true);
+  };
+
+  const ensureFreeLocalModel = useCallback(
+    async (onProgress?: (progress: { progress: number; text: string }) => void) => {
+      if (!isWebLLMSupported()) {
+        throw new Error("Local AI is not supported in this browser.");
+      }
+
+      await initializeClientLLM(onProgress, FREE_LOCAL_MODEL_ID);
+    },
+    []
+  );
+
+  const startFreeModelDownload = useCallback(async () => {
+    if (isEngineLoaded() || isAiModelLoading) {
+      return;
+    }
+    setIsAiModelLoading(true);
+    setAiModelProgress({ progress: 0, text: "Preparing local AI..." });
+    try {
+      await ensureFreeLocalModel((progress) => setAiModelProgress(progress));
+      setAiModelProgress(null);
+    } catch (error) {
+      console.warn("[AI] Failed to preload free model:", error);
+      setAiModelProgress(null);
+      triggerCloudLitePrompt();
+    } finally {
+      setIsAiModelLoading(false);
+    }
+  }, [ensureFreeLocalModel, isAiModelLoading]);
+
+  const runFreeLocalEnhancement = async (
+    content: string,
+    enhancementType: "improve" | "summarize" | "secure" | "ask"
+  ): Promise<string> => {
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    try {
+      await ensureFreeLocalModel((progress) => setAiProgress(progress));
+      return await enhanceNoteClientSide(content, enhancementType, (progress) =>
+        setAiProgress(progress)
+      );
+    } catch (error) {
+      console.warn("[AI] Local AI failed:", error);
+      triggerCloudLitePrompt();
+      throw error;
+    }
+  };
 
   useEffect(() => {
     if (breachTimeoutRef.current) {
@@ -773,11 +857,11 @@ export const CreateNote: React.FC = () => {
         ivBase64 = encodeBase64(iv);
       }
 
-      if (isAiMode) {
+      if (isAiMode && shouldRequireVerification) {
         if (!import.meta.env.VITE_TURNSTILE_SITE_KEY) {
           throw new Error("Human verification is not configured.");
         }
-        if (shouldRequireVerification && !turnstileToken) {
+        if (!turnstileToken) {
           console.log("[AI] Note creation blocked; verification required");
           requestAiVerification();
           throw new Error("Please complete the human verification.");
@@ -1053,7 +1137,7 @@ export const CreateNote: React.FC = () => {
 
   const handleAiGenerate = async (override?: {
     prompt?: string;
-    enhancementType?: "improve" | "summarize" | "secure";
+    enhancementType?: "improve" | "summarize" | "secure" | "ask";
   }) => {
     const promptToUse = override?.prompt ?? aiPrompt;
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
@@ -1067,25 +1151,12 @@ export const CreateNote: React.FC = () => {
       return;
     }
 
-    // Request privacy consent before proceeding
-    requestAiPrivacyConsent(async () => {
-      if (shouldRequireVerification && !turnstileToken) {
-        console.log("[AI] Generate blocked; verification required");
-        queueAiVerification({
-          kind: "generate",
-          prompt: promptToUse,
-          enhancementType: enhancementTypeToUse,
-        });
-        return;
-      }
-
-      await executeAiGenerate(promptToUse, enhancementTypeToUse);
-    });
+    await executeAiGenerate(promptToUse, enhancementTypeToUse);
   };
 
   const executeAiGenerate = async (
     promptToUse: string,
-    enhancementTypeToUse: "improve" | "summarize" | "secure"
+    enhancementTypeToUse: "improve" | "summarize" | "secure" | "ask"
   ) => {
     setIsGeneratingContent(true);
 
@@ -1111,33 +1182,18 @@ export const CreateNote: React.FC = () => {
     setContentFinalized(false);
 
     try {
-      // Use our OpenAI integration to generate content with the selected enhancement type
-      const aiResponse = await enhanceNoteWithAI(
-        promptToUse,
-        enhancementTypeToUse,
-        getAiRequestToken(),
-      );
-      console.log("[AI] Generate success");
-
-      setNoteContent(aiResponse.content);
-      handleAiUsageUpdate(aiResponse.remainingUses);
+      const content = await runFreeLocalEnhancement(promptToUse, enhancementTypeToUse);
+      setNoteContent(content);
 
       // Hide prompt and show generated content
       setShowPrompt(false);
 
       toast({
         title: "Success",
-        description: `AI content ${enhancementTypeToUse}d successfully using gpt-4o-mini.`,
+        description: `AI content ${enhancementTypeToUse}d successfully.`,
       });
     } catch (error) {
       console.error("Error generating AI content:", error);
-      
-      // Extract remaining uses from error if available
-      if (error instanceof AiEnhanceError && typeof error.remainingUses === 'number') {
-        handleAiUsageUpdate(error.remainingUses);
-      }
-      
-      handleAiVerificationError(error);
 
       toast({
         title: "Error",
@@ -1188,42 +1244,22 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Request privacy consent before proceeding
-    requestAiPrivacyConsent(async () => {
-      // Save current content before improving
-      const improvePrompt = `Improve this text for clarity and style: ${contentToUse}`;
-
-      // Add the improvement action to prompt history
-      setPromptHistory((prevHistory) => [...prevHistory, improvePrompt]);
-
-      if (shouldRequireVerification && !turnstileToken) {
-        console.log("[AI] Improve blocked; verification required");
-        queueAiVerification({ kind: "improve", content: contentToUse });
-        return;
-      }
-
-      await executeImprove(contentToUse);
-    });
+    const improvePrompt = `Improve this text for clarity and style: ${contentToUse}`;
+    setPromptHistory((prevHistory) => [...prevHistory, improvePrompt]);
+    await executeImprove(contentToUse);
   };
 
   const executeImprove = async (contentToUse: string) => {
     setIsGeneratingContent(true);
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
-      const aiResponse = await enhanceNoteWithAI(
-        contentToUse,
-        "improve",
-        getAiRequestToken(),
-      );
-      console.log("[AI] Improve success");
-      setNoteContent(aiResponse.content);
-      handleAiUsageUpdate(aiResponse.remainingUses);
+      const content = await runFreeLocalEnhancement(contentToUse, "improve");
+      setNoteContent(content);
       toast({
         title: "Content Improved",
-        description:
-          "The AI has refined your content for better clarity and style.",
+        description: "The AI has refined your content for better clarity and style.",
       });
     } catch (error) {
-      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to improve content. Please try again.",
@@ -1231,6 +1267,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      setAiProgress(null);
     }
   };
 
@@ -1238,41 +1275,22 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Request privacy consent before proceeding
-    requestAiPrivacyConsent(async () => {
-      // Save current content before summarizing
-      const summarizePrompt = `Summarize this text into key points: ${contentToUse}`;
-
-      // Add the summarize action to prompt history
-      setPromptHistory((prevHistory) => [...prevHistory, summarizePrompt]);
-
-      if (shouldRequireVerification && !turnstileToken) {
-        console.log("[AI] Summarize blocked; verification required");
-        queueAiVerification({ kind: "summarize", content: contentToUse });
-        return;
-      }
-
-      await executeSummarize(contentToUse);
-    });
+    const summarizePrompt = `Summarize this text into key points: ${contentToUse}`;
+    setPromptHistory((prevHistory) => [...prevHistory, summarizePrompt]);
+    await executeSummarize(contentToUse);
   };
 
   const executeSummarize = async (contentToUse: string) => {
     setIsGeneratingContent(true);
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
-      const aiResponse = await enhanceNoteWithAI(
-        contentToUse,
-        "summarize",
-        getAiRequestToken(),
-      );
-      console.log("[AI] Summarize success");
-      setNoteContent(aiResponse.content);
-      handleAiUsageUpdate(aiResponse.remainingUses);
+      const content = await runFreeLocalEnhancement(contentToUse, "summarize");
+      setNoteContent(content);
       toast({
         title: "Content Summarized",
         description: "The AI has summarized your content to its key points.",
       });
     } catch (error) {
-      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to summarize content. Please try again.",
@@ -1280,6 +1298,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      setAiProgress(null);
     }
   };
 
@@ -1287,41 +1306,22 @@ export const CreateNote: React.FC = () => {
     const contentToUse = override?.content ?? noteContent;
     if (!contentToUse) return;
 
-    // Request privacy consent before proceeding
-    requestAiPrivacyConsent(async () => {
-      // Save current content before simplifying
-      const simplifyPrompt = `Simplify this text and make it easier to understand: ${contentToUse}`;
-
-      // Add the simplify action to prompt history
-      setPromptHistory((prevHistory) => [...prevHistory, simplifyPrompt]);
-
-      if (shouldRequireVerification && !turnstileToken) {
-        console.log("[AI] Simplify blocked; verification required");
-        queueAiVerification({ kind: "simplify", content: contentToUse });
-        return;
-      }
-
-      await executeSimplify(contentToUse);
-    });
+    const simplifyPrompt = `Simplify this text and make it easier to understand: ${contentToUse}`;
+    setPromptHistory((prevHistory) => [...prevHistory, simplifyPrompt]);
+    await executeSimplify(contentToUse);
   };
 
   const executeSimplify = async (contentToUse: string) => {
     setIsGeneratingContent(true);
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
-      const aiResponse = await enhanceNoteWithAI(
-        contentToUse,
-        "improve",
-        getAiRequestToken(),
-      );
-      console.log("[AI] Simplify success");
-      setNoteContent(aiResponse.content);
-      handleAiUsageUpdate(aiResponse.remainingUses);
+      const content = await runFreeLocalEnhancement(contentToUse, "improve");
+      setNoteContent(content);
       toast({
         title: "Content Simplified",
         description: "The AI has simplified your content for easier reading.",
       });
     } catch (error) {
-      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to simplify content. Please try again.",
@@ -1329,60 +1329,74 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      setAiProgress(null);
+    }
+  };
+
+  const handleAsk = async (override?: { prompt?: string }) => {
+    const promptToUse = override?.prompt ?? noteContent;
+    if (!promptToUse.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a question or prompt",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await executeAsk(promptToUse);
+  };
+
+  const executeAsk = async (promptToUse: string) => {
+    setIsGeneratingContent(true);
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    try {
+      const content = await runFreeLocalEnhancement(promptToUse, "ask");
+      setNoteContent(content);
+      setShowPrompt(false);
+      toast({
+        title: "AI Response",
+        description: "AI has generated a response.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingContent(false);
+      setAiProgress(null);
     }
   };
 
   const handleRegenerate = async (override?: {
     prompt?: string;
-    enhancementType?: "improve" | "summarize" | "secure";
+    enhancementType?: "improve" | "summarize" | "secure" | "ask";
   }) => {
     const promptToUse = override?.prompt ?? originalPrompt;
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse) return;
 
-    // Request privacy consent before proceeding
-    requestAiPrivacyConsent(async () => {
-      // Add a regeneration entry to the prompt history
-      const regeneratePrompt = `Regenerate from original prompt: ${promptToUse}`;
-
-      // Record this action in the prompt history
-      setPromptHistory((prevHistory) => [...prevHistory, regeneratePrompt]);
-
-      if (shouldRequireVerification && !turnstileToken) {
-        console.log("[AI] Regenerate blocked; verification required");
-        queueAiVerification({
-          kind: "regenerate",
-          prompt: promptToUse,
-          enhancementType: enhancementTypeToUse,
-        });
-        return;
-      }
-
-      await executeRegenerate(promptToUse, enhancementTypeToUse);
-    });
+    const regeneratePrompt = `Regenerate from original prompt: ${promptToUse}`;
+    setPromptHistory((prevHistory) => [...prevHistory, regeneratePrompt]);
+    await executeRegenerate(promptToUse, enhancementTypeToUse);
   };
 
   const executeRegenerate = async (
     promptToUse: string,
-    enhancementTypeToUse: "improve" | "summarize" | "secure"
+    enhancementTypeToUse: "improve" | "summarize" | "secure" | "ask"
   ) => {
     setIsGeneratingContent(true);
+    setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
-      const aiResponse = await enhanceNoteWithAI(
-        promptToUse,
-        enhancementTypeToUse,
-        getAiRequestToken(),
-      );
-      console.log("[AI] Regenerate success");
-      setNoteContent(aiResponse.content);
-      handleAiUsageUpdate(aiResponse.remainingUses);
+      const content = await runFreeLocalEnhancement(promptToUse, enhancementTypeToUse);
+      setNoteContent(content);
       toast({
         title: "Content Regenerated",
-        description:
-          "The AI has created a new version based on your original prompt.",
+        description: "The AI has created a new version based on your original prompt.",
       });
     } catch (error) {
-      handleAiVerificationError(error);
       toast({
         title: "Error",
         description: "Failed to regenerate content. Please try again.",
@@ -1390,6 +1404,7 @@ export const CreateNote: React.FC = () => {
       });
     } finally {
       setIsGeneratingContent(false);
+      setAiProgress(null);
     }
   };
 
@@ -1428,6 +1443,9 @@ export const CreateNote: React.FC = () => {
       case "simplify":
         void handleSimplify({ content: action.content });
         break;
+      case "ask":
+        void handleAsk({ prompt: action.prompt });
+        break;
       case "regenerate":
         void handleRegenerate({
           prompt: action.prompt,
@@ -1438,6 +1456,8 @@ export const CreateNote: React.FC = () => {
         break;
     }
   }, [pendingAiAction, turnstileToken]);
+
+  // Free tier: model downloads only after "Write with AI" is selected
 
   const handleAccept = () => {
     setContentFinalized(true);
@@ -1463,6 +1483,26 @@ export const CreateNote: React.FC = () => {
           {turnstileError}
         </div>
       )}
+    </div>
+  ) : null;
+
+  // AI Progress indicator
+  const aiProgressPanel = isGeneratingContent && aiProgress ? (
+    <div className="flex flex-col gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+          {aiProgress.text}
+        </span>
+        <span className="text-xs text-blue-700 dark:text-blue-300">
+          {Math.round(aiProgress.progress)}%
+        </span>
+      </div>
+      <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+        <div
+          className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+          style={{ width: `${aiProgress.progress}%` }}
+        />
+      </div>
     </div>
   ) : null;
 
@@ -1649,15 +1689,8 @@ export const CreateNote: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                if (!localStorage.getItem(AI_NOTICE_KEY)) {
-                  toast({
-                    title: "AI privacy notice",
-                    description:
-                      "Using AI sends this note to our provider to generate a response. Per their policy, it isn’t used for training and is retained only as needed to process the request.",
-                  });
-                  localStorage.setItem(AI_NOTICE_KEY, "1");
-                }
                 setIsAiMode(true);
+                void startFreeModelDownload();
               }}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
@@ -1779,8 +1812,8 @@ export const CreateNote: React.FC = () => {
                       />
                       <button
                         type="button"
-                        onClick={handleAiGenerate}
-                        disabled={isGeneratingContent}
+                        onClick={() => handleAiGenerate()}
+                        disabled={isGeneratingContent || isAiModelLoading}
                         className="absolute bottom-3 right-3 flex items-center justify-center w-9 h-9 border border-transparent rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         aria-label="Generate with AI"
                       >
@@ -1826,23 +1859,33 @@ export const CreateNote: React.FC = () => {
 
                     {/* Write with AI Mode Notice - moved here from top */}
                     <div className="mt-3 space-y-3">
+                      {/* AI Progress Indicator */}
+                      {aiProgressPanel}
+                      {isAiModelLoading && aiModelProgress && (
+                        <div className="flex flex-col gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                              {aiModelProgress.text}
+                            </span>
+                            <span className="text-xs text-blue-700 dark:text-blue-300">
+                              {Math.round(aiModelProgress.progress)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${aiModelProgress.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                       {/* Cloudflare Turnstile (AI mode only) */}
                       {aiVerificationPanel}
 
-                      {/* Original AI notice */}
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200">
-                        <p className="flex items-center">
-                          <Sparkles className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>
-                            <strong>AI privacy notice:</strong> Using AI sends
-                            this note to our provider to generate a response.
-                            Per their policy, it isn&apos;t used for training
-                            and is retained only as needed to process the
-                            request. Final note content is still encrypted in
-                            your browser, and we do not store prompts on our
-                            servers.
-                          </span>
-                        </p>
+                        <p className="font-semibold">Free AI</p>
+                        <p>Basic writing assistance using a small model.</p>
+                        <p>No account required.</p>
                       </div>
                     </div>
                   </div>
@@ -1901,7 +1944,7 @@ export const CreateNote: React.FC = () => {
                   <div className="flex flex-wrap gap-2 justify-center">
                     <button
                       type="button"
-                      onClick={handleImprove}
+                      onClick={() => handleImprove()}
                       disabled={isGeneratingContent}
                       className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                     >
@@ -1910,7 +1953,7 @@ export const CreateNote: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={handleSummarize}
+                      onClick={() => handleSummarize()}
                       disabled={isGeneratingContent}
                       className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                     >
@@ -1919,7 +1962,7 @@ export const CreateNote: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={handleSimplify}
+                      onClick={() => handleSimplify()}
                       disabled={isGeneratingContent}
                       className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                     >
@@ -1928,7 +1971,16 @@ export const CreateNote: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={handleRegenerate}
+                      onClick={() => handleAsk({ prompt: noteContent })}
+                      disabled={isGeneratingContent || !noteContent.trim()}
+                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                    >
+                      <Sparkles className="h-4 w-4 mr-1 text-indigo-500" />
+                      Ask AI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRegenerate()}
                       disabled={isGeneratingContent}
                       className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                     >
@@ -1945,8 +1997,9 @@ export const CreateNote: React.FC = () => {
                       Accept
                     </button>
                   </div>
-                  {aiVerificationPanel && (
-                    <div className="mt-3">
+                  {(aiProgressPanel || aiVerificationPanel) && (
+                    <div className="mt-3 space-y-3">
+                      {aiProgressPanel}
                       {aiVerificationPanel}
                     </div>
                   )}
@@ -2298,6 +2351,38 @@ export const CreateNote: React.FC = () => {
         onConfirm={handlePrivacyWarningConfirm}
         onCancel={handlePrivacyWarningCancel}
       />
+
+      <AlertDialog open={showCloudLitePrompt} onOpenChange={setShowCloudLitePrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Local AI couldn&apos;t start</AlertDialogTitle>
+            <AlertDialogDescription>
+              We couldn&apos;t download the on-device AI for this device. You can
+              try again or use Cloud Lite with limited privacy once it&apos;s available.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowCloudLitePrompt(false);
+                void startFreeModelDownload();
+              }}
+            >
+              Try Again
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toast({
+                  title: "Cloud Lite",
+                  description: "Cloud Lite is coming soon.",
+                });
+              }}
+            >
+              Use Cloud Lite (soon)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };

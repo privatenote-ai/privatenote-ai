@@ -1,8 +1,11 @@
 import { SecureNoteStorage, SecureNoteStorageSql } from "./durable_objects/secure_note_storage";
+import { AuthTokenStore } from "./durable_objects/auth_token_store";
 import { registerRoutes } from "./routes";
 import type { Env } from "./types";
 
-export { SecureNoteStorage, SecureNoteStorageSql };
+// Export both for migration compatibility
+// SecureNoteStorage is deleted in v3 migration but needed for migration history
+export { SecureNoteStorage, SecureNoteStorageSql, AuthTokenStore };
 
 const ALLOWED_ORIGINS = [
   'https://privatenote-ai.pages.dev',
@@ -30,10 +33,10 @@ const getAllowedOrigin = (request: Request): string | null => {
 const getCSPHeader = (): string =>
   [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com",
+    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com",
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com",
     "img-src 'self' data: https:",
     "base-uri 'self'",
     "form-action 'self'",
@@ -48,8 +51,9 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
     "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getCSPHeader(),
-    // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
+    // Credentials enabled for session cookies; Origin must be explicit (not *)
   };
 };
 
@@ -91,13 +95,19 @@ export default {
         });
       }
 
+      // Handle model serving routes (before API routes)
+      if (pathname.startsWith("/models/")) {
+        console.log(`[WORKER-ENTRY] ✅ Path starts with /models/, routing to registerRoutes for model serving`);
+        return await registerRoutes(request, env);
+      }
+
       // Handle API routes
       if (pathname.startsWith("/api")) {
         console.log(`[WORKER-ENTRY] ✅ Path starts with /api, routing to registerRoutes`);
         return await registerRoutes(request, env);
       }
       
-      console.log(`[WORKER-ENTRY] Path does not start with /api`);
+      console.log(`[WORKER-ENTRY] Path does not start with /api or /models`);
 
       // For non-API routes, return helpful message (frontend should be served by Cloudflare Pages)
       if (pathname === "/") {

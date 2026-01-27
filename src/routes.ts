@@ -3,6 +3,12 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+} from "@simplewebauthn/server";
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -30,6 +36,12 @@ const AI_VERIFICATION = {
 const NOTE_RESERVATION = {
   TTL_SECONDS: 5 * 60,
   KEY_PREFIX: "note_reserve:",
+};
+
+const SESSION_POLICY = {
+  TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days
+  INACTIVITY_SECONDS: 60 * 60 * 48, // 48 hours
+  ROTATE_SECONDS: 60 * 60 * 24, // 24 hours
 };
 
 // Get allowed origin for CORS
@@ -68,10 +80,10 @@ function getCSPHeader(): string {
   // Note: 'unsafe-inline' for styles is needed for React/Vite, but we avoid it for scripts
   return [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com", // Turnstile only on creation page
+    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'", // Turnstile + WebAssembly for WebLLM
     "style-src 'self' 'unsafe-inline'", // React inline styles
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com", // API endpoints
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com", // API endpoints + WebLLM model downloads + WASM libraries + HuggingFace CAS
     "img-src 'self' data: https:", // Images (data: for inline images, https: for external)
     "frame-src https://challenges.cloudflare.com", // Turnstile iframe
     "base-uri 'self'",
@@ -90,10 +102,139 @@ function getCorsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getCSPHeader(),
-    // Note: We don't include Access-Control-Allow-Credentials because we don't use credentials
-    // If you need credentials later, set this to "true" and ensure Origin is specific (not *)
+    // Credentials are enabled for session cookies; ensure Origin is specific (not *)
   };
+}
+
+// Get content type based on file extension
+function getContentType(path: string): string {
+  if (path.endsWith('.json')) return 'application/json';
+  if (path.endsWith('.bin')) return 'application/octet-stream';
+  if (path.endsWith('.wasm')) return 'application/wasm';
+  if (path.endsWith('.model')) return 'application/octet-stream';
+  return 'application/octet-stream';
+}
+
+// Serve model files from R2 bucket
+async function serveModelFile(request: Request, env: Env): Promise<Response> {
+  if (!env.WEBLLM_MODELS) {
+    console.error("[MODELS] R2 bucket WEBLLM_MODELS not configured");
+    const headers = new Headers();
+    const allowedOrigin = getAllowedOrigin(request);
+    if (allowedOrigin) {
+      headers.set('Access-Control-Allow-Origin', allowedOrigin);
+    }
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    return new Response('Model storage not configured', { status: 503, headers });
+  }
+
+  const url = new URL(request.url);
+  // Remove /models/ prefix to get the object key
+  let objectKey = url.pathname.replace(/^\/models\//, '');
+  
+  // Handle HuggingFace-style paths: /resolve/main/filename -> filename
+  // WebLLM sometimes requests paths like: gemma-3-270m-it-mlc/resolve/main/mlc-chat-config.json
+  // But in R2 we store: gemma-3-270m-it-mlc/mlc-chat-config.json
+  objectKey = objectKey.replace(/\/resolve\/main\//g, '/');
+  
+  if (!objectKey || objectKey === '') {
+    const headers = new Headers();
+    const allowedOrigin = getAllowedOrigin(request);
+    if (allowedOrigin) {
+      headers.set('Access-Control-Allow-Origin', allowedOrigin);
+    }
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    return new Response('Invalid model path', { status: 400, headers });
+  }
+
+  console.log(`[MODELS] Serving model file: ${objectKey} (original path: ${url.pathname})`);
+
+  try {
+    // Get object from R2
+    const object = await env.WEBLLM_MODELS.get(objectKey);
+
+    if (!object) {
+      console.warn(`[MODELS] File not found: ${objectKey}`);
+      // Set CORS headers even on 404
+      const headers = new Headers();
+      const allowedOrigin = getAllowedOrigin(request);
+      if (allowedOrigin) {
+        headers.set('Access-Control-Allow-Origin', allowedOrigin);
+      }
+      headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      headers.set('Content-Type', 'text/plain');
+      return new Response('Model file not found', { status: 404, headers });
+    }
+
+    // Set appropriate headers for caching and CORS
+    const headers = new Headers();
+    headers.set('Content-Type', getContentType(objectKey));
+    
+    // Long cache headers for immutable model files (1 year)
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    
+    // CORS headers
+    const allowedOrigin = getAllowedOrigin(request);
+    if (allowedOrigin) {
+      headers.set('Access-Control-Allow-Origin', allowedOrigin);
+    }
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    
+    // Support range requests for large files (required for model shards)
+    if (object.range) {
+      headers.set('Accept-Ranges', 'bytes');
+    }
+
+    // Handle range requests (for partial downloads)
+    const rangeHeader = request.headers.get('Range');
+    if (rangeHeader && object.range) {
+      const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10);
+        const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : undefined;
+        
+        // Get partial content
+        const range = { offset: start, length: end ? end - start + 1 : undefined };
+        const partialObject = await env.WEBLLM_MODELS.get(objectKey, { range });
+        
+        if (partialObject) {
+          const contentLength = partialObject.size;
+          const totalSize = object.size;
+          headers.set('Content-Range', `bytes ${start}-${start + contentLength - 1}/${totalSize}`);
+          headers.set('Content-Length', contentLength.toString());
+          
+          return new Response(partialObject.body, {
+            status: 206, // Partial Content
+            headers,
+          });
+        }
+      }
+    }
+
+    // Set content length for full file
+    if (object.size) {
+      headers.set('Content-Length', object.size.toString());
+    }
+
+    console.log(`[MODELS] ✅ Serving file: ${objectKey} (${object.size} bytes)`);
+
+    return new Response(object.body, {
+      headers,
+    });
+  } catch (error) {
+    console.error(`[MODELS] Error serving file ${objectKey}:`, error);
+    // Set CORS headers even on error
+    const errorHeaders = new Headers();
+    const allowedOrigin = getAllowedOrigin(request);
+    if (allowedOrigin) {
+      errorHeaders.set('Access-Control-Allow-Origin', allowedOrigin);
+    }
+    errorHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    errorHeaders.set('Content-Type', 'text/plain');
+    return new Response('Internal server error', { status: 500, headers: errorHeaders });
+  }
 }
 
 // Helper to create JSON response with CORS headers
@@ -111,6 +252,222 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     status,
     headers,
   });
+}
+
+const AUTH_CHALLENGE = {
+  PREFIX: "auth_challenge:",
+  TTL_SECONDS: 10 * 60,
+};
+
+const AUTH_MAGIC_LINK = {
+  PREFIX: "auth_magic:",
+  TTL_SECONDS: 15 * 60,
+};
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((value.length + 3) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function getExpectedOrigin(request: Request): string | string[] {
+  const origin = request.headers.get("Origin");
+  if (origin) {
+    return origin;
+  }
+  return ALLOWED_ORIGINS;
+}
+
+function getExpectedRpId(request: Request): string {
+  const origin = request.headers.get("Origin");
+  if (origin) {
+    try {
+      return new URL(origin).hostname;
+    } catch {
+      return new URL(request.url).hostname;
+    }
+  }
+  return new URL(request.url).hostname;
+}
+
+function randomId(bytes = 32): string {
+  const buffer = new Uint8Array(bytes);
+  crypto.getRandomValues(buffer);
+  return base64UrlEncode(buffer);
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+function getAuthKv(env: Env): KVNamespace | null {
+  return env.AUTH_KV || env.NOTES_KV || null;
+}
+
+async function storeAuthChallenge(env: Env, key: string, payload: Record<string, unknown>) {
+  const kv = getAuthKv(env);
+  if (!kv) return false;
+  await kv.put(`${AUTH_CHALLENGE.PREFIX}${key}`, JSON.stringify(payload), {
+    expirationTtl: AUTH_CHALLENGE.TTL_SECONDS,
+  });
+  return true;
+}
+
+async function consumeAuthChallenge(env: Env, key: string): Promise<Record<string, unknown> | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const value = await kv.get(`${AUTH_CHALLENGE.PREFIX}${key}`);
+  if (!value) return null;
+  await kv.delete(`${AUTH_CHALLENGE.PREFIX}${key}`);
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function storeMagicLink(env: Env, token: string, payload: Record<string, unknown>) {
+  const kv = getAuthKv(env);
+  if (!kv) return false;
+  const tokenHash = await sha256Base64Url(token);
+  await kv.put(`${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`, JSON.stringify(payload), {
+    expirationTtl: AUTH_MAGIC_LINK.TTL_SECONDS,
+  });
+  return true;
+}
+
+async function consumeMagicLink(env: Env, token: string): Promise<Record<string, unknown> | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const tokenHash = await sha256Base64Url(token);
+  const key = `${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`;
+  const value = await kv.get(key);
+  if (!value) return null;
+  await kv.delete(key);
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function createSession(env: Env, userId: string): Promise<{ sessionId: string } | null> {
+  if (!env.AUTH_DB) return null;
+  const sessionId = randomId(32);
+  const sessionHash = await sha256Base64Url(sessionId);
+  const id = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+  await env.AUTH_DB.prepare(
+    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)"
+  )
+    .bind(id, sessionHash, userId, expiresAt, nowIso, nowIso)
+    .run();
+  return { sessionId };
+}
+
+function sessionCookie(sessionId: string): string {
+  return `pn_session=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
+}
+
+function parseCookies(header: string | null): Record<string, string> {
+  if (!header) return {};
+  return header.split(";").reduce((acc, part) => {
+    const [key, ...rest] = part.trim().split("=");
+    if (!key) return acc;
+    acc[key] = decodeURIComponent(rest.join("="));
+    return acc;
+  }, {} as Record<string, string>);
+}
+
+async function getSessionFromRequest(
+  env: Env,
+  request: Request,
+  options: { rotate?: boolean } = {}
+): Promise<{ id: string; email: string | null; newSessionId?: string } | null> {
+  if (!env.AUTH_DB) return null;
+  const cookies = parseCookies(request.headers.get("Cookie"));
+  const sessionId = cookies["pn_session"];
+  if (!sessionId) return null;
+  const sessionHash = await sha256Base64Url(sessionId);
+  const row = await env.AUTH_DB.prepare(
+    `SELECT sessions.user_id as user_id, users.email as email, sessions.expires_at as expires_at, sessions.revoked_at as revoked_at
+            , sessions.last_seen_at as last_seen_at, sessions.created_at as created_at
+     FROM sessions
+     LEFT JOIN users ON users.id = sessions.user_id
+     WHERE sessions.session_id_hash = ?
+     LIMIT 1`
+  )
+    .bind(sessionHash)
+    .first<{ user_id: string; email: string | null; expires_at: string | null; revoked_at: string | null; last_seen_at: string | null; created_at: string | null }>();
+
+  if (!row || row.revoked_at) {
+    return null;
+  }
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
+    return null;
+  }
+
+  const now = Date.now();
+  const lastSeenAt = row.last_seen_at || row.created_at;
+  const lastSeenMs = lastSeenAt ? new Date(lastSeenAt).getTime() : now;
+
+  if (now - lastSeenMs > SESSION_POLICY.INACTIVITY_SECONDS * 1000) {
+    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), sessionHash)
+      .run();
+    return null;
+  }
+
+  let newSessionId: string | undefined;
+  if (options.rotate && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
+    const rotated = await createSession(env, row.user_id);
+    if (rotated?.sessionId) {
+      newSessionId = rotated.sessionId;
+      await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
+        .bind(new Date().toISOString(), sessionHash)
+        .run();
+    }
+  } else {
+    await env.AUTH_DB.prepare("UPDATE sessions SET last_seen_at = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), sessionHash)
+      .run();
+  }
+
+  return { id: row.user_id, email: row.email ?? null, newSessionId };
+}
+
+async function getOrCreateUser(env: Env, email?: string | null): Promise<{ id: string } | null> {
+  if (!env.AUTH_DB) return null;
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+  if (normalizedEmail) {
+    const existing = await env.AUTH_DB.prepare(
+      "SELECT id FROM users WHERE email = ? LIMIT 1"
+    )
+      .bind(normalizedEmail)
+      .first<{ id: string }>();
+    if (existing?.id) {
+      return { id: existing.id };
+    }
+  }
+  const id = crypto.randomUUID();
+  await env.AUTH_DB.prepare(
+    "INSERT INTO users (id, email, email_verified, created_at) VALUES (?, ?, ?, ?)"
+  )
+    .bind(id, normalizedEmail, normalizedEmail ? 0 : 0, new Date().toISOString())
+    .run();
+  return { id };
 }
 
 async function getAiVerificationRemaining(
@@ -132,6 +489,380 @@ async function getAiVerificationRemaining(
     console.warn("[AI] Failed to read verification cache:", error);
     return null;
   }
+}
+
+async function handleAuthRoutes(request: Request, env: Env): Promise<Response | null> {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const method = request.method;
+
+  if (!pathname.startsWith("/api/auth/")) {
+    return null;
+  }
+
+  if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const user = await getOrCreateUser(env, email);
+    if (!user) {
+      return jsonResponse({ message: "User creation failed" }, 500, request);
+    }
+    const credentials = await env.AUTH_DB.prepare(
+      "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(user.id)
+      .all<{ credential_id: string; transports: string | null }>();
+
+    const options = generateRegistrationOptions({
+      rpName: "PrivateNote.ai",
+      rpID: getExpectedRpId(request),
+      userID: user.id,
+      userName: email || `privatenote-${user.id.slice(0, 6)}`,
+      userDisplayName: email || "PrivateNote User",
+      attestationType: "none",
+      authenticatorSelection: {
+        userVerification: "preferred",
+        residentKey: "preferred",
+      },
+      excludeCredentials: (credentials.results || []).map((cred) => ({
+        id: cred.credential_id,
+        type: "public-key",
+        transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+      })),
+    });
+
+    const challengeId = randomId(16);
+    await storeAuthChallenge(env, challengeId, {
+      type: "register",
+      challenge: options.challenge,
+      userId: user.id,
+      email,
+      createdAt: Date.now(),
+    });
+
+    return jsonResponse({ challengeId, options }, 200, request);
+  }
+
+  if (pathname === "/api/auth/webauthn/register/verify" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const challengeId = body?.challengeId;
+    const credential = body?.credential;
+    if (!challengeId || !credential) {
+      return jsonResponse({ message: "Missing challenge or credential" }, 400, request);
+    }
+
+    const challengeRecord = await consumeAuthChallenge(env, challengeId);
+    if (!challengeRecord) {
+      return jsonResponse({ message: "Challenge expired" }, 400, request);
+    }
+
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+
+    const expectedChallenge = String(challengeRecord.challenge || "");
+    const expectedOrigin = getExpectedOrigin(request);
+    const expectedRPID = getExpectedRpId(request);
+
+    let verification;
+    try {
+      verification = await verifyRegistrationResponse({
+        response: credential,
+        expectedChallenge,
+        expectedOrigin,
+        expectedRPID,
+      });
+    } catch (error) {
+      return jsonResponse(
+        { message: error instanceof Error ? error.message : "Registration verification failed" },
+        400,
+        request
+      );
+    }
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return jsonResponse({ message: "Registration not verified" }, 400, request);
+    }
+
+    const userId = String(challengeRecord.userId || "");
+    if (!userId) {
+      return jsonResponse({ message: "Missing user context" }, 400, request);
+    }
+
+    const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+    const credentialId = base64UrlEncode(credentialID);
+    const publicKey = base64UrlEncode(credentialPublicKey);
+    const transports = credential?.response?.transports || credential?.transports || null;
+
+    await env.AUTH_DB.prepare(
+      "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+      .bind(
+        crypto.randomUUID(),
+        userId,
+        credentialId,
+        publicKey,
+        counter ?? 0,
+        transports ? JSON.stringify(transports) : null,
+        new Date().toISOString()
+      )
+      .run();
+
+    const session = await createSession(env, userId);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (session?.sessionId) {
+      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/webauthn/login/options" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
+    let allowCredentials: Array<{ id: string; type: "public-key"; transports?: string[] }> = [];
+
+    if (email) {
+      const user = await env.AUTH_DB.prepare(
+        "SELECT id FROM users WHERE email = ? LIMIT 1"
+      )
+        .bind(email)
+        .first<{ id: string }>();
+
+      if (user?.id) {
+        const creds = await env.AUTH_DB.prepare(
+          "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
+        )
+          .bind(user.id)
+          .all<{ credential_id: string; transports: string | null }>();
+
+        allowCredentials = (creds.results || []).map((cred) => ({
+          id: cred.credential_id,
+          type: "public-key",
+          transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+        }));
+      }
+    }
+
+    const options = generateAuthenticationOptions({
+      rpID: getExpectedRpId(request),
+      allowCredentials: allowCredentials.length ? allowCredentials : undefined,
+      userVerification: "preferred",
+    });
+
+    const challengeId = randomId(16);
+    await storeAuthChallenge(env, challengeId, {
+      type: "login",
+      challenge: options.challenge,
+      email,
+      createdAt: Date.now(),
+    });
+
+    return jsonResponse({ challengeId, options }, 200, request);
+  }
+
+  if (pathname === "/api/auth/webauthn/login/verify" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const challengeId = body?.challengeId;
+    const credential = body?.credential;
+    if (!challengeId || !credential) {
+      return jsonResponse({ message: "Missing challenge or credential" }, 400, request);
+    }
+    const challengeRecord = await consumeAuthChallenge(env, challengeId);
+    if (!challengeRecord) {
+      return jsonResponse({ message: "Challenge expired" }, 400, request);
+    }
+
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+
+    const expectedChallenge = String(challengeRecord.challenge || "");
+    const expectedOrigin = getExpectedOrigin(request);
+    const expectedRPID = getExpectedRpId(request);
+
+    const credentialId = typeof credential?.id === "string" ? credential.id : null;
+    if (!credentialId) {
+      return jsonResponse({ message: "Missing credential ID" }, 400, request);
+    }
+
+    const storedCredential = await env.AUTH_DB.prepare(
+      "SELECT id, user_id, credential_id, public_key, counter FROM webauthn_credentials WHERE credential_id = ? LIMIT 1"
+    )
+      .bind(credentialId)
+      .first<{ id: string; user_id: string; credential_id: string; public_key: string; counter: number }>();
+
+    if (!storedCredential) {
+      return jsonResponse({ message: "Unknown credential" }, 400, request);
+    }
+
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: credential,
+        expectedChallenge,
+        expectedOrigin,
+        expectedRPID,
+        authenticator: {
+          credentialID: base64UrlToBytes(storedCredential.credential_id),
+          credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
+          counter: storedCredential.counter || 0,
+        },
+      });
+    } catch (error) {
+      return jsonResponse(
+        { message: error instanceof Error ? error.message : "Authentication verification failed" },
+        400,
+        request
+      );
+    }
+
+    if (!verification.verified || !verification.authenticationInfo) {
+      return jsonResponse({ message: "Authentication not verified" }, 400, request);
+    }
+
+    const newCounter = verification.authenticationInfo.newCounter;
+    await env.AUTH_DB.prepare(
+      "UPDATE webauthn_credentials SET counter = ? WHERE id = ?"
+    )
+      .bind(newCounter, storedCredential.id)
+      .run();
+
+    const session = await createSession(env, storedCredential.user_id);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (session?.sessionId) {
+      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/magic/send" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
+    if (!email) {
+      return jsonResponse({ message: "Email is required" }, 400, request);
+    }
+    const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1");
+    if (!env.TURNSTILE_SECRET_KEY && !isLocal) {
+      return jsonResponse({ message: "Turnstile not configured" }, 501, request);
+    }
+    if (!isLocal) {
+      const isHuman = await verifyTurnstile(body?.turnstileToken, request, env);
+      if (!isHuman) {
+        return jsonResponse({ message: "Human verification required" }, 403, request);
+      }
+    }
+    const token = randomId(32);
+    const stored = await storeMagicLink(env, token, { email, createdAt: Date.now() });
+    if (!stored) {
+      return jsonResponse({ message: "Magic link storage not configured" }, 501, request);
+    }
+
+    const magicUrl = `${url.origin}/auth/magic?token=${encodeURIComponent(token)}`;
+    return jsonResponse(
+      {
+        ok: true,
+        message: "Magic link sent (email provider not wired).",
+        ...(isLocal ? { debugMagicLink: magicUrl } : {}),
+      },
+      200,
+      request
+    );
+  }
+
+  if (pathname === "/api/auth/magic/consume" && method === "GET") {
+    const token = url.searchParams.get("token");
+    if (!token) {
+      return jsonResponse({ message: "Missing token" }, 400, request);
+    }
+    const payload = await consumeMagicLink(env, token);
+    if (!payload) {
+      return jsonResponse({ message: "Token expired or invalid" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const user = await getOrCreateUser(env, payload.email as string | undefined);
+    if (!user) {
+      return jsonResponse({ message: "User creation failed" }, 500, request);
+    }
+    const session = await createSession(env, user.id);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (session?.sessionId) {
+      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/logout" && method === "POST") {
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    const cookies = parseCookies(request.headers.get("Cookie"));
+    const sessionId = cookies["pn_session"];
+    if (sessionId && env.AUTH_DB) {
+      const sessionHash = await sha256Base64Url(sessionId);
+      await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
+        .bind(new Date().toISOString(), sessionHash)
+        .run();
+    }
+    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/session" && method === "GET") {
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ authenticated: false }, 200, request);
+    }
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (session.newSessionId) {
+      headers.set("Set-Cookie", sessionCookie(session.newSessionId));
+    }
+    return new Response(
+      JSON.stringify({
+        authenticated: true,
+        user: { id: session.id, email: session.email },
+      }),
+      { status: 200, headers }
+    );
+  }
+
+  return jsonResponse({ message: "Auth route not found" }, 404, request);
 }
 
 async function setAiVerificationRemaining(
@@ -398,6 +1129,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
+
+  const authResponse = await handleAuthRoutes(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+  
+  // Serve WebLLM models from R2
+  if (pathname.startsWith("/models/") && method === "GET") {
+    return serveModelFile(request, env);
+  }
   
   const analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
   const storage = new CompositeStorage(env.NOTES_KV, analyticsKv);

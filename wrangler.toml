@@ -1,6 +1,7 @@
 name = "privatenote-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 # KV namespace binding
 [[kv_namespaces]]
@@ -11,19 +12,44 @@ id = "f19b8957a39b422486311962ca759563"
 binding = "ANALYTICS_KV"
 id = "af52edc654a844ae999cc4fc35ba5a38"
 
+# R2 bucket binding for WebLLM models
+[[r2_buckets]]
+binding = "WEBLLM_MODELS"
+bucket_name = "webllm-models"
+# Note: Create the bucket first with: wrangler r2 bucket create webllm-models
+
 # Durable Objects binding
 [[durable_objects.bindings]]
 name = "SECURE_NOTES"
 class_name = "SecureNoteStorageSql"
+
+# Auth scaffolding
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "dcbc57c897c442deb18d99a1193267d4"
+#
+[[d1_databases]]
+binding = "AUTH_DB"
+database_name = "privatenote-auth"
+database_id = "b9ae1541-7226-40b6-9ff7-8ce49781b025"
+#
+# [[durable_objects.bindings]]
+# name = "AUTH_TOKENS"
+# class_name = "AuthTokenStore"
+
+[[durable_objects.bindings]]
+name = "AUTH_TOKENS"
+class_name = "AuthTokenStore"
+
+[[migrations]]
+tag = "v4-auth-tokens"
+new_classes = ["AuthTokenStore"]
 
 # Environment variables (set via wrangler secret put or dashboard)
 # OPENAI_API_KEY will be set via: wrangler secret put OPENAI_API_KEY
 
 [build]
 command = "npm run build"
-
-# Pages configuration (for Pages deployments)
-pages_build_output_dir = "dist"
 
 [observability]
 enabled = false
@@ -41,16 +67,10 @@ persist = true
 head_sampling_rate = 1
 
 # Migration configuration
-# v1 migration was already applied in production with SQLite support
-# We keep it here to match the deployed state
-[[migrations]]
-tag = "v1"
-new_classes = ["SecureNoteStorage"]
-
-[[migrations]]
-tag = "v2"
-new_sqlite_classes = ["SecureNoteStorageSql"]
-
-[[migrations]]
-tag = "v3"
-delete_classes = ["SecureNoteStorage"]
+# Note: All migrations (v1, v2, v3) have already been applied in production.
+# We don't include any migrations here because:
+# - v1 (SecureNoteStorage) already exists and cannot be recreated
+# - v2 (SecureNoteStorageSql) already exists and cannot be recreated  
+# - v3 (delete SecureNoteStorage) cannot be applied while instances exist
+# Both classes are exported in the code for backward compatibility.
+# The binding points to SecureNoteStorageSql, so new instances use the correct class.

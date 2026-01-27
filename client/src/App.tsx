@@ -18,6 +18,10 @@ import BlogAdmin from "@/pages/BlogAdmin";
 import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/not-found";
 import SecurityGuideDetail from "./pages/SecurityGuideDetail";
+import TestClientLLM from "@/pages/TestClientLLM";
+import Auth from "@/pages/Auth";
+import AuthMagic from "@/pages/AuthMagic";
+import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
@@ -42,6 +46,10 @@ function Router() {
           <Route path="/blog/:slug" component={BlogPost} />
           <Route path="/admin/blog" component={BlogAdmin} />
           <Route path="/admin/analytics" component={Analytics} />
+          <Route path="/test-llm" component={TestClientLLM} />
+          <Route path="/llm-ui" component={LlmUi} />
+          <Route path="/auth" component={Auth} />
+          <Route path="/auth/magic" component={AuthMagic} />
           {/* Fallback to 404 */}
           <Route component={NotFound} />
         </Switch>
