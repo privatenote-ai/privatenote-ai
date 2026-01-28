@@ -51,7 +51,7 @@ function normalizeOrigin(origin: string): string {
 
 function getAllowedOrigin(request: Request): string | null {
   const origin = request.headers.get('Origin');
-  if (!origin) return ALLOWED_ORIGINS[0]; // Default to first allowed origin
+  if (!origin) return null;
 
   const normalized = normalizeOrigin(origin);
   const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
@@ -96,16 +96,23 @@ function getCSPHeader(): string {
 
 // Get CORS headers
 function getCorsHeaders(request: Request): Record<string, string> {
-  const allowedOrigin = getAllowedOrigin(request);
-  
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+  const origin = request.headers.get("Origin");
+  const allowedOrigin = origin ? getAllowedOrigin(request) : null;
+
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getCSPHeader(),
     // Credentials are enabled for session cookies; ensure Origin is specific (not *)
   };
+
+  if (origin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin ?? "null";
+    headers["Vary"] = "Origin";
+  }
+
+  return headers;
 }
 
 // Get content type based on file extension
@@ -269,7 +276,7 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function coerceWebAuthnIdToBase64Url(value: unknown, label: string): string {
+function coerceWebAuthnIdToBase64Url(value: unknown, label: string, fallback?: string): string {
   if (typeof value === "string" && value.length > 0) {
     return value;
   }
@@ -278,6 +285,32 @@ function coerceWebAuthnIdToBase64Url(value: unknown, label: string): string {
   }
   if (ArrayBuffer.isView(value)) {
     return base64UrlEncode(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === "number")) {
+    return base64UrlEncode(new Uint8Array(value));
+  }
+  if (value && typeof value === "object") {
+    const maybeRecord = value as Record<string, unknown>;
+    if (Array.isArray(maybeRecord.data) && maybeRecord.data.every((item) => typeof item === "number")) {
+      return base64UrlEncode(new Uint8Array(maybeRecord.data));
+    }
+    const entries = Object.entries(maybeRecord);
+    if (entries.length) {
+      const numericEntries = entries
+        .map(([key, val]) => [Number(key), val] as const)
+        .filter(([key, val]) => Number.isInteger(key) && typeof val === "number");
+      if (numericEntries.length === entries.length) {
+        const maxIndex = numericEntries.reduce((max, [key]) => Math.max(max, key), -1);
+        const bytes = new Uint8Array(maxIndex + 1);
+        for (const [key, val] of numericEntries) {
+          bytes[key] = val;
+        }
+        return base64UrlEncode(bytes);
+      }
+    }
+  }
+  if (fallback) {
+    return fallback;
   }
   throw new Error(`Invalid WebAuthn ${label}.`);
 }
@@ -292,19 +325,35 @@ function base64UrlToBytes(value: string): Uint8Array {
   return bytes;
 }
 
-function getExpectedOrigin(request: Request): string | string[] {
+function getExpectedOrigin(request: Request): string | string[] | null {
   const origin = request.headers.get("Origin");
-  if (origin) {
-    return origin;
+  if (!origin) {
+    return null;
   }
-  return ALLOWED_ORIGINS;
+  const allowedOrigin = getAllowedOrigin(request);
+  if (!allowedOrigin) {
+    return null;
+  }
+  return allowedOrigin;
 }
+
+const CANONICAL_RPID = "privatenote.ai";
 
 function getExpectedRpId(request: Request): string {
   const origin = request.headers.get("Origin");
   if (origin) {
     try {
-      return new URL(origin).hostname;
+      const hostname = new URL(origin).hostname;
+      if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
+        return hostname;
+      }
+      if (hostname.endsWith(".pages.dev")) {
+        return hostname;
+      }
+      if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
+        return CANONICAL_RPID;
+      }
+      return hostname;
     } catch {
       return new URL(request.url).hostname;
     }
@@ -546,15 +595,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         residentKey: "preferred",
       },
       excludeCredentials: (credentials.results || []).map((cred) => ({
-        id: cred.credential_id,
+        id: base64UrlToBytes(cred.credential_id),
         type: "public-key",
         transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
       })),
     });
 
+    const challengeFallback = randomId(32);
     const normalizedOptions = {
       ...options,
-      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
       user: options.user
         ? {
             ...options.user,
@@ -568,13 +618,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     };
 
     const challengeId = randomId(16);
-    await storeAuthChallenge(env, challengeId, {
+    const stored = await storeAuthChallenge(env, challengeId, {
       type: "register",
       challenge: normalizedOptions.challenge,
       userId: user.id,
       email,
       createdAt: Date.now(),
     });
+    if (!stored) {
+      return jsonResponse({ message: "Auth challenge storage not configured" }, 501, request);
+    }
 
     return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
   }
@@ -603,6 +656,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const expectedChallenge = String(challengeRecord.challenge || "");
     const expectedOrigin = getExpectedOrigin(request);
+    if (!expectedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
     const expectedRPID = getExpectedRpId(request);
 
     let verification;
@@ -633,7 +689,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
     const credentialId = base64UrlEncode(credentialID);
     const publicKey = base64UrlEncode(credentialPublicKey);
-    const transports = credential?.response?.transports || credential?.transports || null;
+    const transports = Array.isArray(credential?.transports)
+      ? credential.transports
+      : Array.isArray(credential?.response?.transports)
+        ? credential.response.transports
+        : null;
 
     await env.AUTH_DB.prepare(
       "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -696,13 +756,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const options = generateAuthenticationOptions({
       rpID: getExpectedRpId(request),
-      allowCredentials: allowCredentials.length ? allowCredentials : undefined,
+      allowCredentials: allowCredentials.length
+        ? allowCredentials.map((cred) => ({
+            ...cred,
+            id: base64UrlToBytes(cred.id),
+          }))
+        : undefined,
       userVerification: "preferred",
     });
 
+    const challengeFallback = randomId(32);
     const normalizedOptions = {
       ...options,
-      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
       allowCredentials: options.allowCredentials?.map((cred) => ({
         ...cred,
         id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
@@ -710,12 +776,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     };
 
     const challengeId = randomId(16);
-    await storeAuthChallenge(env, challengeId, {
+    const stored = await storeAuthChallenge(env, challengeId, {
       type: "login",
       challenge: normalizedOptions.challenge,
       email,
       createdAt: Date.now(),
     });
+    if (!stored) {
+      return jsonResponse({ message: "Auth challenge storage not configured" }, 501, request);
+    }
 
     return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
   }
@@ -743,11 +812,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const expectedChallenge = String(challengeRecord.challenge || "");
     const expectedOrigin = getExpectedOrigin(request);
+    if (!expectedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
     const expectedRPID = getExpectedRpId(request);
 
-    const credentialId = typeof credential?.id === "string" ? credential.id : null;
-    if (!credentialId) {
-      return jsonResponse({ message: "Missing credential ID" }, 400, request);
+    let credentialId: string | null = null;
+    try {
+      credentialId = coerceWebAuthnIdToBase64Url(
+        credential?.rawId ?? credential?.id,
+        "credential.rawId/id"
+      );
+    } catch {
+      return jsonResponse({ message: "Invalid credential ID" }, 400, request);
     }
 
     const storedCredential = await env.AUTH_DB.prepare(

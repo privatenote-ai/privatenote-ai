@@ -74,15 +74,21 @@ const coerceToBuffer = (value: unknown, label: string): ArrayBuffer => {
 const credentialToJson = (credential: PublicKeyCredential): Record<string, any> => {
   const response = credential.response as AuthenticatorAttestationResponse | AuthenticatorAssertionResponse;
   const clientDataJSON = bufferToBase64Url(response.clientDataJSON);
+  const transports =
+    "getTransports" in response && typeof (response as AuthenticatorAttestationResponse).getTransports === "function"
+      ? (response as AuthenticatorAttestationResponse).getTransports()
+      : undefined;
 
   if ("attestationObject" in response) {
     return {
       id: credential.id,
       rawId: bufferToBase64Url(credential.rawId),
       type: credential.type,
+      transports,
       response: {
         clientDataJSON,
         attestationObject: bufferToBase64Url(response.attestationObject),
+        transports,
       },
     };
   }
