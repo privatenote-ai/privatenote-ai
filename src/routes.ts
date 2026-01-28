@@ -338,6 +338,7 @@ function getExpectedOrigin(request: Request): string | string[] | null {
 }
 
 const CANONICAL_RPID = "privatenote.ai";
+const PAGES_CANONICAL_RPID = "privatenote-ai.pages.dev";
 
 function getExpectedRpId(request: Request): string {
   const origin = request.headers.get("Origin");
@@ -348,7 +349,7 @@ function getExpectedRpId(request: Request): string {
         return hostname;
       }
       if (hostname.endsWith(".pages.dev")) {
-        return hostname;
+        return PAGES_CANONICAL_RPID;
       }
       if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
         return CANONICAL_RPID;
