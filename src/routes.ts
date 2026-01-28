@@ -269,6 +269,19 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function coerceWebAuthnIdToBase64Url(value: unknown, label: string): string {
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  if (value instanceof ArrayBuffer) {
+    return base64UrlEncode(new Uint8Array(value));
+  }
+  if (ArrayBuffer.isView(value)) {
+    return base64UrlEncode(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  }
+  throw new Error(`Invalid WebAuthn ${label}.`);
+}
+
 function base64UrlToBytes(value: string): Uint8Array {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((value.length + 3) % 4);
   const binary = atob(padded);
@@ -539,16 +552,31 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       })),
     });
 
+    const normalizedOptions = {
+      ...options,
+      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+      user: options.user
+        ? {
+            ...options.user,
+            id: coerceWebAuthnIdToBase64Url(options.user.id, "user.id"),
+          }
+        : undefined,
+      excludeCredentials: options.excludeCredentials?.map((cred) => ({
+        ...cred,
+        id: coerceWebAuthnIdToBase64Url(cred.id, "excludeCredentials.id"),
+      })),
+    };
+
     const challengeId = randomId(16);
     await storeAuthChallenge(env, challengeId, {
       type: "register",
-      challenge: options.challenge,
+      challenge: normalizedOptions.challenge,
       userId: user.id,
       email,
       createdAt: Date.now(),
     });
 
-    return jsonResponse({ challengeId, options }, 200, request);
+    return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/register/verify" && method === "POST") {
@@ -672,15 +700,24 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       userVerification: "preferred",
     });
 
+    const normalizedOptions = {
+      ...options,
+      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+      allowCredentials: options.allowCredentials?.map((cred) => ({
+        ...cred,
+        id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
+      })),
+    };
+
     const challengeId = randomId(16);
     await storeAuthChallenge(env, challengeId, {
       type: "login",
-      challenge: options.challenge,
+      challenge: normalizedOptions.challenge,
       email,
       createdAt: Date.now(),
     });
 
-    return jsonResponse({ challengeId, options }, 200, request);
+    return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/login/verify" && method === "POST") {

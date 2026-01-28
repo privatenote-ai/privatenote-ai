@@ -49,6 +49,25 @@ const coerceToBuffer = (value: unknown, label: string): ArrayBuffer => {
   if (ArrayBuffer.isView(value)) {
     return value.buffer;
   }
+  if (Array.isArray(value) && value.every((item) => typeof item === "number")) {
+    return new Uint8Array(value).buffer;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length) {
+      const numericEntries = entries
+        .map(([key, val]) => [Number(key), val] as const)
+        .filter(([key, val]) => Number.isInteger(key) && typeof val === "number");
+      if (numericEntries.length === entries.length) {
+        const maxIndex = numericEntries.reduce((max, [key]) => Math.max(max, key), -1);
+        const bytes = new Uint8Array(maxIndex + 1);
+        for (const [key, val] of numericEntries) {
+          bytes[key] = val;
+        }
+        return bytes.buffer;
+      }
+    }
+  }
   throw new Error(`Invalid WebAuthn ${label} from server.`);
 };
 
