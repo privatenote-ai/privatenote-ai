@@ -601,16 +601,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       })),
     });
 
+    const fallbackUserIdBytes = new TextEncoder().encode(user.id);
+    const fallbackUserName = email || `privatenote-${user.id.slice(0, 6)}`;
+    const fallbackUserDisplayName = email || "PrivateNote User";
     const challengeFallback = randomId(32);
     const normalizedOptions = {
       ...options,
       challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
-      user: options.user
-        ? {
-            ...options.user,
-            id: coerceWebAuthnIdToBase64Url(options.user.id, "user.id"),
-          }
-        : undefined,
+      user: {
+        ...(options.user || {}),
+        id: coerceWebAuthnIdToBase64Url(options.user?.id ?? fallbackUserIdBytes, "user.id"),
+        name: options.user?.name || fallbackUserName,
+        displayName: options.user?.displayName || fallbackUserDisplayName,
+      },
       excludeCredentials: options.excludeCredentials?.map((cred) => ({
         ...cred,
         id: coerceWebAuthnIdToBase64Url(cred.id, "excludeCredentials.id"),
