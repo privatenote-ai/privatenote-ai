@@ -109,9 +109,21 @@ const credentialToJson = (credential: PublicKeyCredential): Record<string, any> 
 };
 
 const coerceRegisterOptions = (options: WebAuthnOptions): PublicKeyCredentialCreationOptions => {
+  const rp =
+    options.rp && typeof options.rp === "object"
+      ? {
+          name: options.rp.name || "PrivateNote.ai",
+          id: options.rp.id || options.rpId,
+        }
+      : {
+          name: "PrivateNote.ai",
+          id: options.rpId,
+        };
+
   return {
     ...options,
     challenge: coerceToBuffer(options.challenge, "challenge"),
+    rp,
     user: options.user
       ? {
           ...options.user,
