@@ -24,6 +24,8 @@ import Auth from "@/pages/Auth";
 import AuthMagic from "@/pages/AuthMagic";
 import AuthBackup from "@/pages/AuthBackup";
 import AuthRecovery from "@/pages/AuthRecovery";
+import AuthSignIn from "@/pages/AuthSignIn";
+import AuthSignUp from "@/pages/AuthSignUp";
 import SecuritySettings from "@/pages/SecuritySettings";
 import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
@@ -53,6 +55,8 @@ function Router() {
           <Route path="/test-llm" component={TestClientLLM} />
           <Route path="/llm-ui" component={LlmUi} />
           <Route path="/auth" component={Auth} />
+          <Route path="/auth/sign-in" component={AuthSignIn} />
+          <Route path="/auth/sign-up" component={AuthSignUp} />
           <Route path="/auth/magic" component={AuthMagic} />
           <Route path="/auth/backup" component={AuthBackup} />
           <Route path="/auth/recovery" component={AuthRecovery} />

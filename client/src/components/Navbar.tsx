@@ -193,13 +193,22 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
             ) : (
-              <NavLink
-                href="/auth"
-                closeMenu={closeMenu}
-                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
-              >
-                Sign In
-              </NavLink>
+              <>
+                <NavLink
+                  href="/auth/sign-in"
+                  closeMenu={closeMenu}
+                  className="inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Sign in
+                </NavLink>
+                <NavLink
+                  href="/auth/sign-up"
+                  closeMenu={closeMenu}
+                  className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+                >
+                  Sign up
+                </NavLink>
+              </>
             )}
           </div>
 
@@ -273,10 +282,16 @@ export const Navbar: React.FC = () => {
                       </button>
                     </>
                   ) : (
-                    <NavLink href="/auth" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                      <Mail className="h-4 w-4" />
-                      <span>Sign In</span>
-                    </NavLink>
+                    <>
+                      <NavLink href="/auth/sign-in" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        <Mail className="h-4 w-4" />
+                        <span>Sign in</span>
+                      </NavLink>
+                      <NavLink href="/auth/sign-up" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        <Key className="h-4 w-4" />
+                        <span>Sign up</span>
+                      </NavLink>
+                    </>
                   )}
 
                   <a

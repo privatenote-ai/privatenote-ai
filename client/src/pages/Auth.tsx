@@ -5,9 +5,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { WebAuthnOptions, credentialToJson, coerceLoginOptions } from "@/utils/webauthn";
+import { useAuth } from "@/context/AuthContext";
 
-export default function Auth() {
+type AuthMode = "sign-in" | "sign-up";
+
+export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
@@ -47,6 +51,7 @@ export default function Auth() {
         challengeId: data.challengeId,
         credential: credentialToJson(credential),
       });
+      await refresh();
       toast({ title: "Signed in", description: "Passkey login successful." });
     } catch (error) {
       toast({
@@ -61,7 +66,7 @@ export default function Auth() {
 
   const handleSendMagicLink = async () => {
     if (!email.trim()) {
-      toast({ title: "Email required", description: "Enter your email to receive a magic link." });
+      toast({ title: "Email required", description: "Enter your email to continue." });
       return;
     }
     if (shouldShowTurnstile && !turnstileToken) {
@@ -169,16 +174,24 @@ export default function Auth() {
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
       <div className="text-center">
-        <h1 className="page-title text-gray-900 dark:text-white">Sign in to PrivateNote</h1>
+        <h1 className="page-title text-gray-900 dark:text-white">
+          {mode === "sign-up" ? "Create your account" : "Welcome back"}
+        </h1>
         <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
-          Passkeys first. Email link when you need it.
+          {mode === "sign-up"
+            ? "Access all of PrivateNote with a single account."
+            : "Sign in with your email or passkey."}
         </p>
       </div>
 
       <Card className="mt-8">
         <CardHeader>
-          <CardTitle>Sign in or create account</CardTitle>
-          <CardDescription>Continue with email or use a passkey.</CardDescription>
+          <CardTitle>{mode === "sign-up" ? "Get started" : "Sign in"}</CardTitle>
+          <CardDescription>
+            {mode === "sign-up"
+              ? "Enter your email to create a passwordless account."
+              : "Enter your email to get a sign-in link."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {view === "form" ? (
@@ -188,14 +201,17 @@ export default function Auth() {
                 placeholder="you@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button onClick={handleSendMagicLink} disabled={isBusy}>
-                  Continue with email
+                  {mode === "sign-up" ? "Continue" : "Continue with email"}
                 </Button>
-                <Button variant="outline" onClick={handleLoginPasskey} disabled={isBusy}>
-                  Use passkey
-                </Button>
+                {mode === "sign-in" && (
+                  <Button variant="outline" onClick={handleLoginPasskey} disabled={isBusy}>
+                    Use passkey
+                  </Button>
+                )}
               </div>
               {shouldShowTurnstile && (
                 <div className="space-y-2">
@@ -212,6 +228,23 @@ export default function Auth() {
                 <a href="/auth/recovery" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                   Use a recovery code
                 </a>
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                {mode === "sign-up" ? (
+                  <>
+                    Already have an account?{" "}
+                    <a href="/auth/sign-in" className="text-blue-600 dark:text-blue-400 hover:underline">
+                      Sign in
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    Don’t have an account?{" "}
+                    <a href="/auth/sign-up" className="text-blue-600 dark:text-blue-400 hover:underline">
+                      Sign up
+                    </a>
+                  </>
+                )}
               </div>
               {!passkeySupported && (
                 <p className="text-xs text-gray-500">This browser does not support passkeys.</p>
