@@ -21,6 +21,9 @@ import SecurityGuideDetail from "./pages/SecurityGuideDetail";
 import TestClientLLM from "@/pages/TestClientLLM";
 import Auth from "@/pages/Auth";
 import AuthMagic from "@/pages/AuthMagic";
+import AuthBackup from "@/pages/AuthBackup";
+import AuthRecovery from "@/pages/AuthRecovery";
+import SecuritySettings from "@/pages/SecuritySettings";
 import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -50,6 +53,9 @@ function Router() {
           <Route path="/llm-ui" component={LlmUi} />
           <Route path="/auth" component={Auth} />
           <Route path="/auth/magic" component={AuthMagic} />
+          <Route path="/auth/backup" component={AuthBackup} />
+          <Route path="/auth/recovery" component={AuthRecovery} />
+          <Route path="/account/security" component={SecuritySettings} />
           {/* Fallback to 404 */}
           <Route component={NotFound} />
         </Switch>

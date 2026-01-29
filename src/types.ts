@@ -17,4 +17,5 @@ export interface Env {
   AUTH_TOKENS?: DurableObjectNamespace;
   AUTH_EMAIL_FROM?: string;
   AUTH_EMAIL_PROVIDER?: string;
+  RESEND_API_KEY?: string;
 }

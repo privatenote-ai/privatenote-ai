@@ -39,10 +39,14 @@ const NOTE_RESERVATION = {
 };
 
 const SESSION_POLICY = {
-  TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days
-  INACTIVITY_SECONDS: 60 * 60 * 48, // 48 hours
+  TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days sliding
+  ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 90, // 90 days absolute
   ROTATE_SECONDS: 60 * 60 * 24, // 24 hours
 };
+
+const USER_STATUS_PENDING = "pending";
+const USER_STATUS_ACTIVE = "active";
+const STEP_UP_WINDOW_SECONDS = 5 * 60;
 
 // Get allowed origin for CORS
 function normalizeOrigin(origin: string): string {
@@ -113,6 +117,177 @@ function getCorsHeaders(request: Request): Record<string, string> {
   }
 
   return headers;
+}
+
+function getMagicLinkOrigin(request: Request): string {
+  const origin = request.headers.get("Origin");
+  const allowedOrigin = origin ? getAllowedOrigin(request) : null;
+  return allowedOrigin ?? new URL(request.url).origin;
+}
+
+function normalizeEmail(email: string | null | undefined): string | null {
+  const normalized = email?.trim().toLowerCase() || null;
+  return normalized && normalized.length ? normalized : null;
+}
+
+function isValidEmailLoose(email: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+}
+
+async function jitterDelay(minMs = 350, maxMs = 900): Promise<void> {
+  const delay = Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
+  await new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+function getRequestIp(request: Request): string | null {
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp;
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (!forwarded) return null;
+  return forwarded.split(",")[0]?.trim() || null;
+}
+
+function getRequestGeo(request: Request): { city: string | null; country: string | null } {
+  const cf = (request as any).cf as { city?: string; country?: string } | undefined;
+  return {
+    city: typeof cf?.city === "string" ? cf.city : null,
+    country: typeof cf?.country === "string" ? cf.country : null,
+  };
+}
+
+function getDeviceLabel(userAgent: string): string {
+  const ua = userAgent.toLowerCase();
+  const isMobile = /iphone|ipad|android|mobile/.test(ua);
+  let os = "Unknown OS";
+  if (ua.includes("windows")) os = "Windows";
+  else if (ua.includes("mac os x")) os = isMobile ? "iOS" : "macOS";
+  else if (ua.includes("android")) os = "Android";
+  else if (ua.includes("linux")) os = "Linux";
+
+  let browser = "Unknown Browser";
+  if (ua.includes("edg")) browser = "Edge";
+  else if (ua.includes("chrome") && !ua.includes("edg")) browser = "Chrome";
+  else if (ua.includes("safari") && !ua.includes("chrome")) browser = "Safari";
+  else if (ua.includes("firefox")) browser = "Firefox";
+
+  return `${isMobile ? "Mobile" : "Desktop"} • ${os} • ${browser}`;
+}
+
+function getPasskeyLabel(transports: string[] | null): string {
+  if (!transports || transports.length === 0) {
+    return "Synced / Remote Passkey";
+  }
+  const normalized = transports.map((t) => t.toLowerCase());
+  if (normalized.includes("internal")) {
+    return "Local Device Passkey";
+  }
+  if (normalized.some((t) => t === "usb" || t === "nfc" || t === "ble")) {
+    return "Security Key / External Device";
+  }
+  if (normalized.includes("hybrid")) {
+    return "Synced / Remote Passkey";
+  }
+  return "Passkey";
+}
+
+async function sendMagicLinkEmail(
+  env: Env,
+  to: string,
+  magicUrl: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
+  if (provider !== "resend") {
+    return { ok: false, error: "Email provider not configured" };
+  }
+
+  const apiKey = env.RESEND_API_KEY;
+  const from = env.AUTH_EMAIL_FROM;
+  if (!apiKey) {
+    return { ok: false, error: "Resend API key not configured" };
+  }
+  if (!from) {
+    return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
+  }
+
+  const subject = "Your PrivateNote sign-in link";
+  const text = `Use this link to sign in:\n\n${magicUrl}\n\nIf you did not request this, you can ignore this email.`;
+  const html = [
+    "<p>Use this link to sign in:</p>",
+    `<p><a href="${magicUrl}">${magicUrl}</a></p>`,
+    "<p>If you did not request this, you can ignore this email.</p>",
+  ].join("");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const message = (await res.text()) || res.statusText;
+    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+  }
+
+  return { ok: true };
+}
+
+async function sendBackupEmailVerificationEmail(
+  env: Env,
+  to: string,
+  verifyUrl: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
+  if (provider !== "resend") {
+    return { ok: false, error: "Email provider not configured" };
+  }
+
+  const apiKey = env.RESEND_API_KEY;
+  const from = env.AUTH_EMAIL_FROM;
+  if (!apiKey) {
+    return { ok: false, error: "Resend API key not configured" };
+  }
+  if (!from) {
+    return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
+  }
+
+  const subject = "Verify your PrivateNote backup email";
+  const text = `Verify your backup email by clicking the link below:\n\n${verifyUrl}\n\nIf you did not request this, you can ignore this email.`;
+  const html = [
+    "<p>Verify your backup email by clicking the link below:</p>",
+    `<p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+    "<p>If you did not request this, you can ignore this email.</p>",
+  ].join("");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const message = (await res.text()) || res.statusText;
+    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+  }
+
+  return { ok: true };
 }
 
 // Get content type based on file extension
@@ -271,6 +446,11 @@ const AUTH_MAGIC_LINK = {
   TTL_SECONDS: 15 * 60,
 };
 
+const AUTH_BACKUP_VERIFY = {
+  PREFIX: "auth_backup_verify:",
+  TTL_SECONDS: 30 * 60,
+};
+
 function base64UrlEncode(bytes: Uint8Array): string {
   const binary = String.fromCharCode(...bytes);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -338,7 +518,7 @@ function getExpectedOrigin(request: Request): string | string[] | null {
 }
 
 const CANONICAL_RPID = "privatenote.ai";
-const PAGES_CANONICAL_RPID = "privatenote-ai.pages.dev";
+const PAGES_CANONICAL_RPID = "client-llm.privatenote-ai.pages.dev";
 
 function getExpectedRpId(request: Request): string {
   const origin = request.headers.get("Origin");
@@ -372,6 +552,21 @@ async function sha256Base64Url(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return base64UrlEncode(new Uint8Array(digest));
+}
+
+function generateRecoveryCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  let raw = "";
+  for (const byte of bytes) {
+    raw += alphabet[byte % alphabet.length];
+  }
+  return raw.match(/.{1,4}/g)?.join("-") ?? raw;
+}
+
+async function hashRecoveryCode(code: string, salt: string): Promise<string> {
+  return sha256Base64Url(`${salt}:${code}`);
 }
 
 function getAuthKv(env: Env): KVNamespace | null {
@@ -425,23 +620,89 @@ async function consumeMagicLink(env: Env, token: string): Promise<Record<string,
   }
 }
 
-async function createSession(env: Env, userId: string): Promise<{ sessionId: string } | null> {
+async function storeBackupEmailToken(env: Env, token: string, payload: Record<string, unknown>) {
+  const kv = getAuthKv(env);
+  if (!kv) return false;
+  const tokenHash = await sha256Base64Url(token);
+  await kv.put(`${AUTH_BACKUP_VERIFY.PREFIX}${tokenHash}`, JSON.stringify(payload), {
+    expirationTtl: AUTH_BACKUP_VERIFY.TTL_SECONDS,
+  });
+  return true;
+}
+
+async function consumeBackupEmailToken(env: Env, token: string): Promise<Record<string, unknown> | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const tokenHash = await sha256Base64Url(token);
+  const key = `${AUTH_BACKUP_VERIFY.PREFIX}${tokenHash}`;
+  const value = await kv.get(key);
+  if (!value) return null;
+  await kv.delete(key);
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+type AuthMethod = "magic" | "passkey" | "recovery";
+
+async function createSession(
+  env: Env,
+  userId: string,
+  request: Request,
+  authMethod: AuthMethod,
+): Promise<{ sessionId: string } | null> {
   if (!env.AUTH_DB) return null;
   const sessionId = randomId(32);
   const sessionHash = await sha256Base64Url(sessionId);
   const id = crypto.randomUUID();
-  const nowIso = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const expiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+  const absoluteExpiresAt = new Date(now + 1000 * SESSION_POLICY.ABSOLUTE_TTL_SECONDS).toISOString();
+  const userAgent = request.headers.get("User-Agent") || "";
+  const ip = getRequestIp(request);
+  const { city, country } = getRequestGeo(request);
+  const deviceLabel = getDeviceLabel(userAgent);
+  const lastStepUpAt = authMethod === "passkey" ? nowIso : null;
   await env.AUTH_DB.prepare(
-    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)"
+    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
-    .bind(id, sessionHash, userId, expiresAt, nowIso, nowIso)
+    .bind(
+      id,
+      sessionHash,
+      userId,
+      expiresAt,
+      absoluteExpiresAt,
+      nowIso,
+      nowIso,
+      nowIso,
+      lastStepUpAt,
+      userAgent,
+      ip,
+      city,
+      country,
+      deviceLabel,
+    )
     .run();
   return { sessionId };
 }
 
 function sessionCookie(sessionId: string): string {
   return `pn_session=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
+}
+
+function applyRotatedSession(headers: Headers, session: { newSessionId?: string } | null) {
+  if (session?.newSessionId) {
+    headers.set("Set-Cookie", sessionCookie(session.newSessionId));
+  }
+}
+
+function isStepUpFresh(lastStepUpAt: string | null): boolean {
+  if (!lastStepUpAt) return false;
+  const last = new Date(lastStepUpAt).getTime();
+  return Date.now() - last <= STEP_UP_WINDOW_SECONDS * 1000;
 }
 
 function parseCookies(header: string | null): Record<string, string> {
@@ -458,77 +719,117 @@ async function getSessionFromRequest(
   env: Env,
   request: Request,
   options: { rotate?: boolean } = {}
-): Promise<{ id: string; email: string | null; newSessionId?: string } | null> {
+): Promise<{
+  id: string;
+  email: string | null;
+  sessionRowId: string;
+  sessionIdHash: string;
+  lastAuthAt: string | null;
+  lastStepUpAt: string | null;
+  newSessionId?: string;
+} | null> {
   if (!env.AUTH_DB) return null;
   const cookies = parseCookies(request.headers.get("Cookie"));
   const sessionId = cookies["pn_session"];
   if (!sessionId) return null;
   const sessionHash = await sha256Base64Url(sessionId);
   const row = await env.AUTH_DB.prepare(
-    `SELECT sessions.user_id as user_id, users.email as email, sessions.expires_at as expires_at, sessions.revoked_at as revoked_at
+    `SELECT sessions.id as session_row_id, sessions.user_id as user_id, users.email as email, sessions.expires_at as expires_at
+            , sessions.absolute_expires_at as absolute_expires_at, sessions.revoked_at as revoked_at
             , sessions.last_seen_at as last_seen_at, sessions.created_at as created_at
+            , sessions.last_auth_at as last_auth_at, sessions.last_stepup_at as last_stepup_at
      FROM sessions
      LEFT JOIN users ON users.id = sessions.user_id
      WHERE sessions.session_id_hash = ?
      LIMIT 1`
   )
     .bind(sessionHash)
-    .first<{ user_id: string; email: string | null; expires_at: string | null; revoked_at: string | null; last_seen_at: string | null; created_at: string | null }>();
+    .first<{
+      session_row_id: string;
+      user_id: string;
+      email: string | null;
+      expires_at: string | null;
+      absolute_expires_at: string | null;
+      revoked_at: string | null;
+      last_seen_at: string | null;
+      created_at: string | null;
+      last_auth_at: string | null;
+      last_stepup_at: string | null;
+    }>();
 
   if (!row || row.revoked_at) {
     return null;
   }
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
+  const now = Date.now();
+  if (row.absolute_expires_at && new Date(row.absolute_expires_at).getTime() < now) {
+    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), "absolute_expired", sessionHash)
+      .run();
+    return null;
+  }
+  if (row.expires_at && new Date(row.expires_at).getTime() < now) {
+    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), "expired", sessionHash)
+      .run();
     return null;
   }
 
-  const now = Date.now();
   const lastSeenAt = row.last_seen_at || row.created_at;
   const lastSeenMs = lastSeenAt ? new Date(lastSeenAt).getTime() : now;
 
-  if (now - lastSeenMs > SESSION_POLICY.INACTIVITY_SECONDS * 1000) {
-    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
-      .bind(new Date().toISOString(), sessionHash)
-      .run();
-    return null;
-  }
-
   let newSessionId: string | undefined;
   if (options.rotate && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
-    const rotated = await createSession(env, row.user_id);
+    const rotated = await createSession(env, row.user_id, request, "magic");
     if (rotated?.sessionId) {
       newSessionId = rotated.sessionId;
-      await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
-        .bind(new Date().toISOString(), sessionHash)
+      await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
+        .bind(new Date().toISOString(), "rotated", sessionHash)
         .run();
     }
   } else {
-    await env.AUTH_DB.prepare("UPDATE sessions SET last_seen_at = ? WHERE session_id_hash = ?")
-      .bind(new Date().toISOString(), sessionHash)
+    const nextExpiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+    await env.AUTH_DB.prepare("UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), nextExpiresAt, sessionHash)
       .run();
   }
 
-  return { id: row.user_id, email: row.email ?? null, newSessionId };
+  return {
+    id: row.user_id,
+    email: row.email ?? null,
+    sessionRowId: row.session_row_id,
+    sessionIdHash: sessionHash,
+    lastAuthAt: row.last_auth_at ?? null,
+    lastStepUpAt: row.last_stepup_at ?? null,
+    newSessionId,
+  };
 }
 
-async function getOrCreateUser(env: Env, email?: string | null): Promise<{ id: string } | null> {
+async function getUserByEmail(
+  env: Env,
+  email: string
+): Promise<{ id: string; status: string; email: string } | null> {
   if (!env.AUTH_DB) return null;
-  const normalizedEmail = email?.trim().toLowerCase() || null;
-  if (normalizedEmail) {
-    const existing = await env.AUTH_DB.prepare(
-      "SELECT id FROM users WHERE email = ? LIMIT 1"
-    )
-      .bind(normalizedEmail)
-      .first<{ id: string }>();
-    if (existing?.id) {
-      return { id: existing.id };
-    }
-  }
-  const id = crypto.randomUUID();
-  await env.AUTH_DB.prepare(
-    "INSERT INTO users (id, email, email_verified, created_at) VALUES (?, ?, ?, ?)"
+  const existing = await env.AUTH_DB.prepare(
+    "SELECT id, status, email FROM users WHERE email = ? LIMIT 1"
   )
-    .bind(id, normalizedEmail, normalizedEmail ? 0 : 0, new Date().toISOString())
+    .bind(email)
+    .first<{ id: string; status: string | null; email: string }>();
+  if (!existing?.id) return null;
+  return { id: existing.id, status: existing.status || USER_STATUS_ACTIVE, email: existing.email };
+}
+
+async function createUser(
+  env: Env,
+  email: string | null,
+  status: string
+): Promise<{ id: string } | null> {
+  if (!env.AUTH_DB) return null;
+  const id = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+  await env.AUTH_DB.prepare(
+    "INSERT INTO users (id, email, email_verified, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+  )
+    .bind(id, email, email ? 0 : 0, status, nowIso, nowIso)
     .run();
   return { id };
 }
@@ -570,26 +871,28 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
-    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
+    const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
-    const user = await getOrCreateUser(env, email);
-    if (!user) {
-      return jsonResponse({ message: "User creation failed" }, 500, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Authentication required" }, 401, request);
     }
+    const userId = session.id;
+    const userEmail = session.email ?? email;
     const credentials = await env.AUTH_DB.prepare(
       "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
     )
-      .bind(user.id)
+      .bind(userId)
       .all<{ credential_id: string; transports: string | null }>();
 
     const options = generateRegistrationOptions({
       rpName: "PrivateNote.ai",
       rpID: getExpectedRpId(request),
-      userID: user.id,
-      userName: email || `privatenote-${user.id.slice(0, 6)}`,
-      userDisplayName: email || "PrivateNote User",
+      userID: userId,
+      userName: userEmail || `privatenote-${userId.slice(0, 6)}`,
+      userDisplayName: userEmail || "PrivateNote User",
       attestationType: "none",
       authenticatorSelection: {
         userVerification: "preferred",
@@ -602,9 +905,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       })),
     });
 
-    const fallbackUserIdBytes = new TextEncoder().encode(user.id);
-    const fallbackUserName = email || `privatenote-${user.id.slice(0, 6)}`;
-    const fallbackUserDisplayName = email || "PrivateNote User";
+    const fallbackUserIdBytes = new TextEncoder().encode(userId);
+    const fallbackUserName = userEmail || `privatenote-${userId.slice(0, 6)}`;
+    const fallbackUserDisplayName = userEmail || "PrivateNote User";
     const challengeFallback = randomId(32);
     const normalizedOptions = {
       ...options,
@@ -625,8 +928,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const stored = await storeAuthChallenge(env, challengeId, {
       type: "register",
       challenge: normalizedOptions.challenge,
-      userId: user.id,
-      email,
+      userId,
+      email: userEmail,
       createdAt: Date.now(),
     });
     if (!stored) {
@@ -656,6 +959,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session || session.id !== challengeRecord.userId) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
     const expectedChallenge = String(challengeRecord.challenge || "");
@@ -691,7 +999,17 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
-    const credentialId = base64UrlEncode(credentialID);
+    const credentialId = coerceWebAuthnIdToBase64Url(
+      credential?.rawId ?? credential?.id,
+      "credential.rawId/id"
+    );
+    const verifiedCredentialId = base64UrlEncode(credentialID);
+    if (credentialId !== verifiedCredentialId) {
+      console.warn("[Auth] Credential ID mismatch", {
+        credentialId,
+        verifiedCredentialId,
+      });
+    }
     const publicKey = base64UrlEncode(credentialPublicKey);
     const transports = Array.isArray(credential?.transports)
       ? credential.transports
@@ -713,13 +1031,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       )
       .run();
 
-    const session = await createSession(env, userId);
-    const headers = new Headers(getCorsHeaders(request));
-    headers.set("Content-Type", "application/json");
-    if (session?.sessionId) {
-      headers.set("Set-Cookie", sessionCookie(session.sessionId));
-    }
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET status = ?, email_verified = CASE WHEN email IS NULL THEN email_verified ELSE 1 END, updated_at = ? WHERE id = ?"
+    )
+      .bind(USER_STATUS_ACTIVE, new Date().toISOString(), userId)
+      .run();
+
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET last_stepup_at = ?, last_auth_at = ? WHERE session_id_hash = ?"
+    )
+      .bind(new Date().toISOString(), new Date().toISOString(), session.sessionIdHash)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/login/options" && method === "POST") {
@@ -738,9 +1062,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     if (email) {
       const user = await env.AUTH_DB.prepare(
-        "SELECT id FROM users WHERE email = ? LIMIT 1"
+        "SELECT id FROM users WHERE email = ? OR backup_email = ? LIMIT 1"
       )
-        .bind(email)
+        .bind(email, email)
         .first<{ id: string }>();
 
       if (user?.id) {
@@ -868,12 +1192,521 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const newCounter = verification.authenticationInfo.newCounter;
     await env.AUTH_DB.prepare(
-      "UPDATE webauthn_credentials SET counter = ? WHERE id = ?"
+      "UPDATE webauthn_credentials SET counter = ?, last_used_at = ? WHERE id = ?"
     )
-      .bind(newCounter, storedCredential.id)
+      .bind(newCounter, new Date().toISOString(), storedCredential.id)
       .run();
 
-    const session = await createSession(env, storedCredential.user_id);
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET status = ?, last_login_at = ?, updated_at = ? WHERE id = ?"
+    )
+      .bind(USER_STATUS_ACTIVE, new Date().toISOString(), new Date().toISOString(), storedCredential.user_id)
+      .run();
+
+    const session = await createSession(env, storedCredential.user_id, request, "passkey");
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (session?.sessionId) {
+      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/me" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const user = await env.AUTH_DB.prepare(
+      "SELECT email, status, backup_email, backup_email_verified FROM users WHERE id = ? LIMIT 1"
+    )
+      .bind(session.id)
+      .first<{ email: string | null; status: string | null; backup_email: string | null; backup_email_verified: number | null }>();
+
+    const passkeyCount = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(headers, session);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        email: user?.email ?? null,
+        status: user?.status ?? USER_STATUS_ACTIVE,
+        backupEmail: user?.backup_email ?? null,
+        backupEmailVerified: Boolean(user?.backup_email_verified),
+        hasPasskeys: (passkeyCount?.count ?? 0) > 0,
+        lastStepUpAt: session.lastStepUpAt,
+      }),
+      { status: 200, headers }
+    );
+  }
+
+  if (pathname === "/api/auth/webauthn/stepup/options" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const credentials = await env.AUTH_DB.prepare(
+      "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .all<{ credential_id: string; transports: string | null }>();
+    if (!credentials.results?.length) {
+      return jsonResponse({ message: "No passkeys available" }, 400, request);
+    }
+
+    const options = generateAuthenticationOptions({
+      rpID: getExpectedRpId(request),
+      allowCredentials: credentials.results.map((cred) => ({
+        id: base64UrlToBytes(cred.credential_id),
+        type: "public-key",
+        transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+      })),
+      userVerification: "preferred",
+    });
+
+    const challengeFallback = randomId(32);
+    const normalizedOptions = {
+      ...options,
+      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
+      allowCredentials: options.allowCredentials?.map((cred) => ({
+        ...cred,
+        id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
+      })),
+    };
+
+    const challengeId = randomId(16);
+    const stored = await storeAuthChallenge(env, challengeId, {
+      type: "stepup",
+      challenge: normalizedOptions.challenge,
+      userId: session.id,
+      createdAt: Date.now(),
+    });
+    if (!stored) {
+      return jsonResponse({ message: "Auth challenge storage not configured" }, 501, request);
+    }
+
+    return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
+  }
+
+  if (pathname === "/api/auth/webauthn/stepup/verify" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const challengeId = body?.challengeId;
+    const credential = body?.credential;
+    if (!challengeId || !credential) {
+      return jsonResponse({ message: "Missing challenge or credential" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const challengeRecord = await consumeAuthChallenge(env, challengeId);
+    if (!challengeRecord || challengeRecord.type !== "stepup" || challengeRecord.userId !== session.id) {
+      return jsonResponse({ message: "Challenge expired" }, 400, request);
+    }
+
+    const expectedChallenge = String(challengeRecord.challenge || "");
+    const expectedOrigin = getExpectedOrigin(request);
+    if (!expectedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+    const expectedRPID = getExpectedRpId(request);
+
+    let credentialId: string | null = null;
+    try {
+      credentialId = coerceWebAuthnIdToBase64Url(
+        credential?.rawId ?? credential?.id,
+        "credential.rawId/id"
+      );
+    } catch {
+      return jsonResponse({ message: "Invalid credential ID" }, 400, request);
+    }
+
+    const storedCredential = await env.AUTH_DB.prepare(
+      "SELECT id, credential_id, public_key, counter FROM webauthn_credentials WHERE credential_id = ? LIMIT 1"
+    )
+      .bind(credentialId)
+      .first<{ id: string; credential_id: string; public_key: string; counter: number }>();
+
+    if (!storedCredential) {
+      return jsonResponse({ message: "Unknown credential" }, 400, request);
+    }
+
+    let verification;
+    try {
+      verification = await verifyAuthenticationResponse({
+        response: credential,
+        expectedChallenge,
+        expectedOrigin,
+        expectedRPID,
+        authenticator: {
+          credentialID: base64UrlToBytes(storedCredential.credential_id),
+          credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
+          counter: storedCredential.counter || 0,
+        },
+      });
+    } catch (error) {
+      return jsonResponse(
+        { message: error instanceof Error ? error.message : "Authentication verification failed" },
+        400,
+        request
+      );
+    }
+
+    if (!verification.verified || !verification.authenticationInfo) {
+      return jsonResponse({ message: "Authentication not verified" }, 400, request);
+    }
+
+    const newCounter = verification.authenticationInfo.newCounter;
+    await env.AUTH_DB.prepare(
+      "UPDATE webauthn_credentials SET counter = ?, last_used_at = ? WHERE id = ?"
+    )
+      .bind(newCounter, new Date().toISOString(), storedCredential.id)
+      .run();
+
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET last_stepup_at = ? WHERE session_id_hash = ?"
+    )
+      .bind(new Date().toISOString(), session.sessionIdHash)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/passkeys" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const rows = await env.AUTH_DB.prepare(
+      "SELECT id, credential_id, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC"
+    )
+      .bind(session.id)
+      .all<{ id: string; credential_id: string; transports: string | null; created_at: string; last_used_at: string | null }>();
+
+    const passkeys = (rows.results || []).map((row) => {
+      const transports = row.transports ? (JSON.parse(row.transports) as string[]) : null;
+      return {
+        id: row.id,
+        createdAt: row.created_at,
+        lastUsedAt: row.last_used_at,
+        transports,
+        label: getPasskeyLabel(transports),
+      };
+    });
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(headers, session);
+    return new Response(JSON.stringify({ ok: true, passkeys }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/passkeys/reset" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    await env.AUTH_DB.prepare(
+      "DELETE FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/sessions" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const rows = await env.AUTH_DB.prepare(
+      "SELECT id, session_id_hash, expires_at, absolute_expires_at, revoked_at, revoked_reason, created_at, last_seen_at, user_agent, ip, city, country, device_label FROM sessions WHERE user_id = ? ORDER BY created_at DESC"
+    )
+      .bind(session.id)
+      .all<{
+        id: string;
+        session_id_hash: string;
+        expires_at: string | null;
+        absolute_expires_at: string | null;
+        revoked_at: string | null;
+        revoked_reason: string | null;
+        created_at: string | null;
+        last_seen_at: string | null;
+        user_agent: string | null;
+        ip: string | null;
+        city: string | null;
+        country: string | null;
+        device_label: string | null;
+      }>();
+
+    const sessions = (rows.results || []).map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      lastSeenAt: row.last_seen_at,
+      expiresAt: row.expires_at,
+      absoluteExpiresAt: row.absolute_expires_at,
+      revokedAt: row.revoked_at,
+      revokedReason: row.revoked_reason,
+      userAgent: row.user_agent,
+      ip: row.ip,
+      city: row.city,
+      country: row.country,
+      deviceLabel: row.device_label,
+      current: row.session_id_hash === session.sessionIdHash,
+    }));
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(headers, session);
+    return new Response(JSON.stringify({ ok: true, sessions }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/sessions/revoke" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const sessionId = typeof body?.sessionId === "string" ? body.sessionId : null;
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    if (!sessionId) {
+      return jsonResponse({ message: "Missing sessionId" }, 400, request);
+    }
+    const nowIso = new Date().toISOString();
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE id = ? AND user_id = ?"
+    )
+      .bind(nowIso, "user_revoked", sessionId, session.id)
+      .run();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    if (sessionId === session.sessionRowId) {
+      headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/backup/start" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+    const backupEmail = normalizeEmail(typeof body?.email === "string" ? body.email : null);
+    if (!backupEmail || !isValidEmailLoose(backupEmail)) {
+      return jsonResponse({ message: "Invalid email" }, 400, request);
+    }
+
+    const token = randomId(32);
+    const stored = await storeBackupEmailToken(env, token, {
+      userId: session.id,
+      email: backupEmail,
+      createdAt: Date.now(),
+    });
+    if (!stored) {
+      return jsonResponse({ message: "Verification storage not configured" }, 501, request);
+    }
+
+    const verifyOrigin = getMagicLinkOrigin(request);
+    const verifyUrl = `${verifyOrigin}/auth/backup?token=${encodeURIComponent(token)}`;
+    const sendResult = await sendBackupEmailVerificationEmail(env, backupEmail, verifyUrl);
+    if (!sendResult.ok) {
+      return jsonResponse({ message: sendResult.error ?? "Email provider not configured" }, 501, request);
+    }
+
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET backup_email_pending = ?, backup_email_verified = 0, updated_at = ? WHERE id = ?"
+    )
+      .bind(backupEmail, new Date().toISOString(), session.id)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/backup/verify" && method === "GET") {
+    const token = url.searchParams.get("token");
+    if (!token) {
+      return jsonResponse({ message: "Missing token" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const payload = await consumeBackupEmailToken(env, token);
+    if (!payload) {
+      return jsonResponse({ message: "Token expired or invalid" }, 400, request);
+    }
+    const userId = typeof payload.userId === "string" ? payload.userId : null;
+    const backupEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
+    if (!userId || !backupEmail) {
+      return jsonResponse({ message: "Invalid token payload" }, 400, request);
+    }
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET backup_email = ?, backup_email_verified = 1, backup_email_pending = NULL, updated_at = ? WHERE id = ?"
+    )
+      .bind(backupEmail, new Date().toISOString(), userId)
+      .run();
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/recovery-codes/status" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const stats = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as remaining, MAX(created_at) as generated_at FROM recovery_codes WHERE user_id = ? AND used_at IS NULL"
+    )
+      .bind(session.id)
+      .first<{ remaining: number; generated_at: string | null }>();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(headers, session);
+    return new Response(JSON.stringify({ ok: true, remaining: stats?.remaining ?? 0, generatedAt: stats?.generated_at ?? null }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/recovery-codes/generate" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ? AND used_at IS NULL")
+      .bind(session.id)
+      .run();
+
+    const codes: string[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      const code = generateRecoveryCode();
+      const salt = randomId(16);
+      const codeHash = await hashRecoveryCode(code, salt);
+      await env.AUTH_DB.prepare(
+        "INSERT INTO recovery_codes (id, user_id, code_hash, salt, created_at) VALUES (?, ?, ?, ?, ?)"
+      )
+        .bind(crypto.randomUUID(), session.id, codeHash, salt, new Date().toISOString())
+        .run();
+      codes.push(code);
+    }
+
+    return jsonResponse({ ok: true, codes }, 200, request);
+  }
+
+  if (pathname === "/api/auth/recovery/consume" && method === "POST") {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
+    const code = typeof body?.code === "string" ? body.code.trim().toUpperCase() : null;
+    if (!email || !code) {
+      return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
+    }
+
+    const user = await env.AUTH_DB.prepare(
+      "SELECT id FROM users WHERE email = ? OR backup_email = ? LIMIT 1"
+    )
+      .bind(email, email)
+      .first<{ id: string }>();
+    if (!user?.id) {
+      return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
+    }
+
+    const records = await env.AUTH_DB.prepare(
+      "SELECT id, code_hash, salt FROM recovery_codes WHERE user_id = ? AND used_at IS NULL"
+    )
+      .bind(user.id)
+      .all<{ id: string; code_hash: string; salt: string }>();
+
+    let matchedId: string | null = null;
+    for (const record of records.results || []) {
+      const candidate = await hashRecoveryCode(code, record.salt);
+      if (candidate === record.code_hash) {
+        matchedId = record.id;
+        break;
+      }
+    }
+    if (!matchedId) {
+      return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
+    }
+
+    await env.AUTH_DB.prepare("UPDATE recovery_codes SET used_at = ? WHERE id = ?")
+      .bind(new Date().toISOString(), matchedId)
+      .run();
+
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET status = ?, last_login_at = ?, updated_at = ? WHERE id = ?"
+    )
+      .bind(USER_STATUS_ACTIVE, new Date().toISOString(), new Date().toISOString(), user.id)
+      .run();
+
+    const session = await createSession(env, user.id, request, "recovery");
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
@@ -889,36 +1722,69 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
-    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
-    if (!email) {
-      return jsonResponse({ message: "Email is required" }, 400, request);
-    }
+    const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
     const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1");
-    if (!env.TURNSTILE_SECRET_KEY && !isLocal) {
-      return jsonResponse({ message: "Turnstile not configured" }, 501, request);
-    }
-    if (!isLocal) {
-      const isHuman = await verifyTurnstile(body?.turnstileToken, request, env);
-      if (!isHuman) {
-        return jsonResponse({ message: "Human verification required" }, 403, request);
-      }
-    }
-    const token = randomId(32);
-    const stored = await storeMagicLink(env, token, { email, createdAt: Date.now() });
-    if (!stored) {
-      return jsonResponse({ message: "Magic link storage not configured" }, 501, request);
+    const responsePayload: Record<string, unknown> = {
+      ok: true,
+      message: "Check your email for a sign-in link.",
+    };
+
+    if (!env.AUTH_DB) {
+      await jitterDelay();
+      return jsonResponse(responsePayload, 200, request);
     }
 
-    const magicUrl = `${url.origin}/auth/magic?token=${encodeURIComponent(token)}`;
-    return jsonResponse(
-      {
-        ok: true,
-        message: "Magic link sent (email provider not wired).",
-        ...(isLocal ? { debugMagicLink: magicUrl } : {}),
-      },
-      200,
-      request
-    );
+    if (!isLocal && env.TURNSTILE_SECRET_KEY) {
+      const isHuman = await verifyTurnstile(body?.turnstileToken, request, env);
+      if (!isHuman) {
+        await jitterDelay();
+        return jsonResponse(responsePayload, 200, request);
+      }
+    }
+
+    if (!email || !isValidEmailLoose(email)) {
+      await jitterDelay();
+      return jsonResponse(responsePayload, 200, request);
+    }
+
+    let userId: string | null = null;
+    let intent: "login" | "signup" = "login";
+    const existing = await getUserByEmail(env, email);
+    if (existing?.id) {
+      userId = existing.id;
+      intent = "login";
+    } else {
+      const created = await createUser(env, email, USER_STATUS_PENDING);
+      userId = created?.id ?? null;
+      intent = "signup";
+    }
+
+    if (userId) {
+      const token = randomId(32);
+      const stored = await storeMagicLink(env, token, {
+        userId,
+        email,
+        intent,
+        createdAt: Date.now(),
+      });
+
+      if (stored) {
+        const magicOrigin = getMagicLinkOrigin(request);
+        const magicUrl = `${magicOrigin}/auth/magic?token=${encodeURIComponent(token)}`;
+
+        if (isLocal) {
+          responsePayload.debugMagicLink = magicUrl;
+        } else {
+          const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
+          if (!sendResult.ok) {
+            console.warn("[Auth] Magic link email failed:", sendResult.error);
+          }
+        }
+      }
+    }
+
+    await jitterDelay();
+    return jsonResponse(responsePayload, 200, request);
   }
 
   if (pathname === "/api/auth/magic/consume" && method === "GET") {
@@ -933,11 +1799,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
-    const user = await getOrCreateUser(env, payload.email as string | undefined);
-    if (!user) {
+    const payloadEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
+    let userId: string | null = typeof payload.userId === "string" ? payload.userId : null;
+    if (!userId && payloadEmail) {
+      const existing = await getUserByEmail(env, payloadEmail);
+      userId = existing?.id ?? null;
+    }
+    if (!userId && payloadEmail) {
+      const created = await createUser(env, payloadEmail, USER_STATUS_PENDING);
+      userId = created?.id ?? null;
+    }
+    if (!userId) {
       return jsonResponse({ message: "User creation failed" }, 500, request);
     }
-    const session = await createSession(env, user.id);
+    const nowIso = new Date().toISOString();
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET status = ?, email_verified = 1, updated_at = ?, last_login_at = ? WHERE id = ?"
+    )
+      .bind(USER_STATUS_ACTIVE, nowIso, nowIso, userId)
+      .run();
+
+    const session = await createSession(env, userId, request, "magic");
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
