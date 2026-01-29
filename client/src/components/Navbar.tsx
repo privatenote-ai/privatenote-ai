@@ -124,6 +124,17 @@ export const Navbar: React.FC = () => {
             </NavLink>
           </div>
 
+          {/* Right: Desktop Auth */}
+          <div className="hidden md:flex items-center gap-3">
+            <NavLink
+              href="/auth"
+              closeMenu={closeMenu}
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+            >
+              Sign In
+            </NavLink>
+          </div>
+
           {/* Right: Mobile Menu */}
           <div className="flex-shrink-0 flex items-center md:hidden" ref={menuRef}>
             <button
@@ -176,6 +187,11 @@ export const Navbar: React.FC = () => {
                   <NavLink href="/about" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                     <Info className="h-4 w-4" />
                     <span>About</span>
+                  </NavLink>
+
+                  <NavLink href="/auth" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <Mail className="h-4 w-4" />
+                    <span>Sign In</span>
                   </NavLink>
 
                   <a
