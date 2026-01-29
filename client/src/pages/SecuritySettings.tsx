@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { WebAuthnOptions, coerceLoginOptions, credentialToJson } from "@/utils/webauthn";
+import { useAuth } from "@/context/AuthContext";
 
 type SessionInfo = {
   id: string;
@@ -32,6 +33,7 @@ type PasskeyInfo = {
 
 export default function SecuritySettings() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function SecuritySettings() {
         backupEmail: string | null;
         backupEmailVerified: boolean;
       }>("/api/auth/me", "GET");
-      setEmail(me.email ?? null);
+      setEmail(me.email ?? user?.email ?? null);
       setBackupEmail(me.backupEmail ?? null);
       setBackupEmailVerified(Boolean(me.backupEmailVerified));
       setSignedIn(true);

@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { WebAuthnOptions, coerceRegisterOptions, credentialToJson } from "@/utils/webauthn";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AuthMagic() {
   const [location] = useLocation();
   const { toast } = useToast();
+  const { refresh } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState<string>("Verifying your magic link...");
   const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
@@ -27,6 +29,7 @@ export default function AuthMagic() {
       .then(() => {
         setStatus("success");
         setMessage("You’re signed in.");
+        refresh();
         return apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET");
       })
       .then((me) => {
@@ -50,6 +53,7 @@ export default function AuthMagic() {
       const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
         "/api/auth/webauthn/register/options",
         "POST",
+        {}
       );
       if (!data?.options) {
         throw new Error("Missing WebAuthn options from server.");

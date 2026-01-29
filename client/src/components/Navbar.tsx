@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail, Key } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -35,7 +36,10 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children, className, closeMenu 
 
 export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, loading: authLoading, signOut } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
   const closeMenu = () => {
@@ -49,6 +53,9 @@ export const Navbar: React.FC = () => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node) && window.innerWidth < 768) {
         setIsMenuOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -58,9 +65,18 @@ export const Navbar: React.FC = () => {
   // Close menus on route change
   useEffect(() => {
     setIsMenuOpen(false);
+    setIsProfileOpen(false);
   }, [location]);
 
   const isActive = (href: string) => location === href;
+
+  const initials = React.useMemo(() => {
+    if (!user?.email) return 'U';
+    const local = user.email.split('@')[0] || '';
+    const parts = local.split(/[._-]+/).filter(Boolean);
+    const chars = parts.length ? parts.map((part) => part[0]) : [local[0]];
+    return chars.filter(Boolean).slice(0, 2).join('').toUpperCase();
+  }, [user?.email]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
@@ -135,6 +151,58 @@ export const Navbar: React.FC = () => {
             </NavLink>
           </div>
 
+          {/* Right: Desktop Auth */}
+          <div className="hidden md:flex items-center gap-3" ref={profileRef}>
+            {authLoading ? null : user?.email ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen((open) => !open)}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary text-white text-sm font-semibold"
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileOpen}
+                >
+                  {initials}
+                </button>
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-52 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <NavLink
+                        href="/account/security"
+                        closeMenu={closeMenu}
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                      >
+                        Security settings
+                      </NavLink>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          signOut();
+                          setIsProfileOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                href="/auth"
+                closeMenu={closeMenu}
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+              </NavLink>
+            )}
+          </div>
+
           {/* Right: Mobile Menu */}
           <div className="flex-shrink-0 flex items-center md:hidden" ref={menuRef}>
             <button
@@ -189,10 +257,27 @@ export const Navbar: React.FC = () => {
                     <span>About</span>
                   </NavLink>
 
-                  <NavLink href="/auth" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
-                    <Mail className="h-4 w-4" />
-                    <span>Sign In</span>
-                  </NavLink>
+                  {authLoading ? null : user?.email ? (
+                    <>
+                      <NavLink href="/account/security" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                        <Shield className="h-4 w-4" />
+                        <span>Account</span>
+                      </NavLink>
+                      <button
+                        type="button"
+                        onClick={signOut}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                      >
+                        <Mail className="h-4 w-4" />
+                        <span>Sign out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <NavLink href="/auth" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                      <Mail className="h-4 w-4" />
+                      <span>Sign In</span>
+                    </NavLink>
+                  )}
 
                   <a
                     href="https://www.buymeacoffee.com/marjanskrobot"
