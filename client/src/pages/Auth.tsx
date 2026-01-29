@@ -12,6 +12,11 @@ export default function Auth() {
   const [isBusy, setIsBusy] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
   const [view, setView] = useState<"form" | "sent">("form");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const turnstileWidgetIdRef = React.useRef<string | null>(null);
+  const shouldShowTurnstile = !!import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   const passkeySupported = useMemo(() => {
     return typeof window !== "undefined" && "PublicKeyCredential" in window;
@@ -59,13 +64,17 @@ export default function Auth() {
       toast({ title: "Email required", description: "Enter your email to receive a magic link." });
       return;
     }
+    if (shouldShowTurnstile && !turnstileToken) {
+      toast({ title: "Human verification required", description: "Please complete the verification check." });
+      return;
+    }
     setIsBusy(true);
     setDebugMagicLink(null);
     try {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
         "POST",
-        { email }
+        { email, turnstileToken }
       );
       if (response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
@@ -82,6 +91,80 @@ export default function Auth() {
       setIsBusy(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!shouldShowTurnstile) {
+      setTurnstileReady(false);
+      return;
+    }
+
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    if (!siteKey) {
+      setTurnstileError("Human verification is not configured.");
+      return;
+    }
+
+    let intervalId: number | null = null;
+
+    const initTurnstile = () => {
+      if (!window.turnstile) {
+        return;
+      }
+      const container = document.getElementById("auth-turnstile-container");
+      if (!container) {
+        return;
+      }
+      if (turnstileWidgetIdRef.current !== null) {
+        try {
+          window.turnstile.reset(turnstileWidgetIdRef.current);
+        } catch {
+          // ignore
+        }
+        turnstileWidgetIdRef.current = null;
+      }
+      container.innerHTML = "";
+      setTurnstileReady(true);
+      const widgetId = window.turnstile.render(container, {
+        sitekey: siteKey,
+        callback: (token: string) => {
+          setTurnstileToken(token);
+          setTurnstileError(null);
+        },
+        "error-callback": () => {
+          setTurnstileToken(null);
+          setTurnstileError("Human verification failed. Please try again.");
+          turnstileWidgetIdRef.current = null;
+        },
+        "expired-callback": () => {
+          setTurnstileToken(null);
+        },
+      });
+      turnstileWidgetIdRef.current = widgetId;
+    };
+
+    if (!window.turnstile) {
+      intervalId = window.setInterval(() => {
+        if (window.turnstile) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+          initTurnstile();
+        }
+      }, 200);
+    } else {
+      initTurnstile();
+    }
+
+    return () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      if (turnstileWidgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [shouldShowTurnstile]);
 
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
@@ -114,6 +197,17 @@ export default function Auth() {
                   Use passkey
                 </Button>
               </div>
+              {shouldShowTurnstile && (
+                <div className="space-y-2">
+                  <div id="auth-turnstile-container" className="min-h-[65px]" />
+                  {!turnstileReady && !turnstileError && (
+                    <p className="text-xs text-gray-500">Loading verification…</p>
+                  )}
+                  {turnstileError && (
+                    <p className="text-xs text-red-500">{turnstileError}</p>
+                  )}
+                </div>
+              )}
               <div>
                 <a href="/auth/recovery" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                   Use a recovery code
