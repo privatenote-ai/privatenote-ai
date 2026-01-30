@@ -69,6 +69,7 @@ export const Navbar: React.FC = () => {
   }, [location]);
 
   const isActive = (href: string) => location === href;
+  const isAuthRoute = location.startsWith('/auth');
 
   const initials = React.useMemo(() => {
     if (!user?.email) return 'U';
@@ -82,73 +83,63 @@ export const Navbar: React.FC = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left: Logo */}
-          <NavLink 
-            href="/"
-            closeMenu={closeMenu}
-            className="flex items-center cursor-pointer"
-          >
-            <span className="font-bold text-2xl text-primary">
-              privateNote
-              <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
-            </span>
-          </NavLink>
-
-          {/* Center: Desktop Links */}
-          <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm font-medium">
+          {/* Left: Logo + Desktop Links */}
+          <div className="flex items-center gap-8">
             <NavLink
               href="/"
               closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
+              className="flex items-center cursor-pointer"
             >
-              Write a Note
+              <span className="font-bold text-2xl text-primary">
+                privateNote
+                <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
+              </span>
             </NavLink>
-            <NavLink
-              href="/password-generator"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Share a Password
-            </NavLink>
-            <NavLink
-              href="/how-it-works"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              How It Works
-            </NavLink>
-            <NavLink
-              href="/security-resources"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Security
-            </NavLink>
-            <NavLink
-              href="/blog"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Blog
-            </NavLink>
-            <NavLink
-              href="/about"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              About
-            </NavLink>
-          </div>
 
-          {/* Right: Desktop Auth */}
-          <div className="hidden md:flex items-center gap-3">
-            <NavLink
-              href="/auth"
-              closeMenu={closeMenu}
-              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
-            >
-              Sign In
-            </NavLink>
+            <div className="hidden md:flex items-center gap-7 text-sm font-medium">
+              <NavLink
+                href="/"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                Write a Note
+              </NavLink>
+              <NavLink
+                href="/password-generator"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                Share a Password
+              </NavLink>
+              <NavLink
+                href="/how-it-works"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                How It Works
+              </NavLink>
+              <NavLink
+                href="/security-resources"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                Security
+              </NavLink>
+              <NavLink
+                href="/blog"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                Blog
+              </NavLink>
+              <NavLink
+                href="/about"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                About
+              </NavLink>
+            </div>
           </div>
 
           {/* Right: Desktop Auth */}
@@ -192,7 +183,7 @@ export const Navbar: React.FC = () => {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : isAuthRoute ? null : (
               <>
                 <NavLink
                   href="/auth/sign-in"
@@ -281,7 +272,7 @@ export const Navbar: React.FC = () => {
                         <span>Sign out</span>
                       </button>
                     </>
-                  ) : (
+                  ) : isAuthRoute ? null : (
                     <>
                       <NavLink href="/auth/sign-in" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                         <Mail className="h-4 w-4" />

@@ -78,6 +78,18 @@ function getAllowedOrigin(request: Request): string | null {
   return null; // Origin not allowed
 }
 
+async function readJsonBody(request: Request): Promise<any> {
+  const text = await request.text();
+  if (!text) {
+    return {};
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Invalid JSON");
+  }
+}
+
 // Get Content Security Policy header
 function getCSPHeader(): string {
   // Strict CSP to prevent XSS and code injection
@@ -209,12 +221,26 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const subject = "Your PrivateNote sign-in link";
-  const text = `Use this link to sign in:\n\n${magicUrl}\n\nIf you did not request this, you can ignore this email.`;
+  const subject = "Login to PrivateNote";
+  const text = [
+    "Login to PrivateNote",
+    "",
+    "Sign in with your magic link:",
+    magicUrl,
+    "",
+    "If you did not request this, you can ignore this email.",
+  ].join("\n");
   const html = [
-    "<p>Use this link to sign in:</p>",
-    `<p><a href="${magicUrl}">${magicUrl}</a></p>`,
-    "<p>If you did not request this, you can ignore this email.</p>",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
+    "  <div style=\"display: flex; align-items: center; gap: 10px; margin-bottom: 24px;\">",
+    "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"32\" height=\"32\" style=\"display: block;\" />",
+    "    <span style=\"font-size: 18px; font-weight: 700;\">privateNote</span>",
+    "  </div>",
+    "  <div style=\"font-size: 20px; font-weight: 700; margin-bottom: 12px;\"><strong>Login to PrivateNote</strong></div>",
+    "  <p style=\"margin: 0 0 20px; color: #374151;\">Use your magic link to finish signing in.</p>",
+    "  <a href=\"" + magicUrl + "\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
+    "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
+    "</div>",
   ].join("");
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -867,7 +893,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
   if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
     let body: any;
     try {
-      body = await request.json();
+      body = await readJsonBody(request);
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
@@ -1049,7 +1075,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
   if (pathname === "/api/auth/webauthn/login/options" && method === "POST") {
     let body: any;
     try {
-      body = await request.json();
+      body = await readJsonBody(request);
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }

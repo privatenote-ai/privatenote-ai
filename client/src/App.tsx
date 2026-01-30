@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -32,10 +32,13 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
 function Router() {
+  const [location] = useLocation();
+  const isAuthRoute = location.startsWith("/auth");
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-grow pt-16">
+      {!isAuthRoute && <Navbar />}
+      <main className={`flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/note/:id" component={ViewNote} />
@@ -65,7 +68,7 @@ function Router() {
           <Route component={NotFound} />
         </Switch>
       </main>
-      <Footer />
+      {!isAuthRoute && <Footer />}
     </div>
   );
 }

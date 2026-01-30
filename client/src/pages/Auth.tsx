@@ -31,6 +31,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
       return;
     }
+    if (!email.trim()) {
+      toast({ title: "Email required", description: "Enter your email before using a passkey." });
+      return;
+    }
     setIsBusy(true);
     try {
       const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
@@ -172,104 +176,139 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   }, [shouldShowTurnstile]);
 
   return (
-    <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-      <div className="text-center">
+    <div className="pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+      <div className="flex items-center justify-start">
+        <a href="/" className="inline-flex items-center">
+          <span className="font-bold text-2xl text-primary">
+            privateNote
+            <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
+          </span>
+        </a>
+      </div>
+      <div className="mt-10 text-center">
         <h1 className="page-title text-gray-900 dark:text-white">
-          {mode === "sign-up" ? "Create your account" : "Welcome back"}
+          {mode === "sign-up" ? "Create your PrivateNote account" : "Welcome back"}
         </h1>
         <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
           {mode === "sign-up"
-            ? "Access all of PrivateNote with a single account."
+            ? "Create and share private notes that self-destruct after reading."
             : "Sign in with your email or passkey."}
         </p>
       </div>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>{mode === "sign-up" ? "Get started" : "Sign in"}</CardTitle>
-          <CardDescription>
-            {mode === "sign-up"
-              ? "Enter your email to create a passwordless account."
-              : "Enter your email to get a sign-in link."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {view === "form" ? (
-            <>
-              <Input
-                type="email"
-                placeholder="you@domain.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={handleSendMagicLink} disabled={isBusy}>
-                  {mode === "sign-up" ? "Continue" : "Continue with email"}
+      <div className="mt-8 space-y-4">
+        {view === "form" ? (
+          <>
+            <div className="space-y-1 text-left">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Get started</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Enter your email to create a passwordless account.
+              </p>
+            </div>
+            <Input
+              type="email"
+              placeholder="you@domain.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={handleSendMagicLink} disabled={isBusy}>
+                {mode === "sign-up" ? "Create account" : "Continue with email"}
+              </Button>
+              {mode === "sign-in" && (
+                <Button
+                  variant="outline"
+                  onClick={handleLoginPasskey}
+                  disabled={isBusy || !email.trim()}
+                >
+                  Use passkey
                 </Button>
-                {mode === "sign-in" && (
-                  <Button variant="outline" onClick={handleLoginPasskey} disabled={isBusy}>
-                    Use passkey
-                  </Button>
+              )}
+            </div>
+            {shouldShowTurnstile && (
+              <div className="space-y-2">
+                <div id="auth-turnstile-container" className="min-h-[65px]" />
+                {!turnstileReady && !turnstileError && (
+                  <p className="text-xs text-gray-500">Loading verification…</p>
+                )}
+                {turnstileError && (
+                  <p className="text-xs text-red-500">{turnstileError}</p>
                 )}
               </div>
-              {shouldShowTurnstile && (
-                <div className="space-y-2">
-                  <div id="auth-turnstile-container" className="min-h-[65px]" />
-                  {!turnstileReady && !turnstileError && (
-                    <p className="text-xs text-gray-500">Loading verification…</p>
-                  )}
-                  {turnstileError && (
-                    <p className="text-xs text-red-500">{turnstileError}</p>
-                  )}
-                </div>
-              )}
+            )}
+            {mode === "sign-in" && (
               <div>
                 <a href="/auth/recovery" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                   Use a recovery code
                 </a>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">
-                {mode === "sign-up" ? (
-                  <>
-                    Already have an account?{" "}
-                    <a href="/auth/sign-in" className="text-blue-600 dark:text-blue-400 hover:underline">
-                      Sign in
-                    </a>
-                  </>
-                ) : (
-                  <>
-                    Don’t have an account?{" "}
-                    <a href="/auth/sign-up" className="text-blue-600 dark:text-blue-400 hover:underline">
-                      Sign up
-                    </a>
-                  </>
-                )}
-              </div>
-              {!passkeySupported && (
-                <p className="text-xs text-gray-500">This browser does not support passkeys.</p>
-              )}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                If the address is correct, a sign-in link is on its way. Check your inbox and spam folder.
-              </p>
-              <button
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                onClick={() => setView("form")}
-              >
-                Didn’t receive an email? Check for typos.
-              </button>
-              {debugMagicLink && (
-                <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-600 dark:text-gray-300 break-all">
-                  Dev link: {debugMagicLink}
-                </div>
+            )}
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              {mode === "sign-up" ? (
+                <>
+                  Already have an account?{" "}
+                  <a href="/auth/sign-in" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    Sign in
+                  </a>
+                </>
+              ) : (
+                <>
+                  Don’t have an account?{" "}
+                  <a href="/auth/sign-up" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    Sign up
+                  </a>
+                </>
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {!passkeySupported && (
+              <p className="text-xs text-gray-500">This browser does not support passkeys.</p>
+            )}
+            {mode === "sign-up" && (
+              <p className="text-xs text-gray-500">
+                By continuing, you acknowledge that you understand and agree to the{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Terms &amp; Conditions
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              If the address is correct, we’ll send you a secure sign-in link.
+              <br />
+              Check your inbox (and spam folder).
+            </p>
+            <button
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              onClick={() => setView("form")}
+            >
+              Didn’t receive an email? Double-check the address and try again.
+            </button>
+            {debugMagicLink && (
+              <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-600 dark:text-gray-300 break-all">
+                Dev link: {debugMagicLink}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
