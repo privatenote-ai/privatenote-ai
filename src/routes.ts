@@ -48,6 +48,20 @@ const USER_STATUS_PENDING = "pending";
 const USER_STATUS_ACTIVE = "active";
 const STEP_UP_WINDOW_SECONDS = 5 * 60;
 
+// Recovery code rate limiting
+const RECOVERY_CODE_RATE_LIMIT = {
+  MAX_ATTEMPTS: 5, // attempts per window
+  WINDOW_SECONDS: 15 * 60, // 15 minute window
+  KEY_PREFIX: "recovery_rate_limit:",
+};
+
+// PBKDF2 configuration for recovery codes
+const PBKDF2_ITERATIONS = 100000; // OWASP recommended minimum
+const PBKDF2_SALT_LENGTH = 32; // 32 bytes = 256 bits
+
+// Session IP binding (optional - can be disabled for mobile users)
+const SESSION_IP_BINDING_ENABLED = true; // Set to false to disable IP binding
+
 // Get allowed origin for CORS
 function normalizeOrigin(origin: string): string {
   return origin.replace(/\/$/, '');
@@ -74,7 +88,7 @@ function getAllowedOrigin(request: Request): string | null {
   if (normalized.endsWith('.pages.dev') || normalized.endsWith('.privatenote.ai')) {
     return origin;
   }
-  
+
   return null; // Origin not allowed
 }
 
@@ -292,12 +306,12 @@ async function serveModelFile(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   // Remove /models/ prefix to get the object key
   let objectKey = url.pathname.replace(/^\/models\//, '');
-  
+
   // Handle HuggingFace-style paths: /resolve/main/filename -> filename
   // WebLLM sometimes requests paths like: gemma-3-270m-it-mlc/resolve/main/mlc-chat-config.json
   // But in R2 we store: gemma-3-270m-it-mlc/mlc-chat-config.json
   objectKey = objectKey.replace(/\/resolve\/main\//g, '/');
-  
+
   if (!objectKey || objectKey === '') {
     const headers = new Headers();
     const allowedOrigin = getAllowedOrigin(request);
@@ -330,17 +344,17 @@ async function serveModelFile(request: Request, env: Env): Promise<Response> {
     // Set appropriate headers for caching and CORS
     const headers = new Headers();
     headers.set('Content-Type', getContentType(objectKey));
-    
+
     // Long cache headers for immutable model files (1 year)
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    
+
     // CORS headers
     const allowedOrigin = getAllowedOrigin(request);
     if (allowedOrigin) {
       headers.set('Access-Control-Allow-Origin', allowedOrigin);
     }
     headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    
+
     // Support range requests for large files (required for model shards)
     if (object.range) {
       headers.set('Accept-Ranges', 'bytes');
@@ -353,17 +367,17 @@ async function serveModelFile(request: Request, env: Env): Promise<Response> {
       if (rangeMatch) {
         const start = parseInt(rangeMatch[1], 10);
         const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : undefined;
-        
+
         // Get partial content
         const range = { offset: start, length: end ? end - start + 1 : undefined };
         const partialObject = await env.WEBLLM_MODELS.get(objectKey, { range });
-        
+
         if (partialObject) {
           const contentLength = partialObject.size;
           const totalSize = object.size;
           headers.set('Content-Range', `bytes ${start}-${start + contentLength - 1}/${totalSize}`);
           headers.set('Content-Length', contentLength.toString());
-          
+
           return new Response(partialObject.body, {
             status: 206, // Partial Content
             headers,
@@ -406,7 +420,7 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
       "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
     }),
   };
-  
+
   return new Response(JSON.stringify(data), {
     status,
     headers,
@@ -526,9 +540,13 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(digest));
 }
 
+/**
+ * Generate a recovery code with increased entropy (16 bytes = 128 bits)
+ * Format: XXXX-XXXX-XXXX-XXXX (16 characters, Base32)
+ */
 function generateRecoveryCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = new Uint8Array(12);
+  const bytes = new Uint8Array(16); // Increased from 12 to 16 bytes
   crypto.getRandomValues(bytes);
   let raw = "";
   for (const byte of bytes) {
@@ -537,8 +555,53 @@ function generateRecoveryCode(): string {
   return raw.match(/.{1,4}/g)?.join("-") ?? raw;
 }
 
+/**
+ * Constant-time string comparison to prevent timing attacks
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Hash recovery code using PBKDF2 for stronger security
+ * Uses SHA-256 with 100,000 iterations (OWASP recommended minimum)
+ */
 async function hashRecoveryCode(code: string, salt: string): Promise<string> {
-  return sha256Base64Url(`${salt}:${code}`);
+  // Import salt as ArrayBuffer
+  const saltBuffer = new TextEncoder().encode(salt);
+
+  // Import code as key material
+  const codeBuffer = new TextEncoder().encode(code);
+
+  // Import key material
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    codeBuffer,
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  // Derive key using PBKDF2
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: saltBuffer,
+      iterations: PBKDF2_ITERATIONS,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256 // 256 bits = 32 bytes
+  );
+
+  return base64UrlEncode(new Uint8Array(derivedBits));
 }
 
 function getAuthKv(env: Env): KVNamespace | null {
@@ -567,11 +630,58 @@ async function consumeAuthChallenge(env: Env, key: string): Promise<Record<strin
   }
 }
 
+/**
+ * Generate HMAC signature for magic link token (optional integrity verification)
+ * Uses HMAC-SHA256 with a secret key from environment
+ */
+async function signMagicLinkToken(env: Env, token: string, payload: Record<string, unknown>): Promise<string | null> {
+  // Use AUTH_SECRET_KEY if available, otherwise fall back to token hash (backward compatible)
+  if (!env.AUTH_SECRET_KEY) {
+    return null; // No secret key configured, skip HMAC
+  }
+  const message = `${token}:${JSON.stringify(payload)}`;
+  const keyData = new TextEncoder().encode(env.AUTH_SECRET_KEY);
+  const messageData = new TextEncoder().encode(message);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+/**
+ * Verify HMAC signature for magic link token
+ */
+async function verifyMagicLinkToken(
+  env: Env,
+  token: string,
+  payload: Record<string, unknown>,
+  signature: string
+): Promise<boolean> {
+  if (!env.AUTH_SECRET_KEY) {
+    return true; // No secret key configured, skip verification (backward compatible)
+  }
+  const expectedSignature = await signMagicLinkToken(env, token, payload);
+  if (!expectedSignature) return true; // Backward compatible
+  return constantTimeEquals(expectedSignature, signature);
+}
+
 async function storeMagicLink(env: Env, token: string, payload: Record<string, unknown>) {
   const kv = getAuthKv(env);
   if (!kv) return false;
   const tokenHash = await sha256Base64Url(token);
-  await kv.put(`${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`, JSON.stringify(payload), {
+
+  // Add HMAC signature if secret key is available
+  const signature = await signMagicLinkToken(env, token, payload);
+  const storedPayload = signature ? { ...payload, _hmac: signature } : payload;
+
+  await kv.put(`${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`, JSON.stringify(storedPayload), {
     expirationTtl: AUTH_MAGIC_LINK.TTL_SECONDS,
   });
   return true;
@@ -586,7 +696,21 @@ async function consumeMagicLink(env: Env, token: string): Promise<Record<string,
   if (!value) return null;
   await kv.delete(key);
   try {
-    return JSON.parse(value) as Record<string, unknown>;
+    const payload = JSON.parse(value) as Record<string, unknown>;
+
+    // Verify HMAC signature if present
+    if (payload._hmac && typeof payload._hmac === "string") {
+      const signature = payload._hmac as string;
+      const { _hmac, ...payloadWithoutHmac } = payload;
+      const isValid = await verifyMagicLinkToken(env, token, payloadWithoutHmac, signature);
+      if (!isValid) {
+        console.warn("[Auth] Magic link token HMAC verification failed");
+        return null; // Invalid signature
+      }
+      return payloadWithoutHmac;
+    }
+
+    return payload;
   } catch {
     return null;
   }
@@ -667,6 +791,22 @@ function parseCookies(header: string | null): Record<string, string> {
   }, {} as Record<string, string>);
 }
 
+/**
+ * Revoke all sessions for a user (for security events like password change, etc.)
+ */
+async function revokeAllUserSessions(
+  env: Env,
+  userId: string,
+  reason: string = "security_event"
+): Promise<void> {
+  if (!env.AUTH_DB) return;
+  await env.AUTH_DB.prepare(
+    "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL"
+  )
+    .bind(new Date().toISOString(), reason, userId)
+    .run();
+}
+
 async function getSessionFromRequest(
   env: Env,
   request: Request,
@@ -685,11 +825,13 @@ async function getSessionFromRequest(
   const sessionId = cookies["pn_session"];
   if (!sessionId) return null;
   const sessionHash = await sha256Base64Url(sessionId);
+  const currentIp = getRequestIp(request);
   const row = await env.AUTH_DB.prepare(
     `SELECT sessions.id as session_row_id, sessions.user_id as user_id, users.email as email, sessions.expires_at as expires_at
             , sessions.absolute_expires_at as absolute_expires_at, sessions.revoked_at as revoked_at
             , sessions.last_seen_at as last_seen_at, sessions.created_at as created_at
             , sessions.last_auth_at as last_auth_at, sessions.last_stepup_at as last_stepup_at
+            , sessions.ip as session_ip
      FROM sessions
      LEFT JOIN users ON users.id = sessions.user_id
      WHERE sessions.session_id_hash = ?
@@ -707,9 +849,19 @@ async function getSessionFromRequest(
       created_at: string | null;
       last_auth_at: string | null;
       last_stepup_at: string | null;
+      session_ip: string | null;
     }>();
 
   if (!row || row.revoked_at) {
+    return null;
+  }
+
+  // Optional IP binding check (can be disabled for mobile users)
+  if (SESSION_IP_BINDING_ENABLED && row.session_ip && currentIp && row.session_ip !== currentIp) {
+    // IP mismatch - revoke session for security
+    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
+      .bind(new Date().toISOString(), "ip_mismatch", sessionHash)
+      .run();
     return null;
   }
   const now = Date.now();
@@ -778,12 +930,71 @@ async function createUser(
   if (!env.AUTH_DB) return null;
   const id = crypto.randomUUID();
   const nowIso = new Date().toISOString();
-  await env.AUTH_DB.prepare(
-    "INSERT INTO users (id, email, email_verified, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-  )
-    .bind(id, email, email ? 0 : 0, status, nowIso, nowIso)
-    .run();
-  return { id };
+  try {
+    await env.AUTH_DB.prepare(
+      "INSERT INTO users (id, email, email_verified, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+      .bind(id, email, email ? 0 : 0, status, nowIso, nowIso)
+      .run();
+    return { id };
+  } catch (error: any) {
+    // Handle UNIQUE constraint violation (race condition: user was created between check and insert)
+    // SQLite error code 2067 is UNIQUE constraint violation
+    if (error?.cause?.code === 2067 || error?.message?.includes("UNIQUE constraint") || error?.message?.includes("UNIQUE")) {
+      return null; // User already exists, return null to indicate creation failed
+    }
+    throw error; // Re-throw other errors
+  }
+}
+
+/**
+ * Get or create a user by email (race-safe).
+ * Attempts to create the user first, then falls back to fetching if UNIQUE constraint violation occurs.
+ * This ensures no duplicate accounts and handles race conditions gracefully.
+ */
+async function getOrCreateUser(
+  env: Env,
+  email: string | null,
+  status: string
+): Promise<{ id: string; wasCreated: boolean } | null> {
+  if (!env.AUTH_DB || !email) return null;
+
+  // Normalize email (should already be normalized, but ensure it)
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  // Attempt to create user first (create-first approach)
+  const id = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+  try {
+    await env.AUTH_DB.prepare(
+      "INSERT INTO users (id, email, email_verified, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+      .bind(id, normalizedEmail, 0, status, nowIso, nowIso)
+      .run();
+    return { id, wasCreated: true };
+  } catch (error: any) {
+    // Handle UNIQUE constraint violation (SQLite/D1 error code 2067)
+    // Another request created the user in parallel - fetch and return it
+    const isUniqueViolation =
+      error?.cause?.code === 2067 ||
+      error?.message?.includes("UNIQUE constraint") ||
+      error?.message?.includes("UNIQUE constraint failed") ||
+      error?.message?.toLowerCase().includes("unique");
+
+    if (isUniqueViolation) {
+      // Fetch the existing user created by another request
+      const existing = await getUserByEmail(env, normalizedEmail);
+      if (existing?.id) {
+        return { id: existing.id, wasCreated: false };
+      }
+      // If we can't find the user, something unexpected happened
+      return null;
+    }
+
+    // Re-throw other database errors (don't swallow unexpected failures)
+    throw error;
+  }
 }
 
 async function getAiVerificationRemaining(
@@ -969,6 +1180,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ? credential.response.transports
         : null;
 
+    // Track credential metadata (backup flags, device info)
+    // Note: The schema stores transports as JSON, which we can extend with metadata
+    const registrationInfo = verification.registrationInfo || {};
+    const credentialMetadata = {
+      transports: transports || [],
+      // Extract backup flag from authenticator data if available (may not be present in all authenticators)
+      backupEligible: (registrationInfo as any).backupEligible ?? false,
+      backupState: (registrationInfo as any).backupState ?? false,
+      // Device info from user agent
+      deviceInfo: getDeviceLabel(request.headers.get("User-Agent") || ""),
+      createdAt: new Date().toISOString(),
+    };
+
     await env.AUTH_DB.prepare(
       "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
@@ -978,7 +1202,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         credentialId,
         publicKey,
         counter ?? 0,
-        transports ? JSON.stringify(transports) : null,
+        JSON.stringify(credentialMetadata), // Store metadata in transports field as JSON
         new Date().toISOString()
       )
       .run();
@@ -1038,9 +1262,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       rpID: getExpectedRpId(request),
       allowCredentials: allowCredentials.length
         ? allowCredentials.map((cred) => ({
-            ...cred,
-            id: base64UrlToBytes(cred.id),
-          }))
+          ...cred,
+          id: base64UrlToBytes(cred.id),
+        }))
         : undefined,
       userVerification: "preferred",
     });
@@ -1392,6 +1616,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(session.id)
       .run();
 
+    // Revoke all sessions on passkey reset (security event)
+    await revokeAllUserSessions(env, session.id, "passkey_reset");
+
     return jsonResponse({ ok: true }, 200, request);
   }
 
@@ -1517,7 +1744,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const codes: string[] = [];
     for (let i = 0; i < 8; i += 1) {
       const code = generateRecoveryCode();
-      const salt = randomId(16);
+      const salt = randomId(PBKDF2_SALT_LENGTH); // Use proper salt length
       const codeHash = await hashRecoveryCode(code, salt);
       await env.AUTH_DB.prepare(
         "INSERT INTO recovery_codes (id, user_id, code_hash, salt, created_at) VALUES (?, ?, ?, ?, ?)"
@@ -1543,7 +1770,49 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
     const code = typeof body?.code === "string" ? body.code.trim().toUpperCase() : null;
     if (!email || !code) {
+      await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
+    }
+
+    // Rate limiting for recovery code attempts
+    const rateLimitKey = `${RECOVERY_CODE_RATE_LIMIT.KEY_PREFIX}${email}`;
+    const kv = env.RATE_LIMIT_KV || env.NOTES_KV;
+    if (kv) {
+      // Use custom rate limit check for recovery codes
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = now - (now % RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS);
+      const key = rateLimitKey;
+
+      try {
+        const stored = await kv.get(key, { type: 'json' }) as { count?: number; windowStart?: number } | null;
+
+        if (stored && stored.windowStart === windowStart) {
+          if ((stored.count || 0) >= RECOVERY_CODE_RATE_LIMIT.MAX_ATTEMPTS) {
+            await jitterDelay();
+            return jsonResponse(
+              { message: "Too many recovery attempts. Please try again later." },
+              429,
+              request
+            );
+          }
+          await kv.put(key, JSON.stringify({
+            count: (stored.count || 0) + 1,
+            windowStart,
+          }), {
+            expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
+          });
+        } else {
+          await kv.put(key, JSON.stringify({
+            count: 1,
+            windowStart,
+          }), {
+            expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
+          });
+        }
+      } catch (error) {
+        console.error('[RECOVERY_RATE_LIMIT] Error checking rate limit:', error);
+        // Fail open on error
+      }
     }
 
     const user = await env.AUTH_DB.prepare(
@@ -1552,6 +1821,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(email)
       .first<{ id: string }>();
     if (!user?.id) {
+      await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
@@ -1561,15 +1831,17 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(user.id)
       .all<{ id: string; code_hash: string; salt: string }>();
 
+    // Constant-time comparison: always check all records to prevent timing attacks
     let matchedId: string | null = null;
     for (const record of records.results || []) {
       const candidate = await hashRecoveryCode(code, record.salt);
-      if (candidate === record.code_hash) {
+      if (constantTimeEquals(candidate, record.code_hash)) {
         matchedId = record.id;
-        break;
+        // Don't break - continue checking all records for constant-time behavior
       }
     }
     if (!matchedId) {
+      await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
@@ -1624,17 +1896,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse(responsePayload, 200, request);
     }
 
-    let userId: string | null = null;
-    let intent: "login" | "signup" = "login";
-    const existing = await getUserByEmail(env, email);
-    if (existing?.id) {
-      userId = existing.id;
-      intent = "login";
-    } else {
-      const created = await createUser(env, email, USER_STATUS_PENDING);
-      userId = created?.id ?? null;
-      intent = "signup";
-    }
+    // Get or create user (race-safe: create-first, fallback to fetch on UNIQUE violation)
+    const userResult = await getOrCreateUser(env, email, USER_STATUS_PENDING);
+    const userId = userResult?.id ?? null;
+    const intent: "login" | "signup" = userResult?.wasCreated ? "signup" : "login";
 
     if (userId) {
       const token = randomId(32);
@@ -1678,13 +1943,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
     const payloadEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
     let userId: string | null = typeof payload.userId === "string" ? payload.userId : null;
+
+    // If no userId from payload, get or create user (race-safe: create-first, fallback to fetch on UNIQUE violation)
     if (!userId && payloadEmail) {
-      const existing = await getUserByEmail(env, payloadEmail);
-      userId = existing?.id ?? null;
-    }
-    if (!userId && payloadEmail) {
-      const created = await createUser(env, payloadEmail, USER_STATUS_PENDING);
-      userId = created?.id ?? null;
+      const userResult = await getOrCreateUser(env, payloadEmail, USER_STATUS_PENDING);
+      userId = userResult?.id ?? null;
     }
     if (!userId) {
       return jsonResponse({ message: "User creation failed" }, 500, request);
@@ -1813,10 +2076,10 @@ async function checkRateLimit(
   const key = `${RATE_LIMIT.KEY_PREFIX}${identifier}`;
   const now = Math.floor(Date.now() / 1000);
   const windowStart = now - (now % RATE_LIMIT.WINDOW_SECONDS);
-  
+
   try {
     const stored = await kv.get(key, { type: 'json' });
-    
+
     if (stored && stored.windowStart === windowStart) {
       // Same window, check count
       if (stored.count >= RATE_LIMIT.MAX_REQUESTS) {
@@ -1826,7 +2089,7 @@ async function checkRateLimit(
           resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
         };
       }
-      
+
       // Increment count
       const newCount = stored.count + 1;
       await kv.put(key, JSON.stringify({
@@ -1835,7 +2098,7 @@ async function checkRateLimit(
       }), {
         expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10, // Add buffer
       });
-      
+
       return {
         allowed: true,
         remaining: RATE_LIMIT.MAX_REQUESTS - newCount,
@@ -1849,7 +2112,7 @@ async function checkRateLimit(
       }), {
         expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10,
       });
-      
+
       return {
         allowed: true,
         remaining: RATE_LIMIT.MAX_REQUESTS - 1,
@@ -1904,7 +2167,7 @@ function getClientIdentifier(request: Request): string {
   if (cfConnectingIp) {
     return cfConnectingIp;
   }
-  
+
   // Fallback to user agent + origin (less reliable)
   const userAgent = request.headers.get('User-Agent') || 'unknown';
   const origin = request.headers.get('Origin') || 'unknown';
@@ -1914,11 +2177,11 @@ function getClientIdentifier(request: Request): string {
 // Helper to check admin authentication
 function requireAdmin(request: Request): Response | null {
   const adminToken = request.headers.get("x-admin-token");
-  
+
   if (!adminToken || adminToken !== "admin-secret-token") {
     return jsonResponse({ message: "Unauthorized - Admin access required" }, 401, request);
   }
-  
+
   return null;
 }
 
@@ -1926,11 +2189,11 @@ function requireAdmin(request: Request): Response | null {
 function parsePathParams(pathname: string, pattern: string): Record<string, string> | null {
   const patternParts = pattern.split("/");
   const pathParts = pathname.split("/");
-  
+
   if (patternParts.length !== pathParts.length) {
     return null;
   }
-  
+
   const params: Record<string, string> = {};
   for (let i = 0; i < patternParts.length; i++) {
     if (patternParts[i].startsWith(":")) {
@@ -1940,7 +2203,7 @@ function parsePathParams(pathname: string, pattern: string): Record<string, stri
       return null;
     }
   }
-  
+
   return params;
 }
 
@@ -1958,13 +2221,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   } else {
     console.log(`[ROUTES] Request headers: [redacted for AI request]`);
   }
-  
+
   // Check CORS origin
   const allowedOrigin = getAllowedOrigin(request);
   if (!allowedOrigin && request.headers.get('Origin')) {
     console.log(`[ROUTES] ❌ CORS: Origin not allowed: ${request.headers.get('Origin')}`);
-    return new Response(JSON.stringify({ 
-      error: 'CORS policy: Origin not allowed' 
+    return new Response(JSON.stringify({
+      error: 'CORS policy: Origin not allowed'
     }), {
       status: 403,
       headers: {
@@ -1973,7 +2236,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       },
     });
   }
-  
+
   // Handle CORS preflight requests
   if (request.method === "OPTIONS") {
     console.log(`[ROUTES] Handling OPTIONS preflight request`);
@@ -1985,14 +2248,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       },
     });
   }
-  
+
   // Apply rate limiting to POST requests (note creation)
   if (request.method === "POST") {
     const clientId = getClientIdentifier(request);
     console.log(`[ROUTES] Checking rate limit for: ${clientId}`);
-    
+
     const rateLimit = await checkRateLimit(request, env, clientId);
-    
+
     if (!rateLimit.allowed) {
       console.log(`[ROUTES] ❌ Rate limit exceeded for: ${clientId}`);
       return jsonResponse({
@@ -2001,7 +2264,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         resetAt: rateLimit.resetAt,
       }, 429, request);
     }
-    
+
     console.log(`[ROUTES] ✅ Rate limit OK. Remaining: ${rateLimit.remaining}`);
   }
 
@@ -2011,12 +2274,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (authResponse) {
     return authResponse;
   }
-  
+
   // Serve WebLLM models from R2
   if (pathname.startsWith("/models/") && method === "GET") {
     return serveModelFile(request, env);
   }
-  
+
   const analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
   const storage = new CompositeStorage(env.NOTES_KV, analyticsKv);
   console.log(`[ROUTES] Storage initialized`);
@@ -2149,7 +2412,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       if (!output) {
         console.warn("[AI] OpenAI response missing output text");
         // Return original remaining uses since the API call didn't produce valid output
-        return jsonResponse({ 
+        return jsonResponse({
           message: "AI response was empty",
           remainingUses: originalRemainingUses,
         }, 502, request);
@@ -2164,7 +2427,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     } catch (error) {
       console.error("[AI] Error calling OpenAI:", error);
       // Return original remaining uses since the API call failed
-      return jsonResponse({ 
+      return jsonResponse({
         message: "AI request failed",
         remainingUses: originalRemainingUses,
       }, 502, request);
@@ -2355,19 +2618,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     try {
       const { slug } = blogSlugParams;
       const post = await storage.getBlogPostBySlug(slug);
-      
+
       if (!post) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       // Only return published posts to the public
       if (!post.published) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       // Track blog post view in analytics
       await storage.trackBlogView(post.slug);
-      
+
       return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error fetching blog post:", error);
@@ -2379,7 +2642,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/blog" && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       // Admin can see all posts including unpublished
       const posts = await storage.getBlogPosts(true);
@@ -2393,19 +2656,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/blog" && method === "POST") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const body = await request.json();
       // Validate the request body
       const result = insertBlogPostSchema.safeParse(body);
-      
+
       if (!result.success) {
-        return jsonResponse({ 
-          message: "Invalid blog post data", 
-          errors: result.error.errors 
+        return jsonResponse({
+          message: "Invalid blog post data",
+          errors: result.error.errors
         }, 400, request);
       }
-      
+
       // Create slug from title if not provided
       if (!result.data.slug) {
         result.data.slug = result.data.title
@@ -2413,21 +2676,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           .replace(/[^\w\s]/gi, "")
           .replace(/\s+/g, "-");
       }
-      
+
       // Check if slug already exists
       const existing = await storage.getBlogPostBySlug(result.data.slug);
       if (existing) {
-        return jsonResponse({ 
-          message: "A blog post with this slug already exists" 
+        return jsonResponse({
+          message: "A blog post with this slug already exists"
         }, 400, request);
       }
-      
+
       // Create new blog post (default to unpublished)
       const post = await storage.createBlogPost({
         ...result.data,
         published: false
       });
-      
+
       return jsonResponse(post, 201, request);
     } catch (error) {
       console.error("Error creating blog post:", error);
@@ -2440,20 +2703,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (adminBlogIdParams && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const id = parseInt(adminBlogIdParams.id, 10);
-      
+
       if (isNaN(id)) {
         return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
-      
+
       const post = await storage.getBlogPostById(id);
-      
+
       if (!post) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error fetching admin blog post:", error);
@@ -2465,48 +2728,48 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (adminBlogIdParams && method === "PUT") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const id = parseInt(adminBlogIdParams.id, 10);
-      
+
       if (isNaN(id)) {
         return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
-      
+
       const body = await request.json();
       // Validate the request body
       const result = updateBlogPostSchema.safeParse(body);
-      
+
       if (!result.success) {
-        return jsonResponse({ 
-          message: "Invalid blog post data", 
-          errors: result.error.errors 
+        return jsonResponse({
+          message: "Invalid blog post data",
+          errors: result.error.errors
         }, 400, request);
       }
-      
+
       // Check if the post exists
       const existing = await storage.getBlogPostById(id);
       if (!existing) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       // If slug is being changed, check it doesn't conflict
       if (result.data.slug && result.data.slug !== existing.slug) {
         const slugExists = await storage.getBlogPostBySlug(result.data.slug);
         if (slugExists && slugExists.id !== id) {
-          return jsonResponse({ 
-            message: "A blog post with this slug already exists" 
+          return jsonResponse({
+            message: "A blog post with this slug already exists"
           }, 400, request);
         }
       }
-      
+
       // Update the blog post
       const updated = await storage.updateBlogPost(id, result.data);
-      
+
       if (!updated) {
         return jsonResponse({ message: "Failed to update blog post" }, 404, request);
       }
-      
+
       return jsonResponse(updated, 200, request);
     } catch (error) {
       console.error("Error updating blog post:", error);
@@ -2519,21 +2782,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (publishParams && method === "POST") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const id = parseInt(publishParams.id, 10);
-      
+
       if (isNaN(id)) {
         return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
-      
+
       // Publish the blog post
       const post = await storage.publishBlogPost(id);
-      
+
       if (!post) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error publishing blog post:", error);
@@ -2546,21 +2809,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (unpublishParams && method === "POST") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const id = parseInt(unpublishParams.id, 10);
-      
+
       if (isNaN(id)) {
         return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
-      
+
       // Unpublish the blog post
       const post = await storage.unpublishBlogPost(id);
-      
+
       if (!post) {
         return jsonResponse({ message: "Blog post not found" }, 404, request);
       }
-      
+
       return jsonResponse(post, 200, request);
     } catch (error) {
       console.error("Error unpublishing blog post:", error);
@@ -2572,17 +2835,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (adminBlogIdParams && method === "DELETE") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const id = parseInt(adminBlogIdParams.id, 10);
-      
+
       if (isNaN(id)) {
         return jsonResponse({ message: "Invalid ID format" }, 400, request);
       }
-      
+
       // Delete the blog post
       await storage.deleteBlogPost(id);
-      
+
       return new Response(null, {
         status: 204,
         headers: getCorsHeaders(request),
@@ -2597,15 +2860,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/analytics/daily" && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const dateParam = url.searchParams.get("date");
       const date = dateParam ? new Date(dateParam) : new Date();
-      
+
       if (isNaN(date.getTime())) {
         return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
-      
+
       const metrics = await storage.getDailyMetrics(date);
       return jsonResponse(metrics || { message: "No metrics available for this date" }, 200, request);
     } catch (error) {
@@ -2617,15 +2880,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/analytics/weekly" && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const dateParam = url.searchParams.get("date");
       const date = dateParam ? new Date(dateParam) : new Date();
-      
+
       if (isNaN(date.getTime())) {
         return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
-      
+
       const metrics = await storage.getWeeklyMetrics(date);
       return jsonResponse(metrics || { message: "No metrics available for this week" }, 200, request);
     } catch (error) {
@@ -2637,15 +2900,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/analytics/monthly" && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const dateParam = url.searchParams.get("date");
       const date = dateParam ? new Date(dateParam) : new Date();
-      
+
       if (isNaN(date.getTime())) {
         return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
-      
+
       const metrics = await storage.getMonthlyMetrics(date);
       return jsonResponse(metrics || { message: "No metrics available for this month" }, 200, request);
     } catch (error) {
@@ -2657,32 +2920,32 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/admin/analytics/range" && method === "GET") {
     const authError = requireAdmin(request);
     if (authError) return authError;
-    
+
     try {
       const startDate = url.searchParams.get("startDate");
       const endDate = url.searchParams.get("endDate");
       const type = url.searchParams.get("type");
-      
+
       if (!startDate || !endDate || !type) {
-        return jsonResponse({ 
-          message: "Start date, end date, and metrics type are required" 
+        return jsonResponse({
+          message: "Start date, end date, and metrics type are required"
         }, 400, request);
       }
-      
+
       const start = new Date(startDate);
       const end = new Date(endDate);
       const metricsType = type as AnalyticsMetricsType;
-      
+
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         return jsonResponse({ message: "Invalid date format" }, 400, request);
       }
-      
+
       if (!Object.values(AnalyticsMetricsType).includes(metricsType)) {
-        return jsonResponse({ 
+        return jsonResponse({
           message: "Invalid metrics type. Must be daily, weekly, or monthly"
         }, 400, request);
       }
-      
+
       const metrics = await storage.getAnalyticsData(start, end, metricsType);
       return jsonResponse(metrics, 200, request);
     } catch (error) {

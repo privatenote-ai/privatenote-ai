@@ -96,7 +96,7 @@ export default function AuthMagic() {
   };
 
   return (
-    <div className="pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
+    <div className="pt-16 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <div className="space-y-6">
         {/* Loading State */}
         {status === "loading" && (

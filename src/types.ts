@@ -18,4 +18,6 @@ export interface Env {
   AUTH_EMAIL_FROM?: string;
   AUTH_EMAIL_PROVIDER?: string;
   RESEND_API_KEY?: string;
+  // Optional secret key for HMAC signing of magic link tokens
+  AUTH_SECRET_KEY?: string;
 }
