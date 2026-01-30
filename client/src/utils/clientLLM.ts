@@ -13,75 +13,11 @@ const DEFAULT_MODEL = "llinguini/gemma-3-270m-it-q4f16_1-MLC"; // Default to sma
 const DEFAULT_MODEL_SIZE_MB = 200; // Approximate size for small models
 
 /**
- * Get the base URL for self-hosted models
- * Uses environment variable or constructs from current origin
- */
-function getModelBaseUrl(): string {
-  // Check for environment variable first (for custom domains)
-  if (import.meta.env.VITE_MODEL_BASE_URL) {
-    return import.meta.env.VITE_MODEL_BASE_URL.replace(/\/$/, '');
-  }
-  
-  // Use Worker URL for self-hosted models (if frontend is on different domain)
-  // This ensures models are served from the Worker even if frontend is on Pages
-  const WORKER_URL = 'https://privatenote-api.marjan-skrobot.workers.dev';
-  if (typeof window !== 'undefined') {
-    // If frontend is on same domain as Worker, use relative path
-    if (window.location.origin === new URL(WORKER_URL).origin) {
-      return `${window.location.origin}/models`;
-    }
-    // Otherwise, use Worker URL
-    return `${WORKER_URL}/models`;
-  }
-  
-  // Default fallback (shouldn't happen in browser)
-  return '/models';
-}
-
-/**
- * Create AppConfig with all WebLLM models + self-hosted Gemma models
- * Uses WebLLM's prebuiltAppConfig for all models, but overrides Gemma models to use self-hosted R2
+ * Create AppConfig - uses WebLLM's prebuilt config (all models from HuggingFace)
  */
 function createCustomAppConfig(): AppConfig {
-  const modelBaseUrl = getModelBaseUrl();
-  
-  // Start with WebLLM's prebuilt config (all supported models)
-  const modelList = [...prebuiltAppConfig.model_list];
-  
-  // Override Gemma models to use self-hosted R2 if available
-  const gemma1BModelId = "mlc-ai/gemma-3-1b-it-q4f32_1-MLC";
-  const gemma270MModelId = "llinguini/gemma-3-270m-it-q4f16_1-MLC";
-  
-  // Find and update Gemma 1B model to use self-hosted version
-  const gemma1BIndex = modelList.findIndex(m => m.model_id === gemma1BModelId);
-  if (gemma1BIndex >= 0) {
-    const prebuilt1B = modelList[gemma1BIndex];
-    modelList[gemma1BIndex] = {
-      ...prebuilt1B,
-      model: `${modelBaseUrl}/gemma-3-1b-it-mlc/`, // Use self-hosted R2
-      // Keep model_lib from prebuilt config (WASM runtime)
-    };
-    console.log("[AI] Using self-hosted Gemma 1B from R2");
-  }
-  
-  // Find and update Gemma 270M model to use self-hosted version
-  const gemma270MIndex = modelList.findIndex(m => m.model_id === gemma270MModelId);
-  if (gemma270MIndex >= 0) {
-    const prebuilt270M = modelList[gemma270MIndex];
-    modelList[gemma270MIndex] = {
-      ...prebuilt270M,
-      model: `${modelBaseUrl}/gemma-3-270m-it-mlc/`, // Use self-hosted R2
-      // Keep model_lib from prebuilt config (WASM runtime)
-    };
-    console.log("[AI] Using self-hosted Gemma 270M from R2");
-  }
-  
-  console.log("[AI] AppConfig created with", modelList.length, "models (all WebLLM models available)");
-  console.log("[AI] Gemma models use self-hosted R2, others use HuggingFace");
-  
-  return {
-    model_list: modelList,
-  };
+  console.log("[AI] Using WebLLM prebuilt config -", prebuiltAppConfig.model_list.length, "models available from HuggingFace");
+  return prebuiltAppConfig;
 }
 
 /**
@@ -105,19 +41,19 @@ function isModelAvailable(modelId: string): boolean {
  */
 function findBestMatchingModel(preferredModelId: string): string | null {
   const available = getAvailableModels();
-  
+
   // Try exact match first
   if (available.includes(preferredModelId)) {
     return preferredModelId;
   }
-  
+
   // Try case-insensitive match
   const lowerPreferred = preferredModelId.toLowerCase();
   const exactMatch = available.find(id => id.toLowerCase() === lowerPreferred);
   if (exactMatch) {
     return exactMatch;
   }
-  
+
   // Try partial matching (e.g., "gemma-3-270m" matches "linguini/gemma-3-270m-it-q4f16_1-MLC")
   const preferredParts = lowerPreferred.split(/[-_\/]/).filter(p => p.length > 2);
   const partialMatch = available.find(id => {
@@ -127,7 +63,7 @@ function findBestMatchingModel(preferredModelId: string): string | null {
   if (partialMatch) {
     return partialMatch;
   }
-  
+
   return null;
 }
 
@@ -172,13 +108,13 @@ export function getDeviceInfo(): {
 function findSuitableModel(): string {
   // Select model based on device capabilities
   const deviceSelectedModel = selectModelByDevice();
-  
+
   // Verify the selected model is available
   if (isModelAvailable(deviceSelectedModel)) {
     console.log("[AI] Device-selected model:", deviceSelectedModel);
     return deviceSelectedModel;
   }
-  
+
   // Fallback: use default model
   console.log("[AI] Using default model:", DEFAULT_MODEL);
   return DEFAULT_MODEL;
@@ -230,7 +166,7 @@ export function isWebLLMSupported(): boolean {
  */
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
-  
+
   // Check user agent for mobile devices
   const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
   const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
@@ -242,10 +178,10 @@ function isMobileDevice(): boolean {
  */
 function isNeweriPhone(): boolean {
   if (typeof window === "undefined") return false;
-  
+
   const userAgent = navigator.userAgent;
   if (!/iphone|ipad|ipod/i.test(userAgent)) return false;
-  
+
   // Check for iOS version (iOS 16.4+ has WebGPU support)
   const iosMatch = userAgent.match(/OS (\d+)[._](\d+)/);
   if (iosMatch) {
@@ -256,7 +192,7 @@ function isNeweriPhone(): boolean {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -265,16 +201,16 @@ function isNeweriPhone(): boolean {
  */
 function isNewerAndroidPhone(): boolean {
   if (typeof window === "undefined") return false;
-  
+
   const userAgent = navigator.userAgent;
   if (!/android/i.test(userAgent)) return false;
-  
+
   // Check for Samsung or Google Pixel devices
   const isSamsung = /samsung/i.test(userAgent);
   const isGoogle = /pixel|google/i.test(userAgent);
-  
+
   if (!isSamsung && !isGoogle) return false;
-  
+
   // Check Android version (Android 12+ generally has better WebGPU support)
   const androidMatch = userAgent.match(/Android (\d+)/);
   if (androidMatch) {
@@ -284,7 +220,7 @@ function isNewerAndroidPhone(): boolean {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -313,12 +249,12 @@ function selectModelByDevice(): string {
       }
     }
   }
-  
+
   // Check for newer mobile devices with good capabilities
   const hasWebGPU = hasWebGPUSupport();
   const isNeweriPhoneDevice = isNeweriPhone();
   const isNewerAndroidDevice = isNewerAndroidPhone();
-  
+
   // Use medium model for newer mobile devices
   if (hasWebGPU && (isNeweriPhoneDevice || isNewerAndroidDevice)) {
     const mobileModels = ["mlc-ai/gemma-3-1b-it-q4f32_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
@@ -329,7 +265,7 @@ function selectModelByDevice(): string {
       }
     }
   }
-  
+
   // Default to smallest model for mobile/older browsers
   const smallModels = ["llinguini/gemma-3-270m-it-q4f16_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
   for (const model of smallModels) {
@@ -338,7 +274,7 @@ function selectModelByDevice(): string {
       return model;
     }
   }
-  
+
   // Ultimate fallback
   return DEFAULT_MODEL;
 }
@@ -414,7 +350,7 @@ export async function initializeClientLLM(
       console.log("[AI] Auto-selected model:", modelId);
     }
   }
-  
+
   // Final validation - ensure the model ID is available
   if (!isModelAvailable(modelId)) {
     const available = getAvailableModels().slice(0, 5).join(", ");
@@ -452,10 +388,10 @@ export async function initializeClientLLM(
   engineLoadingPromise = (async () => {
     try {
       console.log("[AI] Loading model:", modelId);
-      
+
       // Create custom AppConfig with only our two allowed models
       const customAppConfig = createCustomAppConfig();
-      
+
       // Always use our custom AppConfig (only contains our two models)
       const engine = await CreateMLCEngine(modelId, {
         appConfig: customAppConfig,
@@ -463,7 +399,7 @@ export async function initializeClientLLM(
           if (loadProgressCallback) {
             // WebLLM progress is 0-1, convert to 0-100 for display
             const progressPercent = Math.round(report.progress * 100);
-            
+
             loadProgressCallback({
               progress: progressPercent,
               text: report.text || `Loading model: ${progressPercent}%`,
@@ -480,17 +416,17 @@ export async function initializeClientLLM(
     } catch (error: any) {
       engineLoadingPromise = null;
       loadProgressCallback = null;
-      
+
       // Provide helpful error message
       const errorMessage = error?.message || String(error);
-      
+
       // Suggest alternative models
       const available = getAvailableModels();
       const alternativeModels = available
         .filter(m => m !== modelId)
         .slice(0, 3)
         .join(", ");
-      
+
       if (errorMessage.includes('model') || errorMessage.includes('appConfig')) {
         let errorMsg = `Failed to load model "${modelId}". `;
         if (alternativeModels) {
@@ -499,7 +435,7 @@ export async function initializeClientLLM(
         errorMsg += `Original error: ${errorMessage}`;
         throw new Error(errorMsg);
       }
-      
+
       throw error;
     }
   })();
@@ -685,7 +621,7 @@ export function getModelInfo() {
   // Get the actual model being used
   const available = getAvailableModels();
   const modelId = findSuitableModel();
-  
+
   // Estimate size based on model (actual download sizes for quantized weights)
   const getModelSize = (model: string): number => {
     // Estimate model sizes based on name patterns
@@ -695,7 +631,7 @@ export function getModelInfo() {
     if (model.includes('7B') || model.includes('7b') || model.includes('8B') || model.includes('8b')) return 4000;
     return DEFAULT_MODEL_SIZE_MB;
   };
-  
+
   return {
     name: modelId,
     sizeMB: getModelSize(modelId),
