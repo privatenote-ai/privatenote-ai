@@ -176,7 +176,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   }, [shouldShowTurnstile]);
 
   return (
-    <div className="pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+    <div className="pt-6 pb-16 px-6 sm:px-8">
       <div className="flex items-center justify-start">
         <a href="/" className="inline-flex items-center">
           <span className="font-bold text-2xl text-primary">
@@ -185,8 +185,12 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
           </span>
         </a>
       </div>
-      <div className="mt-10 text-center">
-        <h1 className="page-title text-gray-900 dark:text-white">
+      <div className="mt-10 max-w-3xl mx-auto text-center">
+        <h1
+          className={`text-gray-900 dark:text-white ${
+            mode === "sign-up" ? "text-3xl sm:text-4xl font-semibold" : "text-4xl sm:text-5xl font-semibold"
+          }`}
+        >
           {mode === "sign-up" ? "Create your PrivateNote account" : "Welcome back"}
         </h1>
         <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
@@ -196,7 +200,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         </p>
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-8 space-y-4 max-w-3xl mx-auto">
         {view === "form" ? (
           <>
             <div className="space-y-1 text-left">

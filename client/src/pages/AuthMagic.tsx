@@ -15,6 +15,7 @@ export default function AuthMagic() {
   const [message, setMessage] = useState<string>("Verifying your magic link...");
   const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [dismissedNudge, setDismissedNudge] = useState(false);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -92,18 +93,22 @@ export default function AuthMagic() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
-          {status === "success" && hasPasskeys === false && (
+          {status === "success" && hasPasskeys === false && !dismissedNudge && (
             <div className="mt-5 space-y-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Secure your account</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Secure your account with a passkey</p>
                 <p className="text-xs text-gray-600 dark:text-gray-300">
-                  Add a passkey for faster, phishing-resistant sign-ins. You can use a device passkey
-                  or scan a QR code to register from another device.
+                  Faster sign-in. No emails. No passwords.
                 </p>
               </div>
-              <Button onClick={handleRegisterPasskey} disabled={isRegistering}>
-                Create passkey
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleRegisterPasskey} disabled={isRegistering}>
+                  Add passkey
+                </Button>
+                <Button variant="outline" onClick={() => setDismissedNudge(true)} disabled={isRegistering}>
+                  Maybe later
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
