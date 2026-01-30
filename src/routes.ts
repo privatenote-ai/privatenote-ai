@@ -9,6 +9,7 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
+import argon2 from "argon2-browser";
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -48,16 +49,41 @@ const USER_STATUS_PENDING = "pending";
 const USER_STATUS_ACTIVE = "active";
 const STEP_UP_WINDOW_SECONDS = 5 * 60;
 
-// Recovery code rate limiting
+// Recovery code rate limiting with progressive delays and account lockout
 const RECOVERY_CODE_RATE_LIMIT = {
-  MAX_ATTEMPTS: 5, // attempts per window
+  MAX_ATTEMPTS: 5, // attempts per window before lockout
   WINDOW_SECONDS: 15 * 60, // 15 minute window
   KEY_PREFIX: "recovery_rate_limit:",
+  LOCKOUT_THRESHOLD: 10, // total failed attempts before account lockout
+  LOCKOUT_DURATION_SECONDS: 60 * 60, // 1 hour lockout
+  LOCKOUT_KEY_PREFIX: "recovery_lockout:",
+  // Progressive delays: delay = BASE_DELAY * 2^(attempts-1), capped at MAX_DELAY
+  PROGRESSIVE_BASE_DELAY_MS: 500,
+  PROGRESSIVE_MAX_DELAY_MS: 8000,
 };
 
-// PBKDF2 configuration for recovery codes
-const PBKDF2_ITERATIONS = 100000; // OWASP recommended minimum
-const PBKDF2_SALT_LENGTH = 32; // 32 bytes = 256 bits
+// Magic link send rate limiting (per IP and per email)
+const MAGIC_LINK_RATE_LIMIT = {
+  MAX_PER_IP: 10, // max magic links per IP per window
+  MAX_PER_EMAIL: 5, // max magic links per email per window
+  WINDOW_SECONDS: 60 * 60, // 1 hour window
+  IP_KEY_PREFIX: "magic_ip_rate:",
+  EMAIL_KEY_PREFIX: "magic_email_rate:",
+};
+
+// Audit log retention policy
+const AUDIT_LOG_RETENTION = {
+  RETENTION_DAYS: 90, // Keep audit logs for 90 days (GDPR compliance)
+  CLEANUP_BATCH_SIZE: 1000, // Delete in batches to avoid timeouts
+};
+
+// Argon2id configuration for recovery codes (state-of-the-art password hashing)
+// Using Argon2id (recommended variant: resistant to both side-channel and GPU attacks)
+const ARGON2_MEMORY_COST = 65536; // 64 MB (2^16 KB) - memory cost parameter
+const ARGON2_TIME_COST = 3; // 3 iterations - time cost parameter
+const ARGON2_PARALLELISM = 4; // 4 lanes - parallelism parameter
+const ARGON2_SALT_LENGTH = 16; // 16 bytes = 128 bits (Argon2 standard)
+const ARGON2_HASH_LENGTH = 32; // 32 bytes = 256 bits output
 
 // Session IP binding (optional - can be disabled for mobile users)
 const SESSION_IP_BINDING_ENABLED = true; // Set to false to disable IP binding
@@ -574,34 +600,86 @@ function constantTimeEquals(a: string, b: string): boolean {
  * Uses SHA-256 with 100,000 iterations (OWASP recommended minimum)
  */
 async function hashRecoveryCode(code: string, salt: string): Promise<string> {
-  // Import salt as ArrayBuffer
+  // Use Argon2id - state-of-the-art password hashing algorithm
+  // Argon2id is resistant to both side-channel attacks (Argon2i) and GPU attacks (Argon2d)
   const saltBuffer = new TextEncoder().encode(salt);
-
-  // Import code as key material
   const codeBuffer = new TextEncoder().encode(code);
 
-  // Import key material
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    codeBuffer,
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
+  const hash = await argon2.hash({
+    pass: codeBuffer,
+    salt: saltBuffer,
+    time: ARGON2_TIME_COST,
+    mem: ARGON2_MEMORY_COST,
+    parallelism: ARGON2_PARALLELISM,
+    hashLen: ARGON2_HASH_LENGTH,
+    type: argon2.ArgonType.Argon2id,
+  });
 
-  // Derive key using PBKDF2
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: saltBuffer,
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256 // 256 bits = 32 bytes
-  );
+  return base64UrlEncode(new Uint8Array(hash.hash));
+}
 
-  return base64UrlEncode(new Uint8Array(derivedBits));
+// ============================================================================
+// STRUCTURED AUDIT LOGGING
+// ============================================================================
+
+type AuditEventType =
+  | "session_created"
+  | "session_revoked"
+  | "session_rotated"
+  | "session_expired"
+  | "login_success"
+  | "login_failed"
+  | "passkey_registered"
+  | "passkey_used"
+  | "passkey_reset"
+  | "recovery_code_generated"
+  | "recovery_code_used"
+  | "recovery_code_failed"
+  | "account_deleted"
+  | "magic_link_sent"
+  | "magic_link_used"
+  | "magic_link_failed"
+  | "rate_limit_exceeded"
+  | "ip_mismatch"
+  | "step_up_required"
+  | "step_up_success"
+  | "maintenance_cleanup";
+
+type AuditEventStatus = "success" | "failure" | "warning";
+
+async function logAuditEvent(
+  env: Env,
+  event: {
+    userId?: string | null;
+    eventType: AuditEventType;
+    status: AuditEventStatus;
+    details?: Record<string, unknown>;
+    ip?: string | null;
+    userAgent?: string | null;
+  }
+): Promise<void> {
+  if (!env.AUTH_DB) return;
+
+  try {
+    const detailsJson = event.details ? JSON.stringify(event.details) : null;
+    await env.AUTH_DB.prepare(
+      "INSERT INTO audit_log (id, user_id, event_type, event_status, details, ip, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+      .bind(
+        crypto.randomUUID(),
+        event.userId || null,
+        event.eventType,
+        event.status,
+        detailsJson,
+        event.ip || null,
+        event.userAgent || null,
+        new Date().toISOString()
+      )
+      .run();
+  } catch (error) {
+    // Log audit failures to console but don't throw - audit logging should never break auth flow
+    console.error("[AUDIT] Failed to log event:", error);
+  }
 }
 
 function getAuthKv(env: Env): KVNamespace | null {
@@ -762,6 +840,17 @@ async function createSession(
       deviceLabel,
     )
     .run();
+
+  // Audit log: session created
+  await logAuditEvent(env, {
+    userId,
+    eventType: "session_created",
+    status: "success",
+    details: { authMethod, sessionId: id, city, country },
+    ip,
+    userAgent,
+  });
+
   return { sessionId };
 }
 
@@ -805,6 +894,14 @@ async function revokeAllUserSessions(
   )
     .bind(new Date().toISOString(), reason, userId)
     .run();
+
+  // Audit log: sessions revoked
+  await logAuditEvent(env, {
+    userId,
+    eventType: "session_revoked",
+    status: "success",
+    details: { reason, revokeType: "all_sessions" },
+  });
 }
 
 async function getSessionFromRequest(
@@ -862,6 +959,17 @@ async function getSessionFromRequest(
     await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
       .bind(new Date().toISOString(), "ip_mismatch", sessionHash)
       .run();
+
+    // Audit log: IP mismatch
+    await logAuditEvent(env, {
+      userId: row.user_id,
+      eventType: "ip_mismatch",
+      status: "warning",
+      details: { originalIp: row.session_ip, currentIp, sessionRowId: row.session_row_id },
+      ip: currentIp,
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     return null;
   }
   const now = Date.now();
@@ -869,12 +977,34 @@ async function getSessionFromRequest(
     await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
       .bind(new Date().toISOString(), "absolute_expired", sessionHash)
       .run();
+
+    // Audit log: session absolute expiration
+    await logAuditEvent(env, {
+      userId: row.user_id,
+      eventType: "session_expired",
+      status: "success",
+      details: { reason: "absolute_expired", sessionRowId: row.session_row_id },
+      ip: currentIp,
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     return null;
   }
   if (row.expires_at && new Date(row.expires_at).getTime() < now) {
     await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
       .bind(new Date().toISOString(), "expired", sessionHash)
       .run();
+
+    // Audit log: session sliding expiration
+    await logAuditEvent(env, {
+      userId: row.user_id,
+      eventType: "session_expired",
+      status: "success",
+      details: { reason: "sliding_expired", sessionRowId: row.session_row_id },
+      ip: currentIp,
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     return null;
   }
 
@@ -889,6 +1019,16 @@ async function getSessionFromRequest(
       await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
         .bind(new Date().toISOString(), "rotated", sessionHash)
         .run();
+
+      // Audit log: session rotated
+      await logAuditEvent(env, {
+        userId: row.user_id,
+        eventType: "session_rotated",
+        status: "success",
+        details: { oldSessionRowId: row.session_row_id },
+        ip: currentIp,
+        userAgent: request.headers.get("User-Agent"),
+      });
     }
   } else {
     const nextExpiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
@@ -1219,6 +1359,52 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(new Date().toISOString(), new Date().toISOString(), session.sessionIdHash)
       .run();
 
+    // Security enhancement: Revoke all other sessions that were created via magic link only
+    // This ensures that after passkey registration, only passkey-authenticated sessions remain
+    // (excluding the current session which now has step-up auth)
+    const revokedCount = await env.AUTH_DB.prepare(
+      `UPDATE sessions 
+       SET revoked_at = ?, revoked_reason = ? 
+       WHERE user_id = ? 
+         AND revoked_at IS NULL 
+         AND session_id_hash != ? 
+         AND last_stepup_at IS NULL`
+    )
+      .bind(new Date().toISOString(), "passkey_registered_security_upgrade", userId, session.sessionIdHash)
+      .run();
+
+    const sessionsRevoked = revokedCount?.meta?.changes || 0;
+    if (sessionsRevoked > 0) {
+      // Audit log: sessions revoked due to passkey registration
+      await logAuditEvent(env, {
+        userId,
+        eventType: "session_revoked",
+        status: "success",
+        details: {
+          reason: "passkey_registered_security_upgrade",
+          sessionsRevoked,
+          revokeType: "magic_link_only_sessions",
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+    }
+
+    // Audit log: passkey registered
+    await logAuditEvent(env, {
+      userId,
+      eventType: "passkey_registered",
+      status: "success",
+      details: {
+        credentialIdPrefix: credentialId.substring(0, 16) + "...",
+        backupEligible: credentialMetadata.backupEligible,
+        deviceInfo: credentialMetadata.deviceInfo,
+        sessionsRevoked,
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     return jsonResponse({ ok: true }, 200, request);
   }
 
@@ -1338,6 +1524,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .first<{ id: string; user_id: string; credential_id: string; public_key: string; counter: number }>();
 
     if (!storedCredential) {
+      // Audit log: login failed - unknown credential
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "unknown_credential", credentialIdPrefix: credentialId.substring(0, 16) + "..." },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
       return jsonResponse({ message: "Unknown credential" }, 400, request);
     }
 
@@ -1380,6 +1575,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .run();
 
     const session = await createSession(env, storedCredential.user_id, request, "passkey");
+
+    // Audit log: passkey used successfully
+    await logAuditEvent(env, {
+      userId: storedCredential.user_id,
+      eventType: "passkey_used",
+      status: "success",
+      details: { credentialIdPrefix: credentialId.substring(0, 16) + "..." },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    // Audit log: login success
+    await logAuditEvent(env, {
+      userId: storedCredential.user_id,
+      eventType: "login_success",
+      status: "success",
+      details: { authMethod: "passkey" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
@@ -1397,10 +1613,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      "SELECT email, status FROM users WHERE id = ? LIMIT 1"
+      "SELECT id, email, status FROM users WHERE id = ? LIMIT 1"
     )
       .bind(session.id)
-      .first<{ email: string | null; status: string | null }>();
+      .first<{ id: string; email: string | null; status: string | null }>();
 
     const passkeyCount = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
@@ -1414,6 +1630,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     return new Response(
       JSON.stringify({
         ok: true,
+        id: user?.id ?? session.id,
         email: user?.email ?? null,
         status: user?.status ?? USER_STATUS_ACTIVE,
         hasPasskeys: (passkeyCount?.count ?? 0) > 0,
@@ -1616,6 +1833,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(session.id)
       .run();
 
+    // Audit log: passkey reset
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "passkey_reset",
+      status: "success",
+      details: { action: "all_passkeys_deleted" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     // Revoke all sessions on passkey reset (security event)
     await revokeAllUserSessions(env, session.id, "passkey_reset");
 
@@ -1705,6 +1932,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
+  if (pathname === "/api/auth/sessions/revoke-all" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const nowIso = new Date().toISOString();
+    // Revoke all sessions except the current one
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL AND session_id_hash != ?"
+    )
+      .bind(nowIso, "user_revoked_all", session.id, session.sessionIdHash)
+      .run();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
   if (pathname === "/api/auth/recovery-codes/status" && method === "GET") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -1744,7 +1992,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const codes: string[] = [];
     for (let i = 0; i < 8; i += 1) {
       const code = generateRecoveryCode();
-      const salt = randomId(PBKDF2_SALT_LENGTH); // Use proper salt length
+      const salt = randomId(ARGON2_SALT_LENGTH); // Use Argon2 standard salt length
       const codeHash = await hashRecoveryCode(code, salt);
       await env.AUTH_DB.prepare(
         "INSERT INTO recovery_codes (id, user_id, code_hash, salt, created_at) VALUES (?, ?, ?, ?, ?)"
@@ -1753,6 +2001,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         .run();
       codes.push(code);
     }
+
+    // Audit log: recovery codes generated
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "recovery_code_generated",
+      status: "success",
+      details: { codesCount: codes.length },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
 
     return jsonResponse({ ok: true, codes }, 200, request);
   }
@@ -1774,20 +2032,63 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
-    // Rate limiting for recovery code attempts
+    // Enhanced rate limiting with progressive delays and account lockout
     const rateLimitKey = `${RECOVERY_CODE_RATE_LIMIT.KEY_PREFIX}${email}`;
+    const lockoutKey = `${RECOVERY_CODE_RATE_LIMIT.LOCKOUT_KEY_PREFIX}${email}`;
     const kv = env.RATE_LIMIT_KV || env.NOTES_KV;
+    let currentAttempts = 0;
+
     if (kv) {
-      // Use custom rate limit check for recovery codes
       const now = Math.floor(Date.now() / 1000);
       const windowStart = now - (now % RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS);
-      const key = rateLimitKey;
 
       try {
-        const stored = await kv.get(key, { type: 'json' }) as { count?: number; windowStart?: number } | null;
+        // Check for account lockout first
+        const lockoutData = await kv.get(lockoutKey, { type: 'json' }) as {
+          totalFailures: number;
+          lockedUntil?: number;
+          notifiedAt?: number;
+        } | null;
+
+        if (lockoutData?.lockedUntil && lockoutData.lockedUntil > now) {
+          const remainingMinutes = Math.ceil((lockoutData.lockedUntil - now) / 60);
+          // Audit log: account locked
+          await logAuditEvent(env, {
+            userId: null,
+            eventType: "rate_limit_exceeded",
+            status: "warning",
+            details: {
+              endpoint: "recovery_code",
+              reason: "account_locked",
+              emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+              remainingMinutes,
+            },
+            ip: getRequestIp(request),
+            userAgent: request.headers.get("User-Agent"),
+          });
+          await jitterDelay();
+          return jsonResponse(
+            { message: `Account temporarily locked. Please try again in ${remainingMinutes} minutes.` },
+            429,
+            request
+          );
+        }
+
+        // Check window rate limit
+        const stored = await kv.get(rateLimitKey, { type: 'json' }) as { count?: number; windowStart?: number } | null;
 
         if (stored && stored.windowStart === windowStart) {
-          if ((stored.count || 0) >= RECOVERY_CODE_RATE_LIMIT.MAX_ATTEMPTS) {
+          currentAttempts = stored.count || 0;
+          if (currentAttempts >= RECOVERY_CODE_RATE_LIMIT.MAX_ATTEMPTS) {
+            // Audit log: rate limit exceeded
+            await logAuditEvent(env, {
+              userId: null,
+              eventType: "rate_limit_exceeded",
+              status: "warning",
+              details: { endpoint: "recovery_code", emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+              ip: getRequestIp(request),
+              userAgent: request.headers.get("User-Agent"),
+            });
             await jitterDelay();
             return jsonResponse(
               { message: "Too many recovery attempts. Please try again later." },
@@ -1795,19 +2096,30 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
               request
             );
           }
-          await kv.put(key, JSON.stringify({
-            count: (stored.count || 0) + 1,
+          await kv.put(rateLimitKey, JSON.stringify({
+            count: currentAttempts + 1,
             windowStart,
           }), {
             expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
           });
+          currentAttempts += 1;
         } else {
-          await kv.put(key, JSON.stringify({
+          await kv.put(rateLimitKey, JSON.stringify({
             count: 1,
             windowStart,
           }), {
             expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
           });
+          currentAttempts = 1;
+        }
+
+        // Apply progressive delay based on attempt count
+        if (currentAttempts > 1) {
+          const progressiveDelay = Math.min(
+            RECOVERY_CODE_RATE_LIMIT.PROGRESSIVE_BASE_DELAY_MS * Math.pow(2, currentAttempts - 1),
+            RECOVERY_CODE_RATE_LIMIT.PROGRESSIVE_MAX_DELAY_MS
+          );
+          await new Promise(resolve => setTimeout(resolve, progressiveDelay));
         }
       } catch (error) {
         console.error('[RECOVERY_RATE_LIMIT] Error checking rate limit:', error);
@@ -1816,10 +2128,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const user = await env.AUTH_DB.prepare(
-      "SELECT id FROM users WHERE email = ? LIMIT 1"
+      "SELECT id, email FROM users WHERE email = ? LIMIT 1"
     )
       .bind(email)
-      .first<{ id: string }>();
+      .first<{ id: string; email: string }>();
     if (!user?.id) {
       await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
@@ -1841,6 +2153,64 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }
     }
     if (!matchedId) {
+      // Track total failures for account lockout
+      if (kv) {
+        try {
+          const now = Math.floor(Date.now() / 1000);
+          const lockoutData = await kv.get(lockoutKey, { type: 'json' }) as {
+            totalFailures: number;
+            lockedUntil?: number;
+            notifiedAt?: number;
+          } | null;
+
+          const totalFailures = (lockoutData?.totalFailures || 0) + 1;
+
+          // Check if we should lock the account
+          if (totalFailures >= RECOVERY_CODE_RATE_LIMIT.LOCKOUT_THRESHOLD) {
+            const lockedUntil = now + RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS;
+            await kv.put(lockoutKey, JSON.stringify({
+              totalFailures,
+              lockedUntil,
+              notifiedAt: now,
+            }), {
+              expirationTtl: RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS + 60,
+            });
+
+            // Audit log: account locked due to too many failures
+            await logAuditEvent(env, {
+              userId: user.id,
+              eventType: "recovery_code_failed",
+              status: "failure",
+              details: {
+                reason: "account_locked_excessive_failures",
+                totalFailures,
+                lockoutDurationMinutes: Math.ceil(RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS / 60),
+              },
+              ip: getRequestIp(request),
+              userAgent: request.headers.get("User-Agent"),
+            });
+          } else {
+            await kv.put(lockoutKey, JSON.stringify({
+              totalFailures,
+              lockedUntil: lockoutData?.lockedUntil,
+            }), {
+              expirationTtl: RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS + 60,
+            });
+          }
+        } catch (error) {
+          console.error('[RECOVERY_LOCKOUT] Error updating lockout state:', error);
+        }
+      }
+
+      // Audit log: recovery code failed
+      await logAuditEvent(env, {
+        userId: user.id,
+        eventType: "recovery_code_failed",
+        status: "failure",
+        details: { reason: "invalid_code", attemptNumber: currentAttempts },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
       await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
@@ -1849,6 +2219,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(new Date().toISOString(), matchedId)
       .run();
 
+    // Clear lockout state on successful recovery
+    if (kv) {
+      try {
+        await kv.delete(lockoutKey);
+        await kv.delete(rateLimitKey);
+      } catch (error) {
+        console.error('[RECOVERY_LOCKOUT] Error clearing lockout state:', error);
+      }
+    }
+
     await env.AUTH_DB.prepare(
       "UPDATE users SET status = ?, last_login_at = ?, updated_at = ? WHERE id = ?"
     )
@@ -1856,6 +2236,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .run();
 
     const session = await createSession(env, user.id, request, "recovery");
+
+    // Audit log: recovery code used successfully
+    await logAuditEvent(env, {
+      userId: user.id,
+      eventType: "recovery_code_used",
+      status: "success",
+      details: { recoveryCodeId: matchedId },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    // Audit log: login success
+    await logAuditEvent(env, {
+      userId: user.id,
+      eventType: "login_success",
+      status: "success",
+      details: { authMethod: "recovery_code" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
@@ -1881,6 +2282,67 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!env.AUTH_DB) {
       await jitterDelay();
       return jsonResponse(responsePayload, 200, request);
+    }
+
+    // Rate limiting for magic link requests (per IP and per email)
+    const kv = env.RATE_LIMIT_KV || env.AUTH_KV || env.NOTES_KV;
+    const clientIp = getRequestIp(request);
+
+    if (kv && !isLocal) {
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = now - (now % MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS);
+
+      // Check IP rate limit
+      if (clientIp) {
+        const ipKey = `${MAGIC_LINK_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}:${windowStart}`;
+        try {
+          const ipCount = await kv.get(ipKey, { type: 'json' }) as { count: number } | null;
+          if (ipCount && ipCount.count >= MAGIC_LINK_RATE_LIMIT.MAX_PER_IP) {
+            // Audit log: rate limit exceeded
+            await logAuditEvent(env, {
+              userId: null,
+              eventType: "rate_limit_exceeded",
+              status: "warning",
+              details: { endpoint: "magic_link_send", limitType: "ip", ip: clientIp },
+              ip: clientIp,
+              userAgent: request.headers.get("User-Agent"),
+            });
+            await jitterDelay();
+            return jsonResponse(responsePayload, 200, request); // Silent fail to prevent enumeration
+          }
+          await kv.put(ipKey, JSON.stringify({ count: (ipCount?.count || 0) + 1 }), {
+            expirationTtl: MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS + 10,
+          });
+        } catch (error) {
+          console.error('[MAGIC_LINK_RATE_LIMIT] IP rate limit error:', error);
+        }
+      }
+
+      // Check email rate limit (only if email is valid)
+      if (email && isValidEmailLoose(email)) {
+        const emailKey = `${MAGIC_LINK_RATE_LIMIT.EMAIL_KEY_PREFIX}${email}:${windowStart}`;
+        try {
+          const emailCount = await kv.get(emailKey, { type: 'json' }) as { count: number } | null;
+          if (emailCount && emailCount.count >= MAGIC_LINK_RATE_LIMIT.MAX_PER_EMAIL) {
+            // Audit log: rate limit exceeded
+            await logAuditEvent(env, {
+              userId: null,
+              eventType: "rate_limit_exceeded",
+              status: "warning",
+              details: { endpoint: "magic_link_send", limitType: "email", emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+              ip: clientIp,
+              userAgent: request.headers.get("User-Agent"),
+            });
+            await jitterDelay();
+            return jsonResponse(responsePayload, 200, request); // Silent fail to prevent enumeration
+          }
+          await kv.put(emailKey, JSON.stringify({ count: (emailCount?.count || 0) + 1 }), {
+            expirationTtl: MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS + 10,
+          });
+        } catch (error) {
+          console.error('[MAGIC_LINK_RATE_LIMIT] Email rate limit error:', error);
+        }
+      }
     }
 
     if (!isLocal && env.TURNSTILE_SECRET_KEY) {
@@ -1922,6 +2384,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
             console.warn("[Auth] Magic link email failed:", sendResult.error);
           }
         }
+
+        // Audit log: magic link sent
+        await logAuditEvent(env, {
+          userId,
+          eventType: "magic_link_sent",
+          status: "success",
+          details: { intent, emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+          ip: getRequestIp(request),
+          userAgent: request.headers.get("User-Agent"),
+        });
       }
     }
 
@@ -1936,6 +2408,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
     const payload = await consumeMagicLink(env, token);
     if (!payload) {
+      // Audit log: magic link failed (invalid/expired token)
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "magic_link_failed",
+        status: "failure",
+        details: { reason: "token_invalid_or_expired" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
       return jsonResponse({ message: "Token expired or invalid" }, 400, request);
     }
     if (!env.AUTH_DB) {
@@ -1960,6 +2441,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .run();
 
     const session = await createSession(env, userId, request, "magic");
+
+    // Audit log: magic link used successfully
+    await logAuditEvent(env, {
+      userId,
+      eventType: "magic_link_used",
+      status: "success",
+      details: { intent: payload.intent },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    // Audit log: login success
+    await logAuditEvent(env, {
+      userId,
+      eventType: "login_success",
+      status: "success",
+      details: { authMethod: "magic_link", intent: payload.intent },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
@@ -2000,6 +2502,70 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }),
       { status: 200, headers }
     );
+  }
+
+  if (pathname === "/api/auth/account/delete" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    const body = await request.json().catch(() => ({})) as { email?: string };
+    const { email: providedEmail } = body;
+
+    if (!providedEmail || typeof providedEmail !== "string") {
+      return jsonResponse({ message: "Email is required" }, 400, request);
+    }
+
+    // Normalize emails for comparison
+    const normalizedProvided = providedEmail.trim().toLowerCase();
+    const normalizedStored = (session.email ?? "").trim().toLowerCase();
+
+    if (normalizedProvided !== normalizedStored) {
+      return jsonResponse({ message: "Email does not match" }, 400, request);
+    }
+
+    // Delete all user data
+    const userId = session.id;
+
+    // Audit log: account deletion (log before deleting user data)
+    await logAuditEvent(env, {
+      userId,
+      eventType: "account_deleted",
+      status: "success",
+      details: { emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    // Delete recovery codes
+    await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ?")
+      .bind(userId)
+      .run();
+
+    // Delete passkeys
+    await env.AUTH_DB.prepare("DELETE FROM webauthn_credentials WHERE user_id = ?")
+      .bind(userId)
+      .run();
+
+    // Revoke all sessions
+    await revokeAllUserSessions(env, userId, "account_deleted");
+
+    // Delete user record
+    await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?")
+      .bind(userId)
+      .run();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
   return jsonResponse({ message: "Auth route not found" }, 404, request);
@@ -2638,6 +3204,204 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
+  // ============================================================================
+  // ADMIN: AUDIT LOG ENDPOINTS
+  // ============================================================================
+
+  // GET /api/admin/audit-logs - Query audit logs with filtering
+  if (pathname === "/api/admin/audit-logs" && method === "GET") {
+    const authError = requireAdmin(request);
+    if (authError) return authError;
+
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "AUTH_DB not configured" }, 501, request);
+    }
+
+    try {
+      // Query parameters for filtering
+      const limit = Math.min(parseInt(url.searchParams.get("limit") || "100", 10), 500);
+      const offset = parseInt(url.searchParams.get("offset") || "0", 10);
+      const eventType = url.searchParams.get("eventType"); // e.g., "login_failed"
+      const status = url.searchParams.get("status"); // success, failure, warning
+      const userId = url.searchParams.get("userId");
+      const startDate = url.searchParams.get("startDate"); // ISO date
+      const endDate = url.searchParams.get("endDate"); // ISO date
+      const ip = url.searchParams.get("ip");
+
+      // Build dynamic query
+      let query = "SELECT * FROM audit_log WHERE 1=1";
+      const params: (string | number)[] = [];
+
+      if (eventType) {
+        query += " AND event_type = ?";
+        params.push(eventType);
+      }
+      if (status) {
+        query += " AND event_status = ?";
+        params.push(status);
+      }
+      if (userId) {
+        query += " AND user_id = ?";
+        params.push(userId);
+      }
+      if (startDate) {
+        query += " AND created_at >= ?";
+        params.push(startDate);
+      }
+      if (endDate) {
+        query += " AND created_at <= ?";
+        params.push(endDate);
+      }
+      if (ip) {
+        query += " AND ip = ?";
+        params.push(ip);
+      }
+
+      query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+      params.push(limit, offset);
+
+      const stmt = env.AUTH_DB.prepare(query);
+      const results = await stmt.bind(...params).all<{
+        id: string;
+        user_id: string | null;
+        event_type: string;
+        event_status: string;
+        details: string | null;
+        ip: string | null;
+        user_agent: string | null;
+        created_at: string;
+      }>();
+
+      // Get total count for pagination
+      let countQuery = "SELECT COUNT(*) as total FROM audit_log WHERE 1=1";
+      const countParams: (string | number)[] = [];
+
+      if (eventType) {
+        countQuery += " AND event_type = ?";
+        countParams.push(eventType);
+      }
+      if (status) {
+        countQuery += " AND event_status = ?";
+        countParams.push(status);
+      }
+      if (userId) {
+        countQuery += " AND user_id = ?";
+        countParams.push(userId);
+      }
+      if (startDate) {
+        countQuery += " AND created_at >= ?";
+        countParams.push(startDate);
+      }
+      if (endDate) {
+        countQuery += " AND created_at <= ?";
+        countParams.push(endDate);
+      }
+      if (ip) {
+        countQuery += " AND ip = ?";
+        countParams.push(ip);
+      }
+
+      const countStmt = env.AUTH_DB.prepare(countQuery);
+      const countResult = await countStmt.bind(...countParams).first<{ total: number }>();
+
+      // Parse details JSON for each result
+      const logs = (results.results || []).map((row) => ({
+        ...row,
+        details: row.details ? JSON.parse(row.details) : null,
+      }));
+
+      return jsonResponse({
+        ok: true,
+        logs,
+        pagination: {
+          total: countResult?.total || 0,
+          limit,
+          offset,
+          hasMore: offset + logs.length < (countResult?.total || 0),
+        },
+      }, 200, request);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      return jsonResponse({ message: "Failed to fetch audit logs" }, 500, request);
+    }
+  }
+
+  // GET /api/admin/audit-logs/stats - Get audit log statistics
+  if (pathname === "/api/admin/audit-logs/stats" && method === "GET") {
+    const authError = requireAdmin(request);
+    if (authError) return authError;
+
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "AUTH_DB not configured" }, 501, request);
+    }
+
+    try {
+      const days = parseInt(url.searchParams.get("days") || "7", 10);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      const cutoffIso = cutoffDate.toISOString();
+
+      // Get event type counts
+      const eventTypeCounts = await env.AUTH_DB.prepare(
+        `SELECT event_type, event_status, COUNT(*) as count 
+         FROM audit_log 
+         WHERE created_at >= ? 
+         GROUP BY event_type, event_status 
+         ORDER BY count DESC`
+      )
+        .bind(cutoffIso)
+        .all<{ event_type: string; event_status: string; count: number }>();
+
+      // Get daily counts
+      const dailyCounts = await env.AUTH_DB.prepare(
+        `SELECT DATE(created_at) as date, COUNT(*) as count 
+         FROM audit_log 
+         WHERE created_at >= ? 
+         GROUP BY DATE(created_at) 
+         ORDER BY date DESC`
+      )
+        .bind(cutoffIso)
+        .all<{ date: string; count: number }>();
+
+      // Get top IPs with failures
+      const topFailureIps = await env.AUTH_DB.prepare(
+        `SELECT ip, COUNT(*) as count 
+         FROM audit_log 
+         WHERE created_at >= ? AND event_status = 'failure' AND ip IS NOT NULL
+         GROUP BY ip 
+         ORDER BY count DESC 
+         LIMIT 10`
+      )
+        .bind(cutoffIso)
+        .all<{ ip: string; count: number }>();
+
+      // Get total counts
+      const totalStats = await env.AUTH_DB.prepare(
+        `SELECT 
+           COUNT(*) as total,
+           SUM(CASE WHEN event_status = 'success' THEN 1 ELSE 0 END) as successes,
+           SUM(CASE WHEN event_status = 'failure' THEN 1 ELSE 0 END) as failures,
+           SUM(CASE WHEN event_status = 'warning' THEN 1 ELSE 0 END) as warnings
+         FROM audit_log 
+         WHERE created_at >= ?`
+      )
+        .bind(cutoffIso)
+        .first<{ total: number; successes: number; failures: number; warnings: number }>();
+
+      return jsonResponse({
+        ok: true,
+        period: { days, since: cutoffIso },
+        summary: totalStats || { total: 0, successes: 0, failures: 0, warnings: 0 },
+        byEventType: eventTypeCounts.results || [],
+        byDay: dailyCounts.results || [],
+        topFailureIps: topFailureIps.results || [],
+      }, 200, request);
+    } catch (error) {
+      console.error("Error fetching audit log stats:", error);
+      return jsonResponse({ message: "Failed to fetch audit log stats" }, 500, request);
+    }
+  }
+
   // Blog API routes - Admin
   if (pathname === "/api/admin/blog" && method === "GET") {
     const authError = requireAdmin(request);
@@ -2958,4 +3722,107 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] ❌ No route handler matched. Returning 404`);
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
   return jsonResponse({ message: "Not Found", pathname, method }, 404, request);
+}
+
+/**
+ * Cleanup old audit log entries based on retention policy.
+ * Called by scheduled cron trigger for GDPR compliance (data minimization).
+ * Deletes entries older than AUDIT_LOG_RETENTION.RETENTION_DAYS in batches.
+ */
+export async function cleanupAuditLogs(env: Env): Promise<{ deleted: number; error?: string }> {
+  if (!env.AUTH_DB) {
+    return { deleted: 0, error: "AUTH_DB not configured" };
+  }
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - AUDIT_LOG_RETENTION.RETENTION_DAYS);
+  const cutoffIso = cutoffDate.toISOString();
+
+  let totalDeleted = 0;
+  let batchesProcessed = 0;
+  const maxBatches = 10; // Safety limit to prevent runaway deletion
+
+  try {
+    // Delete in batches to avoid timeout
+    while (batchesProcessed < maxBatches) {
+      const result = await env.AUTH_DB.prepare(
+        `DELETE FROM audit_log 
+         WHERE id IN (
+           SELECT id FROM audit_log 
+           WHERE created_at < ? 
+           LIMIT ?
+         )`
+      )
+        .bind(cutoffIso, AUDIT_LOG_RETENTION.CLEANUP_BATCH_SIZE)
+        .run();
+
+      const deletedInBatch = result?.meta?.changes || 0;
+      totalDeleted += deletedInBatch;
+      batchesProcessed++;
+
+      console.log(`[AUDIT_CLEANUP] Batch ${batchesProcessed}: Deleted ${deletedInBatch} entries`);
+
+      // If we deleted less than batch size, we're done
+      if (deletedInBatch < AUDIT_LOG_RETENTION.CLEANUP_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    console.log(`[AUDIT_CLEANUP] Completed: Total deleted ${totalDeleted} entries older than ${cutoffIso}`);
+
+    // Log the cleanup event itself
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "maintenance_cleanup",
+      status: "success",
+      details: {
+        action: "audit_log_cleanup",
+        deletedCount: totalDeleted,
+        retentionDays: AUDIT_LOG_RETENTION.RETENTION_DAYS,
+        cutoffDate: cutoffIso,
+      },
+    });
+
+    return { deleted: totalDeleted };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[AUDIT_CLEANUP] Error: ${errorMessage}`);
+    return { deleted: totalDeleted, error: errorMessage };
+  }
+}
+
+/**
+ * Cleanup expired sessions from the database.
+ * Called by scheduled cron trigger.
+ */
+export async function cleanupExpiredSessions(env: Env): Promise<{ deleted: number; error?: string }> {
+  if (!env.AUTH_DB) {
+    return { deleted: 0, error: "AUTH_DB not configured" };
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    // Delete sessions that have been revoked for more than 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const cutoffIso = thirtyDaysAgo.toISOString();
+
+    const result = await env.AUTH_DB.prepare(
+      `DELETE FROM sessions 
+       WHERE revoked_at IS NOT NULL 
+         AND revoked_at < ?`
+    )
+      .bind(cutoffIso)
+      .run();
+
+    const deleted = result?.meta?.changes || 0;
+    console.log(`[SESSION_CLEANUP] Deleted ${deleted} revoked sessions older than ${cutoffIso}`);
+
+    return { deleted };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[SESSION_CLEANUP] Error: ${errorMessage}`);
+    return { deleted: 0, error: errorMessage };
+  }
 }

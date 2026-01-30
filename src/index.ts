@@ -1,6 +1,6 @@
 import { SecureNoteStorage, SecureNoteStorageSql } from "./durable_objects/secure_note_storage";
 import { AuthTokenStore } from "./durable_objects/auth_token_store";
-import { registerRoutes } from "./routes";
+import { registerRoutes, cleanupAuditLogs, cleanupExpiredSessions } from "./routes";
 import type { Env } from "./types";
 
 // Export both for migration compatibility
@@ -63,7 +63,7 @@ export default {
     console.log(`[WORKER-ENTRY] Request method: ${request.method}`);
     console.log(`[WORKER-ENTRY] Request URL: ${request.url}`);
     console.log(`[WORKER-ENTRY] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
-    
+
     try {
       const url = new URL(request.url);
       const pathname = url.pathname;
@@ -74,7 +74,7 @@ export default {
         console.log(`[WORKER-ENTRY] Handling OPTIONS preflight request for: ${pathname}`);
         const origin = request.headers.get('Origin');
         const allowedOrigin = getAllowedOrigin(request);
-        
+
         if (origin && !allowedOrigin) {
           console.log(`[WORKER-ENTRY] ❌ CORS: Origin not allowed: ${origin}`);
           return new Response(JSON.stringify({ error: 'CORS policy: Origin not allowed' }), {
@@ -85,7 +85,7 @@ export default {
             },
           });
         }
-        
+
         return new Response(null, {
           status: 204,
           headers: {
@@ -106,7 +106,7 @@ export default {
         console.log(`[WORKER-ENTRY] ✅ Path starts with /api, routing to registerRoutes`);
         return await registerRoutes(request, env);
       }
-      
+
       console.log(`[WORKER-ENTRY] Path does not start with /api or /models`);
 
       // For non-API routes, return helpful message (frontend should be served by Cloudflare Pages)
@@ -133,17 +133,40 @@ export default {
     } catch (error) {
       console.error("Error handling request:", error);
       return new Response(
-        JSON.stringify({ 
-          message: error instanceof Error ? error.message : "Internal Server Error" 
+        JSON.stringify({
+          message: error instanceof Error ? error.message : "Internal Server Error"
         }),
-        { 
+        {
           status: 500,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             ...getCorsHeaders(request),
           }
         }
       );
+    }
+  },
+
+  /**
+   * Scheduled handler for cron triggers.
+   * Runs daily cleanup tasks for GDPR compliance and database maintenance.
+   */
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log(`[CRON] Scheduled event triggered at ${new Date().toISOString()}`);
+    console.log(`[CRON] Cron trigger: ${event.cron}`);
+
+    try {
+      // Cleanup audit logs (GDPR compliance - data minimization)
+      const auditResult = await cleanupAuditLogs(env);
+      console.log(`[CRON] Audit log cleanup: deleted ${auditResult.deleted} entries${auditResult.error ? `, error: ${auditResult.error}` : ''}`);
+
+      // Cleanup expired/revoked sessions
+      const sessionResult = await cleanupExpiredSessions(env);
+      console.log(`[CRON] Session cleanup: deleted ${sessionResult.deleted} entries${sessionResult.error ? `, error: ${sessionResult.error}` : ''}`);
+
+      console.log(`[CRON] Scheduled tasks completed successfully`);
+    } catch (error) {
+      console.error(`[CRON] Error in scheduled handler:`, error);
     }
   },
 };

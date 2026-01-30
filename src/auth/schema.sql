@@ -57,3 +57,20 @@ CREATE TABLE IF NOT EXISTS recovery_codes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_recovery_codes_user_id ON recovery_codes(user_id);
+
+-- Security audit log table for structured logging of security events
+CREATE TABLE IF NOT EXISTS audit_log (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  event_type TEXT NOT NULL,
+  event_status TEXT NOT NULL,
+  details TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);

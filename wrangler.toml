@@ -1,6 +1,6 @@
 name = "privatenote-api"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # KV namespace binding
@@ -54,6 +54,11 @@ AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
 
 [build]
 command = "npm run build"
+
+# Cron triggers for scheduled maintenance tasks
+# Runs daily at 3:00 AM UTC for audit log cleanup (GDPR compliance)
+[triggers]
+crons = ["0 3 * * *"]
 
 [observability]
 enabled = false

@@ -8,22 +8,24 @@ export default function Privacy() {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] -z-10" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 blur-[100px] -z-10" />
 
-      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
-        <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-primary to-blue-500 dark:from-blue-300 dark:to-blue-500 relative z-10">
+      <div className="max-w-4xl mx-auto text-center mb-16 relative z-10">
+        <h1 className="page-title mb-6 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
           Privacy Policy
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
           Version 2.1 • Last updated: January 20, 2026 • Luxembourg, EU
         </p>
       </div>
 
-      <div className="space-y-8 text-gray-700 dark:text-gray-300 max-w-4xl mx-auto">
+      <div className="space-y-6 text-gray-700 dark:text-gray-300 max-w-4xl mx-auto">
         {/* 1. Data Controller Identification */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Scale className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <Scale className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">
                 1. Data Controller
               </h2>
               <p className="text-sm">
@@ -56,11 +58,13 @@ export default function Privacy() {
         </section>
 
         {/* 2. AI Disclosure - Critical */}
-        <section className="bg-amber-50/50 dark:bg-amber-900/10 backdrop-blur-sm p-6 rounded-xl border border-amber-200 dark:border-amber-800/50 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Cpu className="h-6 w-6 text-amber-600 dark:text-amber-400 mt-1" />
-            <div>
-              <h2 className="text-xl font-bold mb-2 text-amber-900 dark:text-amber-300">
+        <section className="bg-amber-50/50 dark:bg-amber-900/10 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-amber-200 dark:border-amber-800/50 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg shrink-0">
+              <Cpu className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-3 text-amber-900 dark:text-amber-300">
                 2. AI Processing & Third-Party Services
               </h2>
               <p className="mb-3">
@@ -106,11 +110,13 @@ export default function Privacy() {
         </section>
 
         {/* 3. Data Collection */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Lock className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 3. What Data We Collect & Why
               </h2>
 
@@ -160,11 +166,13 @@ export default function Privacy() {
         </section>
 
         {/* 4. Infrastructure & International Transfers */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Globe className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <Globe className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 4. International Data Transfers
               </h2>
               <p className="mb-3 text-sm">
@@ -196,11 +204,13 @@ export default function Privacy() {
         </section>
 
         {/* 5. User Rights */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Shield className="h-6 w-6 text-primary mt-1" />
-            <div>
-              <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 5. Your GDPR Rights
               </h2>
               <p className="mb-3 text-sm">
@@ -246,8 +256,8 @@ export default function Privacy() {
         </section>
 
         {/* 6. Security trade-offs */}
-        <section className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-          <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+        <section className="bg-gray-50 dark:bg-gray-800/50 p-6 md:p-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
             6. Security Limitations
           </h2>
           <p className="text-sm leading-relaxed">
@@ -262,15 +272,15 @@ export default function Privacy() {
         </section>
 
         {/* Contact */}
-        <div className="text-center pt-8 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-sm text-gray-500 mb-4">
+        <div className="text-center pt-10 mt-8 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
             You have the right to lodge a complaint with the Luxembourgish data
             protection authority (CNPD — Commission Nationale pour la Protection
             des Données).
           </p>
           <a
             href="mailto:support@privatenote.ai"
-            className="text-primary font-medium hover:underline"
+            className="text-primary font-medium hover:underline transition-colors"
           >
             support@privatenote.ai
           </a>

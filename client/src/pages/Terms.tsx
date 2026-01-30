@@ -18,24 +18,24 @@ export default function Terms() {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] -z-10" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 blur-[100px] -z-10" />
 
-      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
-        <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-primary to-blue-500 dark:from-blue-300 dark:to-blue-500 relative z-10">
+      <div className="max-w-4xl mx-auto text-center mb-16 relative z-10">
+        <h1 className="page-title mb-6 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
           Terms of Service
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
           Last updated: January 20, 2026 • Luxembourg, EU
         </p>
       </div>
 
-      <div className="space-y-8 text-gray-700 dark:text-gray-300 max-w-4xl mx-auto">
+      <div className="space-y-6 text-gray-700 dark:text-gray-300 max-w-4xl mx-auto">
         {/* 0. Age Requirement */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/10 rounded-lg shrink-0">
               <UserX className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 0. Age Requirement
               </h2>
               <p>
@@ -49,13 +49,13 @@ export default function Terms() {
         </section>
 
         {/* 1. Client-side Encryption & Security */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/10 rounded-lg shrink-0">
               <Lock className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 1. Service Description & Encryption
               </h2>
               <p className="mb-3">
@@ -74,13 +74,13 @@ export default function Terms() {
         </section>
 
         {/* 2. GDPR & Data Protection */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg shrink-0">
               <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 2. Data Protection (GDPR)
               </h2>
               <p className="mb-3">
@@ -100,13 +100,13 @@ export default function Terms() {
         </section>
 
         {/* 3. Acceptable Use & DSA */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg shrink-0">
               <UserX className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 3. Prohibited Content & DSA
               </h2>
               <p className="mb-4">
@@ -138,13 +138,13 @@ export default function Terms() {
         </section>
 
         {/* 4. Right of Withdrawal */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/10 rounded-lg shrink-0">
               <Globe className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 4. Right of Withdrawal (EU Consumers)
               </h2>
               <p>
@@ -158,13 +158,13 @@ export default function Terms() {
         </section>
 
         {/* 5. Service Availability */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/10 rounded-lg shrink-0">
               <Shield className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 5. Service Availability
               </h2>
               <p className="mb-3">
@@ -181,13 +181,13 @@ export default function Terms() {
         </section>
 
         {/* 6. AI Features */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg shrink-0">
               <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 6. AI Features
               </h2>
               <p className="mb-3">
@@ -204,13 +204,13 @@ export default function Terms() {
         </section>
 
         {/* 7. Limitation of Liability */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg shrink-0">
               <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 7. Liability Limits
               </h2>
               <p className="mb-3">
@@ -227,13 +227,13 @@ export default function Terms() {
         </section>
 
         {/* 8. Governing Law & Dispute Resolution */}
-        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+        <section className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm p-6 md:p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-start gap-4">
             <div className="p-2 bg-primary/10 rounded-lg shrink-0">
               <Scale className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 8. Governing Law & Jurisdiction
               </h2>
               <p className="mb-4">
@@ -266,16 +266,16 @@ export default function Terms() {
         </section>
 
         {/* Contact Footer */}
-        <div className="text-center pt-8 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-gray-500 mb-2 font-medium">
+        <div className="text-center pt-10 mt-8 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-gray-600 dark:text-gray-400 mb-2 font-medium">
             Pupin Labs
           </p>
-          <p className="text-sm text-gray-500 mb-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
             62 Rue Marie-Adelaide, 2128, Luxembourg, Luxembourg
           </p>
           <a
             href="mailto:legal@privatenote.ai"
-            className="inline-flex items-center text-primary font-medium hover:underline"
+            className="inline-flex items-center text-primary font-medium hover:underline transition-colors"
           >
             <Gavel className="h-4 w-4 mr-2" />
             legal@privatenote.ai

@@ -17,6 +17,7 @@ import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import BlogAdmin from "@/pages/BlogAdmin";
 import Analytics from "@/pages/Analytics";
+import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 import SecurityGuideDetail from "./pages/SecurityGuideDetail";
 import TestClientLLM from "@/pages/TestClientLLM";
@@ -55,6 +56,7 @@ function Router() {
           <Route path="/blog/:slug" component={BlogPost} />
           <Route path="/admin/blog" component={BlogAdmin} />
           <Route path="/admin/analytics" component={Analytics} />
+          <Route path="/admin/audit-logs" component={AuditLogs} />
           <Route path="/test-llm" component={TestClientLLM} />
           <Route path="/llm-ui" component={LlmUi} />
           <Route path="/auth" component={Auth} />

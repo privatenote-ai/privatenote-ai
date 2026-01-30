@@ -1,11 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { WebAuthnOptions, coerceLoginOptions, credentialToJson } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
-import { Laptop, Smartphone, Globe } from "lucide-react";
+import { useLocation } from "wouter";
+import {
+  Laptop,
+  Smartphone,
+  Globe,
+  Copy,
+  ChevronRight,
+} from "lucide-react";
 
 type SessionInfo = {
   id: string;
@@ -33,9 +49,11 @@ type PasskeyInfo = {
 
 export default function SecuritySettings() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -43,6 +61,9 @@ export default function SecuritySettings() {
   const [recoveryGeneratedAt, setRecoveryGeneratedAt] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -60,11 +81,13 @@ export default function SecuritySettings() {
     return { label: "Web", icon: Globe };
   };
 
-  const refreshAll = async () => {
+  const refreshAll = useCallback(async () => {
     try {
       const me = await apiRequest<{
+        id: string;
         email: string | null;
       }>("/api/auth/me", "GET");
+      setUserId(me.id);
       setEmail(me.email ?? user?.email ?? null);
       setSignedIn(true);
 
@@ -85,11 +108,12 @@ export default function SecuritySettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
+    if (authLoading) return;
     refreshAll();
-  }, []);
+  }, [user, authLoading, refreshAll]);
 
   const performStepUp = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
@@ -111,6 +135,53 @@ export default function SecuritySettings() {
       credential: credentialToJson(credential),
     });
     return true;
+  };
+
+  const copyEmail = async () => {
+    if (!email) return;
+    try {
+      await navigator.clipboard.writeText(email);
+      toast({ title: "Email copied", description: "Email address copied to clipboard." });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy email to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyUserId = async () => {
+    if (!userId) return;
+    try {
+      await navigator.clipboard.writeText(userId);
+      toast({ title: "User ID copied", description: "User ID copied to clipboard." });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy User ID to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    const confirmed = window.confirm("Log out of all other active sessions on other devices besides this one?");
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      await apiRequest("/api/auth/sessions/revoke-all", "POST");
+      toast({ title: "All devices logged out", description: "All other sessions have been revoked." });
+      refreshAll();
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleGenerateRecoveryCodes = async () => {
@@ -192,7 +263,69 @@ export default function SecuritySettings() {
     }
   };
 
-  if (loading) {
+  const handleDeleteAccount = async () => {
+    if (!email) return;
+
+    const normalizedInput = deleteEmailInput.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedInput !== normalizedEmail) {
+      toast({
+        title: "Email mismatch",
+        description: "The email you entered does not match your account email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      // Perform step-up first
+      const stepped = await performStepUp();
+      if (!stepped) {
+        toast({
+          title: "Authentication required",
+          description: "Please complete authentication to delete your account.",
+          variant: "destructive",
+        });
+        setDeletingAccount(false);
+        return;
+      }
+
+      // Delete account
+      await apiRequest("/api/auth/account/delete", "POST", { email: normalizedEmail });
+
+      toast({
+        title: "Account deleted",
+        description: "Your account has been permanently deleted.",
+      });
+
+      // Sign out and redirect
+      await signOut();
+      setLocation("/");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.startsWith("403")) {
+        toast({
+          title: "Authentication required",
+          description: "Please complete authentication to delete your account.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Delete failed",
+          description: error instanceof Error ? error.message : "Failed to delete account. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setDeletingAccount(false);
+      setDeleteDialogOpen(false);
+      setDeleteEmailInput("");
+    }
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <Card>
@@ -204,7 +337,7 @@ export default function SecuritySettings() {
     );
   }
 
-  if (!signedIn) {
+  if (!signedIn || !user) {
     return (
       <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
         <Card>
@@ -223,123 +356,299 @@ export default function SecuritySettings() {
   }
 
   return (
-    <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>Primary email on file.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Primary email</p>
-            <p className="text-sm text-gray-600 dark:text-gray-300">{email ?? "No email set"}</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      {/* Account Security Section */}
+      <div className="mb-12">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Account security</h2>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Passkeys</CardTitle>
-          <CardDescription>Synced vs device-bound passkeys based on transport hints.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {passkeys.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300">No passkeys registered yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {passkeys.map((pk) => (
-                <div key={pk.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{pk.label}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      Added {dateFormatter.format(new Date(pk.createdAt))}
-                      {pk.lastUsedAt ? ` · Last used ${dateFormatter.format(new Date(pk.lastUsedAt))}` : ""}
-                    </p>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{pk.transports?.join(", ")}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleResetPasskeys} disabled={busy || passkeys.length === 0}>
-              Reset passkeys
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recovery Codes</CardTitle>
-          <CardDescription>One-time codes for account recovery.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {recoveryRemaining > 0
-              ? `${recoveryRemaining} unused codes available.`
-              : "No unused recovery codes."}
-            {recoveryGeneratedAt ? ` Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}.` : ""}
-          </p>
-          <Button onClick={handleGenerateRecoveryCodes} disabled={busy}>
-            Generate new codes
-          </Button>
-          {recoveryCodes && (
-            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-              <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
-                Copy these codes now. You won’t be able to see them again.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono text-gray-800 dark:text-gray-100">
-                {recoveryCodes.map((code) => (
-                  <span key={code}>{code}</span>
-                ))}
+        <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          {/* Email */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Email</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{email ?? "No email set"}</p>
+                {email && (
+                  <button
+                    onClick={copyEmail}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    title="Copy email"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                )}
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button variant="outline" size="sm" disabled>
+              Change email
+            </Button>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Sessions</CardTitle>
-          <CardDescription>Devices signed in to your account.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {sessions.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300">No sessions found.</p>
-          ) : (
-            <div className="space-y-2">
-              {sessions.map((session) => {
-                const device = getSessionDevice(session);
-                const Icon = device.icon;
-                return (
-                  <div key={session.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                        <Icon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {device.label}{session.current ? " · Current" : ""}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300">
-                          Created {session.createdAt ? dateFormatter.format(new Date(session.createdAt)) : "Unknown"}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" onClick={() => handleRevokeSession(session.id)} disabled={busy}>
-                      Revoke
-                    </Button>
-                  </div>
-                );
-              })}
+          {/* 2-step verification */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">2-step verification</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Add an additional layer of security to your account during login.
+              </p>
             </div>
-          )}
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Session revocation may take up to 10 minutes to complete.
-          </p>
-        </CardContent>
-      </Card>
+            <Button variant="outline" size="sm" disabled>
+              Add verification method
+            </Button>
+          </div>
+
+          {/* Passkeys */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Passkeys</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Securely sign-in with on-device biometric authentication.
+              </p>
+              {passkeys.length > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  {passkeys.length} passkey{passkeys.length !== 1 ? "s" : ""} registered
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {passkeys.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetPasskeys}
+                  disabled={busy || passkeys.length === 0}
+                >
+                  Reset passkeys
+                </Button>
+              )}
+              <Button variant="outline" size="sm" disabled>
+                Add passkey
+              </Button>
+            </div>
+          </div>
+
+          {/* Recovery Codes */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Recovery codes</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {recoveryRemaining > 0
+                  ? `${recoveryRemaining} unused codes available.`
+                  : "No unused recovery codes."}
+                {recoveryGeneratedAt ? ` Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}.` : ""}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleGenerateRecoveryCodes} disabled={busy}>
+              Generate new codes
+            </Button>
+          </div>
+        </div>
+
+        {/* Recovery Codes Display */}
+        {recoveryCodes && (
+          <div className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+              Copy these codes now. You won't be able to see them again.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono text-gray-800 dark:text-gray-100">
+              {recoveryCodes.map((code) => (
+                <span key={code}>{code}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Devices Section */}
+      <div className="mb-12">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Devices</h2>
+
+        {/* Log out of all devices */}
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Log out of all devices</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Log out of all other active sessions on other devices besides this one.
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleRevokeAllSessions} disabled={busy}>
+            Log out of all devices
+          </Button>
+        </div>
+
+        {/* Devices Table */}
+        <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+                <tr>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Device Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Last Active</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                      No active sessions found.
+                    </td>
+                  </tr>
+                ) : (
+                  sessions.map((session) => {
+                    const device = getSessionDevice(session);
+                    const Icon = device.icon;
+                    const lastActive = session.lastSeenAt || session.createdAt;
+                    const isCurrent = session.current;
+
+                    return (
+                      <tr
+                        key={session.id}
+                        className="border-b border-gray-200 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-900"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                            <span className="text-sm text-gray-900 dark:text-white">
+                              {device.label}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                This Device
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {lastActive
+                              ? isCurrent
+                                ? "Now"
+                                : dateFormatter.format(new Date(lastActive))
+                              : "Unknown"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {!isCurrent && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRevokeSession(session.id)}
+                              disabled={busy}
+                            >
+                              Log out
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* User ID Section */}
+      <div className="mb-12">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">User ID</h2>
+        <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">User ID</p>
+              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{userId ?? "Loading..."}</p>
+            </div>
+            {userId && (
+              <button
+                onClick={copyUserId}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                title="Copy User ID"
+              >
+                <Copy className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Support Section */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Support</h2>
+
+        <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          {/* Delete Account */}
+          <button
+            onClick={() => setDeleteDialogOpen(true)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
+          >
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Delete my account</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Permanently delete the account and remove access from all sessions.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your account and remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                To confirm, please type or paste your email address:
+              </p>
+              <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{email}</p>
+                  <button
+                    onClick={copyEmail}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded transition-colors"
+                    title="Copy email"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                value={deleteEmailInput}
+                onChange={(e) => setDeleteEmailInput(e.target.value)}
+                disabled={deletingAccount}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteEmailInput("");
+              }}
+              disabled={deletingAccount}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || !deleteEmailInput.trim()}
+            >
+              {deletingAccount ? "Deleting..." : "Delete account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
