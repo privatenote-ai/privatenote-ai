@@ -327,11 +327,9 @@ export default function SecuritySettings() {
                         </p>
                       </div>
                     </div>
-                    {!session.current && (
-                      <Button variant="outline" onClick={() => handleRevokeSession(session.id)} disabled={busy}>
-                        Revoke
-                      </Button>
-                    )}
+                    <Button variant="outline" onClick={() => handleRevokeSession(session.id)} disabled={busy}>
+                      Revoke
+                    </Button>
                   </div>
                 );
               })}

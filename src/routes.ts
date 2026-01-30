@@ -238,7 +238,7 @@ async function sendMagicLinkEmail(
     "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
     "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
     "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
-    "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote</span>",
+    "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote.ai</span>",
     "  </div>",
     "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
     "</div>",
