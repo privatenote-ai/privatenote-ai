@@ -83,63 +83,62 @@ export const Navbar: React.FC = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left: Logo + Desktop Links */}
-          <div className="flex items-center gap-8">
+          {/* Left: Logo */}
+          <NavLink
+            href="/"
+            closeMenu={closeMenu}
+            className="flex items-center cursor-pointer"
+          >
+            <span className="font-bold text-2xl text-primary">
+              privateNote
+              <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
+            </span>
+          </NavLink>
+
+          {/* Center: Desktop Links */}
+          <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm font-medium">
             <NavLink
               href="/"
               closeMenu={closeMenu}
-              className="flex items-center cursor-pointer"
+              className="text-primary hover:text-primary/80 transition-colors"
             >
-              <span className="font-bold text-2xl text-primary">
-                privateNote
-                <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
-              </span>
+              Write a Note
             </NavLink>
-
-            <div className="hidden md:flex items-center gap-7 text-sm font-medium">
-              <NavLink
-                href="/"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Write a Note
-              </NavLink>
-              <NavLink
-                href="/password-generator"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Share a Password
-              </NavLink>
-              <NavLink
-                href="/how-it-works"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                How It Works
-              </NavLink>
-              <NavLink
-                href="/security-resources"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Security
-              </NavLink>
-              <NavLink
-                href="/blog"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Blog
-              </NavLink>
-              <NavLink
-                href="/about"
-                closeMenu={closeMenu}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                About
-              </NavLink>
-            </div>
+            <NavLink
+              href="/password-generator"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Share a Password
+            </NavLink>
+            <NavLink
+              href="/how-it-works"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              How It Works
+            </NavLink>
+            <NavLink
+              href="/security-resources"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Security
+            </NavLink>
+            <NavLink
+              href="/blog"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              Blog
+            </NavLink>
+            <NavLink
+              href="/about"
+              closeMenu={closeMenu}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              About
+            </NavLink>
           </div>
 
           {/* Right: Desktop Auth */}

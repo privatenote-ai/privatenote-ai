@@ -6,9 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE,
   email_verified INTEGER DEFAULT 0,
   status TEXT DEFAULT 'pending',
-  backup_email TEXT,
-  backup_email_verified INTEGER DEFAULT 0,
-  backup_email_pending TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT,
   last_login_at TEXT

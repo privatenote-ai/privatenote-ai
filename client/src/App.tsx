@@ -22,7 +22,6 @@ import SecurityGuideDetail from "./pages/SecurityGuideDetail";
 import TestClientLLM from "@/pages/TestClientLLM";
 import Auth from "@/pages/Auth";
 import AuthMagic from "@/pages/AuthMagic";
-import AuthBackup from "@/pages/AuthBackup";
 import AuthRecovery from "@/pages/AuthRecovery";
 import AuthSignIn from "@/pages/AuthSignIn";
 import AuthSignUp from "@/pages/AuthSignUp";
@@ -34,10 +33,11 @@ import { Footer } from "./components/Footer";
 function Router() {
   const [location] = useLocation();
   const isAuthRoute = location.startsWith("/auth");
+  const showNavbar = !isAuthRoute || location.startsWith("/auth/magic");
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!isAuthRoute && <Navbar />}
+      {showNavbar && <Navbar />}
       <main className={`flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={Home} />
@@ -61,7 +61,6 @@ function Router() {
           <Route path="/auth/sign-in" component={AuthSignIn} />
           <Route path="/auth/sign-up" component={AuthSignUp} />
           <Route path="/auth/magic" component={AuthMagic} />
-          <Route path="/auth/backup" component={AuthBackup} />
           <Route path="/auth/recovery" component={AuthRecovery} />
           <Route path="/account/security" component={SecuritySettings} />
           {/* Fallback to 404 */}

@@ -232,65 +232,16 @@ async function sendMagicLinkEmail(
   ].join("\n");
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    "  <div style=\"display: flex; align-items: center; gap: 10px; margin-bottom: 24px;\">",
-    "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"32\" height=\"32\" style=\"display: block;\" />",
-    "    <span style=\"font-size: 18px; font-weight: 700;\">privateNote</span>",
-    "  </div>",
     "  <div style=\"font-size: 20px; font-weight: 700; margin-bottom: 12px;\"><strong>Login to PrivateNote</strong></div>",
     "  <p style=\"margin: 0 0 20px; color: #374151;\">Use your magic link to finish signing in.</p>",
     "  <a href=\"" + magicUrl + "\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
     "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
+    "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
+    "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
+    "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote</span>",
+    "  </div>",
+    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
     "</div>",
-  ].join("");
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      text,
-      html,
-    }),
-  });
-
-  if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
-  }
-
-  return { ok: true };
-}
-
-async function sendBackupEmailVerificationEmail(
-  env: Env,
-  to: string,
-  verifyUrl: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
-  if (provider !== "resend") {
-    return { ok: false, error: "Email provider not configured" };
-  }
-
-  const apiKey = env.RESEND_API_KEY;
-  const from = env.AUTH_EMAIL_FROM;
-  if (!apiKey) {
-    return { ok: false, error: "Resend API key not configured" };
-  }
-  if (!from) {
-    return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
-  }
-
-  const subject = "Verify your PrivateNote backup email";
-  const text = `Verify your backup email by clicking the link below:\n\n${verifyUrl}\n\nIf you did not request this, you can ignore this email.`;
-  const html = [
-    "<p>Verify your backup email by clicking the link below:</p>",
-    `<p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-    "<p>If you did not request this, you can ignore this email.</p>",
   ].join("");
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -472,11 +423,6 @@ const AUTH_MAGIC_LINK = {
   TTL_SECONDS: 15 * 60,
 };
 
-const AUTH_BACKUP_VERIFY = {
-  PREFIX: "auth_backup_verify:",
-  TTL_SECONDS: 30 * 60,
-};
-
 function base64UrlEncode(bytes: Uint8Array): string {
   const binary = String.fromCharCode(...bytes);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -646,31 +592,6 @@ async function consumeMagicLink(env: Env, token: string): Promise<Record<string,
   }
 }
 
-async function storeBackupEmailToken(env: Env, token: string, payload: Record<string, unknown>) {
-  const kv = getAuthKv(env);
-  if (!kv) return false;
-  const tokenHash = await sha256Base64Url(token);
-  await kv.put(`${AUTH_BACKUP_VERIFY.PREFIX}${tokenHash}`, JSON.stringify(payload), {
-    expirationTtl: AUTH_BACKUP_VERIFY.TTL_SECONDS,
-  });
-  return true;
-}
-
-async function consumeBackupEmailToken(env: Env, token: string): Promise<Record<string, unknown> | null> {
-  const kv = getAuthKv(env);
-  if (!kv) return null;
-  const tokenHash = await sha256Base64Url(token);
-  const key = `${AUTH_BACKUP_VERIFY.PREFIX}${tokenHash}`;
-  const value = await kv.get(key);
-  if (!value) return null;
-  await kv.delete(key);
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 type AuthMethod = "magic" | "passkey" | "recovery";
 
 async function createSession(
@@ -680,17 +601,22 @@ async function createSession(
   authMethod: AuthMethod,
 ): Promise<{ sessionId: string } | null> {
   if (!env.AUTH_DB) return null;
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const userAgent = request.headers.get("User-Agent") || "";
+  const deviceLabel = getDeviceLabel(userAgent);
+  await env.AUTH_DB.prepare(
+    "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL AND user_agent = ?"
+  )
+    .bind(nowIso, "superseded", userId, userAgent)
+    .run();
   const sessionId = randomId(32);
   const sessionHash = await sha256Base64Url(sessionId);
   const id = crypto.randomUUID();
-  const now = Date.now();
-  const nowIso = new Date(now).toISOString();
   const expiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
   const absoluteExpiresAt = new Date(now + 1000 * SESSION_POLICY.ABSOLUTE_TTL_SECONDS).toISOString();
-  const userAgent = request.headers.get("User-Agent") || "";
   const ip = getRequestIp(request);
   const { city, country } = getRequestGeo(request);
-  const deviceLabel = getDeviceLabel(userAgent);
   const lastStepUpAt = authMethod === "passkey" ? nowIso : null;
   await env.AUTH_DB.prepare(
     "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -1088,9 +1014,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     if (email) {
       const user = await env.AUTH_DB.prepare(
-        "SELECT id FROM users WHERE email = ? OR backup_email = ? LIMIT 1"
+        "SELECT id FROM users WHERE email = ? LIMIT 1"
       )
-        .bind(email, email)
+        .bind(email)
         .first<{ id: string }>();
 
       if (user?.id) {
@@ -1247,10 +1173,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      "SELECT email, status, backup_email, backup_email_verified FROM users WHERE id = ? LIMIT 1"
+      "SELECT email, status FROM users WHERE id = ? LIMIT 1"
     )
       .bind(session.id)
-      .first<{ email: string | null; status: string | null; backup_email: string | null; backup_email_verified: number | null }>();
+      .first<{ email: string | null; status: string | null }>();
 
     const passkeyCount = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
@@ -1266,8 +1192,6 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ok: true,
         email: user?.email ?? null,
         status: user?.status ?? USER_STATUS_ACTIVE,
-        backupEmail: user?.backup_email ?? null,
-        backupEmailVerified: Boolean(user?.backup_email_verified),
         hasPasskeys: (passkeyCount?.count ?? 0) > 0,
         lastStepUpAt: session.lastStepUpAt,
       }),
@@ -1480,7 +1404,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const rows = await env.AUTH_DB.prepare(
-      "SELECT id, session_id_hash, expires_at, absolute_expires_at, revoked_at, revoked_reason, created_at, last_seen_at, user_agent, ip, city, country, device_label FROM sessions WHERE user_id = ? ORDER BY created_at DESC"
+      "SELECT id, session_id_hash, expires_at, absolute_expires_at, revoked_at, revoked_reason, created_at, last_seen_at, user_agent, ip, city, country, device_label FROM sessions WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC"
     )
       .bind(session.id)
       .all<{
@@ -1554,79 +1478,6 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
-  if (pathname === "/api/auth/backup/start" && method === "POST") {
-    let body: any;
-    try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ message: "Invalid JSON" }, 400, request);
-    }
-    if (!env.AUTH_DB) {
-      return jsonResponse({ message: "Auth database not configured" }, 501, request);
-    }
-    const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session) {
-      return jsonResponse({ message: "Unauthorized" }, 401, request);
-    }
-    if (!isStepUpFresh(session.lastStepUpAt)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
-    }
-    const backupEmail = normalizeEmail(typeof body?.email === "string" ? body.email : null);
-    if (!backupEmail || !isValidEmailLoose(backupEmail)) {
-      return jsonResponse({ message: "Invalid email" }, 400, request);
-    }
-
-    const token = randomId(32);
-    const stored = await storeBackupEmailToken(env, token, {
-      userId: session.id,
-      email: backupEmail,
-      createdAt: Date.now(),
-    });
-    if (!stored) {
-      return jsonResponse({ message: "Verification storage not configured" }, 501, request);
-    }
-
-    const verifyOrigin = getMagicLinkOrigin(request);
-    const verifyUrl = `${verifyOrigin}/auth/backup?token=${encodeURIComponent(token)}`;
-    const sendResult = await sendBackupEmailVerificationEmail(env, backupEmail, verifyUrl);
-    if (!sendResult.ok) {
-      return jsonResponse({ message: sendResult.error ?? "Email provider not configured" }, 501, request);
-    }
-
-    await env.AUTH_DB.prepare(
-      "UPDATE users SET backup_email_pending = ?, backup_email_verified = 0, updated_at = ? WHERE id = ?"
-    )
-      .bind(backupEmail, new Date().toISOString(), session.id)
-      .run();
-
-    return jsonResponse({ ok: true }, 200, request);
-  }
-
-  if (pathname === "/api/auth/backup/verify" && method === "GET") {
-    const token = url.searchParams.get("token");
-    if (!token) {
-      return jsonResponse({ message: "Missing token" }, 400, request);
-    }
-    if (!env.AUTH_DB) {
-      return jsonResponse({ message: "Auth database not configured" }, 501, request);
-    }
-    const payload = await consumeBackupEmailToken(env, token);
-    if (!payload) {
-      return jsonResponse({ message: "Token expired or invalid" }, 400, request);
-    }
-    const userId = typeof payload.userId === "string" ? payload.userId : null;
-    const backupEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
-    if (!userId || !backupEmail) {
-      return jsonResponse({ message: "Invalid token payload" }, 400, request);
-    }
-    await env.AUTH_DB.prepare(
-      "UPDATE users SET backup_email = ?, backup_email_verified = 1, backup_email_pending = NULL, updated_at = ? WHERE id = ?"
-    )
-      .bind(backupEmail, new Date().toISOString(), userId)
-      .run();
-    return jsonResponse({ ok: true }, 200, request);
-  }
-
   if (pathname === "/api/auth/recovery-codes/status" && method === "GET") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -1696,9 +1547,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const user = await env.AUTH_DB.prepare(
-      "SELECT id FROM users WHERE email = ? OR backup_email = ? LIMIT 1"
+      "SELECT id FROM users WHERE email = ? LIMIT 1"
     )
-      .bind(email, email)
+      .bind(email)
       .first<{ id: string }>();
     if (!user?.id) {
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);

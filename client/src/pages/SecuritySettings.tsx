@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { WebAuthnOptions, coerceLoginOptions, credentialToJson } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
+import { Laptop, Smartphone, Globe } from "lucide-react";
 
 type SessionInfo = {
   id: string;
@@ -37,9 +37,6 @@ export default function SecuritySettings() {
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
-  const [backupEmail, setBackupEmail] = useState<string | null>(null);
-  const [backupEmailVerified, setBackupEmailVerified] = useState(false);
-  const [newBackupEmail, setNewBackupEmail] = useState("");
   const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [recoveryRemaining, setRecoveryRemaining] = useState<number>(0);
@@ -52,16 +49,23 @@ export default function SecuritySettings() {
     timeStyle: "short",
   }), []);
 
+  const getSessionDevice = (session: SessionInfo) => {
+    const ua = (session.userAgent ?? "").toLowerCase();
+    if (ua.includes("iphone") || ua.includes("android") || ua.includes("mobile")) {
+      return { label: "Phone", icon: Smartphone };
+    }
+    if (ua.includes("electron") || ua.includes("desktop app") || ua.includes("privatenote")) {
+      return { label: "Desktop App", icon: Laptop };
+    }
+    return { label: "Web", icon: Globe };
+  };
+
   const refreshAll = async () => {
     try {
       const me = await apiRequest<{
         email: string | null;
-        backupEmail: string | null;
-        backupEmailVerified: boolean;
       }>("/api/auth/me", "GET");
       setEmail(me.email ?? user?.email ?? null);
-      setBackupEmail(me.backupEmail ?? null);
-      setBackupEmailVerified(Boolean(me.backupEmailVerified));
       setSignedIn(true);
 
       const passkeyRes = await apiRequest<{ passkeys: PasskeyInfo[] }>("/api/auth/passkeys", "GET");
@@ -107,38 +111,6 @@ export default function SecuritySettings() {
       credential: credentialToJson(credential),
     });
     return true;
-  };
-
-  const handleBackupEmail = async () => {
-    if (!newBackupEmail.trim()) {
-      toast({ title: "Email required", description: "Enter a backup email address." });
-      return;
-    }
-    setBusy(true);
-    try {
-      await apiRequest("/api/auth/backup/start", "POST", { email: newBackupEmail });
-      toast({ title: "Check your backup email", description: "We sent a verification link." });
-      setNewBackupEmail("");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      if (message.startsWith("403")) {
-        const stepped = await performStepUp();
-        if (stepped) {
-          await apiRequest("/api/auth/backup/start", "POST", { email: newBackupEmail });
-          toast({ title: "Check your backup email", description: "We sent a verification link." });
-          setNewBackupEmail("");
-        }
-      } else {
-        toast({
-          title: "Backup email failed",
-          description: error instanceof Error ? error.message : "Try again.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setBusy(false);
-      refreshAll();
-    }
   };
 
   const handleGenerateRecoveryCodes = async () => {
@@ -255,29 +227,12 @@ export default function SecuritySettings() {
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
-          <CardDescription>Primary email and recovery options.</CardDescription>
+          <CardDescription>Primary email on file.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">Primary email</p>
             <p className="text-sm text-gray-600 dark:text-gray-300">{email ?? "No email set"}</p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Backup email</p>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {backupEmail ? `${backupEmail} ${backupEmailVerified ? "(verified)" : "(pending)"}` : "Not set"}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                type="email"
-                placeholder="backup@domain.com"
-                value={newBackupEmail}
-                onChange={(e) => setNewBackupEmail(e.target.value)}
-              />
-              <Button onClick={handleBackupEmail} disabled={busy}>
-                Add backup email
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -347,34 +302,44 @@ export default function SecuritySettings() {
       <Card>
         <CardHeader>
           <CardTitle>Active Sessions</CardTitle>
-          <CardDescription>Manage devices signed in to your account.</CardDescription>
+          <CardDescription>Devices signed in to your account.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {sessions.length === 0 ? (
             <p className="text-sm text-gray-600 dark:text-gray-300">No sessions found.</p>
           ) : (
             <div className="space-y-2">
-              {sessions.map((session) => (
-                <div key={session.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {session.deviceLabel || "Unknown device"}
-                      {session.current ? " · Current" : ""}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      {session.city || "Unknown city"}, {session.country || "Unknown country"} · Last active{" "}
-                      {session.lastSeenAt ? dateFormatter.format(new Date(session.lastSeenAt)) : "Unknown"}
-                    </p>
+              {sessions.map((session) => {
+                const device = getSessionDevice(session);
+                const Icon = device.icon;
+                return (
+                  <div key={session.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                        <Icon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {device.label}{session.current ? " · Current" : ""}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                          Created {session.createdAt ? dateFormatter.format(new Date(session.createdAt)) : "Unknown"}
+                        </p>
+                      </div>
+                    </div>
+                    {!session.current && (
+                      <Button variant="outline" onClick={() => handleRevokeSession(session.id)} disabled={busy}>
+                        Revoke
+                      </Button>
+                    )}
                   </div>
-                  {!session.current && (
-                    <Button variant="outline" onClick={() => handleRevokeSession(session.id)} disabled={busy}>
-                      Revoke
-                    </Button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Session revocation may take up to 10 minutes to complete.
+          </p>
         </CardContent>
       </Card>
     </div>
