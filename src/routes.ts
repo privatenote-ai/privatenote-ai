@@ -726,7 +726,8 @@ async function createSession(
 }
 
 function sessionCookie(sessionId: string): string {
-  return `pn_session=${sessionId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
+  // SameSite=None required for cross-origin requests (frontend on Pages, API on Workers)
+  return `pn_session=${sessionId}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
 }
 
 function applyRotatedSession(headers: Headers, session: { newSessionId?: string } | null) {
@@ -1798,7 +1799,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (sessionId === session.sessionRowId) {
-      headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+      headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
@@ -2352,7 +2353,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         .bind(new Date().toISOString(), sessionHash)
         .run();
     }
-    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
@@ -2435,7 +2436,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0");
+    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
