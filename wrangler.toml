@@ -12,12 +12,6 @@ id = "f19b8957a39b422486311962ca759563"
 binding = "ANALYTICS_KV"
 id = "af52edc654a844ae999cc4fc35ba5a38"
 
-# R2 bucket binding for WebLLM models
-[[r2_buckets]]
-binding = "WEBLLM_MODELS"
-bucket_name = "webllm-models"
-# Note: Create the bucket first with: wrangler r2 bucket create webllm-models
-
 # Durable Objects binding
 [[durable_objects.bindings]]
 name = "SECURE_NOTES"

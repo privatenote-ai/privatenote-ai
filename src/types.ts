@@ -1,4 +1,4 @@
-import type { DurableObjectNamespace, KVNamespace, R2Bucket, D1Database } from "@cloudflare/workers-types";
+import type { DurableObjectNamespace, KVNamespace, D1Database } from "@cloudflare/workers-types";
 
 export interface Env {
   NOTES_KV: KVNamespace;
@@ -9,8 +9,6 @@ export interface Env {
   RATE_LIMIT_KV?: KVNamespace;
   // Analytics KV namespace (can use same as NOTES_KV or separate)
   ANALYTICS_KV?: KVNamespace;
-  // R2 bucket for WebLLM models
-  WEBLLM_MODELS?: R2Bucket;
   // Auth scaffolding (optional until configured)
   AUTH_DB?: D1Database;
   AUTH_KV?: KVNamespace;
