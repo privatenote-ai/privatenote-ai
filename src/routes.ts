@@ -225,8 +225,19 @@ function getDeviceLabel(userAgent: string): string {
   return `${isMobile ? "Mobile" : "Desktop"} • ${os} • ${browser}`;
 }
 
+// Safely parse transports JSON from database
+function parseTransports(transportsJson: string | null | undefined): string[] | undefined {
+  if (!transportsJson) return undefined;
+  try {
+    const parsed = JSON.parse(transportsJson);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getPasskeyLabel(transports: string[] | null): string {
-  if (!transports || transports.length === 0) {
+  if (!transports || !Array.isArray(transports) || transports.length === 0) {
     return "Synced / Remote Passkey";
   }
   const normalized = transports.map((t) => t.toLowerCase());
@@ -307,6 +318,53 @@ async function sendMagicLinkEmail(
   return { ok: true };
 }
 
+// Generic email sending function
+async function sendEmail(
+  env: Env,
+  options: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+  }
+): Promise<{ ok: boolean; error?: string }> {
+  const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
+  if (provider !== "resend") {
+    return { ok: false, error: "Email provider not configured" };
+  }
+
+  const apiKey = env.RESEND_API_KEY;
+  const from = env.AUTH_EMAIL_FROM;
+  if (!apiKey) {
+    return { ok: false, error: "Resend API key not configured" };
+  }
+  if (!from) {
+    return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    }),
+  });
+
+  if (!res.ok) {
+    const message = (await res.text()) || res.statusText;
+    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+  }
+
+  return { ok: true };
+}
+
 // Helper to create JSON response with CORS headers
 function jsonResponse(data: any, status: number = 200, request?: Request): Response {
   const headers: Record<string, string> = {
@@ -332,6 +390,11 @@ const AUTH_CHALLENGE = {
 const AUTH_MAGIC_LINK = {
   PREFIX: "auth_magic:",
   TTL_SECONDS: 15 * 60,
+};
+
+const AUTH_EMAIL_CHANGE = {
+  PREFIX: "auth_email_change:",
+  TTL_SECONDS: 60 * 60, // 1 hour for email change verification
 };
 
 function base64UrlEncode(bytes: Uint8Array): string {
@@ -514,7 +577,10 @@ type AuditEventType =
   | "ip_mismatch"
   | "step_up_required"
   | "step_up_success"
-  | "maintenance_cleanup";
+  | "maintenance_cleanup"
+  | "email_change_requested"
+  | "email_change_completed"
+  | "email_change_failed";
 
 type AuditEventStatus = "success" | "failure" | "warning";
 
@@ -1076,7 +1142,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       excludeCredentials: (credentials.results || []).map((cred) => ({
         id: base64UrlToBytes(cred.credential_id),
         type: "public-key",
-        transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+        transports: parseTransports(cred.transports),
       })),
     });
 
@@ -1311,7 +1377,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         allowCredentials = (creds.results || []).map((cred) => ({
           id: cred.credential_id,
           type: "public-key",
-          transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+          transports: parseTransports(cred.transports),
         }));
       }
     }
@@ -1534,7 +1600,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       allowCredentials: credentials.results.map((cred) => ({
         id: base64UrlToBytes(cred.credential_id),
         type: "public-key",
-        transports: cred.transports ? (JSON.parse(cred.transports) as string[]) : undefined,
+        transports: parseTransports(cred.transports),
       })),
       userVerification: "preferred",
     });
@@ -1671,7 +1737,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .all<{ id: string; credential_id: string; transports: string | null; created_at: string; last_used_at: string | null }>();
 
     const passkeys = (rows.results || []).map((row) => {
-      const transports = row.transports ? (JSON.parse(row.transports) as string[]) : null;
+      const transports = parseTransports(row.transports) || null;
       return {
         id: row.id,
         createdAt: row.created_at,
@@ -2376,6 +2442,230 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     );
   }
 
+  // ============================================================================
+  // EMAIL CHANGE ENDPOINTS
+  // ============================================================================
+
+  if (pathname === "/api/auth/email/change/request" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    // Check if user has passkeys - only require step-up if they do
+    const passkeyCount = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+
+    const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
+
+    // Only require step-up for users with passkeys
+    // Magic-link-only users verified email ownership when signing in
+    if (hasPasskeys && !isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    const body = await request.json().catch(() => ({})) as { newEmail?: string };
+    const { newEmail } = body;
+
+    if (!newEmail || typeof newEmail !== "string") {
+      return jsonResponse({ message: "New email is required" }, 400, request);
+    }
+
+    const normalizedNewEmail = newEmail.trim().toLowerCase();
+    const normalizedCurrentEmail = (session.email ?? "").trim().toLowerCase();
+
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedNewEmail)) {
+      return jsonResponse({ message: "Invalid email format" }, 400, request);
+    }
+
+    // Can't change to same email
+    if (normalizedNewEmail === normalizedCurrentEmail) {
+      return jsonResponse({ message: "New email must be different from current email" }, 400, request);
+    }
+
+    // Check if new email is already in use
+    const existingUser = await env.AUTH_DB.prepare("SELECT id FROM users WHERE email = ?")
+      .bind(normalizedNewEmail)
+      .first<{ id: string }>();
+
+    if (existingUser) {
+      // Don't reveal that email exists - use generic message
+      // But still log the attempt
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "email_change_failed",
+        status: "failure",
+        details: { reason: "email_in_use", newEmailMasked: normalizedNewEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      // Return success to prevent email enumeration (send email anyway, or fake success)
+      return jsonResponse({ ok: true, message: "Verification email sent to new address" }, 200, request);
+    }
+
+    // Generate verification token
+    const token = randomId(32);
+    const tokenHash = await sha256Base64Url(token);
+
+    // Store the email change request in KV
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+    }
+
+    const payload = {
+      userId: session.id,
+      currentEmail: normalizedCurrentEmail,
+      newEmail: normalizedNewEmail,
+      createdAt: new Date().toISOString(),
+    };
+
+    await kv.put(`${AUTH_EMAIL_CHANGE.PREFIX}${tokenHash}`, JSON.stringify(payload), {
+      expirationTtl: AUTH_EMAIL_CHANGE.TTL_SECONDS,
+    });
+
+    // Send verification email to new address
+    const origin = request.headers.get("Origin") || "https://privatenote.ai";
+    const verifyUrl = `${origin}/auth/email-change?token=${encodeURIComponent(token)}`;
+
+    const emailResult = await sendEmail(env, {
+      to: normalizedNewEmail,
+      subject: "Verify your new email address - PrivateNote",
+      text: `You requested to change your email address for your PrivateNote account.\n\nClick the link below to verify your new email address:\n${verifyUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this change, please ignore this email and your account will remain unchanged.`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Verify your new email address</h2>
+          <p>You requested to change your email address for your PrivateNote account.</p>
+          <p>Click the button below to verify your new email address:</p>
+          <p style="margin: 24px 0;">
+            <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
+              Verify email address
+            </a>
+          </p>
+          <p style="color: #666; font-size: 14px;">This link expires in 1 hour.</p>
+          <p style="color: #666; font-size: 14px;">If you didn't request this change, please ignore this email and your account will remain unchanged.</p>
+        </div>
+      `,
+    });
+
+    if (!emailResult.ok) {
+      console.error("[AUTH] Failed to send email change verification:", emailResult.error);
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "email_change_failed",
+        status: "failure",
+        details: { reason: "email_send_failed", newEmailMasked: normalizedNewEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "Failed to send verification email" }, 500, request);
+    }
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "email_change_requested",
+      status: "success",
+      details: {
+        currentEmailMasked: normalizedCurrentEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+        newEmailMasked: normalizedNewEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true, message: "Verification email sent to new address" }, 200, request);
+  }
+
+  if (pathname === "/api/auth/email/change/verify" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+
+    if (!token) {
+      return jsonResponse({ message: "Missing verification token" }, 400, request);
+    }
+
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+    }
+
+    const tokenHash = await sha256Base64Url(token);
+    const key = `${AUTH_EMAIL_CHANGE.PREFIX}${tokenHash}`;
+    const value = await kv.get(key);
+
+    if (!value) {
+      return jsonResponse({ message: "Invalid or expired verification link" }, 400, request);
+    }
+
+    // Delete token immediately (one-time use)
+    await kv.delete(key);
+
+    const payload = JSON.parse(value) as {
+      userId: string;
+      currentEmail: string;
+      newEmail: string;
+      createdAt: string;
+    };
+
+    // Check if user still exists (they might have been deleted after requesting email change)
+    const userExists = await env.AUTH_DB.prepare("SELECT id FROM users WHERE id = ?")
+      .bind(payload.userId)
+      .first<{ id: string }>();
+
+    if (!userExists) {
+      // User was deleted - don't log audit (would fail FK constraint)
+      console.warn("[AUTH] Email change verification for deleted user:", payload.userId);
+      return jsonResponse({ message: "Account no longer exists" }, 400, request);
+    }
+
+    // Double-check new email isn't taken (race condition protection)
+    const existingUser = await env.AUTH_DB.prepare("SELECT id FROM users WHERE email = ? AND id != ?")
+      .bind(payload.newEmail, payload.userId)
+      .first<{ id: string }>();
+
+    if (existingUser) {
+      await logAuditEvent(env, {
+        userId: payload.userId,
+        eventType: "email_change_failed",
+        status: "failure",
+        details: { reason: "email_taken_race", newEmailMasked: payload.newEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "This email is no longer available" }, 400, request);
+    }
+
+    // Update user's email
+    await env.AUTH_DB.prepare("UPDATE users SET email = ?, email_verified = 1, updated_at = ? WHERE id = ?")
+      .bind(payload.newEmail, new Date().toISOString(), payload.userId)
+      .run();
+
+    await logAuditEvent(env, {
+      userId: payload.userId,
+      eventType: "email_change_completed",
+      status: "success",
+      details: {
+        previousEmailMasked: payload.currentEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+        newEmailMasked: payload.newEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true, message: "Email address updated successfully", newEmail: payload.newEmail }, 200, request);
+  }
+
   if (pathname === "/api/auth/account/delete" && method === "POST") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -2384,7 +2674,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    if (!isStepUpFresh(session.lastStepUpAt)) {
+
+    // Check if user has passkeys - only require step-up if they do
+    const passkeyCount = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+
+    const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
+
+    // Only require step-up for users with passkeys
+    // Magic-link-only users can delete without step-up (they proved email ownership to sign in)
+    if (hasPasskeys && !isStepUpFresh(session.lastStepUpAt)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }
 

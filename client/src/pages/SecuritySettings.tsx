@@ -21,6 +21,8 @@ import {
   Globe,
   Copy,
   ChevronRight,
+  Mail,
+  Loader2,
 } from "lucide-react";
 
 type SessionInfo = {
@@ -64,6 +66,10 @@ export default function SecuritySettings() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [emailChangeDialogOpen, setEmailChangeDialogOpen] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [emailChangeSent, setEmailChangeSent] = useState(false);
 
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -280,16 +286,19 @@ export default function SecuritySettings() {
 
     setDeletingAccount(true);
     try {
-      // Perform step-up first
-      const stepped = await performStepUp();
-      if (!stepped) {
-        toast({
-          title: "Authentication required",
-          description: "Please complete authentication to delete your account.",
-          variant: "destructive",
-        });
-        setDeletingAccount(false);
-        return;
+      // Only require step-up if user has passkeys
+      // Magic-link-only users can delete without step-up (they proved email ownership)
+      if (passkeys.length > 0) {
+        const stepped = await performStepUp();
+        if (!stepped) {
+          toast({
+            title: "Authentication required",
+            description: "Please complete authentication to delete your account.",
+            variant: "destructive",
+          });
+          setDeletingAccount(false);
+          return;
+        }
       }
 
       // Delete account
@@ -323,6 +332,91 @@ export default function SecuritySettings() {
       setDeleteDialogOpen(false);
       setDeleteEmailInput("");
     }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmailInput.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter a new email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmailInput.trim())) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const normalizedNew = newEmailInput.trim().toLowerCase();
+    const normalizedCurrent = (email ?? "").trim().toLowerCase();
+
+    if (normalizedNew === normalizedCurrent) {
+      toast({
+        title: "Same email",
+        description: "New email must be different from your current email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingEmail(true);
+    try {
+      // Only require step-up if user has passkeys
+      // Magic-link-only users can proceed without step-up
+      if (passkeys.length > 0) {
+        const stepped = await performStepUp();
+        if (!stepped) {
+          toast({
+            title: "Authentication required",
+            description: "Please complete authentication to change your email.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Request email change
+      await apiRequest("/api/auth/email/change/request", "POST", {
+        newEmail: normalizedNew,
+      });
+
+      setEmailChangeSent(true);
+      toast({
+        title: "Verification email sent",
+        description: "Check your new email address for a verification link.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.startsWith("403")) {
+        toast({
+          title: "Authentication required",
+          description: "Please complete authentication to change your email.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Change email failed",
+          description: error instanceof Error ? error.message : "Failed to request email change. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setChangingEmail(false);
+    }
+  };
+
+  const closeEmailChangeDialog = () => {
+    setEmailChangeDialogOpen(false);
+    setNewEmailInput("");
+    setEmailChangeSent(false);
   };
 
   if (authLoading || loading) {
@@ -379,7 +473,12 @@ export default function SecuritySettings() {
                 )}
               </div>
             </div>
-            <Button variant="outline" size="sm" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEmailChangeDialogOpen(true)}
+              disabled={busy || !email}
+            >
               Change email
             </Button>
           </div>
@@ -592,6 +691,97 @@ export default function SecuritySettings() {
           </button>
         </div>
       </div>
+
+      {/* Change Email Dialog */}
+      <Dialog open={emailChangeDialogOpen} onOpenChange={(open) => !changingEmail && (open ? setEmailChangeDialogOpen(true) : closeEmailChangeDialog())}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change email address</DialogTitle>
+            <DialogDescription>
+              {emailChangeSent
+                ? "We've sent a verification link to your new email address."
+                : "Enter your new email address. You'll need to verify it before the change takes effect."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {emailChangeSent ? (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Verification email sent
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Check <span className="font-mono">{newEmailInput}</span> for the verification link.
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                The link expires in 1 hour. Your email won't change until you click the verification link.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Current email:
+                </p>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
+                  <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{email}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  New email address:
+                </p>
+                <Input
+                  type="email"
+                  placeholder="Enter new email address"
+                  value={newEmailInput}
+                  onChange={(e) => setNewEmailInput(e.target.value)}
+                  disabled={changingEmail}
+                />
+              </div>
+              {passkeys.length > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  You'll need to verify with your passkey before we send the verification email.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {emailChangeSent ? (
+              <Button onClick={closeEmailChangeDialog}>
+                Done
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={closeEmailChangeDialog}
+                  disabled={changingEmail}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleChangeEmail}
+                  disabled={changingEmail || !newEmailInput.trim()}
+                >
+                  {changingEmail ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Account Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
