@@ -2708,15 +2708,13 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     // Delete all user data
     const userId = session.id;
 
-    // Audit log: account deletion (log before deleting user data)
-    await logAuditEvent(env, {
-      userId,
-      eventType: "account_deleted",
-      status: "success",
-      details: { emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
-      ip: getRequestIp(request),
-      userAgent: request.headers.get("User-Agent"),
-    });
+    // Delete in order to respect foreign key constraints:
+    // 1. First handle all child table records that reference user_id
+
+    // Anonymize audit log entries (set user_id to NULL) - preserves audit trail for security
+    await env.AUTH_DB.prepare("UPDATE audit_log SET user_id = NULL WHERE user_id = ?")
+      .bind(userId)
+      .run();
 
     // Delete recovery codes
     await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ?")
@@ -2728,13 +2726,28 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(userId)
       .run();
 
-    // Revoke all sessions
-    await revokeAllUserSessions(env, userId, "account_deleted");
+    // Delete all sessions (not just revoke - must delete for FK constraint)
+    await env.AUTH_DB.prepare("DELETE FROM sessions WHERE user_id = ?")
+      .bind(userId)
+      .run();
 
-    // Delete user record
+    // 2. Now we can safely delete the user record
     await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?")
       .bind(userId)
       .run();
+
+    // Log account deletion after user is deleted (use null user_id since user no longer exists)
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "account_deleted",
+      status: "success",
+      details: {
+        deletedUserId: userId,
+        emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3")
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
