@@ -31,8 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Admin token
-const ADMIN_TOKEN = 'admin-secret-token';
+const ADMIN_TOKEN_STORAGE_KEY = 'admin_token';
 
 // Get API base URL
 const getApiUrl = (url: string): string => {
@@ -107,8 +106,8 @@ interface AuditLogsResponse {
 
 export default function AuditLogs() {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => typeof window !== 'undefined' && !!sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
+  const [token, setToken] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '' : ''));
 
   // Filters
   const [eventType, setEventType] = useState<string>('');
@@ -137,7 +136,7 @@ export default function AuditLogs() {
       if (ipFilter) params.set('ip', ipFilter);
 
       const response = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': ADMIN_TOKEN }
+        headers: { 'X-Admin-Token': token }
       });
 
       if (!response.ok) throw new Error('Failed to fetch audit logs');
@@ -155,7 +154,7 @@ export default function AuditLogs() {
     queryKey: ['/api/admin/audit-logs/stats', statsDays],
     queryFn: async () => {
       const response = await fetch(getApiUrl(`/api/admin/audit-logs/stats?days=${statsDays}`), {
-        headers: { 'X-Admin-Token': ADMIN_TOKEN }
+        headers: { 'X-Admin-Token': token }
       });
 
       if (!response.ok) throw new Error('Failed to fetch stats');
@@ -164,15 +163,19 @@ export default function AuditLogs() {
     enabled: isAuthenticated
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (token === ADMIN_TOKEN) {
+    if (!token.trim()) {
+      toast({ variant: "destructive", title: "Authentication failed", description: "Enter your admin token." });
+      return;
+    }
+    const response = await fetch(getApiUrl('/api/admin/audit-logs?limit=1'), {
+      headers: { 'X-Admin-Token': token.trim() },
+    });
+    if (response.ok) {
+      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
       setIsAuthenticated(true);
-      toast({
-        title: "Authenticated",
-        description: "You now have access to the audit logs.",
-      });
+      toast({ title: "Authenticated", description: "You now have access to the audit logs." });
     } else {
       toast({
         variant: "destructive",
@@ -533,7 +536,7 @@ export default function AuditLogs() {
             </AlertDescription>
           </Alert>
 
-          <SecurityAlertsView isAuthenticated={isAuthenticated} />
+          <SecurityAlertsView isAuthenticated={isAuthenticated} token={token} />
         </TabsContent>
       </Tabs>
     </div>
@@ -670,9 +673,9 @@ function AuditLogsTable({
   );
 }
 
-function SecurityAlertsView({ isAuthenticated }: { isAuthenticated: boolean }) {
+function SecurityAlertsView({ isAuthenticated, token }: { isAuthenticated: boolean; token: string }) {
   const { data, isLoading, error } = useQuery<AuditLogsResponse>({
-    queryKey: ['/api/admin/audit-logs/security'],
+    queryKey: ['/api/admin/audit-logs/security', token],
     queryFn: async () => {
       // Fetch failures and warnings
       const params = new URLSearchParams();
@@ -680,7 +683,7 @@ function SecurityAlertsView({ isAuthenticated }: { isAuthenticated: boolean }) {
       params.set('status', 'failure');
 
       const failuresResponse = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': ADMIN_TOKEN }
+        headers: { 'X-Admin-Token': token }
       });
 
       if (!failuresResponse.ok) throw new Error('Failed to fetch');
@@ -689,7 +692,7 @@ function SecurityAlertsView({ isAuthenticated }: { isAuthenticated: boolean }) {
       // Also get warnings
       params.set('status', 'warning');
       const warningsResponse = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': ADMIN_TOKEN }
+        headers: { 'X-Admin-Token': token }
       });
 
       if (!warningsResponse.ok) throw new Error('Failed to fetch');

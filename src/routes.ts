@@ -48,6 +48,8 @@ const SESSION_POLICY = {
 const USER_STATUS_PENDING = "pending";
 const USER_STATUS_ACTIVE = "active";
 const STEP_UP_WINDOW_SECONDS = 5 * 60;
+// Tighter step-up window for recovery code regeneration (reduces window if session is compromised)
+const RECOVERY_CODE_STEP_UP_WINDOW_SECONDS = 2 * 60;
 
 // Recovery code rate limiting with progressive delays and account lockout
 const RECOVERY_CODE_RATE_LIMIT = {
@@ -225,12 +227,17 @@ function getDeviceLabel(userAgent: string): string {
   return `${isMobile ? "Mobile" : "Desktop"} • ${os} • ${browser}`;
 }
 
-// Safely parse transports JSON from database
+// Safely parse transports JSON from database.
+// Supports both formats: raw array ["internal","hybrid"] and object { transports: [...] }.
 function parseTransports(transportsJson: string | null | undefined): string[] | undefined {
   if (!transportsJson) return undefined;
   try {
     const parsed = JSON.parse(transportsJson);
-    return Array.isArray(parsed) ? parsed : undefined;
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.transports)) {
+      return parsed.transports;
+    }
+    return undefined;
   } catch {
     return undefined;
   }
@@ -342,6 +349,8 @@ async function sendEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
+  console.log(`[EMAIL] Sending email via Resend: to=${options.to}, subject=${options.subject}`);
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -357,9 +366,20 @@ async function sendEmail(
     }),
   });
 
+  const responseText = await res.text();
+  console.log(`[EMAIL] Resend API response: status=${res.status}, body=${responseText}`);
+
   if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
+    const message = responseText || res.statusText;
+    console.error(`[EMAIL] Resend API error: ${res.status} ${message}`);
     return { ok: false, error: `Resend error: ${res.status} ${message}` };
+  }
+
+  try {
+    const responseJson = JSON.parse(responseText);
+    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || 'unknown'}`);
+  } catch (e) {
+    console.log(`[EMAIL] Resend email sent successfully (response not JSON)`);
   }
 
   return { ok: true };
@@ -369,12 +389,26 @@ async function sendEmail(
 function jsonResponse(data: any, status: number = 200, request?: Request): Response {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(request ? getCorsHeaders(request) : {
-      "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
-    }),
+    ...(request
+      ? getCorsHeaders(request)
+      : {
+        "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+      }),
   };
+
+  // Issue a stable, non-auth client identifier cookie for rate limiting / abuse protection.
+  // This is only used when IP-based identification is unavailable or weak.
+  if (request) {
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const hasClientCookie = /(?:^|;\s*)pn_client_id=([^;]+)/.test(cookieHeader);
+    if (!hasClientCookie) {
+      const clientId = randomId(16); // 16 random bytes → base64url
+      // 1 year, HttpOnly not needed (non-auth), but SameSite+Secure for safety
+      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+    }
+  }
 
   return new Response(JSON.stringify(data), {
     status,
@@ -466,26 +500,28 @@ function getExpectedOrigin(request: Request): string | string[] | null {
 const CANONICAL_RPID = "privatenote.ai";
 const PAGES_CANONICAL_RPID = "client-llm.privatenote-ai.pages.dev";
 
-function getExpectedRpId(request: Request): string {
-  const origin = request.headers.get("Origin");
-  if (origin) {
-    try {
-      const hostname = new URL(origin).hostname;
-      if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
-        return hostname;
-      }
-      if (hostname.endsWith(".pages.dev")) {
-        return PAGES_CANONICAL_RPID;
-      }
-      if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
-        return CANONICAL_RPID;
-      }
+/**
+ * Derive rpID only from an already-allowed origin (hardcoded mapping).
+ * Do not derive from request host/URL to avoid proxy/alternate-hostname influence.
+ */
+function getExpectedRpIdFromOrigin(allowedOrigin: string | string[] | null): string | null {
+  const originStr = allowedOrigin == null ? null : Array.isArray(allowedOrigin) ? allowedOrigin[0] : allowedOrigin;
+  if (!originStr) return null;
+  try {
+    const hostname = new URL(originStr).hostname;
+    if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
       return hostname;
-    } catch {
-      return new URL(request.url).hostname;
     }
+    if (hostname.endsWith(".pages.dev")) {
+      return PAGES_CANONICAL_RPID;
+    }
+    if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
+      return CANONICAL_RPID;
+    }
+    return null;
+  } catch {
+    return null;
   }
-  return new URL(request.url).hostname;
 }
 
 function randomId(bytes = 32): string {
@@ -501,16 +537,24 @@ async function sha256Base64Url(input: string): Promise<string> {
 }
 
 /**
- * Generate a recovery code with increased entropy (16 bytes = 128 bits)
- * Format: XXXX-XXXX-XXXX-XXXX (16 characters, Base32)
+ * Generate a recovery code with ~130 bits entropy (26 base32 chars × 5 bits).
+ * Format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XX (26 chars, Crockford-style Base32)
  */
 function generateRecoveryCode(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = new Uint8Array(16); // Increased from 12 to 16 bytes
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars = 5 bits each
+  const numChars = 26; // 26 × 5 = 130 bits
+  const bytes = new Uint8Array(Math.ceil((numChars * 5) / 8)); // 17 bytes for 130 bits
   crypto.getRandomValues(bytes);
   let raw = "";
-  for (const byte of bytes) {
-    raw += alphabet[byte % alphabet.length];
+  let bits = 0;
+  let acc = 0;
+  for (let i = 0; i < bytes.length && raw.length < numChars; i++) {
+    acc = (acc << 8) | bytes[i];
+    bits += 8;
+    while (bits >= 5 && raw.length < numChars) {
+      bits -= 5;
+      raw += alphabet[(acc >>> bits) & 31];
+    }
   }
   return raw.match(/.{1,4}/g)?.join("-") ?? raw;
 }
@@ -534,9 +578,8 @@ function constantTimeEquals(a: string, b: string): boolean {
  * Uses SHA-256 with 100,000 iterations (OWASP recommended minimum)
  */
 async function hashRecoveryCode(code: string, salt: string): Promise<string> {
-  // Use Argon2id - state-of-the-art password hashing algorithm
-  // Argon2id is resistant to both side-channel attacks (Argon2i) and GPU attacks (Argon2d)
-  const saltBuffer = new TextEncoder().encode(salt);
+  // Salt is stored as base64url(16 random bytes). Decode to raw bytes for Argon2.
+  const saltBuffer = base64UrlToBytes(salt);
   const codeBuffer = new TextEncoder().encode(code);
 
   const hash = await argon2.hash({
@@ -798,14 +841,15 @@ function sessionCookie(sessionId: string): string {
 
 function applyRotatedSession(headers: Headers, session: { newSessionId?: string } | null) {
   if (session?.newSessionId) {
-    headers.set("Set-Cookie", sessionCookie(session.newSessionId));
+    // Use append so we don't overwrite any existing Set-Cookie header(s)
+    headers.append("Set-Cookie", sessionCookie(session.newSessionId));
   }
 }
 
-function isStepUpFresh(lastStepUpAt: string | null): boolean {
+function isStepUpFresh(lastStepUpAt: string | null, windowSeconds: number = STEP_UP_WINDOW_SECONDS): boolean {
   if (!lastStepUpAt) return false;
   const last = new Date(lastStepUpAt).getTime();
-  return Date.now() - last <= STEP_UP_WINDOW_SECONDS * 1000;
+  return Date.now() - last <= windowSeconds * 1000;
 }
 
 function parseCookies(header: string | null): Record<string, string> {
@@ -893,12 +937,16 @@ async function getSessionFromRequest(
 
   // Optional IP binding check (can be disabled for mobile users)
   if (SESSION_IP_BINDING_ENABLED && row.session_ip && currentIp && row.session_ip !== currentIp) {
-    // IP mismatch - revoke session for security
-    await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
-      .bind(new Date().toISOString(), "ip_mismatch", sessionHash)
+    // Soft-bind: do NOT revoke the session on IP change.
+    // - Update stored IP to the new one
+    // - Clear last_stepup_at so any sensitive operation requires fresh step-up (e.g., passkey)
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET ip = ?, last_stepup_at = NULL WHERE session_id_hash = ? AND revoked_at IS NULL"
+    )
+      .bind(currentIp, sessionHash)
       .run();
 
-    // Audit log: IP mismatch
+    // Audit log: IP mismatch (still recorded for visibility and anomaly detection)
     await logAuditEvent(env, {
       userId: row.user_id,
       eventType: "ip_mismatch",
@@ -907,8 +955,6 @@ async function getSessionFromRequest(
       ip: currentIp,
       userAgent: request.headers.get("User-Agent"),
     });
-
-    return null;
   }
   const now = Date.now();
   if (row.absolute_expires_at && new Date(row.absolute_expires_at).getTime() < now) {
@@ -1122,6 +1168,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
     const userId = session.id;
     const userEmail = session.email ?? email;
+    const allowedOrigin = getExpectedOrigin(request);
+    if (!allowedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+    const rpID = getExpectedRpIdFromOrigin(allowedOrigin);
+    if (!rpID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+
     const credentials = await env.AUTH_DB.prepare(
       "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
     )
@@ -1130,7 +1185,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const options = generateRegistrationOptions({
       rpName: "PrivateNote.ai",
-      rpID: getExpectedRpId(request),
+      rpID,
       userID: userId,
       userName: userEmail || `privatenote-${userId.slice(0, 6)}`,
       userDisplayName: userEmail || "PrivateNote User",
@@ -1149,21 +1204,25 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const fallbackUserIdBytes = new TextEncoder().encode(userId);
     const fallbackUserName = userEmail || `privatenote-${userId.slice(0, 6)}`;
     const fallbackUserDisplayName = userEmail || "PrivateNote User";
-    const challengeFallback = randomId(32);
-    const normalizedOptions = {
-      ...options,
-      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
-      user: {
-        ...(options.user || {}),
-        id: coerceWebAuthnIdToBase64Url(options.user?.id ?? fallbackUserIdBytes, "user.id"),
-        name: options.user?.name || fallbackUserName,
-        displayName: options.user?.displayName || fallbackUserDisplayName,
-      },
-      excludeCredentials: options.excludeCredentials?.map((cred) => ({
-        ...cred,
-        id: coerceWebAuthnIdToBase64Url(cred.id, "excludeCredentials.id"),
-      })),
-    };
+    let normalizedOptions: Record<string, unknown>;
+    try {
+      normalizedOptions = {
+        ...options,
+        challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+        user: {
+          ...(options.user || {}),
+          id: coerceWebAuthnIdToBase64Url(options.user?.id ?? fallbackUserIdBytes, "user.id"),
+          name: options.user?.name || fallbackUserName,
+          displayName: options.user?.displayName || fallbackUserDisplayName,
+        },
+        excludeCredentials: options.excludeCredentials?.map((cred) => ({
+          ...cred,
+          id: coerceWebAuthnIdToBase64Url(cred.id, "excludeCredentials.id"),
+        })),
+      };
+    } catch {
+      return jsonResponse({ message: "Bad request" }, 400, request);
+    }
 
     const challengeId = randomId(16);
     const stored = await storeAuthChallenge(env, challengeId, {
@@ -1212,7 +1271,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!expectedOrigin) {
       return jsonResponse({ message: "Origin not allowed" }, 403, request);
     }
-    const expectedRPID = getExpectedRpId(request);
+    const expectedRPID = getExpectedRpIdFromOrigin(expectedOrigin);
+    if (!expectedRPID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
 
     let verification;
     try {
@@ -1357,6 +1419,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
 
+    const allowedOrigin = getExpectedOrigin(request);
+    if (!allowedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+    const rpID = getExpectedRpIdFromOrigin(allowedOrigin);
+    if (!rpID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
     let allowCredentials: Array<{ id: string; type: "public-key"; transports?: string[] }> = [];
 
@@ -1383,7 +1454,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const options = generateAuthenticationOptions({
-      rpID: getExpectedRpId(request),
+      rpID,
       allowCredentials: allowCredentials.length
         ? allowCredentials.map((cred) => ({
           ...cred,
@@ -1393,20 +1464,24 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       userVerification: "preferred",
     });
 
-    const challengeFallback = randomId(32);
-    const normalizedOptions = {
-      ...options,
-      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
-      allowCredentials: options.allowCredentials?.map((cred) => ({
-        ...cred,
-        id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
-      })),
-    };
+    let normalizedOptions: Record<string, unknown>;
+    try {
+      normalizedOptions = {
+        ...options,
+        challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+        allowCredentials: options.allowCredentials?.map((cred) => ({
+          ...cred,
+          id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
+        })),
+      };
+    } catch {
+      return jsonResponse({ message: "Bad request" }, 400, request);
+    }
 
     const challengeId = randomId(16);
     const stored = await storeAuthChallenge(env, challengeId, {
       type: "login",
-      challenge: normalizedOptions.challenge,
+      challenge: normalizedOptions.challenge as string,
       email,
       createdAt: Date.now(),
     });
@@ -1443,7 +1518,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!expectedOrigin) {
       return jsonResponse({ message: "Origin not allowed" }, 403, request);
     }
-    const expectedRPID = getExpectedRpId(request);
+    const expectedRPID = getExpectedRpIdFromOrigin(expectedOrigin);
+    if (!expectedRPID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
 
     let credentialId: string | null = null;
     try {
@@ -1586,6 +1664,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
+
+    const allowedOrigin = getExpectedOrigin(request);
+    if (!allowedOrigin) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+    const rpID = getExpectedRpIdFromOrigin(allowedOrigin);
+    if (!rpID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
+
     const credentials = await env.AUTH_DB.prepare(
       "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
     )
@@ -1596,7 +1684,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const options = generateAuthenticationOptions({
-      rpID: getExpectedRpId(request),
+      rpID,
       allowCredentials: credentials.results.map((cred) => ({
         id: base64UrlToBytes(cred.credential_id),
         type: "public-key",
@@ -1605,20 +1693,24 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       userVerification: "preferred",
     });
 
-    const challengeFallback = randomId(32);
-    const normalizedOptions = {
-      ...options,
-      challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge", challengeFallback),
-      allowCredentials: options.allowCredentials?.map((cred) => ({
-        ...cred,
-        id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
-      })),
-    };
+    let normalizedOptionsStepUp: Record<string, unknown>;
+    try {
+      normalizedOptionsStepUp = {
+        ...options,
+        challenge: coerceWebAuthnIdToBase64Url(options.challenge, "challenge"),
+        allowCredentials: options.allowCredentials?.map((cred) => ({
+          ...cred,
+          id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
+        })),
+      };
+    } catch {
+      return jsonResponse({ message: "Bad request" }, 400, request);
+    }
 
     const challengeId = randomId(16);
     const stored = await storeAuthChallenge(env, challengeId, {
       type: "stepup",
-      challenge: normalizedOptions.challenge,
+      challenge: normalizedOptionsStepUp.challenge as string,
       userId: session.id,
       createdAt: Date.now(),
     });
@@ -1626,7 +1718,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Auth challenge storage not configured" }, 501, request);
     }
 
-    return jsonResponse({ challengeId, options: normalizedOptions }, 200, request);
+    return jsonResponse({ challengeId, options: normalizedOptionsStepUp }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/stepup/verify" && method === "POST") {
@@ -1659,7 +1751,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!expectedOrigin) {
       return jsonResponse({ message: "Origin not allowed" }, 403, request);
     }
-    const expectedRPID = getExpectedRpId(request);
+    const expectedRPID = getExpectedRpIdFromOrigin(expectedOrigin);
+    if (!expectedRPID) {
+      return jsonResponse({ message: "Origin not allowed" }, 403, request);
+    }
 
     let credentialId: string | null = null;
     try {
@@ -1919,10 +2014,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    if (!isStepUpFresh(session.lastStepUpAt)) {
+    // Require step-up within 2 minutes for recovery code regeneration (tighter than general step-up)
+    if (!isStepUpFresh(session.lastStepUpAt, RECOVERY_CODE_STEP_UP_WINDOW_SECONDS)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }
 
+    // Delete only unused codes; used codes are retained for audit/forensics (used_at set)
     await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ? AND used_at IS NULL")
       .bind(session.id)
       .run();
@@ -1949,6 +2046,31 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
     });
+
+    // Notify user by email so they know if they did not initiate this (account may be compromised)
+    const userEmail = (session.email ?? "").trim().toLowerCase();
+    if (userEmail) {
+      const emailResult = await sendEmail(env, {
+        to: userEmail,
+        subject: "Recovery codes regenerated - PrivateNote",
+        text: `Your PrivateNote recovery codes were regenerated. Your previous unused recovery codes no longer work.\n\nIf you did not do this, please secure your account (change password if applicable, revoke other sessions, and add or verify your passkey) from Security Settings.\n\nThis is an automated security notification.`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Recovery codes regenerated</h2>
+            <p>Your PrivateNote recovery codes were regenerated. Your previous <strong>unused</strong> recovery codes no longer work.</p>
+            <p>If you did not do this, please secure your account:</p>
+            <ul>
+              <li>Revoke other sessions from Security Settings</li>
+              <li>Add or verify your passkey</li>
+            </ul>
+            <p style="color: #666; font-size: 14px;">This is an automated security notification.</p>
+          </div>
+        `,
+      });
+      if (!emailResult.ok) {
+        console.error("[AUTH] Failed to send recovery-codes-regenerated email:", emailResult.error);
+      }
+    }
 
     return jsonResponse({ ok: true, codes }, 200, request);
   }
@@ -2153,9 +2275,20 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
-    await env.AUTH_DB.prepare("UPDATE recovery_codes SET used_at = ? WHERE id = ?")
-      .bind(new Date().toISOString(), matchedId)
+    // Atomic consume: only update if still unused (prevents race where two requests use same code)
+    const usedAt = new Date().toISOString();
+    const updateResult = await env.AUTH_DB.prepare(
+      "UPDATE recovery_codes SET used_at = ? WHERE id = ? AND used_at IS NULL"
+    )
+      .bind(usedAt, matchedId)
       .run();
+
+    const rowsAffected = (updateResult?.meta as { changes?: number } | undefined)?.changes ?? -1;
+    if (rowsAffected === 0) {
+      // Code was already used (e.g. by a parallel request) — treat as invalid
+      await jitterDelay();
+      return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
+    }
 
     // Clear lockout state on successful recovery
     if (kv) {
@@ -2496,7 +2629,20 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .first<{ id: string }>();
 
     if (existingUser) {
-      // Don't reveal that email exists - use generic message
+      // If it's the same user's account, we can reveal this (no enumeration risk)
+      if (existingUser.id === session.id) {
+        await logAuditEvent(env, {
+          userId: session.id,
+          eventType: "email_change_failed",
+          status: "failure",
+          details: { reason: "email_already_current", newEmailMasked: normalizedNewEmail.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+          ip: getRequestIp(request),
+          userAgent: request.headers.get("User-Agent"),
+        });
+        return jsonResponse({ message: "This email address is already your current email address" }, 400, request);
+      }
+
+      // Different user owns this email - don't reveal that email exists (prevent enumeration)
       // But still log the attempt
       await logAuditEvent(env, {
         userId: session.id,
@@ -2535,6 +2681,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const origin = request.headers.get("Origin") || "https://privatenote.ai";
     const verifyUrl = `${origin}/auth/email-change?token=${encodeURIComponent(token)}`;
 
+    console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
+
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
       subject: "Verify your new email address - PrivateNote",
@@ -2567,6 +2715,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       });
       return jsonResponse({ message: "Failed to send verification email" }, 500, request);
     }
+
+    console.log(`[AUTH] Email change verification email sent successfully to ${normalizedNewEmail}`);
 
     await logAuditEvent(env, {
       userId: session.id,
@@ -2915,26 +3065,35 @@ async function clearReservation(env: Env, id: string): Promise<void> {
 
 // Get client identifier for rate limiting
 function getClientIdentifier(request: Request): string {
-  // Try to get IP from Cloudflare headers
-  const cfConnectingIp = request.headers.get('CF-Connecting-IP');
+  // 1) Prefer real client IP from Cloudflare (strongest signal)
+  const cfConnectingIp = request.headers.get("CF-Connecting-IP");
   if (cfConnectingIp) {
-    return cfConnectingIp;
+    return `ip:${cfConnectingIp}`;
   }
 
-  // Fallback to user agent + origin (less reliable)
-  const userAgent = request.headers.get('User-Agent') || 'unknown';
-  const origin = request.headers.get('Origin') || 'unknown';
-  return `${origin}:${userAgent}`.substring(0, 100);
+  // 2) Fallback to a stable, first-party client cookie if available
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const cookieMatch = cookieHeader.match(/(?:^|;\s*)pn_client_id=([^;]+)/);
+  if (cookieMatch && cookieMatch[1]) {
+    return `cookie:${cookieMatch[1]}`;
+  }
+
+  // 3) Final, weaker fallback: origin + user agent (mostly for dev / unusual proxies)
+  const userAgent = request.headers.get("User-Agent") || "unknown";
+  const origin = request.headers.get("Origin") || "unknown";
+  return `ua:${`${origin}:${userAgent}`.substring(0, 100)}`;
 }
 
-// Helper to check admin authentication
-function requireAdmin(request: Request): Response | null {
-  const adminToken = request.headers.get("x-admin-token");
-
-  if (!adminToken || adminToken !== "admin-secret-token") {
+// Helper to check admin authentication. Uses env.ADMIN_TOKEN and constant-time compare.
+function requireAdmin(request: Request, env: Env): Response | null {
+  const expected = env.ADMIN_TOKEN;
+  if (!expected || typeof expected !== "string") {
+    return jsonResponse({ message: "Unauthorized - Admin not configured" }, 401, request);
+  }
+  const provided = request.headers.get("x-admin-token");
+  if (!provided || !constantTimeEquals(provided, expected)) {
     return jsonResponse({ message: "Unauthorized - Admin access required" }, 401, request);
   }
-
   return null;
 }
 
@@ -3392,7 +3551,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // GET /api/admin/audit-logs - Query audit logs with filtering
   if (pathname === "/api/admin/audit-logs" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     if (!env.AUTH_DB) {
@@ -3510,7 +3669,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // GET /api/admin/audit-logs/stats - Get audit log statistics
   if (pathname === "/api/admin/audit-logs/stats" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     if (!env.AUTH_DB) {
@@ -3586,7 +3745,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // Blog API routes - Admin
   if (pathname === "/api/admin/blog" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3600,7 +3759,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   if (pathname === "/api/admin/blog" && method === "POST") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3647,7 +3806,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // GET /api/admin/blog/:id
   const adminBlogIdParams = parsePathParams(pathname, "/api/admin/blog/:id");
   if (adminBlogIdParams && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3672,7 +3831,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // PUT /api/admin/blog/:id
   if (adminBlogIdParams && method === "PUT") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3726,7 +3885,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // POST /api/admin/blog/:id/publish
   const publishParams = parsePathParams(pathname, "/api/admin/blog/:id/publish");
   if (publishParams && method === "POST") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3753,7 +3912,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // POST /api/admin/blog/:id/unpublish
   const unpublishParams = parsePathParams(pathname, "/api/admin/blog/:id/unpublish");
   if (unpublishParams && method === "POST") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3779,7 +3938,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // DELETE /api/admin/blog/:id
   if (adminBlogIdParams && method === "DELETE") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3804,7 +3963,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   // Analytics API routes - Admin
   if (pathname === "/api/admin/analytics/daily" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3824,7 +3983,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   if (pathname === "/api/admin/analytics/weekly" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3844,7 +4003,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   if (pathname === "/api/admin/analytics/monthly" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -3864,7 +4023,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   if (pathname === "/api/admin/analytics/range" && method === "GET") {
-    const authError = requireAdmin(request);
+    const authError = requireAdmin(request, env);
     if (authError) return authError;
 
     try {

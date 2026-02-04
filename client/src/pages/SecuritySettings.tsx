@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { WebAuthnOptions, coerceLoginOptions, credentialToJson } from "@/utils/webauthn";
+import { WebAuthnOptions, coerceLoginOptions, coerceRegisterOptions, credentialToJson } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
 import {
@@ -66,6 +66,7 @@ export default function SecuritySettings() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [registeringPasskey, setRegisteringPasskey] = useState(false);
   const [emailChangeDialogOpen, setEmailChangeDialogOpen] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState("");
   const [changingEmail, setChangingEmail] = useState(false);
@@ -115,6 +116,60 @@ export default function SecuritySettings() {
       setLoading(false);
     }
   }, [user]);
+
+  const handleAddPasskey = useCallback(async () => {
+    if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
+      toast({
+        title: "Passkeys not supported",
+        description: "This browser does not support passkeys.",
+      });
+      return;
+    }
+
+    setRegisteringPasskey(true);
+    try {
+      const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
+        "/api/auth/webauthn/register/options",
+        "POST",
+        {}
+      );
+
+      if (!data?.options) {
+        throw new Error("Missing WebAuthn options from server.");
+      }
+
+      const publicKey = coerceRegisterOptions(data.options);
+      const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+
+      if (!credential) {
+        toast({
+          title: "Registration cancelled",
+          description: "No credential returned.",
+        });
+        return;
+      }
+
+      await apiRequest("/api/auth/webauthn/register/verify", "POST", {
+        challengeId: data.challengeId,
+        credential: credentialToJson(credential),
+      });
+
+      toast({
+        title: "Passkey created",
+        description: "You can now sign in with your passkey.",
+      });
+
+      await refreshAll();
+    } catch (error) {
+      toast({
+        title: "Passkey registration failed",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegisteringPasskey(false);
+    }
+  }, [toast, refreshAll]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -501,7 +556,7 @@ export default function SecuritySettings() {
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Passkeys</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Securely sign-in with on-device biometric authentication.
+                Securely sign-in with on-device biometric authentication. Add a passkey from here to use it for future sign-ins.
               </p>
               {passkeys.length > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
@@ -520,7 +575,12 @@ export default function SecuritySettings() {
                   Reset passkeys
                 </Button>
               )}
-              <Button variant="outline" size="sm" disabled>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddPasskey}
+                disabled={busy || registeringPasskey}
+              >
                 Add passkey
               </Button>
             </div>

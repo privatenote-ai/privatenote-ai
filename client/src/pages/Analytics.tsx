@@ -64,14 +64,14 @@ const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const today = new Date();
-  
+
   // Date calculations
   const dailyDate = today;
   const weeklyStartDate = startOfWeek(today);
   const weeklyEndDate = endOfWeek(today);
   const monthlyStartDate = startOfMonth(today);
   const monthlyEndDate = endOfMonth(today);
-  
+
   // Get API base URL
   const getApiUrl = (url: string): string => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || '';
@@ -81,50 +81,51 @@ export default function Analytics() {
     return apiBaseUrl + url;
   };
 
-  // Custom query function to handle admin endpoints with token
+  const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
   const fetchWithAdminToken = async (url: string) => {
+    if (!adminToken) return null;
     const response = await fetch(getApiUrl(url), {
-      headers: { 'x-admin-token': 'admin-secret-token' },
+      headers: { 'x-admin-token': adminToken },
       credentials: 'include',
     });
-    
+
     if (response.status === 401) {
       return null;
     }
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.status}`);
     }
-    
+
     return response.json();
   };
-  
+
   // Queries
   const dailyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/daily'],
+    queryKey: ['/api/admin/analytics/daily', adminToken],
     queryFn: () => fetchWithAdminToken('/api/admin/analytics/daily'),
-    enabled: timeRange === 'daily'
+    enabled: !!adminToken && timeRange === 'daily'
   });
-  
+
   const weeklyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/weekly'],
+    queryKey: ['/api/admin/analytics/weekly', adminToken],
     queryFn: () => fetchWithAdminToken('/api/admin/analytics/weekly'),
-    enabled: timeRange === 'weekly'
+    enabled: !!adminToken && timeRange === 'weekly'
   });
-  
+
   const monthlyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/monthly'],
+    queryKey: ['/api/admin/analytics/monthly', adminToken],
     queryFn: () => fetchWithAdminToken('/api/admin/analytics/monthly'),
-    enabled: timeRange === 'monthly'
+    enabled: !!adminToken && timeRange === 'monthly'
   });
-  
+
   // Determine which query to use based on the selected time range
-  const currentQuery = timeRange === 'daily' 
-    ? dailyQuery 
-    : timeRange === 'weekly' 
-      ? weeklyQuery 
+  const currentQuery = timeRange === 'daily'
+    ? dailyQuery
+    : timeRange === 'weekly'
+      ? weeklyQuery
       : monthlyQuery;
-  
+
   const isLoading = currentQuery.isLoading;
   const error = currentQuery.error;
   const data = currentQuery.data as AnalyticsData | undefined;
@@ -141,11 +142,11 @@ export default function Analytics() {
     }
   }
   const metrics = parsedMetrics ? normalizeMetrics(parsedMetrics) : undefined;
-  
+
   // Convert metrics to chart data
   const prepareViewLimitsData = () => {
     if (!metrics) return [];
-    
+
     return [
       { name: 'Once', value: metrics.viewLimitsDistribution.once },
       { name: 'Twice', value: metrics.viewLimitsDistribution.twice },
@@ -154,29 +155,29 @@ export default function Analytics() {
       { name: 'Unlimited', value: metrics.viewLimitsDistribution.unlimited }
     ];
   };
-  
+
   const prepareContentLengthData = () => {
     if (!metrics) return [];
-    
+
     return [
       { name: 'Short', value: metrics.contentLengthDistribution.short },
       { name: 'Medium', value: metrics.contentLengthDistribution.medium },
       { name: 'Long', value: metrics.contentLengthDistribution.long }
     ];
   };
-  
+
   const prepareBlogViewsData = () => {
     if (!metrics?.blogViews) return [];
-    
+
     return Object.entries(metrics.blogViews).map(([slug, views]) => ({
       name: slug.length > 15 ? slug.substring(0, 15) + '...' : slug,
       views
     }));
   };
-  
+
   const prepareNoteCreationData = () => {
     if (!metrics) return [];
-    
+
     return [
       { name: 'Notes Created', value: metrics.notesCreated },
       { name: 'Notes Viewed', value: metrics.notesViewed },
@@ -184,7 +185,21 @@ export default function Analytics() {
       { name: 'AI Enhanced', value: metrics.aiEnhancedNotes }
     ];
   };
-  
+
+  if (!adminToken) {
+    return (
+      <div className="container mx-auto px-6 pt-24 pb-16">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Admin token required</AlertTitle>
+          <AlertDescription>
+            Log in at Audit Logs or Blog Admin first, then return here to view analytics.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="container mx-auto px-6 pt-24 pb-16">
@@ -198,7 +213,7 @@ export default function Analytics() {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-6 pt-24 pb-16">
       <div className="flex flex-col space-y-4">
@@ -215,7 +230,7 @@ export default function Analytics() {
             </SelectContent>
           </Select>
         </div>
-        
+
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -256,7 +271,7 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* View Limits Distribution */}
             <Card>
               <CardHeader>
@@ -289,7 +304,7 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Content Length Distribution */}
             <Card>
               <CardHeader>
@@ -322,7 +337,7 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Blog Post Views */}
             <Card>
               <CardHeader>
@@ -350,7 +365,7 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Average Expiration Days */}
             <Card className="md:col-span-2">
               <CardHeader>

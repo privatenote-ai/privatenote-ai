@@ -206,6 +206,34 @@ Once connected to Git:
 wrangler secret put SECRET_NAME
 ```
 
+### Admin API token (required for `/api/admin/*`)
+Do **not** ship with a hard-coded admin token. Set it as a secret in production:
+
+```bash
+wrangler secret put ADMIN_TOKEN
+# Enter a strong random token when prompted (e.g. from openssl rand -hex 32)
+```
+
+Admins then enter this token in the Audit Logs or Blog Admin login form; it is sent in the `X-Admin-Token` header and compared with constant-time comparison on the server.
+
+**Cloudflare-side hardening (recommended):**
+
+1. **Cloudflare Zero Trust (Access)**  
+   Protect admin routes with Access so only allowed identities can reach them:
+   - **Zero Trust** → **Access** → **Applications** → **Add an application**
+   - Choose **Self-hosted**, set **Application domain** to your Workers host (e.g. `privatenote-api.your-subdomain.workers.dev`) or a path like `https://your-api.com/api/admin`
+   - Add a **Policy** (e.g. allow only your email, or a group). Unauthenticated requests get a 403 before hitting the Worker.
+   - Optionally use **Service Auth** or **API tokens** for machine access.
+
+2. **WAF + IP allowlist**  
+   If admin access is from fixed IPs only:
+   - **Security** → **WAF** → **Custom rules** (or **Configuration rules**)
+   - Create a rule: *If* request path starts with `/api/admin` *and* source IP is not in your allowlist, *then* Block (or Challenge).
+   - Maintain the IP list in the rule or in a list.
+
+3. **Separate hostname for admin**  
+   Serve the admin API on a different hostname (e.g. `admin-api.privatenote.ai`) and put Zero Trust or WAF only on that hostname, so the public API stays unchanged.
+
 ## Monitoring
 
 - **Workers Analytics**: Available in Cloudflare Dashboard

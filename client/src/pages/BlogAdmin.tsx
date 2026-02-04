@@ -25,9 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Admin token (in a real app, this would be handled by authentication)
-// This is a simple implementation for demonstration purposes
-const ADMIN_TOKEN = 'admin-secret-token';
+const ADMIN_TOKEN_STORAGE_KEY = 'admin_token';
 
 // Get API base URL from environment variable
 const getApiUrl = (url: string): string => {
@@ -53,49 +51,54 @@ export default function BlogAdmin() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => typeof window !== 'undefined' && !!sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
+  const [token, setToken] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '' : ''));
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
-  
+
   // Query for fetching blog posts (only when authenticated)
-  const { 
-    data: posts, 
-    isLoading: postsLoading, 
+  const {
+    data: posts,
+    isLoading: postsLoading,
     error: postsError,
     refetch: refetchPosts
   } = useQuery({
-    queryKey: ['/api/admin/blog'], 
+    queryKey: ['/api/admin/blog'],
     queryFn: async () => {
       // Add admin token to request headers
       const apiBaseUrl = import.meta.env.VITE_API_URL || '';
       const url = apiBaseUrl + '/api/admin/blog';
       const response = await fetch(url, {
         headers: {
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch blog posts');
       }
-      
+
       return response.json();
     },
     enabled: isAuthenticated // Only fetch when authenticated
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (token === ADMIN_TOKEN) {
+    if (!token.trim()) {
+      toast({ variant: "destructive", title: "Authentication failed", description: "Enter your admin token." });
+      return;
+    }
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(apiBaseUrl + '/api/admin/blog', {
+      headers: { 'X-Admin-Token': token.trim() },
+    });
+    if (response.ok) {
+      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
       setIsAuthenticated(true);
-      toast({
-        title: "Authenticated",
-        description: "You now have admin access to the blog management.",
-      });
+      toast({ title: "Authenticated", description: "You now have access to the blog management." });
     } else {
       toast({
         variant: "destructive",
@@ -118,7 +121,7 @@ export default function BlogAdmin() {
             Authentication required to manage blog posts
           </p>
         </div>
-        
+
         <Card className="backdrop-blur-sm border border-gray-100 dark:border-gray-800">
           <CardHeader>
             <CardTitle>Admin Login</CardTitle>
@@ -130,10 +133,10 @@ export default function BlogAdmin() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="token">Admin Token</Label>
-                <Input 
-                  id="token" 
-                  type="password" 
-                  value={token} 
+                <Input
+                  id="token"
+                  type="password"
+                  value={token}
                   onChange={(e) => setToken(e.target.value)}
                   placeholder="Enter admin token"
                 />
@@ -169,9 +172,9 @@ export default function BlogAdmin() {
           <TabsTrigger value="published">Published</TabsTrigger>
           <TabsTrigger value="drafts">Drafts</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="all">
-          <BlogPostsTable 
+          <BlogPostsTable
             posts={posts}
             isLoading={postsLoading}
             error={postsError}
@@ -185,11 +188,12 @@ export default function BlogAdmin() {
               setDeleteDialogOpen(true);
             }}
             refetchPosts={refetchPosts}
+            token={token}
           />
         </TabsContent>
-        
+
         <TabsContent value="published">
-          <BlogPostsTable 
+          <BlogPostsTable
             posts={posts?.filter((post: BlogPost) => post.published)}
             isLoading={postsLoading}
             error={postsError}
@@ -203,11 +207,12 @@ export default function BlogAdmin() {
               setDeleteDialogOpen(true);
             }}
             refetchPosts={refetchPosts}
+            token={token}
           />
         </TabsContent>
-        
+
         <TabsContent value="drafts">
-          <BlogPostsTable 
+          <BlogPostsTable
             posts={posts?.filter((post: BlogPost) => !post.published)}
             isLoading={postsLoading}
             error={postsError}
@@ -221,24 +226,26 @@ export default function BlogAdmin() {
               setDeleteDialogOpen(true);
             }}
             refetchPosts={refetchPosts}
+            token={token}
           />
         </TabsContent>
       </Tabs>
 
       {/* Create Post Dialog */}
-      <CreatePostDialog 
-        open={createDialogOpen} 
+      <CreatePostDialog
+        open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSuccess={() => {
           refetchPosts();
           setCreateDialogOpen(false);
         }}
+        token={token}
       />
 
       {/* Edit Post Dialog */}
       {selectedPost && (
-        <EditPostDialog 
-          open={editDialogOpen} 
+        <EditPostDialog
+          open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
           post={selectedPost}
           onSuccess={() => {
@@ -246,13 +253,14 @@ export default function BlogAdmin() {
             setEditDialogOpen(false);
             setSelectedPost(null);
           }}
+          token={token}
         />
       )}
 
       {/* Delete Post Dialog */}
       {selectedPost && (
-        <DeletePostDialog 
-          open={deleteDialogOpen} 
+        <DeletePostDialog
+          open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           post={selectedPost}
           onSuccess={() => {
@@ -260,28 +268,31 @@ export default function BlogAdmin() {
             setDeleteDialogOpen(false);
             setSelectedPost(null);
           }}
+          token={token}
         />
       )}
     </div>
   );
 }
 
-function BlogPostsTable({ 
-  posts, 
-  isLoading, 
-  error, 
-  filter, 
-  onEdit, 
+function BlogPostsTable({
+  posts,
+  isLoading,
+  error,
+  filter,
+  onEdit,
   onDelete,
-  refetchPosts
-}: { 
-  posts?: BlogPost[]; 
-  isLoading: boolean; 
-  error: unknown; 
+  refetchPosts,
+  token
+}: {
+  posts?: BlogPost[];
+  isLoading: boolean;
+  error: unknown;
   filter: 'all' | 'published' | 'drafts';
   onEdit: (post: BlogPost) => void;
   onDelete: (post: BlogPost) => void;
   refetchPosts: () => void;
+  token: string;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -293,14 +304,14 @@ function BlogPostsTable({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to publish post');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -325,14 +336,14 @@ function BlogPostsTable({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to unpublish post');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -437,7 +448,7 @@ function BlogPostsTable({
                 </Badge>
               </TableCell>
               <TableCell>
-                {post.publishedAt 
+                {post.publishedAt
                   ? format(new Date(post.publishedAt), 'MMM d, yyyy')
                   : format(new Date(post.createdAt), 'MMM d, yyyy')
                 }
@@ -450,7 +461,7 @@ function BlogPostsTable({
                     onCheckedChange={() => handlePublishToggle(post)}
                     aria-label={post.published ? "Unpublish" : "Publish"}
                   />
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -486,18 +497,20 @@ function BlogPostsTable({
   );
 }
 
-function CreatePostDialog({ 
-  open, 
-  onOpenChange, 
-  onSuccess 
-}: { 
-  open: boolean; 
+function CreatePostDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  token
+}: {
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  token: string;
 }) {
   const { toast } = useToast();
   const [tagsInput, setTagsInput] = useState('');
-  
+
   // Form validation
   const form = useForm<z.infer<typeof blogPostFormSchema>>({
     resolver: zodResolver(blogPostFormSchema),
@@ -511,7 +524,7 @@ function CreatePostDialog({
       coverImage: '',
     }
   });
-  
+
   // Handle form submission
   const handleSubmit = async (values: z.infer<typeof blogPostFormSchema>) => {
     try {
@@ -519,20 +532,20 @@ function CreatePostDialog({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         },
         body: JSON.stringify(values)
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to create blog post');
       }
-      
+
       toast({
         title: "Blog post created",
         description: "Your new blog post has been saved as a draft."
       });
-      
+
       form.reset();
       onSuccess();
     } catch (error) {
@@ -543,31 +556,31 @@ function CreatePostDialog({
       });
     }
   };
-  
+
   // Handle tags input
   const handleAddTag = () => {
     if (!tagsInput.trim()) return;
-    
+
     const currentTags = form.getValues('tags') || [];
     form.setValue('tags', [...currentTags, tagsInput.trim()]);
     setTagsInput('');
   };
-  
+
   const handleRemoveTag = (tag: string) => {
     const currentTags = form.getValues('tags') || [];
     form.setValue('tags', currentTags.filter(t => t !== tag));
   };
-  
+
   // Generate slug from title
   const generateSlug = () => {
     const title = form.getValues('title');
     if (!title) return;
-    
+
     const slug = title
       .toLowerCase()
       .replace(/[^\w\s]/gi, '')
       .replace(/\s+/g, '-');
-    
+
     form.setValue('slug', slug);
   };
 
@@ -580,7 +593,7 @@ function CreatePostDialog({
             Create a new blog post. It will be saved as a draft until you publish it.
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -591,9 +604,9 @@ function CreatePostDialog({
                   <FormItem>
                     <FormLabel>Title*</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Post title" 
-                        {...field} 
+                      <Input
+                        placeholder="Post title"
+                        {...field}
                         onChange={(e) => {
                           field.onChange(e);
                           if (!form.getValues('slug')) {
@@ -606,7 +619,7 @@ function CreatePostDialog({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="slug"
@@ -615,14 +628,14 @@ function CreatePostDialog({
                     <FormLabel>Slug*</FormLabel>
                     <div className="flex space-x-2">
                       <FormControl>
-                        <Input 
-                          placeholder="post-slug" 
-                          {...field} 
+                        <Input
+                          placeholder="post-slug"
+                          {...field}
                         />
                       </FormControl>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={generateSlug}
                       >
                         Generate
@@ -636,7 +649,7 @@ function CreatePostDialog({
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
@@ -651,7 +664,7 @@ function CreatePostDialog({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="coverImage"
@@ -669,7 +682,7 @@ function CreatePostDialog({
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="excerpt"
@@ -677,11 +690,11 @@ function CreatePostDialog({
                 <FormItem>
                   <FormLabel>Excerpt*</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Brief summary of the post" 
+                    <Textarea
+                      placeholder="Brief summary of the post"
                       className="resize-none"
                       rows={2}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -691,7 +704,7 @@ function CreatePostDialog({
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="content"
@@ -699,18 +712,18 @@ function CreatePostDialog({
                 <FormItem>
                   <FormLabel>Content*</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Blog post content" 
+                    <Textarea
+                      placeholder="Blog post content"
                       className="resize-none"
                       rows={12}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="tags"
@@ -729,9 +742,9 @@ function CreatePostDialog({
                         }
                       }}
                     />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={handleAddTag}
                     >
                       Add
@@ -755,7 +768,7 @@ function CreatePostDialog({
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type="submit">Create Post</Button>
             </DialogFooter>
@@ -766,20 +779,22 @@ function CreatePostDialog({
   );
 }
 
-function EditPostDialog({ 
-  open, 
-  onOpenChange, 
+function EditPostDialog({
+  open,
+  onOpenChange,
   post,
-  onSuccess 
-}: { 
-  open: boolean; 
+  onSuccess,
+  token
+}: {
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   post: BlogPost;
   onSuccess: () => void;
+  token: string;
 }) {
   const { toast } = useToast();
   const [tagsInput, setTagsInput] = useState('');
-  
+
   // Form validation
   const form = useForm<z.infer<typeof blogPostFormSchema>>({
     resolver: zodResolver(blogPostFormSchema),
@@ -793,7 +808,7 @@ function EditPostDialog({
       coverImage: post.coverImage || '',
     }
   });
-  
+
   // Handle form submission
   const handleSubmit = async (values: z.infer<typeof blogPostFormSchema>) => {
     try {
@@ -801,20 +816,20 @@ function EditPostDialog({
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         },
         body: JSON.stringify(values)
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update blog post');
       }
-      
+
       toast({
         title: "Blog post updated",
         description: "Your changes have been saved successfully."
       });
-      
+
       onSuccess();
     } catch (error) {
       toast({
@@ -824,31 +839,31 @@ function EditPostDialog({
       });
     }
   };
-  
+
   // Handle tags input
   const handleAddTag = () => {
     if (!tagsInput.trim()) return;
-    
+
     const currentTags = form.getValues('tags') || [];
     form.setValue('tags', [...currentTags, tagsInput.trim()]);
     setTagsInput('');
   };
-  
+
   const handleRemoveTag = (tag: string) => {
     const currentTags = form.getValues('tags') || [];
     form.setValue('tags', currentTags.filter(t => t !== tag));
   };
-  
+
   // Generate slug from title
   const generateSlug = () => {
     const title = form.getValues('title');
     if (!title) return;
-    
+
     const slug = title
       .toLowerCase()
       .replace(/[^\w\s]/gi, '')
       .replace(/\s+/g, '-');
-    
+
     form.setValue('slug', slug);
   };
 
@@ -858,11 +873,11 @@ function EditPostDialog({
         <DialogHeader>
           <DialogTitle>Edit Blog Post</DialogTitle>
           <DialogDescription>
-            Make changes to your blog post. 
+            Make changes to your blog post.
             {post.published ? " This will update the published post." : " Your changes will be saved as a draft."}
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -879,7 +894,7 @@ function EditPostDialog({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="slug"
@@ -890,9 +905,9 @@ function EditPostDialog({
                       <FormControl>
                         <Input placeholder="post-slug" {...field} />
                       </FormControl>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={generateSlug}
                       >
                         Generate
@@ -906,7 +921,7 @@ function EditPostDialog({
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
@@ -921,7 +936,7 @@ function EditPostDialog({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="coverImage"
@@ -939,7 +954,7 @@ function EditPostDialog({
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="excerpt"
@@ -947,11 +962,11 @@ function EditPostDialog({
                 <FormItem>
                   <FormLabel>Excerpt*</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Brief summary of the post" 
+                    <Textarea
+                      placeholder="Brief summary of the post"
                       className="resize-none"
                       rows={2}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -961,7 +976,7 @@ function EditPostDialog({
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="content"
@@ -969,18 +984,18 @@ function EditPostDialog({
                 <FormItem>
                   <FormLabel>Content*</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Blog post content" 
+                    <Textarea
+                      placeholder="Blog post content"
                       className="resize-none"
                       rows={12}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="tags"
@@ -999,9 +1014,9 @@ function EditPostDialog({
                         }
                       }}
                     />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={handleAddTag}
                     >
                       Add
@@ -1025,7 +1040,7 @@ function EditPostDialog({
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
@@ -1036,37 +1051,39 @@ function EditPostDialog({
   );
 }
 
-function DeletePostDialog({ 
-  open, 
-  onOpenChange, 
+function DeletePostDialog({
+  open,
+  onOpenChange,
   post,
-  onSuccess 
-}: { 
-  open: boolean; 
+  onSuccess,
+  token
+}: {
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   post: BlogPost;
   onSuccess: () => void;
+  token: string;
 }) {
   const { toast } = useToast();
-  
+
   const handleDelete = async () => {
     try {
       const response = await fetch(getApiUrl(`/api/admin/blog/${post.id}`), {
         method: 'DELETE',
         headers: {
-          'X-Admin-Token': ADMIN_TOKEN
+          'X-Admin-Token': token
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete blog post');
       }
-      
+
       toast({
         title: "Blog post deleted",
         description: "The blog post has been permanently deleted."
       });
-      
+
       onSuccess();
     } catch (error) {
       toast({
@@ -1086,14 +1103,14 @@ function DeletePostDialog({
             Are you sure you want to delete this blog post? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4">
           <h3 className="font-medium">{post.title}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {post.published ? "Published" : "Draft"} • by {post.author}
           </p>
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel

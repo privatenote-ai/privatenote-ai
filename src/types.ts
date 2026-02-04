@@ -18,4 +18,6 @@ export interface Env {
   RESEND_API_KEY?: string;
   // Optional secret key for HMAC signing of magic link tokens
   AUTH_SECRET_KEY?: string;
+  // Admin API token (set via wrangler secret put ADMIN_TOKEN). Required for /api/admin/*.
+  ADMIN_TOKEN?: string;
 }
