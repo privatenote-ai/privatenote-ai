@@ -26,6 +26,13 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
     return typeof window !== "undefined" && "PublicKeyCredential" in window;
   }, []);
 
+  const isValidEmail = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    // Simple email validation for client-side guardrails
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  };
+
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
       toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
@@ -69,6 +76,14 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const handleSendMagicLink = async () => {
     if (!email.trim()) {
       toast({ title: "Email required", description: "Enter your email to continue." });
+      return;
+    }
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Enter a valid email address (example: you@domain.com).",
+        variant: "destructive",
+      });
       return;
     }
     if (shouldShowTurnstile && !turnstileToken) {
