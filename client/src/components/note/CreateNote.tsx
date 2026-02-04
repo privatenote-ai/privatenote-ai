@@ -688,8 +688,21 @@ export const CreateNote: React.FC = () => {
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
       await ensureFreeLocalModel((progress) => setAiProgress(progress));
-      return await enhanceNoteClientSide(content, enhancementType, (progress) =>
-        setAiProgress(progress)
+      const selectedTemplate = promptTemplates.find(
+        (template) => template.id === selectedTemplateId
+      );
+
+      // Pass template metadata through so the system prompt can better match the pill the user picked
+      return await enhanceNoteClientSide(
+        content,
+        enhancementType,
+        (progress) => setAiProgress(progress),
+        selectedTemplate
+          ? {
+            templateName: selectedTemplate.name,
+            templateDescription: selectedTemplate.description,
+          }
+          : undefined
       );
     } catch (error) {
       console.warn("[AI] Local AI failed:", error);
@@ -1511,124 +1524,123 @@ export const CreateNote: React.FC = () => {
     return (
       <section className="max-w-3xl mx-auto">
         <div className="mb-4 mt-4"></div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
-              <Shield className="h-5 w-5 mr-2 text-primary" />
-              Note Created Successfully
-            </h2>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+            <Shield className="h-5 w-5 mr-2 text-primary" />
+            Note Created Successfully
+          </h2>
+        </div>
 
-          <div className="space-y-10">
-            <div className="whitespace-pre-wrap break-words">
-              <p className="text-base text-gray-700 dark:text-gray-200 mb-2">
-                Your note has been encrypted and stored securely. Share this
-                link with the recipient:
-              </p>
-              <div className="flex flex-col space-y-4">
-                <div className="flex-grow flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700">
-                  <input
-                    type="text"
-                    readOnly
-                    value={noteUrl}
-                    className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text sm:whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm"
-                    aria-label="Encrypted note link"
-                    onFocus={(event) => event.currentTarget.select()}
-                  />
-                </div>
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={copyToClipboard}
-                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                    title="Copy link to clipboard"
-                  >
-                    <Copy className="h-4 w-4 mr-1.5" />
-                    Copy Link
-                  </button>
-                  <button
-                    onClick={shareViaEmail}
-                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                    title="Email link to recipient"
-                  >
-                    <Mail className="h-4 w-4 mr-1.5" />
-                    Email Link
-                  </button>
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowQrCode((prev) => !prev)}
-                    className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                    aria-expanded={showQrCode}
-                  >
-                    {showQrCode ? "Hide QR code" : "Show QR code"}
-                  </button>
-                </div>
+        <div className="space-y-10">
+          <div className="whitespace-pre-wrap break-words">
+            <p className="text-base text-gray-700 dark:text-gray-200 mb-2">
+              Your note has been encrypted and stored securely. Share this
+              link with the recipient:
+            </p>
+            <div className="flex flex-col space-y-4">
+              <div className="flex-grow flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700">
+                <input
+                  type="text"
+                  readOnly
+                  value={noteUrl}
+                  className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text sm:whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm"
+                  aria-label="Encrypted note link"
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </div>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                  title="Copy link to clipboard"
+                >
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  Copy Link
+                </button>
+                <button
+                  onClick={shareViaEmail}
+                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                  title="Email link to recipient"
+                >
+                  <Mail className="h-4 w-4 mr-1.5" />
+                  Email Link
+                </button>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowQrCode((prev) => !prev)}
+                  className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                  aria-expanded={showQrCode}
+                >
+                  {showQrCode ? "Hide QR code" : "Show QR code"}
+                </button>
               </div>
             </div>
+          </div>
 
-            {showQrCode && (
-              <div className="flex flex-col items-center mt-8 mb-4">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
-                  <QRCode value={noteUrl} size={180} />
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={downloadQrCode}
-                    className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                    title="Download QR code as SVG image"
-                  >
-                    <FileText className="h-4 w-4 mr-1.5" />
-                    Download QR
-                  </button>
-                </div>
+          {showQrCode && (
+            <div className="flex flex-col items-center mt-8 mb-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
+                <QRCode value={noteUrl} size={180} />
               </div>
-            )}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={downloadQrCode}
+                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                  title="Download QR code as SVG image"
+                >
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  Download QR
+                </button>
+              </div>
+            </div>
+          )}
 
-            <div
-              className={`rounded-lg p-4 text-sm border ${
-                isPasswordProtected
-                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
-                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+          <div
+            className={`rounded-lg p-4 text-sm border ${isPasswordProtected
+                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
               }`}
-            >
-              {isPasswordProtected ? (
-                <>
-                  <p>
-                    <strong>Password protection enabled.</strong> This note requires both the
-                    link and your password to decrypt.
-                  </p>
-                  <p className="mt-1">
-                    For best security, send the password separately from the link.
-                  </p>
-                </>
-              ) : (
+          >
+            {isPasswordProtected ? (
+              <>
                 <p>
-                  <strong>Link-only access.</strong> The decryption key is embedded in the
-                  link. Anyone who obtains the link can read the note.
+                  <strong>Password protection enabled.</strong> This note requires both the
+                  link and your password to decrypt.
                 </p>
-              )}
-              <p className="mt-2">
-                The note will be permanently deleted after it is read once or after{" "}
-                <strong>{getExpiryTimeDisplay(expiryValue)}</strong>.
+                <p className="mt-1">
+                  For best security, send the password separately from the link.
+                </p>
+              </>
+            ) : (
+              <p>
+                <strong>Link-only access.</strong> The decryption key is embedded in the
+                link. Anyone who obtains the link can read the note.
               </p>
-              <p className="mt-2 text-xs italic opacity-80">
-                Tip: For sensitive notes, enable password protection and share credentials
-                separately.
-              </p>
-            </div>
-
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={createNewNote}
-                className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Create Another Note
-              </button>
-            </div>
-
-            <SecurityRecommendations type="compact" context="success" />
+            )}
+            <p className="mt-2">
+              The note will be permanently deleted after it is read once or after{" "}
+              <strong>{getExpiryTimeDisplay(expiryValue)}</strong>.
+            </p>
+            <p className="mt-2 text-xs italic opacity-80">
+              Tip: For sensitive notes, enable password protection and share credentials
+              separately.
+            </p>
           </div>
+
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={createNewNote}
+              className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Create Another Note
+            </button>
+          </div>
+
+          <SecurityRecommendations type="compact" context="success" />
+        </div>
       </section>
     );
   }
@@ -1677,8 +1689,8 @@ export const CreateNote: React.FC = () => {
               type="button"
               onClick={() => setIsAiMode(false)}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${!isAiMode
-                  ? "bg-primary/10 text-primary border-b-2 border-primary"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
             >
               <div className="flex items-center justify-center">
@@ -1693,8 +1705,8 @@ export const CreateNote: React.FC = () => {
                 void startFreeModelDownload();
               }}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${isAiMode
-                  ? "bg-primary/10 text-primary border-b-2 border-primary"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
             >
               <div className="flex items-center justify-center">
@@ -2046,8 +2058,8 @@ export const CreateNote: React.FC = () => {
           {/* Advanced options panel - with animation and modern styling */}
           <div
             className={`mb-3 overflow-hidden transition-all duration-300 ease-in-out ${showAdvancedOptions
-                ? "max-h-[500px] opacity-100"
-                : "max-h-0 opacity-0"
+              ? "max-h-[500px] opacity-100"
+              : "max-h-0 opacity-0"
               }`}
           >
             <div className="max-w-2xl mx-auto">
@@ -2172,8 +2184,7 @@ export const CreateNote: React.FC = () => {
                             {breachState === "checking" && "Checking breaches"}
                             {breachState === "safe" && "Not found in breaches"}
                             {breachState === "pwned" &&
-                              `Found in breaches${
-                                breachCount ? ` (${breachCount.toLocaleString()})` : ""
+                              `Found in breaches${breachCount ? ` (${breachCount.toLocaleString()})` : ""
                               }`}
                             {breachState === "error" && "Breach check unavailable"}
                           </span>

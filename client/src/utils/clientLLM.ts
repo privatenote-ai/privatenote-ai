@@ -2,14 +2,14 @@ import { CreateMLCEngine, type MLCEngineInterface, prebuiltAppConfig, type AppCo
 
 // Preferred models for device-based selection (smaller models for mobile)
 const PREFERRED_MODELS = [
-  "llinguini/gemma-3-270m-it-q4f16_1-MLC",  // Smallest - mobile/old browsers
-  "mlc-ai/gemma-3-1b-it-q4f32_1-MLC",       // Small - mobile/new browsers
+  "Qwen3-0.6B-q4f16_1-MLC",                 // Smallest - mobile/old browsers
+  "Qwen3-1.7B-q4f16_1-MLC",                 // Small - mobile/new browsers
   "Llama-3.2-1B-Instruct-q4f16_1-MLC",      // Small - good quality
   "Llama-3.2-3B-Instruct-q4f16_1-MLC",      // Medium - desktop
   "Llama-3.1-8B-Instruct-q4f16_1-MLC",      // Large - desktop only
 ];
 
-const DEFAULT_MODEL = "llinguini/gemma-3-270m-it-q4f16_1-MLC"; // Default to smallest model (safest)
+const DEFAULT_MODEL = "Qwen3-0.6B-q4f16_1-MLC"; // Default to smallest model (safest)
 const DEFAULT_MODEL_SIZE_MB = 200; // Approximate size for small models
 
 /**
@@ -148,6 +148,38 @@ type ProgressCallback = (progress: ModelLoadProgress) => void;
 let engineInstance: MLCEngineInterface | null = null;
 let engineLoadingPromise: Promise<MLCEngineInterface> | null = null;
 let loadProgressCallback: ProgressCallback | null = null;
+let activeModelId: string | null = null;
+
+type ModelTier = "small" | "medium" | "large";
+
+/**
+ * Estimate model size (MB) based on model ID name patterns.
+ */
+function estimateModelSizeMB(modelId: string): number {
+  if (
+    modelId.includes('270m') ||
+    modelId.includes('270M') ||
+    modelId.includes('0.5B') ||
+    modelId.includes('0.5b') ||
+    modelId.includes('0.6B') ||
+    modelId.includes('0.6b')
+  ) return 200;
+  if (modelId.includes('1B') || modelId.includes('1b') || modelId.includes('1.5B') || modelId.includes('1.5b')) return 600;
+  if (modelId.includes('2B') || modelId.includes('2b') || modelId.includes('3B') || modelId.includes('3b')) return 1200;
+  if (modelId.includes('7B') || modelId.includes('7b') || modelId.includes('8B') || modelId.includes('8b')) return 4000;
+  return DEFAULT_MODEL_SIZE_MB;
+}
+
+function getModelTier(modelId: string): ModelTier {
+  const sizeMB = estimateModelSizeMB(modelId);
+  if (sizeMB <= 400) return "small";
+  if (sizeMB <= 2000) return "medium";
+  return "large";
+}
+
+function getActiveModelId(): string {
+  return activeModelId || findSuitableModel();
+}
 
 /**
  * Check if WebLLM is supported in this browser
@@ -267,7 +299,7 @@ function selectModelByDevice(): string {
   }
 
   // Default to smallest model for mobile/older browsers
-  const smallModels = ["llinguini/gemma-3-270m-it-q4f16_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
+  const smallModels = ["Qwen3-0.6B-q4f16_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
   for (const model of smallModels) {
     if (isModelAvailable(model)) {
       console.log("[AI] Mobile/older browser detected, using:", model);
@@ -362,15 +394,7 @@ export async function initializeClientLLM(
 
   // Check storage space (use model-specific size estimate)
   const availableSpace = await checkStorageQuota();
-  const getModelSize = (model: string): number => {
-    // Estimate model sizes based on name patterns
-    if (model.includes('270m') || model.includes('270M') || model.includes('0.5B') || model.includes('0.5b')) return 200;
-    if (model.includes('1B') || model.includes('1b') || model.includes('1.5B') || model.includes('1.5b')) return 600;
-    if (model.includes('2B') || model.includes('2b') || model.includes('3B') || model.includes('3b')) return 1200;
-    if (model.includes('7B') || model.includes('7b') || model.includes('8B') || model.includes('8b')) return 4000;
-    return DEFAULT_MODEL_SIZE_MB;
-  };
-  const requiredSpace = getModelSize(modelId) * 1.5; // Model + overhead
+  const requiredSpace = estimateModelSizeMB(modelId) * 1.5; // Model + overhead
   if (availableSpace < requiredSpace) {
     throw new Error(
       `Insufficient storage space. Need at least ${Math.ceil(
@@ -409,6 +433,7 @@ export async function initializeClientLLM(
       });
 
       engineInstance = engine;
+      activeModelId = modelId;
       engineLoadingPromise = null;
       loadProgressCallback = null;
 
@@ -484,10 +509,94 @@ function getEnhancementPrompt(
   const prompts = {
     improve: `Improve this text for clarity and style while preserving meaning:\n\n${content}`,
     summarize: `Summarize this text into key points:\n\n${content}`,
-    secure: `Remove all personally identifiable information (names, emails, phone numbers, addresses, credit card numbers) from this text while maintaining readability:\n\n${content}`,
+    secure: `Surgically redact PII from the following text.
+REPLACEMENTS:
+- Names -> [NAME]
+- Emails -> [EMAIL]
+- Phones -> [PHONE]
+- Addresses -> [ADDRESS]
+- Locations -> [LOCATION]
+- Numbers (Credit Cards/SSN) -> [ID_NUMBER]
+
+RULES:
+1. Do NOT invent new names or data.
+2. Do NOT change non-private words.
+3. Keep the original structure and punctuation exactly.
+
+TEXT to redact:
+${content}`,
     ask: content, // For "ask", the content IS the prompt/question
   };
   return prompts[type];
+}
+
+function buildSecureSystemPrompt(): string {
+  return `You are a surgical redaction tool.
+
+[CONSTRAINT]:
+- Output ONLY the redacted text.
+- Never invent new personas or fake data.
+- If no PII is found, output the text exactly as provided.
+
+[FORMAT EXAMPLE]:
+Input: "Call Bob at 555-0199 about the house in Paris."
+Output: "Call [NAME] at [PHONE] about the house in [LOCATION]."
+
+[ACTION]:
+Scan the user input and replace private identifiers with their bracketed category tags. Do not explain your changes.
+
+FINAL RULE: Output only the note. Do not speak.`;
+}
+
+/**
+ * Build a strict system prompt for the PrivateNote local writer.
+ *
+ * A [Identity]: Specialized PrivateNote Generator
+ * B [Constraint]: Output ONLY the note content (no reasoning, no wrappers)
+ * C [Action]: Rewrite user intent into a styled note, informed by template pills
+ * D [Format]: Direct note text only, with a concrete inline example
+ */
+function buildSystemPrompt(options?: {
+  pillType?: string;            // e.g. "Professional", "Warm", "Celebratory"
+  templateName?: string;        // e.g. "Thank You Note", "Birthday Greeting"
+  templateDescription?: string; // e.g. "For help, gifts, professional follow-ups"
+  modelTier?: ModelTier;
+}): string {
+  const { pillType, templateName, templateDescription, modelTier } = options ?? {};
+
+  const tone = pillType ? `${pillType} in tone` : "natural and clear";
+  const context = templateName ? `a ${templateName}` : "a private note";
+  const useCase = templateDescription ? ` Context: ${templateDescription}.` : "";
+
+  const isSmallModel = modelTier === "small";
+
+  if (isSmallModel) {
+    const identityAndConstraint =
+      "You are a PrivateNote Generator. OUTPUT ONLY THE FINAL NOTE CONTENT. " +
+      "No intros, no 'Here is your note', no thinking, and no markdown/HTML tags.";
+
+    const action = `Task: Transform the user's intent into ${tone} ${context}.${useCase}`;
+
+    const format =
+      "Output must start with the first word of the note and end with the final punctuation. No trailing text.";
+
+    return `${identityAndConstraint}\n\n${action}\n\n${format}`;
+  }
+
+  // Larger models can follow a slightly richer prompt
+  const identity =
+    "You are a specialized PrivateNote Generator. Your sole purpose is to transform user inputs into polished, private messages.";
+
+  const constraint =
+    'OUTPUT ONLY THE NOTE CONTENT. Do not include phrases like "Here is your note", do not use conversational fillers, and do not provide internal reasoning or "thinking" steps. Avoid markdown/HTML tags.';
+
+  const baseAction = `Take the following user intent and rewrite it as a ${tone} ${context}.${useCase}`;
+
+  const format =
+    "Output format example: Dear John, thank you for the gift! (No quotes, no intros, no explanations).\n" +
+    "Start the output immediately with the first word of the note. End the output immediately after the final punctuation of the note.";
+
+  return `${identity}\n\n${constraint}\n\n${baseAction}\n\n${format}`;
 }
 
 /**
@@ -496,7 +605,12 @@ function getEnhancementPrompt(
 export async function enhanceNoteClientSide(
   content: string,
   type: "improve" | "summarize" | "secure" | "ask",
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  options?: {
+    pillType?: string;
+    templateName?: string;
+    templateDescription?: string;
+  }
 ): Promise<string> {
   // Initialize engine if needed
   const engine = await initializeClientLLM(onProgress);
@@ -504,8 +618,19 @@ export async function enhanceNoteClientSide(
   // Generate prompt
   const prompt = getEnhancementPrompt(content, type);
 
-  // Set temperature based on task
-  const temperature = type === "secure" ? 0.1 : type === "ask" ? 0.8 : 0.7;
+  // Build strict system prompt for local note-writing
+  const modelId = getActiveModelId();
+  const modelTier = getModelTier(modelId);
+  const system =
+    type === "secure"
+      ? buildSecureSystemPrompt()
+      : buildSystemPrompt({ ...options, modelTier });
+
+  // Set temperature based on task, but clamp for more deterministic, direct output
+  let temperature = type === "secure" ? 0.1 : type === "ask" ? 0.8 : 0.7;
+  // Lower temperature = more adherence to direct-output rules (tighter for small models)
+  const maxTemp = modelTier === "small" ? 0.25 : 0.4;
+  temperature = Math.min(temperature, maxTemp);
 
   // Set max tokens based on task
   let maxTokens: number;
@@ -520,15 +645,15 @@ export async function enhanceNoteClientSide(
   // Generate response
   const response = await engine.chat.completions.create({
     messages: [
-      {
-        role: "system",
-        content:
-          "You are a helpful writing assistant. Provide only the final answer. Do not output chain-of-thought or internal reasoning. If you must think, do so silently.",
-      },
+      { role: "system", content: system },
       { role: "user", content: prompt },
     ],
     max_tokens: maxTokens,
     temperature,
+    // Stop the model if it tries to start a new section or meta commentary
+    stop: modelTier === "small"
+      ? ["\n\n\n", "---", "Note:", "Human:", "AI:"]
+      : ["---", "Note:", "Human:", "AI:"],
   });
 
   const result = response.choices[0]?.message?.content?.trim();
@@ -623,18 +748,9 @@ export function getModelInfo() {
   const modelId = findSuitableModel();
 
   // Estimate size based on model (actual download sizes for quantized weights)
-  const getModelSize = (model: string): number => {
-    // Estimate model sizes based on name patterns
-    if (model.includes('270m') || model.includes('270M') || model.includes('0.5B') || model.includes('0.5b')) return 200;
-    if (model.includes('1B') || model.includes('1b') || model.includes('1.5B') || model.includes('1.5b')) return 600;
-    if (model.includes('2B') || model.includes('2b') || model.includes('3B') || model.includes('3b')) return 1200;
-    if (model.includes('7B') || model.includes('7b') || model.includes('8B') || model.includes('8b')) return 4000;
-    return DEFAULT_MODEL_SIZE_MB;
-  };
-
   return {
     name: modelId,
-    sizeMB: getModelSize(modelId),
+    sizeMB: estimateModelSizeMB(modelId),
     cacheKey: MODEL_CACHE_KEY,
     availableModels: available.length,
     preferredModels: PREFERRED_MODELS,
