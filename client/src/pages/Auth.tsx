@@ -33,6 +33,42 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
   };
 
+  const getEmailDomain = (value: string): string | null => {
+    const trimmed = value.trim().toLowerCase();
+    const atIndex = trimmed.lastIndexOf("@");
+    if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
+    return trimmed.slice(atIndex + 1);
+  };
+
+  const isLikelyTypoDomain = (value: string): boolean => {
+    const domain = getEmailDomain(value);
+    if (!domain) return false;
+    const typoDomains = new Set([
+      "gmial.com",
+      "gamil.com",
+      "gnail.com",
+      "gmai.com",
+      "gmail.con",
+      "gmail.co",
+      "gmail.comm",
+      "gmail.om",
+      "yaho.com",
+      "yahoo.con",
+      "yahoo.co",
+      "yahho.com",
+      "hotmial.com",
+      "hotmal.com",
+      "hotmai.com",
+      "outlok.com",
+      "outllok.com",
+      "icloud.con",
+      "icoud.com",
+      "protonn.me",
+      "protonnmail.com",
+    ]);
+    return typoDomains.has(domain);
+  };
+
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
       toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
@@ -86,12 +122,22 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       });
       return;
     }
+    if (isLikelyTypoDomain(email)) {
+      toast({
+        title: "Check your email",
+        description: "That domain looks misspelled. Please double-check before continuing.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (shouldShowTurnstile && !turnstileToken) {
       toast({ title: "Human verification required", description: "Please complete the verification check." });
       return;
     }
     setIsBusy(true);
     setDebugMagicLink(null);
+    // Optimistic: switch to "sent" immediately for snappier UX
+    setView("sent");
     try {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
@@ -101,7 +147,6 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       if (response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
       }
-      setView("sent");
       toast({ title: "Check your email", description: "We sent a sign-in link if the address is valid." });
     } catch (error) {
       toast({
@@ -253,8 +298,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                   >
                     {isBusy ? (
                       <>
-                        <span className="mr-2">⏳</span>
-                        Sending...
+                        Sending link...
                       </>
                     ) : (
                       mode === "sign-up" ? "Create account" : "Continue with email"

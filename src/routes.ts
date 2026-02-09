@@ -14,6 +14,7 @@ import argon2 from "argon2-browser";
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://privatenote-ai.pages.dev',
+  'https://client-llm.privatenote-ai.pages.dev',
   'https://privatenote.ai',
   'http://localhost:5000',
   'http://localhost:5173',
@@ -138,7 +139,7 @@ function getCSPHeader(): string {
   // Note: 'unsafe-inline' for styles is needed for React/Vite, but we avoid it for scripts
   return [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'", // Turnstile + WebAssembly for WebLLM
+    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'", // Turnstile + Cloudflare Insights + WebAssembly for WebLLM
     "style-src 'self' 'unsafe-inline'", // React inline styles
     "font-src 'self'",
     "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com", // API endpoints + WebLLM model downloads + WASM libraries + HuggingFace CAS

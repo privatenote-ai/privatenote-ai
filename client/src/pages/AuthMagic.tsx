@@ -142,6 +142,7 @@ export default function AuthMagic() {
               <CardContent className="space-y-4">
                 <div className="flex justify-center">
                   <Button
+                    variant="outline"
                     onClick={() => setLocation("/")}
                     size="lg"
                     className="min-w-[140px]"

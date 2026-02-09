@@ -6,6 +6,7 @@ dist
 *.log
 .DS_Store
 .wrangler
+prerender
 
 # Large model files - downloaded from HuggingFace at runtime
 r2_upload/models/
