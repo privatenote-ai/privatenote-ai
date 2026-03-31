@@ -1707,7 +1707,7 @@ export const CreateNote: React.FC = () => {
                 <p className="m-0">⚠️ Anyone with this link can read your note</p>
                 <p className="m-0">⚠️ This link cannot be recovered if lost</p>
                 <p className="m-0">
-                  ⚠️ The note deletes after {readCount === 1 ? "1 read" : `${readCount} reads`} or{" "}
+                  ⚠️ The note will be deleted after {readCount === 1 ? "1 read" : `${readCount} reads`} or{" "}
                   {getExpiryTimeDisplay(expiryValue)}.
                 </p>
               </div>
@@ -1718,28 +1718,17 @@ export const CreateNote: React.FC = () => {
             </div>
           </div>
 
-          <div
-            className={`rounded-lg p-4 text-sm border ${isPasswordProtected
-                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
-                : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
-              }`}
-          >
-            {isPasswordProtected ? (
-              <>
-                <p>
-                  <strong>Password protection enabled.</strong> This note requires both the
-                  link and your password to decrypt.
-                </p>
-                <p className="mt-1">
-                  For best security, send the password separately from the link.
-                </p>
-              </>
-            ) : (
+          {isPasswordProtected && (
+            <div className="rounded-lg p-4 text-sm border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
               <p>
-                <strong>Link-only access.</strong> The decryption key is embedded in this link.
+                <strong>Password protection enabled.</strong> This note requires both the
+                link and your password to decrypt.
               </p>
-            )}
-          </div>
+              <p className="mt-1">
+                For best security, send the password separately from the link.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-center mt-4">
             <button
