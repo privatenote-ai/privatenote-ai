@@ -1589,10 +1589,7 @@ export const CreateNote: React.FC = () => {
         <div className="space-y-10">
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 break-words">
             <div className="mb-5 sm:mb-6 text-center">
-              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Shield className="h-5 w-5 text-primary" />
-              </div>
-              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
                 Your secure note is ready
               </h2>
             </div>
