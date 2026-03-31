@@ -3,7 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Shield, Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2 } from 'lucide-react';
+import { Shield, Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Download } from 'lucide-react';
 import { Link } from 'wouter';
 import { zxcvbn } from '@zxcvbn-ts/core';
 import { apiRequest } from '@/lib/queryClient';
@@ -358,7 +358,7 @@ const PasswordGenerator: React.FC = () => {
   if (sharedNoteUrl) {
     return (
       <div className="max-w-3xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-        <section className="space-y-6">
+        <section className="space-y-8">
           <div className="text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Shield className="h-6 w-6 text-primary" />
@@ -371,9 +371,9 @@ const PasswordGenerator: React.FC = () => {
             </p>
           </div>
 
-          <div className="space-y-3">
-            <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Secure link
+          <div className="space-y-3 pt-1">
+            <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+              Secure Link
             </label>
             <div className="rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 transition-transform active:scale-[1.02]">
               <input
@@ -404,7 +404,7 @@ const PasswordGenerator: React.FC = () => {
                   });
                 }
               }}
-              className="w-full inline-flex items-center justify-center bg-blue-600 text-white rounded-xl font-semibold py-2.5 px-4 hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+              className="w-48 mx-auto inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
               {copied ? (
                 <span>Copied!</span>
@@ -416,8 +416,8 @@ const PasswordGenerator: React.FC = () => {
               )}
             </button>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              The link contains the decryption key. Anyone with this link can read the password.
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+              The link and QR code contain the decryption key. Anyone with this link or QR code can read the password.
             </p>
           </div>
 
@@ -431,24 +431,30 @@ const PasswordGenerator: React.FC = () => {
             <div className="flex gap-3 mt-4">
               <button
                 onClick={downloadQrCode}
-                className="flex items-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                className="w-48 inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
                 title="Download QR code as SVG image"
               >
+                <Download className="h-4 w-4 mr-1.5" />
                 Download QR
               </button>
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setSharedNoteUrl(null);
-              generatePassword();
-            }}
-            className="w-full flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2.5 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Generate New Password
-          </button>
+          <div className="pt-1 space-y-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+              Need another password? Generate a fresh one and create a new secure link.
+            </p>
+            <button
+              onClick={() => {
+                setSharedNoteUrl(null);
+                generatePassword();
+              }}
+              className="w-56 mx-auto flex items-center justify-center bg-transparent border border-primary text-primary rounded-md font-semibold py-2.5 px-4 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Generate New Password
+            </button>
+          </div>
         </section>
       </div>
     );
