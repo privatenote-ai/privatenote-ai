@@ -482,6 +482,7 @@ export const CreateNote: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [noteUrl, setNoteUrl] = useState<string | null>(null);
   const [showSuccessQr, setShowSuccessQr] = useState(false);
+  const [successLinkCopied, setSuccessLinkCopied] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
@@ -780,6 +781,7 @@ export const CreateNote: React.FC = () => {
 
   useEffect(() => {
     setShowSuccessQr(false);
+    setSuccessLinkCopied(false);
   }, [noteUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1062,6 +1064,7 @@ export const CreateNote: React.FC = () => {
   const copyToClipboard = () => {
     if (noteUrl) {
       navigator.clipboard.writeText(noteUrl);
+      setSuccessLinkCopied(true);
       toast({
         title: "Copied!",
         description: "Secret note link copied to clipboard",
@@ -1081,6 +1084,7 @@ export const CreateNote: React.FC = () => {
         return;
       }
       await navigator.clipboard.writeText(noteUrl);
+      setSuccessLinkCopied(true);
       toast({
         title: "Copied!",
         description: "Secret note link copied to clipboard",
@@ -1189,6 +1193,7 @@ export const CreateNote: React.FC = () => {
 
   const createNewNote = () => {
     setShowSuccessQr(false);
+    setSuccessLinkCopied(false);
     setNoteUrl(null);
     setNoteContent("");
     setAiPrompt("");
@@ -1582,44 +1587,69 @@ export const CreateNote: React.FC = () => {
     return (
       <section className="max-w-3xl mx-auto">
         <div className="space-y-10">
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 whitespace-pre-wrap break-words">
-            <div className="mb-4 sm:mb-5 text-center">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 break-words">
+            <div className="mb-5 sm:mb-6 text-center">
               <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
-                Note Created Successfully
+                Your secure note is ready
               </h2>
             </div>
 
-            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-200 mb-3">
-              Your note has been encrypted and stored securely. Share this link with the recipient:
-            </p>
+            <div className="text-sm sm:text-base text-gray-700 dark:text-gray-200 mb-5 space-y-1.5 text-center">
+              <p className="m-0">Your note is encrypted in your browser.</p>
+              <p className="m-0">Only someone with this link can read it.</p>
+            </div>
 
-            <div className="flex flex-col space-y-3">
-              <div className="flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-transform active:scale-[1.02]">
-                <input
-                  type="text"
-                  readOnly
-                  value={noteUrl}
-                  className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
-                  aria-label="Encrypted note link"
-                  onFocus={(event) => event.currentTarget.select()}
-                />
+            <div className="flex flex-col space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  🔑 Your secure link (save this)
+                </p>
+                <div className="flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-transform active:scale-[1.02]">
+                  <input
+                    type="text"
+                    readOnly
+                    value={noteUrl}
+                    className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
+                    aria-label="Encrypted note link"
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-0.5">
                 <button
+                  type="button"
                   onClick={copyToClipboard}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-700 text-white rounded-md transition-colors hover:bg-blue-800 shadow-sm"
+                  className={`inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold rounded-md shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                    successLinkCopied
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                      : "bg-blue-700 text-white hover:bg-blue-800 focus-visible:ring-primary"
+                  }`}
                   title="Copy link to clipboard"
+                  aria-live="polite"
                 >
-                  <Copy className="h-4 w-4 mr-1.5" />
-                  Copy Link
+                  {successLinkCopied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1.5 shrink-0" />
+                      Link copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1.5 shrink-0" />
+                      Copy Link
+                    </>
+                  )}
                 </button>
+                <span className="text-gray-400 dark:text-gray-500 select-none text-sm" aria-hidden>
+                  →
+                </span>
                 <button
                   onClick={shareLink}
                   type="button"
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   title="Share link"
                 >
                   <Share2 className="h-4 w-4 mr-1.5" />
@@ -1627,7 +1657,23 @@ export const CreateNote: React.FC = () => {
                 </button>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-700">
+              <div
+                className="rounded-lg border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/35 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2.5 text-sm leading-snug text-amber-950 dark:text-amber-100/95"
+                role="note"
+              >
+                <p className="m-0">⚠️ Anyone with this link can read your note</p>
+                <p className="m-0">⚠️ This link cannot be recovered if lost</p>
+                <p className="m-0">
+                  ⚠️ The note deletes after {readCount === 1 ? "1 read" : `${readCount} reads`} or{" "}
+                  {getExpiryTimeDisplay(expiryValue)}.
+                </p>
+              </div>
+
+              <p className="m-0 text-sm leading-snug text-gray-600 dark:text-gray-300 px-0.5">
+                💡 Tip: For sensitive notes, enable password protection and share it separately
+              </p>
+
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex justify-center">
                   <button
                     type="button"
@@ -1696,18 +1742,9 @@ export const CreateNote: React.FC = () => {
               </>
             ) : (
               <p>
-                <strong>Link-only access.</strong> The decryption key is embedded in the
-                link. Anyone who obtains the link can read the note.
+                <strong>Link-only access.</strong> The decryption key is embedded in this link.
               </p>
             )}
-            <p className="mt-2">
-              The note will be permanently deleted after it is read once or after{" "}
-              <strong>{getExpiryTimeDisplay(expiryValue)}</strong>.
-            </p>
-            <p className="mt-2 text-xs italic opacity-80">
-              Tip: For sensitive notes, enable password protection and share credentials
-              separately.
-            </p>
           </div>
 
           <div className="flex justify-center mt-4">
