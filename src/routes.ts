@@ -476,6 +476,33 @@ function coerceWebAuthnIdToBase64Url(value: unknown, label: string, fallback?: s
   throw new Error(`Invalid WebAuthn ${label}.`);
 }
 
+function isAuthDebug(env: Env): boolean {
+  return env.AUTH_DEBUG === "1" || env.AUTH_DEBUG === "true";
+}
+
+/** Always logs to Worker observability (wrangler tail / dashboard). With AUTH_DEBUG=1, JSON includes `debug`, `route`, `phase`. */
+function webAuthnErrorResponse(
+  env: Env,
+  request: Request,
+  route: string,
+  phase: string,
+  err: unknown,
+  status = 400
+): Response {
+  const msg = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? err.stack : undefined;
+  console.error(`[WebAuthn] ${route} — ${phase}: ${msg}${stack ? `\n${stack}` : ""}`);
+  const body: Record<string, unknown> = {
+    message: status >= 500 ? "Internal error" : "Bad request",
+  };
+  if (isAuthDebug(env)) {
+    body.debug = msg;
+    body.route = route;
+    body.phase = phase;
+  }
+  return jsonResponse(body, status, request);
+}
+
 function base64UrlToBytes(value: string): Uint8Array {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((value.length + 3) % 4);
   const binary = atob(padded);
@@ -615,6 +642,7 @@ type AuditEventType =
   | "recovery_code_failed"
   | "account_deleted"
   | "magic_link_sent"
+  | "magic_link_email_failed"
   | "magic_link_used"
   | "magic_link_failed"
   | "rate_limit_exceeded"
@@ -1184,24 +1212,36 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(userId)
       .all<{ credential_id: string; transports: string | null }>();
 
-    const options = await generateRegistrationOptions({
-      rpName: "PrivateNote.ai",
-      rpID,
-      userID: new TextEncoder().encode(userId),
-      userName: userEmail || `privatenote-${userId.slice(0, 6)}`,
-      userDisplayName: userEmail || "PrivateNote User",
-      attestationType: "none",
-      authenticatorSelection: {
-        userVerification: "preferred",
-        residentKey: "preferred",
-      },
-      excludeCredentials: (credentials.results || [])
-        .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
-        .map((cred) => ({
-          id: cred.credential_id,
-          transports: parseTransports(cred.transports),
-        })),
-    });
+    let options;
+    try {
+      options = await generateRegistrationOptions({
+        rpName: "PrivateNote.ai",
+        rpID,
+        userID: new TextEncoder().encode(userId),
+        userName: userEmail || `privatenote-${userId.slice(0, 6)}`,
+        userDisplayName: userEmail || "PrivateNote User",
+        attestationType: "none",
+        authenticatorSelection: {
+          userVerification: "preferred",
+          residentKey: "preferred",
+        },
+        excludeCredentials: (credentials.results || [])
+          .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
+          .map((cred) => ({
+            id: cred.credential_id,
+            transports: parseTransports(cred.transports),
+          })),
+      });
+    } catch (err) {
+      return webAuthnErrorResponse(
+        env,
+        request,
+        "POST /api/auth/webauthn/register/options",
+        "generateRegistrationOptions",
+        err,
+        500
+      );
+    }
 
     const fallbackUserIdBytes = new TextEncoder().encode(userId);
     const fallbackUserName = userEmail || `privatenote-${userId.slice(0, 6)}`;
@@ -1222,8 +1262,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           id: coerceWebAuthnIdToBase64Url(cred.id, "excludeCredentials.id"),
         })),
       };
-    } catch {
-      return jsonResponse({ message: "Bad request" }, 400, request);
+    } catch (err) {
+      return webAuthnErrorResponse(env, request, "POST /api/auth/webauthn/register/options", "normalizeOptions", err);
     }
 
     const challengeId = randomId(16);
@@ -1447,16 +1487,28 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID,
-      allowCredentials: allowCredentials.length
-        ? allowCredentials.map((cred) => ({
-          id: cred.id,
-          transports: cred.transports,
-        }))
-        : undefined,
-      userVerification: "preferred",
-    });
+    let options;
+    try {
+      options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials: allowCredentials.length
+          ? allowCredentials.map((cred) => ({
+            id: cred.id,
+            transports: cred.transports,
+          }))
+          : undefined,
+        userVerification: "preferred",
+      });
+    } catch (err) {
+      return webAuthnErrorResponse(
+        env,
+        request,
+        "POST /api/auth/webauthn/login/options",
+        "generateAuthenticationOptions",
+        err,
+        500
+      );
+    }
 
     let normalizedOptions: Record<string, unknown>;
     try {
@@ -1468,8 +1520,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
         })),
       };
-    } catch {
-      return jsonResponse({ message: "Bad request" }, 400, request);
+    } catch (err) {
+      return webAuthnErrorResponse(env, request, "POST /api/auth/webauthn/login/options", "normalizeOptions", err);
     }
 
     const challengeId = randomId(16);
@@ -1680,14 +1732,26 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "No passkeys available" }, 400, request);
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID,
-      allowCredentials: validCreds.map((cred) => ({
-        id: cred.credential_id,
-        transports: parseTransports(cred.transports),
-      })),
-      userVerification: "preferred",
-    });
+    let options;
+    try {
+      options = await generateAuthenticationOptions({
+        rpID,
+        allowCredentials: validCreds.map((cred) => ({
+          id: cred.credential_id,
+          transports: parseTransports(cred.transports),
+        })),
+        userVerification: "preferred",
+      });
+    } catch (err) {
+      return webAuthnErrorResponse(
+        env,
+        request,
+        "POST /api/auth/webauthn/stepup/options",
+        "generateAuthenticationOptions",
+        err,
+        500
+      );
+    }
 
     let normalizedOptionsStepUp: Record<string, unknown>;
     try {
@@ -1699,8 +1763,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           id: coerceWebAuthnIdToBase64Url(cred.id, "allowCredentials.id"),
         })),
       };
-    } catch {
-      return jsonResponse({ message: "Bad request" }, 400, request);
+    } catch (err) {
+      return webAuthnErrorResponse(env, request, "POST /api/auth/webauthn/stepup/options", "normalizeOptions", err);
     }
 
     const challengeId = randomId(16);
@@ -2413,8 +2477,21 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     if (!isLocal && env.TURNSTILE_SECRET_KEY) {
-      const isHuman = await verifyTurnstile(body?.turnstileToken, request, env);
+      const token = body?.turnstileToken;
+      if (!token) {
+        console.error(
+          "[MAGIC_LINK] Not sending email: Turnstile is required (TURNSTILE_SECRET_KEY set) but request had no turnstileToken. " +
+            "Ensure Pages has VITE_TURNSTILE_SITE_KEY and the sign-in form renders Turnstile (preview deployments need this env var too)."
+        );
+        await jitterDelay();
+        return jsonResponse(responsePayload, 200, request);
+      }
+      const isHuman = await verifyTurnstile(token, request, env);
       if (!isHuman) {
+        console.error(
+          "[MAGIC_LINK] Not sending email: Turnstile siteverify failed (expired token, wrong domain, or bot). " +
+            "Check Turnstile widget hostnames in Cloudflare dashboard match your Pages URL."
+        );
         await jitterDelay();
         return jsonResponse(responsePayload, 200, request);
       }
@@ -2445,22 +2522,41 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
         if (isLocal) {
           responsePayload.debugMagicLink = magicUrl;
+          await logAuditEvent(env, {
+            userId,
+            eventType: "magic_link_sent",
+            status: "success",
+            details: { intent, emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"), channel: "debug" },
+            ip: getRequestIp(request),
+            userAgent: request.headers.get("User-Agent"),
+          });
         } else {
           const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
           if (!sendResult.ok) {
-            console.warn("[Auth] Magic link email failed:", sendResult.error);
+            console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);
+            await logAuditEvent(env, {
+              userId,
+              eventType: "magic_link_email_failed",
+              status: "failure",
+              details: {
+                intent,
+                emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+                error: sendResult.error?.slice(0, 500) ?? "unknown",
+              },
+              ip: getRequestIp(request),
+              userAgent: request.headers.get("User-Agent"),
+            });
+          } else {
+            await logAuditEvent(env, {
+              userId,
+              eventType: "magic_link_sent",
+              status: "success",
+              details: { intent, emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
+              ip: getRequestIp(request),
+              userAgent: request.headers.get("User-Agent"),
+            });
           }
         }
-
-        // Audit log: magic link sent
-        await logAuditEvent(env, {
-          userId,
-          eventType: "magic_link_sent",
-          status: "success",
-          details: { intent, emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
-          ip: getRequestIp(request),
-          userAgent: request.headers.get("User-Agent"),
-        });
       }
     }
 
@@ -3100,6 +3196,7 @@ function verifyCsrfOrigin(request: Request): Response | null {
     if (getAllowedOrigin(request) !== null) {
       return null;
     }
+    console.warn(`[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} Origin=${origin}`);
     return jsonResponse({ error: "CSRF validation failed" }, 403, request);
   }
 
@@ -3116,9 +3213,13 @@ function verifyCsrfOrigin(request: Request): Response | null {
         normalized.endsWith(".privatenote.ai");
       if (allowed) return null;
     } catch { /* invalid URL */ }
+    console.warn(`[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} Referer=${referer}`);
     return jsonResponse({ error: "CSRF validation failed" }, 403, request);
   }
 
+  console.warn(
+    `[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} (no Origin; no valid Referer)`
+  );
   return jsonResponse({ error: "CSRF validation failed: missing Origin header" }, 403, request);
 }
 

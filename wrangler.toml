@@ -45,6 +45,8 @@ new_classes = ["AuthTokenStore"]
 [vars]
 AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
+# Uncomment while debugging WebAuthn / auth: API returns { debug, route, phase } on failures; see `wrangler tail`.
+# AUTH_DEBUG = "1"
 
 [build]
 command = "npm run build"

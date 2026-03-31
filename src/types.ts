@@ -20,4 +20,6 @@ export interface Env {
   AUTH_SECRET_KEY?: string;
   // Admin API token (set via wrangler secret put ADMIN_TOKEN). Required for /api/admin/*.
   ADMIN_TOKEN?: string;
+  /** Set to "1" or "true" in [vars] temporarily: WebAuthn 400 responses include a `debug` field; all failures log to Worker logs. */
+  AUTH_DEBUG?: string;
 }
