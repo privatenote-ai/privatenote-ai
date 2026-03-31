@@ -44,6 +44,7 @@ import {
   Eye,
   Key,
   Mail,
+  Share2,
 } from "lucide-react";
 import { SecurityRecommendations } from "@/components/features/SecurityRecommendations";
 
@@ -481,7 +482,6 @@ export const CreateNote: React.FC = () => {
   const [noteContent, setNoteContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [noteUrl, setNoteUrl] = useState<string | null>(null);
-  const [showQrCode, setShowQrCode] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
@@ -1078,6 +1078,27 @@ export const CreateNote: React.FC = () => {
     }
   };
 
+  const shareLink = async () => {
+    if (!noteUrl) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "PrivateNote link",
+          text: "I've shared a secure encrypted note with you.",
+          url: noteUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(noteUrl);
+      toast({
+        title: "Copied!",
+        description: "Secret note link copied to clipboard",
+      });
+    } catch {
+      // user cancel or unsupported paths
+    }
+  };
+
   const getQrSvgData = () => {
     const qrCodeElement = document.getElementById('note-qr-code');
     const svgElement = qrCodeElement?.querySelector('svg') as SVGSVGElement | null;
@@ -1560,52 +1581,50 @@ export const CreateNote: React.FC = () => {
                   onFocus={(event) => event.currentTarget.select()}
                 />
               </div>
-              <button
-                onClick={copyToClipboard}
-                className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-md transition-colors hover:bg-blue-700 shadow-sm"
-                title="Copy link to clipboard"
-              >
-                <Copy className="h-4 w-4 mr-1.5" />
-                Copy Link
-              </button>
-              <button
-                onClick={shareViaEmail}
-                className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                title="Email link to recipient"
-              >
-                <Mail className="h-4 w-4 mr-1.5" />
-                Email Link
-              </button>
-              <div className="flex justify-center pt-1">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                 <button
-                  type="button"
-                  onClick={() => setShowQrCode((prev) => !prev)}
-                  className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                  aria-expanded={showQrCode}
+                  onClick={copyToClipboard}
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-700 text-white rounded-md transition-colors hover:bg-blue-800 shadow-sm"
+                  title="Copy link to clipboard"
                 >
-                  {showQrCode ? "Hide QR code" : "Show QR code"}
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  Copy Link
+                </button>
+                <button
+                  onClick={shareViaEmail}
+                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                  title="Email link to recipient"
+                >
+                  <Mail className="h-4 w-4 mr-1.5" />
+                  Email Link
+                </button>
+                <button
+                  onClick={shareLink}
+                  className="hidden md:inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                  title="Share link"
+                >
+                  <Share2 className="h-4 w-4 mr-1.5" />
+                  Share
                 </button>
               </div>
             </div>
           </div>
 
-          {showQrCode && (
-            <div className="flex flex-col items-center mt-8 mb-4">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
-                <QRCode value={noteUrl} size={180} />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={downloadQrCode}
-                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                  title="Download QR code as SVG image"
-                >
-                  <FileText className="h-4 w-4 mr-1.5" />
-                  Download QR
-                </button>
-              </div>
+          <div className="flex flex-col items-center mt-8 mb-4">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
+              <QRCode value={noteUrl} size={180} />
             </div>
-          )}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={downloadQrCode}
+                className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                title="Download QR code as SVG image"
+              >
+                <FileText className="h-4 w-4 mr-1.5" />
+                Download QR
+              </button>
+            </div>
+          </div>
 
           <div
             className={`rounded-lg p-4 text-sm border ${isPasswordProtected

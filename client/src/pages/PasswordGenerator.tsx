@@ -3,7 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Shield, Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Download } from 'lucide-react';
+import { Shield, Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Download, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'wouter';
 import { zxcvbn } from '@zxcvbn-ts/core';
 import { apiRequest } from '@/lib/queryClient';
@@ -23,6 +23,7 @@ const PasswordGenerator: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [sharedNoteUrl, setSharedNoteUrl] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { toast } = useToast();
 
@@ -168,6 +169,7 @@ const PasswordGenerator: React.FC = () => {
       }
 
       setPassword(finalPassword);
+      setShowPassword(false);
       calculatePasswordStrengthRef.current(finalPassword);
     } catch (error) {
       console.error('Error generating password:', error);
@@ -369,7 +371,7 @@ const PasswordGenerator: React.FC = () => {
           </div>
 
           <div className="space-y-4 pt-2">
-            <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+            <label htmlFor="note-url" className="block text-sm font-semibold text-primary text-center">
               Secure Link
             </label>
             <div className="rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 transition-transform active:scale-[1.02]">
@@ -416,13 +418,13 @@ const PasswordGenerator: React.FC = () => {
               </button>
             </div>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
               The link and QR code contain the decryption key. Anyone with this link or QR code can read the password.
             </p>
           </div>
 
           <div className="flex flex-col items-center pt-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-semibold text-primary mb-2">
               QR Code
             </label>
             <div className="w-48 h-48 bg-white p-2 rounded-lg" id="password-qr-code">
@@ -553,9 +555,9 @@ const PasswordGenerator: React.FC = () => {
         </div>
 
         {password && (
-          <div className="mt-6 space-y-4">
-            <div className="mb-2">
-              <div className="flex items-center justify-between mb-2">
+          <div className="mt-6 space-y-8">
+            <div>
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Password Strength</span>
                 <span className={`text-sm font-semibold ${strengthInfo.color}`}>
                   {strengthInfo.text}
@@ -578,10 +580,26 @@ const PasswordGenerator: React.FC = () => {
                 ></div>
               </div>
             </div>
-            <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-4 text-center text-lg text-gray-900 shadow-sm dark:border-primary/60 dark:bg-primary/15 dark:text-white">
-              {password}
+            <div className="rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 shadow-sm dark:border-primary/60 dark:bg-primary/15">
+              <div className="flex items-center gap-2">
+                <p
+                  className={`flex-1 text-center font-mono text-base leading-snug text-gray-900 dark:text-white break-all select-all ${showPassword ? 'tracking-[0.15em]' : 'tracking-normal'}`}
+                  aria-label={showPassword ? "Generated password" : "Password hidden"}
+                >
+                  {showPassword ? password : '•'.repeat(password.length)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="shrink-0 rounded-lg p-2 text-primary hover:bg-primary/15 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 justify-center flex-wrap">
+            <div className="flex gap-2 justify-center flex-wrap pt-1">
               <button
                 className="flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
                 onClick={sharePasswordAsNote}
