@@ -81,15 +81,15 @@ export default function Analytics() {
     return apiBaseUrl + url;
   };
 
-  const adminToken = typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
-  const fetchWithAdminToken = async (url: string) => {
-    if (!adminToken) return null;
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+
+  const fetchWithAdminCookie = async (url: string) => {
     const response = await fetch(getApiUrl(url), {
-      headers: { 'x-admin-token': adminToken },
       credentials: 'include',
     });
 
     if (response.status === 401) {
+      setIsAuthenticated(false);
       return null;
     }
 
@@ -102,21 +102,21 @@ export default function Analytics() {
 
   // Queries
   const dailyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/daily', adminToken],
-    queryFn: () => fetchWithAdminToken('/api/admin/analytics/daily'),
-    enabled: !!adminToken && timeRange === 'daily'
+    queryKey: ['/api/admin/analytics/daily'],
+    queryFn: () => fetchWithAdminCookie('/api/admin/analytics/daily'),
+    enabled: isAuthenticated && timeRange === 'daily'
   });
 
   const weeklyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/weekly', adminToken],
-    queryFn: () => fetchWithAdminToken('/api/admin/analytics/weekly'),
-    enabled: !!adminToken && timeRange === 'weekly'
+    queryKey: ['/api/admin/analytics/weekly'],
+    queryFn: () => fetchWithAdminCookie('/api/admin/analytics/weekly'),
+    enabled: isAuthenticated && timeRange === 'weekly'
   });
 
   const monthlyQuery = useQuery({
-    queryKey: ['/api/admin/analytics/monthly', adminToken],
-    queryFn: () => fetchWithAdminToken('/api/admin/analytics/monthly'),
-    enabled: !!adminToken && timeRange === 'monthly'
+    queryKey: ['/api/admin/analytics/monthly'],
+    queryFn: () => fetchWithAdminCookie('/api/admin/analytics/monthly'),
+    enabled: isAuthenticated && timeRange === 'monthly'
   });
 
   // Determine which query to use based on the selected time range
@@ -186,12 +186,12 @@ export default function Analytics() {
     ];
   };
 
-  if (!adminToken) {
+  if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-6 pt-24 pb-16">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Admin token required</AlertTitle>
+          <AlertTitle>Admin authentication required</AlertTitle>
           <AlertDescription>
             Log in at Audit Logs or Blog Admin first, then return here to view analytics.
           </AlertDescription>

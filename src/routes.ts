@@ -9,6 +9,7 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
+import type { AuthenticatorTransportFuture } from "@simplewebauthn/types";
 import argon2 from "argon2-browser";
 
 // Allowed origins for CORS
@@ -163,7 +164,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getCSPHeader(),
-    // Credentials are enabled for session cookies; ensure Origin is specific (not *)
+    "Referrer-Policy": "strict-origin-when-cross-origin",
   };
 
   if (origin) {
@@ -230,7 +231,7 @@ function getDeviceLabel(userAgent: string): string {
 
 // Safely parse transports JSON from database.
 // Supports both formats: raw array ["internal","hybrid"] and object { transports: [...] }.
-function parseTransports(transportsJson: string | null | undefined): string[] | undefined {
+function parseTransports(transportsJson: string | null | undefined): AuthenticatorTransportFuture[] | undefined {
   if (!transportsJson) return undefined;
   try {
     const parsed = JSON.parse(transportsJson);
@@ -405,9 +406,8 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     const cookieHeader = request.headers.get("Cookie") || "";
     const hasClientCookie = /(?:^|;\s*)pn_client_id=([^;]+)/.test(cookieHeader);
     if (!hasClientCookie) {
-      const clientId = randomId(16); // 16 random bytes → base64url
-      // 1 year, HttpOnly not needed (non-auth), but SameSite+Secure for safety
-      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+      const clientId = randomId(16);
+      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure; HttpOnly`;
     }
   }
 
@@ -1184,10 +1184,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(userId)
       .all<{ credential_id: string; transports: string | null }>();
 
-    const options = generateRegistrationOptions({
+    const options = await generateRegistrationOptions({
       rpName: "PrivateNote.ai",
       rpID,
-      userID: userId,
+      userID: new TextEncoder().encode(userId),
       userName: userEmail || `privatenote-${userId.slice(0, 6)}`,
       userDisplayName: userEmail || "PrivateNote User",
       attestationType: "none",
@@ -1196,8 +1196,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         residentKey: "preferred",
       },
       excludeCredentials: (credentials.results || []).map((cred) => ({
-        id: base64UrlToBytes(cred.credential_id),
-        type: "public-key",
+        id: cred.credential_id,
         transports: parseTransports(cred.transports),
       })),
     });
@@ -1303,17 +1302,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
-    const credentialId = coerceWebAuthnIdToBase64Url(
-      credential?.rawId ?? credential?.id,
-      "credential.rawId/id"
-    );
-    const verifiedCredentialId = base64UrlEncode(credentialID);
-    if (credentialId !== verifiedCredentialId) {
-      console.warn("[Auth] Credential ID mismatch", {
-        credentialId,
-        verifiedCredentialId,
-      });
-    }
+    const credentialId = credentialID;
     const publicKey = base64UrlEncode(credentialPublicKey);
     const transports = Array.isArray(credential?.transports)
       ? credential.transports
@@ -1430,7 +1419,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
-    let allowCredentials: Array<{ id: string; type: "public-key"; transports?: string[] }> = [];
+    let allowCredentials: Array<{ id: string; type: "public-key"; transports?: AuthenticatorTransportFuture[] }> = [];
 
     if (email) {
       const user = await env.AUTH_DB.prepare(
@@ -1454,12 +1443,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }
     }
 
-    const options = generateAuthenticationOptions({
+    const options = await generateAuthenticationOptions({
       rpID,
       allowCredentials: allowCredentials.length
         ? allowCredentials.map((cred) => ({
-          ...cred,
-          id: base64UrlToBytes(cred.id),
+          id: cred.id,
+          transports: cred.transports,
         }))
         : undefined,
       userVerification: "preferred",
@@ -1561,7 +1550,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expectedOrigin,
         expectedRPID,
         authenticator: {
-          credentialID: base64UrlToBytes(storedCredential.credential_id),
+          credentialID: storedCredential.credential_id,
           credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
           counter: storedCredential.counter || 0,
         },
@@ -1684,11 +1673,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "No passkeys available" }, 400, request);
     }
 
-    const options = generateAuthenticationOptions({
+    const options = await generateAuthenticationOptions({
       rpID,
       allowCredentials: credentials.results.map((cred) => ({
-        id: base64UrlToBytes(cred.credential_id),
-        type: "public-key",
+        id: cred.credential_id,
         transports: parseTransports(cred.transports),
       })),
       userVerification: "preferred",
@@ -1785,7 +1773,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expectedOrigin,
         expectedRPID,
         authenticator: {
-          credentialID: base64UrlToBytes(storedCredential.credential_id),
+          credentialID: storedCredential.credential_id,
           credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
           counter: storedCredential.counter || 0,
         },
@@ -2345,7 +2333,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
-    const isLocal = url.hostname.includes("localhost") || url.hostname.includes("127.0.0.1");
+    const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const responsePayload: Record<string, unknown> = {
       ok: true,
       message: "Check your email for a sign-in link.",
@@ -2536,6 +2524,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
+    headers.set("Referrer-Policy", "no-referrer");
     if (session?.sessionId) {
       headers.set("Set-Cookie", sessionCookie(session.sessionId));
     }
@@ -3085,17 +3074,76 @@ function getClientIdentifier(request: Request): string {
   return `ua:${`${origin}:${userAgent}`.substring(0, 100)}`;
 }
 
-// Helper to check admin authentication. Uses env.ADMIN_TOKEN and constant-time compare.
+/**
+ * CSRF protection: reject state-changing requests from unexpected origins.
+ * Only enforced when a pn_session cookie is present (authenticated user context),
+ * so unauthenticated API calls (note creation, etc.) are unaffected.
+ */
+function verifyCsrfOrigin(request: Request): Response | null {
+  if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
+    return null;
+  }
+  const cookies = request.headers.get("Cookie") || "";
+  if (!cookies.includes("pn_session")) {
+    return null;
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin) {
+    if (getAllowedOrigin(request) !== null) {
+      return null;
+    }
+    return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+  }
+
+  const referer = request.headers.get("Referer");
+  if (referer) {
+    try {
+      const refOrigin = new URL(referer).origin;
+      const normalized = normalizeOrigin(refOrigin);
+      const allowed =
+        ALLOWED_ORIGINS.map(normalizeOrigin).includes(normalized) ||
+        normalized.includes("localhost") ||
+        normalized.includes("127.0.0.1") ||
+        normalized.endsWith(".pages.dev") ||
+        normalized.endsWith(".privatenote.ai");
+      if (allowed) return null;
+    } catch { /* invalid URL */ }
+    return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+  }
+
+  return jsonResponse({ error: "CSRF validation failed: missing Origin header" }, 403, request);
+}
+
+const ADMIN_SESSION_TTL = 4 * 60 * 60; // 4 hours
+
+function adminSessionCookie(token: string): string {
+  return `pn_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=${ADMIN_SESSION_TTL}`;
+}
+
+function clearAdminSessionCookie(): string {
+  return "pn_admin=; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=0";
+}
+
+// Accept either the X-Admin-Token header (legacy) or the pn_admin HttpOnly cookie.
 function requireAdmin(request: Request, env: Env): Response | null {
   const expected = env.ADMIN_TOKEN;
   if (!expected || typeof expected !== "string") {
     return jsonResponse({ message: "Unauthorized - Admin not configured" }, 401, request);
   }
-  const provided = request.headers.get("x-admin-token");
-  if (!provided || !constantTimeEquals(provided, expected)) {
-    return jsonResponse({ message: "Unauthorized - Admin access required" }, 401, request);
+
+  const headerToken = request.headers.get("x-admin-token");
+  if (headerToken && constantTimeEquals(headerToken, expected)) {
+    return null;
   }
-  return null;
+
+  const cookies = parseCookies(request.headers.get("Cookie"));
+  const cookieToken = cookies["pn_admin"];
+  if (cookieToken && constantTimeEquals(cookieToken, expected)) {
+    return null;
+  }
+
+  return jsonResponse({ message: "Unauthorized - Admin access required" }, 401, request);
 }
 
 // Helper to parse URL parameters
@@ -3126,14 +3174,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const method = request.method;
   const isAiRequest = pathname.startsWith("/api/ai/");
 
-  console.log(`[ROUTES] ========== REGISTER ROUTES ==========`);
-  console.log(`[ROUTES] Request method: ${method}`);
-  console.log(`[ROUTES] Request URL: ${request.url}`);
-  if (!isAiRequest) {
-    console.log(`[ROUTES] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
-  } else {
-    console.log(`[ROUTES] Request headers: [redacted for AI request]`);
-  }
+  console.log(`[ROUTES] ${method} ${pathname} origin=${request.headers.get("Origin") ?? "-"}`);
 
   // Check CORS origin
   const allowedOrigin = getAllowedOrigin(request);
@@ -3161,6 +3202,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       },
     });
   }
+
+  // CSRF: require valid Origin (or Referer) on authenticated state-changing requests
+  const csrfError = verifyCsrfOrigin(request);
+  if (csrfError) return csrfError;
 
   // Apply rate limiting to POST requests (note creation)
   if (request.method === "POST") {
@@ -3544,6 +3589,34 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       console.error("Error fetching blog post:", error);
       return jsonResponse({ message: "Failed to fetch blog post" }, 500, request);
     }
+  }
+
+  // ============================================================================
+  // ADMIN: AUTH (HttpOnly cookie exchange)
+  // ============================================================================
+
+  if (pathname === "/api/admin/auth" && method === "POST") {
+    let body: any;
+    try { body = await request.json(); } catch { body = {}; }
+    const expected = env.ADMIN_TOKEN;
+    if (!expected || typeof expected !== "string") {
+      return jsonResponse({ message: "Admin not configured" }, 501, request);
+    }
+    const provided = typeof body?.token === "string" ? body.token : "";
+    if (!provided || !constantTimeEquals(provided, expected)) {
+      return jsonResponse({ message: "Invalid admin token" }, 401, request);
+    }
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    headers.set("Set-Cookie", adminSessionCookie(expected));
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/admin/logout" && method === "POST") {
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    headers.set("Set-Cookie", clearAdminSessionCookie());
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
   // ============================================================================

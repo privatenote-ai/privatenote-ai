@@ -790,6 +790,17 @@ export const CreateNote: React.FC = () => {
       return;
     }
 
+    // Enforce a hard limit on plaintext size before encryption (~50 KB)
+    const MAX_NOTE_CHARS = 50_000;
+    if (noteContent.length > MAX_NOTE_CHARS) {
+      toast({
+        title: "Note too large",
+        description: `Notes are limited to ${MAX_NOTE_CHARS.toLocaleString()} characters to keep encryption fast and reliable.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate password if password protection is enabled
     if (isPasswordProtected && !password.trim()) {
       toast({

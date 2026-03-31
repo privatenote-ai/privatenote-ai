@@ -25,8 +25,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const ADMIN_TOKEN_STORAGE_KEY = 'admin_token';
-
 // Get API base URL from environment variable
 const getApiUrl = (url: string): string => {
   const apiBaseUrl = import.meta.env.VITE_API_URL || '';
@@ -51,8 +49,8 @@ export default function BlogAdmin() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(() => typeof window !== 'undefined' && !!sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
-  const [token, setToken] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '' : ''));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [token, setToken] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -67,22 +65,18 @@ export default function BlogAdmin() {
   } = useQuery({
     queryKey: ['/api/admin/blog'],
     queryFn: async () => {
-      // Add admin token to request headers
       const apiBaseUrl = import.meta.env.VITE_API_URL || '';
       const url = apiBaseUrl + '/api/admin/blog';
-      const response = await fetch(url, {
-        headers: {
-          'X-Admin-Token': token
-        }
-      });
+      const response = await fetch(url, { credentials: "include" });
 
       if (!response.ok) {
+        if (response.status === 401) setIsAuthenticated(false);
         throw new Error('Failed to fetch blog posts');
       }
 
       return response.json();
     },
-    enabled: isAuthenticated // Only fetch when authenticated
+    enabled: isAuthenticated
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -92,11 +86,14 @@ export default function BlogAdmin() {
       return;
     }
     const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-    const response = await fetch(apiBaseUrl + '/api/admin/blog', {
-      headers: { 'X-Admin-Token': token.trim() },
+    const response = await fetch(apiBaseUrl + '/api/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: "include",
+      body: JSON.stringify({ token: token.trim() }),
     });
     if (response.ok) {
-      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
+      setToken('');
       setIsAuthenticated(true);
       toast({ title: "Authenticated", description: "You now have access to the blog management." });
     } else {
@@ -302,10 +299,8 @@ function BlogPostsTable({
     mutationFn: async (id: number) => {
       const response = await fetch(getApiUrl(`/api/admin/blog/${id}/publish`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': token
-        }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -334,10 +329,8 @@ function BlogPostsTable({
     mutationFn: async (id: number) => {
       const response = await fetch(getApiUrl(`/api/admin/blog/${id}/unpublish`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': token
-        }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -530,10 +523,8 @@ function CreatePostDialog({
     try {
       const response = await fetch(getApiUrl('/api/admin/blog'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': token
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify(values)
       });
 
@@ -814,10 +805,8 @@ function EditPostDialog({
     try {
       const response = await fetch(getApiUrl(`/api/admin/blog/${post.id}`), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': token
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify(values)
       });
 
@@ -1070,9 +1059,7 @@ function DeletePostDialog({
     try {
       const response = await fetch(getApiUrl(`/api/admin/blog/${post.id}`), {
         method: 'DELETE',
-        headers: {
-          'X-Admin-Token': token
-        }
+        credentials: "include",
       });
 
       if (!response.ok) {

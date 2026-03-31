@@ -31,8 +31,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const ADMIN_TOKEN_STORAGE_KEY = 'admin_token';
-
 // Get API base URL
 const getApiUrl = (url: string): string => {
   const apiBaseUrl = import.meta.env.VITE_API_URL || '';
@@ -106,8 +104,8 @@ interface AuditLogsResponse {
 
 export default function AuditLogs() {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState(() => typeof window !== 'undefined' && !!sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
-  const [token, setToken] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '' : ''));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [token, setToken] = useState('');
 
   // Filters
   const [eventType, setEventType] = useState<string>('');
@@ -136,10 +134,13 @@ export default function AuditLogs() {
       if (ipFilter) params.set('ip', ipFilter);
 
       const response = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': token }
+        credentials: "include",
       });
 
-      if (!response.ok) throw new Error('Failed to fetch audit logs');
+      if (!response.ok) {
+        if (response.status === 401) setIsAuthenticated(false);
+        throw new Error('Failed to fetch audit logs');
+      }
       return response.json();
     },
     enabled: isAuthenticated
@@ -154,7 +155,7 @@ export default function AuditLogs() {
     queryKey: ['/api/admin/audit-logs/stats', statsDays],
     queryFn: async () => {
       const response = await fetch(getApiUrl(`/api/admin/audit-logs/stats?days=${statsDays}`), {
-        headers: { 'X-Admin-Token': token }
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error('Failed to fetch stats');
@@ -169,11 +170,14 @@ export default function AuditLogs() {
       toast({ variant: "destructive", title: "Authentication failed", description: "Enter your admin token." });
       return;
     }
-    const response = await fetch(getApiUrl('/api/admin/audit-logs?limit=1'), {
-      headers: { 'X-Admin-Token': token.trim() },
+    const response = await fetch(getApiUrl('/api/admin/auth'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: "include",
+      body: JSON.stringify({ token: token.trim() }),
     });
     if (response.ok) {
-      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token.trim());
+      setToken('');
       setIsAuthenticated(true);
       toast({ title: "Authenticated", description: "You now have access to the audit logs." });
     } else {
@@ -683,7 +687,7 @@ function SecurityAlertsView({ isAuthenticated, token }: { isAuthenticated: boole
       params.set('status', 'failure');
 
       const failuresResponse = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': token }
+        credentials: "include",
       });
 
       if (!failuresResponse.ok) throw new Error('Failed to fetch');
@@ -692,7 +696,7 @@ function SecurityAlertsView({ isAuthenticated, token }: { isAuthenticated: boole
       // Also get warnings
       params.set('status', 'warning');
       const warningsResponse = await fetch(getApiUrl(`/api/admin/audit-logs?${params.toString()}`), {
-        headers: { 'X-Admin-Token': token }
+        credentials: "include",
       });
 
       if (!warningsResponse.ok) throw new Error('Failed to fetch');

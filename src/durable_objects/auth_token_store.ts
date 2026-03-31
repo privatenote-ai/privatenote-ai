@@ -1,3 +1,5 @@
+const INTERNAL_HEADER = "X-DO-Internal-Secret";
+
 export class AuthTokenStore {
   private state: DurableObjectState;
 
@@ -7,6 +9,14 @@ export class AuthTokenStore {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+
+    // Only the parent Worker should call this DO. Reject if the internal
+    // header is missing — prevents direct external access if the binding
+    // is ever accidentally exposed via a public route.
+    const secret = request.headers.get(INTERNAL_HEADER);
+    if (!secret || secret.length < 16) {
+      return new Response("Forbidden", { status: 403 });
+    }
 
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
@@ -21,12 +31,11 @@ export class AuthTokenStore {
 
     if (url.pathname === "/store") {
       const { key, value, ttlSeconds } = body ?? {};
-      if (!key) {
+      if (!key || typeof key !== "string") {
         return new Response("Missing key", { status: 400 });
       }
-      await this.state.storage.put(key, value, {
-        expirationTtl: typeof ttlSeconds === "number" ? ttlSeconds : 900,
-      });
+      const ttl = typeof ttlSeconds === "number" && ttlSeconds > 0 ? Math.min(ttlSeconds, 86400) : 900;
+      await this.state.storage.put(key, value, { expirationTtl: ttl });
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
       });
@@ -34,7 +43,7 @@ export class AuthTokenStore {
 
     if (url.pathname === "/consume") {
       const { key } = body ?? {};
-      if (!key) {
+      if (!key || typeof key !== "string") {
         return new Response("Missing key", { status: 400 });
       }
       const value = await this.state.storage.get(key);

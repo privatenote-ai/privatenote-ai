@@ -31,6 +31,8 @@ const MIN_TTL_SECONDS = 60;
 const MAX_TTL_SECONDS = 2147483647;
 const MIN_EXPIRY_SECONDS = 60;
 const MAX_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
+// Hard limit on ciphertext size to prevent abuse / OOM (approx. 50 KB base64)
+const MAX_NOTE_CIPHERTEXT_LENGTH = 50_000;
 
 function calculateTTL(expiresAt: Date): number | undefined {
   const now = Date.now();
@@ -240,6 +242,17 @@ export class SecureNoteStorageSql {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Enforce a hard limit on ciphertext size to avoid very large notes
+    if (typeof content !== "string" || content.length > MAX_NOTE_CIPHERTEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Note is too large (max ${MAX_NOTE_CIPHERTEXT_LENGTH} bytes)` }),
+        {
+          status: 413,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     if (isPasswordProtected && (!salt || !encryptedKeyIv)) {

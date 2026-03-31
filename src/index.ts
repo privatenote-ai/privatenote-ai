@@ -59,24 +59,18 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    console.log(`[WORKER-ENTRY] ========== WORKER ENTRY POINT ==========`);
-    console.log(`[WORKER-ENTRY] Request method: ${request.method}`);
-    console.log(`[WORKER-ENTRY] Request URL: ${request.url}`);
-    console.log(`[WORKER-ENTRY] Request headers:`, JSON.stringify(Object.fromEntries(request.headers.entries())));
+    console.log(`[WORKER-ENTRY] ${request.method} ${request.url}`);
 
     try {
       const url = new URL(request.url);
       const pathname = url.pathname;
-      console.log(`[WORKER-ENTRY] Pathname: ${pathname}`);
 
       // Handle CORS preflight requests FIRST, before any routing
       if (request.method === "OPTIONS") {
-        console.log(`[WORKER-ENTRY] Handling OPTIONS preflight request for: ${pathname}`);
         const origin = request.headers.get('Origin');
         const allowedOrigin = getAllowedOrigin(request);
 
         if (origin && !allowedOrigin) {
-          console.log(`[WORKER-ENTRY] ❌ CORS: Origin not allowed: ${origin}`);
           return new Response(JSON.stringify({ error: 'CORS policy: Origin not allowed' }), {
             status: 403,
             headers: {
@@ -97,17 +91,13 @@ export default {
 
       // Handle model serving routes (before API routes)
       if (pathname.startsWith("/models/")) {
-        console.log(`[WORKER-ENTRY] ✅ Path starts with /models/, routing to registerRoutes for model serving`);
         return await registerRoutes(request, env);
       }
 
       // Handle API routes
       if (pathname.startsWith("/api")) {
-        console.log(`[WORKER-ENTRY] ✅ Path starts with /api, routing to registerRoutes`);
         return await registerRoutes(request, env);
       }
-
-      console.log(`[WORKER-ENTRY] Path does not start with /api or /models`);
 
       // For non-API routes, return helpful message (frontend should be served by Cloudflare Pages)
       if (pathname === "/") {
