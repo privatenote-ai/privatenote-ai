@@ -1605,7 +1605,7 @@ export const CreateNote: React.FC = () => {
             <div className="flex flex-col space-y-4">
               <div>
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
-                  🔑 Your secure link (save this)
+                  Your secure link (save this)
                 </p>
                 <div className="flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-transform active:scale-[1.02]">
                   <input
@@ -1643,9 +1643,6 @@ export const CreateNote: React.FC = () => {
                     </>
                   )}
                 </button>
-                <span className="text-gray-400 dark:text-gray-500 select-none text-sm" aria-hidden>
-                  →
-                </span>
                 <button
                   onClick={shareLink}
                   type="button"
@@ -1656,22 +1653,6 @@ export const CreateNote: React.FC = () => {
                   Share
                 </button>
               </div>
-
-              <div
-                className="rounded-lg border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/35 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2.5 text-sm leading-snug text-amber-950 dark:text-amber-100/95"
-                role="note"
-              >
-                <p className="m-0">⚠️ Anyone with this link can read your note</p>
-                <p className="m-0">⚠️ This link cannot be recovered if lost</p>
-                <p className="m-0">
-                  ⚠️ The note deletes after {readCount === 1 ? "1 read" : `${readCount} reads`} or{" "}
-                  {getExpiryTimeDisplay(expiryValue)}.
-                </p>
-              </div>
-
-              <p className="m-0 text-sm leading-snug text-gray-600 dark:text-gray-300 px-0.5">
-                💡 Tip: For sensitive notes, enable password protection and share it separately
-              </p>
 
               <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex justify-center">
@@ -1689,9 +1670,6 @@ export const CreateNote: React.FC = () => {
                 </div>
                 {showSuccessQr && (
                   <div className="mt-5 flex flex-col items-center gap-4">
-                    <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      [ QR CODE ]
-                    </p>
                     <div
                       className="bg-white dark:bg-gray-950 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 shrink-0"
                       id="note-qr-code"
@@ -1721,6 +1699,22 @@ export const CreateNote: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              <div
+                className="rounded-lg border border-amber-200/90 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/35 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2.5 text-sm leading-snug text-amber-950 dark:text-amber-100/95"
+                role="note"
+              >
+                <p className="m-0">⚠️ Anyone with this link can read your note</p>
+                <p className="m-0">⚠️ This link cannot be recovered if lost</p>
+                <p className="m-0">
+                  ⚠️ The note deletes after {readCount === 1 ? "1 read" : `${readCount} reads`} or{" "}
+                  {getExpiryTimeDisplay(expiryValue)}.
+                </p>
+              </div>
+
+              <p className="m-0 text-sm leading-snug text-gray-600 dark:text-gray-300 px-0.5">
+                💡 Tip: For sensitive notes, enable password protection and share it separately
+              </p>
             </div>
           </div>
 
