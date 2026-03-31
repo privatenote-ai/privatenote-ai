@@ -499,11 +499,11 @@ function getExpectedOrigin(request: Request): string | string[] | null {
 }
 
 const CANONICAL_RPID = "privatenote.ai";
-const PAGES_CANONICAL_RPID = "client-llm.privatenote-ai.pages.dev";
 
 /**
- * Derive rpID only from an already-allowed origin (hardcoded mapping).
- * Do not derive from request host/URL to avoid proxy/alternate-hostname influence.
+ * Derive rpID only from an already-allowed Origin (never from the Worker URL host).
+ * For *.pages.dev, use the request site's hostname — branch previews (e.g. abc123.privatenote-ai.pages.dev)
+ * are siblings of client-llm.*; a single hardcoded rpID would break WebAuthn on preview URLs.
  */
 function getExpectedRpIdFromOrigin(allowedOrigin: string | string[] | null): string | null {
   const originStr = allowedOrigin == null ? null : Array.isArray(allowedOrigin) ? allowedOrigin[0] : allowedOrigin;
@@ -514,7 +514,7 @@ function getExpectedRpIdFromOrigin(allowedOrigin: string | string[] | null): str
       return hostname;
     }
     if (hostname.endsWith(".pages.dev")) {
-      return PAGES_CANONICAL_RPID;
+      return hostname;
     }
     if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
       return CANONICAL_RPID;
@@ -1195,10 +1195,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         userVerification: "preferred",
         residentKey: "preferred",
       },
-      excludeCredentials: (credentials.results || []).map((cred) => ({
-        id: cred.credential_id,
-        transports: parseTransports(cred.transports),
-      })),
+      excludeCredentials: (credentials.results || [])
+        .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
+        .map((cred) => ({
+          id: cred.credential_id,
+          transports: parseTransports(cred.transports),
+        })),
     });
 
     const fallbackUserIdBytes = new TextEncoder().encode(userId);
@@ -1435,11 +1437,13 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           .bind(user.id)
           .all<{ credential_id: string; transports: string | null }>();
 
-        allowCredentials = (creds.results || []).map((cred) => ({
-          id: cred.credential_id,
-          type: "public-key",
-          transports: parseTransports(cred.transports),
-        }));
+        allowCredentials = (creds.results || [])
+          .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
+          .map((cred) => ({
+            id: cred.credential_id,
+            type: "public-key" as const,
+            transports: parseTransports(cred.transports),
+          }));
       }
     }
 
@@ -1669,13 +1673,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     )
       .bind(session.id)
       .all<{ credential_id: string; transports: string | null }>();
-    if (!credentials.results?.length) {
+    const validCreds = (credentials.results || []).filter(
+      (c) => typeof c.credential_id === "string" && c.credential_id.length > 0
+    );
+    if (!validCreds.length) {
       return jsonResponse({ message: "No passkeys available" }, 400, request);
     }
 
     const options = await generateAuthenticationOptions({
       rpID,
-      allowCredentials: credentials.results.map((cred) => ({
+      allowCredentials: validCreds.map((cred) => ({
         id: cred.credential_id,
         transports: parseTransports(cred.transports),
       })),
