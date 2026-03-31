@@ -33,10 +33,10 @@ const getAllowedOrigin = (request: Request): string | null => {
 const getCSPHeader = (): string =>
   [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'",
+    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com",
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com",
     "img-src 'self' data: https:",
     "base-uri 'self'",
     "form-action 'self'",

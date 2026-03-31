@@ -143,7 +143,7 @@ function getCSPHeader(): string {
     "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'", // Turnstile + Cloudflare Insights + WebAssembly for WebLLM
     "style-src 'self' 'unsafe-inline'", // React inline styles
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com", // API endpoints + WebLLM model downloads + WASM libraries + HuggingFace CAS
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com", // API + Pages previews + Web Analytics beacon + WebLLM
     "img-src 'self' data: https:", // Images (data: for inline images, https: for external)
     "frame-src https://challenges.cloudflare.com", // Turnstile iframe
     "base-uri 'self'",

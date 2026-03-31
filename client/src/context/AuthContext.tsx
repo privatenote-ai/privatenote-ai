@@ -20,8 +20,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await apiRequest<{ email?: string | null }>("/api/auth/me", "GET");
-      setUser({ email: data?.email ?? null });
+      const data = await apiRequest<{
+        authenticated?: boolean;
+        user?: { email?: string | null };
+      }>("/api/auth/session", "GET");
+      if (data?.authenticated && data.user) {
+        setUser({ email: data.user.email ?? null });
+      } else {
+        setUser(null);
+      }
     } catch {
       setUser(null);
     } finally {
