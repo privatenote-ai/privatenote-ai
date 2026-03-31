@@ -22,4 +22,6 @@ export interface Env {
   ADMIN_TOKEN?: string;
   /** Set to "1" or "true" in [vars] temporarily: WebAuthn 400 responses include a `debug` field; all failures log to Worker logs. */
   AUTH_DEBUG?: string;
+  /** Base64-encoded 256-bit key for AES-GCM encryption of TOTP secrets at rest. Set via `wrangler secret put TOTP_ENCRYPTION_KEY`. */
+  TOTP_ENCRYPTION_KEY?: string;
 }

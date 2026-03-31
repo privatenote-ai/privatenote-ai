@@ -355,6 +355,105 @@ const PasswordGenerator: React.FC = () => {
 
   const strengthInfo = getStrengthText();
 
+  if (sharedNoteUrl) {
+    return (
+      <div className="max-w-3xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <section className="space-y-6">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+              Password Shared Successfully
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-300">
+              Your password is encrypted in a private note. Share this secure link with the recipient.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Secure link
+            </label>
+            <div className="rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 transition-transform active:scale-[1.02]">
+              <input
+                type="text"
+                id="note-url"
+                value={sharedNoteUrl}
+                className="w-full bg-transparent text-sm sm:text-base text-gray-900 dark:text-gray-100 select-text touch-manipulation focus:outline-none"
+                readOnly
+                onFocus={(e) => e.currentTarget.select()}
+              />
+            </div>
+
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(sharedNoteUrl);
+                  setCopied(true);
+                  toast({
+                    title: "Copied!",
+                    description: "Link copied to clipboard",
+                  });
+                  setTimeout(() => setCopied(false), 2000);
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to copy link",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="w-full inline-flex items-center justify-center bg-blue-600 text-white rounded-xl font-semibold py-2.5 px-4 hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+            >
+              {copied ? (
+                <span>Copied!</span>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Link
+                </>
+              )}
+            </button>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              The link contains the decryption key. Anyone with this link can read the password.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              QR Code
+            </label>
+            <div className="w-48 h-48 bg-white p-2 rounded-lg" id="password-qr-code">
+              <QRCode value={sharedNoteUrl} size={180} />
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={downloadQrCode}
+                className="flex items-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                title="Download QR code as SVG image"
+              >
+                Download QR
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setSharedNoteUrl(null);
+              generatePassword();
+            }}
+            className="w-full flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2.5 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Generate New Password
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       {/* Hero Section */}
@@ -434,99 +533,7 @@ const PasswordGenerator: React.FC = () => {
 
         </div>
 
-        {/* Success view when password is shared */}
-        {sharedNoteUrl ? (
-          <div className="mt-6 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <Shield className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Password Shared Successfully</h2>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Share this secure link
-                </label>
-                <div className="flex">
-                  <input
-                    type="text"
-                    id="note-url"
-                    value={sharedNoteUrl}
-                    className="flex-1 rounded-l-xl border border-r-0 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:ring-primary focus:border-primary text-sm"
-                    readOnly
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
-                  <button
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(sharedNoteUrl);
-                        setCopied(true);
-                        toast({
-                          title: "Copied!",
-                          description: "Link copied to clipboard",
-                        });
-                        setTimeout(() => setCopied(false), 2000);
-                      } catch (error) {
-                        toast({
-                          title: "Error",
-                          description: "Failed to copy link",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 text-sm font-medium rounded-r-xl text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                  >
-                    {copied ? (
-                      <span className="text-green-600 dark:text-green-400">Copied!</span>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  The link contains the decryption key. Anyone with this link can read your password.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  QR Code
-                </label>
-                <div className="w-48 h-48 bg-white p-2 rounded-lg" id="password-qr-code">
-                  <QRCode value={sharedNoteUrl} size={180} />
-                </div>
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={downloadQrCode}
-                    className="flex items-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                    title="Download QR code as SVG image"
-                  >
-                    Download QR
-                  </button>
-                </div>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Scan this code to access your password
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    setSharedNoteUrl(null);
-                    generatePassword();
-                  }}
-                  className="w-full flex items-center justify-center bg-primary text-white rounded-xl font-semibold py-2.5 px-4 hover:shadow-lg hover:shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Generate New Password
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : password && (
+        {password && (
           <div className="mt-6 space-y-4">
             <div className="mb-2">
               <div className="flex items-center justify-between mb-2">

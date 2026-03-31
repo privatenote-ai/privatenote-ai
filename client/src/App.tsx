@@ -27,6 +27,7 @@ import AuthRecovery from "@/pages/AuthRecovery";
 import AuthSignIn from "@/pages/AuthSignIn";
 import AuthSignUp from "@/pages/AuthSignUp";
 import AuthEmailChange from "@/pages/AuthEmailChange";
+import AuthTotp from "@/pages/AuthTotp";
 import SecuritySettings from "@/pages/SecuritySettings";
 import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
@@ -35,7 +36,7 @@ import { Footer } from "./components/Footer";
 function Router() {
   const [location] = useLocation();
   const isAuthRoute = location.startsWith("/auth");
-  const showNavbar = !isAuthRoute || location.startsWith("/auth/magic") || location.startsWith("/auth/email-change");
+  const showNavbar = !isAuthRoute || location.startsWith("/auth/magic") || location.startsWith("/auth/email-change") || location.startsWith("/auth/totp");
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -66,6 +67,7 @@ function Router() {
           <Route path="/auth/magic" component={AuthMagic} />
           <Route path="/auth/recovery" component={AuthRecovery} />
           <Route path="/auth/email-change" component={AuthEmailChange} />
+          <Route path="/auth/totp" component={AuthTotp} />
           <Route path="/account/security" component={SecuritySettings} />
           {/* Fallback to 404 */}
           <Route component={NotFound} />

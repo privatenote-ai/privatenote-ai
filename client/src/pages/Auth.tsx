@@ -99,9 +99,18 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       // Redirect to home on successful login
       window.location.href = "/";
     } catch (error) {
+      let description = "Try again.";
+      if (error instanceof Error) {
+        const message = error.message;
+        if (message.includes("Unknown credential")) {
+          description = "No passkeys registered for this account. Create one in Security Settings first.";
+        } else {
+          description = message;
+        }
+      }
       toast({
         title: "Passkey login failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        description,
         variant: "destructive",
       });
     } finally {
