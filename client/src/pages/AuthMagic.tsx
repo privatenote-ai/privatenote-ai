@@ -30,16 +30,20 @@ export default function AuthMagic() {
       return;
     }
 
-    apiRequest("/api/auth/magic/consume?token=" + encodeURIComponent(token), "GET")
-      .then(() => {
+    apiRequest<{ ok: boolean; totpRequired?: boolean }>("/api/auth/magic/consume?token=" + encodeURIComponent(token), "GET")
+      .then((result) => {
+        if (result?.totpRequired) {
+          setLocation("/auth/totp");
+          return undefined;
+        }
         setStatus("success");
         setMessage("You’re signed in.");
         setFriendlyMessage("You’re signed in.");
         refresh();
-        return apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET");
+        return apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
       })
       .then((me) => {
-        if (typeof me?.hasPasskeys === "boolean") {
+        if (me && typeof me.hasPasskeys === "boolean") {
           setHasPasskeys(me.hasPasskeys);
         }
       })

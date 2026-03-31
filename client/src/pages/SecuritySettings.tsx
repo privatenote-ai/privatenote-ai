@@ -10,11 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { WebAuthnOptions, coerceLoginOptions, coerceRegisterOptions, credentialToJson } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
+import QRCode from "react-qr-code";
 import {
   Laptop,
   Smartphone,
@@ -23,6 +25,7 @@ import {
   ChevronRight,
   Mail,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 type SessionInfo = {
@@ -71,6 +74,16 @@ export default function SecuritySettings() {
   const [newEmailInput, setNewEmailInput] = useState("");
   const [changingEmail, setChangingEmail] = useState(false);
   const [emailChangeSent, setEmailChangeSent] = useState(false);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpDialogOpen, setTotpDialogOpen] = useState(false);
+  const [totpSetupStep, setTotpSetupStep] = useState<"qr" | "verify" | "done">("qr");
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
+  const [totpOtpauthUri, setTotpOtpauthUri] = useState<string | null>(null);
+  const [totpSetupId, setTotpSetupId] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [totpVerifying, setTotpVerifying] = useState(false);
+  const [totpSettingUp, setTotpSettingUp] = useState(false);
+  const [totpDisabling, setTotpDisabling] = useState(false);
 
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -110,6 +123,13 @@ export default function SecuritySettings() {
       );
       setRecoveryRemaining(recoveryRes.remaining || 0);
       setRecoveryGeneratedAt(recoveryRes.generatedAt || null);
+
+      try {
+        const totpRes = await apiRequest<{ enabled: boolean }>("/api/auth/totp/status", "GET");
+        setTotpEnabled(totpRes.enabled);
+      } catch {
+        setTotpEnabled(false);
+      }
     } catch (error) {
       setSignedIn(false);
     } finally {
@@ -128,31 +148,41 @@ export default function SecuritySettings() {
 
     setRegisteringPasskey(true);
     try {
-      const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
-        "/api/auth/webauthn/register/options",
-        "POST",
-        {}
-      );
+      const registerWithFreshChallenge = async () => {
+        const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
+          "/api/auth/webauthn/register/options",
+          "POST",
+          {}
+        );
 
-      if (!data?.options) {
-        throw new Error("Missing WebAuthn options from server.");
-      }
+        if (!data?.options) {
+          throw new Error("Missing WebAuthn options from server.");
+        }
 
-      const publicKey = coerceRegisterOptions(data.options);
-      const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+        const publicKey = coerceRegisterOptions(data.options);
+        const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
 
-      if (!credential) {
-        toast({
-          title: "Registration cancelled",
-          description: "No credential returned.",
+        if (!credential) {
+          throw new Error("No credential returned.");
+        }
+
+        await apiRequest("/api/auth/webauthn/register/verify", "POST", {
+          challengeId: data.challengeId,
+          credential: credentialToJson(credential),
         });
-        return;
-      }
+      };
 
-      await apiRequest("/api/auth/webauthn/register/verify", "POST", {
-        challengeId: data.challengeId,
-        credential: credentialToJson(credential),
-      });
+      try {
+        await registerWithFreshChallenge();
+      } catch (error) {
+        // Browsers can throw InvalidStateError if the platform authenticator state is stale.
+        // One retry with a fresh challenge usually resolves this without user intervention.
+        if (error instanceof DOMException && error.name === "InvalidStateError") {
+          await registerWithFreshChallenge();
+        } else {
+          throw error;
+        }
+      }
 
       toast({
         title: "Passkey created",
@@ -161,9 +191,15 @@ export default function SecuritySettings() {
 
       await refreshAll();
     } catch (error) {
+      let description = error instanceof Error ? error.message : "Try again.";
+      if (error instanceof DOMException && error.name === "InvalidStateError") {
+        description = "This passkey may already exist on this device. Try another authenticator or remove the old passkey and retry.";
+      } else if (error instanceof DOMException && error.name === "NotAllowedError") {
+        description = "Passkey creation was cancelled or timed out. Please try again.";
+      }
       toast({
         title: "Passkey registration failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        description,
         variant: "destructive",
       });
     } finally {
@@ -176,26 +212,52 @@ export default function SecuritySettings() {
     refreshAll();
   }, [user, authLoading, refreshAll]);
 
-  const performStepUp = async () => {
+  const performStepUp = async (): Promise<boolean> => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
       toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
       return false;
     }
-    const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
-      "/api/auth/webauthn/stepup/options",
-      "POST"
-    );
-    const publicKey = coerceLoginOptions(data.options);
-    const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
-    if (!credential) {
-      toast({ title: "Step-up cancelled", description: "No credential returned." });
+    try {
+      const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
+        "/api/auth/webauthn/stepup/options",
+        "POST"
+      );
+      const publicKey = coerceLoginOptions(data.options);
+
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), 60_000);
+      let credential: PublicKeyCredential | null;
+      try {
+        credential = (await navigator.credentials.get({
+          publicKey,
+          signal: abortController.signal,
+        })) as PublicKeyCredential | null;
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!credential) {
+        toast({ title: "Step-up cancelled", description: "No credential returned." });
+        return false;
+      }
+      await apiRequest("/api/auth/webauthn/stepup/verify", "POST", {
+        challengeId: data.challengeId,
+        credential: credentialToJson(credential),
+      });
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("AbortError") || (error instanceof DOMException && error.name === "AbortError")) {
+        toast({ title: "Verification timed out", description: "The passkey prompt timed out. Please try again." });
+      } else if (error instanceof DOMException && error.name === "NotAllowedError") {
+        toast({ title: "Verification cancelled", description: "You cancelled the passkey prompt." });
+      } else if (msg.startsWith("400")) {
+        toast({ title: "Verification unavailable", description: "Set up a passkey first to perform this action.", variant: "destructive" });
+      } else {
+        toast({ title: "Verification failed", description: msg || "Please try again.", variant: "destructive" });
+      }
       return false;
     }
-    await apiRequest("/api/auth/webauthn/stepup/verify", "POST", {
-      challengeId: data.challengeId,
-      credential: credentialToJson(credential),
-    });
-    return true;
   };
 
   const copyEmail = async () => {
@@ -254,11 +316,19 @@ export default function SecuritySettings() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message.startsWith("403")) {
-        const stepped = await performStepUp();
-        if (stepped) {
-          const response = await apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST");
-          setRecoveryCodes(response.codes);
-          toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+        try {
+          const stepped = await performStepUp();
+          if (stepped) {
+            const response = await apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST");
+            setRecoveryCodes(response.codes);
+            toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+          }
+        } catch (retryError) {
+          toast({
+            title: "Recovery codes failed",
+            description: retryError instanceof Error ? retryError.message : "Try again.",
+            variant: "destructive",
+          });
         }
       } else {
         toast({
@@ -305,11 +375,19 @@ export default function SecuritySettings() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message.startsWith("403")) {
-        const stepped = await performStepUp();
-        if (stepped) {
-          await apiRequest("/api/auth/passkeys/reset", "POST");
-          toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
-          setPasskeys([]);
+        try {
+          const stepped = await performStepUp();
+          if (stepped) {
+            await apiRequest("/api/auth/passkeys/reset", "POST");
+            toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
+            setPasskeys([]);
+          }
+        } catch (retryError) {
+          toast({
+            title: "Reset failed",
+            description: retryError instanceof Error ? retryError.message : "Try again.",
+            variant: "destructive",
+          });
         }
       } else {
         toast({
@@ -474,6 +552,127 @@ export default function SecuritySettings() {
     setEmailChangeSent(false);
   };
 
+  const handleTotpSetup = async () => {
+    setTotpSettingUp(true);
+    try {
+      const data = await apiRequest<{ setupId: string; secret: string; otpauthUri: string }>(
+        "/api/auth/totp/setup",
+        "POST"
+      );
+      setTotpSetupId(data.setupId);
+      setTotpSecret(data.secret);
+      setTotpOtpauthUri(data.otpauthUri);
+      setTotpSetupStep("qr");
+      setTotpCode("");
+      setTotpDialogOpen(true);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.startsWith("403")) {
+        const stepped = await performStepUp();
+        if (stepped) {
+          try {
+            const data = await apiRequest<{ setupId: string; secret: string; otpauthUri: string }>(
+              "/api/auth/totp/setup",
+              "POST"
+            );
+            setTotpSetupId(data.setupId);
+            setTotpSecret(data.secret);
+            setTotpOtpauthUri(data.otpauthUri);
+            setTotpSetupStep("qr");
+            setTotpCode("");
+            setTotpDialogOpen(true);
+          } catch (retryError) {
+            toast({
+              title: "Setup failed",
+              description: retryError instanceof Error ? retryError.message : "Try again.",
+              variant: "destructive",
+            });
+          }
+        }
+      } else {
+        toast({
+          title: "Setup failed",
+          description: msg || "Could not start TOTP setup.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setTotpSettingUp(false);
+    }
+  };
+
+  const handleTotpVerifySetup = async (code: string) => {
+    if (code.length !== 6 || !totpSetupId) return;
+    setTotpVerifying(true);
+    try {
+      await apiRequest("/api/auth/totp/verify-setup", "POST", {
+        code,
+        setupId: totpSetupId,
+      });
+      setTotpSetupStep("done");
+      setTotpEnabled(true);
+      toast({ title: "2-step verification enabled", description: "Your account is now more secure." });
+      refreshAll();
+    } catch (error) {
+      toast({
+        title: "Invalid code",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      setTotpCode("");
+    } finally {
+      setTotpVerifying(false);
+    }
+  };
+
+  const handleTotpDisable = async () => {
+    const confirmed = window.confirm("Disable 2-step verification? This will make your account less secure.");
+    if (!confirmed) return;
+    setTotpDisabling(true);
+    try {
+      await apiRequest("/api/auth/totp/disable", "POST");
+      setTotpEnabled(false);
+      toast({ title: "2-step verification disabled" });
+      refreshAll();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.startsWith("403")) {
+        try {
+          const stepped = await performStepUp();
+          if (stepped) {
+            await apiRequest("/api/auth/totp/disable", "POST");
+            setTotpEnabled(false);
+            toast({ title: "2-step verification disabled" });
+            refreshAll();
+          }
+        } catch (retryError) {
+          toast({
+            title: "Disable failed",
+            description: retryError instanceof Error ? retryError.message : "Try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Disable failed",
+          description: msg || "Try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setTotpDisabling(false);
+    }
+  };
+
+  const closeTotpDialog = () => {
+    setTotpDialogOpen(false);
+    setTotpSecret(null);
+    setTotpOtpauthUri(null);
+    setTotpSetupId(null);
+    setTotpCode("");
+    setTotpSetupStep("qr");
+  };
+
   if (authLoading || loading) {
     return (
       <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
@@ -512,7 +711,7 @@ export default function SecuritySettings() {
 
         <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
           {/* Email */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Email</p>
               <div className="flex items-center gap-2">
@@ -533,26 +732,60 @@ export default function SecuritySettings() {
               size="sm"
               onClick={() => setEmailChangeDialogOpen(true)}
               disabled={busy || !email}
+              className="w-full sm:w-auto"
             >
               Change email
             </Button>
           </div>
 
           {/* 2-step verification */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">2-step verification</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Add an additional layer of security to your account during login.
+                {totpEnabled
+                  ? "Authenticator app is enabled. A code is required after magic link sign-in."
+                  : "Add an additional layer of security to your account during login."}
               </p>
+              {totpEnabled && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Enabled</span>
+                </div>
+              )}
             </div>
-            <Button variant="outline" size="sm" disabled>
-              Add verification method
-            </Button>
+            {totpEnabled ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTotpDisable}
+                disabled={busy || totpDisabling}
+                className="w-full sm:w-auto"
+              >
+                {totpDisabling ? "Disabling..." : "Disable"}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTotpSetup}
+                disabled={busy || totpSettingUp}
+                className="w-full sm:w-auto"
+              >
+                {totpSettingUp ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Setting up...
+                  </>
+                ) : (
+                  "Add verification method"
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Passkeys */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Passkeys</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -564,13 +797,14 @@ export default function SecuritySettings() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               {passkeys.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleResetPasskeys}
                   disabled={busy || passkeys.length === 0}
+                  className="w-full sm:w-auto"
                 >
                   Reset passkeys
                 </Button>
@@ -580,6 +814,7 @@ export default function SecuritySettings() {
                 size="sm"
                 onClick={handleAddPasskey}
                 disabled={busy || registeringPasskey}
+                className="w-full sm:w-auto"
               >
                 Add passkey
               </Button>
@@ -587,7 +822,7 @@ export default function SecuritySettings() {
           </div>
 
           {/* Recovery Codes */}
-          <div className="flex items-center justify-between p-4">
+          <div className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Recovery codes</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -597,7 +832,13 @@ export default function SecuritySettings() {
                 {recoveryGeneratedAt ? ` Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}.` : ""}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleGenerateRecoveryCodes} disabled={busy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateRecoveryCodes}
+              disabled={busy}
+              className="w-full sm:w-auto"
+            >
               Generate new codes
             </Button>
           </div>
@@ -623,14 +864,14 @@ export default function SecuritySettings() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Devices</h2>
 
         {/* Log out of all devices */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Log out of all devices</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Log out of all other active sessions on other devices besides this one.
             </p>
           </div>
-          <Button variant="outline" onClick={handleRevokeAllSessions} disabled={busy}>
+          <Button variant="outline" onClick={handleRevokeAllSessions} disabled={busy} className="w-full sm:w-auto">
             Log out of all devices
           </Button>
         </div>
@@ -896,6 +1137,139 @@ export default function SecuritySettings() {
             >
               {deletingAccount ? "Deleting..." : "Delete account"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* TOTP Setup Dialog */}
+      <Dialog open={totpDialogOpen} onOpenChange={(open) => !totpVerifying && (open ? setTotpDialogOpen(true) : closeTotpDialog())}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {totpSetupStep === "done" ? "2-step verification enabled" : "Set up 2-step verification"}
+            </DialogTitle>
+            <DialogDescription>
+              {totpSetupStep === "qr" && "Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc)."}
+              {totpSetupStep === "verify" && "Enter the 6-digit code from your authenticator app to confirm setup."}
+              {totpSetupStep === "done" && "Your account is now protected with 2-step verification."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {totpSetupStep === "qr" && totpOtpauthUri && (
+            <div className="space-y-4 py-4">
+              <div className="flex justify-center">
+                <div className="p-4 bg-white rounded-lg">
+                  <QRCode value={totpOtpauthUri} size={200} />
+                </div>
+              </div>
+              {totpSecret && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                    Or enter this code manually:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-center break-all select-all">
+                      {totpSecret}
+                    </code>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(totpSecret);
+                          toast({ title: "Copied", description: "Secret key copied to clipboard." });
+                        } catch {
+                          toast({ title: "Copy failed", variant: "destructive" });
+                        }
+                      }}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                      title="Copy secret"
+                    >
+                      <Copy className="h-4 w-4 text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {totpSetupStep === "verify" && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col items-center gap-4">
+                <InputOTP
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(val) => {
+                    setTotpCode(val);
+                    if (val.length === 6) {
+                      handleTotpVerifySetup(val);
+                    }
+                  }}
+                  disabled={totpVerifying}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+            </div>
+          )}
+
+          {totpSetupStep === "done" && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Authenticator app verified
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    A code will be required after magic link sign-in.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {totpSetupStep === "qr" && (
+              <>
+                <Button variant="outline" onClick={closeTotpDialog}>
+                  Cancel
+                </Button>
+                <Button onClick={() => setTotpSetupStep("verify")}>
+                  Next
+                </Button>
+              </>
+            )}
+            {totpSetupStep === "verify" && (
+              <>
+                <Button variant="outline" onClick={() => setTotpSetupStep("qr")} disabled={totpVerifying}>
+                  Back
+                </Button>
+                <Button
+                  onClick={() => handleTotpVerifySetup(totpCode)}
+                  disabled={totpVerifying || totpCode.length !== 6}
+                >
+                  {totpVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify"
+                  )}
+                </Button>
+              </>
+            )}
+            {totpSetupStep === "done" && (
+              <Button onClick={closeTotpDialog}>
+                Done
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

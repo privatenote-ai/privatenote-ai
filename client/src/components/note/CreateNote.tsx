@@ -1534,50 +1534,49 @@ export const CreateNote: React.FC = () => {
   if (noteUrl) {
     return (
       <section className="max-w-3xl mx-auto">
-        <div className="mb-4 mt-4"></div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
-            <Shield className="h-5 w-5 mr-2 text-primary" />
-            Note Created Successfully
-          </h2>
-        </div>
-
         <div className="space-y-10">
-          <div className="whitespace-pre-wrap break-words">
-            <p className="text-base text-gray-700 dark:text-gray-200 mb-2">
-              Your note has been encrypted and stored securely. Share this
-              link with the recipient:
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 whitespace-pre-wrap break-words">
+            <div className="mb-4 sm:mb-5 text-center">
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Shield className="h-5 w-5 text-primary" />
+              </div>
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                Note Created Successfully
+              </h2>
+            </div>
+
+            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-200 mb-3">
+              Your note has been encrypted and stored securely. Share this link with the recipient:
             </p>
-            <div className="flex flex-col space-y-4">
-              <div className="flex-grow flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700">
+
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center bg-white dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-transform active:scale-[1.02]">
                 <input
                   type="text"
                   readOnly
                   value={noteUrl}
-                  className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text sm:whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm"
+                  className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
                   aria-label="Encrypted note link"
                   onFocus={(event) => event.currentTarget.select()}
                 />
               </div>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={copyToClipboard}
-                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                  title="Copy link to clipboard"
-                >
-                  <Copy className="h-4 w-4 mr-1.5" />
-                  Copy Link
-                </button>
-                <button
-                  onClick={shareViaEmail}
-                  className="flex items-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                  title="Email link to recipient"
-                >
-                  <Mail className="h-4 w-4 mr-1.5" />
-                  Email Link
-                </button>
-              </div>
-              <div className="flex justify-center">
+              <button
+                onClick={copyToClipboard}
+                className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-md transition-colors hover:bg-blue-700 shadow-sm"
+                title="Copy link to clipboard"
+              >
+                <Copy className="h-4 w-4 mr-1.5" />
+                Copy Link
+              </button>
+              <button
+                onClick={shareViaEmail}
+                className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                title="Email link to recipient"
+              >
+                <Mail className="h-4 w-4 mr-1.5" />
+                Email Link
+              </button>
+              <div className="flex justify-center pt-1">
                 <button
                   type="button"
                   onClick={() => setShowQrCode((prev) => !prev)}

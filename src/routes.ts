@@ -10,7 +10,7 @@ import {
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/types";
-import argon2 from "argon2-browser";
+import * as OTPAuth from "otpauth";
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -68,8 +68,8 @@ const RECOVERY_CODE_RATE_LIMIT = {
 
 // Magic link send rate limiting (per IP and per email)
 const MAGIC_LINK_RATE_LIMIT = {
-  MAX_PER_IP: 10, // max magic links per IP per window
-  MAX_PER_EMAIL: 5, // max magic links per email per window
+  MAX_PER_IP: 20, // max magic links per IP per window
+  MAX_PER_EMAIL: 20, // max magic links per email per window
   WINDOW_SECONDS: 60 * 60, // 1 hour window
   IP_KEY_PREFIX: "magic_ip_rate:",
   EMAIL_KEY_PREFIX: "magic_email_rate:",
@@ -81,13 +81,10 @@ const AUDIT_LOG_RETENTION = {
   CLEANUP_BATCH_SIZE: 1000, // Delete in batches to avoid timeouts
 };
 
-// Argon2id configuration for recovery codes (state-of-the-art password hashing)
-// Using Argon2id (recommended variant: resistant to both side-channel and GPU attacks)
-const ARGON2_MEMORY_COST = 65536; // 64 MB (2^16 KB) - memory cost parameter
-const ARGON2_TIME_COST = 3; // 3 iterations - time cost parameter
-const ARGON2_PARALLELISM = 4; // 4 lanes - parallelism parameter
-const ARGON2_SALT_LENGTH = 16; // 16 bytes = 128 bits (Argon2 standard)
-const ARGON2_HASH_LENGTH = 32; // 32 bytes = 256 bits output
+// Recovery-code hashing config (Worker-safe WebCrypto PBKDF2)
+const RECOVERY_CODE_SALT_LENGTH = 16; // 16 bytes = 128 bits salt
+const RECOVERY_CODE_HASH_LENGTH = 32; // 32 bytes = 256 bits output
+const RECOVERY_CODE_PBKDF2_ITERATIONS = 100_000; // Cloudflare WebCrypto cap for PBKDF2
 
 // Session IP binding (optional - can be disabled for mobile users)
 const SESSION_IP_BINDING_ENABLED = true; // Set to false to disable IP binding
@@ -602,25 +599,29 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 /**
- * Hash recovery code using PBKDF2 for stronger security
- * Uses SHA-256 with 100,000 iterations (OWASP recommended minimum)
+ * Hash recovery code using Worker-safe PBKDF2.
  */
 async function hashRecoveryCode(code: string, salt: string): Promise<string> {
-  // Salt is stored as base64url(16 random bytes). Decode to raw bytes for Argon2.
   const saltBuffer = base64UrlToBytes(salt);
   const codeBuffer = new TextEncoder().encode(code);
-
-  const hash = await argon2.hash({
-    pass: codeBuffer,
-    salt: saltBuffer,
-    time: ARGON2_TIME_COST,
-    mem: ARGON2_MEMORY_COST,
-    parallelism: ARGON2_PARALLELISM,
-    hashLen: ARGON2_HASH_LENGTH,
-    type: argon2.ArgonType.Argon2id,
-  });
-
-  return base64UrlEncode(new Uint8Array(hash.hash));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    codeBuffer as unknown as ArrayBuffer,
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: saltBuffer as unknown as ArrayBuffer,
+      iterations: RECOVERY_CODE_PBKDF2_ITERATIONS,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    RECOVERY_CODE_HASH_LENGTH * 8
+  );
+  return base64UrlEncode(new Uint8Array(derivedBits));
 }
 
 // ============================================================================
@@ -652,7 +653,12 @@ type AuditEventType =
   | "maintenance_cleanup"
   | "email_change_requested"
   | "email_change_completed"
-  | "email_change_failed";
+  | "email_change_failed"
+  | "totp_setup_started"
+  | "totp_enabled"
+  | "totp_verified"
+  | "totp_disabled"
+  | "totp_failed";
 
 type AuditEventStatus = "success" | "failure" | "warning";
 
@@ -918,7 +924,7 @@ async function revokeAllUserSessions(
 async function getSessionFromRequest(
   env: Env,
   request: Request,
-  options: { rotate?: boolean } = {}
+  options: { rotate?: boolean; allowPendingTotp?: boolean } = {}
 ): Promise<{
   id: string;
   email: string | null;
@@ -927,6 +933,7 @@ async function getSessionFromRequest(
   lastAuthAt: string | null;
   lastStepUpAt: string | null;
   newSessionId?: string;
+  authComplete: boolean;
 } | null> {
   if (!env.AUTH_DB) return null;
   const cookies = parseCookies(request.headers.get("Cookie"));
@@ -940,6 +947,7 @@ async function getSessionFromRequest(
             , sessions.last_seen_at as last_seen_at, sessions.created_at as created_at
             , sessions.last_auth_at as last_auth_at, sessions.last_stepup_at as last_stepup_at
             , sessions.ip as session_ip
+            , sessions.auth_complete as auth_complete
      FROM sessions
      LEFT JOIN users ON users.id = sessions.user_id
      WHERE sessions.session_id_hash = ?
@@ -958,9 +966,15 @@ async function getSessionFromRequest(
       last_auth_at: string | null;
       last_stepup_at: string | null;
       session_ip: string | null;
+      auth_complete: number | null;
     }>();
 
   if (!row || row.revoked_at) {
+    return null;
+  }
+
+  const authComplete = (row.auth_complete ?? 1) === 1;
+  if (!authComplete && !options.allowPendingTotp) {
     return null;
   }
 
@@ -1058,6 +1072,7 @@ async function getSessionFromRequest(
     lastAuthAt: row.last_auth_at ?? null,
     lastStepUpAt: row.last_stepup_at ?? null,
     newSessionId,
+    authComplete,
   };
 }
 
@@ -1827,10 +1842,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     const storedCredential = await env.AUTH_DB.prepare(
-      "SELECT id, credential_id, public_key, counter FROM webauthn_credentials WHERE credential_id = ? LIMIT 1"
+      "SELECT id, credential_id, public_key, counter, user_id FROM webauthn_credentials WHERE credential_id = ? AND user_id = ? LIMIT 1"
     )
-      .bind(credentialId)
-      .first<{ id: string; credential_id: string; public_key: string; counter: number }>();
+      .bind(credentialId, session.id)
+      .first<{ id: string; credential_id: string; public_key: string; counter: number; user_id: string }>();
 
     if (!storedCredential) {
       return jsonResponse({ message: "Unknown credential" }, 400, request);
@@ -2074,8 +2089,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    // Require step-up within 2 minutes for recovery code regeneration (tighter than general step-up)
-    if (!isStepUpFresh(session.lastStepUpAt, RECOVERY_CODE_STEP_UP_WINDOW_SECONDS)) {
+
+    const passkeyCountForRecovery = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+    const hasPasskeysForRecovery = (passkeyCountForRecovery?.count ?? 0) > 0;
+
+    if (hasPasskeysForRecovery && !isStepUpFresh(session.lastStepUpAt, RECOVERY_CODE_STEP_UP_WINDOW_SECONDS)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }
 
@@ -2087,7 +2109,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const codes: string[] = [];
     for (let i = 0; i < 8; i += 1) {
       const code = generateRecoveryCode();
-      const salt = randomId(ARGON2_SALT_LENGTH); // Use Argon2 standard salt length
+      const salt = randomId(RECOVERY_CODE_SALT_LENGTH);
       const codeHash = await hashRecoveryCode(code, salt);
       await env.AUTH_DB.prepare(
         "INSERT INTO recovery_codes (id, user_id, code_hash, salt, created_at) VALUES (?, ?, ?, ?, ?)"
@@ -2397,12 +2419,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
   }
 
   if (pathname === "/api/auth/magic/send" && method === "POST") {
+    console.log("[MAGIC_LINK] >>> Handler entered");
+    try {
     let body: any;
     try {
       body = await request.json();
-    } catch {
+    } catch (jsonErr) {
+      console.error("[MAGIC_LINK] JSON parse failed:", jsonErr);
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
+    console.log("[MAGIC_LINK] Body parsed, email present:", !!body?.email);
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
     const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const responsePayload: Record<string, unknown> = {
@@ -2411,11 +2437,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     };
 
     if (!env.AUTH_DB) {
+      console.error("[MAGIC_LINK] AUTH_DB not configured, returning silent 200");
       await jitterDelay();
       return jsonResponse(responsePayload, 200, request);
     }
 
-    // Rate limiting for magic link requests (per IP and per email)
     const kv = env.RATE_LIMIT_KV || env.AUTH_KV || env.NOTES_KV;
     const clientIp = getRequestIp(request);
 
@@ -2423,13 +2449,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       const now = Math.floor(Date.now() / 1000);
       const windowStart = now - (now % MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS);
 
-      // Check IP rate limit
       if (clientIp) {
         const ipKey = `${MAGIC_LINK_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}:${windowStart}`;
         try {
           const ipCount = await kv.get(ipKey, { type: 'json' }) as { count: number } | null;
           if (ipCount && ipCount.count >= MAGIC_LINK_RATE_LIMIT.MAX_PER_IP) {
-            // Audit log: rate limit exceeded
+            console.error(`[MAGIC_LINK] ⛔ IP rate limited (${ipCount.count}/${MAGIC_LINK_RATE_LIMIT.MAX_PER_IP})`);
             await logAuditEvent(env, {
               userId: null,
               eventType: "rate_limit_exceeded",
@@ -2439,7 +2464,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
               userAgent: request.headers.get("User-Agent"),
             });
             await jitterDelay();
-            return jsonResponse(responsePayload, 200, request); // Silent fail to prevent enumeration
+            return jsonResponse(responsePayload, 200, request);
           }
           await kv.put(ipKey, JSON.stringify({ count: (ipCount?.count || 0) + 1 }), {
             expirationTtl: MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS + 10,
@@ -2449,13 +2474,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         }
       }
 
-      // Check email rate limit (only if email is valid)
       if (email && isValidEmailLoose(email)) {
         const emailKey = `${MAGIC_LINK_RATE_LIMIT.EMAIL_KEY_PREFIX}${email}:${windowStart}`;
         try {
           const emailCount = await kv.get(emailKey, { type: 'json' }) as { count: number } | null;
           if (emailCount && emailCount.count >= MAGIC_LINK_RATE_LIMIT.MAX_PER_EMAIL) {
-            // Audit log: rate limit exceeded
+            console.error(`[MAGIC_LINK] ⛔ Email rate limited (${emailCount.count}/${MAGIC_LINK_RATE_LIMIT.MAX_PER_EMAIL})`);
             await logAuditEvent(env, {
               userId: null,
               eventType: "rate_limit_exceeded",
@@ -2465,7 +2489,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
               userAgent: request.headers.get("User-Agent"),
             });
             await jitterDelay();
-            return jsonResponse(responsePayload, 200, request); // Silent fail to prevent enumeration
+            return jsonResponse(responsePayload, 200, request);
           }
           await kv.put(emailKey, JSON.stringify({ count: (emailCount?.count || 0) + 1 }), {
             expirationTtl: MAGIC_LINK_RATE_LIMIT.WINDOW_SECONDS + 10,
@@ -2498,14 +2522,19 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     if (!email || !isValidEmailLoose(email)) {
+      console.error("[MAGIC_LINK] Invalid or missing email, silently returning 200");
       await jitterDelay();
       return jsonResponse(responsePayload, 200, request);
     }
 
-    // Get or create user (race-safe: create-first, fallback to fetch on UNIQUE violation)
+    console.log("[MAGIC_LINK] Email validated, getting/creating user...");
     const userResult = await getOrCreateUser(env, email, USER_STATUS_PENDING);
     const userId = userResult?.id ?? null;
     const intent: "login" | "signup" = userResult?.wasCreated ? "signup" : "login";
+
+    if (!userId) {
+      console.error("[MAGIC_LINK] getOrCreateUser returned no userId");
+    }
 
     if (userId) {
       const token = randomId(32);
@@ -2516,9 +2545,14 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         createdAt: Date.now(),
       });
 
+      if (!stored) {
+        console.error("[MAGIC_LINK] storeMagicLink returned false — KV write failed?");
+      }
+
       if (stored) {
         const magicOrigin = getMagicLinkOrigin(request);
         const magicUrl = `${magicOrigin}/auth/magic?token=${encodeURIComponent(token)}`;
+        console.log(`[MAGIC_LINK] Prepared link for ${intent}, origin=${magicOrigin}, isLocal=${isLocal}`);
 
         if (isLocal) {
           responsePayload.debugMagicLink = magicUrl;
@@ -2531,6 +2565,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
             userAgent: request.headers.get("User-Agent"),
           });
         } else {
+          console.log("[MAGIC_LINK] Calling sendMagicLinkEmail via Resend...");
           const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
           if (!sendResult.ok) {
             console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);
@@ -2547,6 +2582,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
               userAgent: request.headers.get("User-Agent"),
             });
           } else {
+            console.log("[MAGIC_LINK] ✅ Email sent successfully via Resend");
             await logAuditEvent(env, {
               userId,
               eventType: "magic_link_sent",
@@ -2561,7 +2597,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
 
     await jitterDelay();
+    console.log("[MAGIC_LINK] <<< Handler complete, returning 200");
     return jsonResponse(responsePayload, 200, request);
+    } catch (handlerErr) {
+      console.error("[MAGIC_LINK] !!! Unhandled error in magic/send handler:", handlerErr);
+      return jsonResponse({ ok: true, message: "Check your email for a sign-in link." }, 200, request);
+    }
   }
 
   if (pathname === "/api/auth/magic/consume" && method === "GET") {
@@ -2605,6 +2646,23 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const session = await createSession(env, userId, request, "magic");
 
+    // Check if user has verified TOTP; if so, mark session as pending
+    let totpRequired = false;
+    const totpCheck = await env.AUTH_DB.prepare(
+      "SELECT verified FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1"
+    )
+      .bind(userId)
+      .first<{ verified: number }>();
+    if (totpCheck?.verified === 1 && session?.sessionId) {
+      const pendingHash = await sha256Base64Url(session.sessionId);
+      await env.AUTH_DB.prepare(
+        "UPDATE sessions SET auth_complete = 0 WHERE session_id_hash = ?"
+      )
+        .bind(pendingHash)
+        .run();
+      totpRequired = true;
+    }
+
     // Audit log: magic link used successfully
     await logAuditEvent(env, {
       userId,
@@ -2620,7 +2678,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       userId,
       eventType: "login_success",
       status: "success",
-      details: { authMethod: "magic_link", intent: payload.intent },
+      details: { authMethod: "magic_link", intent: payload.intent, totpRequired },
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
     });
@@ -2631,7 +2689,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (session?.sessionId) {
       headers.set("Set-Cookie", sessionCookie(session.sessionId));
     }
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    return new Response(JSON.stringify({ ok: true, totpRequired }), { status: 200, headers });
   }
 
   if (pathname === "/api/auth/logout" && method === "POST") {
@@ -2650,9 +2708,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
   }
 
   if (pathname === "/api/auth/session" && method === "GET") {
-    const session = await getSessionFromRequest(env, request, { rotate: true });
+    const session = await getSessionFromRequest(env, request, { rotate: true, allowPendingTotp: true });
     if (!session) {
       return jsonResponse({ authenticated: false }, 200, request);
+    }
+    if (!session.authComplete) {
+      return jsonResponse({ authenticated: false, totpRequired: true }, 200, request);
     }
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
@@ -2959,6 +3020,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .bind(userId)
       .run();
 
+    // Delete TOTP secrets
+    await env.AUTH_DB.prepare("DELETE FROM totp_secrets WHERE user_id = ?")
+      .bind(userId)
+      .run();
+
     // Delete recovery codes
     await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ?")
       .bind(userId)
@@ -2996,6 +3062,274 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  // ============================================================================
+  // TOTP 2-STEP VERIFICATION ENDPOINTS
+  // ============================================================================
+
+  if (pathname === "/api/auth/totp/status" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true, allowPendingTotp: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const row = await env.AUTH_DB.prepare(
+      "SELECT verified FROM totp_secrets WHERE user_id = ? LIMIT 1"
+    )
+      .bind(session.id)
+      .first<{ verified: number }>();
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(headers, session);
+    return new Response(JSON.stringify({ enabled: row?.verified === 1 }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/totp/setup" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    if (!env.TOTP_ENCRYPTION_KEY) {
+      return jsonResponse({ message: "TOTP not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const passkeyCountTotp = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+    const hasPasskeysTotp = (passkeyCountTotp?.count ?? 0) > 0;
+    if (hasPasskeysTotp && !isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    const existingTotp = await env.AUTH_DB.prepare(
+      "SELECT verified FROM totp_secrets WHERE user_id = ? LIMIT 1"
+    )
+      .bind(session.id)
+      .first<{ verified: number }>();
+    if (existingTotp?.verified === 1) {
+      return jsonResponse({ message: "TOTP is already enabled. Disable it first to set up a new one." }, 400, request);
+    }
+
+    // Delete any unverified setup
+    await env.AUTH_DB.prepare("DELETE FROM totp_secrets WHERE user_id = ? AND verified = 0")
+      .bind(session.id)
+      .run();
+
+    const base32Secret = generateTotpSecret();
+    const accountName = session.email || session.id;
+    const totp = createTotpInstance(base32Secret, accountName);
+    const otpauthUri = totp.toString();
+
+    const encryptedSecret = await encryptTotpSecret(base32Secret, env);
+    const setupId = crypto.randomUUID();
+    await env.AUTH_DB.prepare(
+      "INSERT INTO totp_secrets (id, user_id, encrypted_secret, verified, created_at) VALUES (?, ?, ?, 0, ?)"
+    )
+      .bind(setupId, session.id, encryptedSecret, new Date().toISOString())
+      .run();
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "totp_setup_started",
+      status: "success",
+      details: {},
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ setupId, secret: base32Secret, otpauthUri }, 200, request);
+  }
+
+  if (pathname === "/api/auth/totp/verify-setup" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    if (!env.TOTP_ENCRYPTION_KEY) {
+      return jsonResponse({ message: "TOTP not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const body = await request.json().catch(() => ({})) as { code?: string; setupId?: string };
+    const { code, setupId } = body;
+    if (!code || !setupId) {
+      return jsonResponse({ message: "Code and setupId are required" }, 400, request);
+    }
+
+    const pending = await env.AUTH_DB.prepare(
+      "SELECT id, encrypted_secret, created_at FROM totp_secrets WHERE user_id = ? AND id = ? AND verified = 0 LIMIT 1"
+    )
+      .bind(session.id, setupId)
+      .first<{ id: string; encrypted_secret: string; created_at: string }>();
+    if (!pending) {
+      return jsonResponse({ message: "No pending TOTP setup found" }, 400, request);
+    }
+
+    // Setup expires after 10 minutes
+    const setupAge = Date.now() - new Date(pending.created_at).getTime();
+    if (setupAge > 10 * 60 * 1000) {
+      await env.AUTH_DB.prepare("DELETE FROM totp_secrets WHERE id = ?").bind(pending.id).run();
+      return jsonResponse({ message: "Setup expired. Please start again." }, 400, request);
+    }
+
+    const secret = await decryptTotpSecret(pending.encrypted_secret, env);
+    const accountName = session.email || session.id;
+    if (!verifyTotpCode(secret, code, accountName)) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "totp_failed",
+        status: "failure",
+        details: { phase: "setup_verify" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "Invalid code. Please try again." }, 400, request);
+    }
+
+    await env.AUTH_DB.prepare("UPDATE totp_secrets SET verified = 1 WHERE id = ?")
+      .bind(pending.id)
+      .run();
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "totp_enabled",
+      status: "success",
+      details: {},
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/totp/verify" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    if (!env.TOTP_ENCRYPTION_KEY) {
+      return jsonResponse({ message: "TOTP not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false, allowPendingTotp: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const body = await request.json().catch(() => ({})) as { code?: string };
+    const { code } = body;
+    if (!code || typeof code !== "string") {
+      return jsonResponse({ message: "Code is required" }, 400, request);
+    }
+
+    // Rate limit TOTP verification per session
+    if (env.AUTH_KV) {
+      const rlKey = `${TOTP_RATE_LIMIT.KEY_PREFIX}${session.sessionIdHash}`;
+      try {
+        const rlData = await env.AUTH_KV.get(rlKey, "json") as { count: number } | null;
+        if (rlData && rlData.count >= TOTP_RATE_LIMIT.MAX_ATTEMPTS) {
+          return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+        }
+        await env.AUTH_KV.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+          expirationTtl: TOTP_RATE_LIMIT.WINDOW_SECONDS,
+        });
+      } catch {
+        // Rate limit check failure is non-fatal
+      }
+    }
+
+    const totpRow = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1"
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
+    if (!totpRow) {
+      return jsonResponse({ message: "TOTP is not enabled" }, 400, request);
+    }
+
+    const secret = await decryptTotpSecret(totpRow.encrypted_secret, env);
+    const accountName = session.email || session.id;
+    if (!verifyTotpCode(secret, code, accountName)) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "totp_failed",
+        status: "failure",
+        details: { phase: "login_verify" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "Invalid code" }, 400, request);
+    }
+
+    // Upgrade session to fully authenticated
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET auth_complete = 1 WHERE session_id_hash = ?"
+    )
+      .bind(session.sessionIdHash)
+      .run();
+
+    // Clear rate limit on success
+    if (env.AUTH_KV) {
+      const rlKey = `${TOTP_RATE_LIMIT.KEY_PREFIX}${session.sessionIdHash}`;
+      try { await env.AUTH_KV.delete(rlKey); } catch {}
+    }
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "totp_verified",
+      status: "success",
+      details: {},
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/totp/disable" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const passkeyCountDisable = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+    const hasPasskeysDisable = (passkeyCountDisable?.count ?? 0) > 0;
+    if (hasPasskeysDisable && !isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+
+    const deleted = await env.AUTH_DB.prepare("DELETE FROM totp_secrets WHERE user_id = ? AND verified = 1")
+      .bind(session.id)
+      .run();
+
+    if (!deleted.meta.changes || deleted.meta.changes === 0) {
+      return jsonResponse({ message: "TOTP is not enabled" }, 400, request);
+    }
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "totp_disabled",
+      status: "success",
+      details: {},
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   return jsonResponse({ message: "Auth route not found" }, 404, request);
@@ -3276,6 +3610,89 @@ function parsePathParams(pathname: string, pattern: string): Record<string, stri
   return params;
 }
 
+// ============================================================================
+// TOTP ENCRYPTION HELPERS
+// ============================================================================
+
+const TOTP_ISSUER = "PrivateNote";
+const TOTP_DIGITS = 6;
+const TOTP_PERIOD = 30;
+const TOTP_ALGORITHM = "SHA1";
+const TOTP_VERIFY_WINDOW = 1;
+
+const TOTP_RATE_LIMIT = {
+  MAX_ATTEMPTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "totp_rate_limit:",
+};
+
+async function getTotpEncryptionKey(env: Env): Promise<CryptoKey | null> {
+  const raw = env.TOTP_ENCRYPTION_KEY;
+  if (!raw) return null;
+  const keyBytes = base64UrlToBytes(raw);
+  return crypto.subtle.importKey("raw", keyBytes.buffer as ArrayBuffer, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptTotpSecret(secret: string, env: Env): Promise<string> {
+  const key = await getTotpEncryptionKey(env);
+  if (!key) throw new Error("TOTP encryption key not configured");
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(secret);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
+    key,
+    encoded as unknown as ArrayBuffer
+  );
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return bytesToBase64Url(combined);
+}
+
+async function decryptTotpSecret(encrypted: string, env: Env): Promise<string> {
+  const key = await getTotpEncryptionKey(env);
+  if (!key) throw new Error("TOTP encryption key not configured");
+  const combined = base64UrlToBytes(encrypted);
+  const iv = combined.slice(0, 12);
+  const ciphertext = combined.slice(12);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
+    key,
+    ciphertext as unknown as ArrayBuffer
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function generateTotpSecret(): string {
+  const secret = new OTPAuth.Secret({ size: 20 });
+  return secret.base32;
+}
+
+function createTotpInstance(base32Secret: string, accountName: string): OTPAuth.TOTP {
+  return new OTPAuth.TOTP({
+    issuer: TOTP_ISSUER,
+    label: accountName,
+    algorithm: TOTP_ALGORITHM,
+    digits: TOTP_DIGITS,
+    period: TOTP_PERIOD,
+    secret: OTPAuth.Secret.fromBase32(base32Secret),
+  });
+}
+
+function verifyTotpCode(base32Secret: string, code: string, accountName: string): boolean {
+  const totp = createTotpInstance(base32Secret, accountName);
+  const delta = totp.validate({ token: code, window: TOTP_VERIFY_WINDOW });
+  return delta !== null;
+}
+
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -3336,7 +3753,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
 
+  console.log(`[ROUTES] Calling handleAuthRoutes...`);
   const authResponse = await handleAuthRoutes(request, env);
+  console.log(`[ROUTES] handleAuthRoutes returned: ${authResponse ? authResponse.status : 'null'}`);
   if (authResponse) {
     return authResponse;
   }
