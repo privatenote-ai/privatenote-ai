@@ -1590,39 +1590,50 @@ export const CreateNote: React.FC = () => {
                   <Copy className="h-4 w-4 mr-1.5" />
                   Copy Link
                 </button>
-                <button
-                  onClick={shareViaEmail}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                  title="Email link to recipient"
-                >
-                  <Mail className="h-4 w-4 mr-1.5" />
-                  Email Link
-                </button>
-                <button
-                  onClick={shareLink}
-                  className="hidden md:inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                  title="Share link"
-                >
-                  <Share2 className="h-4 w-4 mr-1.5" />
-                  Share
-                </button>
               </div>
-            </div>
-          </div>
 
-          <div className="flex flex-col items-center mt-8 mb-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2" id="note-qr-code">
-              <QRCode value={noteUrl} size={180} />
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={downloadQrCode}
-                className="flex items-center px-4 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                title="Download QR code as SVG image"
-              >
-                <FileText className="h-4 w-4 mr-1.5" />
-                Download QR
-              </button>
+              <div className="pt-5 mt-1 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
+                  Or QR code
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-8">
+                  <div
+                    className="bg-white dark:bg-gray-950 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 shrink-0"
+                    id="note-qr-code"
+                  >
+                    <QRCode value={noteUrl} size={180} />
+                  </div>
+                  <div className="flex flex-row sm:flex-col flex-wrap justify-center gap-2 w-full sm:w-auto max-sm:max-w-xs">
+                    <button
+                      onClick={shareViaEmail}
+                      type="button"
+                      className="inline-flex flex-1 sm:flex-none items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                      title="Email link to recipient"
+                    >
+                      <Mail className="h-4 w-4 mr-1.5 shrink-0" />
+                      Email Link
+                    </button>
+                    <button
+                      onClick={shareLink}
+                      type="button"
+                      className="inline-flex flex-1 sm:flex-none items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                      title="Share link"
+                    >
+                      <Share2 className="h-4 w-4 mr-1.5 shrink-0" />
+                      Share
+                    </button>
+                    <button
+                      onClick={downloadQrCode}
+                      type="button"
+                      className="inline-flex flex-1 sm:flex-none items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                      title="Download QR code as SVG image"
+                    >
+                      <FileText className="h-4 w-4 mr-1.5 shrink-0" />
+                      Download QR
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

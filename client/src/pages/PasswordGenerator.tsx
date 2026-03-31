@@ -3,7 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Shield, Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Download, Eye, EyeOff } from 'lucide-react';
+import { Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Download, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'wouter';
 import { zxcvbn } from '@zxcvbn-ts/core';
 import { apiRequest } from '@/lib/queryClient';
@@ -357,9 +357,18 @@ const PasswordGenerator: React.FC = () => {
 
   const strengthInfo = getStrengthText();
 
+  const pageBackground = (
+    <div className="pointer-events-none absolute inset-0 -z-10 min-h-full">
+      <div className="absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,#00000012_1px,transparent_1px),linear-gradient(to_bottom,#00000012_1px,transparent_1px)] [background-size:56px_56px] dark:opacity-[0.10]" />
+    </div>
+  );
+
   if (sharedNoteUrl) {
     return (
-      <div className="max-w-3xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+      <div className="relative pt-24 pb-20">
+        {pageBackground}
+        <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="space-y-10">
           <div className="text-center">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
@@ -471,14 +480,38 @@ const PasswordGenerator: React.FC = () => {
             </p>
           </div>
         </section>
+        </div>
       </div>
     );
   }
 
+  const securityApproachFeatures = [
+    {
+      title: 'Crypto Web API',
+      description:
+        'Uses the Crypto Web API for cryptographically secure randomness. All password generation happens entirely in your browser—your password never leaves your device.',
+      icon: <Lock className="h-6 w-6 text-primary" />,
+    },
+    {
+      title: 'Unbiased Randomness',
+      description:
+        'Uses rejection sampling so every character has an equal chance of being selected, eliminating bias and making passwords harder to predict or crack.',
+      icon: <Zap className="h-6 w-6 text-primary" />,
+    },
+    {
+      title: 'Smart Strength Analysis',
+      description:
+        'Advanced strength estimation analyzes patterns, common words, and realistic crack times for an accurate security assessment.',
+      icon: <BarChart3 className="h-6 w-6 text-primary" />,
+    },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-      {/* Hero Section */}
-      <div className="text-center mb-8">
+    <div className="relative pt-24 pb-20">
+      {pageBackground}
+      <div className="relative z-10">
+      <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+      <div className="text-center">
         <h1 className="page-title text-gray-900 dark:text-white">
           Strong <span className="text-primary italic">Password </span> Generator.
         </h1>
@@ -486,7 +519,10 @@ const PasswordGenerator: React.FC = () => {
           Create cryptographically secure passwords with unbiased randomness and accurate strength estimation.
         </p>
       </div>
+      </section>
 
+      <div className="mt-8 mb-8 py-4 px-4">
+        <div className="max-w-3xl mx-auto">
       <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
         <div className="mb-6">
 
@@ -639,48 +675,52 @@ const PasswordGenerator: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Approach Explanation Cards - Summaries */}
-      <div className="mt-12 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-              <Lock className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Crypto Web API</h3>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            Uses the Crypto Web API for cryptographically secure randomness. All password generation happens entirely in your browser—your password never leaves your device.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-              <Zap className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Unbiased Randomness</h3>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            Uses rejection sampling to ensure every character has an equal chance of being selected, eliminating bias and making passwords harder to predict or crack.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-              <BarChart3 className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Smart Strength Analysis</h3>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            Uses advanced password strength estimation that analyzes patterns, common words, and calculates realistic crack times to give you an accurate security assessment.
-          </p>
         </div>
       </div>
 
+      <section className="relative px-4 py-12 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">How generation stays trustworthy</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            The same ideas we use for Key Features—plain language, real cryptography.
+          </p>
+        </div>
+
+        <div className="hidden sm:grid grid-cols-2 gap-5 md:grid-cols-3 xl:gap-6">
+          {securityApproachFeatures.map((feature, index) => (
+            <div
+              key={index}
+              className="group relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-xl shadow-md p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 transition-transform duration-200 group-hover:scale-105">
+                {feature.icon}
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="sm:hidden space-y-4">
+          {securityApproachFeatures.map((feature, index) => (
+            <div
+              key={index}
+              className="group relative overflow-hidden flex items-start p-4 bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-lg shadow-sm transition-transform duration-200 active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
+                {feature.icon}
+              </div>
+              <div>
+                <h3 className="text-base font-semibold mb-1 text-gray-900 dark:text-white">{feature.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{feature.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Learn More Link */}
-      <div className="mt-8 text-center">
+      <div className="mt-8 text-center px-4">
         <Link
           href="/blog/how-we-generate-passwords"
           className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -691,7 +731,7 @@ const PasswordGenerator: React.FC = () => {
       </div>
 
       {/* Powered by attribution */}
-      <div className="mt-4 text-center">
+      <div className="mt-4 text-center px-4 pb-2">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Powered by{' '}
           <a
@@ -703,6 +743,7 @@ const PasswordGenerator: React.FC = () => {
             passwords.lu
           </a>
         </p>
+      </div>
       </div>
     </div>
   );

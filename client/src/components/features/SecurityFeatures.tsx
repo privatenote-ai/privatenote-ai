@@ -38,7 +38,6 @@ const features = [
 export const SecurityFeatures: React.FC = () => {
   return (
     <section className="relative px-4 py-12 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-      <div className="pointer-events-none absolute -top-16 left-1/2 h-56 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
       <div className="text-center mb-8 sm:mb-12">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Key Features</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -51,9 +50,8 @@ export const SecurityFeatures: React.FC = () => {
         {features.map((feature, index) => (
           <div
             key={index}
-            className="group relative overflow-hidden backdrop-blur-md border border-gray-200/40 dark:border-gray-700/40 rounded-xl shadow-md p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
+            className="group relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-xl shadow-md p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
           >
-            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.5),transparent_55%)] dark:bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.12),transparent_55%)]" />
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 transition-transform duration-200 group-hover:scale-105">
               {feature.icon}
             </div>
@@ -70,9 +68,8 @@ export const SecurityFeatures: React.FC = () => {
         {features.map((feature, index) => (
           <div
             key={index}
-            className="group relative overflow-hidden flex items-start p-4 backdrop-blur-md border border-gray-200/40 dark:border-gray-700/40 rounded-lg shadow-sm transition-transform duration-200 active:scale-[0.99]"
+            className="group relative overflow-hidden flex items-start p-4 bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-lg shadow-sm transition-transform duration-200 active:scale-[0.99]"
           >
-            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.5),transparent_55%)] dark:bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.12),transparent_55%)]" />
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
               {feature.icon}
             </div>
