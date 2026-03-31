@@ -1662,43 +1662,41 @@ export const CreateNote: React.FC = () => {
                 <p className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">
                   Or QR code
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-8">
+                <div className="flex flex-col items-center justify-center gap-4">
                   <div
                     className="bg-white dark:bg-gray-950 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 shrink-0"
                     id="note-qr-code"
                   >
                     <QRCode value={noteUrl} size={180} />
                   </div>
-                  <div className="flex flex-col gap-2 w-full sm:w-auto max-w-md">
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button
-                        onClick={downloadQrCode}
-                        type="button"
-                        className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
-                        title="Download QR code as SVG image"
-                      >
-                        <FileText className="h-4 w-4 mr-1.5 shrink-0" />
-                        Download QR
-                      </button>
-                      <button
-                        onClick={emailQrCode}
-                        type="button"
-                        className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                        title="Open email with QR instructions and link"
-                      >
-                        <Mail className="h-4 w-4 mr-1.5 shrink-0" />
-                        Email QR code
-                      </button>
-                      <button
-                        onClick={shareQrCode}
-                        type="button"
-                        className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
-                        title="Share QR image when supported, otherwise share link"
-                      >
-                        <Share2 className="h-4 w-4 mr-1.5 shrink-0" />
-                        Share QR code
-                      </button>
-                    </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 w-full max-w-md">
+                    <button
+                      onClick={downloadQrCode}
+                      type="button"
+                      className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
+                      title="Download QR code as SVG image"
+                    >
+                      <FileText className="h-4 w-4 mr-1.5 shrink-0" />
+                      Download QR
+                    </button>
+                    <button
+                      onClick={emailQrCode}
+                      type="button"
+                      className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                      title="Open email with QR instructions and link"
+                    >
+                      <Mail className="h-4 w-4 mr-1.5 shrink-0" />
+                      Email QR code
+                    </button>
+                    <button
+                      onClick={shareQrCode}
+                      type="button"
+                      className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-blue-100 dark:bg-blue-700 hover:bg-blue-200 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-100 rounded-md transition-colors"
+                      title="Share QR image when supported, otherwise share link"
+                    >
+                      <Share2 className="h-4 w-4 mr-1.5 shrink-0" />
+                      Share QR code
+                    </button>
                   </div>
                 </div>
               </div>
