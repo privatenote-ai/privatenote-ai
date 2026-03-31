@@ -383,35 +383,38 @@ const PasswordGenerator: React.FC = () => {
               />
             </div>
 
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(sharedNoteUrl);
-                  setCopied(true);
-                  toast({
-                    title: "Copied!",
-                    description: "Link copied to clipboard",
-                  });
-                  setTimeout(() => setCopied(false), 2000);
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to copy link",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="w-48 block mx-auto inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              {copied ? (
-                <span>Copied!</span>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Link
-                </>
-              )}
-            </button>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(sharedNoteUrl);
+                    setCopied(true);
+                    toast({
+                      title: "Copied!",
+                      description: "Link copied to clipboard",
+                    });
+                    setTimeout(() => setCopied(false), 2000);
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to copy link",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="w-48 inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                {copied ? (
+                  <span>Copied!</span>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </>
+                )}
+              </button>
+            </div>
 
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
               The link and QR code contain the decryption key. Anyone with this link or QR code can read the password.
@@ -437,20 +440,22 @@ const PasswordGenerator: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 space-y-3">
+          <div className="pt-5 space-y-4">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
               Need another password? Generate a fresh one and create a new secure link.
             </p>
-            <button
-              onClick={() => {
-                setSharedNoteUrl(null);
-                generatePassword();
-              }}
-              className="w-56 mx-auto flex items-center justify-center whitespace-nowrap bg-transparent border border-primary text-primary rounded-md font-semibold py-2.5 px-4 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Generate New Password
-            </button>
+            <div className="py-2">
+              <button
+                onClick={() => {
+                  setSharedNoteUrl(null);
+                  generatePassword();
+                }}
+                className="w-56 mx-auto flex items-center justify-center whitespace-nowrap bg-transparent border border-primary text-primary rounded-md font-semibold py-2.5 px-4 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Generate New Password
+              </button>
+            </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
               Powered by{' '}
               <a
