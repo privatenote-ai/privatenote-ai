@@ -358,12 +358,9 @@ const PasswordGenerator: React.FC = () => {
   if (sharedNoteUrl) {
     return (
       <div className="max-w-3xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-        <section className="space-y-8">
+        <section className="space-y-10">
           <div className="text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
               Password Shared Successfully
             </h1>
             <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-300">
@@ -371,7 +368,7 @@ const PasswordGenerator: React.FC = () => {
             </p>
           </div>
 
-          <div className="space-y-3 pt-1">
+          <div className="space-y-4 pt-2">
             <label htmlFor="note-url" className="block text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
               Secure Link
             </label>
@@ -404,7 +401,7 @@ const PasswordGenerator: React.FC = () => {
                   });
                 }
               }}
-              className="w-48 mx-auto inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              className="w-48 block mx-auto inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
               {copied ? (
                 <span>Copied!</span>
@@ -421,14 +418,14 @@ const PasswordGenerator: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center pt-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               QR Code
             </label>
             <div className="w-48 h-48 bg-white p-2 rounded-lg" id="password-qr-code">
               <QRCode value={sharedNoteUrl} size={180} />
             </div>
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3 mt-5">
               <button
                 onClick={downloadQrCode}
                 className="w-48 inline-flex items-center justify-center px-4 py-2.5 text-xs font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 shadow-sm"
@@ -440,7 +437,7 @@ const PasswordGenerator: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-1 space-y-2">
+          <div className="pt-3 space-y-3">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
               Need another password? Generate a fresh one and create a new secure link.
             </p>
@@ -449,11 +446,22 @@ const PasswordGenerator: React.FC = () => {
                 setSharedNoteUrl(null);
                 generatePassword();
               }}
-              className="w-56 mx-auto flex items-center justify-center bg-transparent border border-primary text-primary rounded-md font-semibold py-2.5 px-4 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+              className="w-56 mx-auto flex items-center justify-center whitespace-nowrap bg-transparent border border-primary text-primary rounded-md font-semibold py-2.5 px-4 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Generate New Password
             </button>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Powered by{' '}
+              <a
+                href="https://passwords.lu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                passwords.lu
+              </a>
+            </p>
           </div>
         </section>
       </div>
