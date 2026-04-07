@@ -5,7 +5,8 @@ import { Calendar, ArrowRight, Tag, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseBlogPostTags } from '@/utils/blogPostTags';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +27,8 @@ export default function Blog() {
       excerpt: 'Why modern threats demand architectural security, not just better habits.',
       author: 'PrivateNote.ai',
       slug: 'myth-good-enough-security',
-      publishedAt: new Date().toISOString(),
-      tags: ['security', 'privacy', 'authentication'],
+      publishedAt: new Date(),
+      tags: JSON.stringify(['security', 'privacy', 'authentication']),
       content: '',
       coverImage: null,
       published: true,
@@ -40,8 +41,8 @@ export default function Blog() {
       excerpt: 'Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.',
       author: 'PrivateNote.ai',
       slug: 'how-we-generate-passwords',
-      publishedAt: new Date().toISOString(),
-      tags: ['passwords', 'security', 'cryptography'],
+      publishedAt: new Date(),
+      tags: JSON.stringify(['passwords', 'security', 'cryptography']),
       content: '',
       coverImage: null,
       published: true,
@@ -124,6 +125,7 @@ function BlogPostCard({ post }: { post: BlogPost }) {
   const formattedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
     : '';
+  const tagList = parseBlogPostTags(post.tags);
 
   return (
     <Card className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -131,18 +133,18 @@ function BlogPostCard({ post }: { post: BlogPost }) {
         <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-1">
           <Calendar className="h-4 w-4 mr-1" />
           <span>{formattedDate}</span>
-          {post.tags && post.tags.length > 0 && (
+          {tagList.length > 0 && (
             <div className="ml-auto flex items-center gap-2">
               <Tag className="h-4 w-4" />
               <div className="flex gap-1">
-                {post.tags.slice(0, 3).map((tag, i) => (
+                {tagList.slice(0, 3).map((tag, i) => (
                   <Badge key={i} variant="outline" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
-                {post.tags.length > 3 && (
+                {tagList.length > 3 && (
                   <Badge variant="outline" className="text-xs">
-                    +{post.tags.length - 3}
+                    +{tagList.length - 3}
                   </Badge>
                 )}
               </div>

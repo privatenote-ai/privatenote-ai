@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Lock, Zap, BarChart3, Shield, Check, Key } from 'lucide-react';
+import { Lock, Zap, BarChart3, Shield, Check } from 'lucide-react';
 
 export const PasswordGenerationPost: React.FC = () => {
   return (

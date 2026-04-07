@@ -4,8 +4,8 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE,
-  email_verified INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'pending',
+  email_verified INTEGER DEFAULT 0 CHECK (email_verified IN (0, 1)),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active')),
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT,
   last_login_at TEXT
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS webauthn_credentials (
   transports TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   last_used_at TEXT,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -40,11 +40,12 @@ CREATE TABLE IF NOT EXISTS sessions (
   city TEXT,
   country TEXT,
   device_label TEXT,
-  auth_complete INTEGER DEFAULT 1,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  client_bucket TEXT,
+  auth_complete INTEGER DEFAULT 1 CHECK (auth_complete IN (0, 1)),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_sessions_hash ON sessions(session_id_hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_session_id_hash ON sessions(session_id_hash);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_webauthn_credential_id ON webauthn_credentials(credential_id);
 
 CREATE TABLE IF NOT EXISTS recovery_codes (
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS recovery_codes (
   salt TEXT NOT NULL,
   used_at TEXT,
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_recovery_codes_user_id ON recovery_codes(user_id);
@@ -69,7 +70,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   ip TEXT,
   user_agent TEXT,
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
@@ -80,7 +81,7 @@ CREATE TABLE IF NOT EXISTS totp_secrets (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL UNIQUE,
   encrypted_secret TEXT NOT NULL,
-  verified INTEGER DEFAULT 0,
+  verified INTEGER DEFAULT 0 CHECK (verified IN (0, 1)),
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

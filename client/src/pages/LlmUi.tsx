@@ -10,29 +10,30 @@ import { useToast } from "@/hooks/use-toast";
 
 type DeviceType = "mobile" | "laptop" | "desktop" | "";
 
-const MODEL_CATALOG = {
-  ultraLite: "Qwen3-0.6B-Instruct",
-  midRange: "Llama-3.2-1B-Instruct",
-  highEnd: "Llama-3.2-3B-Instruct",
-  multilingual: "Qwen3-1.7B-Instruct",
-  powerhouse: "DeepSeek-R1-Distill-Qwen-7B",
-} as const;
+type VariantKey = "ultraLite" | "midRange" | "highEnd" | "multilingual" | "powerhouse";
 
-const MODEL_ID_MAP: Record<string, string> = {
-  "Qwen3-0.6B-Instruct": "Qwen3-0.6B-q4f16_1-MLC",
-  "Qwen3-1.7B-Instruct": "Qwen3-1.7B-q4f16_1-MLC",
-  "Llama-3.2-1B-Instruct": "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-  "Llama-3.2-3B-Instruct": "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-  "DeepSeek-R1-Distill-Qwen-7B": "DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC",
+const VARIANT_MLC_ID: Record<VariantKey, string> = {
+  ultraLite: "gemma-2-2b-it-q4f16_1-MLC",
+  midRange: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+  highEnd: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+  multilingual: "gemma-2-2b-it-q4f16_1-MLC",
+  powerhouse: "DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC",
 };
 
-const getHardwareStats = () => {
-  const hasWebGPU = "gpu" in navigator && Boolean((navigator as { gpu?: unknown }).gpu);
+const getHardwareStats = (): {
+  ram: number | "Unknown";
+  cores: number | "Unknown";
+  gpu: string;
+  isMobile: boolean;
+} => {
+  const hasWebGPU = typeof navigator !== "undefined" && Boolean(navigator.gpu?.requestAdapter);
+  const ramRaw = typeof navigator !== "undefined" ? navigator.deviceMemory : undefined;
+  const coresRaw = typeof navigator !== "undefined" ? navigator.hardwareConcurrency : undefined;
   return {
-    ram: navigator.deviceMemory || "Unknown",
-    cores: navigator.hardwareConcurrency || "Unknown",
+    ram: typeof ramRaw === "number" ? ramRaw : "Unknown",
+    cores: typeof coresRaw === "number" ? coresRaw : "Unknown",
     gpu: hasWebGPU ? "WebGPU Supported" : "Legacy/No GPU",
-    isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+    isMobile: typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
   };
 };
 
@@ -87,8 +88,8 @@ function LlmUi() {
       if (ramValue < 4) return "Keeping it light, I see. We’ll stay nimble.";
       if (ramValue <= 8) return "Solid mid‑range setup — good balance of speed and comfort.";
     }
-    if (stats.isMobile) return "On the go — we’ll keep the model lean and snappy.";
-    return "Got it. We’ll pick a model that fits your hardware without drama.";
+    if (stats.isMobile) return "On the go — we’ll keep things lean and snappy.";
+    return "Got it. We’ll tune the assistant to your hardware.";
   }, [ramValue, stats.isMobile]);
 
   const isNonEnglish = primaryLanguage !== "" && primaryLanguage !== "English";
@@ -103,41 +104,42 @@ function LlmUi() {
 
     if (ramValue !== null && ramValue < 4) {
       return {
-        tier: "Tier 1: Ultra‑Lite",
-        model: MODEL_CATALOG.ultraLite,
-        context: "The battery‑saver. Fast, small (~380MB), ideal for tags and quick summaries.",
+        tier: "Tier 1: Standard on-device",
+        variant: "ultraLite" as VariantKey,
+        context:
+          "Gemma 2 2B — same default as the main app: capable without the largest download.",
       };
     }
 
     if (isNonEnglish && (ramValue === null || ramValue >= 4)) {
       return {
         tier: "Tier 4: International/Multilingual",
-        model: MODEL_CATALOG.multilingual,
-        context: "The Polyglot. Best‑in‑class grammar for French, Spanish, and 100+ languages.",
+        variant: "multilingual" as VariantKey,
+        context: "Strong fit for many languages and grammar-sensitive writing.",
       };
     }
 
     if (ramValue !== null && ramValue >= 16 && deviceType === "desktop" && hasWebGPU) {
       return {
         tier: "Tier 5: Powerhouse / Reasoning",
-        model: MODEL_CATALOG.powerhouse,
-        context: "The Brain. Built for deep reasoning and complex analysis.",
+        variant: "powerhouse" as VariantKey,
+        context: "Best when you want deeper reasoning and longer context on capable hardware.",
       };
     }
 
     if (ramValue !== null && ramValue >= 8 && isLaptopOrDesktop) {
       return {
         tier: "Tier 3: High‑End English",
-        model: MODEL_CATALOG.highEnd,
-        context: "The Writer. Deep reasoning, rich vocabulary, and crisp formatting.",
+        variant: "highEnd" as VariantKey,
+        context: "Rich vocabulary, crisp formatting, and confident long-form help.",
       };
     }
 
     if (ramValue !== null && ramValue >= 4 && ramValue <= 8 && isMobileChosen) {
       return {
         tier: "Tier 2: Mid‑Range English",
-        model: MODEL_CATALOG.midRange,
-        context: "The Standard. Optimized for English fluency and snappy mobile performance.",
+        variant: "midRange" as VariantKey,
+        context: "Optimized for fluent English and snappy mobile performance.",
       };
     }
 
@@ -145,14 +147,14 @@ function LlmUi() {
       if (isMobileChosen) {
         return {
           tier: "Tier 2: Mid‑Range English",
-          model: MODEL_CATALOG.midRange,
+          variant: "midRange" as VariantKey,
           context: "Conservative pick for unknown RAM. Keeps mobile fast and stable.",
         };
       }
       if (coreValue !== null && coreValue >= 8) {
         return {
           tier: "Tier 3: High‑End English",
-          model: MODEL_CATALOG.highEnd,
+          variant: "highEnd" as VariantKey,
           context: "Plenty of cores detected — stepping up for richer output.",
         };
       }
@@ -160,13 +162,13 @@ function LlmUi() {
 
     return {
       tier: "Tier 2: Mid‑Range English",
-      model: MODEL_CATALOG.midRange,
+      variant: "midRange" as VariantKey,
       context: "Safe default when hardware is mixed or uncertain.",
     };
   }, [primaryLanguage, deviceType, ramValue, isNonEnglish, isLaptopOrDesktop, isMobileChosen, hasWebGPU, coreValue]);
 
   const recommendationReady = Boolean(recommendation);
-  const recommendedModelId = recommendation ? MODEL_ID_MAP[recommendation.model] : null;
+  const recommendedModelId = recommendation ? VARIANT_MLC_ID[recommendation.variant] : null;
 
   const handleBackgroundDownload = async () => {
     if (!recommendedModelId || isDownloading) return;
@@ -177,13 +179,13 @@ function LlmUi() {
         setDownloadProgress(prog.progress);
       }, recommendedModelId);
       toast({
-        title: "Download started",
-        description: `Model ready: ${recommendation?.model}`,
+        title: "Ready",
+        description: "On-device assistant is ready.",
       });
     } catch (error) {
       toast({
         title: "Download failed",
-        description: error instanceof Error ? error.message : "Failed to initialize model.",
+        description: error instanceof Error ? error.message : "Could not prepare on-device AI.",
         variant: "destructive",
       });
     } finally {
@@ -194,9 +196,9 @@ function LlmUi() {
   return (
     <div className="pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
       <div className="text-center">
-        <h1 className="page-title text-gray-900 dark:text-white">LLM‑UI: Model Selection Engine</h1>
+        <h1 className="page-title text-gray-900 dark:text-white">Assistant setup</h1>
         <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
-          We’ll match you with the right local LLM for PrivateNote.ai — fast, private, and tuned to your device.
+          We’ll match you with the right on-device assistant for PrivateNote.ai — private and tuned to your device.
         </p>
       </div>
 
@@ -221,7 +223,7 @@ function LlmUi() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Consult</CardTitle>
-          <CardDescription>Two quick questions to lock in the best model.</CardDescription>
+          <CardDescription>Two quick questions to lock in the best fit.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -263,7 +265,7 @@ function LlmUi() {
           <CardTitle>Analyze & Recommend</CardTitle>
           <CardDescription>
             {recommendationReady
-              ? "Here’s your primary engine, tuned to your setup."
+              ? "Here’s the profile we recommend for your setup."
               : "Answer the two questions above to unlock your recommendation."}
           </CardDescription>
         </CardHeader>
@@ -276,7 +278,6 @@ function LlmUi() {
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-primary text-white">{recommendation?.tier}</Badge>
-                <Badge variant="secondary">Primary Engine: {recommendation?.model}</Badge>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">{recommendation?.context}</p>
 
@@ -319,8 +320,8 @@ function LlmUi() {
                     <TableCell>{isNonEnglish ? "Multilingual priority" : "English‑optimized"}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-semibold">Primary Engine</TableCell>
-                    <TableCell className="font-semibold">{recommendation?.model}</TableCell>
+                    <TableCell className="font-semibold">Recommended profile</TableCell>
+                    <TableCell className="font-semibold">{recommendation?.tier}</TableCell>
                     <TableCell className="font-semibold">Ready to queue</TableCell>
                   </TableRow>
                 </TableBody>
@@ -328,10 +329,10 @@ function LlmUi() {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-gray-700 dark:text-gray-200">
-                  Shall I start the background download for <span className="font-semibold">{recommendation?.model}</span> now?
+                  Download the on-device assistant in the background now?
                 </div>
                 <Button type="button" onClick={handleBackgroundDownload} disabled={!recommendedModelId || isDownloading}>
-                  {isDownloading ? "Downloading..." : "Start Background Download"}
+                  {isDownloading ? "Downloading..." : "Start background download"}
                 </Button>
               </div>
               {isDownloading && (

@@ -39,12 +39,21 @@ class_name = "AuthTokenStore"
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
+# Required for SecureNoteStorageSql (DO SQL). Local `wrangler dev` reads this;
+# without it, note creation fails with "SQL is not enabled for this Durable Object class".
+# Do not remove: Cloudflare tracks applied migration tags; removing past tags breaks deploy.
+[[migrations]]
+tag = "v5-secure-notes-sqlite"
+new_sqlite_classes = ["SecureNoteStorageSql"]
+
 # Environment variables (set via wrangler secret put or dashboard)
-# OPENAI_API_KEY will be set via: wrangler secret put OPENAI_API_KEY
 
 [vars]
 AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
+# Optional: primary HTTPS origin for magic / email-change links when Origin is missing (must match trustedOrigins allowlist). Example: "https://privatenote.ai"
+# PUBLIC_WEB_APP_ORIGIN = "https://privatenote.ai"
+# Production: set AUTH_SECRET_KEY via `wrangler secret put AUTH_SECRET_KEY`. Local wrangler dev on localhost may omit it; other hosts need secrets or AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 (never in prod).
 # Uncomment while debugging WebAuthn / auth: API returns { debug, route, phase } on failures; see `wrangler tail`.
 # AUTH_DEBUG = "1"
 
@@ -72,10 +81,5 @@ persist = true
 head_sampling_rate = 1
 
 # Migration configuration
-# Note: All migrations (v1, v2, v3) have already been applied in production.
-# We don't include any migrations here because:
-# - v1 (SecureNoteStorage) already exists and cannot be recreated
-# - v2 (SecureNoteStorageSql) already exists and cannot be recreated  
-# - v3 (delete SecureNoteStorage) cannot be applied while instances exist
-# Both classes are exported in the code for backward compatibility.
-# The binding points to SecureNoteStorageSql, so new instances use the correct class.
+# Keep all applied tags (v4, v5, …) in this file. v1–v3 ran on this worker historically;
+# v4 adds AuthTokenStore; v5 registers SecureNoteStorageSql with SQLite for wrangler dev + prod.

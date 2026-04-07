@@ -55,7 +55,7 @@ const coerceToBuffer = (value: unknown, label: string): ArrayBuffer => {
         const maxIndex = numericEntries.reduce((max, [key]) => Math.max(max, key), -1);
         const bytes = new Uint8Array(maxIndex + 1);
         for (const [key, val] of numericEntries) {
-          bytes[key] = val;
+          bytes[key] = val as number;
         }
         return bytes.buffer;
       }
@@ -144,3 +144,21 @@ export const coerceLoginOptions = (options: WebAuthnOptions): PublicKeyCredentia
     })),
   } as PublicKeyCredentialRequestOptions;
 };
+
+/**
+ * Chromium (and some other engines) reject passkeys when the document host is a bare IP
+ * (127.0.0.1, ::1, LAN IPs): "The effective domain of the document is not a valid domain."
+ * Use https://localhost:&lt;port&gt; in dev instead.
+ */
+export function describeWebAuthnEffectiveDomainError(error: unknown): string | null {
+  if (!(error instanceof DOMException) && !(error instanceof Error)) return null;
+  const msg = String(error.message || "");
+  if (!/effective domain/i.test(msg) && !/not a valid domain/i.test(msg)) return null;
+  if (typeof window === "undefined") {
+    return "This browser does not support passkeys when the site URL uses a bare IP address. Use https://localhost with the same port instead.";
+  }
+  const { hostname, port, protocol } = window.location;
+  const portSuffix = port ? `:${port}` : "";
+  const suggested = `https://localhost${portSuffix}`;
+  return `Passkeys need a domain-style host in this browser. Open ${suggested} instead of ${protocol}//${hostname}${portSuffix}.`;
+}

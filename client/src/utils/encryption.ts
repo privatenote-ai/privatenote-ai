@@ -1,163 +1,268 @@
-import bs58 from 'bs58';
+import {
+  buildNoteAadBytes,
+  encodeNoteAadBytesForWire,
+  type NoteAadBinding,
+} from "@shared/noteAad";
+import {
+  ARGON2ID_HASH_LEN,
+  ARGON2ID_MEMORY_KIB_V2,
+  ARGON2ID_PARAM_TAG_V2,
+  ARGON2ID_PARALLELISM_V2,
+  ARGON2ID_TIME_COST_V2,
+  KDF_VERSION_2,
+  parseKdfParamsV2,
+  type KdfParamsV2,
+} from "@shared/kdfParamsV2";
+import argon2, { ArgonType } from "argon2-browser";
 
-// Constants for key derivation
-export const PBKDF2_ITERATIONS = 310000;
-export const PBKDF2_HASH = 'SHA-256';
-export const KDF_VERSION = 1; // Version for parameter validation
-const PBKDF2_ITERATIONS_V2 = 600000;
+export type { NoteAadBinding };
+import { normalizeUrlFragmentKey, tryDecodeRawAesKeyUrlFragment } from "@shared/urlFragmentKey";
 
-function getKdfDefaults(version?: number) {
-  if (version !== undefined && version >= 2) {
-    return { iterations: PBKDF2_ITERATIONS_V2, hash: PBKDF2_HASH };
-  }
-  return { iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH };
+export {
+  ARGON2ID_HASH_LEN,
+  ARGON2ID_MEMORY_KIB_V2,
+  ARGON2ID_PARAM_TAG_V2,
+  ARGON2ID_PARALLELISM_V2,
+  ARGON2ID_TIME_COST_V2,
+  KDF_VERSION_2,
+  type KdfParamsV2,
+} from "@shared/kdfParamsV2";
+
+/** Stored on new password-protected notes. */
+export const KDF_VERSION = KDF_VERSION_2;
+const PASSWORD_DECRYPTION_FAILURE_MESSAGE =
+  "Failed to decrypt note. The password may be incorrect or the data may have been tampered with.";
+
+export interface EncryptedPayloadBytes {
+  encryptedData: Uint8Array;
+  iv: Uint8Array;
+  aadBytes: Uint8Array;
 }
 
-// Generate a random 256-bit encryption key
-export async function generateKey() {
+export interface EncryptedPayloadBytesInput {
+  encryptedData: Uint8Array | ArrayBuffer;
+  iv: Uint8Array;
+  aadBytes: Uint8Array;
+}
+
+export interface EncryptedPayloadWire {
+  content: string;
+  iv: string;
+  aad: string;
+}
+
+export interface EncryptWithPasswordResult {
+  encryptedData: ArrayBuffer;
+  iv: Uint8Array;
+  salt: Uint8Array;
+  encryptedKey: ArrayBuffer;
+  encryptedKeyIv: Uint8Array;
+  aadBytes: Uint8Array;
+  kdfParams: KdfParamsV2;
+}
+
+function currentKdfParamsV2(): KdfParamsV2 {
+  return {
+    version: KDF_VERSION_2,
+    algorithm: "argon2id",
+    timeCost: ARGON2ID_TIME_COST_V2,
+    memoryKiB: ARGON2ID_MEMORY_KIB_V2,
+    parallelism: ARGON2ID_PARALLELISM_V2,
+    hashLength: ARGON2ID_HASH_LEN,
+    profile: ARGON2ID_PARAM_TAG_V2,
+  };
+}
+
+function parseExactInteger(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return undefined;
+  }
+  return value;
+}
+
+function resolveKdfParamsForDecrypt(
+  kdfParamsRaw: unknown,
+  kdfVersionRaw: unknown,
+  kdfIterationsRaw: unknown,
+  kdfPolicyTagRaw: unknown,
+): { timeCost: typeof ARGON2ID_TIME_COST_V2; paramTag: typeof ARGON2ID_PARAM_TAG_V2 } {
+  const kdfParams = parseKdfParamsV2(kdfParamsRaw);
+  const kdfVersion = parseExactInteger(kdfVersionRaw);
+  const kdfIterations = parseExactInteger(kdfIterationsRaw);
+  const kdfPolicyTag = typeof kdfPolicyTagRaw === "string" ? kdfPolicyTagRaw : undefined;
+
+  if (kdfParams) {
+    return { timeCost: kdfParams.timeCost, paramTag: kdfParams.profile };
+  }
+
+  // Modern v2 notes must carry explicit structured KDF metadata.
+  if (kdfVersion === KDF_VERSION_2) {
+    throw new Error("Missing required structured KDF parameters for version 2");
+  }
+
+  // Legacy fallback (older rows) is only valid when metadata is fully absent.
+  const hasAnyLegacyKdfField =
+    kdfVersion !== undefined || kdfIterations !== undefined || kdfPolicyTag !== undefined;
+  if (!hasAnyLegacyKdfField) {
+    return { timeCost: ARGON2ID_TIME_COST_V2, paramTag: ARGON2ID_PARAM_TAG_V2 };
+  }
+
+  // For rows that include legacy KDF fields, require all fields explicitly.
+  if (kdfVersion === undefined || kdfIterations === undefined || !kdfPolicyTag) {
+    throw new Error("Missing required legacy KDF metadata");
+  }
+  if (
+    kdfVersion !== KDF_VERSION_2 ||
+    kdfIterations !== ARGON2ID_TIME_COST_V2 ||
+    kdfPolicyTag !== ARGON2ID_PARAM_TAG_V2
+  ) {
+    throw new Error("Invalid legacy KDF metadata");
+  }
+
+  return { timeCost: kdfIterations, paramTag: kdfPolicyTag };
+}
+
+/** Unpadded Base64url of 32 raw key bytes (pass through `normalizeUrlFragmentKey` for the URL). */
+export function rawAesKeyBytesToUrlFragmentKey(bytes: Uint8Array): string {
+  if (bytes.byteLength !== 32) {
+    throw new Error("Invalid AES-256 raw key length");
+  }
+  const b64 = arrayBufferToBase64(bytes);
+  return normalizeUrlFragmentKey(b64);
+}
+
+/**
+ * `exportedKey` is unpadded Base64url of the raw key (43 chars) for URL `#fragment`.
+ * `keyBytes` is the same 32-byte AES-256 material (use for wrapping without re-encoding).
+ * `extractable: true` is required to export raw bytes for URL embedding; content keys stay client-side.
+ */
+export async function generateContentKey(): Promise<{
+  key: CryptoKey;
+  /** Raw 32-byte AES-256 key material (same as underlies `exportedKey`). */
+  keyBytes: Uint8Array;
+  exportedKey: string;
+}> {
   const key = await window.crypto.subtle.generateKey(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       length: 256,
     },
     true,
-    ['encrypt', 'decrypt']
+    ["encrypt", "decrypt"],
   );
 
-  // Export the key as raw bytes
-  const exportedKeyBuffer = await window.crypto.subtle.exportKey('raw', key);
-  
-  // Convert to Base58 for URL-friendly representation
+  const exportedKeyBuffer = await window.crypto.subtle.exportKey("raw", key);
   const keyBytes = new Uint8Array(exportedKeyBuffer);
-  const exportedKey = bs58.encode(keyBytes);
-  
-  return { key, exportedKey };
+  const exportedKey = rawAesKeyBytesToUrlFragmentKey(keyBytes);
+
+  return { key, keyBytes, exportedKey };
 }
 
-// Import a key from Base58 string
-// Fixed: Now allows both encrypt and decrypt operations for consistency
-export async function importKey(keyString: string, usage: KeyUsage[] = ['encrypt', 'decrypt']) {
+export async function importAesGcmKeyFromUrlFragment(
+  keyString: string,
+  usage: KeyUsage[] = ["encrypt", "decrypt"],
+) {
+  const decoded = tryDecodeRawAesKeyUrlFragment(keyString);
+  if (!decoded) {
+    throw new Error("Invalid decryption key");
+  }
+
+  return await importAesGcmKeyFromRawBytes(new Uint8Array(decoded), usage);
+}
+
+export async function importAesGcmKeyFromRawBytes(
+  keyBytes: Uint8Array | ArrayBuffer,
+  usage: KeyUsage[] = ["encrypt", "decrypt"],
+) {
+  if (keyBytes.byteLength !== 32) {
+    throw new Error("Invalid AES-256 raw key length");
+  }
+
   try {
-    const keyBytes = bs58.decode(keyString);
-    
     return await window.crypto.subtle.importKey(
-      'raw',
-      keyBytes,
+      "raw",
+      asBufferSource(keyBytes),
       {
-        name: 'AES-GCM',
+        name: "AES-GCM",
         length: 256,
       },
       false,
-      usage
+      usage,
     );
   } catch (error) {
-    console.error('Error importing key:', error);
-    throw new Error('Invalid decryption key');
+    if (import.meta.env.DEV) {
+      console.error("Error importing key:", error);
+    }
+    throw new Error("Invalid decryption key");
   }
 }
 
-// Constant-time comparison helper to prevent timing attacks
-export function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  return result === 0;
-}
-
-// Encrypt data with AES-GCM
-// Fixed: Added AAD (Additional Authenticated Data) and explicit 128-bit tag length
-export async function encryptNote(
-  content: string, 
-  key: CryptoKey,
-  additionalData?: { expirySeconds?: number; maxReads?: number; noteId?: string }
-) {
-  // Create an initialization vector
+export async function encryptNote(content: string, key: CryptoKey, binding: NoteAadBinding) {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  
-  // Convert the content to ArrayBuffer
   const encoder = new TextEncoder();
   const data = encoder.encode(content);
-  
-  // Generate AAD to bind context to ciphertext
-  // This prevents context confusion attacks (swapping ciphertexts between notes)
-  let aad: Uint8Array | undefined;
-  if (additionalData) {
-    const aadParts: string[] = [];
-    if (additionalData.noteId) aadParts.push(`id:${additionalData.noteId}`);
-    if (additionalData.expirySeconds !== undefined) aadParts.push(`exp:${additionalData.expirySeconds}`);
-    if (additionalData.maxReads !== undefined) aadParts.push(`reads:${additionalData.maxReads}`);
-    if (aadParts.length > 0) {
-      aad = encoder.encode(aadParts.join('|'));
-    }
-  }
-  
-  // Encrypt the data with explicit 128-bit authentication tag
+  const aadBytes = buildNoteAadBytes(binding);
+
   const encryptedData = await window.crypto.subtle.encrypt(
     {
-      name: 'AES-GCM',
-      iv: iv,
-      additionalData: aad,
-      tagLength: 128, // Explicit 128-bit authentication tag for maximum security
+      name: "AES-GCM",
+      iv: asBufferSource(iv),
+      additionalData: asBufferSource(aadBytes),
+      tagLength: 128,
     },
     key,
-    data
+    asBufferSource(data),
   );
-  
-  // Convert AAD to base64 for storage (slice buffer to ensure correct length)
-  const aadBase64 = aad ? arrayBufferToBase64(aad.buffer.slice(aad.byteOffset, aad.byteOffset + aad.byteLength)) : undefined;
-  
-  return { encryptedData, iv, aad: aadBase64 };
+
+  return { encryptedData, iv, aadBytes };
 }
 
-// Decrypt data with AES-GCM
-// Fixed: Added AAD support and explicit 128-bit tag length
 export async function decryptNote(
   encryptedData: Uint8Array,
   key: CryptoKey,
   iv: Uint8Array,
-  additionalData?: Uint8Array
+  additionalData: Uint8Array,
 ) {
   try {
     const decryptedData = await window.crypto.subtle.decrypt(
       {
-        name: 'AES-GCM',
-        iv: iv,
-        additionalData: additionalData,
-        tagLength: 128, // Explicit 128-bit authentication tag
+        name: "AES-GCM",
+        iv: asBufferSource(iv),
+        additionalData: asBufferSource(additionalData),
+        tagLength: 128,
       },
       key,
-      encryptedData
+      asBufferSource(encryptedData),
     );
-    
-    // Convert the ArrayBuffer back to a string
+
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
   } catch (error) {
-    console.error('Error decrypting note:', error);
-    // Fixed: Use consistent error message to prevent timing leaks
-    throw new Error('Failed to decrypt note. The key may be incorrect or the data may have been tampered with.');
+    if (import.meta.env.DEV) {
+      console.error("Error decrypting note:", error);
+    }
+    throw new Error(
+      "Failed to decrypt note. The key may be incorrect or the data may have been tampered with.",
+    );
   }
 }
 
-// Helper function to convert ArrayBuffer to Base64
-export function arrayBufferToBase64(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  const chunks: string[] = [];
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
   }
-  return btoa(binary);
+
+  return btoa(chunks.join(""));
 }
 
-// Helper function to convert Base64 to ArrayBuffer
 function normalizeBase64(input: string) {
-  let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  let normalized = input.replace(/-/g, "+").replace(/_/g, "/");
   while (normalized.length % 4 !== 0) {
-    normalized += '=';
+    normalized += "=";
   }
   return normalized;
 }
@@ -171,163 +276,200 @@ export function base64ToArrayBuffer(base64: string) {
   return bytes.buffer;
 }
 
-// Derive a key from a password using PBKDF2
-// Fixed: Removed dead Argon2 code that never executed in browser environment
-// PBKDF2 is the standard for browser-based key derivation and provides adequate security
-export async function deriveKeyFromPassword(
-  password: string, 
-  salt: Uint8Array,
-  iterations: number = PBKDF2_ITERATIONS,
-  hash: string = PBKDF2_HASH
-) {
-  // Fixed: Validate KDF parameters to prevent downgrade attacks
-  if (iterations < 100000) {
-    throw new Error('Invalid KDF parameters: iteration count too low');
-  }
-  if (hash !== 'SHA-256' && hash !== 'SHA-384' && hash !== 'SHA-512') {
-    throw new Error('Invalid KDF parameters: unsupported hash algorithm');
-  }
-  
-  // Convert password to buffer
-  const passwordBuffer = new TextEncoder().encode(password);
-  
-  // Import the password as a key
-  const passwordKey = await window.crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-  
-  // Derive key using PBKDF2 with validated parameters
-  return await window.crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: iterations,
-      hash: hash as AlgorithmIdentifier
-    },
-    passwordKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
+export function base64ToUint8Array(base64: string): Uint8Array {
+  return new Uint8Array(base64ToArrayBuffer(base64));
 }
 
-// Generate a random salt for password derivation
+/** App boundary: convert byte-oriented encrypted payload into transport-safe wire fields. */
+export function serializeEncryptedPayload(payload: EncryptedPayloadBytesInput): EncryptedPayloadWire {
+  return {
+    content: arrayBufferToBase64(payload.encryptedData),
+    iv: arrayBufferToBase64(payload.iv),
+    aad: encodeNoteAadBytesForWire(payload.aadBytes),
+  };
+}
+
+/** App boundary: parse wire fields into byte-oriented encrypted payload for crypto operations. */
+export function deserializeEncryptedPayload(payload: EncryptedPayloadWire): EncryptedPayloadBytes {
+  return {
+    encryptedData: base64ToUint8Array(payload.content),
+    iv: base64ToUint8Array(payload.iv),
+    aadBytes: base64ToUint8Array(payload.aad),
+  };
+}
+
+/**
+ * Zero-copy adapter for TS WebCrypto typing mismatches.
+ * Runtime values are valid BufferSource, but some DOM lib combinations reject
+ * Uint8Array<ArrayBufferLike> without an explicit cast.
+ */
+function asBufferSource(input: Uint8Array | ArrayBuffer): BufferSource {
+  return input as unknown as BufferSource;
+}
+
+export async function deriveAesKeyFromPassword(
+  password: string,
+  salt: Uint8Array,
+  timeCost: number,
+  paramTag: string = ARGON2ID_PARAM_TAG_V2,
+) {
+  if (!password) {
+    throw new Error("Password is required");
+  }
+  if (salt.byteLength < 16) {
+    throw new Error("Invalid KDF parameters: salt too short");
+  }
+  if (timeCost < 1) {
+    throw new Error("Invalid KDF parameters: Argon2 time cost too low");
+  }
+  if (paramTag !== ARGON2ID_PARAM_TAG_V2) {
+    throw new Error("Invalid KDF parameters: unsupported Argon2 profile");
+  }
+
+  const { hash } = await argon2.hash({
+    pass: password,
+    salt,
+    time: timeCost,
+    mem: ARGON2ID_MEMORY_KIB_V2,
+    parallelism: ARGON2ID_PARALLELISM_V2,
+    hashLen: ARGON2ID_HASH_LEN,
+    type: ArgonType.Argon2id,
+  });
+
+  // argon2-browser returns raw derived bytes here, which we import directly as AES-256 key material.
+  const hashBytes = new Uint8Array(hash);
+  if (hashBytes.byteLength !== ARGON2ID_HASH_LEN) {
+    throw new Error("Invalid Argon2 output length");
+  }
+
+  try {
+    return await window.crypto.subtle.importKey(
+      "raw",
+      asBufferSource(hashBytes),
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  } finally {
+    // Best-effort cleanup for transient derived key material.
+    hashBytes.fill(0);
+  }
+}
+
 export function generateSalt() {
   return window.crypto.getRandomValues(new Uint8Array(16));
 }
 
-// Password-protected encryption function
-// Fixed: Added AAD and explicit tag length to key encryption
 export async function encryptWithPassword(
-  content: string, 
+  content: string,
   password: string,
-  additionalData?: { expirySeconds?: number; maxReads?: number; noteId?: string }
-) {
-  // Generate a salt for the password
+  binding: NoteAadBinding,
+): Promise<EncryptWithPasswordResult> {
   const salt = generateSalt();
-  
-  // Derive a key from the password with validated parameters
-  const passwordKey = await deriveKeyFromPassword(password, salt);
-  
-  // First, generate a regular encryption key
-  const { key, exportedKey } = await generateKey();
-  
-  // Encrypt the note content with the regular key (includes AAD)
-  const { encryptedData, iv, aad } = await encryptNote(content, key, additionalData);
-  
-  // Encrypt the regular key with the password-derived key
-  // Fixed: Added AAD and explicit tag length for key encryption
-  const keyBuffer = bs58.decode(exportedKey);
-  const encryptedKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
-  
-  // Use AAD for key encryption to bind it to the note context
-  // Convert base64 AAD back to Uint8Array for key encryption
-  let keyAad: Uint8Array | undefined;
-  if (aad) {
-    const aadBuffer = base64ToArrayBuffer(aad);
-    keyAad = new Uint8Array(aadBuffer);
-  }
-  
-  const encryptedKeyData = await window.crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: encryptedKeyIv,
-      additionalData: keyAad,
-      tagLength: 128, // Explicit 128-bit authentication tag
-    },
-    passwordKey,
-    keyBuffer
+
+  const passwordKey = await deriveAesKeyFromPassword(
+    password,
+    salt,
+    ARGON2ID_TIME_COST_V2,
+    ARGON2ID_PARAM_TAG_V2,
   );
 
-  return {
-    encryptedData,
-    iv,
-    salt,
-    encryptedKey: encryptedKeyData,
-    encryptedKeyIv,
-    aad, // Return AAD for storage (base64 string)
-    kdfVersion: KDF_VERSION, // Include KDF version for parameter validation
-    kdfIterations: PBKDF2_ITERATIONS,
-    kdfHash: PBKDF2_HASH
-  };
+  const { key, keyBytes } = await generateContentKey();
+  try {
+    const { encryptedData, iv, aadBytes } = await encryptNote(content, key, binding);
+
+    const encryptedKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    const encryptedKeyData = await window.crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv: asBufferSource(encryptedKeyIv),
+        additionalData: asBufferSource(aadBytes),
+        tagLength: 128,
+      },
+      passwordKey,
+      asBufferSource(keyBytes),
+    );
+
+    return {
+      encryptedData,
+      iv,
+      salt,
+      encryptedKey: encryptedKeyData,
+      encryptedKeyIv,
+      aadBytes,
+      kdfParams: currentKdfParamsV2(),
+    };
+  } finally {
+    // Best-effort cleanup for transient raw content-key bytes.
+    keyBytes.fill(0);
+  }
 }
 
-// Password-protected decryption function
-// Fixed: Added AAD support, parameter validation, and explicit tag length
 export async function decryptWithPassword(
   encryptedData: Uint8Array,
   iv: Uint8Array,
-  encryptedKey: ArrayBuffer,
+  encryptedKey: Uint8Array | ArrayBuffer,
   encryptedKeyIv: Uint8Array,
   salt: Uint8Array,
   password: string,
-  aad?: Uint8Array,
-  kdfVersion?: number,
-  kdfIterations?: number,
-  kdfHash?: string
+  aad: Uint8Array,
+  kdfParams?: unknown,
+  kdfVersion?: unknown,
+  kdfIterations?: unknown,
+  kdfPolicyTag?: unknown,
 ) {
   try {
-    // Fixed: Validate KDF parameters to prevent downgrade attacks
-    const defaults = getKdfDefaults(kdfVersion);
-    const iterations = kdfIterations ?? defaults.iterations;
-    const hash = kdfHash ?? defaults.hash;
-    
-    if (kdfVersion !== undefined && kdfVersion !== KDF_VERSION) {
-      throw new Error('Invalid KDF version. The note may have been encrypted with a different version.');
-    }
-    
-    // Derive the key from the password with validated parameters
-    const passwordKey = await deriveKeyFromPassword(password, salt, iterations, hash);
-    
-    // Decrypt the regular encryption key with AAD
-    const keyAad = aad ? new Uint8Array(aad) : undefined;
+    const { timeCost, paramTag } = resolveKdfParamsForDecrypt(
+      kdfParams,
+      kdfVersion,
+      kdfIterations,
+      kdfPolicyTag,
+    );
+    const passwordKey = await deriveAesKeyFromPassword(password, salt, timeCost, paramTag);
+
     const decryptedKeyBuffer = await window.crypto.subtle.decrypt(
       {
-        name: 'AES-GCM',
-        iv: encryptedKeyIv,
-        additionalData: keyAad,
-        tagLength: 128, // Explicit 128-bit authentication tag
+        name: "AES-GCM",
+        iv: asBufferSource(encryptedKeyIv),
+        additionalData: asBufferSource(aad),
+        tagLength: 128,
       },
       passwordKey,
-      encryptedKey
+      asBufferSource(encryptedKey),
     );
-    
-    // Convert the decrypted key buffer to a Base58 string
+
     const decryptedKeyBytes = new Uint8Array(decryptedKeyBuffer);
-    const decryptedKeyString = bs58.encode(decryptedKeyBytes);
-    
-    // Import the decrypted key (now supports both encrypt and decrypt)
-    const key = await importKey(decryptedKeyString);
-    
-    // Decrypt the note with the regular key and AAD
+    let key: CryptoKey;
+    try {
+      key = await importAesGcmKeyFromRawBytes(decryptedKeyBytes);
+    } finally {
+      // Best-effort cleanup for unwrapped raw content-key bytes.
+      decryptedKeyBytes.fill(0);
+    }
+
     return await decryptNote(encryptedData, key, iv, aad);
   } catch (error) {
-    console.error('Error decrypting with password:', error);
-    // Fixed: Use consistent error message to prevent timing leaks
-    throw new Error('Failed to decrypt note. The password may be incorrect or the data may have been tampered with.');
+    const message = error instanceof Error ? error.message : "";
+    const malformedOrUnsupportedRecord =
+      message.includes("KDF") ||
+      message.includes("Invalid AES-256 raw key length") ||
+      message.includes("Invalid decryption key");
+
+    if (import.meta.env.DEV) {
+      if (malformedOrUnsupportedRecord) {
+        console.error(
+          "Password decryption failed due to malformed/unsupported encrypted record format.",
+          error,
+        );
+      } else {
+        console.error(
+          "Password decryption failed due to authentication/decryption mismatch (wrong password or tampering).",
+          error,
+        );
+      }
+    }
+
+    throw new Error(PASSWORD_DECRYPTION_FAILURE_MESSAGE);
   }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Link } from 'wouter';
 import {
   Accordion,
   AccordionContent,
@@ -164,25 +165,32 @@ export const FAQSection: React.FC = () => {
               className={`border-b border-gray-200/70 dark:border-gray-800/70 ${index === FAQ_ITEMS.length - 1 ? 'border-b-0' : ''
                 }`}
             >
-              <AccordionTrigger className="text-left text-sm sm:text-base text-gray-900 dark:text-white px-6 py-5 hover:no-underline hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition-colors">
-                <div className="flex items-start gap-4">
-                  <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold ring-1 ring-primary/20">
+              <AccordionTrigger className="items-start gap-3 text-left text-sm sm:text-base text-gray-900 dark:text-white px-6 py-5 hover:no-underline hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition-colors [&>svg]:mt-1.5 [&>svg]:shrink-0">
+                <div className="flex min-w-0 flex-1 items-start gap-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/20">
                     {index + 1}
                   </span>
-                  <span>{item.question}</span>
+                  <span className="min-w-0 flex-1 pt-1.5 leading-snug">{item.question}</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-2 leading-relaxed">
-                <div className="pl-11">
+                <div className="pl-12">
                   {item.answer}
                 </div>
               </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
-        <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 max-w-md">
-          Still unsure? Just start by writing a test note and opening it yourself — you
-          can see the full flow in seconds.
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-5xl">
+          Still unsure? See{' '}
+          <Link
+            href="/how-it-works"
+            className="font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 rounded-sm"
+          >
+            How it works
+          </Link>
+          {' '}
+          — or start by writing a test note and opening it yourself; you can see the full flow in seconds.
         </p>
       </div>
     </section>

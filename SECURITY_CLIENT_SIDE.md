@@ -16,7 +16,7 @@ default-src 'self';
 script-src 'self' https://challenges.cloudflare.com;
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
-connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com;
+connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://challenges.cloudflare.com;
 img-src 'self' data: https:;
 base-uri 'self';
 form-action 'self';

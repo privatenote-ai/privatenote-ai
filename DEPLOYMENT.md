@@ -22,13 +22,21 @@ wrangler kv:namespace create "NOTES_KV" --preview
 
 Update `wrangler.toml` with the namespace IDs.
 
-### 1.2 Set Environment Variables
+### 1.2 Secrets and environment (optional)
+
+AI Assist runs **in the browser** via WebLLM; the Worker has **no** server-side LLM API and does not need an OpenAI (or similar) key.
+
+Set secrets only when you use those features:
 
 ```bash
-# Set OpenAI API key (if needed)
-wrangler secret put OPENAI_API_KEY=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
-# Enter your API key when prompted
+# Cloudflare Turnstile (bot challenge on create/reveal when configured)
+wrangler secret put TURNSTILE_SECRET_KEY
+
+# Admin API (blog/audit routes); see “Admin API token” below
+wrangler secret put ADMIN_TOKEN
 ```
+
+Each command prompts for the value (do not paste secrets into the repo or docs).
 
 ### 1.3 Deploy Workers
 

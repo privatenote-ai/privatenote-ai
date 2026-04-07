@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -25,7 +25,8 @@ export const notes = sqliteTable("notes", {
   salt: text("salt"), // Salt used for password derivation
   kdfVersion: integer("kdf_version"),
   kdfIterations: integer("kdf_iterations"),
-  kdfHash: text("kdf_hash"),
+  // KDF policy/profile tag (e.g. "argon2id-m65536-p1"), not a hash algorithm identifier.
+  kdfPolicyTag: text("kdf_policy_tag"),
 });
 
 export const blogPosts = sqliteTable("blog_posts", {

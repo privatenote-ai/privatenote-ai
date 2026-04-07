@@ -1,134 +1,102 @@
-import { enhanceNoteWithAI, AiEnhanceError as ServerAiEnhanceError } from "./openai";
 import {
   enhanceNoteClientSide,
   isWebLLMSupported,
   isEngineLoaded,
   initializeClientLLM,
   getModelInfo,
+  getWebLLMBrowserSupportLevel,
+  getWebLLMSupportHint,
   type ProgressCallback,
+  type WebLLMBrowserSupportLevel,
 } from "./clientLLM";
+import { localAiAnalyzingPromptLabel, localAiAnalyzingDetailHint } from "./localAiUxText";
 
 export interface AiEnhanceResponse {
   content: string;
-  remainingUses?: number;
-  source: "client" | "server";
+  source: "client";
 }
 
 export class AiEnhanceError extends Error {
-  remainingUses?: number;
-  source?: "client" | "server";
+  source?: "client";
 
-  constructor(message: string, remainingUses?: number, source?: "client" | "server") {
+  constructor(message: string, source?: "client") {
     super(message);
     this.name = "AiEnhanceError";
-    this.remainingUses = remainingUses;
     this.source = source;
   }
 }
 
 /**
- * Hybrid AI enhancement: tries client-side first, falls back to server
+ * On-device AI enhancement via WebLLM (no server LLM).
  */
 export async function enhanceNoteHybrid(
   noteContent: string,
-  enhancementType: "improve" | "summarize" | "secure" | "ask",
+  enhancementType: "improve" | "summarize" | "secure" | "ask" | "simplify",
   options: {
     preferClientSide?: boolean;
     onProgress?: ProgressCallback;
-    turnstileToken?: string | null;
-  } = {}
+  } = {},
 ): Promise<AiEnhanceResponse> {
-  const { preferClientSide = true, onProgress, turnstileToken } = options;
+  const { preferClientSide = true, onProgress } = options;
 
-  // Try client-side first if preferred and supported
-  if (preferClientSide && isWebLLMSupported()) {
-    try {
-      // Check if engine is already loaded
-      if (!isEngineLoaded()) {
-        // Show loading progress
-        if (onProgress) {
-          onProgress({
-            progress: 0,
-            text: "Loading AI model...",
-          });
-        }
-        await initializeClientLLM(onProgress);
-      }
-
-      // Process with client-side LLM
-      if (onProgress) {
-        onProgress({
-          progress: 100,
-          text: "Processing with local AI...",
-        });
-      }
-
-      const content = await enhanceNoteClientSide(
-        noteContent,
-        enhancementType,
-        onProgress
-      );
-
-      return {
-        content,
-        source: "client",
-      };
-    } catch (error) {
-      console.warn(
-        "[AI] Client-side LLM failed, falling back to server:",
-        error
-      );
-
-      // Fall through to server-side
-    }
+  if (!preferClientSide || !isWebLLMSupported()) {
+    throw new AiEnhanceError(
+      getWebLLMSupportHint() ?? "On-device AI is not supported in this browser.",
+      "client",
+    );
   }
 
-  // Fallback to server-side
   try {
+    if (!isEngineLoaded()) {
+      if (onProgress) {
+        onProgress({
+          progress: 0,
+          text: "Preparing private AI…",
+        });
+      }
+      await initializeClientLLM(onProgress);
+    }
+
     if (onProgress) {
       onProgress({
-        progress: 50,
-        text: "Using server AI...",
+        progress: 12,
+        text: localAiAnalyzingPromptLabel(),
+        detail: localAiAnalyzingDetailHint(),
       });
     }
 
-    const response = await enhanceNoteWithAI(
-      noteContent,
-      enhancementType,
-      turnstileToken
-    );
+    const content = await enhanceNoteClientSide(noteContent, enhancementType, onProgress);
 
     return {
-      content: response.content,
-      remainingUses: response.remainingUses,
-      source: "server",
+      content,
+      source: "client",
     };
   } catch (error) {
-    console.error("[AI] Server-side enhancement failed:", error);
-
-    if (error instanceof ServerAiEnhanceError) {
-      throw new AiEnhanceError(
-        error.message,
-        error.remainingUses,
-        "server"
-      );
-    }
-
-    throw new AiEnhanceError(
-      "Failed to enhance note. Please try again later.",
-      undefined,
-      "server"
-    );
+    console.error("[AI] Client-side enhancement failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to enhance note with on-device AI.";
+    throw new AiEnhanceError(message, "client");
   }
+}
+
+export interface AiCapabilitiesSnapshot {
+  clientSideSupported: boolean;
+  clientSideLoaded: boolean;
+  modelInfo: ReturnType<typeof getModelInfo> | null;
+  webLlmSupportLevel: WebLLMBrowserSupportLevel;
+  /** Non-null when on-device AI is not fully available at the sync check; see also init-time adapter errors. */
+  webLlmSupportHint: string | null;
 }
 
 /**
  * Get AI enhancement capabilities
  */
-export function getAiCapabilities() {
+export function getAiCapabilities(): AiCapabilitiesSnapshot {
   return {
     clientSideSupported: isWebLLMSupported(),
     clientSideLoaded: isEngineLoaded(),
     modelInfo: isWebLLMSupported() ? getModelInfo() : null,
+    webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
+    webLlmSupportHint: getWebLLMSupportHint(),
   };
 }

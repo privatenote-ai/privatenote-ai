@@ -2,7 +2,7 @@ import React from 'react';
 import { type QRCodeProps as ReactQRProps } from 'react-qr-code';
 import QRCodeReact from 'react-qr-code';
 
-export interface QRCodeProps extends Omit<ReactQRProps, 'size'> {
+export interface QRCodeProps extends Omit<ReactQRProps, 'size' | 'ref'> {
   value: string;
   size?: number;
   className?: string;

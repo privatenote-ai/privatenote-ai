@@ -13,7 +13,7 @@ export default function Privacy() {
           Privacy Policy
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
-          Version 2.1 • Last updated: January 20, 2026 • Luxembourg, EU
+          Version 2.2 • Last updated: April 4, 2026 • Luxembourg, EU
         </p>
       </div>
 
@@ -65,45 +65,44 @@ export default function Privacy() {
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold mb-3 text-amber-900 dark:text-amber-300">
-                2. AI Processing & Third-Party Services
+                2. Optional AI (On-Device)
               </h2>
               <p className="mb-3">
-                PrivateNote.ai offers optional AI-enhanced features (e.g.,
-                summarization, rewriting). <strong>Please read this carefully:</strong>
+                PrivateNote.ai may offer optional AI-assisted drafting or editing{" "}
+                <strong>in your browser</strong> (for example via a local model
+                runtime). <strong>Please read this carefully:</strong>
               </p>
 
               <ul className="list-disc pl-5 space-y-2 mb-4">
                 <li>
-                  <strong>Temporary Decryption:</strong> To perform AI tasks, note
-                  content must be temporarily decrypted on the processing path for
-                  the duration of the request. During this window, the content is
-                  not end-to-end encrypted with respect to the AI processor.
+                  <strong>Processing location:</strong> For these features, note
+                  content you send into the assistant is processed on your device.
+                  It is <strong>not</strong> sent to PrivateNote.ai servers for AI
+                  inference. End-to-end encryption of the stored note is unchanged;
+                  plaintext exists in your browser only for as long as you use the
+                  feature.
                 </li>
                 <li>
-                  <strong>Third-Party Processing:</strong> When you use an AI
-                  feature, the note content you submit for that feature is
-                  transmitted to our AI provider(s) (e.g., OpenAI, Anthropic) to
-                  generate a response.
-                </li>
-                <li>
-                  <strong>No Global Model Training:</strong> We configure our API
-                  agreements and settings so that your content is <strong>not</strong>{" "}
-                  used to train the providers&apos; global models (subject to the
-                  provider’s contractual terms).
+                  <strong>Network activity:</strong> Your browser may still contact
+                  third-party hosts to download model assets or dependencies (for
+                  example a CDN or model registry). Those requests are governed by
+                  those operators&apos; policies and your browser settings.
                 </li>
               </ul>
 
               <p className="text-sm font-medium italic">
-                If you do not use AI features, your notes remain client-side
-                encrypted and are never shared with AI providers.
+                If you do not use AI features, you can create standard notes that
+                stay client-side encrypted for storage and are not processed by the
+                on-device assistant.
               </p>
 
               <p className="text-sm mt-4 border-l-2 border-amber-400 pl-4">
-                <strong>Consent:</strong> AI features are strictly optional and
-                are activated only at your explicit request. By using an AI
-                feature, you expressly consent to the processing of the submitted
-                note content by the selected AI provider for the sole purpose of
-                fulfilling your request (Art. 6(1)(a) GDPR).
+                <strong>Consent:</strong> AI features are strictly optional and run
+                only when you activate them. By using on-device AI features, you
+                consent to processing of the text you submit to the in-browser
+                runtime for that purpose (Art. 6(1)(a) GDPR where consent is
+                appropriate; legitimate interests may apply to security metadata as
+                described elsewhere in this policy).
               </p>
             </div>
           </div>
@@ -152,6 +151,28 @@ export default function Privacy() {
 
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">
+                    First-Party Rate-Limit Cookie (pn_client_id)
+                  </h3>
+                  <p className="text-sm">
+                    Our API may set a small <strong>first-party</strong>,{" "}
+                    <strong>HttpOnly</strong> cookie named{" "}
+                    <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">pn_client_id</code>.{" "}
+                    It holds a random identifier used <strong>only</strong> to
+                    separate abuse-prevention and rate-limit buckets—especially on
+                    networks where many people share one public IP (for example
+                    schools or offices). When your IP is available to our
+                    infrastructure, we combine IP and this cookie for counting; we{" "}
+                    <strong>do not</strong> use it for advertising, profiling, or
+                    analytics. The cookie is renewed with a{" "}
+                    <strong>~30-day</strong> lifetime; you can remove it at any time
+                    via your browser (you may get a new id on the next visit). Legal
+                    basis: <strong>Art. 6(1)(f) GDPR</strong>—legitimate interests in
+                    running a secure, abuse-resistant service.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
                     Support Communications (If You Contact Us)
                   </h3>
                   <p className="text-sm">
@@ -187,9 +208,9 @@ export default function Privacy() {
                   security. Data may be processed in Cloudflare’s global network.
                 </li>
                 <li>
-                  <strong>AI Providers:</strong> if you use AI features, processing
-                  may occur in the <strong>United States</strong> or other regions
-                  where the provider operates.
+                  <strong>On-device AI:</strong> if you use optional in-browser AI,
+                  model files may be loaded from globally distributed CDNs or hosts
+                  outside the EU, depending on how your browser fetches them.
                 </li>
               </ul>
 
@@ -263,11 +284,10 @@ export default function Privacy() {
           <p className="text-sm leading-relaxed">
             We use modern cryptography (e.g., AES-GCM) and security controls (e.g.,
             strict Content Security Policy headers) to protect the service.
-            However, no system is 100% secure. The use of AI features introduces a
-            third-party processor into the lifecycle of your note content for the
-            duration of the request. Users requiring maximum confidentiality
-            should avoid AI-enhanced features and use the standard client-side
-            encrypted note functionality.
+            However, no system is 100% secure. Optional on-device AI runs in your
+            browser and may pull assets from third-party networks; users requiring
+            maximum confidentiality can rely on standard client-side encrypted note
+            creation without using AI features.
           </p>
         </section>
 

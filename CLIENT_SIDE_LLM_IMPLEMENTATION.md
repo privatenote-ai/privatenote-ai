@@ -1,12 +1,12 @@
 # Client-Side LLM Implementation Summary
 
-## ✅ Implementation Complete
+## Implementation
 
-Successfully integrated **Qwen2.5-0.5B-Instruct** (~300MB) as a mobile-first client-side LLM solution using WebLLM.
+**Qwen2.5-0.5B-Instruct** (~300MB) runs in the browser via WebLLM. There is **no** server LLM endpoint; AI Assist is **on-device only**.
 
-## 📦 What Was Added
+## What Was Added
 
-### 1. Core LLM Utilities
+### 1. Core LLM utilities
 
 **`client/src/utils/clientLLM.ts`**
 - WebLLM engine initialization
@@ -16,203 +16,94 @@ Successfully integrated **Qwen2.5-0.5B-Instruct** (~300MB) as a mobile-first cli
 - Storage quota validation
 
 **`client/src/utils/aiEnhancement.ts`**
-- Hybrid enhancement wrapper
-- Client-side first, server fallback
-- Error handling
-- Source tracking (client vs server)
+- `enhanceNoteHybrid` runs WebLLM only (name kept for call sites)
+- Throws `AiEnhanceError` if the browser cannot run on-device AI (no server fallback)
 
-### 2. Integration Updates
+### 2. Integration
 
 **`client/src/components/note/CreateNote.tsx`**
-- All AI functions updated to use hybrid approach:
-  - `handleImprove()` ✅
-  - `handleSummarize()` ✅
-  - `handleSimplify()` ✅
-  - `handleAiGenerate()` ✅
-  - `handleRegenerate()` ✅
-- Progress indicators added
-- Privacy consent logic updated (only for server-side)
-- Background model preloading
+- AI actions use on-device enhancement (`improve`, `summarize`, `simplify`, generate/regenerate flows)
+- Progress indicators and local-AI UX copy
 
-### 3. UI Enhancements
+## Privacy model
 
-- **Progress Indicator**: Shows model loading/processing progress
-- **Source Badge**: "🔒 Processed locally" for client-side
-- **Privacy Warning**: Only shown for server-side AI
-- **Graceful Fallback**: Automatic server fallback if client-side fails
-
-## 🔒 Privacy Improvements
-
-### Before (Server-Side Only)
+### Standard note flow
 ```
-User Note → Server → OpenAI API
-❌ Plaintext sent to third-party
-❌ E2E encryption broken
-❌ Privacy leak
+User Note → Encrypt in browser → Server stores ciphertext only
 ```
 
-### After (Hybrid Approach)
+### With AI Assist enabled
 ```
-User Note → Local LLM → Result
-✅ No data leaves device
-✅ True E2E encryption
-✅ Privacy preserved
+User Note → Decrypt in browser → Local LLM → Result in browser → Re-encrypt for upload
+✅ No AI plaintext sent to the Worker for inference
+✅ No third-party “chat API” for note content
 ```
 
-## 📱 Mobile-First Design
+Unsupported browsers show an error or disable AI; there is **no** `/api/ai/enhance` fallback.
 
-### Model Selection: Qwen2.5-0.5B-Instruct
+## Mobile-first model
 
-**Why This Model?**
-- ✅ **Small Size**: ~300MB (vs 2.3GB for Phi-3-mini)
-- ✅ **Mobile Friendly**: Fits in mobile browser storage
-- ✅ **Good Quality**: Capable for improve/summarize/secure tasks
-- ✅ **Fast Inference**: Quick processing on mobile devices
+**Model:** `Qwen2.5-0.5B-Instruct-q4f16_1-MLC` (~300MB, 4-bit), WebLLM-compatible.  
+**Source:** [Hugging Face — mlc-ai build](https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC)
 
-**Model Details:**
-- **Name**: `Qwen2.5-0.5B-Instruct-q4f16_1-MLC`
-- **Size**: ~300MB (4-bit quantized)
-- **Format**: MLC-LLM WebLLM compatible
-- **Source**: [Hugging Face](https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC)
+## User flow
 
-## 🚀 How It Works
+1. User triggers an AI action.
+2. App checks WebGPU / WebAssembly and storage.
+3. Model loads once (download ~300MB, then cached).
+4. Inference runs locally; network traffic is model hosting/CDN, not your note to a server LLM.
 
-### User Flow
-
-1. **User clicks AI feature** (e.g., "Improve")
-2. **System checks**:
-   - Browser support (WebGPU/WebAssembly)
-   - Storage availability
-   - Model cache status
-3. **If client-side supported**:
-   - Loads model (first time: downloads ~300MB)
-   - Processes locally
-   - Shows "🔒 Processed locally"
-   - **No privacy warning** (no data leaves device)
-4. **If client-side fails**:
-   - Shows privacy warning dialog
-   - Falls back to server-side
-   - Requires user consent
-
-### Technical Flow
+## Technical flow
 
 ```typescript
 enhanceNoteHybrid(content, type, options)
   ↓
-Check: preferClientSide && isWebLLMSupported()
+preferClientSide && isWebLLMSupported()
   ↓
-[YES] Try client-side
-  ├─ Load model (if needed)
-  ├─ Process locally
-  └─ Return result
+[NO] → AiEnhanceError (unsupported browser)
   ↓
-[FAIL] Fallback to server
-  ├─ Show privacy warning
-  ├─ Get user consent
-  ├─ Send to OpenAI
-  └─ Return result
+[YES] → initializeClientLLM (if needed) → enhanceNoteClientSide → return { source: "client" }
 ```
 
-## 📊 Features
+## Testing
 
-### ✅ Implemented
+### On-device path
 
-- [x] Client-side LLM initialization
-- [x] Model loading with progress
-- [x] IndexedDB caching
-- [x] Hybrid enhancement wrapper
-- [x] Server fallback
-- [x] Progress indicators
-- [x] Privacy consent (server-side only)
-- [x] Error handling
-- [x] Browser compatibility checks
-- [x] Storage quota validation
-- [x] Background preloading
+1. DevTools console: WebLLM supported.
+2. Run an AI action: progress / local processing.
+3. Network tab: **no** POST to `/api/ai/enhance` (endpoint removed).
 
-### 🎯 Benefits
+### Unsupported path
 
-1. **Privacy**: True E2E encryption maintained
-2. **Performance**: Fast local processing
-3. **Cost**: No API costs
-4. **Offline**: Works without internet (after download)
-5. **Mobile**: Small model size (~300MB)
+1. Disable WebGPU/WebAssembly or use an unsupported browser.
+2. AI action should fail with a clear on-device AI error, not a server round-trip.
 
-## 🔧 Installation Required
-
-**Before running**, install the WebLLM package:
+## Dependencies
 
 ```bash
 npm install @mlc-ai/web-llm
 ```
 
-The package is already added to `package.json` dependencies.
+(Package should already be in `package.json`.)
 
-## 📝 Usage Example
+## Usage example
 
 ```typescript
 import { enhanceNoteHybrid } from "@/utils/aiEnhancement";
 
-// Automatically uses client-side if available, falls back to server
-const result = await enhanceNoteHybrid(
-  "Improve this text",
-  "improve",
-  {
-    preferClientSide: true,
-    onProgress: (progress) => {
-      console.log(`${progress.progress}%: ${progress.text}`);
-    }
-  }
-);
+const result = await enhanceNoteHybrid("Improve this text", "improve", {
+  preferClientSide: true,
+  onProgress: (progress) => {
+    console.log(`${progress.progress}%: ${progress.text}`);
+  },
+});
 
-console.log(result.content); // Enhanced text
-console.log(result.source); // "client" or "server"
+console.log(result.content);
+console.log(result.source); // always "client"
 ```
 
-## 🧪 Testing
+## Documentation
 
-### Test Client-Side Path
-
-1. Open browser DevTools
-2. Check console for: `[AI] Client-side LLM supported`
-3. Use AI feature
-4. Should see: "🔒 Processed locally"
-5. Check Network tab: No requests to OpenAI
-
-### Test Server Fallback
-
-1. Disable WebGPU/WebAssembly in browser
-2. Use AI feature
-3. Should see privacy warning dialog
-4. After consent: Falls back to server
-5. Check Network tab: Request to `/api/ai/enhance`
-
-## 🐛 Known Limitations
-
-1. **First Load**: ~10-30 seconds (model download)
-2. **Storage**: Requires ~300MB free space
-3. **Browser Support**: Needs WebGPU or WebAssembly
-4. **Model Size**: Still ~300MB (but much better than 2.3GB)
-
-## 🔮 Future Enhancements
-
-1. **Model Selection UI**: Let users choose model size
-2. **Progressive Download**: Download in chunks
-3. **Model Updates**: Version management
-4. **Streaming**: Real-time text generation
-5. **Multiple Models**: Task-specific models
-
-## 📚 Documentation
-
-- **Setup Guide**: `CLIENT_SIDE_LLM_SETUP.md`
-- **API Reference**: See `client/src/utils/clientLLM.ts`
-- **Integration Guide**: See `client/src/utils/aiEnhancement.ts`
-
-## ✅ Status
-
-**Implementation**: ✅ Complete  
-**Testing**: ⏳ Pending (requires npm install)  
-**Documentation**: ✅ Complete
-
----
-
-**Ready for testing after installing `@mlc-ai/web-llm` package!**
+- **Setup:** `CLIENT_SIDE_LLM_SETUP.md`
+- **Testing:** `CLIENT_LLM_TESTING_GUIDE.md`
+- **Code:** `client/src/utils/clientLLM.ts`, `client/src/utils/aiEnhancement.ts`

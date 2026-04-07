@@ -1,70 +1,88 @@
-import { CreateMLCEngine, type MLCEngineInterface, prebuiltAppConfig, type AppConfig } from "@mlc-ai/web-llm";
+import { type MLCEngineInterface, prebuiltAppConfig } from "@mlc-ai/web-llm";
+import {
+  loadModelWebLLM,
+  unloadModelWebLLM,
+  isLoadedWebLLM,
+  getLoadedModelIdWebLLM,
+  getWebLLMLEngine,
+  isModelInCacheWebLLM,
+} from "./webllm-engine";
+import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
+import {
+  getRecommendedLocalModelIdSync,
+  primeLocalModelGpuLimit,
+  isLocalLlmPremium,
+  getHardwareTierModelIdSync,
+  isLocalModelGpuLimitPrimed,
+  getCachedMaxStorageBufferBindingSize,
+  MODEL_QWEN_0_6,
+  MODEL_GEMMA_2_2B,
+} from "./recommendedLocalModel";
+import {
+  extractUserFacingAnswer,
+  diagnoseThinkingStrip,
+  stripRedactedThinkingTags,
+  removeClosedRedactedThinkingBlocks,
+} from "@shared/parseThinkingOutput";
+import {
+  estimateModelSizeMB,
+  getModelTier,
+  type ModelTier,
+} from "@shared/modelTier";
+import { FEW_SHOT_APPENDIX_COMPACT, FEW_SHOT_APPENDIX_FULL } from "./localLlmFewShots";
+import {
+  userFacingLocalAiLoadProgress,
+  localAiThinkingLabel,
+  localAiThinkingDetailHint,
+  localAiDraftingLabel,
+  localAiFinalizingLabel,
+} from "./localAiUxText";
+import { prependBaseInstruction } from "./baseInstruction";
+import {
+  cleanOutput,
+  validateLocalLlmOutput,
+  buildOutputRepairAddition,
+} from "@/components/note/promptTemplates";
 
-// Preferred models for device-based selection (smaller models for mobile)
+const LLM_STRIP_DEBUG =
+  import.meta.env.DEV === true || String(import.meta.env.VITE_DEBUG_LLM_STRIP || "").toLowerCase() === "true";
+
+// Preferred models for pickers (Qwen 0.6B intentionally omitted — default is Gemma 2 2B)
 const PREFERRED_MODELS = [
-  "Qwen3-0.6B-q4f16_1-MLC",                 // Smallest - mobile/old browsers
-  "Qwen3-1.7B-q4f16_1-MLC",                 // Small - mobile/new browsers
-  "Llama-3.2-1B-Instruct-q4f16_1-MLC",      // Small - good quality
-  "Llama-3.2-3B-Instruct-q4f16_1-MLC",      // Medium - desktop
-  "Llama-3.1-8B-Instruct-q4f16_1-MLC",      // Large - desktop only
+  "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
+  "Qwen3-1.7B-q4f16_1-MLC",                 // Fallback / alternate small instruct
+  "Qwen3-4B-q4f16_1-MLC",                  // Premium + strong desktop + GPU headroom
+  "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+  "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+  "Llama-3.1-8B-Instruct-q4f16_1-MLC",
 ];
 
-const DEFAULT_MODEL = "Qwen3-0.6B-q4f16_1-MLC"; // Default to smallest model (safest)
-const DEFAULT_MODEL_SIZE_MB = 200; // Approximate size for small models
+const DEFAULT_MODEL = MODEL_GEMMA_2_2B;
 
-/**
- * Create AppConfig - uses WebLLM's prebuilt config (all models from HuggingFace)
- */
-function createCustomAppConfig(): AppConfig {
-  console.log("[AI] Using WebLLM prebuilt config -", prebuiltAppConfig.model_list.length, "models available from HuggingFace");
-  return prebuiltAppConfig;
+function isHiddenLocalModelId(id: string): boolean {
+  return id === MODEL_QWEN_0_6;
+}
+
+/** Qwen 0.6B is not offered in UI pickers; legacy saves fall back to the device default. */
+export function isLocalModelHiddenFromUi(modelId: string): boolean {
+  return isHiddenLocalModelId(modelId);
 }
 
 /**
- * Get list of available model IDs from WebLLM's prebuilt config (all supported models)
+ * Get list of available model IDs (full prebuilt catalog, or CDN mirror list when custom host env is set).
  */
 export function getAvailableModels(): string[] {
-  // Return all models from WebLLM's prebuilt config
-  return prebuiltAppConfig.model_list.map(m => m.model_id);
+  if (USE_CUSTOM_WEBLLM_HOST) {
+    return OUR_WEBLLM_MODEL_RECORDS.map((r) => r.model_id);
+  }
+  return prebuiltAppConfig.model_list.map((m) => m.model_id);
 }
 
-/**
- * Check if a model ID is available in WebLLM's prebuilt config
- */
 function isModelAvailable(modelId: string): boolean {
-  return prebuiltAppConfig.model_list.some(m => m.model_id === modelId);
-}
-
-/**
- * Find the best matching model ID from available models
- * Tries exact match first, then fuzzy matching
- */
-function findBestMatchingModel(preferredModelId: string): string | null {
-  const available = getAvailableModels();
-
-  // Try exact match first
-  if (available.includes(preferredModelId)) {
-    return preferredModelId;
+  if (USE_CUSTOM_WEBLLM_HOST) {
+    return OUR_WEBLLM_MODEL_RECORDS.some((r) => r.model_id === modelId);
   }
-
-  // Try case-insensitive match
-  const lowerPreferred = preferredModelId.toLowerCase();
-  const exactMatch = available.find(id => id.toLowerCase() === lowerPreferred);
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  // Try partial matching (e.g., "gemma-3-270m" matches "linguini/gemma-3-270m-it-q4f16_1-MLC")
-  const preferredParts = lowerPreferred.split(/[-_\/]/).filter(p => p.length > 2);
-  const partialMatch = available.find(id => {
-    const idLower = id.toLowerCase();
-    return preferredParts.every(part => idLower.includes(part));
-  });
-  if (partialMatch) {
-    return partialMatch;
-  }
-
-  return null;
+  return prebuiltAppConfig.model_list.some((m) => m.model_id === modelId);
 }
 
 /**
@@ -75,47 +93,118 @@ export function getPreferredModels(): string[] {
 }
 
 /**
- * Get the recommended model for the current device
- * This is the model that will be auto-selected based on device capabilities
+ * Sync snapshot of recommended catalog id (may run before GPU prime — prefer {@link getRecommendedLocalModelId} when priming first).
  */
 export function getRecommendedModelForDevice(): string {
-  return selectModelByDevice();
+  return getRecommendedLocalModelIdSync();
 }
 
 /**
- * Get device detection information (for debugging)
+ * User-Agent string heuristics for debug / UX copy only. Brittle; never use for model selection or security.
+ */
+export type DeviceUaSniffHintsForUx = {
+  /** Typical phone/tablet UA patterns; iPad desktop mode may read as “desktop”. */
+  mobileFormFactorLikely: boolean;
+  /** iOS 16.4+ style version in UA — rough correlate of Safari WebGPU era, not a guarantee. */
+  newerIphoneOrIpodIosUaMatch: boolean;
+  /** Samsung or Pixel + Android 12+ in UA — not a reliable GPU capability signal. */
+  newerSamsungOrPixelAndroidUaMatch: boolean;
+};
+
+function collectDeviceUaSniffHintsForUx(): DeviceUaSniffHintsForUx {
+  return {
+    mobileFormFactorLikely: uaMobileFormFactorLikely(),
+    newerIphoneOrIpodIosUaMatch: uaNewerIosWebGpuEraLikely(),
+    newerSamsungOrPixelAndroidUaMatch: uaNewerSamsungOrPixelAndroidLikely(),
+  };
+}
+
+function uaMobileFormFactorLikely(): boolean {
+  if (typeof window === "undefined") return false;
+  const userAgent =
+    navigator.userAgent || navigator.vendor || (window as unknown as { opera?: string }).opera || "";
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+}
+
+function uaNewerIosWebGpuEraLikely(): boolean {
+  if (typeof window === "undefined") return false;
+  const userAgent = navigator.userAgent;
+  if (!/iphone|ipad|ipod/i.test(userAgent)) return false;
+  const iosMatch = userAgent.match(/OS (\d+)[._](\d+)/);
+  if (iosMatch) {
+    const major = parseInt(iosMatch[1], 10);
+    const minor = parseInt(iosMatch[2], 10);
+    if (major > 16 || (major === 16 && minor >= 4)) return true;
+  }
+  return false;
+}
+
+function uaNewerSamsungOrPixelAndroidLikely(): boolean {
+  if (typeof window === "undefined") return false;
+  const userAgent = navigator.userAgent;
+  if (!/android/i.test(userAgent)) return false;
+  const isSamsung = /samsung/i.test(userAgent);
+  const isGoogle = /pixel|google/i.test(userAgent);
+  if (!isSamsung && !isGoogle) return false;
+  const androidMatch = userAgent.match(/Android (\d+)/);
+  if (androidMatch) {
+    const version = parseInt(androidMatch[1], 10);
+    if (version >= 12) return true;
+  }
+  return false;
+}
+
+/**
+ * Environment snapshot for debugging / test UI. Model selection uses {@link getRecommendedLocalModelId} +
+ * {@link primeLocalModelGpuLimit}, not UA fields here.
  */
 export function getDeviceInfo(): {
-  isMobile: boolean;
-  hasWebGPU: boolean;
-  isNeweriPhone: boolean;
-  isNewerAndroid: boolean;
+  webGpuApiPresent: boolean;
+  hardwareConcurrency: number;
+  deviceMemoryGbApprox: number | null;
+  localModelGpuLimitPrimed: boolean;
+  gpuMaxStorageBufferBindingSizeCached: number | null;
+  uaSniffHintsForUx: DeviceUaSniffHintsForUx;
+  /** User-facing tier label (not an internal model id). */
   recommendedModel: string;
+  /** User-facing capacity label when premium unlock applies. */
+  hardwareTierIfPremium: string;
+  localLlmPremium: boolean;
+  webLlmSupportLevel: WebLLMBrowserSupportLevel;
+  webLlmSupportHint: string | null;
 } {
+  const nav = typeof navigator !== "undefined" ? navigator : undefined;
   return {
-    isMobile: isMobileDevice(),
-    hasWebGPU: hasWebGPUSupport(),
-    isNeweriPhone: isNeweriPhone(),
-    isNewerAndroid: isNewerAndroidPhone(),
-    recommendedModel: selectModelByDevice(),
+    webGpuApiPresent: hasWebGPUSupport(),
+    hardwareConcurrency: nav?.hardwareConcurrency ?? 0,
+    deviceMemoryGbApprox:
+      (nav as Navigator & { deviceMemory?: number })?.deviceMemory ?? null,
+    localModelGpuLimitPrimed: isLocalModelGpuLimitPrimed(),
+    gpuMaxStorageBufferBindingSizeCached: getCachedMaxStorageBufferBindingSize(),
+    uaSniffHintsForUx: collectDeviceUaSniffHintsForUx(),
+    recommendedModel: getLocalAiTierLabelForModelId(getRecommendedLocalModelIdSync()),
+    hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
+    localLlmPremium: isLocalLlmPremium(),
+    webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
+    webLlmSupportHint: getWebLLMSupportHint(),
   };
 }
 
 /**
- * Find a suitable model from available models
- * Selects based on device capabilities, prefers smaller models for mobile
+ * Pick a catalog model from saved preference or {@link getRecommendedLocalModelIdSync} (GPU + CPU/RAM; not UA).
  */
 function findSuitableModel(): string {
-  // Select model based on device capabilities
-  const deviceSelectedModel = selectModelByDevice();
+  const deviceSelectedModel = getRecommendedLocalModelIdSync();
 
-  // Verify the selected model is available
   if (isModelAvailable(deviceSelectedModel)) {
-    console.log("[AI] Device-selected model:", deviceSelectedModel);
+    console.log(
+      "[AI] Device-selected model:",
+      deviceSelectedModel,
+      isLocalLlmPremium() ? "(premium tier)" : "(free tier → Gemma 2 2B)"
+    );
     return deviceSelectedModel;
   }
 
-  // Fallback: use default model
   console.log("[AI] Using default model:", DEFAULT_MODEL);
   return DEFAULT_MODEL;
 }
@@ -137,123 +226,132 @@ function getSelectedModel(): string | null {
   }
 }
 
-interface ModelLoadProgress {
+export interface ModelLoadProgress {
   progress: number;
   text: string;
+  /** Optional second line for UI (e.g. streaming length), not shown with load progress. */
+  detail?: string;
 }
 
-type ProgressCallback = (progress: ModelLoadProgress) => void;
+export type ProgressCallback = (progress: ModelLoadProgress) => void;
 
-// Singleton engine instance
-let engineInstance: MLCEngineInterface | null = null;
 let engineLoadingPromise: Promise<MLCEngineInterface> | null = null;
-let loadProgressCallback: ProgressCallback | null = null;
-let activeModelId: string | null = null;
+/** Catalog id being loaded while `engineLoadingPromise` is non-null; cleared when the load finishes or is reset. */
+let engineLoadingTargetModelId: string | null = null;
 
-type ModelTier = "small" | "medium" | "large";
+/** Coalesced in-flight loads can have multiple waiters; each may register a progress listener. */
+const MAX_LOAD_PROGRESS_SUBSCRIBERS = 32;
+const loadProgressSubscribers = new Set<ProgressCallback>();
 
-/**
- * Estimate model size (MB) based on model ID name patterns.
- */
-function estimateModelSizeMB(modelId: string): number {
-  if (
-    modelId.includes('270m') ||
-    modelId.includes('270M') ||
-    modelId.includes('0.5B') ||
-    modelId.includes('0.5b') ||
-    modelId.includes('0.6B') ||
-    modelId.includes('0.6b')
-  ) return 200;
-  if (modelId.includes('1B') || modelId.includes('1b') || modelId.includes('1.5B') || modelId.includes('1.5b')) return 600;
-  if (modelId.includes('2B') || modelId.includes('2b') || modelId.includes('3B') || modelId.includes('3b')) return 1200;
-  if (modelId.includes('7B') || modelId.includes('7b') || modelId.includes('8B') || modelId.includes('8b')) return 4000;
-  return DEFAULT_MODEL_SIZE_MB;
+function addLoadProgressSubscriber(cb: ProgressCallback | undefined): void {
+  if (!cb) return;
+  if (loadProgressSubscribers.size >= MAX_LOAD_PROGRESS_SUBSCRIBERS) {
+    console.warn(
+      "[PrivateNote][AI] Too many concurrent load progress subscribers; ignoring an extra callback."
+    );
+    return;
+  }
+  loadProgressSubscribers.add(cb);
 }
 
-function getModelTier(modelId: string): ModelTier {
-  const sizeMB = estimateModelSizeMB(modelId);
-  if (sizeMB <= 400) return "small";
-  if (sizeMB <= 2000) return "medium";
-  return "large";
+function notifyLoadProgressSubscribers(progress: ModelLoadProgress): void {
+  loadProgressSubscribers.forEach((cb) => {
+    try {
+      cb(progress);
+    } catch (e) {
+      console.warn("[PrivateNote][AI] Load progress subscriber threw:", e);
+    }
+  });
+}
+
+function clearLoadProgressSubscribers(): void {
+  loadProgressSubscribers.clear();
+}
+
+/** User-visible tier label for pickers and status (no internal model IDs). */
+export function getLocalAiTierLabelForModelId(modelId: string): string {
+  const mb = estimateModelSizeMB(modelId);
+  if (mb <= 400) return "Compact (fast, lower footprint)";
+  if (mb >= 2500) return "Large (richer output)";
+  return "Standard (balanced)";
 }
 
 function getActiveModelId(): string {
-  return activeModelId || findSuitableModel();
+  return getLoadedModelIdWebLLM() || findSuitableModel();
 }
 
 /**
- * Check if WebLLM is supported in this browser
+ * On-device WebLLM in this app uses the WebGPU path (WASM runtime + GPU inference).
+ * Sync checks approximate capability; {@link initializeClientLLM} also probes for a real adapter.
  */
+export type WebLLMBrowserSupportLevel = "unsupported" | "missing-webgpu" | "supported";
+
+function isLocalhostOrSecureContext(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.isSecureContext) return true;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1";
+}
+
+/**
+ * Sync capability tier for UI and routing. Does not guarantee `requestAdapter()` succeeds—see init probe.
+ */
+export function getWebLLMBrowserSupportLevel(): WebLLMBrowserSupportLevel {
+  if (typeof window === "undefined") return "unsupported";
+  if (!isLocalhostOrSecureContext()) return "unsupported";
+  if (!("crypto" in window) || !("indexedDB" in window)) return "unsupported";
+  if (typeof WebAssembly === "undefined") return "unsupported";
+  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
+    return "missing-webgpu";
+  }
+  return "supported";
+}
+
+/** User-facing explanation when {@link isWebLLMSupported} is false; null when supported. */
+export function getWebLLMSupportHint(): string | null {
+  const level = getWebLLMBrowserSupportLevel();
+  if (level === "supported") return null;
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+    const h = window.location.hostname;
+    if (h !== "localhost" && h !== "127.0.0.1") {
+      return "On-device AI needs a secure context. Open this site over HTTPS (localhost is OK).";
+    }
+  }
+  if (level === "missing-webgpu") {
+    return "On-device AI needs WebGPU. Use a recent Chrome, Edge, or Safari version, or another device with WebGPU enabled.";
+  }
+  return "On-device AI needs a modern browser with WebAssembly, IndexedDB, and Web Crypto.";
+}
+
 export function isWebLLMSupported(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    "crypto" in window &&
-    "indexedDB" in window &&
-    (typeof WebAssembly !== "undefined" || typeof WebGPU !== "undefined")
-  );
+  return getWebLLMBrowserSupportLevel() === "supported";
 }
 
-/**
- * Detect if device is mobile
- */
-function isMobileDevice(): boolean {
-  if (typeof window === "undefined") return false;
+/** Narrowing for TS lib sets that omit WebGPU on `Navigator`. */
+type NavigatorWithWebGpu = Navigator & {
+  gpu?: { requestAdapter(): Promise<unknown> };
+};
 
-  // Check user agent for mobile devices
-  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-  const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-  return mobileRegex.test(userAgent);
-}
-
-/**
- * Detect if device is a newer iPhone (iPhone 12 or later, iOS 16.4+)
- */
-function isNeweriPhone(): boolean {
-  if (typeof window === "undefined") return false;
-
-  const userAgent = navigator.userAgent;
-  if (!/iphone|ipad|ipod/i.test(userAgent)) return false;
-
-  // Check for iOS version (iOS 16.4+ has WebGPU support)
-  const iosMatch = userAgent.match(/OS (\d+)[._](\d+)/);
-  if (iosMatch) {
-    const major = parseInt(iosMatch[1], 10);
-    const minor = parseInt(iosMatch[2], 10);
-    // iOS 16.4+ or iOS 17+
-    if (major > 16 || (major === 16 && minor >= 4)) {
-      return true;
-    }
+async function assertWebGpuAdapterAvailable(): Promise<void> {
+  const gpu =
+    typeof navigator !== "undefined" ? (navigator as NavigatorWithWebGpu).gpu : undefined;
+  if (!gpu?.requestAdapter) {
+    throw new Error(
+      getWebLLMSupportHint() ??
+        "WebGPU is not available. On-device AI cannot run in this browser."
+    );
   }
-
-  return false;
-}
-
-/**
- * Detect if device is a newer Samsung or Google phone
- */
-function isNewerAndroidPhone(): boolean {
-  if (typeof window === "undefined") return false;
-
-  const userAgent = navigator.userAgent;
-  if (!/android/i.test(userAgent)) return false;
-
-  // Check for Samsung or Google Pixel devices
-  const isSamsung = /samsung/i.test(userAgent);
-  const isGoogle = /pixel|google/i.test(userAgent);
-
-  if (!isSamsung && !isGoogle) return false;
-
-  // Check Android version (Android 12+ generally has better WebGPU support)
-  const androidMatch = userAgent.match(/Android (\d+)/);
-  if (androidMatch) {
-    const version = parseInt(androidMatch[1], 10);
-    // Android 12+ (API level 31+)
-    if (version >= 12) {
-      return true;
-    }
+  let adapter: unknown = null;
+  try {
+    adapter = await gpu.requestAdapter();
+  } catch (e) {
+    console.warn("[PrivateNote][AI] navigator.gpu.requestAdapter failed:", e);
   }
-
-  return false;
+  if (adapter == null) {
+    throw new Error(
+      "WebGPU did not return a GPU adapter. On-device AI cannot run here—try updating the browser and GPU drivers, use Chrome or Edge, or try another device."
+    );
+  }
 }
 
 /**
@@ -261,54 +359,7 @@ function isNewerAndroidPhone(): boolean {
  */
 function hasWebGPUSupport(): boolean {
   if (typeof window === "undefined") return false;
-  return typeof WebGPU !== "undefined" && WebGPU !== null;
-}
-
-/**
- * Determine which model to use based on device capabilities
- * Returns a larger model for desktop and newer mobile devices,
- * and a smaller model for mobile and older browsers
- */
-function selectModelByDevice(): string {
-  // Desktop devices can use larger models
-  if (!isMobileDevice()) {
-    // Try to use a medium-sized model for desktop (3B or 1B)
-    const desktopModels = ["Llama-3.2-3B-Instruct-q4f16_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC", "mlc-ai/gemma-3-1b-it-q4f32_1-MLC"];
-    for (const model of desktopModels) {
-      if (isModelAvailable(model)) {
-        console.log("[AI] Desktop device detected, using:", model);
-        return model;
-      }
-    }
-  }
-
-  // Check for newer mobile devices with good capabilities
-  const hasWebGPU = hasWebGPUSupport();
-  const isNeweriPhoneDevice = isNeweriPhone();
-  const isNewerAndroidDevice = isNewerAndroidPhone();
-
-  // Use medium model for newer mobile devices
-  if (hasWebGPU && (isNeweriPhoneDevice || isNewerAndroidDevice)) {
-    const mobileModels = ["mlc-ai/gemma-3-1b-it-q4f32_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
-    for (const model of mobileModels) {
-      if (isModelAvailable(model)) {
-        console.log("[AI] Newer mobile device with WebGPU detected, using:", model);
-        return model;
-      }
-    }
-  }
-
-  // Default to smallest model for mobile/older browsers
-  const smallModels = ["Qwen3-0.6B-q4f16_1-MLC", "Llama-3.2-1B-Instruct-q4f16_1-MLC"];
-  for (const model of smallModels) {
-    if (isModelAvailable(model)) {
-      console.log("[AI] Mobile/older browser detected, using:", model);
-      return model;
-    }
-  }
-
-  // Ultimate fallback
-  return DEFAULT_MODEL;
+  return typeof navigator !== "undefined" && "gpu" in navigator;
 }
 
 /**
@@ -336,25 +387,20 @@ export async function initializeClientLLM(
   onProgress?: ProgressCallback,
   preferredModelId?: string
 ): Promise<MLCEngineInterface> {
-  // Return existing engine if already loaded (unless model changed)
-  if (engineInstance && !preferredModelId) {
-    return engineInstance;
+  if (isLoadedWebLLM() && !preferredModelId) {
+    return getWebLLMLEngine()!;
   }
 
-  // Return existing loading promise if already loading (unless model changed)
-  if (engineLoadingPromise && !preferredModelId) {
-    if (onProgress) {
-      loadProgressCallback = onProgress;
-    }
-    return engineLoadingPromise;
-  }
-
-  // Check browser support
   if (!isWebLLMSupported()) {
     throw new Error(
-      "WebLLM is not supported in this browser. Please use a modern browser with WebGPU or WebAssembly support."
+      getWebLLMSupportHint() ??
+        "On-device AI is not supported in this browser. Use a recent Chrome, Edge, or Safari with WebGPU."
     );
   }
+
+  await assertWebGpuAdapterAvailable();
+
+  await primeLocalModelGpuLimit();
 
   // Determine which model to use
   let modelId: string;
@@ -373,7 +419,7 @@ export async function initializeClientLLM(
   } else {
     // Check for saved model preference
     const savedModel = getSelectedModel();
-    if (savedModel && isModelAvailable(savedModel)) {
+    if (savedModel && isModelAvailable(savedModel) && !isHiddenLocalModelId(savedModel)) {
       modelId = savedModel;
       console.log("[AI] Using saved model preference:", modelId);
     } else {
@@ -392,6 +438,21 @@ export async function initializeClientLLM(
     );
   }
 
+  if (isLoadedWebLLM() && getLoadedModelIdWebLLM() === modelId) {
+    onProgress?.({ progress: 100, text: "Ready to generate" });
+    return getWebLLMLEngine()!;
+  }
+
+  if (engineLoadingPromise && engineLoadingTargetModelId !== null) {
+    if (engineLoadingTargetModelId === modelId) {
+      addLoadProgressSubscriber(onProgress);
+      return engineLoadingPromise;
+    }
+    throw new Error(
+      `Another on-device model is still loading (${engineLoadingTargetModelId}). Wait for it to finish before loading "${modelId}".`
+    );
+  }
+
   // Check storage space (use model-specific size estimate)
   const availableSpace = await checkStorageQuota();
   const requiredSpace = estimateModelSizeMB(modelId) * 1.5; // Model + overhead
@@ -399,66 +460,50 @@ export async function initializeClientLLM(
     throw new Error(
       `Insufficient storage space. Need at least ${Math.ceil(
         requiredSpace
-      )}MB free space for model download.`
+      )} MB free for the on-device assistant download.`
     );
   }
 
-  // Set progress callback
-  if (onProgress) {
-    loadProgressCallback = onProgress;
-  }
+  addLoadProgressSubscriber(onProgress);
 
-  // Create loading promise
+  engineLoadingTargetModelId = modelId;
   engineLoadingPromise = (async () => {
     try {
-      console.log("[AI] Loading model:", modelId);
+      console.log("[AI] Loading model:", modelId, USE_CUSTOM_WEBLLM_HOST ? "(self-hosted)" : "(prebuilt)");
 
-      // Create custom AppConfig with only our two allowed models
-      const customAppConfig = createCustomAppConfig();
-
-      // Always use our custom AppConfig (only contains our two models)
-      const engine = await CreateMLCEngine(modelId, {
-        appConfig: customAppConfig,
-        initProgressCallback: (report: { progress: number; timeElapsed: number; text: string }) => {
-          if (loadProgressCallback) {
-            // WebLLM progress is 0-1, convert to 0-100 for display
-            const progressPercent = Math.round(report.progress * 100);
-
-            loadProgressCallback({
-              progress: progressPercent,
-              text: report.text || `Loading model: ${progressPercent}%`,
-            });
-          }
-        },
+      await loadModelWebLLM(modelId, (p) => {
+        if (p.status === "loading") {
+          const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
+          notifyLoadProgressSubscribers({
+            progress: progressPercent,
+            text: userFacingLocalAiLoadProgress(p.file, p.progress),
+          });
+        }
       });
 
-      engineInstance = engine;
-      activeModelId = modelId;
+      const engine = getWebLLMLEngine();
+      if (!engine) {
+        throw new Error("WebLLM engine missing after load");
+      }
+
+      notifyLoadProgressSubscribers({ progress: 100, text: "Ready to generate" });
       engineLoadingPromise = null;
-      loadProgressCallback = null;
+      engineLoadingTargetModelId = null;
+      clearLoadProgressSubscribers();
 
       return engine;
-    } catch (error: any) {
+    } catch (error: unknown) {
       engineLoadingPromise = null;
-      loadProgressCallback = null;
+      engineLoadingTargetModelId = null;
+      clearLoadProgressSubscribers();
 
-      // Provide helpful error message
-      const errorMessage = error?.message || String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[AI] On-device AI load failed:", modelId, errorMessage);
 
-      // Suggest alternative models
-      const available = getAvailableModels();
-      const alternativeModels = available
-        .filter(m => m !== modelId)
-        .slice(0, 3)
-        .join(", ");
-
-      if (errorMessage.includes('model') || errorMessage.includes('appConfig')) {
-        let errorMsg = `Failed to load model "${modelId}". `;
-        if (alternativeModels) {
-          errorMsg += `Try one of these instead: ${alternativeModels}. `;
-        }
-        errorMsg += `Original error: ${errorMessage}`;
-        throw new Error(errorMsg);
+      if (errorMessage.includes("model") || errorMessage.includes("appConfig")) {
+        throw new Error(
+          "Couldn't load on-device AI. Check free storage and your connection, then try again."
+        );
       }
 
       throw error;
@@ -472,31 +517,28 @@ export async function initializeClientLLM(
  * Get the initialized engine (throws if not initialized)
  */
 export function getEngine(): MLCEngineInterface {
-  if (!engineInstance) {
-    throw new Error(
-      "Engine not initialized. Call initializeClientLLM() first."
-    );
+  const eng = getWebLLMLEngine();
+  if (!eng) {
+    throw new Error("Engine not initialized. Call initializeClientLLM() first.");
   }
-  return engineInstance;
+  return eng;
 }
 
 /**
  * Check if engine is loaded
  */
 export function isEngineLoaded(): boolean {
-  return engineInstance !== null;
+  return isLoadedWebLLM();
 }
 
 /**
  * Clear the engine instance (useful for testing or memory management)
  */
 export function clearEngine(): void {
-  if (engineInstance) {
-    // Note: WebLLM doesn't expose a cleanup method, but we can clear our reference
-    engineInstance = null;
-    engineLoadingPromise = null;
-    loadProgressCallback = null;
-  }
+  unloadModelWebLLM();
+  engineLoadingPromise = null;
+  engineLoadingTargetModelId = null;
+  clearLoadProgressSubscribers();
 }
 
 /**
@@ -504,10 +546,11 @@ export function clearEngine(): void {
  */
 function getEnhancementPrompt(
   content: string,
-  type: "improve" | "summarize" | "secure" | "ask"
+  type: "improve" | "summarize" | "secure" | "ask" | "simplify"
 ): string {
   const prompts = {
     improve: `Improve this text for clarity and style while preserving meaning:\n\n${content}`,
+    simplify: `Rewrite the following text so it is easier to understand. Use plain, everyday language and shorter sentences where helpful. Preserve the original meaning and important details; do not omit critical facts. Do not add commentary before or after the rewritten text:\n\n${content}`,
     summarize: `Summarize this text into key points:\n\n${content}`,
     secure: `Surgically redact PII from the following text.
 REPLACEMENTS:
@@ -561,14 +604,24 @@ function buildSystemPrompt(options?: {
   templateName?: string;        // e.g. "Thank You Note", "Birthday Greeting"
   templateDescription?: string; // e.g. "For help, gifts, professional follow-ups"
   modelTier?: ModelTier;
+  enhancementType?: "improve" | "summarize" | "secure" | "ask" | "simplify";
 }): string {
-  const { pillType, templateName, templateDescription, modelTier } = options ?? {};
+  const { pillType, templateName, templateDescription, modelTier, enhancementType } = options ?? {};
 
   const tone = pillType ? `${pillType} in tone` : "natural and clear";
   const context = templateName ? `a ${templateName}` : "a private note";
   const useCase = templateDescription ? ` Context: ${templateDescription}.` : "";
 
   const isSmallModel = modelTier === "small";
+
+  const noThinkingXml =
+    "Never print reasoning tags such as <redacted_thinking>...</redacted_thinking> or <think>...</think>. Do not include explanations, analysis, or step-by-step planning. Output only the final note text. Never use bracket placeholders like [specific context]—write a concrete, finished sentence.";
+
+  const fewShotBlock =
+    enhancementType === "improve" || enhancementType === "ask" || enhancementType === "simplify"
+      ? "\n\n" +
+        (modelTier === "large" ? FEW_SHOT_APPENDIX_FULL : FEW_SHOT_APPENDIX_COMPACT)
+      : "";
 
   if (isSmallModel) {
     const identityAndConstraint =
@@ -578,9 +631,10 @@ function buildSystemPrompt(options?: {
     const action = `Task: Transform the user's intent into ${tone} ${context}.${useCase}`;
 
     const format =
-      "Output must start with the first word of the note and end with the final punctuation. No trailing text.";
+      "Output must start with the first word of the note and end with the final punctuation. No trailing text. " +
+      "Do not use a letter header like 'To: Name,' unless the user explicitly asked for a formal letter.";
 
-    return `${identityAndConstraint}\n\n${action}\n\n${format}`;
+    return `${identityAndConstraint}\n\n${noThinkingXml}\n\n${action}\n\n${format}${fewShotBlock}`;
   }
 
   // Larger models can follow a slightly richer prompt
@@ -593,10 +647,11 @@ function buildSystemPrompt(options?: {
   const baseAction = `Take the following user intent and rewrite it as a ${tone} ${context}.${useCase}`;
 
   const format =
-    "Output format example: Dear John, thank you for the gift! (No quotes, no intros, no explanations).\n" +
-    "Start the output immediately with the first word of the note. End the output immediately after the final punctuation of the note.";
+    "Output format example: Dear Alex Rivera, thank you for the gift! — use the real addressee from the user message, not a placeholder name. Never output {{ or }}. (No quotes, no intros, no explanations.)\n" +
+    "Start the output immediately with the first word of the note. End the output immediately after the final punctuation of the note.\n" +
+    "Do not use vague bracket placeholders; do not default to 'To: Name,' letter formatting unless the user asked for it.";
 
-  return `${identity}\n\n${constraint}\n\n${baseAction}\n\n${format}`;
+  return `${identity}\n\n${constraint}\n\n${noThinkingXml}\n\n${baseAction}\n\n${format}${fewShotBlock}`;
 }
 
 /**
@@ -604,27 +659,44 @@ function buildSystemPrompt(options?: {
  */
 export async function enhanceNoteClientSide(
   content: string,
-  type: "improve" | "summarize" | "secure" | "ask",
+  type: "improve" | "summarize" | "secure" | "ask" | "simplify",
   onProgress?: ProgressCallback,
   options?: {
     pillType?: string;
     templateName?: string;
     templateDescription?: string;
+    /** When set, used as the full user message (skips getEnhancementPrompt + prependBaseInstruction). */
+    finalUserMessage?: string;
+    /** Write-with-AI template id — enables output checks (e.g. meeting recipient). */
+    templateId?: string;
+    /** When true, skip the small-model second pass after failed validation. */
+    disableOutputRepairPass?: boolean;
   }
 ): Promise<string> {
   // Initialize engine if needed
   const engine = await initializeClientLLM(onProgress);
 
-  // Generate prompt
-  const prompt = getEnhancementPrompt(content, type);
-
-  // Build strict system prompt for local note-writing
   const modelId = getActiveModelId();
   const modelTier = getModelTier(modelId);
-  const system =
+
+  const prompt =
+    options?.finalUserMessage?.trim() ??
+    prependBaseInstruction(getEnhancementPrompt(content, type));
+
+  const contentLengthForTokens =
+    options?.finalUserMessage?.length ?? content.length;
+
+  // Build strict system prompt for local note-writing
+  let system =
     type === "secure"
       ? buildSecureSystemPrompt()
-      : buildSystemPrompt({ ...options, modelTier });
+      : buildSystemPrompt({ ...options, modelTier, enhancementType: type });
+
+  if (type === "ask" || type === "improve" || type === "simplify") {
+    system +=
+      "\n\nNever output <redacted_thinking>, <think>, or any XML-style reasoning tags. " +
+      "Do not show planning steps or analysis. Reply with only the final message text the user asked for.";
+  }
 
   // Set temperature based on task, but clamp for more deterministic, direct output
   let temperature = type === "secure" ? 0.1 : type === "ask" ? 0.8 : 0.7;
@@ -632,46 +704,211 @@ export async function enhanceNoteClientSide(
   const maxTemp = modelTier === "small" ? 0.25 : 0.4;
   temperature = Math.min(temperature, maxTemp);
 
-  // Set max tokens based on task
+  // Models that emit <redacted_thinking> burn tokens before the note; keep headroom so we don't cut mid-reasoning.
   let maxTokens: number;
   if (type === "summarize") {
-    maxTokens = 200;
+    maxTokens = Math.min(Math.max(420, Math.ceil(contentLengthForTokens / 4) + 200), 900);
   } else if (type === "ask") {
-    maxTokens = 1000; // Allow longer responses for Q&A
+    maxTokens = 1200;
   } else {
-    maxTokens = Math.min(content.length + 100, 800);
+    const scaled = Math.min(contentLengthForTokens + 320, 1600);
+    maxTokens = Math.max(scaled, 896);
   }
 
-  // Generate response
-  const response = await engine.chat.completions.create({
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
-    ],
-    max_tokens: maxTokens,
-    temperature,
-    // Stop the model if it tries to start a new section or meta commentary
-    stop: modelTier === "small"
-      ? ["\n\n\n", "---", "Note:", "Human:", "AI:"]
-      : ["---", "Note:", "Human:", "AI:"],
+  const stopSequences =
+    modelTier === "small"
+      ? (["\n\n\n", "---", "Note:", "Human:", "AI:"] as string[])
+      : (["---", "Note:", "Human:", "AI:"] as string[]);
+
+  async function streamOneUserTurn(
+    userPrompt: string,
+    temp: number,
+    /** Overrides drafting-phase headline (e.g. repair pass). */
+    draftingLabelOverride?: string,
+  ): Promise<{ cleaned: string; finishReason: string | null; rawLen: number; diagnosis: ReturnType<typeof diagnoseThinkingStrip> }> {
+    const draftingLabel = draftingLabelOverride ?? localAiDraftingLabel(type);
+
+    if (onProgress) {
+      onProgress({
+        progress: 18,
+        text: localAiThinkingLabel(),
+        detail: localAiThinkingDetailHint(),
+      });
+    }
+    const stream = await engine.chat.completions.create({
+      messages: [
+        { role: "system" as const, content: system },
+        { role: "user" as const, content: userPrompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: temp,
+      stop: stopSequences,
+      stream: true,
+      stream_options: { include_usage: true },
+    });
+    let acc = "";
+    let finishReason: string | null = null;
+    let usage: unknown;
+    let lastProgressAt = 0;
+    let draftingStarted = false;
+    const progressThrottleMs = 160;
+    for await (const chunk of stream) {
+      const ch = chunk.choices?.[0];
+      if (ch?.finish_reason) {
+        finishReason = String(ch.finish_reason);
+      }
+      const delta = ch?.delta?.content;
+      const piece = messageContentToString(delta);
+      if (piece) {
+        if (!draftingStarted && onProgress) {
+          draftingStarted = true;
+          onProgress({
+            progress: 28,
+            text: draftingLabel,
+            detail: undefined,
+          });
+          lastProgressAt = Date.now();
+        }
+        acc += piece;
+        if (onProgress) {
+          const now = Date.now();
+          if (now - lastProgressAt >= progressThrottleMs) {
+            lastProgressAt = now;
+            onProgress({
+              progress: Math.min(92, 28 + Math.min(acc.length / 3, 64)),
+              text: draftingLabel,
+              detail: `${acc.length.toLocaleString()} characters so far`,
+            });
+          }
+        }
+      }
+      if (chunk && typeof chunk === "object" && "usage" in chunk && chunk.usage) {
+        usage = chunk.usage;
+      }
+    }
+    if (onProgress) {
+      onProgress({
+        progress: 94,
+        text: localAiFinalizingLabel(),
+        detail: undefined,
+      });
+    }
+    const raw = acc.trim();
+    let answer = extractUserFacingAnswer(raw);
+    answer = removeClosedRedactedThinkingBlocks(answer);
+    answer = stripRedactedThinkingTags(answer);
+    const diagnosis = diagnoseThinkingStrip(raw, answer);
+
+    if (LLM_STRIP_DEBUG) {
+      console.warn("[PrivateNote][LLM] completion", {
+        modelId,
+        type,
+        modelTier,
+        maxTokensRequested: maxTokens,
+        finishReason,
+        usage,
+        diagnosis,
+      });
+    }
+
+    if (!answer) {
+      console.error("[PrivateNote][LLM] strip failed — empty user-facing text", {
+        modelId,
+        type,
+        maxTokensRequested: maxTokens,
+        finishReason,
+        usage,
+        diagnosis,
+        hint:
+          finishReason === "length"
+            ? "Stopped at max_tokens (often still inside <redacted_thinking> or before 'Possible improvements')."
+            : diagnosis.hasLooseOpenTag && !diagnosis.hasCloseTag
+              ? "Opened <redacted_thinking> but no </redacted_thinking> and no extractable quoted draft."
+              : "Check rawHead200 / outcome in diagnosis.",
+      });
+      throw new Error(
+        `[PrivateNote][LLM] On-device AI returned no usable note after processing (finish_reason=${String(
+          finishReason
+        )}, raw_len=${raw.length}). Open the browser console and filter for [PrivateNote][LLM].`
+      );
+    }
+
+    if (diagnosis.hasLooseOpenTag && LLM_STRIP_DEBUG) {
+      console.warn("[PrivateNote][LLM] stripped reasoning → final output", {
+        outcome: diagnosis.outcome,
+        rawLen: diagnosis.rawCharLength,
+        outLen: answer.length,
+        finishReason,
+      });
+    }
+
+    if (finishReason === "length") {
+      console.warn("[PrivateNote][LLM] finish_reason=length (hit max_tokens ceiling)", {
+        maxTokensRequested: maxTokens,
+        type,
+        rawLen: raw.length,
+        outLen: answer.length,
+        hadRedactedOpen: diagnosis.hasLooseOpenTag,
+      });
+    }
+
+    return {
+      cleaned: cleanOutput(answer),
+      finishReason,
+      rawLen: raw.length,
+      diagnosis,
+    };
+  }
+
+  let { cleaned: out } = await streamOneUserTurn(prompt, temperature);
+
+  const validation = validateLocalLlmOutput(out, {
+    enhancementType: type,
+    modelTier,
+    userRequest: content,
+    templateId: options?.templateId,
   });
 
-  const result = response.choices[0]?.message?.content?.trim();
-
-  if (!result) {
-    throw new Error("Empty response from AI model");
+  if (
+    !validation.ok &&
+    modelTier === "small" &&
+    validation.repairable &&
+    !options?.disableOutputRepairPass
+  ) {
+    if (LLM_STRIP_DEBUG) {
+      console.warn("[PrivateNote][LLM] output validation failed — repair pass", {
+        issues: validation.issues,
+      });
+    }
+    const repairTemp = Math.min(temperature, 0.18);
+    const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues)}`;
+    out = (await streamOneUserTurn(repairPrompt, repairTemp, "Refining your note…")).cleaned;
   }
 
-  return result;
+  return out;
+}
+
+function messageContentToString(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === "object" && "text" in part ? String((part as { text: string }).text) : ""
+      )
+      .join("");
+  }
+  return "";
 }
 
 /**
- * Check if model is cached in IndexedDB
+ * Check if the resolved model is cached in IndexedDB (uses WebLLM cache helpers + same appConfig as load).
  */
 export async function isModelCached(): Promise<boolean> {
   try {
-    const databases = await indexedDB.databases();
-    return databases.some(db => db.name && db.name.includes('webllm'));
+    const saved = getSelectedModel();
+    const id =
+      saved && isModelAvailable(saved) ? saved : findSuitableModel();
+    return await isModelInCacheWebLLM(id);
   } catch (error) {
     console.warn("[AI] Failed to check cache:", error);
     return false;
@@ -743,16 +980,32 @@ export async function getStorageInfo(): Promise<{
  * Get model information
  */
 export function getModelInfo() {
-  // Get the actual model being used
   const available = getAvailableModels();
   const modelId = findSuitableModel();
 
-  // Estimate size based on model (actual download sizes for quantized weights)
   return {
     name: modelId,
+    variantLabel: getLocalAiTierLabelForModelId(modelId),
     sizeMB: estimateModelSizeMB(modelId),
     cacheKey: MODEL_CACHE_KEY,
     availableModels: available.length,
     preferredModels: PREFERRED_MODELS,
+    localLlmPremium: isLocalLlmPremium(),
+    hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
   };
 }
+
+export {
+  getRecommendedLocalModelId,
+  getRecommendedLocalModelIdSync,
+  getHardwareTierModelIdSync,
+  primeLocalModelGpuLimit,
+  isLocalLlmPremium,
+  getGpuStorageLimit,
+  isLocalModelGpuLimitPrimed,
+  getCachedMaxStorageBufferBindingSize,
+  MODEL_QWEN_0_6,
+  MODEL_QWEN_1_7,
+  MODEL_QWEN_4,
+  MODEL_GEMMA_2_2B,
+} from "./recommendedLocalModel";

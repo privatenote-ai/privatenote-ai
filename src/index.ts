@@ -2,63 +2,33 @@ import { SecureNoteStorage, SecureNoteStorageSql } from "./durable_objects/secur
 import { AuthTokenStore } from "./durable_objects/auth_token_store";
 import { registerRoutes, cleanupAuditLogs, cleanupExpiredSessions } from "./routes";
 import type { Env } from "./types";
+import { getAllowedOriginFromRequest } from "./trustedOrigins";
+import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 
 // Export both for migration compatibility
 // SecureNoteStorage is deleted in v3 migration but needed for migration history
 export { SecureNoteStorage, SecureNoteStorageSql, AuthTokenStore };
 
-const ALLOWED_ORIGINS = [
-  'https://privatenote-ai.pages.dev',
-  'https://privatenote.ai',
-  'http://localhost:5000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5000',
-  'http://127.0.0.1:5173',
-];
-
-const normalizeOrigin = (origin: string): string => origin.replace(/\/$/, '');
-
-const getAllowedOrigin = (request: Request): string | null => {
-  const origin = request.headers.get('Origin');
-  if (!origin) return ALLOWED_ORIGINS[0];
-  const normalized = normalizeOrigin(origin);
-  const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
-  if (normalizedAllowed.includes(normalized)) return origin;
-  if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return origin;
-  if (normalized.endsWith('.pages.dev')) return origin;
-  if (normalized.endsWith('.privatenote.ai')) return origin;
-  return null;
-};
-
-const getCSPHeader = (): string =>
-  [
-    "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com",
-    "img-src 'self' data: https:",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "object-src 'none'",
-    "upgrade-insecure-requests",
-  ].join("; ");
-
 const getCorsHeaders = (request: Request): Record<string, string> => {
-  const allowedOrigin = getAllowedOrigin(request);
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin || ALLOWED_ORIGINS[0],
+  const origin = request.headers.get("Origin");
+  const allowedOrigin = origin ? getAllowedOriginFromRequest(request) : null;
+  const headers: Record<string, string> = {
+    ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
     "Access-Control-Allow-Credentials": "true",
-    "Content-Security-Policy": getCSPHeader(),
-    // Credentials enabled for session cookies; Origin must be explicit (not *)
+    "Content-Security-Policy": getApiContentSecurityPolicy(),
+    "Referrer-Policy": "strict-origin-when-cross-origin",
   };
+  if (origin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin ?? "null";
+    headers["Vary"] = "Origin";
+  }
+  return headers;
 };
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     console.log(`[WORKER-ENTRY] ${request.method} ${request.url}`);
 
     try {
@@ -68,7 +38,7 @@ export default {
       // Handle CORS preflight requests FIRST, before any routing
       if (request.method === "OPTIONS") {
         const origin = request.headers.get('Origin');
-        const allowedOrigin = getAllowedOrigin(request);
+        const allowedOrigin = origin ? getAllowedOriginFromRequest(request) : null;
 
         if (origin && !allowedOrigin) {
           return new Response(JSON.stringify({ error: 'CORS policy: Origin not allowed' }), {
@@ -108,7 +78,6 @@ export default {
             endpoints: {
               notes: "/api/notes",
               blog: "/api/blog",
-              ai: "/api/ai/enhance",
               admin: "/api/admin/*"
             }
           }),
@@ -141,7 +110,7 @@ export default {
    * Scheduled handler for cron triggers.
    * Runs daily cleanup tasks for GDPR compliance and database maintenance.
    */
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     console.log(`[CRON] Scheduled event triggered at ${new Date().toISOString()}`);
     console.log(`[CRON] Cron trigger: ${event.cron}`);
 

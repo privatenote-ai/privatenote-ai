@@ -55,6 +55,7 @@ ensure_column "sessions" "ip" "TEXT"
 ensure_column "sessions" "city" "TEXT"
 ensure_column "sessions" "country" "TEXT"
 ensure_column "sessions" "device_label" "TEXT"
+ensure_column "sessions" "client_bucket" "TEXT"
 
 # WebAuthn credentials columns
 ensure_column "webauthn_credentials" "last_used_at" "TEXT"

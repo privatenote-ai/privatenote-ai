@@ -6,10 +6,10 @@ export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="relative overflow-hidden bg-primary text-white">
+    <footer className="relative overflow-hidden bg-primary/95 text-white">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 right-1/3 h-64 w-64 rounded-full bg-white/10 blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-white/10 blur-[120px]" />
+        <div className="absolute -top-24 right-1/3 h-64 w-64 rounded-full bg-white/7 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-white/7 blur-[120px]" />
       </div>
       <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center gap-6">

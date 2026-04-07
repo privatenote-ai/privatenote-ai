@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ChevronDown, ChevronUp, Edit, Eye, MoreHorizontal, Plus, Trash2, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Eye, MoreHorizontal, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest, getQueryFn } from '@/lib/queryClient';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type BlogPost, insertBlogPostSchema } from '@shared/schema';
+import { parseBlogPostTags } from '@/utils/blogPostTags';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,9 +46,7 @@ const blogPostFormSchema = insertBlogPostSchema.extend({
 });
 
 export default function BlogAdmin() {
-  const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -74,7 +72,7 @@ export default function BlogAdmin() {
         throw new Error('Failed to fetch blog posts');
       }
 
-      return response.json();
+      return (await response.json()) as BlogPost[];
     },
     enabled: isAuthenticated
   });
@@ -184,8 +182,6 @@ export default function BlogAdmin() {
               setSelectedPost(post);
               setDeleteDialogOpen(true);
             }}
-            refetchPosts={refetchPosts}
-            token={token}
           />
         </TabsContent>
 
@@ -203,8 +199,6 @@ export default function BlogAdmin() {
               setSelectedPost(post);
               setDeleteDialogOpen(true);
             }}
-            refetchPosts={refetchPosts}
-            token={token}
           />
         </TabsContent>
 
@@ -222,8 +216,6 @@ export default function BlogAdmin() {
               setSelectedPost(post);
               setDeleteDialogOpen(true);
             }}
-            refetchPosts={refetchPosts}
-            token={token}
           />
         </TabsContent>
       </Tabs>
@@ -236,7 +228,6 @@ export default function BlogAdmin() {
           refetchPosts();
           setCreateDialogOpen(false);
         }}
-        token={token}
       />
 
       {/* Edit Post Dialog */}
@@ -250,7 +241,6 @@ export default function BlogAdmin() {
             setEditDialogOpen(false);
             setSelectedPost(null);
           }}
-          token={token}
         />
       )}
 
@@ -265,7 +255,6 @@ export default function BlogAdmin() {
             setDeleteDialogOpen(false);
             setSelectedPost(null);
           }}
-          token={token}
         />
       )}
     </div>
@@ -279,8 +268,6 @@ function BlogPostsTable({
   filter,
   onEdit,
   onDelete,
-  refetchPosts,
-  token
 }: {
   posts?: BlogPost[];
   isLoading: boolean;
@@ -288,8 +275,6 @@ function BlogPostsTable({
   filter: 'all' | 'published' | 'drafts';
   onEdit: (post: BlogPost) => void;
   onDelete: (post: BlogPost) => void;
-  refetchPosts: () => void;
-  token: string;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -494,12 +479,10 @@ function CreatePostDialog({
   open,
   onOpenChange,
   onSuccess,
-  token
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  token: string;
 }) {
   const { toast } = useToast();
   const [tagsInput, setTagsInput] = useState('');
@@ -775,13 +758,11 @@ function EditPostDialog({
   onOpenChange,
   post,
   onSuccess,
-  token
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   post: BlogPost;
   onSuccess: () => void;
-  token: string;
 }) {
   const { toast } = useToast();
   const [tagsInput, setTagsInput] = useState('');
@@ -795,7 +776,7 @@ function EditPostDialog({
       content: post.content,
       excerpt: post.excerpt,
       author: post.author,
-      tags: post.tags || [],
+      tags: parseBlogPostTags(post.tags),
       coverImage: post.coverImage || '',
     }
   });
@@ -1045,13 +1026,11 @@ function DeletePostDialog({
   onOpenChange,
   post,
   onSuccess,
-  token
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   post: BlogPost;
   onSuccess: () => void;
-  token: string;
 }) {
   const { toast } = useToast();
 

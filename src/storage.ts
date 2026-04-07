@@ -1,16 +1,22 @@
-import { 
-  type User, 
-  type InsertUser, 
-  type Note, 
-  type InsertNote, 
-  type BlogPost, 
-  type InsertBlogPost, 
+import {
+  type User,
+  type InsertUser,
+  type Note,
+  type InsertNote,
+  type BlogPost,
+  type InsertBlogPost,
   type UpdateBlogPost,
   type AnalyticsData,
   type InsertAnalytics,
   type DailyMetrics,
-  AnalyticsMetricsType
+  AnalyticsMetricsType,
 } from "@shared/schema";
+import {
+  createEmptyDailyMetrics,
+  getAnalyticsDateKeyUtc,
+  mergeDailyMetrics,
+  normalizeDailyMetrics,
+} from "@shared/analyticsMetrics";
 import { KVNoteStorage } from "./kv-storage";
 import type { KVNamespace } from "@cloudflare/workers-types";
 
@@ -20,62 +26,11 @@ interface AnalyticsContext {
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
 
-function getDateKey(date: Date): string {
-  return date.toISOString().split('T')[0] || '';
-}
-
-function createEmptyDailyMetrics(): DailyMetrics {
-  return {
-    notesCreated: 0,
-    notesViewed: 0,
-    passwordProtectedNotes: 0,
-    aiEnhancedNotes: 0,
-    blogViews: {},
-    averageExpirationDays: 0,
-    expiryRangeDistribution: {
-      oneHourOrLess: 0,
-      oneDayOrLess: 0,
-      oneWeekOrLess: 0,
-      moreThanWeek: 0
-    },
-    viewLimitsDistribution: {
-      once: 0,
-      twice: 0,
-      threeToFive: 0,
-      moreThanFive: 0,
-      unlimited: 0
-    },
-    contentLengthDistribution: {
-      short: 0,
-      medium: 0,
-      long: 0
-    }
-  };
-}
-
-function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetrics {
-  const base = createEmptyDailyMetrics();
-  if (!metrics) {
-    return base;
-  }
-  return {
-    ...base,
-    ...metrics,
-    blogViews: metrics.blogViews || {},
-    expiryRangeDistribution: {
-      ...base.expiryRangeDistribution,
-      ...(metrics.expiryRangeDistribution || {})
-    },
-    viewLimitsDistribution: {
-      ...base.viewLimitsDistribution,
-      ...(metrics.viewLimitsDistribution || {})
-    },
-    contentLengthDistribution: {
-      ...base.contentLengthDistribution,
-      ...(metrics.contentLengthDistribution || {})
-    }
-  };
-}
+export type AggregatedAnalyticsResult = {
+  metrics: DailyMetrics;
+  startDateUtc: string;
+  endDateUtc: string;
+};
 
 // Storage interface
 export interface IStorage {
@@ -109,6 +64,7 @@ export interface IStorage {
   trackNoteView(note: Note): Promise<void>;
   trackBlogView(slug: string): Promise<void>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
+  getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult>;
 }
 
 // MemStorage for blog posts and analytics (without note methods)
@@ -132,7 +88,7 @@ class MemStorage {
     
     // Initialize today's metrics with an empty object
     const today = new Date();
-    const todayKey = getDateKey(today);
+    const todayKey = getAnalyticsDateKeyUtc(today);
     this.dailyMetrics.set(todayKey, createEmptyDailyMetrics());
   }
 
@@ -179,20 +135,15 @@ class MemStorage {
 
   async createBlogPost(postData: InsertBlogPost): Promise<BlogPost> {
     const id = this.currentBlogId++;
-    
-    // Handle tags - keep as array for in-memory storage (matching original behavior)
-    // If tags is a string (from schema), parse it; otherwise use array or empty array
-    let tags: string[] | string | null = postData.tags;
-    if (typeof tags === "string") {
-      try {
-        tags = JSON.parse(tags);
-      } catch {
-        tags = [];
-      }
-    } else if (!tags) {
-      tags = [];
+
+    let tagsSerialized: string | null = null;
+    const rawTags = postData.tags;
+    if (typeof rawTags === "string" && rawTags.length > 0) {
+      tagsSerialized = rawTags;
+    } else if (Array.isArray(rawTags)) {
+      tagsSerialized = JSON.stringify(rawTags);
     }
-    
+
     const post: BlogPost = {
       id,
       title: postData.title,
@@ -201,7 +152,7 @@ class MemStorage {
       excerpt: postData.excerpt,
       author: postData.author,
       coverImage: postData.coverImage || null,
-      tags: tags as any, // Type assertion needed due to schema type mismatch
+      tags: tagsSerialized,
       published: postData.published || false,
       publishedAt: postData.published ? new Date() : null,
       createdAt: new Date(),
@@ -215,23 +166,23 @@ class MemStorage {
   async updateBlogPost(id: number, postData: Partial<UpdateBlogPost>): Promise<BlogPost | undefined> {
     const post = this.blogPosts.get(id);
     if (!post) return undefined;
-    
-    // Handle tags - keep as array for in-memory storage
-    let tags: string[] | string | null = postData.tags !== undefined ? postData.tags : post.tags;
-    if (typeof tags === "string") {
-      try {
-        tags = JSON.parse(tags);
-      } catch {
-        tags = [];
+
+    let nextTags: string | null = post.tags;
+    if (postData.tags !== undefined) {
+      const t = postData.tags;
+      if (t == null || t === "") {
+        nextTags = null;
+      } else if (typeof t === "string") {
+        nextTags = t;
+      } else if (Array.isArray(t)) {
+        nextTags = JSON.stringify(t);
       }
-    } else if (!tags) {
-      tags = [];
     }
-    
+
     const updatedPost = {
       ...post,
       ...postData,
-      tags: tags as any, // Type assertion needed due to schema type mismatch
+      tags: nextTags,
       updatedAt: new Date()
     };
     
@@ -273,7 +224,7 @@ class MemStorage {
   }
 
   private getOrCreateDailyMetrics(date: Date): DailyMetrics {
-    const dateKey = getDateKey(date);
+    const dateKey = getAnalyticsDateKeyUtc(date);
     if (!this.dailyMetrics.has(dateKey)) {
       this.dailyMetrics.set(dateKey, createEmptyDailyMetrics());
     }
@@ -282,19 +233,19 @@ class MemStorage {
 
   // Analytics methods
   async getDailyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = getDateKey(date);
+    const dateKey = getAnalyticsDateKeyUtc(date);
     const analyticsKey = `${AnalyticsMetricsType.DAILY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
 
   async getWeeklyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = getDateKey(date);
+    const dateKey = getAnalyticsDateKeyUtc(date);
     const analyticsKey = `${AnalyticsMetricsType.WEEKLY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
 
   async getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined> {
-    const dateKey = getDateKey(date);
+    const dateKey = getAnalyticsDateKeyUtc(date);
     const analyticsKey = `${AnalyticsMetricsType.MONTHLY}_${dateKey}`;
     return this.analytics.get(analyticsKey) || undefined;
   }
@@ -302,7 +253,8 @@ class MemStorage {
   async saveMetrics(metricsData: InsertAnalytics): Promise<AnalyticsData> {
     const id = this.currentAnalyticsId++;
     const metricDate = metricsData.date ? new Date(metricsData.date) : new Date();
-    
+    const dateKey = getAnalyticsDateKeyUtc(metricDate);
+
     // Handle metrics - convert object to JSON string if needed
     const metricsValue = typeof metricsData.metrics === 'string' 
       ? metricsData.metrics 
@@ -310,12 +262,12 @@ class MemStorage {
     
     const metrics: AnalyticsData = {
       id,
-      date: metricDate,
+      date: dateKey,
       metricsType: metricsData.metricsType || AnalyticsMetricsType.DAILY,
       metrics: metricsValue
     };
     
-    const analyticsKey = `${metrics.metricsType}_${getDateKey(metricDate)}`;
+    const analyticsKey = `${metrics.metricsType}_${dateKey}`;
     this.analytics.set(analyticsKey, metrics);
     return metrics;
   }
@@ -384,19 +336,19 @@ class MemStorage {
   }
   
   private async saveDailyMetrics(date: Date): Promise<void> {
-    const dateKey = getDateKey(date);
+    const dateKey = getAnalyticsDateKeyUtc(date);
     const metrics = this.dailyMetrics.get(dateKey);
     
     if (metrics) {
       await this.saveMetrics({
-        date,
+        date: getAnalyticsDateKeyUtc(date),
         metricsType: AnalyticsMetricsType.DAILY,
-        metrics: metrics
+        metrics: JSON.stringify(metrics),
       });
     }
   }
 
-  async trackNoteView(note: Note): Promise<void> {
+  async trackNoteView(_note: Note): Promise<void> {
     const today = new Date();
     const metrics = this.getOrCreateDailyMetrics(today);
     
@@ -431,60 +383,25 @@ class MemStorage {
              dataDate <= endDate;
     });
   }
+
+  async getAggregatedDailyMetrics(start: Date, end: Date): Promise<AggregatedAnalyticsResult> {
+    return {
+      metrics: createEmptyDailyMetrics(),
+      startDateUtc: getAnalyticsDateKeyUtc(start),
+      endDateUtc: getAnalyticsDateKeyUtc(end),
+    };
+  }
 }
 
 function addDaysUtc(date: Date, days: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
 }
 
-function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMetrics): DailyMetrics {
-  const base = normalizeDailyMetrics(baseMetrics);
-  const add = normalizeDailyMetrics(addMetrics);
-  const totalNotes = base.notesCreated + add.notesCreated;
-  const totalExpirationDays =
-    base.averageExpirationDays * base.notesCreated +
-    add.averageExpirationDays * add.notesCreated;
-
-  const merged: DailyMetrics = {
-    ...base,
-    notesCreated: totalNotes,
-    notesViewed: base.notesViewed + add.notesViewed,
-    passwordProtectedNotes: base.passwordProtectedNotes + add.passwordProtectedNotes,
-    aiEnhancedNotes: base.aiEnhancedNotes + add.aiEnhancedNotes,
-    averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
-    blogViews: { ...base.blogViews },
-    expiryRangeDistribution: {
-      oneHourOrLess: base.expiryRangeDistribution.oneHourOrLess + add.expiryRangeDistribution.oneHourOrLess,
-      oneDayOrLess: base.expiryRangeDistribution.oneDayOrLess + add.expiryRangeDistribution.oneDayOrLess,
-      oneWeekOrLess: base.expiryRangeDistribution.oneWeekOrLess + add.expiryRangeDistribution.oneWeekOrLess,
-      moreThanWeek: base.expiryRangeDistribution.moreThanWeek + add.expiryRangeDistribution.moreThanWeek
-    },
-    viewLimitsDistribution: {
-      once: base.viewLimitsDistribution.once + add.viewLimitsDistribution.once,
-      twice: base.viewLimitsDistribution.twice + add.viewLimitsDistribution.twice,
-      threeToFive: base.viewLimitsDistribution.threeToFive + add.viewLimitsDistribution.threeToFive,
-      moreThanFive: base.viewLimitsDistribution.moreThanFive + add.viewLimitsDistribution.moreThanFive,
-      unlimited: base.viewLimitsDistribution.unlimited + add.viewLimitsDistribution.unlimited
-    },
-    contentLengthDistribution: {
-      short: base.contentLengthDistribution.short + add.contentLengthDistribution.short,
-      medium: base.contentLengthDistribution.medium + add.contentLengthDistribution.medium,
-      long: base.contentLengthDistribution.long + add.contentLengthDistribution.long
-    }
-  };
-
-  for (const [slug, views] of Object.entries(add.blogViews)) {
-    merged.blogViews[slug] = (merged.blogViews[slug] || 0) + views;
-  }
-
-  return merged;
-}
-
 class KVAnalyticsStorage {
   constructor(private kv: KVNamespace) {}
 
   private getDailyKey(date: Date): string {
-    return `${ANALYTICS_DAILY_PREFIX}${getDateKey(date)}`;
+    return `${ANALYTICS_DAILY_PREFIX}${getAnalyticsDateKeyUtc(date)}`;
   }
 
   private async loadDailyMetrics(date: Date): Promise<DailyMetrics | null> {
@@ -501,10 +418,10 @@ class KVAnalyticsStorage {
   private buildAnalyticsData(date: Date, metricsType: AnalyticsMetricsType, metrics: DailyMetrics): AnalyticsData {
     return {
       id: 0,
-      date,
+      date: getAnalyticsDateKeyUtc(date),
       metricsType,
-      metrics: JSON.stringify(metrics)
-    } as AnalyticsData;
+      metrics: JSON.stringify(metrics),
+    };
   }
 
   private async aggregateRange(startDate: Date, endDate: Date): Promise<DailyMetrics | null> {
@@ -656,6 +573,21 @@ class KVAnalyticsStorage {
 
     return results;
   }
+
+  async getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult> {
+    const a = new Date(
+      Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()),
+    );
+    const b = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+    const start = a <= b ? a : b;
+    const end = a <= b ? b : a;
+    const merged = await this.aggregateRange(start, end);
+    return {
+      metrics: merged ?? createEmptyDailyMetrics(),
+      startDateUtc: getAnalyticsDateKeyUtc(start),
+      endDateUtc: getAnalyticsDateKeyUtc(end),
+    };
+  }
 }
 
 // Generate random ID using Web Crypto API (available in Workers)
@@ -772,5 +704,9 @@ export class CompositeStorage implements IStorage {
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     return this.analyticsStorage.getAnalyticsData(startDate, endDate, metricsType);
+  }
+
+  async getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult> {
+    return this.analyticsStorage.getAggregatedDailyMetrics(startDate, endDate);
   }
 }

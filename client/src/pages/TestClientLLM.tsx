@@ -15,14 +15,14 @@ import {
   initializeClientLLM, 
   isEngineLoaded,
   clearEngine,
-  getModelInfo,
   getAvailableModels,
   getPreferredModels,
-  isModelCached,
   listCachedModels,
   getStorageInfo,
   getRecommendedModelForDevice,
-  getDeviceInfo
+  getDeviceInfo,
+  getLocalAiTierLabelForModelId,
+  isLocalModelHiddenFromUi,
 } from '@/utils/clientLLM';
 import { useToast } from '@/hooks/use-toast';
 import { Zap, CheckCircle, XCircle, Loader2, RefreshCw, Trash2 } from 'lucide-react';
@@ -64,7 +64,7 @@ export default function TestClientLLM() {
     const preferred = getPreferredModels();
     const availablePreferred = preferred.filter(m => available.includes(m));
     
-    if (saved && available.includes(saved)) {
+    if (saved && available.includes(saved) && !isLocalModelHiddenFromUi(saved)) {
       return saved;
     }
     // Try to find a match for saved model
@@ -90,17 +90,6 @@ export default function TestClientLLM() {
   // Use validatedSelectedModel as selectedModel
   const selectedModel = validatedSelectedModel;
   
-  const modelSizes: Record<string, number> = {
-    'mlc-ai/gemma-3-1b-it-q4f32_1-MLC': 600,
-    'llinguini/gemma-3-270m-it-q4f16_1-MLC': 200,
-  };
-
-  const getModelDisplayName = (modelId: string): string => {
-    if (modelId.includes('gemma') && modelId.includes('1b')) return 'Gemma 3 1B (~600MB) - Desktop/New Mobile';
-    if (modelId.includes('gemma') || modelId.includes('linguini')) return 'Gemma 3 270M (~200MB) - Mobile/Old Browser';
-    return modelId;
-  };
-
   const updateCapabilities = async () => {
     setCapabilities(getAiCapabilities());
     // Also update storage info
@@ -139,7 +128,7 @@ export default function TestClientLLM() {
       updateCapabilities();
       toast({
         title: 'Success',
-        description: `Client-side LLM initialized with ${getModelDisplayName(selectedModel)}!`,
+        description: 'On-device assistant initialized.',
       });
     } catch (error) {
       toast({
@@ -153,7 +142,7 @@ export default function TestClientLLM() {
     }
   };
 
-  const handleTest = async (type: 'improve' | 'summarize' | 'secure' | 'ask') => {
+  const handleTest = async (type: 'improve' | 'summarize' | 'secure' | 'ask' | 'simplify') => {
     if (!inputText.trim()) {
       toast({
         title: 'Error',
@@ -185,7 +174,7 @@ export default function TestClientLLM() {
       
       toast({
         title: 'Success',
-        description: `Processed using ${result.source === 'client' ? 'client-side' : 'server-side'} AI`,
+        description: 'Processed using on-device AI',
       });
     } catch (error) {
       toast({
@@ -214,7 +203,7 @@ export default function TestClientLLM() {
       
       toast({
         title: 'Success',
-        description: 'Model cache cleared. Next load will download fresh model.',
+        description: 'Assistant cache cleared. Next load may download again.',
       });
     } catch (error) {
       toast({
@@ -229,10 +218,12 @@ export default function TestClientLLM() {
     improve: 'This is a test note that needs improvement. It has some grammar issues and could be more clear.',
     summarize: `PrivateNote.ai is a secure note-sharing platform that uses end-to-end encryption. 
 Your notes are encrypted client-side before being sent to our servers. We use AES-256-GCM encryption 
-with PBKDF2 key derivation. Notes can be set to expire after a certain time or number of reads. 
+with Argon2id (v2) key derivation for password-protected notes. Notes can be set to expire after a certain time or number of reads. 
 The platform is designed with privacy and security as top priorities.`,
     secure: 'Contact John Smith at john.smith@example.com or call him at 555-123-4567. His address is 123 Main St, Anytown, USA 12345. Credit card: 4532-1234-5678-9010.',
     ask: 'What is end-to-end encryption and how does it protect my data?',
+    simplify:
+      'The implementation leverages a symmetric cryptographic primitive (AES-256-GCM) in conjunction with Argon2id (v2)-derived keys to effectuate client-side ciphertext generation prior to network transmission.',
   };
 
   return (
@@ -248,11 +239,11 @@ The platform is designed with privacy and security as top priorities.`,
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>System Capabilities</CardTitle>
-          <CardDescription>Current status of client-side LLM support</CardDescription>
+          <CardDescription>Current status of on-device AI support</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span>WebLLM Supported:</span>
+            <span>On-device AI supported:</span>
             {capabilities.clientSideSupported ? (
               <Badge variant="default" className="bg-green-500">
                 <CheckCircle className="w-4 h-4 mr-1" />
@@ -265,6 +256,17 @@ The platform is designed with privacy and security as top priorities.`,
               </Badge>
             )}
           </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span>Support tier (sync):</span>
+            <span className="font-mono text-xs">{capabilities.webLlmSupportLevel}</span>
+          </div>
+
+          {capabilities.webLlmSupportHint && (
+            <p className="text-sm text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-md p-2">
+              {capabilities.webLlmSupportHint}
+            </p>
+          )}
           
           <div className="flex items-center justify-between">
             <span>Engine Loaded:</span>
@@ -284,11 +286,14 @@ The platform is designed with privacy and security as top priorities.`,
           {capabilities.modelInfo && (
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-center justify-between">
-                <span>Model:</span>
-                <span className="font-mono text-sm">{capabilities.modelInfo.name}</span>
+                <span>Active variant:</span>
+                <span className="text-sm">
+                  {capabilities.modelInfo.variantLabel ??
+                    getLocalAiTierLabelForModelId(capabilities.modelInfo.name)}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Size:</span>
+                <span>Approx. download size:</span>
                 <span>{capabilities.modelInfo.sizeMB} MB</span>
               </div>
             </div>
@@ -312,25 +317,18 @@ The platform is designed with privacy and security as top priorities.`,
                   <span className="font-mono">{(storageInfo.available / 1024 / 1024).toFixed(2)} MB</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Cached Models:</span>
+                  <span>Cached packages:</span>
                   <span className="font-mono">{cachedModels.length}</span>
                 </div>
               </div>
               {cachedModels.length > 0 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs text-gray-600 dark:text-gray-400">
-                    Show Cached Databases ({cachedModels.length})
-                  </summary>
-                  <div className="mt-1 max-h-32 overflow-y-auto">
-                    <pre className="text-xs font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">
-                      {cachedModels.join('\n')}
-                    </pre>
-                  </div>
-                </details>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  {cachedModels.length} cached. Inspect IndexedDB in DevTools for details.
+                </p>
               )}
               {cachedModels.length === 0 && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  No models cached yet. Initialize the engine to download a model.
+                  Nothing cached yet. Initialize the engine to download the assistant.
                 </div>
               )}
             </div>
@@ -338,21 +336,68 @@ The platform is designed with privacy and security as top priorities.`,
 
           {/* Device Information */}
           <div className="mt-4 pt-4 border-t">
-            <div className="text-sm font-medium mb-2">Device Detection</div>
+            <div className="text-sm font-medium mb-2">Environment (model pick uses GPU prime + CPU/RAM, not UA)</div>
             <div className="space-y-1 text-xs">
               <div className="flex justify-between">
-                <span>Device Type:</span>
-                <span className="font-mono">{deviceInfo.isMobile ? 'Mobile' : 'Desktop'}</span>
+                <span>WebGPU API present:</span>
+                <span className="font-mono">{deviceInfo.webGpuApiPresent ? 'Yes' : 'No'}</span>
               </div>
               <div className="flex justify-between">
-                <span>WebGPU Support:</span>
-                <span className="font-mono">{deviceInfo.hasWebGPU ? 'Yes' : 'No'}</span>
+                <span>GPU limit primed:</span>
+                <span className="font-mono">{deviceInfo.localModelGpuLimitPrimed ? 'Yes' : 'No'}</span>
               </div>
               <div className="flex justify-between">
-                <span>Recommended Model:</span>
-                <span className="font-mono text-blue-600 dark:text-blue-400">
-                  {getModelDisplayName(deviceRecommendedModel)}
+                <span>maxStorageBufferBindingSize (cached):</span>
+                <span className="font-mono">
+                  {deviceInfo.gpuMaxStorageBufferBindingSizeCached != null
+                    ? deviceInfo.gpuMaxStorageBufferBindingSizeCached.toLocaleString()
+                    : '—'}
                 </span>
+              </div>
+              <div className="flex justify-between">
+                <span>hardwareConcurrency:</span>
+                <span className="font-mono">{deviceInfo.hardwareConcurrency || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>deviceMemory (GB, if exposed):</span>
+                <span className="font-mono">
+                  {deviceInfo.deviceMemoryGbApprox != null ? deviceInfo.deviceMemoryGbApprox : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Recommended variant (sync snapshot):</span>
+                <span className="text-blue-600 dark:text-blue-400">{deviceInfo.recommendedModel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Capacity tier (if premium):</span>
+                <span>{deviceInfo.hardwareTierIfPremium}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Premium larger variants:</span>
+                <span>{deviceInfo.localLlmPremium ? 'enabled' : 'off'}</span>
+              </div>
+              <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-1">
+                <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  UA sniff hints (UX / debug only — brittle)
+                </div>
+                <div className="flex justify-between">
+                  <span>Mobile form factor (UA):</span>
+                  <span className="font-mono">
+                    {deviceInfo.uaSniffHintsForUx.mobileFormFactorLikely ? 'likely' : 'unlikely'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>iOS 16.4+ era (UA):</span>
+                  <span className="font-mono">
+                    {deviceInfo.uaSniffHintsForUx.newerIphoneOrIpodIosUaMatch ? 'match' : 'no'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Samsung/Pixel A12+ (UA):</span>
+                  <span className="font-mono">
+                    {deviceInfo.uaSniffHintsForUx.newerSamsungOrPixelAndroidUaMatch ? 'match' : 'no'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -360,7 +405,7 @@ The platform is designed with privacy and security as top priorities.`,
           {/* Model Selection */}
           <div className="mt-4 pt-4 border-t">
             <Label htmlFor="model-select" className="text-sm font-medium mb-2 block">
-              Select Model
+              Select variant (QA)
             </Label>
             <Select
               value={selectedModel}
@@ -372,58 +417,64 @@ The platform is designed with privacy and security as top priorities.`,
                   clearEngine();
                   updateCapabilities();
                   toast({
-                    title: 'Model Changed',
-                    description: 'Engine cleared. Click "Initialize Engine" to load the new model.',
+                    title: 'Variant changed',
+                    description: 'Engine cleared. Click "Initialize Engine" to load the new variant.',
                   });
                 }
               }}
               disabled={isInitializing}
             >
               <SelectTrigger id="model-select" className="w-full">
-                <SelectValue placeholder="Select a model" />
+                <SelectValue placeholder="Select a variant" />
               </SelectTrigger>
               <SelectContent className="max-h-[320px] overflow-y-auto">
                 {availablePreferredModels.length > 0 ? (
                   <>
                     <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                      Available Preferred Models
+                      Preferred variants
                     </div>
                     {availablePreferredModels.map((model) => (
                       <SelectItem key={model} value={model}>
-                        {getModelDisplayName(model)} ✓
+                        {getLocalAiTierLabelForModelId(model)} ✓
                       </SelectItem>
                     ))}
                     {availablePreferredModels.length < preferredModels.length && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 mt-2">
-                          Other Available Models
+                          Other catalog entries
                         </div>
                         {availableModels
-                          .filter(m => !preferredModels.includes(m))
+                          .filter(
+                            (m) =>
+                              !preferredModels.includes(m) && !isLocalModelHiddenFromUi(m)
+                          )
                           .map((model) => (
                             <SelectItem key={model} value={model}>
-                              {model}
+                              {getLocalAiTierLabelForModelId(model)}
                             </SelectItem>
                           ))}
                       </>
                     )}
                   </>
                 ) : (
-                  availableModels.slice(0, 20).map((model) => (
+                  availableModels
+                    .filter((m) => !isLocalModelHiddenFromUi(m))
+                    .slice(0, 20)
+                    .map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
+                      {getLocalAiTierLabelForModelId(model)}
                     </SelectItem>
                   ))
                 )}
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {capabilities.clientSideLoaded 
-                ? `Currently loaded: ${getModelDisplayName(capabilities.modelInfo?.name || '')}`
-                : `Select a model and click "Initialize Engine" to download. ${availableModels.length} models available.`}
+              {capabilities.clientSideLoaded
+                ? `Currently loaded: ${getLocalAiTierLabelForModelId(capabilities.modelInfo?.name || selectedModel)}`
+                : `Pick a variant and click "Initialize Engine" to download. ${availableModels.length} entries in catalog.`}
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-              ✓ All WebLLM models available ({availableModels.length} total). Gemma models use self-hosted R2.
+              ✓ {availableModels.length} on-device variants in this build.
             </p>
           </div>
 
@@ -511,6 +562,13 @@ The platform is designed with privacy and security as top priorities.`,
               >
                 Load Sample (Ask)
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setInputText(sampleTexts.simplify)}
+              >
+                Load Sample (Simplify)
+              </Button>
             </div>
           </div>
 
@@ -596,6 +654,24 @@ The platform is designed with privacy and security as top priorities.`,
                 </>
               )}
             </Button>
+
+            <Button
+              onClick={() => handleTest('simplify')}
+              disabled={isProcessing || !inputText.trim()}
+              variant="default"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Simplify
+                </>
+              )}
+            </Button>
           </div>
 
           {outputText && (
@@ -626,13 +702,13 @@ The platform is designed with privacy and security as top priorities.`,
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <ol className="list-decimal list-inside space-y-1">
-            <li>Check "System Capabilities" to verify WebLLM support</li>
-            <li>Click "Initialize Engine" to load the model (first time downloads ~300MB)</li>
+            <li>Check "System Capabilities" to verify on-device AI support</li>
+            <li>Click "Initialize Engine" to load the assistant (first run may download hundreds of MB)</li>
             <li>Enter text or use sample text buttons</li>
             <li>Click "Improve", "Summarize", or "Privacy Check" to test</li>
             <li>Check browser console for detailed logs</li>
             <li>Check Network tab - no requests should appear for client-side processing</li>
-            <li>Check IndexedDB in DevTools to see cached model</li>
+            <li>Check IndexedDB in DevTools to inspect cached weights</li>
           </ol>
         </CardContent>
       </Card>

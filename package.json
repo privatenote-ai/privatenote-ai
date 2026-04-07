@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:client": "vite",
+    "dev:client:http": "VITE_DEV_HTTP=1 vite",
     "dev:workers": "wrangler dev",
     "dev:pages": "npm run build && node scripts/serve-pages.js",
     "build": "vite build",
@@ -15,6 +16,7 @@
     "build:workers": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "check": "tsc",
+    "test:unit": "tsx --test client/src/utils/meetingRequestStructuredHint.test.ts client/src/utils/templateStructuredHint.test.ts client/src/components/note/promptTemplates.test.ts shared/analyticsMetrics.test.ts shared/kdfParamsV2.test.ts shared/noteExpiry.test.ts shared/noteAad.test.ts shared/noteCryptoWire.test.ts shared/noteId.test.ts shared/urlFragmentKey.test.ts shared/noteMetaEligibility.test.ts shared/storedNotePayload.test.ts src/durable_objects/secure_note_storage.test.ts src/trustedOrigins.test.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -56,7 +58,6 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "argon2": "^0.41.1",
     "argon2-browser": "^1.18.0",
-    "bs58": "^6.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -85,6 +86,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.71",
     "@cloudflare/workers-types": "^4.20241106.0",
     "@replit/vite-plugin-cartographer": "^0.0.11",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
@@ -93,6 +95,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.18.1",
@@ -103,6 +106,7 @@
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
     "vite": "^7.3.1",
+    "vitest": "^3.2.4",
     "wrangler": "^4.58.0"
   },
   "optionalDependencies": {

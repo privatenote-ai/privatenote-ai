@@ -23,7 +23,7 @@ export const SecurityRecommendations: React.FC<SecurityRecommendationProps> = ({
     return <CompactRecommendations context={context} />;
   }
   
-  return <FullRecommendations context={context} />;
+  return <FullRecommendations />;
 };
 
 const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'context'>> = ({ context }) => {
@@ -41,6 +41,7 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
             <li>Store this link somewhere secure</li>
             <li>Don't send it over unsecured channels</li>
             <li>The note will expire in 24 hours for your security</li>
+            <li>For sensitive notes, enable password protection and share it separately</li>
             <li>Consider using <Link href="/password-generator" className="text-primary hover:underline">our password generator</Link> for secure passwords</li>
           </ul>
         </>
@@ -104,7 +105,7 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
   );
 };
 
-const FullRecommendations: React.FC<Pick<SecurityRecommendationProps, 'context'>> = ({ context }) => {
+const FullRecommendations: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <Card>

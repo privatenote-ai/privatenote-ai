@@ -1,3 +1,5 @@
+import type { DurableObjectPutOptions } from "@cloudflare/workers-types";
+
 const INTERNAL_HEADER = "X-DO-Internal-Secret";
 
 export class AuthTokenStore {
@@ -35,7 +37,10 @@ export class AuthTokenStore {
         return new Response("Missing key", { status: 400 });
       }
       const ttl = typeof ttlSeconds === "number" && ttlSeconds > 0 ? Math.min(ttlSeconds, 86400) : 900;
-      await this.state.storage.put(key, value, { expirationTtl: ttl });
+      // TTL for token entries; runtime supports `expirationTtl` even when stripped from some .d.ts surfaces.
+      await this.state.storage.put(key, value, {
+        expirationTtl: ttl,
+      } as DurableObjectPutOptions);
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
       });

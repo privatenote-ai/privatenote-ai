@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, Tag, User } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
+import { parseBlogPostTags } from '@/utils/blogPostTags';
+import { escapeHtml } from '@shared/escapeHtml';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
@@ -87,6 +89,7 @@ export default function BlogPostPage() {
   const formattedDate = post.publishedAt
     ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
     : '';
+  const tagList = parseBlogPostTags(post.tags);
 
   return (
     <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16 mb-20">
@@ -105,9 +108,9 @@ export default function BlogPostPage() {
             </div>
           </div>
 
-          {post.tags && post.tags.length > 0 && (
+          {tagList.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
-              {post.tags.map((tag, i) => (
+              {tagList.map((tag, i) => (
                 <Badge key={i} variant="outline">
                   {tag}
                 </Badge>
@@ -135,13 +138,13 @@ export default function BlogPostPage() {
   );
 }
 
-// Helper function to format the post content
-// This converts line breaks to HTML and could be expanded with Markdown support
+// Plain text → paragraphs; escape so stored content cannot break out into HTML/JS.
 function formatPostContent(content: string): string {
-  // Simple conversion of line breaks to <p> tags
-  // In a real app, you'd likely use a Markdown parser here
   return content
     .split('\n\n')
-    .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
+    .map((paragraph) => {
+      const escaped = paragraph.split('\n').map(escapeHtml).join('<br>');
+      return `<p>${escaped}</p>`;
+    })
     .join('');
 }

@@ -1,19 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import { useRoute } from 'wouter';
 import { NoteDisplay } from '@/components/note/NoteDisplay';
+import { isLikelyTruncatedNoteUrlFragmentKey } from '@shared/urlFragmentKey';
+
+interface RevealBranding {
+  logoUrl?: string;
+  sharerName?: string;
+  companyName?: string;
+  accentColor?: string;
+}
+
+type NoteLinkCapture = { encryptionKey: string | null; linkKeyMissing: boolean };
+
+/** Per-note id: snapshot fragment on first read so React Strict Mode remounts still see the original hash after replaceState clears it. */
+const noteLinkCaptureByNoteId = new Map<string, NoteLinkCapture>();
+
+function snapshotNoteLink(noteId: string): NoteLinkCapture {
+  let snap = noteLinkCaptureByNoteId.get(noteId);
+  if (!snap) {
+    const raw = window.location.hash;
+    const hadFragment = raw.length > 1;
+    snap = {
+      encryptionKey: hadFragment ? raw.slice(1) : null,
+      linkKeyMissing: !hadFragment,
+    };
+    noteLinkCaptureByNoteId.set(noteId, snap);
+  }
+  return snap;
+}
 
 const ViewNote: React.FC = () => {
   const [match, params] = useRoute('/note/:id');
-  const [key, setKey] = useState<string | null>(null);
-  
+  const [revealBranding, setRevealBranding] = useState<RevealBranding | undefined>(undefined);
+
+  const { encryptionKey, linkKeyMissing } =
+    match && params.id ? snapshotNoteLink(params.id) : { encryptionKey: null, linkKeyMissing: true };
+
+  const linkKeyTruncated =
+    encryptionKey != null &&
+    encryptionKey.length > 0 &&
+    !linkKeyMissing &&
+    isLikelyTruncatedNoteUrlFragmentKey(encryptionKey);
+
   useEffect(() => {
-    // Get key from URL fragment
-    const hash = window.location.hash.substring(1); // Remove the # character
-    if (hash) {
-      setKey(hash);
-      
-      // Remove the key from the URL for security
+    if (!match || !params?.id) return;
+    if (encryptionKey) {
       history.replaceState(null, '', window.location.pathname);
+    }
+  }, [match, params?.id, encryptionKey]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const logoUrl = query.get('logo')?.trim() || undefined;
+    const sharerName = query.get('sender')?.trim() || undefined;
+    const companyName = query.get('company')?.trim() || undefined;
+    const accentColor = query.get('accent')?.trim() || undefined;
+
+    if (logoUrl || sharerName || companyName || accentColor) {
+      setRevealBranding({ logoUrl, sharerName, companyName, accentColor });
     }
   }, []);
   
@@ -31,8 +75,14 @@ const ViewNote: React.FC = () => {
   }
   
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <NoteDisplay id={params.id} encryptionKey={key} />
+    <div className="container mx-auto px-4 py-12 max-w-5xl">
+      <NoteDisplay
+        id={params.id}
+        encryptionKey={encryptionKey}
+        linkKeyMissing={linkKeyMissing}
+        linkKeyTruncated={linkKeyTruncated}
+        revealBranding={revealBranding}
+      />
     </div>
   );
 };

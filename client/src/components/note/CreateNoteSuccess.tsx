@@ -1,0 +1,365 @@
+import React from "react";
+import type { RefObject } from "react";
+import { Link } from "wouter";
+import { QRCode } from "@/components/ui/qr-code";
+import {
+  noteExpiryPresetDisplayLabel,
+  type NoteExpiryPresetId,
+} from "@shared/noteExpiry";
+import {
+  Share2,
+  CircleHelp,
+  QrCode,
+  Check,
+  Copy,
+  RefreshCw,
+  FileText,
+  X,
+} from "lucide-react";
+
+export type CreatedNoteMeta = {
+  expiryValue: NoteExpiryPresetId;
+  readCount: number;
+  isPasswordProtected: boolean;
+};
+
+export type CreatedNoteState = {
+  url: string;
+  /** Present in normal flow; optional so a defensive UI can recover if state is ever partial. */
+  meta?: CreatedNoteMeta;
+};
+
+export type CreateNoteSuccessProps = {
+  createdNote: CreatedNoteState;
+  showSuccessQr: boolean;
+  setShowSuccessQr: (v: boolean | ((prev: boolean) => boolean)) => void;
+  showSuccessHelp: boolean;
+  setShowSuccessHelp: (v: boolean | ((prev: boolean) => boolean)) => void;
+  showQrHelp: boolean;
+  setShowQrHelp: (v: boolean | ((prev: boolean) => boolean)) => void;
+  selectedDoDont: "do" | "dont" | null;
+  setSelectedDoDont: (v: "do" | "dont" | null | ((prev: "do" | "dont" | null) => "do" | "dont" | null)) => void;
+  successLinkCopied: boolean;
+  onCopyLink: () => Promise<void>;
+  onShareLink: () => Promise<void>;
+  onShareQrCode: () => Promise<void>;
+  onDownloadQrCode: () => Promise<void>;
+  onCreateNewNote: () => void;
+  successQrSectionRef: RefObject<HTMLDivElement>;
+};
+
+export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
+  createdNote,
+  showSuccessQr,
+  setShowSuccessQr,
+  showSuccessHelp,
+  setShowSuccessHelp,
+  showQrHelp,
+  setShowQrHelp,
+  selectedDoDont,
+  setSelectedDoDont,
+  successLinkCopied,
+  onCopyLink,
+  onShareLink,
+  onShareQrCode,
+  onDownloadQrCode,
+  onCreateNewNote,
+  successQrSectionRef,
+}) => {
+  const createdNoteMeta = createdNote.meta;
+  if (!createdNoteMeta) {
+    return (
+      <section
+        className="max-w-3xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
+        aria-live="polite"
+      >
+        Preparing secure note…
+      </section>
+    );
+  }
+
+  const successUrl = createdNote.url;
+  const {
+    expiryValue: createdExpiryValue,
+    readCount: createdReadCount,
+    isPasswordProtected: createdPasswordProtected,
+  } = createdNoteMeta;
+
+  return (
+    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
+      <div className="space-y-6 sm:space-y-7">
+        <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+          <div className="text-center">
+            <h1 className="page-title text-gray-900 dark:text-white">
+              Your secure note is <span className="text-primary italic">ready</span>
+            </h1>
+            <div className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl space-y-1 md:space-y-2">
+              <p className="m-0">Your disappearing private note is encrypted in your browser.</p>
+              <p className="m-0">Only someone with this link can read it.</p>
+            </div>
+          </div>
+        </section>
+
+        <div className="mb-12 py-4 sm:py-6 px-4 sm:px-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="p-0 sm:p-0 break-words">
+              <div className="flex flex-col space-y-5 sm:space-y-6">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => void onShareLink()}
+                    type="button"
+                    className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                    title="Share link"
+                  >
+                    <Share2 className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuccessHelp((open) => !open)}
+                    aria-expanded={showSuccessHelp}
+                    aria-label="Show security tips"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                  >
+                    <CircleHelp className="h-5 w-5 text-primary" />
+                  </button>
+                </div>
+
+                {showSuccessHelp && (
+                  <div
+                    className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/35 px-4 py-3.5 sm:px-5 sm:py-4 text-sm leading-snug text-blue-900 dark:text-blue-100"
+                    role="note"
+                  >
+                    <div className="space-y-2">
+                      <p className="m-0">Anyone with this link can read your note.</p>
+                      <p className="m-0">This link cannot be recovered if lost.</p>
+                      <p className="m-0">
+                        The note will be deleted after{" "}
+                        {createdReadCount === 1 ? "1 read" : `${createdReadCount} reads`} or{" "}
+                        {noteExpiryPresetDisplayLabel(createdExpiryValue)}.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="overflow-hidden rounded-lg border-2 border-primary">
+                  <div className="bg-primary px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-white">
+                    Secure link
+                  </div>
+                  <div className="flex items-center bg-white dark:bg-gray-900 p-3 transition-transform active:scale-[1.02]">
+                    <input
+                      type="text"
+                      readOnly
+                      value={successUrl}
+                      className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
+                      aria-label="Encrypted note link"
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8 sm:mt-10 pt-2 pb-5">
+                  <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-2 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowSuccessQr((open) => !open)}
+                      aria-expanded={showSuccessQr}
+                      aria-label={showSuccessQr ? "Hide QR Code" : "Share via QR Code"}
+                      className="inline-flex shrink-0 items-center justify-center whitespace-nowrap py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                    >
+                      <QrCode className="h-4 w-4 mr-1.5 shrink-0 text-primary" aria-hidden />
+                      Share via QR Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onCopyLink()}
+                      className={`inline-flex w-full items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                        successLinkCopied
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                          : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                      }`}
+                      title="Copy link to clipboard"
+                      aria-live="polite"
+                    >
+                      {successLinkCopied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-1.5 shrink-0" />
+                          Link copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-1.5 shrink-0" />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCreateNewNote}
+                      className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                      Create Another Note
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-5 sm:pt-6 w-full flex flex-col items-center">
+                  {showSuccessQr && (
+                    <div
+                      ref={successQrSectionRef}
+                      className="mt-10 mx-auto flex w-full max-w-xs flex-col items-center gap-4"
+                    >
+                      <div className="w-full flex items-center justify-between">
+                        <button
+                          onClick={() => void onShareQrCode()}
+                          type="button"
+                          className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                          title="Share QR image when supported, otherwise share link"
+                        >
+                          <Share2 className="h-4 w-4 mr-1.5 shrink-0 text-primary" />
+                          Share
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowQrHelp((open) => !open)}
+                          aria-expanded={showQrHelp}
+                          aria-label="Show QR code tips"
+                          className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                        >
+                          <CircleHelp className="h-5 w-5 text-primary" />
+                        </button>
+                      </div>
+                      {showQrHelp && (
+                        <div className="w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/35 px-3 py-3 text-sm leading-snug text-blue-900 dark:text-blue-100">
+                          <ul className="list-disc pl-4 space-y-1.5">
+                            <li>Scan to open on mobile.</li>
+                            <li>Anyone with this code can view the note.</li>
+                            <li>This code cannot be recovered if lost.</li>
+                          </ul>
+                        </div>
+                      )}
+                      <div className="w-full overflow-hidden rounded-lg border-2 border-primary/70 dark:border-primary/70">
+                        <div className="bg-primary/70 px-3 py-1.5">
+                          <div className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-white text-center leading-tight">
+                            QR Code
+                          </div>
+                        </div>
+                        <div
+                          className="flex justify-center bg-white dark:bg-gray-950 p-3 sm:p-4"
+                          id="note-qr-code"
+                        >
+                          <QRCode value={successUrl} size={200} />
+                        </div>
+                      </div>
+                      <div className="flex w-full items-center justify-center">
+                        <button
+                          onClick={() => void onDownloadQrCode()}
+                          type="button"
+                          className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary/70 text-white rounded-md transition-colors hover:bg-primary/80 shadow-sm"
+                          title="Download QR code as SVG image"
+                        >
+                          <FileText className="h-4 w-4 mr-1.5 shrink-0" />
+                          Download QR Code
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {createdPasswordProtected && (
+          <div className="my-8 sm:my-10 mx-4 sm:mx-0 rounded-lg p-4 text-sm border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+            <p>
+              <strong>Password protection enabled.</strong> This note requires both the link and
+              your password to decrypt.
+            </p>
+            <p className="mt-1">
+              For best security, send the password separately from the link.
+            </p>
+          </div>
+        )}
+
+        <section className="relative mt-24 sm:mt-28 mb-6 sm:mb-8 w-full px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-5 md:grid-cols-2 md:gap-5 xl:gap-6">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-pressed={selectedDoDont === "do"}
+              onClick={() => setSelectedDoDont((s) => (s === "do" ? null : "do"))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedDoDont((s) => (s === "do" ? null : "do"));
+                }
+              }}
+              className={`rounded-xl border bg-white dark:bg-gray-900 p-5 sm:p-6 cursor-pointer select-none transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950 border-emerald-200/80 dark:border-emerald-800/35 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+                selectedDoDont === "do"
+                  ? "-translate-y-0.5 scale-[1.02] shadow-md ring-1 ring-emerald-300/50 dark:ring-emerald-700/40"
+                  : ""
+              }`}
+            >
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2.5">
+                <Check
+                  className="h-5 w-5 shrink-0 text-emerald-600/75 dark:text-emerald-500/65"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                Do&apos;s
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside marker:text-emerald-600/45 dark:marker:text-emerald-500/40">
+                <li>Store this link somewhere secure</li>
+                <li>Use password protection for sensitive notes</li>
+                <li>
+                  Use{" "}
+                  <Link
+                    href="/password-generator"
+                    className="text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    our password generator
+                  </Link>{" "}
+                  for strong passwords
+                </li>
+              </ul>
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-pressed={selectedDoDont === "dont"}
+              onClick={() => setSelectedDoDont((s) => (s === "dont" ? null : "dont"))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedDoDont((s) => (s === "dont" ? null : "dont"));
+                }
+              }}
+              className={`rounded-xl border bg-white dark:bg-gray-900 p-5 sm:p-6 cursor-pointer select-none transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950 border-rose-200/80 dark:border-rose-800/35 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+                selectedDoDont === "dont"
+                  ? "-translate-y-0.5 scale-[1.02] shadow-md ring-1 ring-rose-300/50 dark:ring-rose-700/40"
+                  : ""
+              }`}
+            >
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2.5">
+                <X
+                  className="h-5 w-5 shrink-0 text-rose-600/75 dark:text-rose-500/65"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                Don&apos;ts
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside marker:text-rose-600/45 dark:marker:text-rose-500/40">
+                <li>Share over unsecured channels</li>
+                <li>Assume links are recoverable if lost</li>
+                <li>Delay sharing before the expiry window</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+};

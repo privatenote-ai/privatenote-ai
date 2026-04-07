@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Shield, ShieldCheck, Lock, Eye, Key, BookOpen, ArrowRight, FileText, Download } from 'lucide-react';
+import { Shield, Lock, Eye, Key, BookOpen, ArrowRight, FileText, Download } from 'lucide-react';
 
 // Category card for privacy tools and resources
 interface PrivacyCategory {

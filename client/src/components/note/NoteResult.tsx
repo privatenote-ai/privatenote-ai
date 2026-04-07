@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'wouter';
-import { Shield, Copy, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Copy } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { useToast } from '@/hooks/use-toast';
 

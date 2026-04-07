@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail, Key } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { Logo } from '@/components/Logo';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -68,7 +69,6 @@ export const Navbar: React.FC = () => {
     setIsProfileOpen(false);
   }, [location]);
 
-  const isActive = (href: string) => location === href;
   const isAuthRoute = location.startsWith('/auth');
 
   const initials = React.useMemo(() => {
@@ -80,18 +80,19 @@ export const Navbar: React.FC = () => {
   }, [user?.email]);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-blue-100/80 dark:border-gray-800/80 shadow-[0_1px_6px_rgba(15,23,42,0.05)]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <NavLink
             href="/"
             closeMenu={closeMenu}
-            className="flex items-center cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer"
           >
+            <Logo size={30} className="shrink-0" />
             <span className="font-bold text-2xl text-primary">
               privateNote
-              <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
+              <span className="text-xs text-primary align-super ml-0.5">.ai</span>
             </span>
           </NavLink>
 

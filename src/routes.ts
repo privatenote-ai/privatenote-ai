@@ -1,6 +1,9 @@
 import { CompositeStorage } from "./storage";
 import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
+import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import { isValidNoteId } from "@shared/noteId";
+import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 import {
@@ -11,29 +14,64 @@ import {
 } from "@simplewebauthn/server";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/types";
 import * as OTPAuth from "otpauth";
+import {
+  DEFAULT_CORS_ORIGIN,
+  getAllowedOriginFromRequest,
+  getSessionCookieKindForRequest,
+  isTrustedBrowserOrigin,
+  isWebAuthnRpAllowedOrigin,
+  normalizeOrigin,
+  PAGES_PRODUCTION_WEB_HOSTS,
+  type SessionCookieKind,
+  SESSION_COOKIE_PREVIEW_NAME,
+  SESSION_COOKIE_PROD_NAME,
+  sessionCookieNameForKind,
+} from "./trustedOrigins";
+import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://privatenote-ai.pages.dev',
-  'https://client-llm.privatenote-ai.pages.dev',
-  'https://privatenote.ai',
-  'http://localhost:5000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5000',
-  'http://127.0.0.1:5173',
-];
+const getAllowedOrigin = getAllowedOriginFromRequest;
 
-// Rate limiting configuration
-const RATE_LIMIT = {
-  MAX_REQUESTS: 10, // requests per window
-  WINDOW_SECONDS: 60, // 1 minute window
-  KEY_PREFIX: 'rate_limit:',
+/** Generic passkey failure copy (does not reveal whether a credential is registered). */
+const PASSKEY_CLIENT_SAFE_MESSAGE =
+  "Sign-in could not be completed. Try again or use a different sign-in method.";
+
+/** Global cap on POSTs across /api/*. Stricter per-route limits below. */
+const RATE_LIMIT_GLOBAL_POST = {
+  MAX_REQUESTS: 72,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:global:",
+};
+
+const RATE_LIMIT_RESERVE = {
+  MAX_REQUESTS: 36,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:reserve:",
+};
+
+const RATE_LIMIT_NOTE_CREATE = {
+  MAX_REQUESTS: 24,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:note:",
+};
+
+const RATE_LIMIT_REVEAL = {
+  MAX_REQUESTS: 12,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:reveal:",
 };
 
 const AI_VERIFICATION = {
   USES: 5,
   TTL_SECONDS: 10 * 60,
   KEY_PREFIX: "ai_verify:",
+};
+
+/** When set (KV), AI paths require a fresh Turnstile token until verification succeeds. */
+const TURNSTILE_CHALLENGE = {
+  KEY_PREFIX: "turnstile_challenge:",
+  TTL_SECONDS: 45 * 60,
+  AI_NOTE_WINDOW_SECONDS: 60 * 60,
+  AI_NOTE_COUNT_THRESHOLD: 8,
 };
 
 const NOTE_RESERVATION = {
@@ -50,6 +88,8 @@ const SESSION_POLICY = {
 const USER_STATUS_PENDING = "pending";
 const USER_STATUS_ACTIVE = "active";
 const STEP_UP_WINDOW_SECONDS = 5 * 60;
+// First passkey enrollment without an existing passkey: require a recent magic-link / recovery sign-in.
+const PASSKEY_FIRST_ENROLL_AUTH_WINDOW_SECONDS = 10 * 60;
 // Tighter step-up window for recovery code regeneration (reduces window if session is compromised)
 const RECOVERY_CODE_STEP_UP_WINDOW_SECONDS = 2 * 60;
 
@@ -89,36 +129,6 @@ const RECOVERY_CODE_PBKDF2_ITERATIONS = 100_000; // Cloudflare WebCrypto cap for
 // Session IP binding (optional - can be disabled for mobile users)
 const SESSION_IP_BINDING_ENABLED = true; // Set to false to disable IP binding
 
-// Get allowed origin for CORS
-function normalizeOrigin(origin: string): string {
-  return origin.replace(/\/$/, '');
-}
-
-function getAllowedOrigin(request: Request): string | null {
-  const origin = request.headers.get('Origin');
-  if (!origin) return null;
-
-  const normalized = normalizeOrigin(origin);
-  const normalizedAllowed = ALLOWED_ORIGINS.map(normalizeOrigin);
-
-  // Check if origin is in allowed list
-  if (normalizedAllowed.includes(normalized)) {
-    return origin;
-  }
-
-  // For development, allow localhost variations
-  if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) {
-    return origin;
-  }
-
-  // Allow Pages preview and custom subdomains
-  if (normalized.endsWith('.pages.dev') || normalized.endsWith('.privatenote.ai')) {
-    return origin;
-  }
-
-  return null; // Origin not allowed
-}
-
 async function readJsonBody(request: Request): Promise<any> {
   const text = await request.text();
   if (!text) {
@@ -131,36 +141,17 @@ async function readJsonBody(request: Request): Promise<any> {
   }
 }
 
-// Get Content Security Policy header
-function getCSPHeader(): string {
-  // Strict CSP to prevent XSS and code injection
-  // Note: 'unsafe-inline' for styles is needed for React/Vite, but we avoid it for scripts
-  return [
-    "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'", // Turnstile + Cloudflare Insights + WebAssembly for WebLLM
-    "style-src 'self' 'unsafe-inline'", // React inline styles
-    "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://api.openai.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com", // API + Pages previews + Web Analytics beacon + WebLLM
-    "img-src 'self' data: https:", // Images (data: for inline images, https: for external)
-    "frame-src https://challenges.cloudflare.com", // Turnstile iframe
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'", // Prevent clickjacking
-    "object-src 'none'", // Block plugins
-    "upgrade-insecure-requests", // Upgrade HTTP to HTTPS
-  ].join("; ");
-}
-
 // Get CORS headers
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
 
   const headers: Record<string, string> = {
+    ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
     "Access-Control-Allow-Credentials": "true",
-    "Content-Security-Policy": getCSPHeader(),
+    "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
   };
 
@@ -172,19 +163,33 @@ function getCorsHeaders(request: Request): Record<string, string> {
   return headers;
 }
 
-function getMagicLinkOrigin(request: Request): string {
+/**
+ * Canonical first-party origin for links emailed to users (magic sign-in, email change, etc.).
+ * Prefer the browser `Origin` when trusted; never use the Worker `request.url` host (could be the API host).
+ * Otherwise `env.PUBLIC_WEB_APP_ORIGIN` if trusted, else {@link DEFAULT_CORS_ORIGIN} from the allowlist.
+ */
+function getMagicLinkOrigin(env: Env, request: Request): string {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
-  return allowedOrigin ?? new URL(request.url).origin;
+  if (allowedOrigin) return normalizeOrigin(allowedOrigin);
+
+  const configured = typeof env.PUBLIC_WEB_APP_ORIGIN === "string" ? env.PUBLIC_WEB_APP_ORIGIN.trim() : "";
+  if (configured) {
+    if (!isTrustedBrowserOrigin(configured)) {
+      console.warn(
+        `[AUTH] PUBLIC_WEB_APP_ORIGIN is not in the trusted browser allowlist (${configured}); using DEFAULT_CORS_ORIGIN for emailed links.`,
+      );
+    } else {
+      return normalizeOrigin(configured);
+    }
+  }
+
+  return DEFAULT_CORS_ORIGIN;
 }
 
 function normalizeEmail(email: string | null | undefined): string | null {
   const normalized = email?.trim().toLowerCase() || null;
   return normalized && normalized.length ? normalized : null;
-}
-
-function isValidEmailLoose(email: string): boolean {
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 
 async function jitterDelay(minMs = 350, maxMs = 900): Promise<void> {
@@ -198,6 +203,118 @@ function getRequestIp(request: Request): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
   if (!forwarded) return null;
   return forwarded.split(",")[0]?.trim() || null;
+}
+
+/** Soft network binding for magic links: /24 for IPv4, first 3 IPv6 hextets for IPv6 (best-effort). */
+function softIpPrefix(ip: string): string {
+  const trimmed = ip.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.includes(".")) {
+    const parts = trimmed.split(".");
+    if (parts.length === 4 && parts.every((p) => p.length > 0)) {
+      return `${parts[0]}.${parts[1]}.${parts[2]}`;
+    }
+    return trimmed;
+  }
+  const segments = trimmed.toLowerCase().split(":").filter(Boolean);
+  if (segments.length === 0) return trimmed;
+  return segments.slice(0, 3).join(":");
+}
+
+/**
+ * Stored when issuing a magic link; compared on prepare/consume for risk scoring only.
+ * IP prefix and UA hash are weak signals — not authentication; see evaluateMagicLinkContextPolicy.
+ */
+async function magicLinkSoftContext(request: Request): Promise<{ ipPrefix: string | null; uaHash: string | null }> {
+  const ip = getRequestIp(request);
+  const ua = request.headers.get("User-Agent")?.trim() || "";
+  const ipPrefix = ip ? softIpPrefix(ip) : null;
+  const uaNorm = ua.slice(0, 512);
+  const uaHash = uaNorm ? await sha256Base64Url(uaNorm) : null;
+  return { ipPrefix, uaHash };
+}
+
+async function magicLinkContextDriftFlags(
+  payload: Record<string, unknown>,
+  request: Request,
+): Promise<{ ipDrift: boolean; uaDrift: boolean; hasBinding: boolean }> {
+  const storedIp = typeof payload.magicIpPrefix === "string" ? payload.magicIpPrefix : null;
+  const storedUa = typeof payload.magicUaHash === "string" ? payload.magicUaHash : null;
+  const hasBinding = Boolean(storedIp || storedUa);
+  const now = await magicLinkSoftContext(request);
+  const ipDrift = Boolean(storedIp && now.ipPrefix && storedIp !== now.ipPrefix);
+  const uaDrift = Boolean(storedUa && now.uaHash && storedUa !== now.uaHash);
+  return { ipDrift, uaDrift, hasBinding };
+}
+
+type MagicContextRiskLevel = "low" | "medium" | "high";
+
+type MagicContextPolicyResult = {
+  risk: MagicContextRiskLevel;
+  ipDrift: boolean;
+  uaDrift: boolean;
+  automationLikely: boolean;
+};
+
+/** Obvious non-browser / automation User-Agents — policy input only; paired with drift signals in evaluateMagicLinkContextPolicy. */
+function isLikelyAutomatedUserAgent(ua: string | null): boolean {
+  if (!ua || ua.trim().length < 10) return true;
+  const s = ua.toLowerCase();
+  const indicators = [
+    "curl/",
+    "wget/",
+    "python-requests",
+    "libcurl",
+    "go-http-client",
+    "axios/",
+    "scrapy",
+    "phantomjs",
+    "headlesschrome",
+    "selenium",
+    "webdriver",
+  ];
+  return indicators.some((x) => s.includes(x));
+}
+
+/**
+ * Single policy function for magic-link context: IP/UA drift and automation classify risk.
+ * All prepare/consume UX gates use this so behavior cannot drift across call sites.
+ */
+async function evaluateMagicLinkContextPolicy(
+  payload: Record<string, unknown>,
+  request: Request,
+): Promise<MagicContextPolicyResult> {
+  const { ipDrift, uaDrift, hasBinding } = await magicLinkContextDriftFlags(payload, request);
+  const automationLikely = isLikelyAutomatedUserAgent(request.headers.get("User-Agent"));
+
+  if (automationLikely) {
+    return { risk: "high", ipDrift, uaDrift, automationLikely: true };
+  }
+  if (hasBinding && ipDrift && uaDrift) {
+    return { risk: "high", ipDrift, uaDrift, automationLikely: false };
+  }
+  if (hasBinding && (ipDrift || uaDrift)) {
+    return { risk: "medium", ipDrift, uaDrift, automationLikely: false };
+  }
+  return { risk: "low", ipDrift, uaDrift, automationLikely: false };
+}
+
+async function logMagicLinkContextDriftIfAny(
+  env: Env,
+  request: Request,
+  payload: Record<string, unknown>,
+  userId: string,
+): Promise<void> {
+  const { ipDrift, uaDrift } = await magicLinkContextDriftFlags(payload, request);
+  if (!ipDrift && !uaDrift) return;
+  await logAuditEvent(env, {
+    userId,
+    eventType: "magic_link_context_mismatch",
+    status: "warning",
+    details: { ipSoftMismatch: ipDrift, uaSoftMismatch: uaDrift },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
 }
 
 function getRequestGeo(request: Request): { city: string | null; country: string | null } {
@@ -259,6 +376,41 @@ function getPasskeyLabel(transports: string[] | null): string {
   return "Passkey";
 }
 
+function generateMagicEmailOtpDigits(): string {
+  const buf = new Uint8Array(4);
+  crypto.getRandomValues(buf);
+  const n = new DataView(buf.buffer).getUint32(0, false) % 1_000_000;
+  return String(n).padStart(6, "0");
+}
+
+function normalizeMagicEmailCode(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "").slice(0, 6);
+  return digits.length === 6 ? digits : null;
+}
+
+async function sendMagicSignInOtpEmail(env: Env, to: string, code: string): Promise<{ ok: boolean; error?: string }> {
+  const subject = "Your PrivateNote sign-in code";
+  const text = [
+    "PrivateNote sign-in code",
+    "",
+    `Your confirmation code is: ${code}`,
+    "",
+    "Enter this code after opening your magic link and pressing Continue.",
+    "",
+    "If you did not request this, you can ignore this email.",
+  ].join("\n");
+  const html = [
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
+    "  <p style=\"margin: 0 0 12px; font-size: 18px; font-weight: 700;\">PrivateNote sign-in code</p>",
+    `  <p style=\"margin: 0 0 8px; color: #374151;\">Your confirmation code is:</p>`,
+    `  <p style=\"margin: 0 0 20px; font-size: 28px; letter-spacing: 0.2em; font-weight: 700; color: #111827;\">${code}</p>`,
+    "  <p style=\"margin: 0; color: #6B7280; font-size: 13px;\">Enter this code on the page after you press Continue sign in.</p>",
+    "</div>",
+  ].join("");
+  return sendEmail(env, { to, subject, text, html });
+}
+
 async function sendMagicLinkEmail(
   env: Env,
   to: string,
@@ -282,16 +434,21 @@ async function sendMagicLinkEmail(
   const text = [
     "Login to PrivateNote",
     "",
-    "Sign in with your magic link:",
+    "Open this link in your browser, then press \"Continue sign in\" on the page (the link alone does not sign you in):",
     magicUrl,
+    "",
+    "For security, finish sign-in in the same browser where you opened the link.",
     "",
     "If you did not request this, you can ignore this email.",
   ].join("\n");
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
     "  <div style=\"font-size: 20px; font-weight: 700; margin-bottom: 12px;\"><strong>Login to PrivateNote</strong></div>",
-    "  <p style=\"margin: 0 0 20px; color: #374151;\">Use your magic link to finish signing in.</p>",
-    "  <a href=\"" + magicUrl + "\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
+    "  <p style=\"margin: 0 0 12px; color: #374151;\">Open the link below in this browser, then press <strong>Continue sign in</strong>. Opening the link only prepares sign-in; a confirmation step completes it.</p>",
+    "  <p style=\"margin: 0 0 20px; color: #374151; font-size: 14px;\"><strong>For security:</strong> finish sign-in in the same browser where you opened the link.</p>",
+    "  <a href=\"" +
+      magicUrl +
+      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
     "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
     "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
     "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
@@ -391,20 +548,25 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     ...(request
       ? getCorsHeaders(request)
       : {
-        "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
+        ...SECURITY_HEADERS,
+        "Access-Control-Allow-Origin": DEFAULT_CORS_ORIGIN,
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+        "Content-Security-Policy": getApiContentSecurityPolicy(),
       }),
   };
+  if (request) {
+    headers["Referrer-Policy"] = "no-referrer";
+  }
 
-  // Issue a stable, non-auth client identifier cookie for rate limiting / abuse protection.
-  // This is only used when IP-based identification is unavailable or weak.
+  // First-party rate-limit cookie: combined with IP for abuse buckets (shared NAT). HttpOnly, not used for analytics.
   if (request) {
     const cookieHeader = request.headers.get("Cookie") || "";
     const hasClientCookie = /(?:^|;\s*)pn_client_id=([^;]+)/.test(cookieHeader);
     if (!hasClientCookie) {
       const clientId = randomId(16);
-      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure; HttpOnly`;
+      const maxAge = 30 * 24 * 60 * 60;
+      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure; HttpOnly`;
     }
   }
 
@@ -414,6 +576,104 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
   });
 }
 
+/** Rate limit bucket for TOTP checks on account takeover actions (aligned with magic-link TOTP verify). */
+const SENSITIVE_ACTION_TOTP_RL = {
+  MAX_ATTEMPTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX_EMAIL_CHANGE: "email_change_totp_rl:",
+  KEY_PREFIX_ACCOUNT_DELETE: "account_delete_totp_rl:",
+} as const;
+
+/**
+ * Passkey users: fresh WebAuthn step-up. Others: verified TOTP code, or enroll passkey/TOTP first.
+ * Returns a JSON Response to return to the client, or null when satisfied.
+ */
+async function gateSecondFactorForAccountTakeover(
+  env: Env,
+  request: Request,
+  session: {
+    id: string;
+    email: string | null;
+    lastStepUpAt: string | null;
+    sessionIdHash: string;
+  },
+  hasPasskeys: boolean,
+  verifiedTotpSecretRow: { encrypted_secret: string } | null,
+  totpCode: string | undefined,
+  rateLimitPrefix: string,
+  totpAuditPhase: string,
+): Promise<Response | null> {
+  if (hasPasskeys) {
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+    return null;
+  }
+
+  if (verifiedTotpSecretRow) {
+    if (!totpCode || typeof totpCode !== "string" || !/^\d{6}$/.test(totpCode.trim())) {
+      return jsonResponse(
+        {
+          message: "Two-step verification code required",
+          code: "second_factor_code_required",
+        },
+        400,
+        request,
+      );
+    }
+    if (!env.TOTP_ENCRYPTION_KEY) {
+      return jsonResponse({ message: "TOTP not configured" }, 501, request);
+    }
+
+    if (env.AUTH_KV) {
+      const rlKey = `${rateLimitPrefix}${session.sessionIdHash}`;
+      try {
+        const rlData = (await env.AUTH_KV.get(rlKey, "json")) as { count: number } | null;
+        if (rlData && rlData.count >= SENSITIVE_ACTION_TOTP_RL.MAX_ATTEMPTS) {
+          return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+        }
+        await env.AUTH_KV.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+          expirationTtl: SENSITIVE_ACTION_TOTP_RL.WINDOW_SECONDS,
+        });
+      } catch {
+        // non-fatal
+      }
+    }
+
+    const secret = await decryptTotpSecret(verifiedTotpSecretRow.encrypted_secret, env);
+    const accountName = session.email || session.id;
+    if (!verifyTotpCode(secret, totpCode.trim(), accountName)) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "totp_failed",
+        status: "failure",
+        details: { phase: totpAuditPhase },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "Invalid two-step code" }, 400, request);
+    }
+
+    if (env.AUTH_KV) {
+      try {
+        await env.AUTH_KV.delete(`${rateLimitPrefix}${session.sessionIdHash}`);
+      } catch {
+        /* ignore */
+      }
+    }
+    return null;
+  }
+
+  return jsonResponse(
+    {
+      message: "Add a passkey or enable 2-step verification before this action.",
+      code: "second_factor_enrollment_required",
+    },
+    403,
+    request,
+  );
+}
+
 const AUTH_CHALLENGE = {
   PREFIX: "auth_challenge:",
   TTL_SECONDS: 10 * 60,
@@ -421,13 +681,101 @@ const AUTH_CHALLENGE = {
 
 const AUTH_MAGIC_LINK = {
   PREFIX: "auth_magic:",
-  TTL_SECONDS: 15 * 60,
+  TTL_SECONDS: 10 * 60,
 };
+
+const AUTH_MAGIC_PREPARE = {
+  PREFIX: "auth_magic_prep:",
+  /** Single-use browser bind must be short-lived. */
+  TTL_SECONDS: 5 * 60,
+  TOKEN_INDEX_PREFIX: "auth_magic_prep_t:",
+  /** Per-prepare-nonce guesses for medium-risk email OTP; nonce is cleared after this many wrong codes. */
+  EMAIL_OTP_MAX_ATTEMPTS: 5,
+};
+
+const MAGIC_PREPARE_COOKIE = "pn_magic_prepare";
+
+function magicPrepareCookieHeader(nonce: string): string {
+  return `${MAGIC_PREPARE_COOKIE}=${nonce}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${AUTH_MAGIC_PREPARE.TTL_SECONDS}`;
+}
+
+function clearMagicPrepareCookieHeader(): string {
+  return `${MAGIC_PREPARE_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`;
+}
+
+/** CSRF / cross-origin hardening for magic prepare and consume (JSON POST only). */
+function assertTrustedJsonPost(request: Request): Response | null {
+  if (request.method !== "POST") {
+    return jsonResponse({ message: "Method not allowed" }, 405, request);
+  }
+  const ct = request.headers.get("Content-Type") || "";
+  if (!ct.toLowerCase().includes("application/json")) {
+    return jsonResponse({ message: "Content-Type must be application/json" }, 415, request);
+  }
+  const allowedOrigin = getAllowedOrigin(request);
+  if (!allowedOrigin) {
+    return jsonResponse(
+      { message: "Cross-site request rejected", code: "origin_required" },
+      403,
+      request,
+    );
+  }
+  const referer = request.headers.get("Referer");
+  if (referer) {
+    try {
+      const refOrigin = new URL(referer).origin;
+      if (!isTrustedBrowserOrigin(refOrigin)) {
+        return jsonResponse({ message: "Invalid Referer" }, 403, request);
+      }
+      if (normalizeOrigin(refOrigin) !== normalizeOrigin(allowedOrigin)) {
+        return jsonResponse(
+          { message: "Cross-site request rejected", code: "origin_referer_mismatch" },
+          403,
+          request,
+        );
+      }
+    } catch {
+      return jsonResponse({ message: "Invalid Referer" }, 403, request);
+    }
+  }
+  return null;
+}
 
 const AUTH_EMAIL_CHANGE = {
   PREFIX: "auth_email_change:",
   TTL_SECONDS: 60 * 60, // 1 hour for email change verification
 };
+
+type EmailChangeKvPayload = {
+  userId: string;
+  currentEmail: string;
+  newEmail: string;
+  createdAt: string;
+};
+
+function parseEmailChangeKvPayload(raw: string): { ok: true; payload: EmailChangeKvPayload } | { ok: false } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false };
+  }
+  if (!parsed || typeof parsed !== "object") return { ok: false };
+  const r = parsed as Record<string, unknown>;
+  if (typeof r.userId !== "string" || !r.userId.trim()) return { ok: false };
+  if (typeof r.currentEmail !== "string" || !r.currentEmail.trim()) return { ok: false };
+  if (typeof r.newEmail !== "string" || !r.newEmail.trim()) return { ok: false };
+  if (typeof r.createdAt !== "string" || !r.createdAt.trim()) return { ok: false };
+  return {
+    ok: true,
+    payload: {
+      userId: r.userId.trim(),
+      currentEmail: r.currentEmail.trim().toLowerCase(),
+      newEmail: r.newEmail.trim().toLowerCase(),
+      createdAt: r.createdAt.trim(),
+    },
+  };
+}
 
 function base64UrlEncode(bytes: Uint8Array): string {
   const binary = String.fromCharCode(...bytes);
@@ -461,7 +809,7 @@ function coerceWebAuthnIdToBase64Url(value: unknown, label: string, fallback?: s
         const maxIndex = numericEntries.reduce((max, [key]) => Math.max(max, key), -1);
         const bytes = new Uint8Array(maxIndex + 1);
         for (const [key, val] of numericEntries) {
-          bytes[key] = val;
+          bytes[key] = val as number;
         }
         return base64UrlEncode(bytes);
       }
@@ -526,18 +874,19 @@ const CANONICAL_RPID = "privatenote.ai";
 
 /**
  * Derive rpID only from an already-allowed Origin (never from the Worker URL host).
- * For *.pages.dev, use the request site's hostname — branch previews (e.g. abc123.privatenote-ai.pages.dev)
- * are siblings of client-llm.*; a single hardcoded rpID would break WebAuthn on preview URLs.
+ * Requires {@link isWebAuthnRpAllowedOrigin}: production Pages hosts use their full hostname as rpID;
+ * branch previews are not eligible (they remain API-trusted with a preview session cookie only).
  */
 function getExpectedRpIdFromOrigin(allowedOrigin: string | string[] | null): string | null {
   const originStr = allowedOrigin == null ? null : Array.isArray(allowedOrigin) ? allowedOrigin[0] : allowedOrigin;
   if (!originStr) return null;
+  if (!isWebAuthnRpAllowedOrigin(originStr)) return null;
   try {
     const hostname = new URL(originStr).hostname;
-    if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
       return hostname;
     }
-    if (hostname.endsWith(".pages.dev")) {
+    if (PAGES_PRODUCTION_WEB_HOSTS.has(hostname)) {
       return hostname;
     }
     if (hostname === CANONICAL_RPID || hostname.endsWith(`.${CANONICAL_RPID}`)) {
@@ -646,6 +995,16 @@ type AuditEventType =
   | "magic_link_email_failed"
   | "magic_link_used"
   | "magic_link_failed"
+  | "magic_link_context_mismatch"
+  | "magic_prepare_started"
+  | "magic_prepare_replaced"
+  | "magic_bind_confirmed"
+  | "magic_nonce_mismatch"
+  | "magic_context_medium_risk"
+  | "magic_context_high_risk"
+  | "magic_consume_success"
+  | "magic_consume_replay_blocked"
+  | "magic_email_otp_exhausted"
   | "rate_limit_exceeded"
   | "ip_mismatch"
   | "step_up_required"
@@ -723,17 +1082,37 @@ async function consumeAuthChallenge(env: Env, key: string): Promise<Record<strin
   }
 }
 
+function magicLinkHmacConfigured(env: Env): boolean {
+  return typeof env.AUTH_SECRET_KEY === "string" && env.AUTH_SECRET_KEY.length > 0;
+}
+
 /**
- * Generate HMAC signature for magic link token (optional integrity verification)
- * Uses HMAC-SHA256 with a secret key from environment
+ * Unsigned magic KV entries are allowed only in deliberate dev mode or when the Worker request targets localhost.
+ * Deployed hosts (pages, workers.dev, production domain) require AUTH_SECRET_KEY and HMAC on all new tokens.
+ */
+function isMagicLinkIntegrityRelaxed(env: Env, request?: Request): boolean {
+  const v = env.AUTH_ALLOW_UNSIGNED_MAGIC_LINK?.toLowerCase();
+  if (v === "1" || v === "true") return true;
+  if (request) {
+    try {
+      const host = new URL(request.url).hostname;
+      if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+/**
+ * HMAC-SHA256 over token + payload JSON. Returns null when AUTH_SECRET_KEY is unset (store/prepare must not use unsigned paths unless relaxed).
  */
 async function signMagicLinkToken(env: Env, token: string, payload: Record<string, unknown>): Promise<string | null> {
-  // Use AUTH_SECRET_KEY if available, otherwise fall back to token hash (backward compatible)
-  if (!env.AUTH_SECRET_KEY) {
-    return null; // No secret key configured, skip HMAC
+  if (!magicLinkHmacConfigured(env)) {
+    return null;
   }
   const message = `${token}:${JSON.stringify(payload)}`;
-  const keyData = new TextEncoder().encode(env.AUTH_SECRET_KEY);
+  const keyData = new TextEncoder().encode(env.AUTH_SECRET_KEY!);
   const messageData = new TextEncoder().encode(message);
 
   const cryptoKey = await crypto.subtle.importKey(
@@ -748,59 +1127,112 @@ async function signMagicLinkToken(env: Env, token: string, payload: Record<strin
   return base64UrlEncode(new Uint8Array(signature));
 }
 
-/**
- * Verify HMAC signature for magic link token
- */
 async function verifyMagicLinkToken(
   env: Env,
   token: string,
   payload: Record<string, unknown>,
   signature: string
 ): Promise<boolean> {
-  if (!env.AUTH_SECRET_KEY) {
-    return true; // No secret key configured, skip verification (backward compatible)
+  if (!magicLinkHmacConfigured(env)) {
+    return false;
   }
   const expectedSignature = await signMagicLinkToken(env, token, payload);
-  if (!expectedSignature) return true; // Backward compatible
+  if (!expectedSignature) return false;
   return constantTimeEquals(expectedSignature, signature);
 }
 
-async function storeMagicLink(env: Env, token: string, payload: Record<string, unknown>) {
+type StoreMagicLinkResult = { ok: true } | { ok: false; reason: "kv_unavailable" | "hmac_required" };
+
+async function storeMagicLink(
+  env: Env,
+  token: string,
+  payload: Record<string, unknown>,
+  request: Request,
+): Promise<StoreMagicLinkResult> {
   const kv = getAuthKv(env);
-  if (!kv) return false;
-  const tokenHash = await sha256Base64Url(token);
-
-  // Add HMAC signature if secret key is available
+  if (!kv) return { ok: false, reason: "kv_unavailable" };
+  const relaxed = isMagicLinkIntegrityRelaxed(env, request);
+  if (!relaxed && !magicLinkHmacConfigured(env)) {
+    console.error(
+      "[Auth] Magic links require AUTH_SECRET_KEY. Set the secret in production, or use wrangler dev against localhost / AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 for local-only testing.",
+    );
+    return { ok: false, reason: "hmac_required" };
+  }
   const signature = await signMagicLinkToken(env, token, payload);
+  if (!relaxed && !signature) {
+    return { ok: false, reason: "hmac_required" };
+  }
   const storedPayload = signature ? { ...payload, _hmac: signature } : payload;
-
+  const tokenHash = await sha256Base64Url(token);
   await kv.put(`${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`, JSON.stringify(storedPayload), {
     expirationTtl: AUTH_MAGIC_LINK.TTL_SECONDS,
   });
-  return true;
+  return { ok: true };
 }
 
-async function consumeMagicLink(env: Env, token: string): Promise<Record<string, unknown> | null> {
+/** Admin/deploy diagnostics: mirrors magic/send prerequisites without exposing secrets. */
+function getMagicLinkIssuanceDiagnostics(env: Env, request: Request): {
+  authDb: boolean;
+  authKv: boolean;
+  hmacConfigured: boolean;
+  integrityRelaxed: boolean;
+  storageReady: boolean;
+  emailReady: boolean;
+  endToEndReady: boolean;
+} {
+  const relaxed = isMagicLinkIntegrityRelaxed(env, request);
   const kv = getAuthKv(env);
-  if (!kv) return null;
-  const tokenHash = await sha256Base64Url(token);
-  const key = `${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`;
-  const value = await kv.get(key);
-  if (!value) return null;
-  await kv.delete(key);
+  const hmac = magicLinkHmacConfigured(env);
+  const storageReady = Boolean(env.AUTH_DB && kv && (relaxed || hmac));
+  let isLocal = false;
   try {
-    const payload = JSON.parse(value) as Record<string, unknown>;
+    const host = new URL(request.url).hostname;
+    isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+  } catch {
+    /* ignore */
+  }
+  const resendOk =
+    env.AUTH_EMAIL_PROVIDER?.toLowerCase() === "resend" &&
+    typeof env.RESEND_API_KEY === "string" &&
+    env.RESEND_API_KEY.length > 0 &&
+    typeof env.AUTH_EMAIL_FROM === "string" &&
+    env.AUTH_EMAIL_FROM.length > 0;
+  const emailReady = isLocal || resendOk;
+  return {
+    authDb: Boolean(env.AUTH_DB),
+    authKv: Boolean(kv),
+    hmacConfigured: hmac,
+    integrityRelaxed: relaxed,
+    storageReady,
+    emailReady,
+    endToEndReady: storageReady && emailReady,
+  };
+}
 
-    // Verify HMAC signature if present
+async function parseMagicLinkKvValue(
+  env: Env,
+  token: string,
+  raw: string,
+  request?: Request,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const payload = JSON.parse(raw) as Record<string, unknown>;
+    const relaxed = isMagicLinkIntegrityRelaxed(env, request);
+
     if (payload._hmac && typeof payload._hmac === "string") {
       const signature = payload._hmac as string;
       const { _hmac, ...payloadWithoutHmac } = payload;
       const isValid = await verifyMagicLinkToken(env, token, payloadWithoutHmac, signature);
       if (!isValid) {
         console.warn("[Auth] Magic link token HMAC verification failed");
-        return null; // Invalid signature
+        return null;
       }
       return payloadWithoutHmac;
+    }
+
+    if (!relaxed) {
+      console.warn("[Auth] Rejected unsigned magic link KV entry (HMAC required in non-relaxed environments).");
+      return null;
     }
 
     return payload;
@@ -809,8 +1241,486 @@ async function consumeMagicLink(env: Env, token: string): Promise<Record<string,
   }
 }
 
+async function peekMagicLink(env: Env, token: string, request?: Request): Promise<Record<string, unknown> | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const tokenHash = await sha256Base64Url(token);
+  const key = `${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`;
+  const value = await kv.get(key);
+  if (!value) return null;
+  return parseMagicLinkKvValue(env, token, value, request);
+}
+
+async function consumeMagicLink(
+  env: Env,
+  token: string,
+  request?: Request,
+): Promise<Record<string, unknown> | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const tokenHash = await sha256Base64Url(token);
+  const key = `${AUTH_MAGIC_LINK.PREFIX}${tokenHash}`;
+  const value = await kv.get(key);
+  if (!value) return null;
+  const parsed = await parseMagicLinkKvValue(env, token, value, request);
+  if (!parsed) return null;
+  await kv.delete(key);
+  return parsed;
+}
+
+type MagicPrepareKvRecord = {
+  tokenHash: string;
+  issuedAt: number;
+  /** Unix seconds; KV `expiration` is set to this so OTP retries do not extend TTL. Legacy records omit this. */
+  expiresAtSec?: number;
+  stage: "prepared";
+  risk: "low" | "medium";
+  otpHash?: string;
+  /** Remaining wrong-code attempts for medium-risk OTP gate; omitted for low risk. */
+  otpAttemptsRemaining?: number;
+};
+
+function magicPrepareExpiresAtSec(rec: MagicPrepareKvRecord): number {
+  if (typeof rec.expiresAtSec === "number" && Number.isFinite(rec.expiresAtSec)) {
+    return Math.floor(rec.expiresAtSec);
+  }
+  return Math.floor(rec.issuedAt / 1000) + AUTH_MAGIC_PREPARE.TTL_SECONDS;
+}
+
+async function persistMagicPrepareRecord(env: Env, nonceKey: string, record: MagicPrepareKvRecord): Promise<void> {
+  const kv = getAuthKv(env);
+  if (!kv) return;
+  const exp = magicPrepareExpiresAtSec(record);
+  await kv.put(nonceKey, JSON.stringify(record), { expiration: exp });
+}
+
+async function issueMagicPrepareNonce(
+  env: Env,
+  request: Request,
+  token: string,
+  record: Pick<MagicPrepareKvRecord, "risk" | "otpHash">,
+  userIdForAudit: string | null,
+): Promise<string | null> {
+  const kv = getAuthKv(env);
+  if (!kv) return null;
+  const tokenHash = await sha256Base64Url(token);
+  const indexKey = `${AUTH_MAGIC_PREPARE.TOKEN_INDEX_PREFIX}${tokenHash}`;
+  const oldNonceKey = await kv.get(indexKey);
+  if (oldNonceKey) {
+    await kv.delete(oldNonceKey);
+    await logAuditEvent(env, {
+      userId: userIdForAudit,
+      eventType: "magic_prepare_replaced",
+      status: "warning",
+      details: { reason: "new_prepare_for_same_token" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+  }
+
+  const nonce = randomId(32);
+  const nonceKey = `${AUTH_MAGIC_PREPARE.PREFIX}${await sha256Base64Url(nonce)}`;
+  const issuedAt = Date.now();
+  const expiresAtSec = Math.floor(issuedAt / 1000) + AUTH_MAGIC_PREPARE.TTL_SECONDS;
+  const full: MagicPrepareKvRecord = {
+    tokenHash,
+    issuedAt,
+    expiresAtSec,
+    stage: "prepared",
+    risk: record.risk,
+    ...(record.otpHash
+      ? { otpHash: record.otpHash, otpAttemptsRemaining: AUTH_MAGIC_PREPARE.EMAIL_OTP_MAX_ATTEMPTS }
+      : {}),
+  };
+  await kv.put(nonceKey, JSON.stringify(full), { expiration: expiresAtSec });
+  await kv.put(indexKey, nonceKey, { expiration: expiresAtSec });
+  return nonce;
+}
+
+async function deleteMagicPrepareState(env: Env, nonceKey: string, tokenHash: string): Promise<void> {
+  const kv = getAuthKv(env);
+  if (!kv) return;
+  await kv.delete(nonceKey);
+  await kv.delete(`${AUTH_MAGIC_PREPARE.TOKEN_INDEX_PREFIX}${tokenHash}`);
+}
+
+async function verifyMagicPrepareNonceForConsume(
+  env: Env,
+  request: Request,
+  token: string,
+): Promise<
+  | { ok: true; nonceKey: string; record: MagicPrepareKvRecord }
+  | { ok: false; reason: string }
+> {
+  const cookies = parseCookies(request.headers.get("Cookie"));
+  const nonce = cookies[MAGIC_PREPARE_COOKIE];
+  if (!nonce?.length) return { ok: false, reason: "missing_cookie" };
+  const kv = getAuthKv(env);
+  if (!kv) return { ok: false, reason: "kv_unavailable" };
+  const nonceKey = `${AUTH_MAGIC_PREPARE.PREFIX}${await sha256Base64Url(nonce)}`;
+  const raw = await kv.get(nonceKey);
+  if (!raw) return { ok: false, reason: "nonce_unknown_or_used" };
+  try {
+    const rec = JSON.parse(raw) as MagicPrepareKvRecord;
+    const expected = await sha256Base64Url(token);
+    if (typeof rec.tokenHash !== "string" || rec.tokenHash !== expected) {
+      return { ok: false, reason: "token_hash_mismatch" };
+    }
+    if (rec.stage !== "prepared") return { ok: false, reason: "invalid_stage" };
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (typeof rec.issuedAt !== "number" || nowSec > magicPrepareExpiresAtSec(rec)) {
+      return { ok: false, reason: "nonce_expired" };
+    }
+    if (rec.risk === "medium" && typeof rec.otpHash !== "string") {
+      return { ok: false, reason: "missing_otp_in_record" };
+    }
+    return { ok: true, nonceKey, record: rec };
+  } catch {
+    return { ok: false, reason: "parse_error" };
+  }
+}
+
+/**
+ * Universal same-browser bind: always issues short-lived single-use prepare state (cookie + KV).
+ * Session is never created here — only POST /api/auth/magic/consume can create a session.
+ * Medium context risk: emails a 6-digit code; consume must supply it.
+ */
+async function respondToMagicLinkPrepare(env: Env, request: Request, token: string): Promise<Response> {
+  await logAuditEvent(env, {
+    userId: null,
+    eventType: "magic_prepare_started",
+    status: "success",
+    details: {},
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  const payload = await peekMagicLink(env, token, request);
+  if (!payload) {
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "magic_link_failed",
+      status: "failure",
+      details: { reason: "prepare_token_invalid_or_expired" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse({ message: "Token expired or invalid" }, 400, request);
+  }
+
+  const policy = await evaluateMagicLinkContextPolicy(payload, request);
+  const userIdForAudit = typeof payload.userId === "string" ? payload.userId : null;
+
+  if (policy.risk === "high") {
+    await logAuditEvent(env, {
+      userId: userIdForAudit,
+      eventType: "magic_context_high_risk",
+      status: "failure",
+      details: {
+        ipDrift: policy.ipDrift,
+        uaDrift: policy.uaDrift,
+        automationLikely: policy.automationLikely,
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    headers.set("Referrer-Policy", "no-referrer");
+    headers.set("Cache-Control", "no-store");
+    headers.append("Set-Cookie", clearMagicPrepareCookieHeader());
+    appendPnClientIdIfMissing(request, headers);
+    return new Response(
+      JSON.stringify({
+        message:
+          "This sign-in link can't be verified from this device or network. Request a new link from the sign-in page.",
+        code: "context_high_risk",
+      }),
+      { status: 403, headers },
+    );
+  }
+
+  let otpHash: string | undefined;
+  if (policy.risk === "medium") {
+    await logAuditEvent(env, {
+      userId: userIdForAudit,
+      eventType: "magic_context_medium_risk",
+      status: "warning",
+      details: {
+        ipSoftMismatch: policy.ipDrift,
+        uaSoftMismatch: policy.uaDrift,
+        emailOtpRequired: true,
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    const email = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
+    if (!email) {
+      return jsonResponse({ message: "Invalid link data" }, 400, request);
+    }
+    const otp = generateMagicEmailOtpDigits();
+    otpHash = await sha256Base64Url(otp);
+    const sendResult = await sendMagicSignInOtpEmail(env, email, otp);
+    if (!sendResult.ok) {
+      await logAuditEvent(env, {
+        userId: userIdForAudit,
+        eventType: "magic_link_failed",
+        status: "failure",
+        details: { reason: "sign_in_otp_email_failed", error: sendResult.error?.slice(0, 500) },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: "Could not send confirmation email" }, 500, request);
+    }
+  }
+
+  const nonce = await issueMagicPrepareNonce(
+    env,
+    request,
+    token,
+    {
+      risk: policy.risk === "medium" ? "medium" : "low",
+      ...(otpHash ? { otpHash } : {}),
+    },
+    userIdForAudit,
+  );
+  if (!nonce) {
+    return jsonResponse({ message: "Could not start sign-in" }, 500, request);
+  }
+
+  await logAuditEvent(env, {
+    userId: userIdForAudit,
+    eventType: "magic_bind_confirmed",
+    status: "success",
+    details: { risk: policy.risk, browserBindIssued: true },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  const headers = new Headers(getCorsHeaders(request));
+  headers.set("Content-Type", "application/json");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Cache-Control", "no-store");
+  headers.append("Set-Cookie", magicPrepareCookieHeader(nonce));
+  appendPnClientIdIfMissing(request, headers);
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      riskLevel: policy.risk,
+      emailCodeRequired: policy.risk === "medium",
+    }),
+    { status: 200, headers },
+  );
+}
+
+/**
+ * Finish sign-in after a valid magic-link token (session cookie + side effects).
+ * Caller must obtain `token` only from a POST body — not query strings (avoids prefetch /Referer leakage).
+ * Requires prior POST /api/auth/magic/prepare in the same browser and trusted Origin.
+ */
+async function respondToMagicLinkConsume(
+  env: Env,
+  request: Request,
+  token: string,
+  emailCode: unknown,
+): Promise<Response> {
+  const bindCheck = await verifyMagicPrepareNonceForConsume(env, request, token);
+  if (!bindCheck.ok) {
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "magic_nonce_mismatch",
+      status: "failure",
+      details: { reason: bindCheck.reason },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse(
+      {
+        message:
+          "Sign-in confirmation missing or expired. Open your email link again, wait for this page to load, then press Continue.",
+        code: "magic_bind_required",
+      },
+      400,
+      request,
+    );
+  }
+
+  const { nonceKey, record } = bindCheck;
+
+  if (record.risk === "medium" && record.otpHash) {
+    const normalized = normalizeMagicEmailCode(emailCode);
+    if (!normalized) {
+      return jsonResponse(
+        {
+          message: "Enter the 6-digit code we emailed you.",
+          code: "magic_email_code_required",
+        },
+        400,
+        request,
+      );
+    }
+    const gotHash = await sha256Base64Url(normalized);
+    if (!constantTimeEquals(gotHash, record.otpHash)) {
+      const cap = AUTH_MAGIC_PREPARE.EMAIL_OTP_MAX_ATTEMPTS;
+      let remaining =
+        typeof record.otpAttemptsRemaining === "number" && Number.isFinite(record.otpAttemptsRemaining)
+          ? Math.min(cap, Math.max(0, Math.floor(record.otpAttemptsRemaining)))
+          : cap;
+      remaining -= 1;
+
+      if (remaining <= 0) {
+        await deleteMagicPrepareState(env, nonceKey, record.tokenHash);
+        await logAuditEvent(env, {
+          userId: null,
+          eventType: "magic_email_otp_exhausted",
+          status: "failure",
+          details: { reason: "email_otp_attempts_exhausted" },
+          ip: getRequestIp(request),
+          userAgent: request.headers.get("User-Agent"),
+        });
+        const headers = new Headers(getCorsHeaders(request));
+        headers.set("Content-Type", "application/json");
+        headers.set("Referrer-Policy", "no-referrer");
+        headers.set("Cache-Control", "no-store");
+        headers.append("Set-Cookie", clearMagicPrepareCookieHeader());
+        appendPnClientIdIfMissing(request, headers);
+        return new Response(
+          JSON.stringify({
+            message:
+              "Too many incorrect codes. Open the sign-in link from your email again to request a fresh code.",
+            code: "magic_email_otp_exhausted",
+          }),
+          { status: 400, headers },
+        );
+      }
+
+      const updated: MagicPrepareKvRecord = { ...record, otpAttemptsRemaining: remaining };
+      await persistMagicPrepareRecord(env, nonceKey, updated);
+
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "magic_link_failed",
+        status: "failure",
+        details: { reason: "magic_email_code_invalid", otpAttemptsRemaining: remaining },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse(
+        {
+          message: "That code doesn’t match. Check your email and try again.",
+          code: "magic_email_code_invalid",
+        },
+        400,
+        request,
+      );
+    }
+  }
+
+  const payload = await consumeMagicLink(env, token, request);
+  await deleteMagicPrepareState(env, nonceKey, record.tokenHash);
+
+  if (!payload) {
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "magic_consume_replay_blocked",
+      status: "failure",
+      details: { reason: "token_invalid_or_already_used" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "magic_link_failed",
+      status: "failure",
+      details: { reason: "token_invalid_or_expired" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse({ message: "Token expired or invalid" }, 400, request);
+  }
+  if (!env.AUTH_DB) {
+    return jsonResponse({ message: "Auth database not configured" }, 501, request);
+  }
+  const payloadEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
+  let userId: string | null = typeof payload.userId === "string" ? payload.userId : null;
+
+  if (!userId && payloadEmail) {
+    const userResult = await getOrCreateUser(env, payloadEmail, USER_STATUS_PENDING);
+    userId = userResult?.id ?? null;
+  }
+  if (!userId) {
+    return jsonResponse({ message: "User creation failed" }, 500, request);
+  }
+
+  await logMagicLinkContextDriftIfAny(env, request, payload, userId);
+
+  const nowIso = new Date().toISOString();
+  await env.AUTH_DB.prepare(
+    "UPDATE users SET status = ?, email_verified = 1, updated_at = ?, last_login_at = ? WHERE id = ?"
+  )
+    .bind(USER_STATUS_ACTIVE, nowIso, nowIso, userId)
+    .run();
+
+  const session = await createSession(env, userId, request, "magic");
+
+  let totpRequired = false;
+  const totpCheck = await env.AUTH_DB.prepare(
+    "SELECT verified FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1"
+  )
+    .bind(userId)
+    .first<{ verified: number }>();
+  if (totpCheck?.verified === 1 && session?.sessionId) {
+    const pendingHash = await sha256Base64Url(session.sessionId);
+    await env.AUTH_DB.prepare("UPDATE sessions SET auth_complete = 0 WHERE session_id_hash = ?")
+      .bind(pendingHash)
+      .run();
+    totpRequired = true;
+  }
+
+  await logAuditEvent(env, {
+    userId,
+    eventType: "magic_link_used",
+    status: "success",
+    details: { intent: payload.intent },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  await logAuditEvent(env, {
+    userId,
+    eventType: "login_success",
+    status: "success",
+    details: { authMethod: "magic_link", intent: payload.intent, totpRequired },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  await logAuditEvent(env, {
+    userId,
+    eventType: "magic_consume_success",
+    status: "success",
+    details: { intent: payload.intent, totpRequired, prepareRisk: record.risk },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  const headers = new Headers(getCorsHeaders(request));
+  headers.set("Content-Type", "application/json");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Cache-Control", "no-store");
+  if (session?.sessionId) {
+    headers.append(
+      "Set-Cookie",
+      sessionCookie(session.sessionId, getSessionCookieKindForRequest(request)),
+    );
+  }
+  headers.append("Set-Cookie", clearMagicPrepareCookieHeader());
+  return new Response(JSON.stringify({ ok: true, totpRequired }), { status: 200, headers });
+}
+
 type AuthMethod = "magic" | "passkey" | "recovery";
 
+/** Requires D1 `sessions.client_bucket` (see `scripts/safe-d1-migrate-auth.sh`). */
 async function createSession(
   env: Env,
   userId: string,
@@ -822,10 +1732,11 @@ async function createSession(
   const nowIso = new Date(now).toISOString();
   const userAgent = request.headers.get("User-Agent") || "";
   const deviceLabel = getDeviceLabel(userAgent);
+  const clientBucket = getClientIdentifier(request);
   await env.AUTH_DB.prepare(
-    "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL AND user_agent = ?"
+    "UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL AND (client_bucket = ? OR (client_bucket IS NULL AND user_agent = ?))"
   )
-    .bind(nowIso, "superseded", userId, userAgent)
+    .bind(nowIso, "superseded", userId, clientBucket, userAgent)
     .run();
   const sessionId = randomId(32);
   const sessionHash = await sha256Base64Url(sessionId);
@@ -836,7 +1747,7 @@ async function createSession(
   const { city, country } = getRequestGeo(request);
   const lastStepUpAt = authMethod === "passkey" ? nowIso : null;
   await env.AUTH_DB.prepare(
-    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
     .bind(
       id,
@@ -853,6 +1764,7 @@ async function createSession(
       city,
       country,
       deviceLabel,
+      clientBucket,
     )
     .run();
 
@@ -869,15 +1781,25 @@ async function createSession(
   return { sessionId };
 }
 
-function sessionCookie(sessionId: string): string {
+function sessionCookie(sessionId: string, kind: SessionCookieKind): string {
   // SameSite=None required for cross-origin requests (frontend on Pages, API on Workers)
-  return `pn_session=${sessionId}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
+  const name = sessionCookieNameForKind(kind);
+  return `${name}=${sessionId}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
 }
 
-function applyRotatedSession(headers: Headers, session: { newSessionId?: string } | null) {
+function clearSessionCookieHeader(kind: SessionCookieKind): string {
+  const name = sessionCookieNameForKind(kind);
+  return `${name}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`;
+}
+
+function applyRotatedSession(
+  request: Request,
+  headers: Headers,
+  session: { newSessionId?: string } | null,
+) {
   if (session?.newSessionId) {
     // Use append so we don't overwrite any existing Set-Cookie header(s)
-    headers.append("Set-Cookie", sessionCookie(session.newSessionId));
+    headers.append("Set-Cookie", sessionCookie(session.newSessionId, getSessionCookieKindForRequest(request)));
   }
 }
 
@@ -885,6 +1807,89 @@ function isStepUpFresh(lastStepUpAt: string | null, windowSeconds: number = STEP
   if (!lastStepUpAt) return false;
   const last = new Date(lastStepUpAt).getTime();
   return Date.now() - last <= windowSeconds * 1000;
+}
+
+function isRecentAuthFresh(
+  lastAuthAt: string | null,
+  windowSeconds: number = PASSKEY_FIRST_ENROLL_AUTH_WINDOW_SECONDS,
+): boolean {
+  if (!lastAuthAt) return false;
+  const last = new Date(lastAuthAt).getTime();
+  return Date.now() - last <= windowSeconds * 1000;
+}
+
+/** Require recent WebAuthn step-up if the user already has passkeys; otherwise a fresh sign-in (last_auth_at). */
+async function requirePasskeyEnrollmentProof(
+  env: Env,
+  request: Request,
+  session: { id: string; lastAuthAt: string | null; lastStepUpAt: string | null },
+): Promise<Response | null> {
+  if (!env.AUTH_DB) {
+    return jsonResponse({ message: "Auth database not configured" }, 501, request);
+  }
+  const row = await env.AUTH_DB.prepare(
+    "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
+  )
+    .bind(session.id)
+    .first<{ count: number }>();
+  const hasExistingPasskeys = (row?.count ?? 0) > 0;
+
+  if (hasExistingPasskeys) {
+    if (!isStepUpFresh(session.lastStepUpAt)) {
+      return jsonResponse(
+        {
+          message: "Verify with your passkey before adding a new one.",
+          code: "passkey_enroll_step_up_required",
+        },
+        403,
+        request,
+      );
+    }
+  } else if (!isRecentAuthFresh(session.lastAuthAt)) {
+    return jsonResponse(
+      {
+        message:
+          "Your sign-in is too old to add a passkey. Sign out, sign in again, and try within a few minutes.",
+        code: "passkey_enroll_reauth_required",
+      },
+      403,
+      request,
+    );
+  }
+  return null;
+}
+
+/**
+ * Registration verify: re-check only first-enrollment “fresh sign-in” bound; step-up is checked at
+ * /register/options only so a long WebAuthn ceremony cannot expire the 5-minute step-up window
+ * before verify runs (challenge TTL still caps total time).
+ */
+async function requirePasskeyEnrollmentProofAtRegisterVerify(
+  env: Env,
+  request: Request,
+  session: { id: string; lastAuthAt: string | null; lastStepUpAt: string | null },
+): Promise<Response | null> {
+  if (!env.AUTH_DB) {
+    return jsonResponse({ message: "Auth database not configured" }, 501, request);
+  }
+  const row = await env.AUTH_DB.prepare(
+    "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
+  )
+    .bind(session.id)
+    .first<{ count: number }>();
+  const hasExistingPasskeys = (row?.count ?? 0) > 0;
+  if (!hasExistingPasskeys && !isRecentAuthFresh(session.lastAuthAt)) {
+    return jsonResponse(
+      {
+        message:
+          "Your sign-in is too old to add a passkey. Sign out, sign in again, and try within a few minutes.",
+        code: "passkey_enroll_reauth_required",
+      },
+      403,
+      request,
+    );
+  }
+  return null;
 }
 
 function parseCookies(header: string | null): Record<string, string> {
@@ -895,6 +1900,17 @@ function parseCookies(header: string | null): Record<string, string> {
     acc[key] = decodeURIComponent(rest.join("="));
     return acc;
   }, {} as Record<string, string>);
+}
+
+function appendPnClientIdIfMissing(request: Request, headers: Headers): void {
+  const cookieHeader = request.headers.get("Cookie") || "";
+  if (/(?:^|;\s*)pn_client_id=/.test(cookieHeader)) return;
+  const clientId = randomId(16);
+  const maxAge = 30 * 24 * 60 * 60;
+  headers.append(
+    "Set-Cookie",
+    `pn_client_id=${clientId}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure; HttpOnly`,
+  );
 }
 
 /**
@@ -937,7 +1953,8 @@ async function getSessionFromRequest(
 } | null> {
   if (!env.AUTH_DB) return null;
   const cookies = parseCookies(request.headers.get("Cookie"));
-  const sessionId = cookies["pn_session"];
+  const cookieName = sessionCookieNameForKind(getSessionCookieKindForRequest(request));
+  const sessionId = cookies[cookieName];
   if (!sessionId) return null;
   const sessionHash = await sha256Base64Url(sessionId);
   const currentIp = getRequestIp(request);
@@ -1090,31 +2107,6 @@ async function getUserByEmail(
   return { id: existing.id, status: existing.status || USER_STATUS_ACTIVE, email: existing.email };
 }
 
-async function createUser(
-  env: Env,
-  email: string | null,
-  status: string
-): Promise<{ id: string } | null> {
-  if (!env.AUTH_DB) return null;
-  const id = crypto.randomUUID();
-  const nowIso = new Date().toISOString();
-  try {
-    await env.AUTH_DB.prepare(
-      "INSERT INTO users (id, email, email_verified, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    )
-      .bind(id, email, email ? 0 : 0, status, nowIso, nowIso)
-      .run();
-    return { id };
-  } catch (error: any) {
-    // Handle UNIQUE constraint violation (race condition: user was created between check and insert)
-    // SQLite error code 2067 is UNIQUE constraint violation
-    if (error?.cause?.code === 2067 || error?.message?.includes("UNIQUE constraint") || error?.message?.includes("UNIQUE")) {
-      return null; // User already exists, return null to indicate creation failed
-    }
-    throw error; // Re-throw other errors
-  }
-}
-
 /**
  * Get or create a user by email (race-safe).
  * Attempts to create the user first, then falls back to fetching if UNIQUE constraint violation occurs.
@@ -1165,24 +2157,53 @@ async function getOrCreateUser(
   }
 }
 
-async function getAiVerificationRemaining(
-  kv: KVNamespace,
-  clientId: string,
-): Promise<number | null> {
-  const key = `${AI_VERIFICATION.KEY_PREFIX}${clientId}`;
+async function getTurnstileChallengeRequired(kv: KVNamespace, clientId: string): Promise<boolean> {
   try {
-    const raw = await kv.get(key);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as { remaining?: number };
-    if (typeof parsed.remaining === "number" && parsed.remaining > 0) {
-      return parsed.remaining;
-    }
-    return null;
+    const v = await kv.get(`${TURNSTILE_CHALLENGE.KEY_PREFIX}${clientId}`);
+    return Boolean(v);
   } catch (error) {
-    console.warn("[AI] Failed to read verification cache:", error);
-    return null;
+    console.warn("[TURNSTILE_CHALLENGE] read failed:", error);
+    return false;
+  }
+}
+
+async function setTurnstileChallengeRequired(kv: KVNamespace, clientId: string): Promise<void> {
+  try {
+    await kv.put(`${TURNSTILE_CHALLENGE.KEY_PREFIX}${clientId}`, "1", {
+      expirationTtl: TURNSTILE_CHALLENGE.TTL_SECONDS,
+    });
+  } catch (error) {
+    console.warn("[TURNSTILE_CHALLENGE] set failed:", error);
+  }
+}
+
+async function clearTurnstileChallengeRequired(kv: KVNamespace, clientId: string): Promise<void> {
+  try {
+    await kv.delete(`${TURNSTILE_CHALLENGE.KEY_PREFIX}${clientId}`);
+  } catch (error) {
+    console.warn("[TURNSTILE_CHALLENGE] clear failed:", error);
+  }
+}
+
+async function bumpAiNoteCountAndMaybeChallenge(env: Env, clientId: string): Promise<void> {
+  const kv = env.ANALYTICS_KV || env.NOTES_KV;
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - (now % TURNSTILE_CHALLENGE.AI_NOTE_WINDOW_SECONDS);
+  const key = `ai_note_hour:${clientId}:${windowStart}`;
+  try {
+    const stored = await kv.get(key, { type: "json" }) as { count?: number } | null;
+    const count = (stored?.count ?? 0) + 1;
+    await kv.put(key, JSON.stringify({ count }), {
+      expirationTtl: TURNSTILE_CHALLENGE.AI_NOTE_WINDOW_SECONDS + 120,
+    });
+    if (count >= TURNSTILE_CHALLENGE.AI_NOTE_COUNT_THRESHOLD) {
+      await setTurnstileChallengeRequired(kv, clientId);
+      console.log(
+        `[TURNSTILE_CHALLENGE] AI note volume threshold (${count}/${TURNSTILE_CHALLENGE.AI_NOTE_COUNT_THRESHOLD} per hour); challenge marked for client`,
+      );
+    }
+  } catch (error) {
+    console.warn("[TURNSTILE_CHALLENGE] bump count failed:", error);
   }
 }
 
@@ -1209,6 +2230,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session) {
       return jsonResponse({ message: "Authentication required" }, 401, request);
+    }
+    const enrollProof = await requirePasskeyEnrollmentProof(env, request, session);
+    if (enrollProof) {
+      return enrollProof;
     }
     const userId = session.id;
     const userEmail = session.email ?? email;
@@ -1237,7 +2262,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         userDisplayName: userEmail || "PrivateNote User",
         attestationType: "none",
         authenticatorSelection: {
-          userVerification: "preferred",
+          userVerification: "required",
           residentKey: "preferred",
         },
         excludeCredentials: (credentials.results || [])
@@ -1309,17 +2334,24 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Missing challenge or credential" }, 400, request);
     }
 
-    const challengeRecord = await consumeAuthChallenge(env, challengeId);
-    if (!challengeRecord) {
-      return jsonResponse({ message: "Challenge expired" }, 400, request);
-    }
-
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
 
     const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session || session.id !== challengeRecord.userId) {
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const enrollProofVerify = await requirePasskeyEnrollmentProofAtRegisterVerify(env, request, session);
+    if (enrollProofVerify) {
+      return enrollProofVerify;
+    }
+
+    const challengeRecord = await consumeAuthChallenge(env, challengeId);
+    if (!challengeRecord) {
+      return jsonResponse({ message: "Challenge expired" }, 400, request);
+    }
+    if (challengeRecord.type !== "register" || challengeRecord.userId !== session.id) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
@@ -1340,6 +2372,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expectedChallenge,
         expectedOrigin,
         expectedRPID,
+        requireUserVerification: true,
       });
     } catch (error) {
       return jsonResponse(
@@ -1437,6 +2470,13 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       });
     }
 
+    const passkeyCountRow = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+    const passkeyCountAfter = passkeyCountRow?.count ?? 0;
+
     // Audit log: passkey registered
     await logAuditEvent(env, {
       userId,
@@ -1447,6 +2487,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         backupEligible: credentialMetadata.backupEligible,
         deviceInfo: credentialMetadata.deviceInfo,
         sessionsRevoked,
+        passkeyCountAfter,
+        firstPasskeyOnAccount: passkeyCountAfter === 1,
       },
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
@@ -1512,7 +2554,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
             transports: cred.transports,
           }))
           : undefined,
-        userVerification: "preferred",
+        userVerification: "required",
       });
     } catch (err) {
       return webAuthnErrorResponse(
@@ -1610,7 +2652,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ip: getRequestIp(request),
         userAgent: request.headers.get("User-Agent"),
       });
-      return jsonResponse({ message: "Unknown credential" }, 400, request);
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     let verification;
@@ -1620,6 +2662,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expectedChallenge,
         expectedOrigin,
         expectedRPID,
+        requireUserVerification: true,
         authenticator: {
           credentialID: storedCredential.credential_id,
           credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
@@ -1627,15 +2670,43 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         },
       });
     } catch (error) {
-      return jsonResponse(
-        { message: error instanceof Error ? error.message : "Authentication verification failed" },
-        400,
-        request
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[WebAuthn] POST /api/auth/webauthn/login/verify — verifyAuthenticationResponse: ${errMsg}`
       );
+      await logAuditEvent(env, {
+        userId: storedCredential.user_id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_verify_exception", context: "webauthn_login" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     if (!verification.verified || !verification.authenticationInfo) {
-      return jsonResponse({ message: "Authentication not verified" }, 400, request);
+      await logAuditEvent(env, {
+        userId: storedCredential.user_id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_not_verified", context: "webauthn_login" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
+    }
+
+    if (!verification.authenticationInfo.userVerified) {
+      await logAuditEvent(env, {
+        userId: storedCredential.user_id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_user_not_verified", context: "webauthn_login" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     const newCounter = verification.authenticationInfo.newCounter;
@@ -1676,7 +2747,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
-      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+      headers.set("Set-Cookie", sessionCookie(session.sessionId, getSessionCookieKindForRequest(request)));
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
@@ -1703,7 +2774,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    applyRotatedSession(headers, session);
+    applyRotatedSession(request, headers, session);
     return new Response(
       JSON.stringify({
         ok: true,
@@ -1755,7 +2826,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           id: cred.credential_id,
           transports: parseTransports(cred.transports),
         })),
-        userVerification: "preferred",
+        userVerification: "required",
       });
     } catch (err) {
       return webAuthnErrorResponse(
@@ -1848,7 +2919,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .first<{ id: string; credential_id: string; public_key: string; counter: number; user_id: string }>();
 
     if (!storedCredential) {
-      return jsonResponse({ message: "Unknown credential" }, 400, request);
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     let verification;
@@ -1858,6 +2929,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expectedChallenge,
         expectedOrigin,
         expectedRPID,
+        requireUserVerification: true,
         authenticator: {
           credentialID: storedCredential.credential_id,
           credentialPublicKey: base64UrlToBytes(storedCredential.public_key),
@@ -1865,15 +2937,43 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         },
       });
     } catch (error) {
-      return jsonResponse(
-        { message: error instanceof Error ? error.message : "Authentication verification failed" },
-        400,
-        request
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[WebAuthn] POST /api/auth/webauthn/stepup/verify — verifyAuthenticationResponse: ${errMsg}`
       );
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_verify_exception", context: "webauthn_stepup" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     if (!verification.verified || !verification.authenticationInfo) {
-      return jsonResponse({ message: "Authentication not verified" }, 400, request);
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_not_verified", context: "webauthn_stepup" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
+    }
+
+    if (!verification.authenticationInfo.userVerified) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "login_failed",
+        status: "failure",
+        details: { reason: "passkey_user_not_verified", context: "webauthn_stepup" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse({ message: PASSKEY_CLIENT_SAFE_MESSAGE }, 400, request);
     }
 
     const newCounter = verification.authenticationInfo.newCounter;
@@ -1888,6 +2988,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     )
       .bind(new Date().toISOString(), session.sessionIdHash)
       .run();
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "step_up_success",
+      status: "success",
+      details: { credentialIdPrefix: credentialId.substring(0, 16) + "...", context: "webauthn_stepup" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
 
     return jsonResponse({ ok: true }, 200, request);
   }
@@ -1919,7 +3028,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    applyRotatedSession(headers, session);
+    applyRotatedSession(request, headers, session);
     return new Response(JSON.stringify({ ok: true, passkeys }), { status: 200, headers });
   }
 
@@ -2003,7 +3112,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    applyRotatedSession(headers, session);
+    applyRotatedSession(request, headers, session);
     return new Response(JSON.stringify({ ok: true, sessions }), { status: 200, headers });
   }
 
@@ -2035,7 +3144,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (sessionId === session.sessionRowId) {
-      headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
+      headers.set("Set-Cookie", clearSessionCookieHeader(getSessionCookieKindForRequest(request)));
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
@@ -2077,7 +3186,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    applyRotatedSession(headers, session);
+    applyRotatedSession(request, headers, session);
     return new Response(JSON.stringify({ ok: true, remaining: stats?.remaining ?? 0, generatedAt: stats?.generated_at ?? null }), { status: 200, headers });
   }
 
@@ -2413,7 +3522,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session?.sessionId) {
-      headers.set("Set-Cookie", sessionCookie(session.sessionId));
+      headers.set("Set-Cookie", sessionCookie(session.sessionId, getSessionCookieKindForRequest(request)));
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
@@ -2437,7 +3546,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     };
 
     if (!env.AUTH_DB) {
-      console.error("[MAGIC_LINK] AUTH_DB not configured, returning silent 200");
+      console.error(
+        "[MAGIC_LINK] AUTH_DB not configured, returning silent 200 — alert on this log line or on GET /api/admin/health/auth ≠ 200",
+      );
       await jitterDelay();
       return jsonResponse(responsePayload, 200, request);
     }
@@ -2474,7 +3585,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         }
       }
 
-      if (email && isValidEmailLoose(email)) {
+      if (email && isPlausibleEmailFormat(email)) {
         const emailKey = `${MAGIC_LINK_RATE_LIMIT.EMAIL_KEY_PREFIX}${email}:${windowStart}`;
         try {
           const emailCount = await kv.get(emailKey, { type: 'json' }) as { count: number } | null;
@@ -2521,7 +3632,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }
     }
 
-    if (!email || !isValidEmailLoose(email)) {
+    if (!email || !isPlausibleEmailFormat(email)) {
       console.error("[MAGIC_LINK] Invalid or missing email, silently returning 200");
       await jitterDelay();
       return jsonResponse(responsePayload, 200, request);
@@ -2538,20 +3649,41 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     if (userId) {
       const token = randomId(32);
-      const stored = await storeMagicLink(env, token, {
+      const magicCtx = await magicLinkSoftContext(request);
+      const storeResult = await storeMagicLink(env, token, {
         userId,
         email,
         intent,
         createdAt: Date.now(),
-      });
+        magicIpPrefix: magicCtx.ipPrefix,
+        magicUaHash: magicCtx.uaHash,
+      }, request);
 
-      if (!stored) {
-        console.error("[MAGIC_LINK] storeMagicLink returned false — KV write failed?");
+      if (!storeResult.ok) {
+        if (storeResult.reason === "hmac_required" || storeResult.reason === "kv_unavailable") {
+          await logAuditEvent(env, {
+            userId,
+            eventType: "magic_link_failed",
+            status: "failure",
+            details: {
+              reason:
+                storeResult.reason === "hmac_required" ? "auth_secret_key_missing" : "auth_kv_missing",
+              intent,
+            },
+            ip: getRequestIp(request),
+            userAgent: request.headers.get("User-Agent"),
+          });
+        }
+        console.error(
+          `[MAGIC_LINK] storeMagicLink failed — ${storeResult.reason} ` +
+            `(operational: users see generic 200; fix AUTH_SECRET_KEY / AUTH_KV+NOTES_KV bindings or see GET /api/admin/health/auth)`,
+        );
       }
 
-      if (stored) {
-        const magicOrigin = getMagicLinkOrigin(request);
-        const magicUrl = `${magicOrigin}/auth/magic?token=${encodeURIComponent(token)}`;
+      if (storeResult.ok) {
+        const magicOrigin = getMagicLinkOrigin(env, request);
+        // Query param is non-authenticating: session is only created on explicit POST after the user clicks Continue.
+        const magicUrl = `${magicOrigin}/magic?t=${encodeURIComponent(token)}`;
         console.log(`[MAGIC_LINK] Prepared link for ${intent}, origin=${magicOrigin}, isLocal=${isLocal}`);
 
         if (isLocal) {
@@ -2605,105 +3737,61 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
   }
 
-  if (pathname === "/api/auth/magic/consume" && method === "GET") {
-    const token = url.searchParams.get("token");
+  if (pathname === "/api/auth/magic/prepare" && method === "POST") {
+    const gate = assertTrustedJsonPost(request);
+    if (gate) return gate;
+    const body = (await request.json().catch(() => ({}))) as { token?: unknown };
+    const token = typeof body.token === "string" ? body.token : "";
     if (!token) {
       return jsonResponse({ message: "Missing token" }, 400, request);
     }
-    const payload = await consumeMagicLink(env, token);
-    if (!payload) {
-      // Audit log: magic link failed (invalid/expired token)
-      await logAuditEvent(env, {
-        userId: null,
-        eventType: "magic_link_failed",
-        status: "failure",
-        details: { reason: "token_invalid_or_expired" },
-        ip: getRequestIp(request),
-        userAgent: request.headers.get("User-Agent"),
-      });
-      return jsonResponse({ message: "Token expired or invalid" }, 400, request);
-    }
-    if (!env.AUTH_DB) {
-      return jsonResponse({ message: "Auth database not configured" }, 501, request);
-    }
-    const payloadEmail = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
-    let userId: string | null = typeof payload.userId === "string" ? payload.userId : null;
+    return respondToMagicLinkPrepare(env, request, token);
+  }
 
-    // If no userId from payload, get or create user (race-safe: create-first, fallback to fetch on UNIQUE violation)
-    if (!userId && payloadEmail) {
-      const userResult = await getOrCreateUser(env, payloadEmail, USER_STATUS_PENDING);
-      userId = userResult?.id ?? null;
+  if (pathname === "/api/auth/magic/prepare" && (method === "GET" || method === "HEAD")) {
+    if (method === "HEAD") {
+      return new Response(null, { status: 405, headers: getCorsHeaders(request) });
     }
-    if (!userId) {
-      return jsonResponse({ message: "User creation failed" }, 500, request);
+    return jsonResponse({ message: "Use POST with { \"token\": \"...\" } from valid application/json same-origin context." }, 405, request);
+  }
+
+  if (pathname === "/api/auth/magic/consume" && method === "POST") {
+    const gate = assertTrustedJsonPost(request);
+    if (gate) return gate;
+    const body = (await request.json().catch(() => ({}))) as { token?: unknown; emailCode?: unknown };
+    const token = typeof body.token === "string" ? body.token : "";
+    if (!token) {
+      return jsonResponse({ message: "Missing token" }, 400, request);
     }
-    const nowIso = new Date().toISOString();
-    await env.AUTH_DB.prepare(
-      "UPDATE users SET status = ?, email_verified = 1, updated_at = ?, last_login_at = ? WHERE id = ?"
-    )
-      .bind(USER_STATUS_ACTIVE, nowIso, nowIso, userId)
-      .run();
+    return respondToMagicLinkConsume(env, request, token, body.emailCode);
+  }
 
-    const session = await createSession(env, userId, request, "magic");
-
-    // Check if user has verified TOTP; if so, mark session as pending
-    let totpRequired = false;
-    const totpCheck = await env.AUTH_DB.prepare(
-      "SELECT verified FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1"
-    )
-      .bind(userId)
-      .first<{ verified: number }>();
-    if (totpCheck?.verified === 1 && session?.sessionId) {
-      const pendingHash = await sha256Base64Url(session.sessionId);
-      await env.AUTH_DB.prepare(
-        "UPDATE sessions SET auth_complete = 0 WHERE session_id_hash = ?"
-      )
-        .bind(pendingHash)
-        .run();
-      totpRequired = true;
+  if (pathname === "/api/auth/magic/consume" && (method === "GET" || method === "HEAD")) {
+    if (method === "HEAD") {
+      return new Response(null, { status: 405, headers: getCorsHeaders(request) });
     }
-
-    // Audit log: magic link used successfully
-    await logAuditEvent(env, {
-      userId,
-      eventType: "magic_link_used",
-      status: "success",
-      details: { intent: payload.intent },
-      ip: getRequestIp(request),
-      userAgent: request.headers.get("User-Agent"),
-    });
-
-    // Audit log: login success
-    await logAuditEvent(env, {
-      userId,
-      eventType: "login_success",
-      status: "success",
-      details: { authMethod: "magic_link", intent: payload.intent, totpRequired },
-      ip: getRequestIp(request),
-      userAgent: request.headers.get("User-Agent"),
-    });
-
-    const headers = new Headers(getCorsHeaders(request));
-    headers.set("Content-Type", "application/json");
-    headers.set("Referrer-Policy", "no-referrer");
-    if (session?.sessionId) {
-      headers.set("Set-Cookie", sessionCookie(session.sessionId));
-    }
-    return new Response(JSON.stringify({ ok: true, totpRequired }), { status: 200, headers });
+    return jsonResponse(
+      {
+        message: "Use POST with { \"token\": \"...\" }. Magic link tokens are not accepted in the URL query.",
+      },
+      405,
+      request,
+    );
   }
 
   if (pathname === "/api/auth/logout" && method === "POST") {
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     const cookies = parseCookies(request.headers.get("Cookie"));
-    const sessionId = cookies["pn_session"];
+    const kind = getSessionCookieKindForRequest(request);
+    const sessionId = cookies[sessionCookieNameForKind(kind)];
     if (sessionId && env.AUTH_DB) {
       const sessionHash = await sha256Base64Url(sessionId);
       await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
         .bind(new Date().toISOString(), sessionHash)
         .run();
     }
-    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
+    headers.set("Set-Cookie", clearSessionCookieHeader(kind));
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
@@ -2718,7 +3806,10 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     if (session.newSessionId) {
-      headers.set("Set-Cookie", sessionCookie(session.newSessionId));
+      headers.set(
+        "Set-Cookie",
+        sessionCookie(session.newSessionId, getSessionCookieKindForRequest(request)),
+      );
     }
     return new Response(
       JSON.stringify({
@@ -2742,23 +3833,34 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    // Check if user has passkeys - only require step-up if they do
+    const body = await request.json().catch(() => ({})) as { newEmail?: string; totpCode?: string };
+    const { newEmail, totpCode: emailChangeTotpCode } = body;
+
     const passkeyCount = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
     )
       .bind(session.id)
       .first<{ count: number }>();
 
     const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
 
-    // Only require step-up for users with passkeys
-    // Magic-link-only users verified email ownership when signing in
-    if (hasPasskeys && !isStepUpFresh(session.lastStepUpAt)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
-    }
+    const verifiedTotpRow = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
 
-    const body = await request.json().catch(() => ({})) as { newEmail?: string };
-    const { newEmail } = body;
+    const secondFactorBlock = await gateSecondFactorForAccountTakeover(
+      env,
+      request,
+      session,
+      hasPasskeys,
+      verifiedTotpRow,
+      emailChangeTotpCode,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_EMAIL_CHANGE,
+      "email_change_request",
+    );
+    if (secondFactorBlock) return secondFactorBlock;
 
     if (!newEmail || typeof newEmail !== "string") {
       return jsonResponse({ message: "New email is required" }, 400, request);
@@ -2831,24 +3933,24 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       expirationTtl: AUTH_EMAIL_CHANGE.TTL_SECONDS,
     });
 
-    // Send verification email to new address
-    const origin = request.headers.get("Origin") || "https://privatenote.ai";
-    const verifyUrl = `${origin}/auth/email-change?token=${encodeURIComponent(token)}`;
+    // Send verification email to new address (same origin rules as magic links)
+    const webOrigin = getMagicLinkOrigin(env, request);
+    const verifyUrl = `${webOrigin}/auth/email-change?token=${encodeURIComponent(token)}`;
 
     console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
 
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
       subject: "Verify your new email address - PrivateNote",
-      text: `You requested to change your email address for your PrivateNote account.\n\nClick the link below to verify your new email address:\n${verifyUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this change, please ignore this email and your account will remain unchanged.`,
+      text: `You requested to change your email address for your PrivateNote account.\n\nOpen the link below in your browser, then press Confirm on the page to finish:\n${verifyUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this change, please ignore this email and your account will remain unchanged.`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Verify your new email address</h2>
           <p>You requested to change your email address for your PrivateNote account.</p>
-          <p>Click the button below to verify your new email address:</p>
+          <p>Open the link below, then press <strong>Confirm new email</strong> on the page to apply the change (this prevents automated link scanning from completing the update).</p>
           <p style="margin: 24px 0;">
             <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
-              Verify email address
+              Continue to verification
             </a>
           </p>
           <p style="color: #666; font-size: 14px;">This link expires in 1 hour.</p>
@@ -2888,15 +3990,34 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
   }
 
   if (pathname === "/api/auth/email/change/verify" && method === "GET") {
+    return jsonResponse(
+      {
+        message:
+          'Open this link in your browser, then press Confirm on the page. Tokens are not accepted via GET (avoids link prefetch consuming them).',
+        code: "email_change_confirm_required",
+      },
+      405,
+      request,
+    );
+  }
+
+  if (pathname === "/api/auth/email/change/verify" && method === "POST") {
+    const gate = assertTrustedJsonPost(request);
+    if (gate) return gate;
+
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
 
-    const url = new URL(request.url);
-    const token = url.searchParams.get("token");
+    const body = (await request.json().catch(() => ({}))) as { token?: unknown };
+    const token = typeof body.token === "string" ? body.token : "";
 
     if (!token) {
-      return jsonResponse({ message: "Missing verification token" }, 400, request);
+      return jsonResponse(
+        { message: "Missing verification token", code: "email_change_token_missing" },
+        400,
+        request,
+      );
     }
 
     const kv = getAuthKv(env);
@@ -2909,18 +4030,25 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const value = await kv.get(key);
 
     if (!value) {
-      return jsonResponse({ message: "Invalid or expired verification link" }, 400, request);
+      return jsonResponse(
+        { message: "Invalid or expired verification link", code: "email_change_token_invalid" },
+        400,
+        request,
+      );
     }
 
-    // Delete token immediately (one-time use)
-    await kv.delete(key);
+    const parsedPayload = parseEmailChangeKvPayload(value);
+    if (!parsedPayload.ok) {
+      return jsonResponse(
+        { message: "Invalid or corrupted verification data", code: "email_change_payload_invalid" },
+        400,
+        request,
+      );
+    }
+    const payload = parsedPayload.payload;
 
-    const payload = JSON.parse(value) as {
-      userId: string;
-      currentEmail: string;
-      newEmail: string;
-      createdAt: string;
-    };
+    // Delete token immediately after payload validates (one-time use)
+    await kv.delete(key);
 
     // Check if user still exists (they might have been deleted after requesting email change)
     const userExists = await env.AUTH_DB.prepare("SELECT id FROM users WHERE id = ?")
@@ -2930,7 +4058,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!userExists) {
       // User was deleted - don't log audit (would fail FK constraint)
       console.warn("[AUTH] Email change verification for deleted user:", payload.userId);
-      return jsonResponse({ message: "Account no longer exists" }, 400, request);
+      return jsonResponse(
+        { message: "Account no longer exists", code: "email_change_account_gone" },
+        400,
+        request,
+      );
     }
 
     // Double-check new email isn't taken (race condition protection)
@@ -2947,7 +4079,11 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ip: getRequestIp(request),
         userAgent: request.headers.get("User-Agent"),
       });
-      return jsonResponse({ message: "This email is no longer available" }, 400, request);
+      return jsonResponse(
+        { message: "This email is no longer available", code: "email_change_email_unavailable" },
+        400,
+        request,
+      );
     }
 
     // Update user's email
@@ -2967,7 +4103,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       userAgent: request.headers.get("User-Agent"),
     });
 
-    return jsonResponse({ ok: true, message: "Email address updated successfully", newEmail: payload.newEmail }, 200, request);
+    return jsonResponse(
+      {
+        ok: true,
+        message: "Email address updated successfully",
+        newEmail: payload.newEmail,
+        code: "email_change_completed",
+      },
+      200,
+      request,
+    );
   }
 
   if (pathname === "/api/auth/account/delete" && method === "POST") {
@@ -2979,23 +4124,34 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    // Check if user has passkeys - only require step-up if they do
+    const body = await request.json().catch(() => ({})) as { email?: string; totpCode?: string };
+    const { email: providedEmail, totpCode: deleteAccountTotpCode } = body;
+
     const passkeyCount = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
     )
       .bind(session.id)
       .first<{ count: number }>();
 
     const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
 
-    // Only require step-up for users with passkeys
-    // Magic-link-only users can delete without step-up (they proved email ownership to sign in)
-    if (hasPasskeys && !isStepUpFresh(session.lastStepUpAt)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
-    }
+    const verifiedTotpRowDelete = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
 
-    const body = await request.json().catch(() => ({})) as { email?: string };
-    const { email: providedEmail } = body;
+    const deleteSecondFactorBlock = await gateSecondFactorForAccountTakeover(
+      env,
+      request,
+      session,
+      hasPasskeys,
+      verifiedTotpRowDelete,
+      deleteAccountTotpCode,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_ACCOUNT_DELETE,
+      "account_delete",
+    );
+    if (deleteSecondFactorBlock) return deleteSecondFactorBlock;
 
     if (!providedEmail || typeof providedEmail !== "string") {
       return jsonResponse({ message: "Email is required" }, 400, request);
@@ -3009,41 +4165,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Email does not match" }, 400, request);
     }
 
-    // Delete all user data
+    // Delete user row: child tables use ON DELETE CASCADE; audit_log uses ON DELETE SET NULL (see src/auth/schema.sql).
     const userId = session.id;
-
-    // Delete in order to respect foreign key constraints:
-    // 1. First handle all child table records that reference user_id
-
-    // Anonymize audit log entries (set user_id to NULL) - preserves audit trail for security
-    await env.AUTH_DB.prepare("UPDATE audit_log SET user_id = NULL WHERE user_id = ?")
-      .bind(userId)
-      .run();
-
-    // Delete TOTP secrets
-    await env.AUTH_DB.prepare("DELETE FROM totp_secrets WHERE user_id = ?")
-      .bind(userId)
-      .run();
-
-    // Delete recovery codes
-    await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ?")
-      .bind(userId)
-      .run();
-
-    // Delete passkeys
-    await env.AUTH_DB.prepare("DELETE FROM webauthn_credentials WHERE user_id = ?")
-      .bind(userId)
-      .run();
-
-    // Delete all sessions (not just revoke - must delete for FK constraint)
-    await env.AUTH_DB.prepare("DELETE FROM sessions WHERE user_id = ?")
-      .bind(userId)
-      .run();
-
-    // 2. Now we can safely delete the user record
-    await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?")
-      .bind(userId)
-      .run();
+    await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
 
     // Log account deletion after user is deleted (use null user_id since user no longer exists)
     await logAuditEvent(env, {
@@ -3060,7 +4184,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    headers.set("Set-Cookie", "pn_session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0");
+    headers.set("Set-Cookie", clearSessionCookieHeader(getSessionCookieKindForRequest(request)));
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
@@ -3083,7 +4207,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       .first<{ verified: number }>();
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    applyRotatedSession(headers, session);
+    applyRotatedSession(request, headers, session);
     return new Response(JSON.stringify({ enabled: row?.verified === 1 }), { status: 200, headers });
   }
 
@@ -3396,72 +4520,77 @@ function applyCorsHeaders(response: Response, request: Request): Response {
   });
 }
 
-// Rate limiting helper
+type RateLimitBucketConfig = {
+  MAX_REQUESTS: number;
+  WINDOW_SECONDS: number;
+  KEY_PREFIX: string;
+};
+
 async function checkRateLimit(
-  request: Request,
   env: Env,
-  identifier: string
+  identifier: string,
+  config: RateLimitBucketConfig,
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   const kv = env.RATE_LIMIT_KV || env.NOTES_KV;
-  const key = `${RATE_LIMIT.KEY_PREFIX}${identifier}`;
+  const key = `${config.KEY_PREFIX}${identifier}`;
   const now = Math.floor(Date.now() / 1000);
-  const windowStart = now - (now % RATE_LIMIT.WINDOW_SECONDS);
+  const windowStart = now - (now % config.WINDOW_SECONDS);
 
   try {
-    const stored = await kv.get(key, { type: 'json' });
+    const stored = await kv.get(key, { type: "json" }) as { count?: number; windowStart?: number } | null;
 
     if (stored && stored.windowStart === windowStart) {
-      // Same window, check count
-      if (stored.count >= RATE_LIMIT.MAX_REQUESTS) {
+      if ((stored.count ?? 0) >= config.MAX_REQUESTS) {
         return {
           allowed: false,
           remaining: 0,
-          resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+          resetAt: windowStart + config.WINDOW_SECONDS,
         };
       }
 
-      // Increment count
-      const newCount = stored.count + 1;
-      await kv.put(key, JSON.stringify({
-        count: newCount,
-        windowStart,
-      }), {
-        expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10, // Add buffer
-      });
+      const newCount = (stored.count ?? 0) + 1;
+      await kv.put(
+        key,
+        JSON.stringify({
+          count: newCount,
+          windowStart,
+        }),
+        {
+          expirationTtl: config.WINDOW_SECONDS + 10,
+        },
+      );
 
       return {
         allowed: true,
-        remaining: RATE_LIMIT.MAX_REQUESTS - newCount,
-        resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
-      };
-    } else {
-      // New window, reset count
-      await kv.put(key, JSON.stringify({
-        count: 1,
-        windowStart,
-      }), {
-        expirationTtl: RATE_LIMIT.WINDOW_SECONDS + 10,
-      });
-
-      return {
-        allowed: true,
-        remaining: RATE_LIMIT.MAX_REQUESTS - 1,
-        resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+        remaining: config.MAX_REQUESTS - newCount,
+        resetAt: windowStart + config.WINDOW_SECONDS,
       };
     }
-  } catch (error) {
-    console.error('[RATE_LIMIT] Error checking rate limit:', error);
-    // On error, allow the request (fail open)
+
+    await kv.put(
+      key,
+      JSON.stringify({
+        count: 1,
+        windowStart,
+      }),
+      {
+        expirationTtl: config.WINDOW_SECONDS + 10,
+      },
+    );
+
     return {
       allowed: true,
-      remaining: RATE_LIMIT.MAX_REQUESTS,
-      resetAt: windowStart + RATE_LIMIT.WINDOW_SECONDS,
+      remaining: config.MAX_REQUESTS - 1,
+      resetAt: windowStart + config.WINDOW_SECONDS,
+    };
+  } catch (error) {
+    console.error("[RATE_LIMIT] Error checking rate limit:", error);
+    return {
+      allowed: true,
+      remaining: config.MAX_REQUESTS,
+      resetAt: windowStart + config.WINDOW_SECONDS,
     };
   }
-}
-
-function isValidNoteId(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function getReservationKey(id: string): string {
@@ -3490,22 +4619,26 @@ async function clearReservation(env: Env, id: string): Promise<void> {
   await kv.delete(getReservationKey(id));
 }
 
-// Get client identifier for rate limiting
+/**
+ * Abuse/rate-limit bucket: IP + first-party `pn_client_id` when both exist (reduces shared-NAT collisions).
+ * No fingerprinting; cookie is HttpOnly and used only for this purpose.
+ */
 function getClientIdentifier(request: Request): string {
-  // 1) Prefer real client IP from Cloudflare (strongest signal)
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const cookieMatch = cookieHeader.match(/(?:^|;\s*)pn_client_id=([^;]+)/);
+  const cookieId = cookieMatch?.[1]?.trim();
+
   const cfConnectingIp = request.headers.get("CF-Connecting-IP");
+  if (cfConnectingIp && cookieId) {
+    return `ip:${cfConnectingIp}|cid:${cookieId}`;
+  }
   if (cfConnectingIp) {
     return `ip:${cfConnectingIp}`;
   }
-
-  // 2) Fallback to a stable, first-party client cookie if available
-  const cookieHeader = request.headers.get("Cookie") || "";
-  const cookieMatch = cookieHeader.match(/(?:^|;\s*)pn_client_id=([^;]+)/);
-  if (cookieMatch && cookieMatch[1]) {
-    return `cookie:${cookieMatch[1]}`;
+  if (cookieId) {
+    return `cookie:${cookieId}`;
   }
 
-  // 3) Final, weaker fallback: origin + user agent (mostly for dev / unusual proxies)
   const userAgent = request.headers.get("User-Agent") || "unknown";
   const origin = request.headers.get("Origin") || "unknown";
   return `ua:${`${origin}:${userAgent}`.substring(0, 100)}`;
@@ -3513,48 +4646,80 @@ function getClientIdentifier(request: Request): string {
 
 /**
  * CSRF protection: reject state-changing requests from unexpected origins.
- * Only enforced when a pn_session cookie is present (authenticated user context),
+ * Only enforced when a session cookie is present (authenticated user context),
  * so unauthenticated API calls (note creation, etc.) are unaffected.
+ *
+ * Aligns with {@link assertTrustedJsonPost}: if `Origin` is sent it must be trusted (no Referer bypass);
+ * when `Referer` is present it must match the allowed origin exactly.
  */
 function verifyCsrfOrigin(request: Request): Response | null {
   if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
     return null;
   }
   const cookies = request.headers.get("Cookie") || "";
-  if (!cookies.includes("pn_session")) {
+  const hasSessionCookie =
+    cookies.includes(SESSION_COOKIE_PROD_NAME + "=") || cookies.includes(SESSION_COOKIE_PREVIEW_NAME + "=");
+  if (!hasSessionCookie) {
     return null;
   }
 
-  const origin = request.headers.get("Origin");
-  if (origin) {
-    if (getAllowedOrigin(request) !== null) {
-      return null;
+  const path = new URL(request.url).pathname;
+  const originHeader = request.headers.get("Origin");
+  let allowedOrigin: string | null = null;
+
+  if (originHeader) {
+    if (!isTrustedBrowserOrigin(originHeader)) {
+      console.warn(`[CSRF] blocked method=${request.method} path=${path} untrusted Origin=${originHeader}`);
+      return jsonResponse({ error: "CSRF validation failed" }, 403, request);
     }
-    console.warn(`[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} Origin=${origin}`);
-    return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+    allowedOrigin = originHeader;
+  } else {
+    const refererOnly = request.headers.get("Referer");
+    if (refererOnly) {
+      try {
+        const refOrigin = new URL(refererOnly).origin;
+        if (!isTrustedBrowserOrigin(refOrigin)) {
+          console.warn(`[CSRF] blocked method=${request.method} path=${path} untrusted Referer=${refererOnly}`);
+          return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+        }
+        allowedOrigin = refOrigin;
+      } catch {
+        console.warn(`[CSRF] blocked method=${request.method} path=${path} invalid Referer`);
+        return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+      }
+    }
+  }
+
+  if (!allowedOrigin) {
+    console.warn(`[CSRF] blocked method=${request.method} path=${path} (no trusted Origin; no valid Referer)`);
+    return jsonResponse({ error: "CSRF validation failed: missing Origin header" }, 403, request);
   }
 
   const referer = request.headers.get("Referer");
   if (referer) {
     try {
       const refOrigin = new URL(referer).origin;
-      const normalized = normalizeOrigin(refOrigin);
-      const allowed =
-        ALLOWED_ORIGINS.map(normalizeOrigin).includes(normalized) ||
-        normalized.includes("localhost") ||
-        normalized.includes("127.0.0.1") ||
-        normalized.endsWith(".pages.dev") ||
-        normalized.endsWith(".privatenote.ai");
-      if (allowed) return null;
-    } catch { /* invalid URL */ }
-    console.warn(`[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} Referer=${referer}`);
-    return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+      if (!isTrustedBrowserOrigin(refOrigin)) {
+        console.warn(`[CSRF] blocked method=${request.method} path=${path} Referer=${referer}`);
+        return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+      }
+      if (normalizeOrigin(refOrigin) !== normalizeOrigin(allowedOrigin)) {
+        console.warn(
+          `[CSRF] blocked method=${request.method} path=${path} origin_referer_mismatch Origin=${allowedOrigin} Referer=${referer}`,
+        );
+        return jsonResponse(
+          { error: "CSRF validation failed", code: "origin_referer_mismatch" },
+          403,
+          request,
+        );
+      }
+    } catch {
+      console.warn(`[CSRF] blocked method=${request.method} path=${path} invalid Referer`);
+      return jsonResponse({ error: "CSRF validation failed" }, 403, request);
+    }
   }
 
-  console.warn(
-    `[CSRF] blocked method=${request.method} path=${new URL(request.url).pathname} (no Origin; no valid Referer)`
-  );
-  return jsonResponse({ error: "CSRF validation failed: missing Origin header" }, 403, request);
+  return null;
 }
 
 const ADMIN_SESSION_TTL = 4 * 60 * 60; // 4 hours
@@ -3693,11 +4858,19 @@ function verifyTotpCode(base32Secret: string, code: string, accountName: string)
   return delta !== null;
 }
 
+/** `YYYY-MM-DD` interpreted as UTC midnight for analytics KV day keys. */
+function parseAnalyticsUtcDayParam(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const d = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
-  const isAiRequest = pathname.startsWith("/api/ai/");
 
   console.log(`[ROUTES] ${method} ${pathname} origin=${request.headers.get("Origin") ?? "-"}`);
 
@@ -3732,23 +4905,62 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const csrfError = verifyCsrfOrigin(request);
   if (csrfError) return csrfError;
 
-  // Apply rate limiting to POST requests (note creation)
+  // Rate limits: calm global POST cap + tighter per-route budgets (no fingerprinting).
   if (request.method === "POST") {
     const clientId = getClientIdentifier(request);
-    console.log(`[ROUTES] Checking rate limit for: ${clientId}`);
+    console.log(`[ROUTES] Rate-limit client bucket: ${clientId}`);
 
-    const rateLimit = await checkRateLimit(request, env, clientId);
-
-    if (!rateLimit.allowed) {
-      console.log(`[ROUTES] ❌ Rate limit exceeded for: ${clientId}`);
-      return jsonResponse({
-        error: 'Rate limit exceeded',
-        message: `Too many requests. Please try again in ${rateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
-        resetAt: rateLimit.resetAt,
-      }, 429, request);
+    const globalLimit = await checkRateLimit(env, clientId, RATE_LIMIT_GLOBAL_POST);
+    if (!globalLimit.allowed) {
+      console.log(`[ROUTES] ⛔ Global POST rate limit exceeded for: ${clientId}`);
+      const challengeKv = env.ANALYTICS_KV || env.NOTES_KV;
+      await setTurnstileChallengeRequired(challengeKv, clientId);
+      return jsonResponse(
+        {
+          error: "Rate limit exceeded",
+          message: `Too many requests. Please try again in ${globalLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: globalLimit.resetAt,
+        },
+        429,
+        request,
+      );
     }
 
-    console.log(`[ROUTES] ✅ Rate limit OK. Remaining: ${rateLimit.remaining}`);
+    if (pathname === "/api/notes/reserve") {
+      const r = await checkRateLimit(env, clientId, RATE_LIMIT_RESERVE);
+      if (!r.allowed) {
+        const challengeKv = env.ANALYTICS_KV || env.NOTES_KV;
+        await setTurnstileChallengeRequired(challengeKv, clientId);
+        return jsonResponse(
+          {
+            error: "Rate limit exceeded",
+            message: `Too many note reservations. Please try again in ${r.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+            resetAt: r.resetAt,
+          },
+          429,
+          request,
+        );
+      }
+    }
+
+    if (pathname === "/api/notes") {
+      const r = await checkRateLimit(env, clientId, RATE_LIMIT_NOTE_CREATE);
+      if (!r.allowed) {
+        const challengeKv = env.ANALYTICS_KV || env.NOTES_KV;
+        await setTurnstileChallengeRequired(challengeKv, clientId);
+        return jsonResponse(
+          {
+            error: "Rate limit exceeded",
+            message: `Too many notes created. Please try again in ${r.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+            resetAt: r.resetAt,
+          },
+          429,
+          request,
+        );
+      }
+    }
+
+    console.log(`[ROUTES] ✅ Rate limits OK. Global remaining: ${globalLimit.remaining}`);
   }
 
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
@@ -3764,154 +4976,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const storage = new CompositeStorage(env.NOTES_KV, analyticsKv);
   console.log(`[ROUTES] Storage initialized`);
 
-  // AI API routes
-  if (pathname === "/api/ai/config" && method === "GET") {
-    return jsonResponse({
-      hasApiKey: Boolean(env.OPENAI_API_KEY),
-    }, 200, request);
-  }
-
-  if (pathname === "/api/ai/enhance" && method === "POST") {
-    console.log("[AI] Enhance request received");
-    if (!env.OPENAI_API_KEY) {
-      console.warn("[AI] Missing OpenAI API key");
-      return jsonResponse({ message: "OpenAI API key not configured on server" }, 500, request);
-    }
-
-    let body: any;
-    try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ message: "Invalid JSON payload" }, 400, request);
-    }
-
-    const content = typeof body?.content === "string" ? body.content.trim() : "";
-    const enhancementType = body?.enhancementType;
-    const turnstileToken = body?.turnstileToken;
-    console.log("[AI] Enhancement type:", enhancementType, "Token present:", !!turnstileToken);
-
-    if (!content) {
-      console.warn("[AI] Missing content");
-      return jsonResponse({ message: "Content is required" }, 400, request);
-    }
-
-    const MAX_INPUT_CHARS = 4000;
-    if (content.length > MAX_INPUT_CHARS) {
-      return jsonResponse({ message: `Content is too long (max ${MAX_INPUT_CHARS} characters)` }, 413, request);
-    }
-
-    if (!["improve", "summarize", "secure"].includes(enhancementType)) {
-      console.warn("[AI] Invalid enhancement type:", enhancementType);
-      return jsonResponse({ message: "Invalid enhancement type" }, 400, request);
-    }
-
+  if (pathname === "/api/notes/turnstile-challenge" && method === "GET") {
     const clientId = getClientIdentifier(request);
-    const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
-    let remainingUses = 0;
-    console.log("[AI] Client ID:", clientId);
-
-    if (turnstileToken) {
-      const isHuman = await verifyTurnstile(turnstileToken, request, env);
-      if (!isHuman) {
-        console.warn("[AI] Turnstile verification failed");
-        return jsonResponse({ error: "Human verification failed" }, 403, request);
-      }
-      remainingUses = AI_VERIFICATION.USES;
-      console.log("[AI] Turnstile verified; granting uses:", remainingUses);
-    } else {
-      const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
-      if (!cachedRemaining) {
-        console.warn("[AI] No cached verification; rejecting");
-        return jsonResponse({ error: "Human verification required" }, 403, request);
-      }
-      remainingUses = cachedRemaining;
-      console.log("[AI] Cached verification remaining:", remainingUses);
-    }
-
-    // Store original remaining uses before API call
-    const originalRemainingUses = remainingUses;
-
-    const systemPrompts: Record<string, string> = {
-      improve: "You are an expert editor. Improve the text by fixing grammar, enhancing clarity, and making it more professional while maintaining the original meaning. Return only the improved text with no additional explanations.",
-      summarize: "You are a skilled summarizer. Create a concise summary of the text while preserving all key points. Return only the summary with no additional explanations.",
-      secure: "You are a security expert. Analyze the text and remove any potentially sensitive information (like personal data, passwords, credit card numbers, etc.) while maintaining the main message. Return only the sanitized text with no additional explanations.",
-    };
-
-    try {
-      console.log("[AI] Calling OpenAI responses API");
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          input: [
-            {
-              role: "system",
-              content: [{ type: "input_text", text: systemPrompts[enhancementType] }],
-            },
-            {
-              role: "user",
-              content: [{ type: "input_text", text: content }],
-            },
-          ],
-          max_output_tokens: 800,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let upstreamMessage = errorText || response.statusText;
-        try {
-          const parsed = JSON.parse(errorText);
-          upstreamMessage = parsed?.error?.message || upstreamMessage;
-        } catch {
-          // Use raw error text if it's not JSON.
-        }
-        console.error("[AI] OpenAI error:", response.status, errorText);
-        // Return original remaining uses since the API call failed
-        return jsonResponse({
-          message: "AI request failed",
-          upstreamStatus: response.status,
-          details: typeof upstreamMessage === "string" ? upstreamMessage.slice(0, 500) : "Unknown error",
-          remainingUses: originalRemainingUses,
-        }, 502, request);
-      }
-
-      const data = await response.json<{
-        output?: Array<{
-          content?: Array<{ type?: string; text?: string }>;
-        }>;
-      }>();
-      const output = data.output
-        ?.flatMap((item) => item.content ?? [])
-        .find((item) => item.type === "output_text" && item.text)
-        ?.text?.trim();
-      if (!output) {
-        console.warn("[AI] OpenAI response missing output text");
-        // Return original remaining uses since the API call didn't produce valid output
-        return jsonResponse({
-          message: "AI response was empty",
-          remainingUses: originalRemainingUses,
-        }, 502, request);
-      }
-
-      // Only decrement remaining uses AFTER successful API call
-      remainingUses = Math.max(remainingUses - 1, 0);
-      await setAiVerificationRemaining(verificationKv, clientId, remainingUses);
-      console.log("[AI] OpenAI success; remaining uses:", remainingUses);
-
-      return jsonResponse({ content: output, remainingUses }, 200, request);
-    } catch (error) {
-      console.error("[AI] Error calling OpenAI:", error);
-      // Return original remaining uses since the API call failed
-      return jsonResponse({
-        message: "AI request failed",
-        remainingUses: originalRemainingUses,
-      }, 502, request);
-    }
+    const required =
+      Boolean(env.TURNSTILE_SECRET_KEY) && (await getTurnstileChallengeRequired(analyticsKv, clientId));
+    return jsonResponse({ required }, 200, request);
   }
 
   // Reserve note ID (client encrypts with noteId-bound AAD)
@@ -3932,19 +5001,23 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     let noteForAnalytics: Note | null = null;
     try {
       requestBody = await request.clone().json();
-      const expirySecondsRaw = Number(requestBody?.expirySeconds ?? NaN);
-      const expiryDaysRaw = Number(requestBody?.expiryDays ?? 1);
-      const expirySeconds = Number.isFinite(expirySecondsRaw)
-        ? expirySecondsRaw
-        : expiryDaysRaw * 24 * 60 * 60;
+
+      // Honeypot: legitimate browsers always send _hp as an empty string.
+      // A non-empty value means a bot filled the hidden field.
+      if (typeof requestBody?._hp === "string" && requestBody._hp !== "") {
+        console.warn("[ROUTES] Honeypot triggered — rejecting bot request");
+        // Silently return a fake 200 so bots don't know they were blocked
+        return jsonResponse({ id: crypto.randomUUID() }, 200, request);
+      }
+      const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds);
       const maxReads = Number(requestBody?.maxReads ?? 1);
-      if (requestBody?.content && requestBody?.iv) {
+      if (requestBody?.content && requestBody?.iv && expiryParsed.ok) {
         noteForAnalytics = {
           id: "pending",
           content: requestBody.content,
           iv: requestBody.iv,
           aad: requestBody?.aad ?? null,
-          expiresAt: new Date(Date.now() + expirySeconds * 1000),
+          expiresAt: new Date(Date.now() + expiryParsed.seconds * 1000),
           maxReads,
           currentReads: 0,
           createdAt: new Date(),
@@ -3952,9 +5025,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           salt: requestBody?.salt ?? null,
           encryptedKey: null,
           encryptedKeyIv: requestBody?.encryptedKeyIv ?? null,
-          kdfVersion: requestBody?.kdfVersion ?? null,
-          kdfIterations: requestBody?.kdfIterations ?? null,
-          kdfHash: requestBody?.kdfHash ?? null,
+          kdfVersion: null,
+          kdfIterations: null,
+          kdfPolicyTag: null,
         };
       }
     } catch (error) {
@@ -3967,21 +5040,30 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const verificationKv = env.ANALYTICS_KV || env.NOTES_KV;
       const clientId = getClientIdentifier(request);
 
-      if (requestBody?.turnstileToken) {
-        const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
-        if (!isHuman) {
-          console.warn("[AI] Turnstile verification failed for note creation");
-          return jsonResponse({ error: "Human verification failed" }, 403, request);
-        }
-        await setAiVerificationRemaining(verificationKv, clientId, AI_VERIFICATION.USES);
-        console.log("[AI] Turnstile verified for note creation; uses granted");
+      if (!env.TURNSTILE_SECRET_KEY) {
+        // Turnstile not configured (local dev or no-Turnstile deploy) — skip verification
+        console.log("[AI] No TURNSTILE_SECRET_KEY configured; skipping AI note verification");
       } else {
-        const cachedRemaining = await getAiVerificationRemaining(verificationKv, clientId);
-        if (!cachedRemaining) {
-          console.warn("[AI] No cached verification for note creation");
-          return jsonResponse({ error: "Human verification required" }, 403, request);
+        const challengeRequired = await getTurnstileChallengeRequired(verificationKv, clientId);
+        if (!challengeRequired) {
+          console.log("[AI] No adaptive Turnstile challenge; skipping verification for AI note");
+        } else if (requestBody?.turnstileToken) {
+          const isHuman = await verifyTurnstile(requestBody?.turnstileToken, request, env);
+          if (!isHuman) {
+            console.warn("[AI] Turnstile verification failed for note creation");
+            return jsonResponse(
+              { error: "Human verification failed", challengeRequired: true },
+              403,
+              request,
+            );
+          }
+          await setAiVerificationRemaining(verificationKv, clientId, AI_VERIFICATION.USES);
+          await clearTurnstileChallengeRequired(verificationKv, clientId);
+          console.log("[AI] Turnstile verified for note creation; challenge cleared");
+        } else {
+          console.warn("[AI] Adaptive challenge active; verification required for note creation");
+          return jsonResponse({ error: "Human verification required", challengeRequired: true }, 403, request);
         }
-        console.log("[AI] Cached verification for note creation; remaining:", cachedRemaining);
       }
     }
 
@@ -4008,7 +5090,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         method: "POST",
         headers: request.headers,
         body: request.body,
-      }),
+      }) as any,
     );
 
     if (doResponse.ok && noteForAnalytics) {
@@ -4016,11 +5098,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       await storage.trackNoteCreation(noteForAnalytics, { aiEnhanced: aiMode });
     }
 
+    if (doResponse.ok && aiMode) {
+      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
+    }
+
     if (doResponse.ok && requestedId) {
       await clearReservation(env, requestedId);
     }
 
-    return applyCorsHeaders(doResponse, request);
+    return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
@@ -4028,9 +5114,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const { id } = noteRevealParams;
     const clientId = getClientIdentifier(request);
     const revealKey = `${clientId}:reveal:${id}`;
-    const revealLimit = await checkRateLimit(request, env, revealKey);
+    const revealLimit = await checkRateLimit(env, revealKey, RATE_LIMIT_REVEAL);
 
     if (!revealLimit.allowed) {
+      const challengeKv = env.ANALYTICS_KV || env.NOTES_KV;
+      await setTurnstileChallengeRequired(challengeKv, clientId);
       return jsonResponse({
         error: 'Rate limit exceeded',
         message: `Too many reveal attempts. Please try again in ${revealLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
@@ -4040,17 +5128,45 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const doId = env.SECURE_NOTES.idFromName(id);
     const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request);
+    const doResponse = await stub.fetch(request as any);
+
+    if (!doResponse.ok) {
+      let errorBodyPreview = "";
+      try {
+        errorBodyPreview = (await doResponse.clone().text()).slice(0, 500);
+      } catch {
+        // ignore
+      }
+      console.warn(
+        JSON.stringify({
+          event: "note_reveal_failed",
+          noteId: id,
+          httpStatus: doResponse.status,
+          errorBodyPreview,
+        }),
+      );
+    }
 
     if (doResponse.ok) {
       try {
-        const data = await doResponse.clone().json();
+        type RevealJson = {
+          content?: string;
+          iv?: string;
+          aad?: string | null;
+          expiresAt?: string;
+          maxReads?: number;
+          readCount?: number;
+          isPasswordProtected?: boolean;
+          salt?: string | null;
+          encryptedKeyIv?: string | null;
+        };
+        const data = (await doResponse.clone().json()) as RevealJson;
         const noteForAnalytics: Note = {
           id,
-          content: data.content,
-          iv: data.iv,
+          content: data.content ?? "",
+          iv: data.iv ?? "",
           aad: data.aad ?? null,
-          expiresAt: new Date(data.expiresAt),
+          expiresAt: new Date(data.expiresAt ?? Date.now()),
           maxReads: data.maxReads ?? 0,
           currentReads: data.readCount ?? 0,
           createdAt: new Date(),
@@ -4058,9 +5174,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           salt: data.salt ?? null,
           encryptedKey: null,
           encryptedKeyIv: data.encryptedKeyIv ?? null,
-          kdfVersion: data.kdfVersion ?? null,
-          kdfIterations: data.kdfIterations ?? null,
-          kdfHash: data.kdfHash ?? null,
+          kdfVersion: null,
+          kdfIterations: null,
+          kdfPolicyTag: null,
         };
         await storage.trackNoteView(noteForAnalytics);
       } catch (error) {
@@ -4068,7 +5184,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    return applyCorsHeaders(doResponse, request);
+    return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
@@ -4076,8 +5192,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const { id } = noteParams;
     const doId = env.SECURE_NOTES.idFromName(id);
     const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request);
-    return applyCorsHeaders(doResponse, request);
+    const doResponse = await stub.fetch(request as any);
+    return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 
   // Blog API routes - Public
@@ -4144,6 +5260,31 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", clearAdminSessionCookie());
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/admin/health/auth" && method === "GET") {
+    const authError = requireAdmin(request, env);
+    if (authError) return authError;
+
+    const magic = getMagicLinkIssuanceDiagnostics(env, request);
+    const payload = {
+      ok: magic.endToEndReady,
+      magicLink: magic,
+      monitoring: {
+        summary:
+          "magic/send returns generic 200 on storage/email failures for anti-enumeration; rely on health checks, audit_log, and worker logs.",
+        suggestedProbes: [
+          "GET /api/admin/health/auth — alert when HTTP status ≠ 200 or magicLink.endToEndReady is false.",
+        ],
+        auditLogSignals: [
+          "magic_link_failed with auth_secret_key_missing or auth_kv_missing",
+          "magic_link_email_failed (spike or sustained failures)",
+        ],
+        logPatterns: ["[MAGIC_LINK] storeMagicLink failed", "[MAGIC_LINK] Resend did not send email"],
+      },
+    };
+    const status = magic.endToEndReady ? 200 : 503;
+    return jsonResponse(payload, status, request);
   }
 
   // ============================================================================
@@ -4623,6 +5764,33 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
+  if (pathname === "/api/admin/analytics/aggregate" && method === "GET") {
+    const authError = requireAdmin(request, env);
+    if (authError) return authError;
+
+    try {
+      const startParam = url.searchParams.get("startDate");
+      const endParam = url.searchParams.get("endDate");
+      if (!startParam || !endParam) {
+        return jsonResponse(
+          { message: "startDate and endDate are required (YYYY-MM-DD, UTC day boundaries)" },
+          400,
+          request,
+        );
+      }
+      const start = parseAnalyticsUtcDayParam(startParam);
+      const end = parseAnalyticsUtcDayParam(endParam);
+      if (!start || !end) {
+        return jsonResponse({ message: "startDate and endDate must be YYYY-MM-DD" }, 400, request);
+      }
+      const result = await storage.getAggregatedDailyMetrics(start, end);
+      return jsonResponse(result, 200, request);
+    } catch (error) {
+      console.error("Error fetching aggregate analytics:", error);
+      return jsonResponse({ message: "Failed to fetch aggregate metrics" }, 500, request);
+    }
+  }
+
   if (pathname === "/api/admin/analytics/range" && method === "GET") {
     const authError = requireAdmin(request, env);
     if (authError) return authError;
@@ -4741,8 +5909,6 @@ export async function cleanupExpiredSessions(env: Env): Promise<{ deleted: numbe
   if (!env.AUTH_DB) {
     return { deleted: 0, error: "AUTH_DB not configured" };
   }
-
-  const now = new Date().toISOString();
 
   try {
     // Delete sessions that have been revoked for more than 30 days

@@ -2,16 +2,11 @@ import React from 'react';
 import { Link } from 'wouter';
 import { motion, MotionConfig } from 'framer-motion';
 import {
-  ArrowLeft,
   Lock,
   Database,
   Key,
   Binary,
   Layers,
-  ShieldCheck,
-  Zap,
-  AlertTriangle,
-  Check,
 } from 'lucide-react';
 
 const SecurityOverview: React.FC = () => {
@@ -46,10 +41,10 @@ const SecurityOverview: React.FC = () => {
                   <h2 className="text-3xl font-bold text-gray-900 dark:text-white">E2EE Model</h2>
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  We utilize an End-to-End Encrypted (E2EE) model where the server is treated as an untrusted storage medium. Plaintext content is never transmitted.
+                  We utilize an End-to-End Encrypted (E2EE) model where the server is treated as an untrusted storage medium. Plaintext note content is never sent to our servers for storage or processing.
                 </p>
-                <p className="mt-3 text-sm text-amber-800/90 dark:text-amber-200/90">
-                  AI mode is an exception: your prompt is sent to our AI provider to generate a response.
+                <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Optional AI assist runs in your browser with a local model when you enable it. We do not send your note text to PrivateNote.ai or third-party cloud APIs for AI inference.
                 </p>
               </div>
 
@@ -113,8 +108,8 @@ const SecurityOverview: React.FC = () => {
                   <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">Key Derivation (KDF)</h3>
                   <ul className="space-y-4">
                     <li className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">PBKDF2-HMAC-SHA256</span>
-                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">310,000 iterations for password-protected notes, making brute-force attacks computationally expensive.</span>
+                      <span className="text-sm font-semibold text-white">Argon2id (v2 profile)</span>
+                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">Password-protected notes use Argon2id with memory-hard parameters (time=3, memory=64 MiB, parallelism=1) to increase brute-force cost, especially on GPU/ASIC attackers.</span>
                     </li>
                     <li className="flex flex-col">
                       <span className="text-sm font-semibold text-white">16-Byte Cryptographic Salt</span>

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
-import { getQueryFn } from '@/lib/queryClient';
-import { AnalyticsMetricsType, type AnalyticsData, type DailyMetrics } from '@shared/schema';
+import type { AnalyticsData, DailyMetrics } from '@shared/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -61,16 +59,28 @@ const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
   };
 };
 
-export default function Analytics() {
-  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const today = new Date();
+function utcYmd(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10);
+}
 
-  // Date calculations
-  const dailyDate = today;
-  const weeklyStartDate = startOfWeek(today);
-  const weeklyEndDate = endOfWeek(today);
-  const monthlyStartDate = startOfMonth(today);
-  const monthlyEndDate = endOfMonth(today);
+function addUtcDaysFromYmd(ymd: string, deltaDays: number): string {
+  const d = new Date(`${ymd}T12:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return utcYmd(d);
+}
+
+const ANALYTICS_ALL_TIME_START = '2020-01-01';
+
+type AggregateResponse = {
+  startDateUtc: string;
+  endDateUtc: string;
+  metrics: DailyMetrics;
+};
+
+export default function Analytics() {
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
+  const [customStart, setCustomStart] = useState(() => addUtcDaysFromYmd(utcYmd(), -30));
+  const [customEnd, setCustomEnd] = useState(() => utcYmd());
 
   // Get API base URL
   const getApiUrl = (url: string): string => {
@@ -119,18 +129,38 @@ export default function Analytics() {
     enabled: isAuthenticated && timeRange === 'monthly'
   });
 
-  // Determine which query to use based on the selected time range
-  const currentQuery = timeRange === 'daily'
-    ? dailyQuery
-    : timeRange === 'weekly'
-      ? weeklyQuery
-      : monthlyQuery;
+  const aggregateQuery = useQuery({
+    queryKey: ['/api/admin/analytics/aggregate', customStart, customEnd],
+    queryFn: () =>
+      fetchWithAdminCookie(
+        `/api/admin/analytics/aggregate?startDate=${encodeURIComponent(customStart)}&endDate=${encodeURIComponent(customEnd)}`,
+      ),
+    enabled: isAuthenticated && timeRange === 'custom',
+  });
+
+  const currentQuery =
+    timeRange === 'daily'
+      ? dailyQuery
+      : timeRange === 'weekly'
+        ? weeklyQuery
+        : timeRange === 'monthly'
+          ? monthlyQuery
+          : aggregateQuery;
 
   const isLoading = currentQuery.isLoading;
   const error = currentQuery.error;
-  const data = currentQuery.data as AnalyticsData | undefined;
+  const data = (timeRange === 'custom' ? null : currentQuery.data) as AnalyticsData | undefined;
+
   let parsedMetrics: DailyMetrics | null = null;
-  if (data?.metrics) {
+  let periodUtcLabel = '';
+
+  if (timeRange === 'custom') {
+    const agg = aggregateQuery.data as AggregateResponse | null | undefined;
+    if (agg?.metrics) {
+      parsedMetrics = agg.metrics;
+      periodUtcLabel = `UTC ${agg.startDateUtc} through ${agg.endDateUtc} (inclusive)`;
+    }
+  } else if (data?.metrics) {
     if (typeof data.metrics === 'string') {
       try {
         parsedMetrics = JSON.parse(data.metrics) as DailyMetrics;
@@ -140,7 +170,18 @@ export default function Analytics() {
     } else {
       parsedMetrics = data.metrics as DailyMetrics;
     }
+    const todayUtc = utcYmd();
+    if (timeRange === 'daily') {
+      periodUtcLabel = `Single UTC day: ${todayUtc}`;
+    } else if (timeRange === 'weekly') {
+      periodUtcLabel = `UTC ${addUtcDaysFromYmd(todayUtc, -6)} through ${todayUtc} (7 days)`;
+    } else {
+      const now = new Date();
+      const monthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      periodUtcLabel = `UTC month slice: ${monthStart} through ${todayUtc}`;
+    }
   }
+
   const metrics = parsedMetrics ? normalizeMetrics(parsedMetrics) : undefined;
 
   // Convert metrics to chart data
@@ -217,19 +258,79 @@ export default function Analytics() {
   return (
     <div className="container mx-auto px-6 pt-24 pb-16">
       <div className="flex flex-col space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
           <h1 className="page-title text-gray-900 dark:text-white">Analytics Dashboard</h1>
-          <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
-            <SelectTrigger className="w-[180px]">
+          <Select
+            value={timeRange}
+            onValueChange={(value) => setTimeRange(value as 'daily' | 'weekly' | 'monthly' | 'custom')}
+          >
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="daily">Daily (UTC)</SelectItem>
+              <SelectItem value="weekly">Weekly (UTC)</SelectItem>
+              <SelectItem value="monthly">Monthly (UTC)</SelectItem>
+              <SelectItem value="custom">Custom UTC range</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>UTC buckets</AlertTitle>
+          <AlertDescription>
+            All day totals use <strong>UTC</strong> calendar dates, matching KV keys{' '}
+            <code className="text-xs">analytics:daily:YYYY-MM-DD</code>. &quot;Notes viewed&quot; counts
+            successful opens on that UTC day (not the day the note was created).
+          </AlertDescription>
+        </Alert>
+
+        {timeRange === 'custom' ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="analytics-start" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Start (UTC date)
+              </label>
+              <input
+                id="analytics-start"
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="analytics-end" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                End (UTC date)
+              </label>
+              <input
+                id="analytics-end"
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-fit"
+              onClick={() => {
+                setCustomStart(ANALYTICS_ALL_TIME_START);
+                setCustomEnd(utcYmd());
+              }}
+            >
+              All time (UTC)
+            </Button>
+          </div>
+        ) : null}
+
+        {periodUtcLabel ? (
+          <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
+            <span className="font-medium text-gray-800 dark:text-gray-200">Period:</span> {periodUtcLabel}
+          </p>
+        ) : null}
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -250,7 +351,7 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle>Note Activity</CardTitle>
                 <CardDescription>
-                  Overview of note creation and views for the {timeRange} period
+                  Notes created vs. opened successfully (reveal) in this UTC window
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -294,7 +395,7 @@ export default function Analytics() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {prepareViewLimitsData().map((entry, index) => (
+                        {prepareViewLimitsData().map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -310,7 +411,7 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle>Content Length Distribution</CardTitle>
                 <CardDescription>
-                  Distribution of note lengths created by users
+                  By encrypted payload string length (base64 ciphertext), not plaintext size
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -327,7 +428,7 @@ export default function Analytics() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {prepareContentLengthData().map((entry, index) => (
+                        {prepareContentLengthData().map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>

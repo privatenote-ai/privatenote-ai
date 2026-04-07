@@ -17,7 +17,7 @@ interface StoredNote {
   encryptedKeyIv: string | null;
   kdfVersion: number | null;
   kdfIterations: number | null;
-  kdfHash: string | null;
+  kdfPolicyTag: string | null;
 }
 
 // KV TTL limits
@@ -70,7 +70,7 @@ export class KVNoteStorage {
       encryptedKeyIv: note.encryptedKeyIv || null,
       kdfVersion: note.kdfVersion ?? null,
       kdfIterations: note.kdfIterations ?? null,
-      kdfHash: note.kdfHash ?? null,
+      kdfPolicyTag: note.kdfPolicyTag ?? null,
     };
   }
 
@@ -90,7 +90,7 @@ export class KVNoteStorage {
       encryptedKeyIv: stored.encryptedKeyIv,
       kdfVersion: stored.kdfVersion ?? null,
       kdfIterations: stored.kdfIterations ?? null,
-      kdfHash: stored.kdfHash ?? null,
+      kdfPolicyTag: stored.kdfPolicyTag ?? null,
     };
   }
 
@@ -136,9 +136,9 @@ export class KVNoteStorage {
       encryptedKey: null,
       encryptedKeyIv: noteData.encryptedKeyIv || null,
       salt: noteData.salt || null,
-      kdfVersion: noteData.kdfVersion ?? null,
-      kdfIterations: noteData.kdfIterations ?? null,
-      kdfHash: noteData.kdfHash ?? null,
+      kdfVersion: null,
+      kdfIterations: null,
+      kdfPolicyTag: null,
     };
 
     const stored = this.noteToStored(note);

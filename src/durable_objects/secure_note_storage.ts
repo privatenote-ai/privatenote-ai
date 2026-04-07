@@ -1,49 +1,31 @@
-import type { DurableObjectState, KVNamespace } from "@cloudflare/workers-types";
+import type { DurableObjectState } from "@cloudflare/workers-types";
+import { decodeNoteAadBase64, parseNoteAadPlaintext } from "@shared/noteAad";
+import { tryParseKdfParamsV2Object, type KdfParamsV2 } from "@shared/kdfParamsV2";
+import { noteMetaEligibility, type NoteMetaRow } from "@shared/noteMetaEligibility";
+import {
+  passwordWireFieldsPresent,
+  validateNoteAesGcmIvWire,
+  validateNoteCiphertextWire,
+  validateNoteEncryptedKeyWire,
+  validateNoteKdfSaltWire,
+} from "@shared/noteCryptoWire";
+import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import { isValidNoteId } from "@shared/noteId";
+import {
+  parseStoredNoteCiphertextForReveal,
+  STORED_NOTE_CIPHER_ALG,
+  STORED_NOTE_PAYLOAD_VERSION,
+  type ParsedStoredNoteCiphertext,
+} from "@shared/storedNotePayload";
 
-export interface Env {
-  NOTES_KV: KVNamespace;
-}
+type StoredCiphertext = ParsedStoredNoteCiphertext;
 
-interface NoteMetaRow {
-  note_id: string;
-  expires_at: string;
-  max_reads: number;
-  current_reads: number;
-  consumed: number;
-}
-
-interface StoredCiphertext {
-  v: number;
-  content: string;
-  iv: string;
-  alg: string;
-  aad?: string;
-  isPasswordProtected: boolean;
-  salt: string | null;
-  encryptedKey: string | null;
-  encryptedKeyIv: string | null;
-  kdfVersion?: number;
-  kdfIterations?: number;
-  kdfHash?: string;
-}
-
-const MIN_TTL_SECONDS = 60;
-const MAX_TTL_SECONDS = 2147483647;
 const MIN_EXPIRY_SECONDS = 60;
 const MAX_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
-// Hard limit on ciphertext size to prevent abuse / OOM (approx. 50 KB base64)
-const MAX_NOTE_CIPHERTEXT_LENGTH = 50_000;
 
-function calculateTTL(expiresAt: Date): number | undefined {
-  const now = Date.now();
-  const ttlSeconds = Math.floor((expiresAt.getTime() - now) / 1000);
-  if (ttlSeconds <= 0) return undefined;
-  if (ttlSeconds > MAX_TTL_SECONDS) return undefined;
-  return Math.max(MIN_TTL_SECONDS, ttlSeconds);
-}
-
-function getCiphertextKey(id: string): string {
-  return `note:${id}`;
+function isUniqueConstraintError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /UNIQUE|unique constraint|SQLITE_CONSTRAINT/i.test(msg);
 }
 
 async function getOneRow<T>(cursor: any): Promise<T | null> {
@@ -62,14 +44,32 @@ async function getOneRow<T>(cursor: any): Promise<T | null> {
   return null;
 }
 
+/** For use inside `transactionSync` only (`sql.exec` / cursors are synchronous). */
+function getOneRowSync<T>(cursor: any): T | null {
+  if (!cursor) return null;
+  if (typeof cursor.toArray === "function") {
+    const rows = cursor.toArray() as T[] | Promise<T[]>;
+    if (rows instanceof Promise) {
+      throw new Error("SQL cursor returned a Promise inside transactionSync");
+    }
+    return rows.length > 0 ? rows[0] : null;
+  }
+  if (typeof cursor.one === "function") {
+    try {
+      return cursor.one() as T | null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export class SecureNoteStorageSql {
   state: DurableObjectState;
-  env: Env;
   private schemaReady: boolean;
 
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(state: DurableObjectState, _env?: unknown) {
     this.state = state;
-    this.env = env;
     this.schemaReady = false;
   }
 
@@ -88,6 +88,13 @@ export class SecureNoteStorageSql {
     }
 
     const noteId = segments[2];
+    if (!isValidNoteId(noteId)) {
+      return new Response(JSON.stringify({ error: "Invalid note id" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     this.ensureSchema();
 
     if (request.method === "POST") {
@@ -122,6 +129,12 @@ export class SecureNoteStorageSql {
         "consumed INTEGER NOT NULL" +
         ")",
     );
+    this.state.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS notes_cipher (" + "note_id TEXT PRIMARY KEY," + "payload TEXT NOT NULL" + ")",
+    );
+    // Legacy deployments may still have consumed=1 tombstones (ciphertext already removed).
+    // Runs once per DO instance wake, not on a periodic schedule.
+    this.state.storage.sql.exec("DELETE FROM notes_meta WHERE consumed = 1");
     this.schemaReady = true;
   }
 
@@ -133,131 +146,159 @@ export class SecureNoteStorageSql {
     return await getOneRow<NoteMetaRow>(cursor);
   }
 
-  private upsertMeta(meta: NoteMetaRow): void {
-    this.state.storage.sql.exec(
-      "INSERT OR REPLACE INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed) " +
-        "VALUES (?, ?, ?, ?, ?)",
-      meta.note_id,
-      meta.expires_at,
-      meta.max_reads,
-      meta.current_reads,
-      meta.consumed,
-    );
-  }
-
-  private deleteMeta(noteId: string): void {
+  /** Remove ciphertext and metadata for the note (terminal state). Caller must use transactions where needed. */
+  private purgeNoteRowsSync(noteId: string): void {
+    this.state.storage.sql.exec("DELETE FROM notes_cipher WHERE note_id = ?", noteId);
     this.state.storage.sql.exec("DELETE FROM notes_meta WHERE note_id = ?", noteId);
   }
 
-  private async loadLegacyFromKV(noteId: string): Promise<NoteMetaRow | null> {
-    const raw = await this.env.NOTES_KV.get(getCiphertextKey(noteId));
-    if (!raw) return null;
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return null;
-    }
-
-    if (!parsed || typeof parsed !== "object" || !parsed.content || !parsed.iv) {
-      return null;
-    }
-
-    const expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const meta: NoteMetaRow = {
-      note_id: noteId,
-      expires_at: expiresAt.toISOString(),
-      max_reads: typeof parsed.maxReads === "number" ? parsed.maxReads : 1,
-      current_reads: typeof parsed.currentReads === "number" ? parsed.currentReads : 0,
-      consumed: 0,
-    };
-
-    const ciphertext: StoredCiphertext = {
-      v: typeof parsed.v === "number" ? parsed.v : 1,
-      content: parsed.content,
-      iv: parsed.iv,
-      alg: typeof parsed.alg === "string" ? parsed.alg : "AES-GCM",
-      aad: typeof parsed.aad === "string" ? parsed.aad : undefined,
-      isPasswordProtected: !!parsed.isPasswordProtected,
-      salt: parsed.salt ?? null,
-      encryptedKey: parsed.encryptedKey ?? null,
-      encryptedKeyIv: parsed.encryptedKeyIv ?? null,
-      kdfVersion: typeof parsed.kdfVersion === "number" ? parsed.kdfVersion : undefined,
-      kdfIterations: typeof parsed.kdfIterations === "number" ? parsed.kdfIterations : undefined,
-      kdfHash: typeof parsed.kdfHash === "string" ? parsed.kdfHash : undefined,
-    };
-
-    await this.persistCiphertext(noteId, ciphertext, expiresAt);
-    this.upsertMeta(meta);
-    return meta;
+  /** Purge note rows atomically (expired / exhausted / meta cleanup paths). */
+  private terminalConsumeSync(noteId: string): void {
+    this.state.storage.transactionSync(() => {
+      this.purgeNoteRowsSync(noteId);
+    });
   }
 
-  private async persistCiphertext(noteId: string, ciphertext: StoredCiphertext, expiresAt: Date, ttlSeconds?: number): Promise<void> {
-    const key = getCiphertextKey(noteId);
-    // Use provided TTL if available (exact value), otherwise calculate from expiresAt (for legacy compatibility)
-    const ttl = ttlSeconds !== undefined 
-      ? Math.max(MIN_TTL_SECONDS, Math.min(MAX_TTL_SECONDS, Math.floor(ttlSeconds)))
-      : calculateTTL(expiresAt);
-    const value = JSON.stringify(ciphertext);
-    if (ttl === undefined) {
-      await this.env.NOTES_KV.put(key, value);
-    } else {
-      await this.env.NOTES_KV.put(key, value, { expirationTtl: ttl });
-    }
-  }
-
-  private async deleteCiphertext(noteId: string): Promise<void> {
-    await this.env.NOTES_KV.delete(getCiphertextKey(noteId));
+  /**
+   * Create note: strict INSERT for both rows. Fails atomically if either already exists.
+   */
+  private insertNoteStrict(noteId: string, meta: NoteMetaRow, ciphertext: StoredCiphertext): void {
+    const payload = JSON.stringify(ciphertext);
+    this.state.storage.transactionSync(() => {
+      this.state.storage.sql.exec("INSERT INTO notes_cipher (note_id, payload) VALUES (?, ?)", noteId, payload);
+      this.state.storage.sql.exec(
+        "INSERT INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed) VALUES (?, ?, ?, ?, ?)",
+        meta.note_id,
+        meta.expires_at,
+        meta.max_reads,
+        meta.current_reads,
+        meta.consumed,
+      );
+    });
   }
 
   private async createNote(request: Request, noteId: string): Promise<Response> {
-    const existing = await this.getMeta(noteId);
-    if (existing) {
-      return new Response(JSON.stringify({ error: "Note already exists" }), {
-        status: 409,
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const body = await request.json<any>();
     const {
       content,
       iv,
-      expiryDays = 1,
       expirySeconds,
       maxReads = 1,
-      isPasswordProtected = false,
       salt = null,
       encryptedKey = null,
       encryptedKeyIv = null,
-      aad = undefined,
-      kdfVersion = undefined,
-      kdfIterations = undefined,
-      kdfHash = undefined,
+      aad: aadRaw = undefined,
+      kdfParams = undefined,
     } = body || {};
 
-    if (!content || !iv) {
+    const ippField = body?.isPasswordProtected;
+    let isPasswordProtected: boolean;
+    if (ippField === undefined) {
+      isPasswordProtected = false;
+    } else if (typeof ippField !== "boolean") {
+      return new Response(JSON.stringify({ error: "isPasswordProtected must be a boolean" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    } else {
+      isPasswordProtected = ippField;
+    }
+
+    if (typeof content !== "string" || typeof iv !== "string") {
+      return new Response(JSON.stringify({ error: "Content and IV must be strings" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (!content.trim() || !iv.trim()) {
       return new Response(JSON.stringify({ error: "Content and IV are required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Enforce a hard limit on ciphertext size to avoid very large notes
-    if (typeof content !== "string" || content.length > MAX_NOTE_CIPHERTEXT_LENGTH) {
+    if (typeof aadRaw !== "string" || !aadRaw.trim()) {
+      return new Response(JSON.stringify({ error: "aad (note authentication data) is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const aad = aadRaw.trim();
+
+    const contentWire = validateNoteCiphertextWire(content, "content");
+    if (!contentWire.ok) {
+      return new Response(JSON.stringify({ error: contentWire.message }), {
+        status: contentWire.kind === "too_large" ? 413 : 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const ivWire = validateNoteAesGcmIvWire(iv, "iv");
+    if (!ivWire.ok) {
+      return new Response(JSON.stringify({ error: ivWire.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    let normalizedKdfParams: KdfParamsV2 | undefined;
+
+    if (isPasswordProtected) {
+      const kdfParsed = tryParseKdfParamsV2Object(kdfParams);
+      if (!kdfParsed.ok) {
+        return new Response(JSON.stringify({ error: kdfParsed.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      normalizedKdfParams = kdfParsed.params;
+
+      const saltCheck = validateNoteKdfSaltWire(salt);
+      if (!saltCheck.ok) {
+        return new Response(JSON.stringify({ error: saltCheck.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      const keyIvCheck = validateNoteAesGcmIvWire(encryptedKeyIv, "encryptedKeyIv");
+      if (!keyIvCheck.ok) {
+        return new Response(JSON.stringify({ error: keyIvCheck.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      const encKeyCheck = validateNoteEncryptedKeyWire(encryptedKey);
+      if (!encKeyCheck.ok) {
+        return new Response(JSON.stringify({ error: encKeyCheck.message }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    } else if (passwordWireFieldsPresent(body)) {
       return new Response(
-        JSON.stringify({ error: `Note is too large (max ${MAX_NOTE_CIPHERTEXT_LENGTH} bytes)` }),
+        JSON.stringify({
+          error:
+            "salt, encryptedKey, and encryptedKeyIv must not be set for notes that are not password-protected",
+        }),
         {
-          status: 413,
+          status: 400,
           headers: { "Content-Type": "application/json" },
         },
       );
-    }
-
-    if (isPasswordProtected && (!salt || !encryptedKeyIv)) {
+    } else if (kdfParams != null) {
       return new Response(
-        JSON.stringify({ error: "Salt and encryptedKeyIv are required for password-protected notes" }),
+        JSON.stringify({
+          error: "kdfParams must not be set for notes that are not password-protected",
+        }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -265,21 +306,18 @@ export class SecureNoteStorageSql {
       );
     }
 
-    const parsedExpirySeconds = Number(expirySeconds);
-    const parsedExpiryDays = Number(expiryDays);
-    const rawExpirySeconds = Number.isFinite(parsedExpirySeconds)
-      ? parsedExpirySeconds
-      : Number.isFinite(parsedExpiryDays)
-        ? parsedExpiryDays * 24 * 60 * 60
-        : 24 * 60 * 60;
+    const expiryParsed = parseNoteExpirySecondsFromBody(expirySeconds);
+    if (!expiryParsed.ok) {
+      return new Response(JSON.stringify({ error: expiryParsed.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const safeExpirySeconds = Math.min(
       MAX_EXPIRY_SECONDS,
-      Math.max(MIN_EXPIRY_SECONDS, Math.floor(rawExpirySeconds)),
+      Math.max(MIN_EXPIRY_SECONDS, expiryParsed.seconds),
     );
     const expiresAt = new Date(Date.now() + safeExpirySeconds * 1000);
-    // Calculate TTL directly from expiry seconds to avoid timing discrepancy
-    // This ensures the KV TTL exactly matches what the UI specified
-    const ttlSeconds = safeExpirySeconds;
     const parsedMaxReads = Number(maxReads);
     const isUnlimitedExplicit = parsedMaxReads === 0 || maxReads === "0";
     const safeMaxReads = isUnlimitedExplicit
@@ -287,6 +325,25 @@ export class SecureNoteStorageSql {
       : Number.isFinite(parsedMaxReads) && parsedMaxReads > 0
         ? Math.floor(parsedMaxReads)
         : 1;
+
+    const plaintext = decodeNoteAadBase64(aad);
+    const parsedAad = plaintext !== null ? parseNoteAadPlaintext(plaintext) : null;
+    if (
+      !parsedAad ||
+      parsedAad.noteId !== noteId ||
+      parsedAad.expirySeconds !== safeExpirySeconds ||
+      parsedAad.maxReads !== safeMaxReads
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "Note authentication data (aad) is invalid or does not match id, expirySeconds, and maxReads",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
 
     const meta: NoteMetaRow = {
       note_id: noteId,
@@ -296,23 +353,49 @@ export class SecureNoteStorageSql {
       consumed: 0,
     };
 
+    const contentTrimmed = content.trim();
+    const ivTrimmed = iv.trim();
+
     const ciphertext: StoredCiphertext = {
-      v: 1,
-      content,
-      iv,
-      alg: "AES-GCM",
-      aad: typeof aad === "string" ? aad : undefined,
-      isPasswordProtected: !!isPasswordProtected,
-      salt,
+      v: STORED_NOTE_PAYLOAD_VERSION,
+      content: contentTrimmed,
+      iv: ivTrimmed,
+      alg: STORED_NOTE_CIPHER_ALG,
+      aad,
+      isPasswordProtected,
+      salt: null,
       encryptedKey: null,
-      encryptedKeyIv,
-      kdfVersion: Number.isFinite(Number(kdfVersion)) ? Number(kdfVersion) : undefined,
-      kdfIterations: Number.isFinite(Number(kdfIterations)) ? Number(kdfIterations) : undefined,
-      kdfHash: typeof kdfHash === "string" ? kdfHash : undefined,
+      encryptedKeyIv: null,
+      ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
     };
 
-    this.upsertMeta(meta);
-    await this.persistCiphertext(noteId, ciphertext, expiresAt, ttlSeconds);
+    if (isPasswordProtected) {
+      if (typeof salt !== "string" || typeof encryptedKey !== "string" || typeof encryptedKeyIv !== "string") {
+        return new Response(JSON.stringify({ error: "salt, encryptedKey, and encryptedKeyIv must be strings" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      ciphertext.salt = salt.trim();
+      ciphertext.encryptedKey = encryptedKey.trim().length > 0 ? encryptedKey.trim() : null;
+      ciphertext.encryptedKeyIv = encryptedKeyIv.trim();
+    }
+
+    try {
+      this.insertNoteStrict(noteId, meta, ciphertext);
+    } catch (e) {
+      if (isUniqueConstraintError(e)) {
+        return new Response(JSON.stringify({ error: "Note already exists" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      console.error(`[DO] insertNoteStrict failed for ${noteId}:`, e);
+      return new Response(JSON.stringify({ error: "Failed to store note" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ id: noteId }), {
       status: 201,
@@ -321,137 +404,140 @@ export class SecureNoteStorageSql {
   }
 
   private async getNoteMeta(noteId: string): Promise<Response> {
-    let meta = await this.getMeta(noteId);
-    if (!meta) {
-      meta = await this.loadLegacyFromKV(noteId);
-    }
-    if (!meta || meta.consumed) {
+    const meta = await this.getMeta(noteId);
+    const elig = noteMetaEligibility(meta, new Date());
+    if (!elig.ok) {
+      if (elig.kind === "expired" || elig.kind === "exhausted") {
+        try {
+          this.terminalConsumeSync(noteId);
+        } catch (e) {
+          console.error(`[DO] terminalConsumeSync (${elig.kind} meta) failed for ${noteId}:`, e);
+        }
+      }
       return new Response(JSON.stringify({ error: "Note not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const expiresAt = new Date(meta.expires_at);
-    if (expiresAt < new Date()) {
-      meta.consumed = 1;
-      this.upsertMeta(meta);
-      await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (meta.max_reads > 0 && meta.current_reads >= meta.max_reads) {
-      meta.consumed = 1;
-      this.upsertMeta(meta);
-      await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const responseBody = {
-      readCount: meta.current_reads,
-      maxReads: meta.max_reads,
-      expiresAt: meta.expires_at,
-    };
-
-    return new Response(JSON.stringify(responseBody), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  private async revealNote(noteId: string): Promise<Response> {
-    let meta = await this.getMeta(noteId);
-    if (!meta) {
-      meta = await this.loadLegacyFromKV(noteId);
-    }
-    if (!meta || meta.consumed) {
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const expiresAt = new Date(meta.expires_at);
-    if (expiresAt < new Date()) {
-      meta.consumed = 1;
-      this.upsertMeta(meta);
-      await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    if (meta.max_reads > 0 && meta.current_reads >= meta.max_reads) {
-      meta.consumed = 1;
-      this.upsertMeta(meta);
-      await this.deleteCiphertext(noteId);
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const raw = await this.env.NOTES_KV.get(getCiphertextKey(noteId));
-    if (!raw) {
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    let ciphertext: StoredCiphertext;
-    try {
-      ciphertext = JSON.parse(raw);
-    } catch {
-      return new Response(JSON.stringify({ error: "Note not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    meta.current_reads += 1;
-    this.upsertMeta(meta);
-
-    const responseBody = {
-      content: ciphertext.content,
-      iv: ciphertext.iv,
-      readCount: meta.current_reads,
-      maxReads: meta.max_reads,
-      expiresAt: meta.expires_at,
-      isPasswordProtected: ciphertext.isPasswordProtected ?? false,
-      ...(ciphertext.aad ? { aad: ciphertext.aad } : {}),
-      ...(ciphertext.kdfVersion !== undefined ? { kdfVersion: ciphertext.kdfVersion } : {}),
-      ...(ciphertext.kdfIterations !== undefined ? { kdfIterations: ciphertext.kdfIterations } : {}),
-      ...(ciphertext.kdfHash ? { kdfHash: ciphertext.kdfHash } : {}),
-      ...(ciphertext.isPasswordProtected && {
-        salt: ciphertext.salt,
-        ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),
-        encryptedKeyIv: ciphertext.encryptedKeyIv,
+    const row = meta as NoteMetaRow;
+    return new Response(
+      JSON.stringify({
+        readCount: row.current_reads,
+        maxReads: row.max_reads,
+        expiresAt: row.expires_at,
       }),
-    };
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 
-    if (meta.max_reads > 0 && meta.current_reads >= meta.max_reads) {
-      meta.consumed = 1;
-      this.upsertMeta(meta);
-      await this.deleteCiphertext(noteId);
+  private revealNote(noteId: string): Response {
+    const now = new Date();
+    type RevealTxnResult = { ok: true; body: Record<string, unknown> } | { ok: false };
+
+    let txnResult: RevealTxnResult;
+    try {
+      txnResult = this.state.storage.transactionSync((): RevealTxnResult => {
+        const meta = getOneRowSync<NoteMetaRow>(
+          this.state.storage.sql.exec(
+            "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?",
+            noteId,
+          ),
+        );
+        const elig = noteMetaEligibility(meta, now);
+        if (!elig.ok) {
+          if (elig.kind === "expired" || elig.kind === "exhausted") {
+            this.purgeNoteRowsSync(noteId);
+          }
+          return { ok: false };
+        }
+
+        const m = meta as NoteMetaRow;
+
+        const raw =
+          getOneRowSync<{ payload: string }>(
+            this.state.storage.sql.exec("SELECT payload FROM notes_cipher WHERE note_id = ?", noteId),
+          )?.payload ?? null;
+        if (!raw) {
+          // Eligible meta without ciphertext is inconsistent storage — purge so the row cannot 404 forever.
+          this.purgeNoteRowsSync(noteId);
+          return { ok: false };
+        }
+
+        const ciphertext = parseStoredNoteCiphertextForReveal(raw);
+        if (!ciphertext) {
+          this.purgeNoteRowsSync(noteId);
+          return { ok: false };
+        }
+
+        const newReads = m.current_reads + 1;
+        const markConsumed = m.max_reads > 0 && newReads >= m.max_reads;
+
+        if (markConsumed) {
+          this.purgeNoteRowsSync(noteId);
+        } else {
+          this.state.storage.sql.exec(
+            "UPDATE notes_meta SET current_reads = ?, consumed = 0 WHERE note_id = ?",
+            newReads,
+            noteId,
+          );
+        }
+
+        const responseBody: Record<string, unknown> = {
+          content: ciphertext.content,
+          iv: ciphertext.iv,
+          readCount: newReads,
+          maxReads: m.max_reads,
+          expiresAt: m.expires_at,
+          isPasswordProtected: ciphertext.isPasswordProtected,
+          ...(typeof ciphertext.aad === "string" && ciphertext.aad ? { aad: ciphertext.aad } : {}),
+          ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
+          ...(ciphertext.isPasswordProtected && {
+            salt: ciphertext.salt,
+            ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),
+            encryptedKeyIv: ciphertext.encryptedKeyIv,
+          }),
+        };
+
+        return { ok: true, body: responseBody };
+      });
+    } catch (e) {
+      console.error(`[DO] reveal transaction failed for ${noteId}:`, e);
+      return new Response(JSON.stringify({ error: "Failed to retrieve note" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(JSON.stringify(responseBody), {
+    if (!txnResult.ok) {
+      return new Response(JSON.stringify({ error: "Note not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify(txnResult.body), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  private async deleteNote(noteId: string): Promise<Response> {
-    await this.deleteCiphertext(noteId);
-    this.deleteMeta(noteId);
+  private deleteNote(noteId: string): Response {
+    try {
+      this.state.storage.transactionSync(() => {
+        this.state.storage.sql.exec("DELETE FROM notes_cipher WHERE note_id = ?", noteId);
+        this.state.storage.sql.exec("DELETE FROM notes_meta WHERE note_id = ?", noteId);
+      });
+    } catch (e) {
+      console.error(`[DO] deleteNote transaction failed for ${noteId}:`, e);
+      return new Response(JSON.stringify({ error: "Failed to delete note" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -461,13 +547,7 @@ export class SecureNoteStorageSql {
 }
 
 export class SecureNoteStorage {
-  state: DurableObjectState;
-  env: Env;
-
-  constructor(state: DurableObjectState, env: Env) {
-    this.state = state;
-    this.env = env;
-  }
+  constructor(_state: DurableObjectState, _env?: unknown) {}
 
   async fetch(): Promise<Response> {
     return new Response(JSON.stringify({ error: "Legacy Durable Object is deprecated" }), {

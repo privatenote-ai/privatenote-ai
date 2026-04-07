@@ -224,7 +224,7 @@
 
 1. **Server-side updates:**
    - Store `aad` field in database schema
-   - Store `kdfVersion`, `kdfIterations`, `kdfHash` fields
+   - Store `kdfVersion`, `kdfIterations`, `kdfPolicyTag` fields
    - Return these fields in API responses
 
 2. **Password strength:**

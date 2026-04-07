@@ -1,0 +1,13 @@
+# Minimal worker + SQLite DO binding for Vitest / workerd (no KV/D1).
+name = "privatenote-vitest"
+main = "src/test/vitest-worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = [ "nodejs_compat" ]
+
+[[durable_objects.bindings]]
+name = "SECURE_NOTES"
+class_name = "SecureNoteStorageSql"
+
+[[migrations]]
+tag = "vitest-secure-notes-sqlite-v1"
+new_sqlite_classes = [ "SecureNoteStorageSql" ]

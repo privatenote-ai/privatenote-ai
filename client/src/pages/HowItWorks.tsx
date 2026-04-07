@@ -5,7 +5,6 @@ import {
   Lock,
   PenLine,
   Share2,
-  Shield,
   Sparkles,
 } from "lucide-react";
 
@@ -26,12 +25,6 @@ export default function HowItWorks() {
       detail: "Send the link. The note disappears after it’s read or expires.",
       icon: <Share2 className="h-5 w-5" />,
     },
-  ];
-  const flowDetails = [
-    "No tracking cookies on note pages.",
-    "No third-party analytics scripts on notes.",
-    "Encryption keys stay in the link, not on our servers.",
-    "Minimal metadata stored only to enforce expiration.",
   ];
 
   return (
@@ -284,16 +277,16 @@ export default function HowItWorks() {
           <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl md:w-1/2">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
-                AI Processing & Risk Disclosure
+                AI Assist (on your device)
               </h2>
               <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                If you enable AI Assist, your note is temporarily decrypted on our Cloudflare Worker to construct the prompt for the specific AI action you request.
+                If you turn on AI Assist, the note is decrypted only in your browser so a local model (WebLLM) can run the action you chose. Plaintext for that step stays on your device; our Worker never receives your note content for AI processing.
               </p>
               <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                That prompt is then sent to a third-party AI provider for processing. The response is returned through our infrastructure and re-encrypted before being stored or shared.
+                The model and weights may download from public CDNs or repos configured for WebLLM—separate from your encrypted note payload. Results are merged into your draft locally before anything is encrypted again for upload.
               </p>
               <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                During this process, plaintext exists transiently in server memory and is handled outside the strict end-to-end encryption guarantees of Standard mode.
+                AI Assist still increases exposure versus Standard mode while the model runs (memory, downloads, and browser environment). Use it only when that trade-off is acceptable.
               </p>
             </div>
 

@@ -1,65 +1,196 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiRequest } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
+import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { WebAuthnOptions, coerceRegisterOptions, credentialToJson } from "@/utils/webauthn";
+import {
+  passkeyRegistrationErrorMessage,
+  registerPasskeyWithRetry,
+} from "@/pages/security-settings/registerPasskeyWithRetry";
 import { useAuth } from "@/context/AuthContext";
 import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 
+/**
+ * After we strip ?t= / ?token= / #token= from the address bar, the token stays here until consume
+ * finishes so Strict Mode remounts still see it. Cleared after use.
+ */
+let magicLinkTokenCache: string | null = null;
+
+function takeMagicLinkTokenOnce(): string | null {
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get("t") || url.searchParams.get("token");
+  const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+  const fromHash = hash ? new URLSearchParams(hash).get("token") : null;
+  const fromUrl = fromQuery || fromHash;
+
+  if (fromUrl) {
+    magicLinkTokenCache = fromUrl;
+    window.history.replaceState(null, "", url.pathname);
+    return fromUrl;
+  }
+  return magicLinkTokenCache;
+}
+
+type Phase = "initial" | "confirm" | "loading" | "success" | "error";
+
 export default function AuthMagic() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { refresh } = useAuth();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState<string>("Verifying your magic link...");
-  const [friendlyMessage, setFriendlyMessage] = useState<string>(
-    "We’re verifying your sign-in link."
-  );
+  const [phase, setPhase] = useState<Phase>("initial");
+  const [token, setToken] = useState<string | null>(null);
+  const [friendlyMessage, setFriendlyMessage] = useState<string>("");
   const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [dismissedNudge, setDismissedNudge] = useState(false);
+  const [emailCodeRequired, setEmailCodeRequired] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const token = url.searchParams.get("token");
-    if (!token) {
-      setStatus("error");
-      setMessage("Missing magic link token.");
+    const t = takeMagicLinkTokenOnce();
+    if (!t) {
+      setPhase("error");
+      setFriendlyMessage("Open the sign-in link from your email on this device, or request a new link.");
       return;
     }
+    setToken(t);
 
-    apiRequest<{ ok: boolean; totpRequired?: boolean }>("/api/auth/magic/consume?token=" + encodeURIComponent(token), "GET")
-      .then((result) => {
-        if (result?.totpRequired) {
-          setLocation("/auth/totp");
-          return undefined;
-        }
-        setStatus("success");
-        setMessage("You’re signed in.");
-        setFriendlyMessage("You’re signed in.");
-        refresh();
-        return apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
-      })
-      .then((me) => {
-        if (me && typeof me.hasPasskeys === "boolean") {
-          setHasPasskeys(me.hasPasskeys);
-        }
-      })
-      .catch((error) => {
-        setStatus("error");
-        const raw = error instanceof Error ? error.message : "Magic link failed.";
-        setMessage(raw);
-        if (typeof raw === "string" && raw.toLowerCase().includes("expired")) {
-          setFriendlyMessage("This link has expired. Please request a new sign‑in link.");
-        } else if (typeof raw === "string" && raw.toLowerCase().includes("invalid")) {
-          setFriendlyMessage("This sign‑in link is no longer valid. Please request a new one.");
+    void (async () => {
+      try {
+        const prep = await apiRequest<{
+          ok?: boolean;
+          emailCodeRequired?: boolean;
+          riskLevel?: string;
+        }>("/api/auth/magic/prepare", "POST", { token: t });
+
+        const needCode = prep?.emailCodeRequired === true;
+        setEmailCodeRequired(needCode);
+        if (needCode) {
+          setFriendlyMessage(
+            "Your network or browser looks different from when the link was sent. We emailed a 6-digit code — enter it below, then continue. For security, finish in the same browser where you opened the link.",
+          );
         } else {
-          setFriendlyMessage("We couldn’t verify that link. Please request a new sign‑in link.");
+          setFriendlyMessage(
+            "This page only prepares sign-in in your browser. Your session starts after you confirm. For security, finish sign-in in the same browser where you opened the link.",
+          );
         }
-      });
-  }, [location]);
+        setPhase("confirm");
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 403) {
+          try {
+            const body = JSON.parse(err.bodyText) as { code?: string };
+            if (body.code === "context_high_risk") {
+              setPhase("error");
+              setFriendlyMessage(
+                "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
+              );
+              return;
+            }
+            if (body.code === "origin_required") {
+              setPhase("error");
+              setFriendlyMessage(
+                "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+              );
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setPhase("error");
+        setFriendlyMessage(
+          "We couldn’t verify that sign-in link. Open it from your email again, or request a new link.",
+        );
+      }
+    })();
+  }, []);
+
+  const runConsume = async () => {
+    if (!token) return;
+    if (emailCodeRequired) {
+      const digits = emailCode.replace(/\D/g, "");
+      if (digits.length !== 6) {
+        toast({
+          title: "Enter the code",
+          description: "Use the 6-digit code from the email we just sent.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setPhase("loading");
+    setFriendlyMessage("Completing sign-in…");
+
+    try {
+      const payload: { token: string; emailCode?: string } = { token };
+      if (emailCodeRequired) {
+        payload.emailCode = emailCode.replace(/\D/g, "").slice(0, 6);
+      }
+      const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
+        "/api/auth/magic/consume",
+        "POST",
+        payload,
+      );
+
+      if (result?.totpRequired) {
+        magicLinkTokenCache = null;
+        setLocation("/auth/totp");
+        return;
+      }
+
+      setPhase("success");
+      setFriendlyMessage("You're signed in.");
+      refresh();
+      const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
+      if (me && typeof me.hasPasskeys === "boolean") {
+        setHasPasskeys(me.hasPasskeys);
+      }
+    } catch (error) {
+      setPhase("error");
+      if (error instanceof ApiRequestError) {
+        try {
+          const body = JSON.parse(error.bodyText) as { code?: string };
+          if (body.code === "magic_bind_required" || body.code === "magic_email_otp_exhausted") {
+            setFriendlyMessage(
+              body.code === "magic_email_otp_exhausted"
+                ? "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code."
+                : "This confirmation step expired. Open the link from your email again so we can verify your browser, then press Continue.",
+            );
+            return;
+          }
+          if (body.code === "magic_email_code_required" || body.code === "magic_email_code_invalid") {
+            setPhase("confirm");
+            setFriendlyMessage(
+              body.code === "magic_email_code_invalid"
+                ? "That code doesn’t match. Check the latest email and try again."
+                : "Enter the 6-digit code from your email, then press Continue sign in.",
+            );
+            return;
+          }
+          if (body.code === "origin_required") {
+            setFriendlyMessage(
+              "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+            );
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      const raw = error instanceof Error ? error.message : "Magic link failed.";
+      if (typeof raw === "string" && raw.toLowerCase().includes("expired")) {
+        setFriendlyMessage("This link has expired. Please request a new sign‑in link.");
+      } else if (typeof raw === "string" && raw.toLowerCase().includes("invalid")) {
+        setFriendlyMessage("This sign‑in link is no longer valid. Please request a new one.");
+      } else {
+        setFriendlyMessage("We couldn’t verify that link. Please request a new sign‑in link.");
+      }
+    } finally {
+      magicLinkTokenCache = null;
+    }
+  };
 
   const handleRegisterPasskey = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
@@ -68,30 +199,16 @@ export default function AuthMagic() {
     }
     setIsRegistering(true);
     try {
-      const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
-        "/api/auth/webauthn/register/options",
-        "POST",
-        {}
-      );
-      if (!data?.options) {
-        throw new Error("Missing WebAuthn options from server.");
-      }
-      const publicKey = coerceRegisterOptions(data.options);
-      const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
-      if (!credential) {
-        toast({ title: "Registration cancelled", description: "No credential returned." });
-        return;
-      }
-      await apiRequest("/api/auth/webauthn/register/verify", "POST", {
-        challengeId: data.challengeId,
-        credential: credentialToJson(credential),
-      });
+      await registerPasskeyWithRetry();
       setHasPasskeys(true);
-      toast({ title: "Passkey created", description: "You can now sign in with your passkey." });
+      toast({
+        title: "Passkey added",
+        description: "You can sign in with this passkey. The event is recorded in your audit log under Account security.",
+      });
     } catch (error) {
       toast({
         title: "Passkey registration failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        description: passkeyRegistrationErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -102,8 +219,56 @@ export default function AuthMagic() {
   return (
     <div className="pt-16 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <div className="space-y-6">
-        {/* Loading State */}
-        {status === "loading" && (
+        {/* Confirm (no session until user clicks) */}
+        {phase === "confirm" && (
+          <Card className="border-2">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-2xl">Continue sign in</CardTitle>
+              <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+              {emailCodeRequired && (
+                <div className="w-full max-w-xs space-y-2">
+                  <label htmlFor="magic-email-code" className="text-sm font-medium text-center block">
+                    6-digit code from email
+                  </label>
+                  <Input
+                    id="magic-email-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={12}
+                    placeholder="000000"
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    className="text-center text-lg tracking-widest"
+                  />
+                </div>
+              )}
+              <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
+                Continue sign in
+              </Button>
+              <p className="text-xs text-muted-foreground text-center max-w-md">
+                Opening the link only loads this page. Your session starts after you confirm here — not from the link
+                alone.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {phase === "initial" && (
+          <Card className="border-2">
+            <CardHeader className="text-center pb-4">
+              <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto mb-2" />
+              <CardTitle className="text-2xl">Checking your sign-in link…</CardTitle>
+              <CardDescription className="text-base mt-2">
+                Validating the link and binding this browser. No session is created until you continue.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
+        {phase === "loading" && (
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
@@ -112,16 +277,13 @@ export default function AuthMagic() {
                   <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1 animate-pulse" />
                 </div>
               </div>
-              <CardTitle className="text-2xl">Signing you in...</CardTitle>
-              <CardDescription className="text-base mt-2">
-                {friendlyMessage}
-              </CardDescription>
+              <CardTitle className="text-2xl">Signing you in…</CardTitle>
+              <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
           </Card>
         )}
 
-        {/* Success State */}
-        {status === "success" && (
+        {phase === "success" && (
           <>
             <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
               <CardHeader className="text-center pb-4">
@@ -157,7 +319,6 @@ export default function AuthMagic() {
               </CardContent>
             </Card>
 
-            {/* Passkey Nudge */}
             {hasPasskeys === false && !dismissedNudge && (
               <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
                 <CardHeader>
@@ -214,8 +375,7 @@ export default function AuthMagic() {
           </>
         )}
 
-        {/* Error State */}
-        {status === "error" && (
+        {phase === "error" && (
           <Card className="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
@@ -247,7 +407,7 @@ export default function AuthMagic() {
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
                 <p className="text-sm text-red-800 dark:text-red-300 text-center">
-                  <strong>Security note:</strong> For your security, magic links expire after a short time and can only be used once.
+                  <strong>Security note:</strong> Magic links expire after a short time (about ten minutes) and can only be used once.
                 </p>
               </div>
             </CardContent>

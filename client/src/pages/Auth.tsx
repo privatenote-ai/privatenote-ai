@@ -1,11 +1,98 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { WebAuthnOptions, credentialToJson, coerceLoginOptions } from "@/utils/webauthn";
+import { ApiRequestError, apiRequest } from "@/lib/queryClient";
+import {
+  WebAuthnOptions,
+  credentialToJson,
+  coerceLoginOptions,
+  describeWebAuthnEffectiveDomainError,
+} from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
+import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+
+const PASSKEY_FAIL_GENERIC =
+  "Sign-in could not be completed. Try again or use a different sign-in method.";
+const PASSKEY_FAIL_CANCELLED = "Sign-in was cancelled.";
+const PASSKEY_FAIL_SERVER_BUSY =
+  "Sign-in is temporarily unavailable. Please try again in a moment.";
+const PASSKEY_FAIL_RATE_LIMIT = "Too many attempts. Please wait a moment and try again.";
+
+const LIKELY_TYPO_EMAIL_DOMAINS = new Set([
+  "gmial.com",
+  "gamil.com",
+  "gnail.com",
+  "gmai.com",
+  "gmail.con",
+  "gmail.co",
+  "gmail.comm",
+  "gmail.om",
+  "yaho.com",
+  "yahoo.con",
+  "yahoo.co",
+  "yahho.com",
+  "hotmial.com",
+  "hotmal.com",
+  "hotmai.com",
+  "outlok.com",
+  "outllok.com",
+  "icloud.con",
+  "icoud.com",
+  "protonn.me",
+  "protonnmail.com",
+]);
+
+/** Tear down a widget instance (unmount / replace). Prefer Cloudflare's `remove`; fall back to `reset`. */
+function destroyTurnstileWidget(widgetId: string) {
+  const t = window.turnstile;
+  if (!t) return;
+  try {
+    if (typeof t.remove === "function") {
+      t.remove(widgetId);
+      return;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    t.reset(widgetId);
+  } catch {
+    /* ignore */
+  }
+}
+
+function passkeyFailureDescription(error: unknown): string {
+  const domainHint = describeWebAuthnEffectiveDomainError(error);
+  if (domainHint) return domainHint;
+
+  const errName =
+    error instanceof DOMException || error instanceof Error ? error.name : undefined;
+
+  if (errName === "NotAllowedError" || errName === "AbortError") {
+    return PASSKEY_FAIL_CANCELLED;
+  }
+  if (errName === "SecurityError" || errName === "InvalidStateError") {
+    return PASSKEY_FAIL_GENERIC;
+  }
+  if (error instanceof ApiRequestError) {
+    if (error.status >= 500) return PASSKEY_FAIL_SERVER_BUSY;
+    if (error.status === 429) return PASSKEY_FAIL_RATE_LIMIT;
+    return PASSKEY_FAIL_GENERIC;
+  }
+  return PASSKEY_FAIL_GENERIC;
+}
 
 type AuthMode = "sign-in" | "sign-up";
 
@@ -13,25 +100,32 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
-  const [isBusy, setIsBusy] = useState(false);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [isUsingPasskey, setIsUsingPasskey] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
   const [view, setView] = useState<"form" | "sent">("form");
+  const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
-  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileMounted, setTurnstileMounted] = useState(false);
   const turnstileWidgetIdRef = React.useRef<string | null>(null);
   const shouldShowTurnstile = !!import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  const showDebugMagicLinkUi = import.meta.env.DEV && Boolean(debugMagicLink);
+
+  const resetAuthTurnstile = useCallback(() => {
+    setTurnstileToken(null);
+    if (turnstileWidgetIdRef.current !== null && window.turnstile) {
+      try {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   const passkeySupported = useMemo(() => {
     return typeof window !== "undefined" && "PublicKeyCredential" in window;
   }, []);
-
-  const isValidEmail = (value: string): boolean => {
-    const trimmed = value.trim();
-    if (!trimmed) return false;
-    // Simple email validation for client-side guardrails
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-  };
 
   const getEmailDomain = (value: string): string | null => {
     const trimmed = value.trim().toLowerCase();
@@ -43,38 +137,17 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const isLikelyTypoDomain = (value: string): boolean => {
     const domain = getEmailDomain(value);
     if (!domain) return false;
-    const typoDomains = new Set([
-      "gmial.com",
-      "gamil.com",
-      "gnail.com",
-      "gmai.com",
-      "gmail.con",
-      "gmail.co",
-      "gmail.comm",
-      "gmail.om",
-      "yaho.com",
-      "yahoo.con",
-      "yahoo.co",
-      "yahho.com",
-      "hotmial.com",
-      "hotmal.com",
-      "hotmai.com",
-      "outlok.com",
-      "outllok.com",
-      "icloud.con",
-      "icoud.com",
-      "protonn.me",
-      "protonnmail.com",
-    ]);
-    return typoDomains.has(domain);
+    return LIKELY_TYPO_EMAIL_DOMAINS.has(domain);
   };
+
+  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey;
 
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
       toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
       return;
     }
-    setIsBusy(true);
+    setIsUsingPasskey(true);
     try {
       // Email is optional - if provided, use it to filter credentials; if not, use discoverable credentials
       const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
@@ -88,7 +161,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       const publicKey = coerceLoginOptions(data.options);
       const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
       if (!credential) {
-        toast({ title: "Login cancelled", description: "No credential returned." });
+        toast({ title: "Login cancelled", description: PASSKEY_FAIL_CANCELLED });
         return;
       }
       await apiRequest("/api/auth/webauthn/login/verify", "POST", {
@@ -99,31 +172,23 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       // Redirect to home on successful login
       window.location.href = "/";
     } catch (error) {
-      let description = "Try again.";
-      if (error instanceof Error) {
-        const message = error.message;
-        if (message.includes("Unknown credential")) {
-          description = "No passkeys registered for this account. Create one in Security Settings first.";
-        } else {
-          description = message;
-        }
-      }
       toast({
         title: "Passkey login failed",
-        description,
+        description: passkeyFailureDescription(error),
         variant: "destructive",
       });
     } finally {
-      setIsBusy(false);
+      setIsUsingPasskey(false);
     }
   };
 
-  const handleSendMagicLink = async () => {
-    if (!email.trim()) {
+  const sendMagicLinkRequest = async (options: { skipTypoCheck?: boolean } = {}) => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       toast({ title: "Email required", description: "Enter your email to continue." });
       return;
     }
-    if (!isValidEmail(email)) {
+    if (!isPlausibleEmailFormat(trimmedEmail)) {
       toast({
         title: "Invalid email",
         description: "Enter a valid email address (example: you@domain.com).",
@@ -131,54 +196,56 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       });
       return;
     }
-    if (isLikelyTypoDomain(email)) {
-      toast({
-        title: "Check your email",
-        description: "That domain looks misspelled. Please double-check before continuing.",
-        variant: "destructive",
-      });
+    if (!options.skipTypoCheck && isLikelyTypoDomain(trimmedEmail)) {
+      setTypoDialogOpen(true);
       return;
     }
     if (shouldShowTurnstile && !turnstileToken) {
       toast({ title: "Human verification required", description: "Please complete the verification check." });
       return;
     }
-    setIsBusy(true);
+    setEmail(trimmedEmail);
+    setIsSendingMagicLink(true);
     setDebugMagicLink(null);
-    // Optimistic: switch to "sent" immediately for snappier UX
-    setView("sent");
     try {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
         "POST",
-        { email, turnstileToken }
+        { email: trimmedEmail, turnstileToken }
       );
-      if (response.debugMagicLink) {
+      if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
       }
+      setView("sent");
       toast({ title: "Check your email", description: "We sent a sign-in link if the address is valid." });
-    } catch (error) {
+    } catch {
       toast({
         title: "Magic link failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        description: "We couldn't send the link. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsBusy(false);
+      resetAuthTurnstile();
+      setIsSendingMagicLink(false);
     }
   };
 
   React.useEffect(() => {
     if (!shouldShowTurnstile) {
-      setTurnstileReady(false);
+      setTurnstileMounted(false);
+      setTurnstileError(null);
+      setTurnstileToken(null);
       return;
     }
 
     const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
     if (!siteKey) {
       setTurnstileError("Human verification is not configured.");
+      setTurnstileMounted(false);
       return;
     }
+
+    setTurnstileMounted(false);
 
     let intervalId: number | null = null;
 
@@ -191,15 +258,13 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         return;
       }
       if (turnstileWidgetIdRef.current !== null) {
-        try {
-          window.turnstile.reset(turnstileWidgetIdRef.current);
-        } catch {
-          // ignore
-        }
+        const prevId = turnstileWidgetIdRef.current;
         turnstileWidgetIdRef.current = null;
+        destroyTurnstileWidget(prevId);
       }
       container.innerHTML = "";
-      setTurnstileReady(true);
+      setTurnstileError(null);
+      setTurnstileMounted(true);
       const widgetId = window.turnstile.render(container, {
         sitekey: siteKey,
         callback: (token: string) => {
@@ -207,12 +272,11 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
           setTurnstileError(null);
         },
         "error-callback": () => {
-          setTurnstileToken(null);
           setTurnstileError("Human verification failed. Please try again.");
-          turnstileWidgetIdRef.current = null;
+          resetAuthTurnstile();
         },
         "expired-callback": () => {
-          setTurnstileToken(null);
+          resetAuthTurnstile();
         },
       });
       turnstileWidgetIdRef.current = widgetId;
@@ -232,15 +296,21 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
     }
 
     return () => {
+      setTurnstileMounted(false);
       if (intervalId !== null) {
         window.clearInterval(intervalId);
       }
-      if (turnstileWidgetIdRef.current !== null && window.turnstile) {
-        window.turnstile.reset(turnstileWidgetIdRef.current);
+      if (turnstileWidgetIdRef.current !== null) {
+        const id = turnstileWidgetIdRef.current;
         turnstileWidgetIdRef.current = null;
+        destroyTurnstileWidget(id);
+      }
+      const container = document.getElementById("auth-turnstile-container");
+      if (container) {
+        container.innerHTML = "";
       }
     };
-  }, [shouldShowTurnstile]);
+  }, [shouldShowTurnstile, resetAuthTurnstile]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -249,7 +319,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         <a href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
           <span className="font-bold text-2xl text-primary">
             privateNote
-            <span className="text-xs text-gray-500 dark:text-gray-400 align-super ml-0.5">.ai</span>
+            <span className="text-xs text-primary align-super ml-0.5">.ai</span>
           </span>
         </a>
       </div>
@@ -283,60 +353,71 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="email-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Email address
-                  </label>
-                  <Input
-                    id="email-input"
-                    type="email"
-                    placeholder="you@domain.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full"
-                  />
-                </div>
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void sendMagicLinkRequest();
+                  }}
+                >
+                  <div className="space-y-2">
+                    <label htmlFor="email-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Email address
+                    </label>
+                    <Input
+                      id="email-input"
+                      type="email"
+                      name="email"
+                      autoComplete="email"
+                      placeholder="you@domain.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full"
+                    />
+                  </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={handleSendMagicLink}
-                    disabled={isBusy}
-                    className="flex-1"
-                    size="lg"
-                  >
-                    {isBusy ? (
-                      <>
-                        Sending link...
-                      </>
-                    ) : (
-                      mode === "sign-up" ? "Create account" : "Continue with email"
-                    )}
-                  </Button>
-                  {mode === "sign-in" && (
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <Button
-                      variant="outline"
-                      onClick={handleLoginPasskey}
-                      disabled={isBusy || !passkeySupported}
+                      type="submit"
+                      disabled={isAnyAuthBusy}
                       className="flex-1"
                       size="lg"
                     >
-                      Use passkey
+                      {isSendingMagicLink ? (
+                        <>Sending link...</>
+                      ) : mode === "sign-up" ? (
+                        "Create account"
+                      ) : (
+                        "Continue with email"
+                      )}
                     </Button>
-                  )}
-                </div>
-
-                {shouldShowTurnstile && (
-                  <div className="space-y-2">
-                    <div id="auth-turnstile-container" className="min-h-[65px] flex justify-center" />
-                    {!turnstileReady && !turnstileError && (
-                      <p className="text-xs text-gray-500 text-center">Loading verification…</p>
-                    )}
-                    {turnstileError && (
-                      <p className="text-xs text-red-500 text-center">{turnstileError}</p>
+                    {mode === "sign-in" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleLoginPasskey()}
+                        disabled={isAnyAuthBusy || !passkeySupported}
+                        className="flex-1"
+                        size="lg"
+                      >
+                        {isUsingPasskey ? "Signing in…" : "Use passkey"}
+                      </Button>
                     )}
                   </div>
-                )}
+
+                  {shouldShowTurnstile && (
+                    <div className="space-y-2">
+                      <div id="auth-turnstile-container" className="min-h-[65px] flex justify-center" />
+                      {!turnstileMounted && !turnstileError && (
+                        <p className="text-xs text-gray-500 text-center">Loading verification…</p>
+                      )}
+                      {turnstileError && (
+                        <p className="text-xs text-red-500 text-center">{turnstileError}</p>
+                      )}
+                    </div>
+                  )}
+                </form>
 
                 {mode === "sign-in" && (
                   <div className="text-center pt-2">
@@ -420,26 +501,37 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                 </div>
                 <CardTitle className="text-2xl">Check your email</CardTitle>
                 <CardDescription className="text-base mt-2">
-                  We sent a secure sign-in link to <strong>{email}</strong>
+                  {mode === "sign-up" ? (
+                    <>
+                      If this email address is valid, a secure link is on its way to{" "}
+                      <strong>{email.trim()}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      If an account can use this address, a secure sign-in link is on its way to{" "}
+                      <strong>{email.trim()}</strong>.
+                    </>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    If the address is correct, we'll send you a secure sign-in link.
-                    <br />
-                    Check your inbox (and spam folder).
+                    Check your inbox (and spam folder). It may take a minute to arrive.
                   </p>
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => setView("form")}
+                  onClick={() => {
+                    resetAuthTurnstile();
+                    setView("form");
+                  }}
                   className="w-full"
                   size="lg"
                 >
                   Didn't receive an email? Try again
                 </Button>
-                {debugMagicLink && (
+                {showDebugMagicLinkUi && (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                       Development link:
@@ -454,6 +546,28 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
           )}
         </div>
       </div>
+
+      <AlertDialog open={typoDialogOpen} onOpenChange={setTypoDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unusual email domain</AlertDialogTitle>
+            <AlertDialogDescription>
+              That domain looks unusual and might be a typo. Continue anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setTypoDialogOpen(false);
+                void sendMagicLinkRequest({ skipTypoCheck: true });
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

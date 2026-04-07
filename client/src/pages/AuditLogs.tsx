@@ -9,13 +9,11 @@ import {
   CheckCircle,
   XCircle,
   Activity,
-  Users,
   Clock,
   Globe,
   Filter,
   ChevronLeft,
   ChevronRight,
-  Search
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +56,16 @@ const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   magic_link_sent: { label: 'Magic Link Sent', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
   magic_link_used: { label: 'Magic Link Used', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
   magic_link_failed: { label: 'Magic Link Failed', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  magic_link_context_mismatch: { label: 'Magic Link Context Mismatch', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  magic_prepare_started: { label: 'Magic Prepare Started', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  magic_prepare_replaced: { label: 'Magic Prepare Replaced', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
+  magic_bind_confirmed: { label: 'Magic Bind Confirmed', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  magic_nonce_mismatch: { label: 'Magic Nonce Mismatch', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
+  magic_context_medium_risk: { label: 'Magic Context Medium Risk', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  magic_context_high_risk: { label: 'Magic Context High Risk', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  magic_consume_success: { label: 'Magic Consume Success', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  magic_consume_replay_blocked: { label: 'Magic Consume Replay Blocked', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  magic_email_otp_exhausted: { label: 'Magic Email OTP Exhausted', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
   rate_limit_exceeded: { label: 'Rate Limit Exceeded', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
   ip_mismatch: { label: 'IP Mismatch', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
   step_up_required: { label: 'Step-up Required', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -702,15 +710,17 @@ function SecurityAlertsView({ isAuthenticated, token }: { isAuthenticated: boole
       if (!warningsResponse.ok) throw new Error('Failed to fetch');
       const warnings = await warningsResponse.json();
 
+      const failPayload = failures as { logs?: AuditLog[] };
+      const warnPayload = warnings as { logs?: AuditLog[] };
       // Combine and sort by date
-      const combined = [...(failures.logs || []), ...(warnings.logs || [])];
+      const combined = [...(failPayload.logs || []), ...(warnPayload.logs || [])];
       combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return {
         ok: true,
         logs: combined.slice(0, 100),
-        pagination: { total: combined.length, limit: 100, offset: 0, hasMore: false }
-      };
+        pagination: { total: combined.length, limit: 100, offset: 0, hasMore: false },
+      } satisfies AuditLogsResponse;
     },
     enabled: isAuthenticated
   });

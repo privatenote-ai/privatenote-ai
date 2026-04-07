@@ -35,8 +35,13 @@ import { Footer } from "./components/Footer";
 
 function Router() {
   const [location] = useLocation();
-  const isAuthRoute = location.startsWith("/auth");
-  const showNavbar = !isAuthRoute || location.startsWith("/auth/magic") || location.startsWith("/auth/email-change") || location.startsWith("/auth/totp");
+  const isAuthRoute = location.startsWith("/auth") || location === "/magic";
+  const showNavbar =
+    !isAuthRoute ||
+    location.startsWith("/auth/magic") ||
+    location === "/magic" ||
+    location.startsWith("/auth/email-change") ||
+    location.startsWith("/auth/totp");
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -61,10 +66,11 @@ function Router() {
           <Route path="/admin/audit-logs" component={AuditLogs} />
           <Route path="/test-llm" component={TestClientLLM} />
           <Route path="/llm-ui" component={LlmUi} />
-          <Route path="/auth" component={Auth} />
+          <Route path="/auth" component={() => <Auth />} />
           <Route path="/auth/sign-in" component={AuthSignIn} />
           <Route path="/auth/sign-up" component={AuthSignUp} />
           <Route path="/auth/magic" component={AuthMagic} />
+          <Route path="/magic" component={AuthMagic} />
           <Route path="/auth/recovery" component={AuthRecovery} />
           <Route path="/auth/email-change" component={AuthEmailChange} />
           <Route path="/auth/totp" component={AuthTotp} />

@@ -8,16 +8,12 @@ import {
   Lock, 
   Globe, 
   Smartphone, 
-  Mail, 
-  Cloud, 
-  FileKey, 
-  EyeOff,
-  HardDrive,
+  Mail,
   Search
 } from 'lucide-react';
 
 const SecurityGuideDetail: React.FC = () => {
-  const [match, params] = useRoute('/security-guides/:topicId');
+  const [, params] = useRoute('/security-guides/:topicId');
   const topicId = params?.topicId || '';
 
   // Mock content for each guide topic
