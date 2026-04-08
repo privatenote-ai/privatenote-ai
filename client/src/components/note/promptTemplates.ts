@@ -261,6 +261,32 @@ function getSmallTierInstructionScaffold(template: PromptTemplate, tier: ModelTi
   return "";
 }
 
+export type AiSentenceLengthId = "1-2" | "2-3" | "4-6" | "7-10";
+
+/** Chips for “length in sentences” on the Write with AI flow. */
+export const AI_SENTENCE_LENGTH_OPTIONS: readonly { id: AiSentenceLengthId; label: string }[] = [
+  { id: "1-2", label: "1 - 2" },
+  { id: "2-3", label: "2 - 3" },
+  { id: "4-6", label: "4 - 6" },
+  { id: "7-10", label: "7 - 10" },
+];
+
+const SENTENCE_LENGTH_USER_SUFFIX_RE = /\s*Write \([^)]+\) of sentences\.$/;
+const LEGACY_SENTENCE_USER_SUFFIX_RE = /\s*Use the sentence length I selected\.$/;
+
+/** End of the visible draft prompt, e.g. `Write (1 - 2) of sentences.` */
+export function formatSentenceLengthUserSuffix(preset: AiSentenceLengthId): string {
+  const opt = AI_SENTENCE_LENGTH_OPTIONS.find((o) => o.id === preset);
+  const label = opt?.label ?? "2 - 3";
+  return ` Write (${label}) of sentences.`;
+}
+
+/** Replace an existing length clause when the user picks a different chip (or migrate legacy wording). */
+export function applySentenceLengthToUserPrompt(prompt: string, preset: AiSentenceLengthId): string {
+  const base = prompt.replace(SENTENCE_LENGTH_USER_SUFFIX_RE, "").replace(LEGACY_SENTENCE_USER_SUFFIX_RE, "");
+  return base + formatSentenceLengthUserSuffix(preset);
+}
+
 export function getOutputLengthInstruction(
   tier: ModelTier,
   enhancementType: PromptTemplate["enhancementType"]
@@ -301,14 +327,39 @@ export function getOutputLengthInstruction(
   return "Output length: about 4–8 sentences unless the user specifies a different length.";
 }
 
+/**
+ * Applies the user’s sentence-length chip when building the model prompt.
+ * Summary uses a prose/bullet-equivalent reading; secure/redact keeps tier-based length rules.
+ */
+function resolveOutputLengthLine(
+  tier: ModelTier,
+  enhancementType: PromptTemplate["enhancementType"],
+  preset: AiSentenceLengthId | undefined,
+): string {
+  const base = getOutputLengthInstruction(tier, enhancementType);
+  if (!preset || enhancementType === "secure") return base;
+  const range = (
+    {
+      "1-2": "1–2",
+      "2-3": "2–3",
+      "4-6": "4–6",
+      "7-10": "7–10",
+    } as const
+  )[preset];
+  if (enhancementType === "summarize") {
+    return `Output length: about ${range} short summary sentences (or the same coverage as concise bullets).`;
+  }
+  return `Output length: about ${range} complete sentences unless the user asked for bullets, a list, or a different format.`;
+}
+
 export const promptTemplates: PromptTemplate[] = [
   {
     id: "ask-anything",
     name: "Ask AI Anything",
     description:
-      "Write almost any message or reply. Best when you include who it’s for, what it should say, tone, and how detailed it should be.",
+      "Write almost any message or reply. Best when you include who it’s for, what it should say, and tone. Length comes from your sentence setting.",
     userTemplate:
-      "Help me write a [message/email/reply] to [who] about [topic] in a [tone] tone, [short or more detailed]",
+      "Help me write a [message/email/reply] to [who] about [topic] in a [tone] tone.",
     modelGuidance:
       "Write a clear, practical message based on the user's request. Match the tone. Keep it natural and concise. Output only the final text.",
     smallModelGuidance: [
@@ -320,7 +371,7 @@ export const promptTemplates: PromptTemplate[] = [
     ].join("\n"),
     enhancementType: "ask",
     promptPlaceholder:
-      "Include: who it’s for, what you want to say, tone (friendly, professional, direct), and whether it should be short or more detailed.",
+      "Include: who it’s for, what you want to say, and tone (friendly, professional, direct).",
   },
 
   {
@@ -329,11 +380,11 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "For help, gifts, or support. Include what they did and why it mattered.",
     userTemplate:
-      "Thank [name] for [what they did], mention why it mattered, in a [warm/professional] tone, [short or more thoughtful]",
+      "Thank [name] for [what they did], mention why it mattered, in a [warm/professional] tone.",
     modelGuidance:
-      "Write a short thank-you message that is warm, natural, and specific.",
+      "Write a thank-you message that is warm, natural, and specific.",
     smallModelGuidance: [
-      "Write a short thank-you message.",
+      "Write a thank-you message.",
       "Use only details from the user.",
       "Sound sincere.",
       "No invented details.",
@@ -349,11 +400,11 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Schedule a call or meeting. Include topic, timing, and format.",
     userTemplate:
-      "Request a [call/meeting] with [name] about [topic], suggest [time/day], in a [professional/casual] tone",
+      "Request a [call/meeting] with [name] about [topic], suggest [time/day], in a [professional/casual] tone.",
     modelGuidance:
-      "Write a concise meeting request. State purpose clearly. Include times only if provided.",
+      "Write a meeting request. State purpose clearly. Be direct. Include times only if provided.",
     smallModelGuidance: [
-      "Write a short meeting request.",
+      "Write a meeting request.",
       "Use the exact name.",
       "State topic clearly.",
       "Include times only if given.",
@@ -369,7 +420,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "For friends, coworkers, or family. Include relationship and tone.",
     userTemplate:
-      "Write a birthday message for [name], [relationship], in a [funny/warm] tone, [short or longer]",
+      "Write a birthday message for [name], [relationship], in a [funny/warm] tone.",
     modelGuidance:
       "Write a warm, natural birthday message. Include personal detail only if provided.",
     smallModelGuidance: [
@@ -388,7 +439,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "For personal or professional apologies. Be clear and sincere.",
     userTemplate:
-      "Apologize to [name] for [what happened], in a [sincere/professional] tone, mention [how to fix it]",
+      "Apologize to [name] for [what happened], in a [sincere/professional] tone, mention [how to fix it].",
     modelGuidance:
       "Write a sincere apology. Acknowledge the issue clearly. No excuses.",
     smallModelGuidance: [
@@ -407,7 +458,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Romantic or emotional message. Include something specific you appreciate.",
     userTemplate:
-      "Write a romantic message to [name] for [occasion], mention [what I appreciate], [short or heartfelt]",
+      "Write a romantic message to [name] for [occasion], mention [what I appreciate].",
     modelGuidance:
       "Write a genuine romantic message. Avoid clichés unless requested.",
     smallModelGuidance: [
@@ -426,13 +477,13 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Celebrate achievements like jobs, promotions, or milestones.",
     userTemplate:
-      "Congratulate [name] on [achievement], in a [warm/professional/proud] tone, [short or more personal]",
+      "Congratulate [name] on [achievement], in a [warm/professional/proud] tone.",
     modelGuidance:
-      "Write a short congratulatory message that feels specific and upbeat.",
+      "Write a congratulatory message that feels specific and upbeat.",
     smallModelGuidance: [
       "Congratulate clearly.",
       "Mention achievement.",
-      "Keep it short.",
+      "Match the requested length.",
     ].join("\n"),
     enhancementType: "ask",
     promptPlaceholder:
@@ -445,7 +496,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Leaving a job, team, or place. Focus on gratitude.",
     userTemplate:
-      "Write a farewell message to [person/group], mention [what I’m thankful for], in a [warm/professional] tone",
+      "Write a farewell message to [person/group], mention [what I’m thankful for], in a [warm/professional] tone.",
     modelGuidance:
       "Write a positive farewell message focused on appreciation.",
     smallModelGuidance: [
@@ -464,7 +515,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Invite people to an event. Include key details.",
     userTemplate:
-      "Invite [people] to [event] on [date/time] at [place], in a [casual/warm] tone",
+      "Invite [people] to [event] on [date/time] at [place], in a [casual/warm] tone.",
     modelGuidance:
       "Write a friendly invitation. Include key details clearly.",
     smallModelGuidance: [
@@ -483,7 +534,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "For loss or difficult situations. Keep it simple and sincere.",
     userTemplate:
-      "Write a condolence message to [name] about [loss], in a [gentle/simple] tone, [short or slightly more personal]",
+      "Write a condolence message to [name] about [loss], in a [gentle/simple] tone.",
     modelGuidance:
       "Write a gentle condolence message. Avoid clichés.",
     smallModelGuidance: [
@@ -501,7 +552,7 @@ export const promptTemplates: PromptTemplate[] = [
     description:
       "Send a polite reminder about a task or deadline.",
     userTemplate:
-      "Remind [name/group] about [task] by [deadline], in a [casual/professional] tone",
+      "Remind [name/group] about [task] by [deadline], in a [casual/professional] tone.",
     modelGuidance:
       "Write a polite reminder. Keep it clear and not pushy.",
     smallModelGuidance: [
@@ -518,9 +569,9 @@ export const promptTemplates: PromptTemplate[] = [
     id: "document-summary",
     name: "Document Summary",
     description:
-      "Summarize long text into key points.",
+      "Summarize long text into key points. Length follows your sentence setting.",
     userTemplate:
-      "Summarize this text focusing on [main points/decisions/risks], [short bullets or fuller summary]",
+      "Summarize this text focusing on [main points/decisions/risks].",
     modelGuidance:
       "Summarize into clear key points. Focus on important ideas only.",
     smallModelGuidance: [
@@ -564,10 +615,11 @@ export const getPromptBuildModelTier = getModelTier;
 export function buildPromptFromTemplate(
   template: PromptTemplate,
   userInput: string,
-  modelId: string
+  modelId: string,
+  sentenceLengthPreset?: AiSentenceLengthId,
 ): string {
   const tier = getModelTier(modelId);
-  const lengthLine = getOutputLengthInstruction(tier, template.enhancementType);
+  const lengthLine = resolveOutputLengthLine(tier, template.enhancementType, sentenceLengthPreset);
 
   const extraSmall: string[] =
     tier === "small"

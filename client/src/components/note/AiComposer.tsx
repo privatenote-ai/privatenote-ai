@@ -10,12 +10,13 @@ import {
   FileText,
   Sparkles,
   RefreshCw,
-  Lock,
 } from "lucide-react";
 import {
   promptTemplates,
   getPromptTemplateById,
+  AI_SENTENCE_LENGTH_OPTIONS,
   type PromptTemplate,
+  type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
 import { isWebLLMSupported, getWebLLMSupportHint } from "@/utils/clientLLM";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
@@ -60,8 +61,8 @@ export type AiComposerProps = {
   ) => void;
   aiPrompt: string;
   setAiPrompt: (s: string) => void;
-  selectedTemplateId: string;
-  setSelectedTemplateId: (id: string) => void;
+  selectedTemplateId: string | null;
+  setSelectedTemplateId: (id: string | null) => void;
   aiEnhancementType: "improve" | "summarize" | "secure" | "ask";
   setAiEnhancementType: (t: "improve" | "summarize" | "secure" | "ask") => void;
   showPrompt: boolean;
@@ -86,6 +87,8 @@ export type AiComposerProps = {
   privacyBannerItems: React.ReactNode;
   /** Called when a template chip is selected (so parent can sync enhancementType). */
   onSelectTemplate: (template: PromptTemplate) => void;
+  selectedSentenceLength: AiSentenceLengthId;
+  onSentenceLengthChange: (id: AiSentenceLengthId) => void;
   /** After generation, user must accept before Share / Customize appear. */
   aiDraftAccepted: boolean;
   onAcceptDraft: () => void;
@@ -112,6 +115,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onBack,
   privacyBannerItems,
   onSelectTemplate,
+  selectedSentenceLength,
+  onSentenceLengthChange,
   aiDraftAccepted,
   onAcceptDraft,
 }) => {
@@ -131,29 +136,26 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     return () => window.clearTimeout(id);
   }, [aiPrompt]);
 
+  useEffect(() => {
+    if (!showPrompt) setShowAllTemplates(false);
+  }, [showPrompt]);
+
   return (
     <div className="space-y-8 mb-4">
       <div>
-        {/* Step 1 — templates */}
-        <StepRow step={1} label="Choose a template (optional)" />
-        <div className="mb-1">
-          <div className="flex flex-wrap gap-2">
-            {promptTemplates.slice(0, 5).map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => onSelectTemplate(template)}
-                className={templateChipClass(selectedTemplateId === template.id)}
-              >
-                {template.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-3">
-            {showAllTemplates && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {promptTemplates.slice(5).map((template) => (
+        <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            <strong>Runs locally in your browser.</strong> Your text never leaves your device. No servers, no
+            tracking, no external storage.
+          </p>
+        </div>
+        {showPrompt ? (
+          <>
+            {/* Step 1 — templates (only while composing the prompt) */}
+            <StepRow step={1} label="Choose a template" />
+            <div className="mb-1">
+              <div className="flex flex-wrap gap-2">
+                {promptTemplates.slice(0, 5).map((template) => (
                   <button
                     key={template.id}
                     type="button"
@@ -164,76 +166,114 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   </button>
                 ))}
               </div>
-            )}
 
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowAllTemplates(!showAllTemplates)}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center px-2 py-1 rounded-md"
-              >
-                {showAllTemplates ? (
-                  <>
-                    <ChevronUp className="h-3 w-3 mr-1" />
-                    Show fewer templates
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3 w-3 mr-1" />
-                    Show more templates
-                  </>
+              <div className="mt-3">
+                {showAllTemplates && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {promptTemplates.slice(5).map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => onSelectTemplate(template)}
+                        className={templateChipClass(selectedTemplateId === template.id)}
+                      >
+                        {template.name}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </button>
+
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTemplates(!showAllTemplates)}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center px-2 py-1 rounded-md"
+                  >
+                    {showAllTemplates ? (
+                      <>
+                        <ChevronUp className="h-3 w-3 mr-1" />
+                        Show fewer templates
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3 mr-1" />
+                        Show more templates
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+
+            {/* Step 2 — length */}
+            <div className="mb-2 mt-5">
+              <StepRow step={2} label="Length in sentences" />
+              <div className="flex flex-wrap gap-2">
+                {AI_SENTENCE_LENGTH_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onSentenceLengthChange(opt.id)}
+                    className={templateChipClass(selectedSentenceLength === opt.id)}
+                    aria-pressed={selectedSentenceLength === opt.id}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
 
         {showPrompt ? (
-          <div className="space-y-4 pt-2 border-t border-gray-200/80 dark:border-gray-700/80">
-            {/* Step 2 — message */}
+          <div className="space-y-4 pt-2">
+            {/* Step 3 — write */}
             <div>
-              <StepRow step={2} label="Write your message" />
+              <StepRow step={3} label="Write with AI" />
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
                 What do you want to say?
               </h3>
 
-              <div
-                className={[
-                  "rounded-xl transition-shadow duration-300 relative",
-                  heroTypingGlow ? "ai-prompt-hero--typing" : "",
-                  hasPromptText
-                    ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
-                    : "ring-1 ring-gray-200/90 dark:ring-gray-600/80 shadow-md",
-                ].join(" ")}
-              >
-                <textarea
-                  id="ai-prompt"
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
-                    e.preventDefault();
-                    if (isGeneratingContent || isAiModelLoading || !aiPrompt.trim()) return;
-                    onGenerate();
-                  }}
-                  rows={6}
-                  className="w-full min-h-[11rem] pl-5 pr-[3.25rem] pb-14 pt-4 text-base rounded-xl border-2 border-gray-200/90 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors resize-y"
-                  placeholder={
-                    activePromptTemplate?.promptPlaceholder ??
-                    (aiEnhancementType === "summarize"
-                      ? "Paste a long text that you want to summarize..."
-                      : aiEnhancementType === "secure"
-                        ? "Paste text that might contain sensitive information to redact..."
-                        : "Describe what you want the AI to write for you...")
-                  }
-                />
+              <div className="relative min-w-0">
+                <div
+                  className={[
+                    "min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50",
+                    heroTypingGlow ? "ai-prompt-hero--typing" : "",
+                    hasPromptText
+                      ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
+                      : "",
+                  ].join(" ")}
+                >
+                  <textarea
+                    id="ai-prompt"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
+                      e.preventDefault();
+                      if (isGeneratingContent || isAiModelLoading || !aiPrompt.trim()) return;
+                      onGenerate();
+                    }}
+                    rows={6}
+                    className="min-h-[11rem] w-full resize-y bg-transparent py-4 pl-5 pr-20 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
+                    placeholder={
+                      activePromptTemplate?.promptPlaceholder ??
+                      (aiEnhancementType === "summarize"
+                        ? "Paste a long text that you want to summarize..."
+                        : aiEnhancementType === "secure"
+                          ? "Paste text that might contain sensitive information to redact..."
+                          : "Describe what you want the AI to write for you...")
+                    }
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={() => onGenerate()}
                   disabled={isGeneratingContent || isAiModelLoading || !hasPromptText}
                   title="Generate with private AI (⌘/Ctrl+Enter)"
                   aria-label="Generate with private AI"
-                  className="absolute bottom-3 right-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
+                  className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
                 >
                   {isGeneratingContent ? (
                     <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -294,25 +334,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               )}
 
-            {/* Trust — replaces “Free AI” card */}
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/90 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/60 px-2.5 py-1 font-medium text-gray-700 dark:text-gray-200">
-                <Lock className="h-3 w-3 text-primary shrink-0" aria-hidden />
-                Private
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/90 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/60 px-2.5 py-1 font-medium text-gray-700 dark:text-gray-200">
-                <Zap className="h-3 w-3 text-amber-500 shrink-0" aria-hidden />
-                Instant
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/90 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-800/60 px-2.5 py-1 font-medium text-gray-700 dark:text-gray-200">
-                <Sparkles className="h-3 w-3 text-indigo-500 shrink-0" aria-hidden />
-                AI-powered
-              </span>
-            </div>
-            <p className="text-[11px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-2xl">
-              Runs privately in your browser. Your messages and prompts never leave your device. No
-              account required.
-            </p>
             {!isWebLLMSupported() && getWebLLMSupportHint() && (
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
                 {getWebLLMSupportHint()}
@@ -398,15 +419,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             ) : null}
 
             {!aiDraftAccepted ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                <button
-                  type="button"
-                  onClick={onAcceptDraft}
-                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
-                >
-                  Accept note
-                </button>
-                <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
+              <div className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex flex-wrap items-center justify-start gap-2">
                   <button
                     type="button"
                     onClick={onImprove}
@@ -444,6 +458,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     Regenerate
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={onAcceptDraft}
+                  className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 sm:ml-auto sm:w-auto sm:min-w-[12rem] sm:flex-1 sm:basis-0 sm:max-w-lg md:min-w-[14rem]"
+                >
+                  Accept note
+                </button>
               </div>
             ) : null}
           </div>

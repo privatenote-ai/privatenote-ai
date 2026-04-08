@@ -4,8 +4,8 @@ import { Lock, Timer, Shield, DollarSign, Zap } from 'lucide-react';
 // Define the feature data for reuse
 const features = [
   {
-    title: "Authenticated Encryption",
-    description: "AES-GCM in the browser. The server never sees the key or plaintext.",
+    title: "Private AI Processing",
+    description: "Runs directly in your browser. Your prompts never leave your device.",
     icon: <Lock className="h-6 w-6 text-primary" />
   },
   {
@@ -24,8 +24,8 @@ const features = [
     icon: <DollarSign className="h-6 w-6 text-primary" />
   },
   {
-    title: "Password‑Protected (Optional)",
-    description: "Add a password to lock the encryption key with a second layer.",
+    title: "Zero Tracking",
+    description: "No analytics, no ads, no data resale.",
     icon: <Zap className="h-6 w-6 text-primary" />
   },
   {

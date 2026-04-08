@@ -44,7 +44,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   promptTemplates,
   buildPromptFromTemplate,
+  formatSentenceLengthUserSuffix,
+  applySentenceLengthToUserPrompt,
   type PromptTemplate,
+  type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
 import { getLoadedModelIdWebLLM } from "@/utils/webllm-engine";
 import { getLocalAiPreloadNetworkPolicy } from "@/utils/localAiNetworkDownloadPolicy";
@@ -85,6 +88,12 @@ function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   return t;
 }
 
+function askAnythingScaffoldPrompt(sentenceLength: AiSentenceLengthId): string {
+  const t = promptTemplates.find((x) => x.id === "ask-anything");
+  const base = t?.userTemplate ?? "";
+  return `${base}\n${formatSentenceLengthUserSuffix(sentenceLength)}`;
+}
+
 interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
 }
@@ -108,9 +117,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [isAiMode, setIsAiMode] = useState(false);
+  const aiComposerAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // ── AI state ──────────────────────────────────────────────────────────────
-  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt("2-3"));
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
     "improve" | "summarize" | "secure" | "ask"
@@ -126,7 +136,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   } | null>(null);
   const [showCloudLitePrompt, setShowCloudLitePrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("ask-anything");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
+  const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("2-3");
   const [showPrompt, setShowPrompt] = useState<boolean>(true);
   const [originalPrompt, setOriginalPrompt] = useState<string>("");
   const [userPromptHistory, setUserPromptHistory] = useState<string[]>([]);
@@ -270,12 +281,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId());
       const finalUserMessage =
         useBuild && selectedTemplate
-          ? buildPromptFromTemplate(selectedTemplate, content.trim(), modelId)
+          ? buildPromptFromTemplate(selectedTemplate, content.trim(), modelId, aiSentenceLength)
           : undefined;
       return await enhanceNoteClientSide(content, enhancementTypeForModel, (p) => setAiProgress(p), {
         ...baseOpts,
         ...(finalUserMessage ? { finalUserMessage } : {}),
-        templateId: selectedTemplateId,
+        templateId: selectedTemplateId ?? undefined,
       });
     } catch (error) {
       console.warn("[AI] Local AI failed:", error);
@@ -315,6 +326,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       cancelled = true;
     };
   }, [isAiMode, turnstileSiteKey]);
+
+  useEffect(() => {
+    if (!isAiMode) return;
+    let cancelled = false;
+    // Wait for AiComposer to mount and layout (templates, trust panel) so scroll target has height.
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      const el = aiComposerAnchorRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [isAiMode]);
 
   useEffect(() => {
     if (!shouldShowAiTurnstile) {
@@ -628,7 +655,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setSuccessLinkCopied(false);
     setCreatedNote(null);
     setNoteContent("");
-    setAiPrompt("");
+    setAiPrompt(askAnythingScaffoldPrompt("2-3"));
     setOriginalPrompt("");
     setUserPromptHistory([]);
     setTransformHistory([]);
@@ -636,6 +663,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowPrompt(true);
     setAiDraftAccepted(false);
     setSelectedTemplateId("ask-anything");
+    setAiSentenceLength("2-3");
     setAiEnhancementType(
       promptTemplates.find((x) => x.id === "ask-anything")?.enhancementType ?? "improve",
     );
@@ -647,10 +675,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   // ── AI actions ────────────────────────────────────────────────────────────
   const selectTemplate = (template: PromptTemplate) => {
-    setAiPrompt(template.userTemplate);
+    if (template.id === "ask-anything" && selectedTemplateId === "ask-anything") {
+      setSelectedTemplateId(null);
+      setAiPrompt("");
+      return;
+    }
+    setAiPrompt(template.userTemplate + formatSentenceLengthUserSuffix(aiSentenceLength));
     setAiEnhancementType(template.enhancementType);
     setSelectedTemplateId(template.id);
   };
+
+  const handleSentenceLengthChange = useCallback(
+    (id: AiSentenceLengthId) => {
+      setAiSentenceLength(id);
+      if (selectedTemplateId === null) return;
+      setAiPrompt((p) => applySentenceLengthToUserPrompt(p, id));
+    },
+    [selectedTemplateId],
+  );
 
   const executeAiGenerate = async (
     promptToUse: string,
@@ -934,34 +976,38 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           </div>
 
           {isAiMode ? (
-            <AiComposer
-              noteContent={noteContent}
-              applyNoteContentInput={applyNoteContentInput}
-              aiPrompt={aiPrompt}
-              setAiPrompt={setAiPrompt}
-              selectedTemplateId={selectedTemplateId}
-              setSelectedTemplateId={setSelectedTemplateId}
-              aiEnhancementType={aiEnhancementType}
-              setAiEnhancementType={setAiEnhancementType}
-              showPrompt={showPrompt}
-              isGeneratingContent={isGeneratingContent}
-              aiGenerationStatusText={
-                isGeneratingContent ? localAiDialogPrimaryLine(aiProgress) : null
-              }
-              isAiModelLoading={isAiModelLoading}
-              aiModelProgress={aiModelProgress}
-              transformHistory={transformHistory}
-              onGenerate={(override) => void handleAiGenerate(override)}
-              onImprove={() => void handleImprove()}
-              onSummarize={() => void handleSummarize()}
-              onSimplify={() => void handleSimplify()}
-              onRegenerate={(override) => void handleRegenerate(override)}
-              onBack={handleBackButton}
-              privacyBannerItems={privacyBannerItems}
-              onSelectTemplate={selectTemplate}
-              aiDraftAccepted={aiDraftAccepted}
-              onAcceptDraft={() => setAiDraftAccepted(true)}
-            />
+            <div ref={aiComposerAnchorRef} className="scroll-mt-20 md:scroll-mt-24">
+              <AiComposer
+                noteContent={noteContent}
+                applyNoteContentInput={applyNoteContentInput}
+                aiPrompt={aiPrompt}
+                setAiPrompt={setAiPrompt}
+                selectedTemplateId={selectedTemplateId}
+                setSelectedTemplateId={setSelectedTemplateId}
+                aiEnhancementType={aiEnhancementType}
+                setAiEnhancementType={setAiEnhancementType}
+                showPrompt={showPrompt}
+                isGeneratingContent={isGeneratingContent}
+                aiGenerationStatusText={
+                  isGeneratingContent ? localAiDialogPrimaryLine(aiProgress) : null
+                }
+                isAiModelLoading={isAiModelLoading}
+                aiModelProgress={aiModelProgress}
+                transformHistory={transformHistory}
+                onGenerate={(override) => void handleAiGenerate(override)}
+                onImprove={() => void handleImprove()}
+                onSummarize={() => void handleSummarize()}
+                onSimplify={() => void handleSimplify()}
+                onRegenerate={(override) => void handleRegenerate(override)}
+                onBack={handleBackButton}
+                privacyBannerItems={privacyBannerItems}
+                onSelectTemplate={selectTemplate}
+                selectedSentenceLength={aiSentenceLength}
+                onSentenceLengthChange={handleSentenceLengthChange}
+                aiDraftAccepted={aiDraftAccepted}
+                onAcceptDraft={() => setAiDraftAccepted(true)}
+              />
+            </div>
           ) : null}
 
           {shouldShowAiTurnstile && (
