@@ -41,35 +41,39 @@ export function PasskeyResetDialog({
         <DialogHeader>
           <DialogTitle>Reset all passkeys</DialogTitle>
           <DialogDescription>
-            This removes every passkey from your account. You can sign in with email until you add a new passkey.
+            Removes every passkey. You can still sign in with email until you register a new passkey.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2 text-sm text-gray-600 dark:text-gray-400">
           <p>
-            If the browser shows a <strong>QR code</strong>, it is trying to use a passkey on another device. Cancel
-            that prompt and use <strong>Continue with passkey on this device</strong> if your passkey lives here (e.g.
-            Touch ID, Windows Hello, or this phone&apos;s screen lock).
+            {totpEnabled ? (
+              <>
+                Use a passkey on <strong>this</strong> device when prompted, or enter your authenticator code below.
+                If you see a QR code for another device, cancel and try again on this one.
+              </>
+            ) : (
+              <>
+                Use a passkey on <strong>this</strong> device when prompted (Touch ID, Windows Hello, etc.). If you see
+                a QR code for another device, cancel and use the button below.
+              </>
+            )}
           </p>
           {!totpEnabled && (
             <p className="text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 text-xs">
-              Lost the device with your passkey? If you have a <strong>recovery code</strong>, sign out, open{" "}
+              Can&apos;t use any passkey? Sign out, then{" "}
               <a href="/auth/recovery" className="underline font-medium">
-                Use recovery code
-              </a>
-              , then return here — that sign-in lets you reset passkeys without the old passkey. Enable 2-step
-              verification afterward so you have a backup next time.
+                sign in with a recovery code
+              </a>{" "}
+              and return here. Consider turning on 2-step verification afterward.
             </p>
           )}
           {totpEnabled && (
             <div className="space-y-2">
-              <p className="text-gray-700 dark:text-gray-300">
-                Or enter your <strong>6-digit authenticator app</strong> code — no passkey needed.
-              </p>
               <Input
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
-                placeholder="6-digit code"
+                placeholder="6-digit authenticator code"
                 value={totpCode}
                 onChange={(e) => onTotpCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 disabled={resetting}
@@ -86,7 +90,7 @@ export function PasskeyResetDialog({
               onClick={() => void onRemoveWithTotp()}
               className="w-full"
             >
-              {resetting ? "Working…" : "Remove passkeys using authenticator code"}
+              {resetting ? "Working…" : "Reset with authenticator code"}
             </Button>
           )}
           <Button
@@ -96,7 +100,7 @@ export function PasskeyResetDialog({
             onClick={() => void onRemoveWithPasskey()}
             className="w-full"
           >
-            {resetting ? "Working…" : "Continue with passkey on this device"}
+            {resetting ? "Working…" : "Use passkey on this device"}
           </Button>
           <Button type="button" variant="ghost" disabled={resetting} onClick={onClose} className="w-full">
             Cancel
