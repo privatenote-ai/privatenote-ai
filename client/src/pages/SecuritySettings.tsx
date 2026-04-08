@@ -9,6 +9,7 @@ import { Copy, ChevronRight } from "lucide-react";
 import { AccountSecuritySection } from "@/pages/security-settings/AccountSecuritySection";
 import { ChangeEmailDialog } from "@/pages/security-settings/ChangeEmailDialog";
 import { DeleteAccountDialog } from "@/pages/security-settings/DeleteAccountDialog";
+import { PasskeyResetDialog } from "@/pages/security-settings/PasskeyResetDialog";
 import { DevicesSection } from "@/pages/security-settings/DevicesSection";
 import { isForbiddenApiError } from "@/pages/security-settings/forbidden";
 import { TotpSetupDialog } from "@/pages/security-settings/TotpSetupDialog";
@@ -21,6 +22,7 @@ import {
   registerPasskeyWithRetry,
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { isServerStepUpFresh } from "@/pages/security-settings/isServerStepUpFresh";
 
 type TotpSetupResponse = { setupId: string; secret: string; otpauthUri: string };
 
@@ -42,6 +44,7 @@ export default function SecuritySettings() {
     recoveryGeneratedAt,
     totpEnabled,
     setTotpEnabled,
+    lastStepUpAt,
     refreshAll,
   } = useSecuritySettingsData(user?.email);
 
@@ -69,6 +72,9 @@ export default function SecuritySettings() {
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [generatingRecoveryCodes, setGeneratingRecoveryCodes] = useState(false);
   const [resettingPasskeys, setResettingPasskeys] = useState(false);
+  const [passkeyResetDialogOpen, setPasskeyResetDialogOpen] = useState(false);
+  const [passkeyResetTotpCode, setPasskeyResetTotpCode] = useState("");
+  const [recoveryTotpCode, setRecoveryTotpCode] = useState("");
 
   const dateFormatter = useMemo(
     () =>
@@ -99,6 +105,11 @@ export default function SecuritySettings() {
     setDeleteDialogOpen(false);
     setDeleteEmailInput("");
     setDeleteTotpCode("");
+  }, []);
+
+  const closePasskeyResetDialog = useCallback(() => {
+    setPasskeyResetDialogOpen(false);
+    setPasskeyResetTotpCode("");
   }, []);
 
   const closeTotpDialog = useCallback(() => {
@@ -203,11 +214,18 @@ export default function SecuritySettings() {
   const handleGenerateRecoveryCodes = useCallback(async () => {
     setGeneratingRecoveryCodes(true);
     try {
-      const response = await withOptionalStepUp(
-        () => apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST"),
-        stepUpForRetry,
-      );
+      const useTotp =
+        passkeys.length > 0 && totpEnabled && recoveryTotpCode.trim().length === 6;
+      const response = useTotp
+        ? await apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST", {
+            totpCode: recoveryTotpCode.trim(),
+          })
+        : await withOptionalStepUp(
+            () => apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST"),
+            stepUpForRetry,
+          );
       setRecoveryCodes(response.codes);
+      setRecoveryTotpCode("");
       toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
     } catch (error) {
       toast({
@@ -219,7 +237,7 @@ export default function SecuritySettings() {
       setGeneratingRecoveryCodes(false);
       await refreshAll();
     }
-  }, [stepUpForRetry, toast, refreshAll]);
+  }, [passkeys.length, recoveryTotpCode, stepUpForRetry, toast, totpEnabled, refreshAll]);
 
   const handleRevokeSession = useCallback(
     async (sessionId: string) => {
@@ -241,18 +259,23 @@ export default function SecuritySettings() {
     [toast, refreshAll],
   );
 
-  const handleResetPasskeys = useCallback(async () => {
+  const handleResetPasskeys = useCallback(() => {
     if (passkeys.length === 0) {
       toast({ title: "No passkeys", description: "There are no passkeys to reset." });
       return;
     }
-    const confirmed = window.confirm("Remove all passkeys from this account?");
-    if (!confirmed) return;
+    setPasskeyResetTotpCode("");
+    setPasskeyResetDialogOpen(true);
+  }, [passkeys.length, toast]);
+
+  const handlePasskeyResetWithTotp = useCallback(async () => {
+    if (passkeyResetTotpCode.trim().length !== 6) return;
     setResettingPasskeys(true);
     try {
-      await withOptionalStepUp(() => apiRequest("/api/auth/passkeys/reset", "POST"), stepUpForRetry);
+      await apiRequest("/api/auth/passkeys/reset", "POST", { totpCode: passkeyResetTotpCode.trim() });
       toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
       setPasskeys([]);
+      closePasskeyResetDialog();
       await refreshAll();
     } catch (error) {
       toast({
@@ -263,7 +286,28 @@ export default function SecuritySettings() {
     } finally {
       setResettingPasskeys(false);
     }
-  }, [passkeys.length, setPasskeys, stepUpForRetry, toast, refreshAll]);
+  }, [closePasskeyResetDialog, passkeyResetTotpCode, refreshAll, setPasskeys, toast]);
+
+  const handlePasskeyResetWithPasskey = useCallback(async () => {
+    setResettingPasskeys(true);
+    try {
+      const stepped = await stepUpForRetry();
+      if (!stepped) return;
+      await apiRequest("/api/auth/passkeys/reset", "POST");
+      toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
+      setPasskeys([]);
+      closePasskeyResetDialog();
+      await refreshAll();
+    } catch (error) {
+      toast({
+        title: "Reset failed",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingPasskeys(false);
+    }
+  }, [closePasskeyResetDialog, refreshAll, setPasskeys, stepUpForRetry, toast]);
 
   const handleDeleteAccount = useCallback(async () => {
     if (!email) return;
@@ -282,12 +326,18 @@ export default function SecuritySettings() {
 
     setDeletingAccount(true);
     try {
-      if (passkeys.length > 0) {
+      const useTotpForDelete =
+        passkeys.length > 0 && totpEnabled && deleteTotpCode.trim().length === 6;
+      const stepUpAlreadyFresh = isServerStepUpFresh(lastStepUpAt);
+      if (passkeys.length > 0 && !useTotpForDelete && !stepUpAlreadyFresh) {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
             title: "Authentication required",
-            description: "Please complete authentication to delete your account.",
+            description:
+              totpEnabled && deleteTotpCode.trim().length === 0
+                ? "Use your passkey on this device, or enter your 6-digit authenticator code below."
+                : "Please complete authentication to delete your account.",
             variant: "destructive",
           });
           return;
@@ -296,7 +346,7 @@ export default function SecuritySettings() {
 
       await apiRequest("/api/auth/account/delete", "POST", {
         email: normalizedEmail,
-        ...(passkeys.length === 0 && totpEnabled ? { totpCode: deleteTotpCode.trim() } : {}),
+        ...(totpEnabled && deleteTotpCode.trim().length === 6 ? { totpCode: deleteTotpCode.trim() } : {}),
       });
 
       toast({
@@ -337,7 +387,17 @@ export default function SecuritySettings() {
       setDeleteEmailInput("");
       setDeleteTotpCode("");
     }
-  }, [deleteEmailInput, deleteTotpCode, email, passkeys.length, setLocation, signOut, toast, totpEnabled]);
+  }, [
+    deleteEmailInput,
+    deleteTotpCode,
+    email,
+    lastStepUpAt,
+    passkeys.length,
+    setLocation,
+    signOut,
+    toast,
+    totpEnabled,
+  ]);
 
   const handleChangeEmail = useCallback(async () => {
     if (!newEmailInput.trim()) {
@@ -372,12 +432,17 @@ export default function SecuritySettings() {
 
     setChangingEmail(true);
     try {
-      if (passkeys.length > 0) {
+      const useTotpForEmail =
+        passkeys.length > 0 && totpEnabled && emailChangeTotpCode.trim().length === 6;
+      if (passkeys.length > 0 && !useTotpForEmail) {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
             title: "Authentication required",
-            description: "Please complete authentication to change your email.",
+            description:
+              totpEnabled && emailChangeTotpCode.trim().length === 0
+                ? "Use your passkey on this device, or enter your 6-digit authenticator code in the form."
+                : "Please complete authentication to change your email.",
             variant: "destructive",
           });
           return;
@@ -386,7 +451,9 @@ export default function SecuritySettings() {
 
       await apiRequest("/api/auth/email/change/request", "POST", {
         newEmail: normalizedNew,
-        ...(passkeys.length === 0 && totpEnabled ? { totpCode: emailChangeTotpCode.trim() } : {}),
+        ...(totpEnabled && emailChangeTotpCode.trim().length === 6
+          ? { totpCode: emailChangeTotpCode.trim() }
+          : {}),
       });
 
       setEmailChangeSent(true);
@@ -536,6 +603,8 @@ export default function SecuritySettings() {
         totpDisabling={totpDisabling}
         generatingRecoveryCodes={generatingRecoveryCodes}
         resettingPasskeys={resettingPasskeys}
+        recoveryTotpCode={recoveryTotpCode}
+        onRecoveryTotpChange={setRecoveryTotpCode}
         onCopyEmail={() => void copyEmail()}
         onOpenChangeEmail={() => setEmailChangeDialogOpen(true)}
         onTotpDisable={() => void handleTotpDisable()}
@@ -624,6 +693,17 @@ export default function SecuritySettings() {
         onCopyEmail={() => void copyEmail()}
         onClose={closeDeleteAccountDialog}
         onConfirmDelete={() => void handleDeleteAccount()}
+      />
+
+      <PasskeyResetDialog
+        open={passkeyResetDialogOpen}
+        totpEnabled={totpEnabled}
+        totpCode={passkeyResetTotpCode}
+        onTotpCodeChange={setPasskeyResetTotpCode}
+        resetting={resettingPasskeys}
+        onClose={closePasskeyResetDialog}
+        onRemoveWithPasskey={() => void handlePasskeyResetWithPasskey()}
+        onRemoveWithTotp={() => void handlePasskeyResetWithTotp()}
       />
 
       <TotpSetupDialog

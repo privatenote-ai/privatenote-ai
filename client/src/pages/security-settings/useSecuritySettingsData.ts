@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { PasskeyInfo, SessionInfo } from "./types";
 
-type MeResponse = { id: string; email: string | null };
+type MeResponse = { id: string; email: string | null; lastStepUpAt?: string | null };
 
 export function useSecuritySettingsData(fallbackEmail: string | null | undefined) {
   const [loading, setLoading] = useState(true);
@@ -14,16 +14,19 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
   const [recoveryRemaining, setRecoveryRemaining] = useState(0);
   const [recoveryGeneratedAt, setRecoveryGeneratedAt] = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(false);
+  const [lastStepUpAt, setLastStepUpAt] = useState<string | null>(null);
 
   const refreshAuthAndAccount = useCallback(async (): Promise<boolean> => {
     try {
       const me = await apiRequest<MeResponse>("/api/auth/me", "GET");
       setUserId(me.id);
       setEmail(me.email ?? fallbackEmail ?? null);
+      setLastStepUpAt(me.lastStepUpAt ?? null);
       setSignedIn(true);
       return true;
     } catch {
       setSignedIn(false);
+      setLastStepUpAt(null);
       return false;
     }
   }, [fallbackEmail]);
@@ -76,6 +79,7 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
     recoveryGeneratedAt,
     totpEnabled,
     setTotpEnabled,
+    lastStepUpAt,
     refreshAll,
     refreshSecondaryData,
   };

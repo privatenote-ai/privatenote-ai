@@ -76,14 +76,31 @@ export function DeleteAccountDialog({
               onChange={(e) => onDeleteEmailInputChange(e.target.value)}
               disabled={deletingAccount}
             />
-            {passkeyCount > 0 && (
+            {passkeyCount > 0 && totpEnabled && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                You&apos;ll confirm with your passkey when you delete.
+                Use your passkey on this device when you delete, or enter your authenticator code below instead.
               </p>
             )}
-            {passkeyCount === 0 && totpEnabled && (
+            {passkeyCount > 0 && !totpEnabled && (
+              <>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  You&apos;ll confirm with your passkey when you delete unless you just signed in with a recovery code
+                  (then no passkey prompt). Use this device if your passkey is here.
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2">
+                  Lost your passkey? Sign out and use{" "}
+                  <a href="/auth/recovery" className="underline font-medium">
+                    Use recovery code
+                  </a>
+                  , then delete from Security settings.
+                </p>
+              </>
+            )}
+            {totpEnabled && (
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">2-step verification code</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  {passkeyCount > 0 ? "Authenticator code (optional if you use passkey)" : "2-step verification code"}
+                </p>
                 <Input
                   inputMode="numeric"
                   autoComplete="one-time-code"

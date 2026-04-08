@@ -1,5 +1,6 @@
 import { Copy, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { PasskeyInfo } from "./types";
 
 type Props = {
@@ -15,6 +16,9 @@ type Props = {
   totpDisabling: boolean;
   generatingRecoveryCodes: boolean;
   resettingPasskeys: boolean;
+  /** When passkeys + TOTP, optional code to generate recovery codes without a passkey prompt. */
+  recoveryTotpCode: string;
+  onRecoveryTotpChange: (value: string) => void;
   onCopyEmail: () => void;
   onOpenChangeEmail: () => void;
   onTotpDisable: () => void;
@@ -37,6 +41,8 @@ export function AccountSecuritySection({
   totpDisabling,
   generatingRecoveryCodes,
   resettingPasskeys,
+  recoveryTotpCode,
+  onRecoveryTotpChange,
   onCopyEmail,
   onOpenChangeEmail,
   onTotpDisable,
@@ -167,12 +173,29 @@ export function AccountSecuritySection({
         </div>
 
         <div className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Recovery codes</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {recoveryRemaining > 0 ? `${recoveryRemaining} unused codes available.` : "No unused recovery codes."}
               {recoveryGeneratedAt ? ` Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}.` : ""}
             </p>
+            {passkeys.length > 0 && totpEnabled && (
+              <div className="mt-3 max-w-xs">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Optional: enter your authenticator code to generate codes without a passkey prompt.
+                </p>
+                <Input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="6-digit code"
+                  value={recoveryTotpCode}
+                  onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  disabled={generatingRecoveryCodes}
+                  className="h-9"
+                />
+              </div>
+            )}
           </div>
           <Button
             variant="outline"

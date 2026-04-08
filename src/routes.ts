@@ -582,10 +582,68 @@ const SENSITIVE_ACTION_TOTP_RL = {
   WINDOW_SECONDS: 15 * 60,
   KEY_PREFIX_EMAIL_CHANGE: "email_change_totp_rl:",
   KEY_PREFIX_ACCOUNT_DELETE: "account_delete_totp_rl:",
+  KEY_PREFIX_PASSKEY_RESET: "passkey_reset_totp_rl:",
+  KEY_PREFIX_RECOVERY_GENERATE: "recovery_generate_totp_rl:",
 } as const;
 
+/** Returns null when TOTP verified; otherwise an error Response. */
+async function verifyTotpForSensitiveAction(
+  env: Env,
+  request: Request,
+  session: { id: string; email: string | null; sessionIdHash: string },
+  verifiedTotpSecretRow: { encrypted_secret: string },
+  totpCodeTrimmed: string,
+  rateLimitPrefix: string,
+  totpAuditPhase: string,
+): Promise<Response | null> {
+  if (!env.TOTP_ENCRYPTION_KEY) {
+    return jsonResponse({ message: "TOTP not configured" }, 501, request);
+  }
+
+  if (env.AUTH_KV) {
+    const rlKey = `${rateLimitPrefix}${session.sessionIdHash}`;
+    try {
+      const rlData = (await env.AUTH_KV.get(rlKey, "json")) as { count: number } | null;
+      if (rlData && rlData.count >= SENSITIVE_ACTION_TOTP_RL.MAX_ATTEMPTS) {
+        return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+      }
+      await env.AUTH_KV.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+        expirationTtl: SENSITIVE_ACTION_TOTP_RL.WINDOW_SECONDS,
+      });
+    } catch {
+      // non-fatal
+    }
+  }
+
+  const secret = await decryptTotpSecret(verifiedTotpSecretRow.encrypted_secret, env);
+  const accountName = session.email || session.id;
+  if (!verifyTotpCode(secret, totpCodeTrimmed, accountName)) {
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "totp_failed",
+      status: "failure",
+      details: { phase: totpAuditPhase },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse({ message: "Invalid two-step code" }, 400, request);
+  }
+
+  if (env.AUTH_KV) {
+    try {
+      await env.AUTH_KV.delete(`${rateLimitPrefix}${session.sessionIdHash}`);
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
 /**
- * Passkey users: fresh WebAuthn step-up. Others: verified TOTP code, or enroll passkey/TOTP first.
+ * Sensitive actions: passkey users need a fresh WebAuthn step-up unless they submit a valid TOTP
+ * (when 2-step verification is enabled). Users without passkeys use TOTP only, or must enroll first.
+ * When {@link allowSessionWithoutMfa} is true (e.g. recovery-code generation), a signed-in user with
+ * neither passkeys nor TOTP is allowed — matching legacy behavior.
  * Returns a JSON Response to return to the client, or null when satisfied.
  */
 async function gateSecondFactorForAccountTakeover(
@@ -602,16 +660,46 @@ async function gateSecondFactorForAccountTakeover(
   totpCode: string | undefined,
   rateLimitPrefix: string,
   totpAuditPhase: string,
+  stepUpWindowSeconds: number = STEP_UP_WINDOW_SECONDS,
+  allowSessionWithoutMfa = false,
 ): Promise<Response | null> {
+  const tcRaw = typeof totpCode === "string" ? totpCode.trim() : "";
+  const totpProvided = tcRaw.length > 0;
+
+  if (hasPasskeys && verifiedTotpSecretRow) {
+    if (totpProvided) {
+      if (!/^\d{6}$/.test(tcRaw)) {
+        return jsonResponse(
+          { message: "Enter a valid 6-digit two-step code", code: "second_factor_code_invalid" },
+          400,
+          request,
+        );
+      }
+      return await verifyTotpForSensitiveAction(
+        env,
+        request,
+        session,
+        verifiedTotpSecretRow,
+        tcRaw,
+        rateLimitPrefix,
+        totpAuditPhase,
+      );
+    }
+    if (!isStepUpFresh(session.lastStepUpAt, stepUpWindowSeconds)) {
+      return jsonResponse({ message: "Step-up required" }, 403, request);
+    }
+    return null;
+  }
+
   if (hasPasskeys) {
-    if (!isStepUpFresh(session.lastStepUpAt)) {
+    if (!isStepUpFresh(session.lastStepUpAt, stepUpWindowSeconds)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }
     return null;
   }
 
   if (verifiedTotpSecretRow) {
-    if (!totpCode || typeof totpCode !== "string" || !/^\d{6}$/.test(totpCode.trim())) {
+    if (!totpProvided || !/^\d{6}$/.test(tcRaw)) {
       return jsonResponse(
         {
           message: "Two-step verification code required",
@@ -621,46 +709,18 @@ async function gateSecondFactorForAccountTakeover(
         request,
       );
     }
-    if (!env.TOTP_ENCRYPTION_KEY) {
-      return jsonResponse({ message: "TOTP not configured" }, 501, request);
-    }
+    return await verifyTotpForSensitiveAction(
+      env,
+      request,
+      session,
+      verifiedTotpSecretRow,
+      tcRaw,
+      rateLimitPrefix,
+      totpAuditPhase,
+    );
+  }
 
-    if (env.AUTH_KV) {
-      const rlKey = `${rateLimitPrefix}${session.sessionIdHash}`;
-      try {
-        const rlData = (await env.AUTH_KV.get(rlKey, "json")) as { count: number } | null;
-        if (rlData && rlData.count >= SENSITIVE_ACTION_TOTP_RL.MAX_ATTEMPTS) {
-          return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
-        }
-        await env.AUTH_KV.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
-          expirationTtl: SENSITIVE_ACTION_TOTP_RL.WINDOW_SECONDS,
-        });
-      } catch {
-        // non-fatal
-      }
-    }
-
-    const secret = await decryptTotpSecret(verifiedTotpSecretRow.encrypted_secret, env);
-    const accountName = session.email || session.id;
-    if (!verifyTotpCode(secret, totpCode.trim(), accountName)) {
-      await logAuditEvent(env, {
-        userId: session.id,
-        eventType: "totp_failed",
-        status: "failure",
-        details: { phase: totpAuditPhase },
-        ip: getRequestIp(request),
-        userAgent: request.headers.get("User-Agent"),
-      });
-      return jsonResponse({ message: "Invalid two-step code" }, 400, request);
-    }
-
-    if (env.AUTH_KV) {
-      try {
-        await env.AUTH_KV.delete(`${rateLimitPrefix}${session.sessionIdHash}`);
-      } catch {
-        /* ignore */
-      }
-    }
+  if (allowSessionWithoutMfa) {
     return null;
   }
 
@@ -1178,6 +1238,8 @@ function getMagicLinkIssuanceDiagnostics(env: Env, request: Request): {
   integrityRelaxed: boolean;
   storageReady: boolean;
   emailReady: boolean;
+  /** When true, magic/send drops requests without a valid turnstileToken (silent 200); Resend is never called. */
+  turnstileSecretConfigured: boolean;
   endToEndReady: boolean;
 } {
   const relaxed = isMagicLinkIntegrityRelaxed(env, request);
@@ -1198,6 +1260,8 @@ function getMagicLinkIssuanceDiagnostics(env: Env, request: Request): {
     typeof env.AUTH_EMAIL_FROM === "string" &&
     env.AUTH_EMAIL_FROM.length > 0;
   const emailReady = isLocal || resendOk;
+  const turnstileSecretConfigured =
+    typeof env.TURNSTILE_SECRET_KEY === "string" && env.TURNSTILE_SECRET_KEY.length > 0;
   return {
     authDb: Boolean(env.AUTH_DB),
     authKv: Boolean(kv),
@@ -1205,6 +1269,7 @@ function getMagicLinkIssuanceDiagnostics(env: Env, request: Request): {
     integrityRelaxed: relaxed,
     storageReady,
     emailReady,
+    turnstileSecretConfigured,
     endToEndReady: storageReady && emailReady,
   };
 }
@@ -1745,7 +1810,9 @@ async function createSession(
   const absoluteExpiresAt = new Date(now + 1000 * SESSION_POLICY.ABSOLUTE_TTL_SECONDS).toISOString();
   const ip = getRequestIp(request);
   const { city, country } = getRequestGeo(request);
-  const lastStepUpAt = authMethod === "passkey" ? nowIso : null;
+  // Passkey and recovery-code sign-in both count as strong verification for step-up-gated actions
+  // (e.g. reset passkeys). Magic-link sessions stay without step-up until the user proves passkey/TOTP.
+  const lastStepUpAt = authMethod === "passkey" || authMethod === "recovery" ? nowIso : null;
   await env.AUTH_DB.prepare(
     "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
@@ -3040,9 +3107,31 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    if (!isStepUpFresh(session.lastStepUpAt)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
-    }
+
+    const body = await request.json().catch(() => ({})) as { totpCode?: string };
+    const passkeyCountReset = await env.AUTH_DB.prepare(
+      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
+    )
+      .bind(session.id)
+      .first<{ count: number }>();
+    const hasPasskeysReset = (passkeyCountReset?.count ?? 0) > 0;
+    const verifiedTotpRowReset = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
+
+    const resetGate = await gateSecondFactorForAccountTakeover(
+      env,
+      request,
+      session,
+      hasPasskeysReset,
+      verifiedTotpRowReset,
+      body.totpCode,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_PASSKEY_RESET,
+      "passkey_reset",
+    );
+    if (resetGate) return resetGate;
 
     await env.AUTH_DB.prepare(
       "DELETE FROM webauthn_credentials WHERE user_id = ?"
@@ -3199,16 +3288,32 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
+    const recoveryBody = await request.json().catch(() => ({})) as { totpCode?: string };
     const passkeyCountForRecovery = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
     )
       .bind(session.id)
       .first<{ count: number }>();
     const hasPasskeysForRecovery = (passkeyCountForRecovery?.count ?? 0) > 0;
+    const verifiedTotpRowRecovery = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
 
-    if (hasPasskeysForRecovery && !isStepUpFresh(session.lastStepUpAt, RECOVERY_CODE_STEP_UP_WINDOW_SECONDS)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
-    }
+    const recoveryGate = await gateSecondFactorForAccountTakeover(
+      env,
+      request,
+      session,
+      hasPasskeysForRecovery,
+      verifiedTotpRowRecovery,
+      recoveryBody.totpCode,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_RECOVERY_GENERATE,
+      "recovery_code_generate",
+      RECOVERY_CODE_STEP_UP_WINDOW_SECONDS,
+      true,
+    );
+    if (recoveryGate) return recoveryGate;
 
     // Delete only unused codes; used codes are retained for audit/forensics (used_at set)
     await env.AUTH_DB.prepare("DELETE FROM recovery_codes WHERE user_id = ? AND used_at IS NULL")
@@ -5280,7 +5385,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           "magic_link_failed with auth_secret_key_missing or auth_kv_missing",
           "magic_link_email_failed (spike or sustained failures)",
         ],
-        logPatterns: ["[MAGIC_LINK] storeMagicLink failed", "[MAGIC_LINK] Resend did not send email"],
+        logPatterns: [
+          "[MAGIC_LINK] storeMagicLink failed",
+          "[MAGIC_LINK] Resend did not send email",
+          "[MAGIC_LINK] Not sending email: Turnstile is required",
+          "[MAGIC_LINK] Not sending email: Turnstile siteverify failed",
+        ],
+        turnstileNote: magic.turnstileSecretConfigured
+          ? "TURNSTILE_SECRET_KEY is set: magic/send requires a valid body.turnstileToken or the worker skips Resend (still HTTP 200). Set VITE_TURNSTILE_SITE_KEY on the Pages production build, redeploy, and allow your production hostname in the Turnstile widget."
+          : "TURNSTILE_SECRET_KEY unset: magic/send does not require Turnstile.",
       },
     };
     const status = magic.endToEndReady ? 200 : 503;

@@ -39,12 +39,10 @@ class_name = "AuthTokenStore"
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
-# Required for SecureNoteStorageSql (DO SQL). Local `wrangler dev` reads this;
-# without it, note creation fails with "SQL is not enabled for this Durable Object class".
-# Do not remove: Cloudflare tracks applied migration tags; removing past tags breaks deploy.
-[[migrations]]
-tag = "v5-secure-notes-sqlite"
-new_sqlite_classes = ["SecureNoteStorageSql"]
+# SecureNoteStorageSql is already registered in production (historically via new_classes / Free-tier
+# SQLite-only DOs). Do NOT add new_sqlite_classes for the same class name — deploy fails with:
+# "Cannot apply new-sqlite-class migration ... already depended on by existing Durable Objects" (10074).
+# See https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
 
 # Environment variables (set via wrangler secret put or dashboard)
 
@@ -81,5 +79,4 @@ persist = true
 head_sampling_rate = 1
 
 # Migration configuration
-# Keep all applied tags (v4, v5, …) in this file. v1–v3 ran on this worker historically;
-# v4 adds AuthTokenStore; v5 registers SecureNoteStorageSql with SQLite for wrangler dev + prod.
+# Keep all applied tags in this file. v1–v3 ran on this worker historically; v4 adds AuthTokenStore.

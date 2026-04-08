@@ -66,7 +66,8 @@ export default function AuthRecovery() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                You’re signed in. Head to your security settings to add a new passkey.
+                You&apos;re signed in. Open Security settings to <strong>reset passkeys</strong> (remove the old ones)
+                and add a new passkey, or enable 2-step verification as a backup.
               </p>
               <Button asChild>
                 <a href="/account/security">Go to security settings</a>

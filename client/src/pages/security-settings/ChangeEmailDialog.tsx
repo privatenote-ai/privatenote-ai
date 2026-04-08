@@ -89,14 +89,23 @@ export function ChangeEmailDialog({
                 disabled={changingEmail}
               />
             </div>
-            {passkeyCount > 0 && (
+            {passkeyCount > 0 && totpEnabled && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                You&apos;ll need to verify with your passkey before we send the verification email.
+                After you continue: use your passkey on <strong>this device</strong>, or enter your authenticator code
+                below instead (avoids cross-device QR prompts).
               </p>
             )}
-            {passkeyCount === 0 && totpEnabled && (
+            {passkeyCount > 0 && !totpEnabled && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                You&apos;ll verify with your passkey on this device after you continue (avoid scanning a QR unless your
+                passkey is on another device).
+              </p>
+            )}
+            {totpEnabled && (
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">2-step verification code</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  {passkeyCount > 0 ? "Authenticator code (optional if you use passkey)" : "2-step verification code"}
+                </p>
                 <Input
                   inputMode="numeric"
                   autoComplete="one-time-code"

@@ -238,6 +238,19 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       return;
     }
 
+    // The widget mounts inside the form card only. "Check your email" unmounts that DOM;
+    // without re-running this effect when returning to the form, Turnstile never renders again.
+    if (view !== "form") {
+      setTurnstileMounted(false);
+      setTurnstileToken(null);
+      if (turnstileWidgetIdRef.current !== null) {
+        const id = turnstileWidgetIdRef.current;
+        turnstileWidgetIdRef.current = null;
+        destroyTurnstileWidget(id);
+      }
+      return;
+    }
+
     const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
     if (!siteKey) {
       setTurnstileError("Human verification is not configured.");
@@ -310,7 +323,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         container.innerHTML = "";
       }
     };
-  }, [shouldShowTurnstile, resetAuthTurnstile]);
+  }, [view, shouldShowTurnstile, resetAuthTurnstile]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
