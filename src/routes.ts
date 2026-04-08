@@ -141,6 +141,26 @@ async function readJsonBody(request: Request): Promise<any> {
   }
 }
 
+/**
+ * Normalize TOTP from JSON (string with optional separators, or integer 0–999999).
+ * Returns a 6-digit string or "" so the second-factor gate does not ignore valid codes
+ * when browsers/clients coerce types.
+ */
+function normalizeTotpCodeParam(raw: unknown): string {
+  if (typeof raw === "string") {
+    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    return /^\d{6}$/.test(digits) ? digits : "";
+  }
+  if (typeof raw === "number" && Number.isInteger(raw) && raw >= 0 && raw <= 999_999) {
+    return String(raw).padStart(6, "0");
+  }
+  return "";
+}
+
+const SECOND_FACTOR_STEP_UP_MESSAGE =
+  "Enter your 6-digit authenticator code, or verify with your passkey on this device first.";
+const SECOND_FACTOR_STEP_UP_CODE = "second_factor_step_up_required";
+
 // Get CORS headers
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin");
@@ -657,24 +677,17 @@ async function gateSecondFactorForAccountTakeover(
   },
   hasPasskeys: boolean,
   verifiedTotpSecretRow: { encrypted_secret: string } | null,
-  totpCode: string | undefined,
+  totpCode: unknown,
   rateLimitPrefix: string,
   totpAuditPhase: string,
   stepUpWindowSeconds: number = STEP_UP_WINDOW_SECONDS,
   allowSessionWithoutMfa = false,
 ): Promise<Response | null> {
-  const tcRaw = typeof totpCode === "string" ? totpCode.trim() : "";
+  const tcRaw = normalizeTotpCodeParam(totpCode);
   const totpProvided = tcRaw.length > 0;
 
   if (hasPasskeys && verifiedTotpSecretRow) {
     if (totpProvided) {
-      if (!/^\d{6}$/.test(tcRaw)) {
-        return jsonResponse(
-          { message: "Enter a valid 6-digit two-step code", code: "second_factor_code_invalid" },
-          400,
-          request,
-        );
-      }
       return await verifyTotpForSensitiveAction(
         env,
         request,
@@ -686,14 +699,26 @@ async function gateSecondFactorForAccountTakeover(
       );
     }
     if (!isStepUpFresh(session.lastStepUpAt, stepUpWindowSeconds)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
+      return jsonResponse(
+        { message: SECOND_FACTOR_STEP_UP_MESSAGE, code: SECOND_FACTOR_STEP_UP_CODE },
+        403,
+        request,
+      );
     }
     return null;
   }
 
   if (hasPasskeys) {
     if (!isStepUpFresh(session.lastStepUpAt, stepUpWindowSeconds)) {
-      return jsonResponse({ message: "Step-up required" }, 403, request);
+      return jsonResponse(
+        {
+          message:
+            "Verify with your passkey on this device. If you already did, wait a moment and try again.",
+          code: SECOND_FACTOR_STEP_UP_CODE,
+        },
+        403,
+        request,
+      );
     }
     return null;
   }
@@ -2062,6 +2087,9 @@ async function getSessionFromRequest(
     return null;
   }
 
+  /** After IP mismatch we clear step-up in DB; expose that in-memory so sensitive-action gates match. */
+  let sessionLastStepUpAt: string | null = row.last_stepup_at ?? null;
+
   // Optional IP binding check (can be disabled for mobile users)
   if (SESSION_IP_BINDING_ENABLED && row.session_ip && currentIp && row.session_ip !== currentIp) {
     // Soft-bind: do NOT revoke the session on IP change.
@@ -2072,6 +2100,7 @@ async function getSessionFromRequest(
     )
       .bind(currentIp, sessionHash)
       .run();
+    sessionLastStepUpAt = null;
 
     // Audit log: IP mismatch (still recorded for visibility and anomaly detection)
     await logAuditEvent(env, {
@@ -2154,7 +2183,7 @@ async function getSessionFromRequest(
     sessionRowId: row.session_row_id,
     sessionIdHash: sessionHash,
     lastAuthAt: row.last_auth_at ?? null,
-    lastStepUpAt: row.last_stepup_at ?? null,
+    lastStepUpAt: sessionLastStepUpAt,
     newSessionId,
     authComplete,
   };
@@ -3108,7 +3137,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const body = await request.json().catch(() => ({})) as { totpCode?: string };
+    let resetBody: Record<string, unknown>;
+    try {
+      resetBody = await readJsonBody(request);
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
     const passkeyCountReset = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
     )
@@ -3127,7 +3161,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       session,
       hasPasskeysReset,
       verifiedTotpRowReset,
-      body.totpCode,
+      resetBody.totpCode,
       SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_PASSKEY_RESET,
       "passkey_reset",
     );
@@ -3288,7 +3322,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const recoveryBody = await request.json().catch(() => ({})) as { totpCode?: string };
+    let recoveryBody: Record<string, unknown>;
+    try {
+      recoveryBody = await readJsonBody(request);
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
     const passkeyCountForRecovery = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
     )
@@ -3938,8 +3977,14 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const body = await request.json().catch(() => ({})) as { newEmail?: string; totpCode?: string };
-    const { newEmail, totpCode: emailChangeTotpCode } = body;
+    let emailChangeBody: Record<string, unknown>;
+    try {
+      emailChangeBody = await readJsonBody(request);
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const newEmail = emailChangeBody.newEmail;
+    const emailChangeTotpCode = emailChangeBody.totpCode;
 
     const passkeyCount = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
@@ -4229,8 +4274,14 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const body = await request.json().catch(() => ({})) as { email?: string; totpCode?: string };
-    const { email: providedEmail, totpCode: deleteAccountTotpCode } = body;
+    let deleteBody: Record<string, unknown>;
+    try {
+      deleteBody = await readJsonBody(request);
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const providedEmail = deleteBody.email;
+    const deleteAccountTotpCode = deleteBody.totpCode;
 
     const passkeyCount = await env.AUTH_DB.prepare(
       "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",

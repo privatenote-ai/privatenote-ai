@@ -326,18 +326,18 @@ export default function SecuritySettings() {
 
     setDeletingAccount(true);
     try {
-      const useTotpForDelete =
-        passkeys.length > 0 && totpEnabled && deleteTotpCode.trim().length === 6;
+      /** Server treats a valid 6-digit code like a step-up for passkey holders; skip passkey UI when provided. */
+      const totpDeleteCode = totpEnabled && deleteTotpCode.trim().length === 6 ? deleteTotpCode.trim() : null;
       const stepUpAlreadyFresh = isServerStepUpFresh(lastStepUpAt);
-      if (passkeys.length > 0 && !useTotpForDelete && !stepUpAlreadyFresh) {
+      if (passkeys.length > 0 && !totpDeleteCode && !stepUpAlreadyFresh) {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
-            title: "Authentication required",
+            title: "Verification incomplete",
             description:
-              totpEnabled && deleteTotpCode.trim().length === 0
-                ? "Use your passkey on this device, or enter your 6-digit authenticator code below."
-                : "Please complete authentication to delete your account.",
+              totpEnabled
+                ? "Enter your 6-digit authenticator code in the field below, or complete passkey verification on this device."
+                : "Please complete passkey verification to delete your account.",
             variant: "destructive",
           });
           return;
@@ -346,7 +346,7 @@ export default function SecuritySettings() {
 
       await apiRequest("/api/auth/account/delete", "POST", {
         email: normalizedEmail,
-        ...(totpEnabled && deleteTotpCode.trim().length === 6 ? { totpCode: deleteTotpCode.trim() } : {}),
+        ...(totpDeleteCode ? { totpCode: totpDeleteCode } : {}),
       });
 
       toast({
@@ -370,7 +370,7 @@ export default function SecuritySettings() {
       }
       if (isForbiddenApiError(error)) {
         toast({
-          title: "Authentication required",
+          title: "Verification required",
           description: desc,
           variant: "destructive",
         });
