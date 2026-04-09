@@ -23,20 +23,19 @@ export function DevicesSection({
   const currentSessionCount = sessions.filter((session) => session.current).length;
 
   return (
-    <section className="mb-12">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sessions</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {currentSessionCount > 0 ? "You are signed in on this device." : "Review your active sessions."}
-        </p>
-      </div>
-
-      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mb-12 mt-14">
+      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Sessions</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {currentSessionCount > 0 ? "You are signed in on this device." : "Review your active sessions."}
+          </p>
+        </div>
         <Button
           variant="outline"
           onClick={onRevokeAll}
           disabled={revokingAllSessions}
-          className="w-full shrink-0 sm:ml-auto sm:w-auto"
+          className="w-full shrink-0 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 sm:w-auto"
         >
           {revokingAllSessions ? (
             <>

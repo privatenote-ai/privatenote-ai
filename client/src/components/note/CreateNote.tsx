@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
+import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   encryptNote,
   generateContentKey,
@@ -144,7 +145,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [transformHistory, setTransformHistory] = useState<AiPostGenTransform[]>([]);
   const [aiDraftAccepted, setAiDraftAccepted] = useState(false);
 
-  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
   const [aiTurnstileChallengeRequired, setAiTurnstileChallengeRequired] = useState(false);
   const shouldShowAiTurnstile = isAiMode && !!turnstileSiteKey && aiTurnstileChallengeRequired;

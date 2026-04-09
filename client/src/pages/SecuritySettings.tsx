@@ -741,71 +741,8 @@ export default function SecuritySettings() {
     );
   }
 
-  const hasPasskeys = passkeys.length > 0;
-  const hasRecoveryCodes = recoveryRemaining > 0;
-  const securityStatus = hasPasskeys && totpEnabled
-    ? "Well protected"
-    : hasPasskeys || totpEnabled
-      ? "Partially protected"
-      : emailVerified
-        ? "Basic protection"
-        : "Needs attention";
-  const securityStatusTone = hasPasskeys && totpEnabled
-    ? "text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
-    : hasPasskeys || totpEnabled
-      ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
-      : "text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
-  const securityAction = !hasPasskeys
-    ? "Add a passkey to improve security."
-    : !totpEnabled
-      ? "Add 2-step verification for stronger protection."
-      : !hasRecoveryCodes
-        ? "Generate recovery codes so you have a backup sign-in method."
-        : null;
-
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-      <Card className="mb-10 border-gray-200 dark:border-gray-800">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <CardTitle>Security status</CardTitle>
-              <CardDescription className="mt-1">Manage how you sign in and protect your account.</CardDescription>
-            </div>
-            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${securityStatusTone}`}>
-              {securityStatus}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-gray-900 dark:text-white">{securityStatus}</p>
-          {securityAction && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-gray-600 dark:text-gray-400">{securityAction}</p>
-              {!hasPasskeys ? (
-                <Button size="sm" onClick={() => void handleAddPasskey()} disabled={registeringPasskey} className="w-full sm:w-auto">
-                  {registeringPasskey ? "Adding..." : "Add passkey"}
-                </Button>
-              ) : !totpEnabled ? (
-                <Button size="sm" onClick={() => void handleTotpSetup()} disabled={totpSettingUp} className="w-full sm:w-auto">
-                  {totpSettingUp ? "Enabling..." : "Enable 2-step verification"}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void handleGenerateRecoveryCodes()}
-                  disabled={generatingRecoveryCodes}
-                  className="w-full sm:w-auto"
-                >
-                  {generatingRecoveryCodes ? "Generating..." : "Generate recovery codes"}
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       <AccountSecuritySection
         email={email}
         recoveryRemaining={recoveryRemaining}
@@ -840,7 +777,10 @@ export default function SecuritySettings() {
       />
 
       <div className="mb-12">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">User ID</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">User ID</h2>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Your User ID can help support identify your account when needed.
+        </p>
         <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
@@ -860,10 +800,13 @@ export default function SecuritySettings() {
         </div>
       </div>
 
-      <div className="mt-14 border-t border-gray-200 pt-8 dark:border-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Danger zone</h2>
+      <div className="mt-10 pt-2">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Danger zone</h2>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          These actions are permanent or harder to reverse, so review them carefully.
+        </p>
 
-        <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div className="space-y-0 rounded-lg border border-red-200 dark:border-red-900/60 overflow-hidden">
           <button
             type="button"
             onClick={() => setDeleteDialogOpen(true)}

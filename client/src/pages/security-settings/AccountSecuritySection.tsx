@@ -1,5 +1,7 @@
-import { Copy, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import type { PasskeyInfo } from "./types";
 
@@ -51,6 +53,9 @@ export function AccountSecuritySection({
   onResetPasskeys,
   onGenerateRecoveryCodes,
 }: Props) {
+  const [passkeyHelpOpen, setPasskeyHelpOpen] = useState(false);
+  const [totpHelpOpen, setTotpHelpOpen] = useState(false);
+  const [recoveryHelpOpen, setRecoveryHelpOpen] = useState(false);
   const hasPasskeys = passkeys.length > 0;
   const hasRecoveryCodes = recoveryRemaining > 0;
   const recoveryGeneratedLabel = recoveryGeneratedAt
@@ -61,99 +66,151 @@ export function AccountSecuritySection({
     <div className="space-y-10">
       <section>
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Protect your account</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Protect your account</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Manage how you sign in and protect your account.
           </p>
         </div>
-        <div className="space-y-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-          <div className="flex flex-col items-start gap-4 border-b border-gray-200 p-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Passkeys (Recommended)</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Sign in securely using biometrics or device authentication.
-              </p>
-              <p className="mt-2 text-sm text-gray-900 dark:text-white">
-                {hasPasskeys
-                  ? `${passkeys.length} passkey${passkeys.length !== 1 ? "s" : ""} active`
-                  : "No passkeys added"}
-              </p>
+        <div className="space-y-5 rounded-xl border border-blue-200/80 p-4 dark:border-blue-900/60">
+          <div>
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+                <div className="min-w-0 lg:self-center">
+                  <div className="flex items-start gap-2">
+                    <p className="text-base font-medium text-gray-900 dark:text-white">Passkeys</p>
+                    <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                      Recommended
+                    </span>
+                  </div>
+                </div>
+                <div className="min-w-0 lg:self-center">
+                  <p className={`text-sm font-medium ${hasPasskeys ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}`}>
+                    {hasPasskeys
+                      ? `${passkeys.length} passkey${passkeys.length !== 1 ? "s" : ""} active`
+                      : "No passkeys added"}
+                  </p>
+                </div>
+                <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end lg:self-center">
+                  <Button size="sm" onClick={onAddPasskey} disabled={registeringPasskey} className="w-full sm:w-auto">
+                    {registeringPasskey ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add passkey"
+                    )}
+                  </Button>
+                  {hasPasskeys && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onResetPasskeys}
+                      disabled={resettingPasskeys}
+                      className="w-full sm:w-auto"
+                    >
+                      Remove all passkeys
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              {hasPasskeys && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onResetPasskeys}
-                  disabled={resettingPasskeys}
-                  className="w-full sm:w-auto"
-                >
-                  Remove all passkeys
-                </Button>
-              )}
-              <Button size="sm" onClick={onAddPasskey} disabled={registeringPasskey} className="w-full sm:w-auto">
-                {registeringPasskey ? (
-                  <>
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  "Add passkey"
-                )}
-              </Button>
-            </div>
+            <Collapsible open={passkeyHelpOpen} onOpenChange={setPasskeyHelpOpen}>
+              <div className="mt-3">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                  >
+                    Why use passkeys?
+                    {passkeyHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                    <p>Passkeys help protect your account against phishing and password reuse.</p>
+                    <p className="mt-1">They also make sign-in faster because you can use your device’s built-in authentication.</p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </div>
 
-          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">2-step verification</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                {totpEnabled ? "Enabled" : "Not enabled"}
-              </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {totpEnabled
-                  ? "You’ll be asked for a code during sign-in and sensitive actions."
-                  : "Protect your account with a 6-digit code from your authenticator app."}
-              </p>
+          <div>
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+                <div className="min-w-0 lg:self-center">
+                  <p className="text-base font-medium text-gray-900 dark:text-white">2-step verification</p>
+                </div>
+                <div className="min-w-0 lg:self-center">
+                  <p className={`text-sm font-medium ${totpEnabled ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}`}>
+                    {totpEnabled ? "Enabled" : "Not enabled"}
+                  </p>
+                </div>
+                <div className="flex w-full lg:w-auto lg:justify-end lg:self-center">
+                  {totpEnabled ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onTotpDisable}
+                      disabled={totpDisabling}
+                      className="w-full sm:w-auto"
+                    >
+                      {totpDisabling ? "Disabling..." : "Disable"}
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={onTotpSetup} disabled={totpSettingUp} className="w-full sm:w-auto">
+                      {totpSettingUp ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Enabling...
+                        </>
+                      ) : (
+                        "Enable"
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-            {totpEnabled ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onTotpDisable}
-                disabled={totpDisabling}
-                className="w-full sm:w-auto"
-              >
-                {totpDisabling ? "Disabling..." : "Disable"}
-              </Button>
-            ) : (
-              <Button size="sm" onClick={onTotpSetup} disabled={totpSettingUp} className="w-full sm:w-auto">
-                {totpSettingUp ? (
-                  <>
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    Enabling...
-                  </>
-                ) : (
-                  "Enable 2-step verification"
-                )}
-              </Button>
-            )}
+            <Collapsible open={totpHelpOpen} onOpenChange={setTotpHelpOpen}>
+              <div className="mt-3">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                  >
+                    Why use 2-step verification?
+                    {totpHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                    <p>A 6-digit authenticator code adds a second check when someone tries to sign in.</p>
+                    <p className="mt-1">It also helps protect sensitive actions even if someone gains access to your email.</p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </div>
         </div>
       </section>
 
       <section>
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account access</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Account access</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Manage which email you use for account access and recovery.
+          </p>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-800">
-          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Email (used for account access and recovery)
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <p className="text-sm text-gray-600 dark:text-gray-400">{email ?? "No email set"}</p>
+          <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+            <div className="min-w-0 lg:self-center">
+              <p className="text-base font-medium text-gray-900 dark:text-white">Email</p>
+            </div>
+            <div className="min-w-0 lg:self-center">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{email ?? "No email set"}</p>
                 {email && (
                   <button
                     type="button"
@@ -166,63 +223,93 @@ export function AccountSecuritySection({
                 )}
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenChangeEmail}
-              disabled={!email}
-              className="w-full sm:w-auto"
-            >
-              Change email
-            </Button>
+            <div className="lg:self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenChangeEmail}
+                disabled={!email}
+                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 lg:w-auto"
+              >
+                Change email
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
       <section>
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recovery</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recovery</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Keep backup access ready in case you lose your usual sign-in method.
+          </p>
         </div>
-        <div className="rounded-lg border border-gray-200 dark:border-gray-800">
-          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1 w-full">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Recovery codes</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                {hasRecoveryCodes
-                  ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
-                  : "No recovery codes available"}
-              </p>
-              {recoveryGeneratedLabel && (
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Last generated {recoveryGeneratedLabel}</p>
-              )}
-              {hasPasskeys && totpEnabled && (
-                <div className="mt-3 max-w-xs">
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-                    6-digit authenticator code (optional — skips passkey prompt)
-                  </p>
-                  <Input
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="6-digit authenticator code"
-                    value={recoveryTotpCode}
-                    onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    disabled={generatingRecoveryCodes}
-                    className="h-9"
-                  />
-                </div>
-              )}
+        <div>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+              <div className="min-w-0 lg:self-center">
+                <p className="text-base font-medium text-gray-900 dark:text-white">Recovery codes</p>
+              </div>
+              <div className="min-w-0 w-full lg:self-center">
+                <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                  {hasRecoveryCodes
+                    ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
+                    : "No recovery codes available"}
+                </p>
+                {recoveryGeneratedLabel && (
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Last generated {recoveryGeneratedLabel}</p>
+                )}
+                {hasPasskeys && totpEnabled && (
+                  <div className="mt-3 max-w-xs">
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
+                      6-digit authenticator code (optional — skips passkey prompt)
+                    </p>
+                    <Input
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="6-digit authenticator code"
+                      value={recoveryTotpCode}
+                      onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      disabled={generatingRecoveryCodes}
+                      className="h-9"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="lg:self-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onGenerateRecoveryCodes}
+                  disabled={generatingRecoveryCodes}
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 lg:w-auto"
+                >
+                  {generatingRecoveryCodes ? "Generating..." : hasRecoveryCodes ? "Generate new codes" : "Generate recovery codes"}
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onGenerateRecoveryCodes}
-              disabled={generatingRecoveryCodes}
-              className="w-full sm:w-auto"
-            >
-              {generatingRecoveryCodes ? "Generating..." : hasRecoveryCodes ? "Generate new codes" : "Generate recovery codes"}
-            </Button>
           </div>
+          <Collapsible open={recoveryHelpOpen} onOpenChange={setRecoveryHelpOpen}>
+            <div className="mt-3">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                >
+                  Why use recovery codes?
+                  {recoveryHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                  <p>Recovery codes give you a backup way to access your account if you lose your device.</p>
+                  <p className="mt-1">Store them somewhere safe because they can help you recover access when other methods are unavailable.</p>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
         </div>
       </section>
 

@@ -22,6 +22,7 @@ import {
 } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 
 const PASSKEY_FAIL_GENERIC =
   "Sign-in could not be completed. Try again or use a different sign-in method.";
@@ -109,7 +110,8 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [turnstileMounted, setTurnstileMounted] = useState(false);
   const turnstileWidgetIdRef = React.useRef<string | null>(null);
-  const shouldShowTurnstile = !!import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  const turnstileSiteKey = getTurnstileSiteKeyForClient();
+  const shouldShowTurnstile = !!turnstileSiteKey;
   const showDebugMagicLinkUi = import.meta.env.DEV && Boolean(debugMagicLink);
 
   const resetAuthTurnstile = useCallback(() => {
@@ -251,7 +253,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       return;
     }
 
-    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    const siteKey = turnstileSiteKey;
     if (!siteKey) {
       setTurnstileError("Human verification is not configured.");
       setTurnstileMounted(false);
@@ -323,7 +325,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         container.innerHTML = "";
       }
     };
-  }, [view, shouldShowTurnstile, resetAuthTurnstile]);
+  }, [view, shouldShowTurnstile, turnstileSiteKey, resetAuthTurnstile]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
