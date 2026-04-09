@@ -755,55 +755,52 @@ export default function SecuritySettings() {
     : hasPasskeys || totpEnabled
       ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
       : "text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
+  const securityAction = !hasPasskeys
+    ? "Add a passkey to improve security."
+    : !totpEnabled
+      ? "Add 2-step verification for stronger protection."
+      : !hasRecoveryCodes
+        ? "Generate recovery codes so you have a backup sign-in method."
+        : null;
 
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
       <Card className="mb-10 border-gray-200 dark:border-gray-800">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle>Security status</CardTitle>
-              <CardDescription className="mt-1">
-                Review your protection settings and strengthen weak spots quickly.
-              </CardDescription>
+              <CardDescription className="mt-1">Manage how you sign in and protect your account.</CardDescription>
             </div>
             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${securityStatusTone}`}>
               {securityStatus}
             </span>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Passkeys</p>
-              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                {hasPasskeys ? `${passkeys.length} active` : "Not set up"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">2-step verification</p>
-              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                {totpEnabled ? "Enabled" : "Not enabled"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Recovery</p>
-              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                {hasRecoveryCodes ? "Codes available" : "None"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Sessions</p>
-              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                {sessions.length === 1 ? "1 active session" : `${sessions.length} active sessions`}
-              </p>
-            </div>
-          </div>
-          {(!totpEnabled || !hasPasskeys) && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-              {!totpEnabled
-                ? "Add 2-step verification for stronger protection."
-                : "Add a passkey to make sign-in faster and more secure."}
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-900 dark:text-white">{securityStatus}</p>
+          {securityAction && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-600 dark:text-gray-400">{securityAction}</p>
+              {!hasPasskeys ? (
+                <Button size="sm" onClick={() => void handleAddPasskey()} disabled={registeringPasskey} className="w-full sm:w-auto">
+                  {registeringPasskey ? "Adding..." : "Add passkey"}
+                </Button>
+              ) : !totpEnabled ? (
+                <Button size="sm" onClick={() => void handleTotpSetup()} disabled={totpSettingUp} className="w-full sm:w-auto">
+                  {totpSettingUp ? "Enabling..." : "Enable 2-step verification"}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleGenerateRecoveryCodes()}
+                  disabled={generatingRecoveryCodes}
+                  className="w-full sm:w-auto"
+                >
+                  {generatingRecoveryCodes ? "Generating..." : "Generate recovery codes"}
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -863,19 +860,19 @@ export default function SecuritySettings() {
         </div>
       </div>
 
-      <div className="mt-14 rounded-xl border border-red-200/70 bg-red-50/60 p-4 dark:border-red-900/60 dark:bg-red-950/20">
+      <div className="mt-14 border-t border-gray-200 pt-8 dark:border-gray-800">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Danger zone</h2>
 
-        <div className="space-y-0 border border-red-200 dark:border-red-900/60 rounded-lg overflow-hidden bg-white dark:bg-transparent">
+        <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
           <button
             type="button"
             onClick={() => setDeleteDialogOpen(true)}
-            className="w-full flex items-center justify-between p-4 hover:bg-red-50/60 dark:hover:bg-red-950/20 transition-colors text-left"
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
           >
             <div className="flex-1">
               <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Delete account</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Permanently delete your account and remove access from all devices. This cannot be undone.
+                Permanently delete your account. This cannot be undone.
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />

@@ -27,21 +27,16 @@ export function DevicesSection({
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sessions</h2>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {currentSessionCount > 0
-            ? "You’re currently signed in on this device. Review other active sessions below."
-            : "Review where your account is currently signed in."}
+          {currentSessionCount > 0 ? "You are signed in on this device." : "Review your active sessions."}
         </p>
       </div>
 
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-          Log out of every session except the one you are using now.
-        </p>
         <Button
           variant="outline"
           onClick={onRevokeAll}
           disabled={revokingAllSessions}
-          className="w-full shrink-0 sm:w-auto"
+          className="w-full shrink-0 sm:ml-auto sm:w-auto"
         >
           {revokingAllSessions ? (
             <>

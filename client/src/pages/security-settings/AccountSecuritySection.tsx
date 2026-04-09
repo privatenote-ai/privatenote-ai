@@ -1,4 +1,4 @@
-import { Copy, Loader2, ShieldCheck } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PasskeyInfo } from "./types";
@@ -53,6 +53,9 @@ export function AccountSecuritySection({
 }: Props) {
   const hasPasskeys = passkeys.length > 0;
   const hasRecoveryCodes = recoveryRemaining > 0;
+  const recoveryGeneratedLabel = recoveryGeneratedAt
+    ? dateFormatter.format(new Date(recoveryGeneratedAt))
+    : null;
 
   return (
     <div className="space-y-10">
@@ -60,18 +63,13 @@ export function AccountSecuritySection({
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Protect your account</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Add strong sign-in and verification methods to better protect your account.
+            Manage how you sign in and protect your account.
           </p>
         </div>
         <div className="space-y-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
           <div className="flex flex-col items-start gap-4 border-b border-gray-200 p-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
-              <div className="mb-1 flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Passkeys (Recommended)</p>
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-300">
-                  Most secure
-                </span>
-              </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Passkeys (Recommended)</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Sign in securely using biometrics or device authentication.
               </p>
@@ -117,12 +115,6 @@ export function AccountSecuritySection({
                   ? "You’ll be asked for a code during sign-in and sensitive actions."
                   : "Protect your account with a 6-digit code from your authenticator app."}
               </p>
-              {totpEnabled && (
-                <div className="mt-2 flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-medium text-green-600 dark:text-green-400">Enabled</span>
-                </div>
-              )}
             </div>
             {totpEnabled ? (
               <Button
@@ -196,19 +188,13 @@ export function AccountSecuritySection({
             <div className="flex-1 w-full">
               <p className="text-sm font-medium text-gray-900 dark:text-white">Recovery codes</p>
               <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                {hasRecoveryCodes ? "Recovery codes available" : "No recovery codes available"}
-              </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 {hasRecoveryCodes
-                  ? "Save these codes. They are shown only once."
-                  : "Recovery codes help you access your account if you lose your device."}
+                  ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
+                  : "No recovery codes available"}
               </p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {hasRecoveryCodes
-                  ? `${recoveryRemaining} unused code${recoveryRemaining !== 1 ? "s" : ""} left`
-                  : "Generate a new set to keep a backup sign-in method ready."}
-                {recoveryGeneratedAt ? ` · Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}` : ""}
-              </p>
+              {recoveryGeneratedLabel && (
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Last generated {recoveryGeneratedLabel}</p>
+              )}
               {hasPasskeys && totpEnabled && (
                 <div className="mt-3 max-w-xs">
                   <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
@@ -234,7 +220,7 @@ export function AccountSecuritySection({
               disabled={generatingRecoveryCodes}
               className="w-full sm:w-auto"
             >
-              {generatingRecoveryCodes ? "Generating..." : "Generate recovery codes"}
+              {generatingRecoveryCodes ? "Generating..." : hasRecoveryCodes ? "Generate new codes" : "Generate recovery codes"}
             </Button>
           </div>
         </div>
@@ -242,9 +228,6 @@ export function AccountSecuritySection({
 
       {recoveryCodes && (
         <div className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
-          <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
-            Save these codes now. They will only be shown once.
-          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono text-gray-800 dark:text-gray-100">
             {recoveryCodes.map((code) => (
               <span key={code}>{code}</span>
