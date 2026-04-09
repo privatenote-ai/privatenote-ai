@@ -66,9 +66,7 @@ export default function AuthEmailChange() {
       return;
     }
     setToken(t);
-    setMessage(
-      "You asked to change your account email. Confirm here to apply it. This extra step prevents automated link scans from updating your address.",
-    );
+    setMessage("You requested an email change. Confirm it here to update your account email.");
     setPhase("confirm");
   }, []);
 
@@ -158,6 +156,9 @@ export default function AuthEmailChange() {
               </div>
               <CardTitle className="text-2xl">Confirm email change</CardTitle>
               <CardDescription className="text-base mt-2">{message}</CardDescription>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center text-balance max-w-md mt-3">
+                This confirmation step helps prevent automated email scanners from changing your address without you.
+              </p>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               <Button size="lg" onClick={() => void runVerify()} disabled={confirmSubmitDisabled}>
@@ -205,7 +206,7 @@ export default function AuthEmailChange() {
                   {message}
                 </CardDescription>
                 <div className="text-base text-gray-600 dark:text-gray-400 text-center pt-2 space-y-2">
-                  <p className="text-balance">Use this new email the next time you sign in.</p>
+                  <p className="text-balance">Use this email the next time you sign in.</p>
                   <p className="text-balance">Your previous email is no longer linked to this account.</p>
                 </div>
                 {newEmail && (

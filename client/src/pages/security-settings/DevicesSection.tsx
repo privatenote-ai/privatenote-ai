@@ -25,25 +25,22 @@ export function DevicesSection({
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Devices</h2>
 
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Log out of all devices</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Log out of all other active sessions on other devices besides this one.
-          </p>
-        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
+          Sign out everywhere except this browser.
+        </p>
         <Button
           variant="outline"
           onClick={onRevokeAll}
           disabled={revokingAllSessions}
-          className="w-full sm:w-auto"
+          className="w-full shrink-0 sm:w-auto"
         >
           {revokingAllSessions ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Logging out…
+              Signing out…
             </>
           ) : (
-            "Log out of all devices"
+            "Sign out elsewhere"
           )}
         </Button>
       </div>

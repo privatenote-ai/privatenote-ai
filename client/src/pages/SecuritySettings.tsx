@@ -175,8 +175,7 @@ export default function SecuritySettings() {
       await registerPasskeyWithRetry();
       toast({
         title: "Passkey added",
-        description:
-          "You can sign in with this passkey on this device. The enrollment is recorded in your audit log (Audit logs).",
+        description: "You can use it to sign in on this device.",
       });
       await refreshAll();
     } catch (error) {
@@ -191,9 +190,7 @@ export default function SecuritySettings() {
   }, [passkeys.length, toast, refreshAll]);
 
   const handleRevokeAllSessions = useCallback(async () => {
-    const confirmed = window.confirm(
-      "Log out of all other active sessions on other devices besides this one?",
-    );
+    const confirmed = window.confirm("Sign out every session except this one?");
     if (!confirmed) return;
     setRevokingAllSessions(true);
     try {
@@ -261,7 +258,7 @@ export default function SecuritySettings() {
 
   const handleResetPasskeys = useCallback(() => {
     if (passkeys.length === 0) {
-      toast({ title: "No passkeys", description: "There are no passkeys to reset." });
+      toast({ title: "No passkeys", description: "There are no passkeys to remove." });
       return;
     }
     setPasskeyResetTotpCode("");
@@ -273,13 +270,13 @@ export default function SecuritySettings() {
     setResettingPasskeys(true);
     try {
       await apiRequest("/api/auth/passkeys/reset", "POST", { totpCode: passkeyResetTotpCode.trim() });
-      toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
+      toast({ title: "Passkeys removed", description: "All passkeys have been removed from your account." });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Reset failed",
+        title: "Couldn't remove passkeys",
         description: error instanceof Error ? error.message : "Try again.",
         variant: "destructive",
       });
@@ -294,13 +291,13 @@ export default function SecuritySettings() {
       const stepped = await stepUpForRetry();
       if (!stepped) return;
       await apiRequest("/api/auth/passkeys/reset", "POST");
-      toast({ title: "Passkeys reset", description: "All passkeys have been removed." });
+      toast({ title: "Passkeys removed", description: "All passkeys have been removed from your account." });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Reset failed",
+        title: "Couldn't remove passkeys",
         description: error instanceof Error ? error.message : "Try again.",
         variant: "destructive",
       });
@@ -333,11 +330,11 @@ export default function SecuritySettings() {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
-            title: "Verification incomplete",
+            title: "Verify it's you",
             description:
               totpEnabled
-                ? "Enter your 6-digit authenticator code in the field below, or complete passkey verification on this device."
-                : "Please complete passkey verification to delete your account.",
+                ? "Enter your 6-digit authenticator code below, or complete passkey verification on this device."
+                : "Complete passkey verification to delete your account.",
             variant: "destructive",
           });
           return;
@@ -370,7 +367,7 @@ export default function SecuritySettings() {
       }
       if (isForbiddenApiError(error)) {
         toast({
-          title: "Verification required",
+          title: "Verify it's you",
           description: desc,
           variant: "destructive",
         });
@@ -438,11 +435,11 @@ export default function SecuritySettings() {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
-            title: "Authentication required",
+            title: "Verify it's you",
             description:
               totpEnabled && emailChangeTotpCode.trim().length === 0
-                ? "Use your passkey on this device, or enter your 6-digit authenticator code in the form."
-                : "Please complete authentication to change your email.",
+                ? "Use a passkey on this device, or enter your 6-digit authenticator code in the form."
+                : "Complete passkey verification to change your email.",
             variant: "destructive",
           });
           return;
@@ -459,8 +456,9 @@ export default function SecuritySettings() {
       setEmailChangeSent(true);
       setEmailChangeTotpCode("");
       toast({
-        title: "Verification email sent",
-        description: "Check your new email address for a verification link.",
+        title: "Confirmation link sent",
+        description:
+          "We emailed a link to your new address. Your current email stays active until you open it and confirm.",
       });
     } catch (error) {
       let desc = "Failed to request email change. Please try again.";
@@ -476,7 +474,7 @@ export default function SecuritySettings() {
       }
       if (isForbiddenApiError(error)) {
         toast({
-          title: "Authentication required",
+          title: "Verify it's you",
           description: desc,
           variant: "destructive",
         });
@@ -624,12 +622,11 @@ export default function SecuritySettings() {
       />
 
       <div className="mb-12">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">User ID</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">User ID</h2>
         <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">User ID</p>
-              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{userId ?? "Loading..."}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-mono text-gray-700 dark:text-gray-300 truncate">{userId ?? "Loading..."}</p>
             </div>
             {userId && (
               <button
@@ -646,7 +643,7 @@ export default function SecuritySettings() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Support</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Danger zone</h2>
 
         <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
           <button
@@ -655,10 +652,8 @@ export default function SecuritySettings() {
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
           >
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Delete my account</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Permanently delete the account and remove access from all sessions.
-              </p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Delete account</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Permanent · signs you out everywhere</p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </button>

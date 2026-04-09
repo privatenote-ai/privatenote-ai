@@ -89,8 +89,8 @@ export function AccountSecuritySection({
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">2-step verification</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {totpEnabled
-                ? "Authenticator app is enabled. A code is required after magic link sign-in."
-                : "Add an additional layer of security to your account during login."}
+                ? "Use a 6-digit code from your authenticator app to verify sensitive actions and sign-ins."
+                : "Add a 6-digit code from an authenticator app for sensitive actions and sign-ins."}
             </p>
             {totpEnabled && (
               <div className="flex items-center gap-1.5 mt-1">
@@ -123,7 +123,7 @@ export function AccountSecuritySection({
                   Setting up...
                 </>
               ) : (
-                "Add verification method"
+                "Set up 2-step verification"
               )}
             </Button>
           )}
@@ -133,18 +133,11 @@ export function AccountSecuritySection({
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Passkeys</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Securely sign-in with on-device biometric authentication. Add a passkey from here to use it for future
-              sign-ins.
+              Sign in with Face ID, Touch ID, or your device screen lock.
             </p>
             {passkeys.length > 0 && (
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                Adding another passkey requires verifying with an existing one first. New enrollments appear in your
-                audit log.
-              </p>
-            )}
-            {passkeys.length > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                {passkeys.length} passkey{passkeys.length !== 1 ? "s" : ""} registered
+                {passkeys.length} passkey{passkeys.length !== 1 ? "s" : ""} saved
               </p>
             )}
           </div>
@@ -157,7 +150,7 @@ export function AccountSecuritySection({
                 disabled={resettingPasskeys || passkeys.length === 0}
                 className="w-full sm:w-auto"
               >
-                Reset passkeys
+                Remove all passkeys
               </Button>
             )}
             <Button
@@ -176,19 +169,21 @@ export function AccountSecuritySection({
           <div className="flex-1 w-full">
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Recovery codes</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {recoveryRemaining > 0 ? `${recoveryRemaining} unused codes available.` : "No unused recovery codes."}
-              {recoveryGeneratedAt ? ` Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}.` : ""}
+              {recoveryRemaining > 0
+                ? `${recoveryRemaining} unused code${recoveryRemaining !== 1 ? "s" : ""} left`
+                : "No unused codes left"}
+              {recoveryGeneratedAt ? ` · Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}` : ""}
             </p>
             {passkeys.length > 0 && totpEnabled && (
               <div className="mt-3 max-w-xs">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Optional: enter your authenticator code to generate codes without a passkey prompt.
+                  6-digit authenticator code (optional — skips passkey prompt)
                 </p>
                 <Input
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  placeholder="6-digit code"
+                  placeholder="6-digit authenticator code"
                   value={recoveryTotpCode}
                   onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   disabled={generatingRecoveryCodes}
@@ -212,7 +207,7 @@ export function AccountSecuritySection({
       {recoveryCodes && (
         <div className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
           <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
-            Copy these codes now. You won&apos;t be able to see them again.
+            Save these codes now. They will only be shown once.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono text-gray-800 dark:text-gray-100">
             {recoveryCodes.map((code) => (

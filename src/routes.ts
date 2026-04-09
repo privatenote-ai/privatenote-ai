@@ -4048,8 +4048,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         return jsonResponse({ message: "This email address is already your current email address" }, 400, request);
       }
 
-      // Different user owns this email - don't reveal that email exists (prevent enumeration)
-      // But still log the attempt
+      // Another account already uses this address. Caller is authenticated, so a clear error is safe
+      // (unlike magic-link email probing) and avoids a fake "sent" when no verification email is delivered.
       await logAuditEvent(env, {
         userId: session.id,
         eventType: "email_change_failed",
@@ -4058,8 +4058,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ip: getRequestIp(request),
         userAgent: request.headers.get("User-Agent"),
       });
-      // Return success to prevent email enumeration (send email anyway, or fake success)
-      return jsonResponse({ ok: true, message: "Verification email sent to new address" }, 200, request);
+      return jsonResponse(
+        {
+          message:
+            "That email address is already registered to another account. Use a different address, or sign in with that account.",
+          code: "email_change_email_in_use",
+        },
+        400,
+        request,
+      );
     }
 
     // Generate verification token

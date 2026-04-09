@@ -50,12 +50,12 @@ export function DeleteAccountDialog({
         <DialogHeader>
           <DialogTitle>Delete account</DialogTitle>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete your account and remove all associated data.
+            This permanently deletes your account and signs you out on all devices. Type your email address to confirm.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">To confirm, please type or paste your email address:</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your email</p>
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{email}</p>
@@ -77,35 +77,36 @@ export function DeleteAccountDialog({
               disabled={deletingAccount}
             />
             {passkeyCount > 0 && totpEnabled && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Use your passkey on this device when you delete, or enter your authenticator code below instead.
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                To continue, use a passkey on this device or enter your 6-digit authenticator code below.
               </p>
             )}
             {passkeyCount > 0 && !totpEnabled && (
               <>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  You&apos;ll confirm with your passkey when you delete unless you just signed in with a recovery code
-                  (then no passkey prompt). Use this device if your passkey is here.
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  After you confirm, you will verify with a passkey on this device.
                 </p>
-                <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2">
-                  Lost your passkey? Sign out and use{" "}
+                <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 mt-2">
+                  If you can&apos;t use a passkey on this device, try{" "}
                   <a href="/auth/recovery" className="underline font-medium">
-                    Use recovery code
-                  </a>
-                  , then delete from Security settings.
+                    Recovery sign-in
+                  </a>{" "}
+                  and then come back here.
                 </p>
               </>
             )}
             {totpEnabled && (
-              <div>
+              <div className="mt-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  {passkeyCount > 0 ? "Authenticator code (optional if you use passkey)" : "2-step verification code"}
+                  {passkeyCount > 0
+                    ? "6-digit authenticator code (optional if you use a passkey)"
+                    : "6-digit authenticator code"}
                 </p>
                 <Input
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  placeholder="6-digit code"
+                  placeholder="6-digit authenticator code"
                   value={totpCode}
                   onChange={(e) => onTotpCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   disabled={deletingAccount}
@@ -114,7 +115,7 @@ export function DeleteAccountDialog({
             )}
             {passkeyCount === 0 && !totpEnabled && (
               <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md p-3">
-                Add a passkey or enable 2-step verification before you can delete your account.
+                Add a passkey or 2-step verification first.
               </p>
             )}
           </div>
