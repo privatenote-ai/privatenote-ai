@@ -36,7 +36,7 @@ export default function HowItWorks() {
       {/* Hero Header (slightly tighter) */}
       <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
         <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
-          Security by <span className="text-primary italic">Design.</span>
+          Security by <span className="text-primary italic">Design</span>
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
           Choose absolute privacy with Standard mode, or enable AI Assist for optional productivity.

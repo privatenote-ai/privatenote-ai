@@ -20,7 +20,7 @@ const SecurityOverview: React.FC = () => {
         {/* Header Section */}
         <div className="max-w-4xl mx-auto text-center mb-24 relative z-10">
           <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
-            Security <span className="text-primary italic">Architecture.</span>
+            Security <span className="text-primary italic">Architecture</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
             Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.

@@ -22,7 +22,7 @@ const Home: React.FC = () => {
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
               <span className="block">Your Messages,</span>
-              <span className="block mt-1 text-primary">Your Privacy.</span>
+              <span className="block mt-1 text-primary">Your Privacy</span>
             </h1>
             <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
               End-to-end encrypted notes that self-destruct after reading.
