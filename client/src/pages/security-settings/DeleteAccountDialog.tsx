@@ -10,13 +10,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+export type AccountDeleteMethod = "passkey" | "totp" | "email_code";
+
 type Props = {
   open: boolean;
   email: string | null;
-  passkeyCount: number;
-  totpEnabled: boolean;
+  availableMethods: AccountDeleteMethod[];
+  preferredMethod: AccountDeleteMethod | null;
+  optionsLoading: boolean;
   totpCode: string;
   onTotpCodeChange: (value: string) => void;
+  deleteEmailVerificationCode: string;
+  onDeleteEmailVerificationCodeChange: (value: string) => void;
+  deleteEmailCodeSent: boolean;
+  sendingDeleteEmailCode: boolean;
+  onSendDeleteEmailCode: () => void;
+  unlockingFallback: boolean;
+  onUnlockFallback: () => void;
   deleteEmailInput: string;
   onDeleteEmailInputChange: (value: string) => void;
   deletingAccount: boolean;
@@ -28,10 +38,18 @@ type Props = {
 export function DeleteAccountDialog({
   open,
   email,
-  passkeyCount,
-  totpEnabled,
+  availableMethods,
+  preferredMethod,
+  optionsLoading,
   totpCode,
   onTotpCodeChange,
+  deleteEmailVerificationCode,
+  onDeleteEmailVerificationCodeChange,
+  deleteEmailCodeSent,
+  sendingDeleteEmailCode,
+  onSendDeleteEmailCode,
+  unlockingFallback,
+  onUnlockFallback,
   deleteEmailInput,
   onDeleteEmailInputChange,
   deletingAccount,
@@ -44,16 +62,39 @@ export function DeleteAccountDialog({
     if (!next) onClose();
   };
 
+  const hasPasskey = availableMethods.includes("passkey");
+  const hasTotp = availableMethods.includes("totp");
+  const hasEmailCode = availableMethods.includes("email_code");
+  const noVerifiedChannel = !optionsLoading && open && availableMethods.length === 0;
+
+  const onlyEmail = availableMethods.length === 1 && availableMethods[0] === "email_code";
+  const onlyTotp = availableMethods.length === 1 && availableMethods[0] === "totp";
+
+  const confirmDisabled =
+    deletingAccount ||
+    optionsLoading ||
+    availableMethods.length === 0 ||
+    !deleteEmailInput.trim() ||
+    noVerifiedChannel ||
+    (onlyTotp && totpCode.length !== 6) ||
+    (onlyEmail && deleteEmailVerificationCode.length !== 6);
+
+  const emailIsFallback = hasEmailCode && preferredMethod !== "email_code";
+  const hasFallbackUnlockAction = hasPasskey && !hasTotp && !hasEmailCode;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete account</DialogTitle>
           <DialogDescription>
-            This permanently deletes your account and signs you out on all devices. Type your email address to confirm.
+            Verify it&apos;s you to continue. Type your email address as a final confirmation.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {optionsLoading && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading verification options…</p>
+          )}
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your email</p>
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
@@ -76,15 +117,16 @@ export function DeleteAccountDialog({
               onChange={(e) => onDeleteEmailInputChange(e.target.value)}
               disabled={deletingAccount}
             />
-            {passkeyCount > 0 && totpEnabled && (
+            {hasPasskey && hasTotp && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                To continue, use a passkey on this device or enter your 6-digit authenticator code below.
+                Preferred: passkey on this device. You can enter your 6-digit authenticator code instead.
               </p>
             )}
-            {passkeyCount > 0 && !totpEnabled && (
+            {hasPasskey && !hasTotp && (
               <>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  After you confirm, you will verify with a passkey on this device.
+                  Preferred: verify with a passkey on this device. Passkey verification deletes your account
+                  immediately.
                 </p>
                 <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 mt-2">
                   If you can&apos;t use a passkey on this device, try{" "}
@@ -93,12 +135,23 @@ export function DeleteAccountDialog({
                   </a>{" "}
                   and then come back here.
                 </p>
+                {hasFallbackUnlockAction && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3 w-full sm:w-auto"
+                    onClick={onUnlockFallback}
+                    disabled={deletingAccount || unlockingFallback || optionsLoading}
+                  >
+                    {unlockingFallback ? "Checking…" : "I don't have access to this device"}
+                  </Button>
+                )}
               </>
             )}
-            {totpEnabled && (
+            {hasTotp && (
               <div className="mt-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  {passkeyCount > 0
+                  {hasPasskey
                     ? "6-digit authenticator code (optional if you use a passkey)"
                     : "6-digit authenticator code"}
                 </p>
@@ -113,9 +166,45 @@ export function DeleteAccountDialog({
                 />
               </div>
             )}
-            {passkeyCount === 0 && !totpEnabled && (
-              <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md p-3">
-                Add a passkey or 2-step verification first.
+            {hasEmailCode && (
+              <div className="mt-3 space-y-3">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {emailIsFallback
+                    ? "If you can't complete passkey verification, use email as a backup method. This will schedule deletion after 48 hours (not immediate)."
+                    : "We&apos;ll send a single-use confirmation code to your account email. Enter it below to prove you can read that inbox."}
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  onClick={onSendDeleteEmailCode}
+                  disabled={deletingAccount || sendingDeleteEmailCode || optionsLoading}
+                >
+                  {sendingDeleteEmailCode ? "Sending…" : "Send confirmation code to my email"}
+                </Button>
+                {deleteEmailCodeSent && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Check your inbox for the code.</p>
+                )}
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">6-digit email code</p>
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="Code from email"
+                    value={deleteEmailVerificationCode}
+                    onChange={(e) =>
+                      onDeleteEmailVerificationCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    disabled={deletingAccount}
+                  />
+                </div>
+              </div>
+            )}
+            {noVerifiedChannel && (
+              <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:text-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md p-3 mt-3">
+                Account deletion isn&apos;t available until you verify your email, add a passkey, or enable
+                2-step verification in Security settings.
               </p>
             )}
           </div>
@@ -124,17 +213,8 @@ export function DeleteAccountDialog({
           <Button variant="outline" onClick={onClose} disabled={deletingAccount}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirmDelete}
-            disabled={
-              deletingAccount ||
-              !deleteEmailInput.trim() ||
-              (passkeyCount === 0 && !totpEnabled) ||
-              (passkeyCount === 0 && totpEnabled && totpCode.length !== 6)
-            }
-          >
-            {deletingAccount ? "Deleting..." : "Delete account"}
+          <Button variant="destructive" onClick={onConfirmDelete} disabled={confirmDisabled}>
+            {deletingAccount ? "Deleting…" : "Delete account"}
           </Button>
         </DialogFooter>
       </DialogContent>

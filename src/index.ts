@@ -1,6 +1,11 @@
 import { SecureNoteStorage, SecureNoteStorageSql } from "./durable_objects/secure_note_storage";
 import { AuthTokenStore } from "./durable_objects/auth_token_store";
-import { registerRoutes, cleanupAuditLogs, cleanupExpiredSessions } from "./routes";
+import {
+  registerRoutes,
+  cleanupAuditLogs,
+  cleanupExpiredSessions,
+  processPendingAccountDeletions,
+} from "./routes";
 import type { Env } from "./types";
 import { getAllowedOriginFromRequest } from "./trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
@@ -122,6 +127,12 @@ export default {
       // Cleanup expired/revoked sessions
       const sessionResult = await cleanupExpiredSessions(env);
       console.log(`[CRON] Session cleanup: deleted ${sessionResult.deleted} entries${sessionResult.error ? `, error: ${sessionResult.error}` : ''}`);
+
+      const pendingDeleteResult = await processPendingAccountDeletions(env);
+      console.log(
+        `[CRON] Pending account deletions: finalized ${pendingDeleteResult.finalized}` +
+          `${pendingDeleteResult.error ? `, error: ${pendingDeleteResult.error}` : ""}`,
+      );
 
       console.log(`[CRON] Scheduled tasks completed successfully`);
     } catch (error) {

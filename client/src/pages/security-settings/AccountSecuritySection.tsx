@@ -51,158 +51,194 @@ export function AccountSecuritySection({
   onResetPasskeys,
   onGenerateRecoveryCodes,
 }: Props) {
-  return (
-    <div className="mb-12">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Account security</h2>
+  const hasPasskeys = passkeys.length > 0;
+  const hasRecoveryCodes = recoveryRemaining > 0;
 
-      <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Email</p>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">{email ?? "No email set"}</p>
-              {email && (
-                <button
-                  type="button"
-                  onClick={onCopyEmail}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                  title="Copy email"
+  return (
+    <div className="space-y-10">
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Protect your account</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Add strong sign-in and verification methods to better protect your account.
+          </p>
+        </div>
+        <div className="space-y-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-4 border-b border-gray-200 p-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Passkeys (Recommended)</p>
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-300">
+                  Most secure
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Sign in securely using biometrics or device authentication.
+              </p>
+              <p className="mt-2 text-sm text-gray-900 dark:text-white">
+                {hasPasskeys
+                  ? `${passkeys.length} passkey${passkeys.length !== 1 ? "s" : ""} active`
+                  : "No passkeys added"}
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              {hasPasskeys && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetPasskeys}
+                  disabled={resettingPasskeys}
+                  className="w-full sm:w-auto"
                 >
-                  <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                </button>
+                  Remove all passkeys
+                </Button>
               )}
+              <Button size="sm" onClick={onAddPasskey} disabled={registeringPasskey} className="w-full sm:w-auto">
+                {registeringPasskey ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add passkey"
+                )}
+              </Button>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenChangeEmail}
-            disabled={!email}
-            className="w-full sm:w-auto"
-          >
-            Change email
-          </Button>
-        </div>
 
-        <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">2-step verification</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {totpEnabled
-                ? "Use a 6-digit code from your authenticator app to verify sensitive actions and sign-ins."
-                : "Add a 6-digit code from an authenticator app for sensitive actions and sign-ins."}
-            </p>
-            {totpEnabled && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                <span className="text-xs text-green-600 dark:text-green-400 font-medium">Enabled</span>
-              </div>
-            )}
-          </div>
-          {totpEnabled ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onTotpDisable}
-              disabled={totpDisabling}
-              className="w-full sm:w-auto"
-            >
-              {totpDisabling ? "Disabling..." : "Disable"}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onTotpSetup}
-              disabled={totpSettingUp}
-              className="w-full sm:w-auto"
-            >
-              {totpSettingUp ? (
-                <>
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                "Set up 2-step verification"
-              )}
-            </Button>
-          )}
-        </div>
-
-        <div className="flex flex-col items-start gap-3 p-4 border-b border-gray-200 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Passkeys</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Sign in with Face ID, Touch ID, or your device screen lock.
-            </p>
-            {passkeys.length > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                {passkeys.length} passkey{passkeys.length !== 1 ? "s" : ""} saved
+          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">2-step verification</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                {totpEnabled ? "Enabled" : "Not enabled"}
               </p>
-            )}
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            {passkeys.length > 0 && (
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {totpEnabled
+                  ? "You’ll be asked for a code during sign-in and sensitive actions."
+                  : "Protect your account with a 6-digit code from your authenticator app."}
+              </p>
+              {totpEnabled && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400">Enabled</span>
+                </div>
+              )}
+            </div>
+            {totpEnabled ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onResetPasskeys}
-                disabled={resettingPasskeys || passkeys.length === 0}
+                onClick={onTotpDisable}
+                disabled={totpDisabling}
                 className="w-full sm:w-auto"
               >
-                Remove all passkeys
+                {totpDisabling ? "Disabling..." : "Disable"}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={onTotpSetup} disabled={totpSettingUp} className="w-full sm:w-auto">
+                {totpSettingUp ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Enabling...
+                  </>
+                ) : (
+                  "Enable 2-step verification"
+                )}
               </Button>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account access</h2>
+        </div>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Email (used for account access and recovery)
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{email ?? "No email set"}</p>
+                {email && (
+                  <button
+                    type="button"
+                    onClick={onCopyEmail}
+                    className="rounded p-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="Copy email"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                )}
+              </div>
+            </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={onAddPasskey}
-              disabled={registeringPasskey}
+              onClick={onOpenChangeEmail}
+              disabled={!email}
               className="w-full sm:w-auto"
             >
-              Add passkey
+              Change email
             </Button>
           </div>
         </div>
+      </section>
 
-        <div className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1 w-full">
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Recovery codes</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {recoveryRemaining > 0
-                ? `${recoveryRemaining} unused code${recoveryRemaining !== 1 ? "s" : ""} left`
-                : "No unused codes left"}
-              {recoveryGeneratedAt ? ` · Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}` : ""}
-            </p>
-            {passkeys.length > 0 && totpEnabled && (
-              <div className="mt-3 max-w-xs">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  6-digit authenticator code (optional — skips passkey prompt)
-                </p>
-                <Input
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  placeholder="6-digit authenticator code"
-                  value={recoveryTotpCode}
-                  onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  disabled={generatingRecoveryCodes}
-                  className="h-9"
-                />
-              </div>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onGenerateRecoveryCodes}
-            disabled={generatingRecoveryCodes}
-            className="w-full sm:w-auto"
-          >
-            Generate new codes
-          </Button>
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recovery</h2>
         </div>
-      </div>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1 w-full">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Recovery codes</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                {hasRecoveryCodes ? "Recovery codes available" : "No recovery codes available"}
+              </p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {hasRecoveryCodes
+                  ? "Save these codes. They are shown only once."
+                  : "Recovery codes help you access your account if you lose your device."}
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {hasRecoveryCodes
+                  ? `${recoveryRemaining} unused code${recoveryRemaining !== 1 ? "s" : ""} left`
+                  : "Generate a new set to keep a backup sign-in method ready."}
+                {recoveryGeneratedAt ? ` · Last generated ${dateFormatter.format(new Date(recoveryGeneratedAt))}` : ""}
+              </p>
+              {hasPasskeys && totpEnabled && (
+                <div className="mt-3 max-w-xs">
+                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
+                    6-digit authenticator code (optional — skips passkey prompt)
+                  </p>
+                  <Input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="6-digit authenticator code"
+                    value={recoveryTotpCode}
+                    onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    disabled={generatingRecoveryCodes}
+                    className="h-9"
+                  />
+                </div>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGenerateRecoveryCodes}
+              disabled={generatingRecoveryCodes}
+              className="w-full sm:w-auto"
+            >
+              {generatingRecoveryCodes ? "Generating..." : "Generate recovery codes"}
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {recoveryCodes && (
         <div className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">

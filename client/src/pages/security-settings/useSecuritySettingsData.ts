@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { PasskeyInfo, SessionInfo } from "./types";
 
-type MeResponse = { id: string; email: string | null; lastStepUpAt?: string | null };
+type MeResponse = {
+  id: string;
+  email: string | null;
+  lastStepUpAt?: string | null;
+  emailVerified?: boolean;
+};
 
 export function useSecuritySettingsData(fallbackEmail: string | null | undefined) {
   const [loading, setLoading] = useState(true);
@@ -15,6 +20,7 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
   const [recoveryGeneratedAt, setRecoveryGeneratedAt] = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [lastStepUpAt, setLastStepUpAt] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   const refreshAuthAndAccount = useCallback(async (): Promise<boolean> => {
     try {
@@ -22,11 +28,13 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
       setUserId(me.id);
       setEmail(me.email ?? fallbackEmail ?? null);
       setLastStepUpAt(me.lastStepUpAt ?? null);
+      setEmailVerified(me.emailVerified === true);
       setSignedIn(true);
       return true;
     } catch {
       setSignedIn(false);
       setLastStepUpAt(null);
+      setEmailVerified(false);
       return false;
     }
   }, [fallbackEmail]);
@@ -79,6 +87,7 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
     recoveryGeneratedAt,
     totpEnabled,
     setTotpEnabled,
+    emailVerified,
     lastStepUpAt,
     refreshAll,
     refreshSecondaryData,

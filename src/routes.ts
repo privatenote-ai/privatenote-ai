@@ -759,6 +759,418 @@ async function gateSecondFactorForAccountTakeover(
   );
 }
 
+/** Out-of-band proof for account deletion when email-code method is allowed by policy. */
+const ACCOUNT_DELETE_EMAIL = {
+  KV_PREFIX: "account_delete_email:",
+  TTL_SECONDS: 15 * 60,
+  ISSUE_MAX: 5,
+  ISSUE_WINDOW_SECONDS: 60 * 60,
+  VERIFY_MAX: 8,
+  VERIFY_WINDOW_SECONDS: 15 * 60,
+  ISSUE_RL_PREFIX: "account_delete_email_issue_rl:",
+  VERIFY_RL_PREFIX: "account_delete_email_verify_rl:",
+} as const;
+
+const ACCOUNT_DELETE_FALLBACK = {
+  MARKER_PREFIX: "account_delete_fallback_marker:",
+  MARKER_TTL_SECONDS: 10 * 60,
+  ISSUE_RL_PREFIX: "account_delete_fallback_issue_rl:",
+  ISSUE_MAX: 5,
+  ISSUE_WINDOW_SECONDS: 15 * 60,
+} as const;
+
+const ACCOUNT_DELETE_PENDING = {
+  DELAY_SECONDS: 48 * 60 * 60,
+  TOKEN_RL_PREFIX: "account_delete_cancel_verify_rl:",
+  TOKEN_VERIFY_MAX: 10,
+  TOKEN_VERIFY_WINDOW_SECONDS: 15 * 60,
+} as const;
+
+function randomSixDigitNumericCode(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function hmacAccountDeleteEmailCode(env: Env, userId: string, code: string): Promise<string | null> {
+  if (!magicLinkHmacConfigured(env)) {
+    return null;
+  }
+  const message = `${userId}:account_delete_email:${code}`;
+  const keyData = new TextEncoder().encode(env.AUTH_SECRET_KEY!);
+  const messageData = new TextEncoder().encode(message);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+/**
+ * Validates single-use emailed code; consumes KV entry on success.
+ * Returns an error Response or null when satisfied.
+ */
+async function verifyAccountDeleteEmailCodeProof(
+  env: Env,
+  request: Request,
+  session: { id: string; sessionIdHash: string },
+  deleteEmailVerificationCode: unknown,
+): Promise<Response | null> {
+  const kv = getAuthKv(env);
+  if (!kv || !magicLinkHmacConfigured(env)) {
+    return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+  }
+
+  const rawParam =
+    typeof deleteEmailVerificationCode === "string"
+      ? deleteEmailVerificationCode.trim().replace(/\D/g, "").slice(0, 6)
+      : "";
+  if (!/^\d{6}$/.test(rawParam)) {
+    return jsonResponse(
+      { message: "Email confirmation code required", code: "delete_email_code_required" },
+      400,
+      request,
+    );
+  }
+
+  const rlKey = `${ACCOUNT_DELETE_EMAIL.VERIFY_RL_PREFIX}${session.sessionIdHash}`;
+  try {
+    const rlData = (await kv.get(rlKey, "json")) as { count: number } | null;
+    if (rlData && rlData.count >= ACCOUNT_DELETE_EMAIL.VERIFY_MAX) {
+      return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+    }
+    await kv.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+      expirationTtl: ACCOUNT_DELETE_EMAIL.VERIFY_WINDOW_SECONDS,
+    });
+  } catch {
+    // non-fatal
+  }
+
+  const storageKey = `${ACCOUNT_DELETE_EMAIL.KV_PREFIX}${session.id}`;
+  const raw = await kv.get(storageKey);
+  if (!raw) {
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_email_verify_failed",
+      status: "failure",
+      details: { reason: "no_pending_code" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse({ message: "Invalid or expired confirmation code" }, 400, request);
+  }
+
+  let record: { codeHash: string };
+  try {
+    record = JSON.parse(raw) as { codeHash: string };
+  } catch {
+    await kv.delete(storageKey);
+    return jsonResponse({ message: "Invalid or expired confirmation code" }, 400, request);
+  }
+
+  const expected = await hmacAccountDeleteEmailCode(env, session.id, rawParam);
+  if (!expected || !constantTimeEquals(expected, record.codeHash)) {
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_email_verify_failed",
+      status: "failure",
+      details: { reason: "mismatch" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse({ message: "Invalid confirmation code" }, 400, request);
+  }
+
+  await kv.delete(storageKey);
+  try {
+    await kv.delete(rlKey);
+  } catch {
+    /* ignore */
+  }
+
+  await logAuditEvent(env, {
+    userId: session.id,
+    eventType: "account_delete_email_verified",
+    status: "success",
+    details: {},
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+  return null;
+}
+
+type AccountDeleteMethod = "passkey" | "totp" | "email_code";
+
+type AccountDeleteVerificationState = {
+  hasUsablePasskeys: boolean;
+  verifiedTotpRow: { encrypted_secret: string } | null;
+  emailVerified: boolean;
+  email: string | null;
+  emailFallbackEligible: boolean;
+};
+
+function getAccountDeleteFallbackMarkerKey(sessionIdHash: string): string {
+  return `${ACCOUNT_DELETE_FALLBACK.MARKER_PREFIX}${sessionIdHash}`;
+}
+
+async function isAccountDeleteFallbackEligible(
+  env: Env,
+  sessionIdHash: string,
+): Promise<boolean> {
+  const kv = getAuthKv(env);
+  if (!kv) return false;
+  const marker = await kv.get(getAccountDeleteFallbackMarkerKey(sessionIdHash), "text");
+  return marker === "1";
+}
+
+async function loadAccountDeleteVerificationState(
+  env: Env,
+  session: { id: string; sessionIdHash: string },
+): Promise<AccountDeleteVerificationState> {
+  const hasUsablePasskeys = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
+  const verifiedTotpRow = await env.AUTH_DB!.prepare(
+    "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
+  )
+    .bind(session.id)
+    .first<{ encrypted_secret: string }>();
+  const userRow = await env.AUTH_DB!
+    .prepare("SELECT email_verified, email FROM users WHERE id = ? LIMIT 1")
+    .bind(session.id)
+    .first<{ email_verified: number; email: string | null }>();
+  const emailVerified = (userRow?.email_verified ?? 0) === 1;
+  const hasVerifiedTotp = Boolean(verifiedTotpRow);
+  // Strict policy: fallback email is only for passkey-only accounts with no verified TOTP.
+  const emailFallbackEligible =
+    hasUsablePasskeys && !hasVerifiedTotp && emailVerified
+      ? await isAccountDeleteFallbackEligible(env, session.sessionIdHash)
+      : false;
+  return {
+    hasUsablePasskeys,
+    verifiedTotpRow: verifiedTotpRow ?? null,
+    emailVerified,
+    email: userRow?.email ?? null,
+    emailFallbackEligible,
+  };
+}
+
+function buildAccountDeleteMethodList(state: AccountDeleteVerificationState): {
+  preferred_method: AccountDeleteMethod | null;
+  available_methods: AccountDeleteMethod[];
+} {
+  const available_methods: AccountDeleteMethod[] = [];
+  if (state.hasUsablePasskeys) {
+    available_methods.push("passkey");
+    if (state.verifiedTotpRow) {
+      available_methods.push("totp");
+    } else if (state.emailFallbackEligible) {
+      available_methods.push("email_code");
+    }
+  } else if (state.verifiedTotpRow) {
+    available_methods.push("totp");
+  } else if (state.emailVerified) {
+    available_methods.push("email_code");
+  }
+  return {
+    preferred_method: available_methods[0] ?? null,
+    available_methods,
+  };
+}
+
+/**
+ * One of passkey (fresh step-up), TOTP, or email code must succeed. Session cookie alone is insufficient.
+ * Evaluation order: TOTP (if provided), passkey freshness, email code — so a fresh step-up is not blocked by a wrong email OTP field.
+ */
+async function satisfyAccountDeleteVerification(
+  env: Env,
+  request: Request,
+  session: {
+    id: string;
+    email: string | null;
+    lastStepUpAt: string | null;
+    sessionIdHash: string;
+  },
+  deleteBody: Record<string, unknown>,
+  state: AccountDeleteVerificationState,
+): Promise<Response | AccountDeleteMethod> {
+  const { hasUsablePasskeys, verifiedTotpRow, emailVerified, emailFallbackEligible } = state;
+
+  if (!hasUsablePasskeys && !verifiedTotpRow && !emailVerified) {
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_blocked",
+      status: "failure",
+      details: { reason: "no_verified_channel" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    return jsonResponse(
+      {
+        message:
+          "We can't verify it's you: verify your email, add a passkey, or enable 2-step verification, then try again.",
+        code: "account_delete_no_verified_channel",
+      },
+      403,
+      request,
+    );
+  }
+
+  const tcRaw = normalizeTotpCodeParam(deleteBody.totpCode);
+  const totpProvided = /^\d{6}$/.test(tcRaw);
+  const emailRaw =
+    typeof deleteBody.deleteEmailVerificationCode === "string"
+      ? deleteBody.deleteEmailVerificationCode.trim().replace(/\D/g, "").slice(0, 6)
+      : "";
+  const emailCodeProvided = /^\d{6}$/.test(emailRaw);
+
+  if (totpProvided && verifiedTotpRow) {
+    const block = await verifyTotpForSensitiveAction(
+      env,
+      request,
+      session,
+      verifiedTotpRow,
+      tcRaw,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_ACCOUNT_DELETE,
+      "account_delete",
+    );
+    if (block) {
+      if (hasUsablePasskeys) {
+        await logAuditEvent(env, {
+          userId: session.id,
+          eventType: "account_delete_fallback_failed",
+          status: "failure",
+          details: { method: "totp" },
+          ip: getRequestIp(request),
+          userAgent: request.headers.get("User-Agent"),
+        });
+      }
+      return block;
+    }
+    return "totp";
+  }
+
+  if (hasUsablePasskeys && isStepUpFresh(session.lastStepUpAt)) {
+    return "passkey";
+  }
+
+  const emailCodeAllowed = (!hasUsablePasskeys && emailVerified) || emailFallbackEligible;
+  if (emailCodeProvided && emailCodeAllowed) {
+    const block = await verifyAccountDeleteEmailCodeProof(
+      env,
+      request,
+      session,
+      deleteBody.deleteEmailVerificationCode,
+    );
+    if (block) {
+      if (hasUsablePasskeys || verifiedTotpRow) {
+        await logAuditEvent(env, {
+          userId: session.id,
+          eventType: "account_delete_fallback_failed",
+          status: "failure",
+          details: { method: "email_code" },
+          ip: getRequestIp(request),
+          userAgent: request.headers.get("User-Agent"),
+        });
+      }
+      return block;
+    }
+    return "email_code";
+  }
+
+  if (hasUsablePasskeys && !isStepUpFresh(session.lastStepUpAt)) {
+    return jsonResponse(
+      { message: SECOND_FACTOR_STEP_UP_MESSAGE, code: SECOND_FACTOR_STEP_UP_CODE },
+      403,
+      request,
+    );
+  }
+
+  if (verifiedTotpRow && !totpProvided) {
+    return jsonResponse(
+      {
+        message: "Two-step verification code required",
+        code: "second_factor_code_required",
+      },
+      400,
+      request,
+    );
+  }
+
+  if (emailCodeAllowed && !emailCodeProvided) {
+    return jsonResponse(
+      {
+        message: "Email confirmation code required",
+        code: "delete_email_code_required",
+      },
+      400,
+      request,
+    );
+  }
+
+  return jsonResponse({ message: "Verification required" }, 400, request);
+}
+
+async function issueAccountDeleteFallbackMarker(
+  env: Env,
+  request: Request,
+  session: { id: string; sessionIdHash: string },
+  reason: string,
+  state: AccountDeleteVerificationState,
+): Promise<Response | null> {
+  if (!state.hasUsablePasskeys || state.verifiedTotpRow || !state.emailVerified) {
+    return jsonResponse(
+      {
+        message:
+          "Email fallback is not available for this account. Use passkey or authenticator verification.",
+        code: "account_delete_fallback_not_allowed",
+      },
+      400,
+      request,
+    );
+  }
+  const kv = getAuthKv(env);
+  if (!kv) {
+    return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+  }
+  const rlKey = `${ACCOUNT_DELETE_FALLBACK.ISSUE_RL_PREFIX}${session.sessionIdHash}`;
+  try {
+    const rlData = (await kv.get(rlKey, "json")) as { count: number } | null;
+    if (rlData && rlData.count >= ACCOUNT_DELETE_FALLBACK.ISSUE_MAX) {
+      return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+    }
+    await kv.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+      expirationTtl: ACCOUNT_DELETE_FALLBACK.ISSUE_WINDOW_SECONDS,
+    });
+  } catch {
+    // non-fatal
+  }
+  await kv.put(getAccountDeleteFallbackMarkerKey(session.sessionIdHash), "1", {
+    expirationTtl: ACCOUNT_DELETE_FALLBACK.MARKER_TTL_SECONDS,
+  });
+
+  await logAuditEvent(env, {
+    userId: session.id,
+    eventType: "account_delete_fallback_marker_issued",
+    status: "success",
+    details: { reason },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+  return null;
+}
+
 const AUTH_CHALLENGE = {
   PREFIX: "auth_challenge:",
   TTL_SECONDS: 10 * 60,
@@ -943,6 +1355,44 @@ function base64UrlToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * Whether a stored row could realistically be used with verifyAuthenticationResponse.
+ * Excludes empty, truncated, or non-decodable public keys so MFA routing can fall back to TOTP/email
+ * when the user only has corrupt placeholder credentials.
+ */
+function webauthnCredentialRowIsCryptographicallyUsable(credentialId: string, publicKeyB64: string): boolean {
+  const id = typeof credentialId === "string" ? credentialId.trim() : "";
+  const pkIn = typeof publicKeyB64 === "string" ? publicKeyB64.trim() : "";
+  if (id.length < 2 || pkIn.length < 16) {
+    return false;
+  }
+  try {
+    const pk = base64UrlToBytes(pkIn);
+    if (pk.length < 20) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+async function countUsableWebauthnCredentialsForUser(env: Env, userId: string): Promise<number> {
+  if (!env.AUTH_DB) return 0;
+  const rows = await env.AUTH_DB.prepare(
+    "SELECT credential_id, public_key FROM webauthn_credentials WHERE user_id = ?",
+  )
+    .bind(userId)
+    .all<{ credential_id: string; public_key: string }>();
+  let n = 0;
+  for (const row of rows.results || []) {
+    if (webauthnCredentialRowIsCryptographicallyUsable(row.credential_id, row.public_key)) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
 function getExpectedOrigin(request: Request): string | string[] | null {
   const origin = request.headers.get("Origin");
   if (!origin) {
@@ -1076,6 +1526,21 @@ type AuditEventType =
   | "recovery_code_used"
   | "recovery_code_failed"
   | "account_deleted"
+  | "account_delete_verification_started"
+  | "account_delete_passkey_abandoned"
+  | "account_delete_stepup_requested"
+  | "account_delete_stepup_failed"
+  | "account_delete_fallback_marker_issued"
+  | "account_delete_fallback_selected"
+  | "account_delete_fallback_success"
+  | "account_delete_fallback_failed"
+  | "account_delete_email_code_issued"
+  | "account_delete_email_verified"
+  | "account_delete_email_verify_failed"
+  | "account_delete_scheduled"
+  | "account_delete_cancelled"
+  | "account_delete_finalized"
+  | "account_delete_blocked"
   | "magic_link_sent"
   | "magic_link_email_failed"
   | "magic_link_used"
@@ -2029,6 +2494,101 @@ async function revokeAllUserSessions(
   });
 }
 
+async function schedulePendingAccountDeletion(
+  env: Env,
+  request: Request,
+  user: { id: string; email: string | null },
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  if (!env.AUTH_DB) return { ok: false, response: jsonResponse({ message: "Auth database not configured" }, 501, request) };
+  const userEmail = (user.email ?? "").trim().toLowerCase();
+  if (!userEmail) {
+    return { ok: false, response: jsonResponse({ message: "No verified email on file" }, 400, request) };
+  }
+
+  const cancelToken = randomId(32);
+  const cancelTokenHash = await sha256Base64Url(cancelToken);
+  const requestedAt = new Date();
+  const deleteAfterAt = new Date(requestedAt.getTime() + ACCOUNT_DELETE_PENDING.DELAY_SECONDS * 1000);
+  const pendingId = crypto.randomUUID();
+  const userAgent = request.headers.get("User-Agent");
+  const requestIp = getRequestIp(request);
+  const webOrigin = getMagicLinkOrigin(env, request);
+  const cancelUrl = `${webOrigin}/api/auth/account/delete/cancel?token=${encodeURIComponent(cancelToken)}`;
+
+  const emailResult = await sendEmail(env, {
+    to: userEmail,
+    subject: "Account deletion scheduled (48 hours) - PrivateNote",
+    text:
+      `Your PrivateNote account deletion was requested using a backup email verification method.\n\n` +
+      `Your account is scheduled for permanent deletion in 48 hours.\n\n` +
+      `If this was not you, cancel deletion now:\n${cancelUrl}\n\n` +
+      `If you do nothing, deletion will complete automatically after the waiting period.`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Account deletion scheduled</h2>
+        <p>Your PrivateNote account deletion was requested using a <strong>backup email verification method</strong>.</p>
+        <p>Your account is scheduled for permanent deletion in <strong>48 hours</strong>.</p>
+        <p>If this was not you, cancel deletion immediately:</p>
+        <p style="margin: 24px 0;">
+          <a href="${cancelUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
+            Review cancellation
+          </a>
+        </p>
+      </div>
+    `,
+  });
+  if (!emailResult.ok) {
+    console.error("[AUTH] Failed to send pending account deletion email:", emailResult.error);
+    return {
+      ok: false,
+      response: jsonResponse(
+        { message: "Could not send the cancellation email. Please try again later." },
+        502,
+        request,
+      ),
+    };
+  }
+
+  await env.AUTH_DB.prepare(
+    `INSERT INTO pending_account_deletions
+      (id, user_id, requested_at, delete_after_at, cancel_token_hash, verification_method, cancelled_at, cancelled_reason, created_ip, created_user_agent)
+     VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       requested_at = excluded.requested_at,
+       delete_after_at = excluded.delete_after_at,
+       cancel_token_hash = excluded.cancel_token_hash,
+       verification_method = excluded.verification_method,
+       cancelled_at = NULL,
+       cancelled_reason = NULL,
+       created_ip = excluded.created_ip,
+       created_user_agent = excluded.created_user_agent`
+  )
+    .bind(
+      pendingId,
+      user.id,
+      requestedAt.toISOString(),
+      deleteAfterAt.toISOString(),
+      cancelTokenHash,
+      "email_code",
+      requestIp,
+      userAgent,
+    )
+    .run();
+
+  await revokeAllUserSessions(env, user.id, "account_delete_pending");
+
+  await logAuditEvent(env, {
+    userId: user.id,
+    eventType: "account_delete_scheduled",
+    status: "success",
+    details: { deleteAfterAt: deleteAfterAt.toISOString(), delayHours: 48 },
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("User-Agent"),
+  });
+
+  return { ok: true };
+}
+
 async function getSessionFromRequest(
   env: Env,
   request: Request,
@@ -2857,16 +3417,17 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      "SELECT id, email, status FROM users WHERE id = ? LIMIT 1"
+      "SELECT id, email, status, email_verified FROM users WHERE id = ? LIMIT 1"
     )
       .bind(session.id)
-      .first<{ id: string; email: string | null; status: string | null }>();
+      .first<{
+        id: string;
+        email: string | null;
+        status: string | null;
+        email_verified: number | null;
+      }>();
 
-    const passkeyCount = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
+    const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
@@ -2877,7 +3438,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         id: user?.id ?? session.id,
         email: user?.email ?? null,
         status: user?.status ?? USER_STATUS_ACTIVE,
-        hasPasskeys: (passkeyCount?.count ?? 0) > 0,
+        hasPasskeys: usablePasskeyCount > 0,
+        emailVerified: (user?.email_verified ?? 0) === 1,
         lastStepUpAt: session.lastStepUpAt,
       }),
       { status: 200, headers }
@@ -4272,6 +4834,257 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     );
   }
 
+  if (pathname === "/api/auth/account/delete/options" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const state = await loadAccountDeleteVerificationState(env, session);
+    const { preferred_method, available_methods } = buildAccountDeleteMethodList(state);
+
+    if (!preferred_method || available_methods.length === 0) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "account_delete_blocked",
+        status: "failure",
+        details: { reason: "no_verified_channel", phase: "delete_options" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse(
+        {
+          message:
+            "We can't verify it's you: verify your email, add a passkey, or enable 2-step verification, then try again.",
+          code: "account_delete_no_verified_channel",
+        },
+        403,
+        request,
+      );
+    }
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_verification_started",
+      status: "success",
+      details: { preferred_method, available_methods },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse(
+      { ok: true, preferred_method, available_methods },
+      200,
+      request,
+    );
+  }
+
+  if (pathname === "/api/auth/account/delete/passkey-abandoned" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    let abandonedBody: Record<string, unknown> = {};
+    try {
+      abandonedBody = await readJsonBody(request);
+    } catch {
+      abandonedBody = {};
+    }
+    const reasonRaw = abandonedBody.reason;
+    const reason = typeof reasonRaw === "string" ? reasonRaw.trim().slice(0, 120) : "unspecified";
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_stepup_failed",
+      status: "warning",
+      details: { reason },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_passkey_abandoned",
+      status: "warning",
+      details: { reason },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    const state = await loadAccountDeleteVerificationState(env, session);
+    const issueBlock = await issueAccountDeleteFallbackMarker(env, request, session, reason, state);
+    if (issueBlock) return issueBlock;
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/delete/email-code" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const kvIssue = getAuthKv(env);
+    if (!kvIssue || !magicLinkHmacConfigured(env)) {
+      return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+    }
+
+    let emailCodeBody: Record<string, unknown> = {};
+    try {
+      emailCodeBody = await readJsonBody(request);
+    } catch {
+      emailCodeBody = {};
+    }
+    const explicitFallback = emailCodeBody.fallback === true;
+    const state = await loadAccountDeleteVerificationState(env, session);
+    if (state.hasUsablePasskeys && state.verifiedTotpRow) {
+      return jsonResponse(
+        {
+          message: "Email fallback is not allowed when authenticator code verification is available.",
+          code: "account_delete_email_fallback_disabled_when_totp",
+        },
+        400,
+        request,
+      );
+    }
+    if (state.hasUsablePasskeys) {
+      if (!explicitFallback || !state.emailFallbackEligible) {
+        return jsonResponse(
+          {
+            message:
+              "Email fallback is locked. Complete passkey verification or use 'I don't have access to this device' first.",
+            code: "account_delete_email_code_fallback_required",
+          },
+          403,
+          request,
+        );
+      }
+    } else if (state.verifiedTotpRow) {
+      return jsonResponse(
+        {
+          message: "Use your 6-digit authenticator code to verify deletion.",
+          code: "account_delete_totp_required",
+        },
+        400,
+        request,
+      );
+    }
+
+    const userIssue = await env.AUTH_DB.prepare(
+      "SELECT email_verified, email FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ email_verified: number; email: string | null }>();
+
+    if ((userIssue?.email_verified ?? 0) !== 1) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "account_delete_blocked",
+        status: "failure",
+        details: { reason: "email_unverified", phase: "issue_email_code" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse(
+        {
+          message:
+            "Your account email is not verified. Verify your email or add a passkey or 2-step verification before deleting your account.",
+          code: "account_delete_no_verified_channel",
+        },
+        403,
+        request,
+      );
+    }
+
+    const toEmail = (userIssue?.email ?? session.email ?? "").trim().toLowerCase();
+    if (!toEmail) {
+      return jsonResponse({ message: "No email address on file" }, 400, request);
+    }
+
+    const issueRlKey = `${ACCOUNT_DELETE_EMAIL.ISSUE_RL_PREFIX}${session.sessionIdHash}`;
+    try {
+      const rlData = (await kvIssue.get(issueRlKey, "json")) as { count: number } | null;
+      if (rlData && rlData.count >= ACCOUNT_DELETE_EMAIL.ISSUE_MAX) {
+        return jsonResponse({ message: "Too many code requests. Please wait and try again." }, 429, request);
+      }
+      await kvIssue.put(issueRlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+        expirationTtl: ACCOUNT_DELETE_EMAIL.ISSUE_WINDOW_SECONDS,
+      });
+    } catch {
+      // non-fatal
+    }
+
+    const otp = randomSixDigitNumericCode();
+    const codeHash = await hmacAccountDeleteEmailCode(env, session.id, otp);
+    if (!codeHash) {
+      return jsonResponse({ message: "Auth storage not configured" }, 501, request);
+    }
+
+    await kvIssue.put(
+      `${ACCOUNT_DELETE_EMAIL.KV_PREFIX}${session.id}`,
+      JSON.stringify({ codeHash, issuedAt: new Date().toISOString() }),
+      { expirationTtl: ACCOUNT_DELETE_EMAIL.TTL_SECONDS },
+    );
+
+    const emailResult = await sendEmail(env, {
+      to: toEmail,
+      subject: "Your account deletion confirmation code - PrivateNote",
+      text: `You requested to delete your PrivateNote account.\n\nConfirmation code: ${otp}\n\nThis code expires in 15 minutes and can be used only once.\n\nIf you did not request this, secure your account and ignore this email.`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Account deletion confirmation</h2>
+          <p>You requested to delete your PrivateNote account. Verify it&apos;s you by entering this code where you started deletion:</p>
+          <p style="font-size: 28px; letter-spacing: 4px; font-weight: bold; margin: 24px 0;">${otp}</p>
+          <p style="color: #666; font-size: 14px;">This code expires in 15 minutes and can be used only once.</p>
+          <p style="color: #666; font-size: 14px;">If you did not request this, secure your account and ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (!emailResult.ok) {
+      try {
+        await kvIssue.delete(`${ACCOUNT_DELETE_EMAIL.KV_PREFIX}${session.id}`);
+      } catch {
+        /* ignore */
+      }
+      console.error("[AUTH] account delete email code send failed:", emailResult.error);
+      return jsonResponse({ message: "Could not send email. Try again later." }, 502, request);
+    }
+
+    const issuedAsFallback = explicitFallback && state.hasUsablePasskeys;
+    if (issuedAsFallback) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "account_delete_fallback_selected",
+        status: "success",
+        details: { method: "email_code" },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+    }
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_email_code_issued",
+      status: "success",
+      details: { fallback: issuedAsFallback },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
   if (pathname === "/api/auth/account/delete" && method === "POST") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -4288,33 +5101,27 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
     const providedEmail = deleteBody.email;
-    const deleteAccountTotpCode = deleteBody.totpCode;
+    const deleteState = await loadAccountDeleteVerificationState(env, session);
+    const { preferred_method, available_methods } = buildAccountDeleteMethodList(deleteState);
 
-    const passkeyCount = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "account_delete_stepup_requested",
+      status: "success",
+      details: { preferred_method, available_methods },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
 
-    const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
-
-    const verifiedTotpRowDelete = await env.AUTH_DB.prepare(
-      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
-    )
-      .bind(session.id)
-      .first<{ encrypted_secret: string }>();
-
-    const deleteSecondFactorBlock = await gateSecondFactorForAccountTakeover(
+    const verifyOutcome = await satisfyAccountDeleteVerification(
       env,
       request,
       session,
-      hasPasskeys,
-      verifiedTotpRowDelete,
-      deleteAccountTotpCode,
-      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_ACCOUNT_DELETE,
-      "account_delete",
+      deleteBody,
+      deleteState,
     );
-    if (deleteSecondFactorBlock) return deleteSecondFactorBlock;
+    if (verifyOutcome instanceof Response) return verifyOutcome;
+    const proof = verifyOutcome;
 
     if (!providedEmail || typeof providedEmail !== "string") {
       return jsonResponse({ message: "Email is required" }, 400, request);
@@ -4328,18 +5135,63 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Email does not match" }, 400, request);
     }
 
-    // Delete user row: child tables use ON DELETE CASCADE; audit_log uses ON DELETE SET NULL (see src/auth/schema.sql).
+    const usedFallback = Boolean(preferred_method && preferred_method !== proof);
+    if (usedFallback) {
+      await logAuditEvent(env, {
+        userId: session.id,
+        eventType: "account_delete_fallback_success",
+        status: "success",
+        details: { verificationMethod: proof, preferred_method, available_methods },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+    }
+
     const userId = session.id;
+    if (proof === "email_code") {
+      const scheduleRes = await schedulePendingAccountDeletion(env, request, {
+        id: userId,
+        email: session.email,
+      });
+      if (!scheduleRes.ok) return scheduleRes.response;
+
+      const headers = new Headers(getCorsHeaders(request));
+      headers.set("Content-Type", "application/json");
+      headers.set("Set-Cookie", clearSessionCookieHeader(getSessionCookieKindForRequest(request)));
+      return new Response(
+        JSON.stringify({ ok: true, scheduled: true, deleteAfterHours: 48 }),
+        { status: 200, headers },
+      );
+    }
+
+    // Delete user row: child tables use ON DELETE CASCADE; audit_log uses ON DELETE SET NULL (see src/auth/schema.sql).
     await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
 
-    // Log account deletion after user is deleted (use null user_id since user no longer exists)
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "account_delete_finalized",
+      status: "success",
+      details: {
+        deletedUserId: userId,
+        emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+        verificationMethod: proof,
+      },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    // Backward-compat event name retained for existing dashboards.
     await logAuditEvent(env, {
       userId: null,
       eventType: "account_deleted",
       status: "success",
       details: {
         deletedUserId: userId,
-        emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3")
+        emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
+        verificationMethod: proof,
+        preferred_method,
+        available_methods,
+        usedFallback,
       },
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
@@ -4349,6 +5201,111 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", clearSessionCookieHeader(getSessionCookieKindForRequest(request)));
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/delete/cancel" && (method === "GET" || method === "POST")) {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    if (method === "GET") {
+      const token = new URL(request.url).searchParams.get("token") ?? "";
+      const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cancel Scheduled Deletion</title>
+  </head>
+  <body style="font-family: sans-serif; max-width: 560px; margin: 48px auto; padding: 0 16px; line-height: 1.5;">
+    <h1>Cancel scheduled deletion</h1>
+    <p>If your account has a scheduled deletion, you can confirm cancellation below.</p>
+    <form method="POST" action="/api/auth/account/delete/cancel">
+      <input type="hidden" name="token" value="${escapeHtml(token)}" />
+      <button type="submit" style="background: #2563eb; color: white; border: 0; border-radius: 6px; padding: 12px 20px; cursor: pointer;">
+        Cancel scheduled deletion
+      </button>
+    </form>
+  </body>
+</html>`;
+      const headers = new Headers(getCorsHeaders(request));
+      headers.set("Content-Type", "text/html; charset=utf-8");
+      return new Response(html, { status: 200, headers });
+    }
+
+    let body: Record<string, unknown> = {};
+    let token: string | null = null;
+    if (method === "POST") {
+      const ct = request.headers.get("Content-Type") || "";
+      if (ct.toLowerCase().includes("application/json")) {
+        try {
+          body = await readJsonBody(request);
+        } catch {
+          return jsonResponse({ message: "Invalid JSON" }, 400, request);
+        }
+        token = typeof body.token === "string" ? body.token : null;
+      } else {
+        let form: FormData;
+        try {
+          form = await request.formData();
+        } catch {
+          return jsonResponse({ message: "Invalid form data" }, 400, request);
+        }
+        const formToken = form.get("token");
+        token = typeof formToken === "string" ? formToken : null;
+      }
+    }
+    const normalizedToken = typeof token === "string" ? token.trim() : "";
+    if (!normalizedToken) {
+      return jsonResponse({ message: "Cancellation token required" }, 400, request);
+    }
+
+    const tokenHash = await sha256Base64Url(normalizedToken);
+    const pending = await env.AUTH_DB.prepare(
+      `SELECT id, user_id FROM pending_account_deletions
+       WHERE cancel_token_hash = ? AND cancelled_at IS NULL AND delete_after_at > ? LIMIT 1`
+    )
+      .bind(tokenHash, new Date().toISOString())
+      .first<{ id: string; user_id: string }>();
+
+    if (!pending) {
+      return jsonResponse({ message: "Invalid or expired cancellation token" }, 400, request);
+    }
+
+    const kv = getAuthKv(env);
+    if (kv) {
+      const rlKey = `${ACCOUNT_DELETE_PENDING.TOKEN_RL_PREFIX}${tokenHash}`;
+      try {
+        const rlData = (await kv.get(rlKey, "json")) as { count: number } | null;
+        if (rlData && rlData.count >= ACCOUNT_DELETE_PENDING.TOKEN_VERIFY_MAX) {
+          return jsonResponse({ message: "Too many attempts. Please wait and try again." }, 429, request);
+        }
+        await kv.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), {
+          expirationTtl: ACCOUNT_DELETE_PENDING.TOKEN_VERIFY_WINDOW_SECONDS,
+        });
+      } catch {
+        // non-fatal
+      }
+    }
+
+    const cancelRes = await env.AUTH_DB.prepare(
+      "UPDATE pending_account_deletions SET cancelled_at = ?, cancelled_reason = ? WHERE id = ? AND cancelled_at IS NULL AND delete_after_at > ?"
+    )
+      .bind(new Date().toISOString(), "user_cancelled_via_email_link", pending.id, new Date().toISOString())
+      .run();
+    if ((cancelRes.meta?.changes ?? 0) < 1) {
+      return jsonResponse({ message: "Cancellation window has expired" }, 409, request);
+    }
+
+    await logAuditEvent(env, {
+      userId: pending.user_id,
+      eventType: "account_delete_cancelled",
+      status: "success",
+      details: { via: "token_link" },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true, cancelled: true }, 200, request);
   }
 
   // ============================================================================
@@ -6069,6 +7026,69 @@ export async function cleanupAuditLogs(env: Env): Promise<{ deleted: number; err
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`[AUDIT_CLEANUP] Error: ${errorMessage}`);
     return { deleted: totalDeleted, error: errorMessage };
+  }
+}
+
+/**
+ * Finalize delayed account deletions scheduled through email fallback.
+ * Called by scheduled cron trigger.
+ */
+export async function processPendingAccountDeletions(
+  env: Env,
+): Promise<{ finalized: number; error?: string }> {
+  if (!env.AUTH_DB) {
+    return { finalized: 0, error: "AUTH_DB not configured" };
+  }
+
+  try {
+    const nowIso = new Date().toISOString();
+    const rows = await env.AUTH_DB.prepare(
+      `SELECT id, user_id
+       FROM pending_account_deletions
+       WHERE cancelled_at IS NULL AND delete_after_at <= ?
+       LIMIT 200`
+    )
+      .bind(nowIso)
+      .all<{ id: string; user_id: string }>();
+
+    let finalized = 0;
+    for (const row of rows.results || []) {
+      const deleteUserRes = await env.AUTH_DB.prepare(
+        `DELETE FROM users
+         WHERE id = ?
+           AND EXISTS (
+             SELECT 1
+             FROM pending_account_deletions
+             WHERE id = ?
+               AND user_id = ?
+               AND cancelled_at IS NULL
+               AND delete_after_at <= ?
+           )`
+      )
+        .bind(row.user_id, row.id, row.user_id, nowIso)
+        .run();
+      if ((deleteUserRes.meta?.changes ?? 0) < 1) {
+        continue;
+      }
+      finalized += 1;
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "account_delete_finalized",
+        status: "success",
+        details: { deletedUserId: row.user_id, finalizedBy: "cron" },
+      });
+      // Backward-compat dashboard event name.
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "account_deleted",
+        status: "success",
+        details: { deletedUserId: row.user_id, finalizedBy: "cron" },
+      });
+    }
+    return { finalized };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return { finalized: 0, error: errorMessage };
   }
 }
 

@@ -20,13 +20,22 @@ export function DevicesSection({
   onRevokeAll,
   onRevokeSession,
 }: Props) {
+  const currentSessionCount = sessions.filter((session) => session.current).length;
+
   return (
-    <div className="mb-12">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Devices</h2>
+    <section className="mb-12">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sessions</h2>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {currentSessionCount > 0
+            ? "You’re currently signed in on this device. Review other active sessions below."
+            : "Review where your account is currently signed in."}
+        </p>
+      </div>
 
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md">
-          Sign out everywhere except this browser.
+          Log out of every session except the one you are using now.
         </p>
         <Button
           variant="outline"
@@ -37,10 +46,10 @@ export function DevicesSection({
           {revokingAllSessions ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing out…
+              Logging out…
             </>
           ) : (
-            "Sign out elsewhere"
+            "Log out of all other devices"
           )}
         </Button>
       </div>
@@ -50,8 +59,8 @@ export function DevicesSection({
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
               <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Device Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Last Active</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Session</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Last active</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Action</th>
               </tr>
             </thead>
@@ -116,6 +125,6 @@ export function DevicesSection({
           </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

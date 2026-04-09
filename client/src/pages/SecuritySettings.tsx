@@ -8,7 +8,10 @@ import { useLocation } from "wouter";
 import { Copy, ChevronRight } from "lucide-react";
 import { AccountSecuritySection } from "@/pages/security-settings/AccountSecuritySection";
 import { ChangeEmailDialog } from "@/pages/security-settings/ChangeEmailDialog";
-import { DeleteAccountDialog } from "@/pages/security-settings/DeleteAccountDialog";
+import {
+  DeleteAccountDialog,
+  type AccountDeleteMethod,
+} from "@/pages/security-settings/DeleteAccountDialog";
 import { PasskeyResetDialog } from "@/pages/security-settings/PasskeyResetDialog";
 import { DevicesSection } from "@/pages/security-settings/DevicesSection";
 import { isForbiddenApiError } from "@/pages/security-settings/forbidden";
@@ -44,6 +47,7 @@ export default function SecuritySettings() {
     recoveryGeneratedAt,
     totpEnabled,
     setTotpEnabled,
+    emailVerified,
     lastStepUpAt,
     refreshAll,
   } = useSecuritySettingsData(user?.email);
@@ -59,6 +63,15 @@ export default function SecuritySettings() {
   const [emailChangeSent, setEmailChangeSent] = useState(false);
   const [emailChangeTotpCode, setEmailChangeTotpCode] = useState("");
   const [deleteTotpCode, setDeleteTotpCode] = useState("");
+  const [deleteEmailVerificationCode, setDeleteEmailVerificationCode] = useState("");
+  const [deleteEmailCodeSent, setDeleteEmailCodeSent] = useState(false);
+  const [sendingDeleteEmailCode, setSendingDeleteEmailCode] = useState(false);
+  const [deleteVerificationOptions, setDeleteVerificationOptions] = useState<{
+    preferred_method: AccountDeleteMethod;
+    available_methods: AccountDeleteMethod[];
+  } | null>(null);
+  const [deleteOptionsLoading, setDeleteOptionsLoading] = useState(false);
+  const [unlockingDeleteFallback, setUnlockingDeleteFallback] = useState(false);
   const [totpDialogOpen, setTotpDialogOpen] = useState(false);
   const [totpSetupStep, setTotpSetupStep] = useState<"qr" | "verify" | "done">("qr");
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
@@ -105,6 +118,10 @@ export default function SecuritySettings() {
     setDeleteDialogOpen(false);
     setDeleteEmailInput("");
     setDeleteTotpCode("");
+    setDeleteEmailVerificationCode("");
+    setDeleteEmailCodeSent(false);
+    setSendingDeleteEmailCode(false);
+    setUnlockingDeleteFallback(false);
   }, []);
 
   const closePasskeyResetDialog = useCallback(() => {
@@ -125,6 +142,42 @@ export default function SecuritySettings() {
     if (authLoading) return;
     void refreshAll();
   }, [user, authLoading, refreshAll]);
+
+  const refreshDeleteVerificationOptions = useCallback(async () => {
+    setDeleteOptionsLoading(true);
+    try {
+      const data = await apiRequest<{
+        ok: boolean;
+        preferred_method: AccountDeleteMethod;
+        available_methods: AccountDeleteMethod[];
+      }>("/api/auth/account/delete/options", "GET");
+      if (data.ok && data.preferred_method && Array.isArray(data.available_methods)) {
+        setDeleteVerificationOptions({
+          preferred_method: data.preferred_method,
+          available_methods: data.available_methods,
+        });
+      } else {
+        setDeleteVerificationOptions(null);
+      }
+    } catch {
+      setDeleteVerificationOptions(null);
+      toast({
+        title: "Couldn't load delete verification",
+        description: "Close and try again, or refresh the page.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteOptionsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!deleteDialogOpen) {
+      setDeleteVerificationOptions(null);
+      return;
+    }
+    void refreshDeleteVerificationOptions();
+  }, [deleteDialogOpen, refreshDeleteVerificationOptions]);
 
   const copyEmail = useCallback(async () => {
     if (!email) return;
@@ -306,6 +359,64 @@ export default function SecuritySettings() {
     }
   }, [closePasskeyResetDialog, refreshAll, setPasskeys, stepUpForRetry, toast]);
 
+  const handleSendDeleteEmailCode = useCallback(async () => {
+    setSendingDeleteEmailCode(true);
+    try {
+      const am = deleteVerificationOptions?.available_methods ?? [];
+      const needsFallback = am.includes("passkey");
+      await apiRequest("/api/auth/account/delete/email-code", "POST", needsFallback ? { fallback: true } : {});
+      setDeleteEmailCodeSent(true);
+      toast({
+        title: "Confirmation code sent",
+        description: "Check your email for the 6-digit code.",
+      });
+    } catch (error) {
+      let desc = "Could not send the code. Try again.";
+      if (error instanceof ApiRequestError) {
+        try {
+          const j = JSON.parse(error.bodyText) as { message?: string };
+          if (j.message) desc = j.message;
+        } catch {
+          /* keep default */
+        }
+      } else if (error instanceof Error) {
+        desc = error.message;
+      }
+      toast({ title: "Could not send code", description: desc, variant: "destructive" });
+    } finally {
+      setSendingDeleteEmailCode(false);
+    }
+  }, [deleteVerificationOptions, toast]);
+
+  const handleUnlockDeleteFallback = useCallback(async () => {
+    setUnlockingDeleteFallback(true);
+    try {
+      await apiRequest("/api/auth/account/delete/passkey-abandoned", "POST", {
+        reason: "no_device_access",
+      });
+      await refreshDeleteVerificationOptions();
+      toast({
+        title: "Email fallback enabled",
+        description: "You can now request a confirmation code by email.",
+      });
+    } catch (error) {
+      let desc = "Could not enable email fallback.";
+      if (error instanceof ApiRequestError) {
+        try {
+          const j = JSON.parse(error.bodyText) as { message?: string };
+          if (j.message) desc = j.message;
+        } catch {
+          /* keep default */
+        }
+      } else if (error instanceof Error) {
+        desc = error.message;
+      }
+      toast({ title: "Fallback unavailable", description: desc, variant: "destructive" });
+    } finally {
+      setUnlockingDeleteFallback(false);
+    }
+  }, [refreshDeleteVerificationOptions, toast]);
+
   const handleDeleteAccount = useCallback(async () => {
     if (!email) return;
 
@@ -321,35 +432,81 @@ export default function SecuritySettings() {
       return;
     }
 
+    if (!deleteVerificationOptions?.available_methods.length) {
+      toast({
+        title: "Verification options unavailable",
+        description: "Close this dialog and open it again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const am = deleteVerificationOptions.available_methods;
+    const totpDeleteCode =
+      am.includes("totp") && deleteTotpCode.trim().length === 6 ? deleteTotpCode.trim() : null;
+    const hasEmailCode =
+      am.includes("email_code") && deleteEmailVerificationCode.trim().length === 6;
+    const stepUpAlreadyFresh = isServerStepUpFresh(lastStepUpAt);
+
     setDeletingAccount(true);
     try {
-      /** Server treats a valid 6-digit code like a step-up for passkey holders; skip passkey UI when provided. */
-      const totpDeleteCode = totpEnabled && deleteTotpCode.trim().length === 6 ? deleteTotpCode.trim() : null;
-      const stepUpAlreadyFresh = isServerStepUpFresh(lastStepUpAt);
-      if (passkeys.length > 0 && !totpDeleteCode && !stepUpAlreadyFresh) {
+      if (am.includes("passkey") && !totpDeleteCode && !hasEmailCode && !stepUpAlreadyFresh) {
         const r = await executeStepUp();
         if (!r.ok) {
+          const abandonedReason =
+            r.reason === "cancelled"
+              ? "cancelled"
+              : r.reason === "timeout"
+                ? "timeout"
+                : r.reason === "not_supported"
+                  ? "not_supported"
+                  : r.reason === "no_passkey"
+                    ? "no_passkey"
+                    : "step_up_failed";
+          await apiRequest("/api/auth/account/delete/passkey-abandoned", "POST", {
+            reason: abandonedReason,
+          }).catch(() => {});
+          await refreshDeleteVerificationOptions();
           toast({
             title: "Verify it's you",
             description:
-              totpEnabled
-                ? "Enter your 6-digit authenticator code below, or complete passkey verification on this device."
-                : "Complete passkey verification to delete your account.",
+              am.includes("totp") && am.includes("email_code")
+                ? "Use your authenticator code or request an email confirmation code below."
+                : am.includes("totp")
+                  ? "Enter your 6-digit authenticator code below."
+                  : am.includes("email_code")
+                    ? "Request an email confirmation code below."
+                    : "Try again or use recovery sign-in.",
             variant: "destructive",
           });
           return;
         }
       }
 
-      await apiRequest("/api/auth/account/delete", "POST", {
+      const deleteResult = await apiRequest<{ ok: boolean; scheduled?: boolean }>("/api/auth/account/delete", "POST", {
         email: normalizedEmail,
         ...(totpDeleteCode ? { totpCode: totpDeleteCode } : {}),
+        ...(hasEmailCode ? { deleteEmailVerificationCode: deleteEmailVerificationCode.trim() } : {}),
       });
 
-      toast({
-        title: "Account deleted",
-        description: "Your account has been permanently deleted.",
-      });
+      if (deleteResult.scheduled) {
+        toast({
+          title: "Deletion scheduled",
+          description:
+            "Deletion is scheduled in 48 hours. Check your email for the cancellation link.",
+        });
+      } else {
+        toast({
+          title: "Account deleted",
+          description: "Your account has been permanently deleted.",
+        });
+      }
+
+      setDeleteDialogOpen(false);
+      setDeleteEmailInput("");
+      setDeleteTotpCode("");
+      setDeleteEmailVerificationCode("");
+      setDeleteEmailCodeSent(false);
 
       await signOut();
       setLocation("/");
@@ -380,20 +537,18 @@ export default function SecuritySettings() {
       }
     } finally {
       setDeletingAccount(false);
-      setDeleteDialogOpen(false);
-      setDeleteEmailInput("");
-      setDeleteTotpCode("");
     }
   }, [
     deleteEmailInput,
+    deleteEmailVerificationCode,
     deleteTotpCode,
+    deleteVerificationOptions,
     email,
     lastStepUpAt,
-    passkeys.length,
     setLocation,
     signOut,
     toast,
-    totpEnabled,
+    refreshDeleteVerificationOptions,
   ]);
 
   const handleChangeEmail = useCallback(async () => {
@@ -586,8 +741,74 @@ export default function SecuritySettings() {
     );
   }
 
+  const hasPasskeys = passkeys.length > 0;
+  const hasRecoveryCodes = recoveryRemaining > 0;
+  const securityStatus = hasPasskeys && totpEnabled
+    ? "Well protected"
+    : hasPasskeys || totpEnabled
+      ? "Partially protected"
+      : emailVerified
+        ? "Basic protection"
+        : "Needs attention";
+  const securityStatusTone = hasPasskeys && totpEnabled
+    ? "text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+    : hasPasskeys || totpEnabled
+      ? "text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+      : "text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
+
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <Card className="mb-10 border-gray-200 dark:border-gray-800">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Security status</CardTitle>
+              <CardDescription className="mt-1">
+                Review your protection settings and strengthen weak spots quickly.
+              </CardDescription>
+            </div>
+            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${securityStatusTone}`}>
+              {securityStatus}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Passkeys</p>
+              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                {hasPasskeys ? `${passkeys.length} active` : "Not set up"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">2-step verification</p>
+              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                {totpEnabled ? "Enabled" : "Not enabled"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Recovery</p>
+              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                {hasRecoveryCodes ? "Codes available" : "None"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Sessions</p>
+              <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                {sessions.length === 1 ? "1 active session" : `${sessions.length} active sessions`}
+              </p>
+            </div>
+          </div>
+          {(!totpEnabled || !hasPasskeys) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              {!totpEnabled
+                ? "Add 2-step verification for stronger protection."
+                : "Add a passkey to make sign-in faster and more secure."}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <AccountSecuritySection
         email={email}
         recoveryRemaining={recoveryRemaining}
@@ -642,18 +863,20 @@ export default function SecuritySettings() {
         </div>
       </div>
 
-      <div>
+      <div className="mt-14 rounded-xl border border-red-200/70 bg-red-50/60 p-4 dark:border-red-900/60 dark:bg-red-950/20">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Danger zone</h2>
 
-        <div className="space-y-0 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div className="space-y-0 border border-red-200 dark:border-red-900/60 rounded-lg overflow-hidden bg-white dark:bg-transparent">
           <button
             type="button"
             onClick={() => setDeleteDialogOpen(true)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
+            className="w-full flex items-center justify-between p-4 hover:bg-red-50/60 dark:hover:bg-red-950/20 transition-colors text-left"
           >
             <div className="flex-1">
               <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Delete account</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Permanent · signs you out everywhere</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Permanently delete your account and remove access from all devices. This cannot be undone.
+              </p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </button>
@@ -678,10 +901,18 @@ export default function SecuritySettings() {
       <DeleteAccountDialog
         open={deleteDialogOpen}
         email={email}
-        passkeyCount={passkeys.length}
-        totpEnabled={totpEnabled}
+        availableMethods={deleteVerificationOptions?.available_methods ?? []}
+        preferredMethod={deleteVerificationOptions?.preferred_method ?? null}
+        optionsLoading={deleteOptionsLoading}
         totpCode={deleteTotpCode}
         onTotpCodeChange={setDeleteTotpCode}
+        deleteEmailVerificationCode={deleteEmailVerificationCode}
+        onDeleteEmailVerificationCodeChange={setDeleteEmailVerificationCode}
+        deleteEmailCodeSent={deleteEmailCodeSent}
+        sendingDeleteEmailCode={sendingDeleteEmailCode}
+        onSendDeleteEmailCode={() => void handleSendDeleteEmailCode()}
+        unlockingFallback={unlockingDeleteFallback}
+        onUnlockFallback={() => void handleUnlockDeleteFallback()}
         deleteEmailInput={deleteEmailInput}
         onDeleteEmailInputChange={setDeleteEmailInput}
         deletingAccount={deletingAccount}
