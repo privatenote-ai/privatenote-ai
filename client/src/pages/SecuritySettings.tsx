@@ -26,6 +26,7 @@ import {
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { isServerStepUpFresh } from "@/pages/security-settings/isServerStepUpFresh";
+import { AccountSettingsShell } from "@/pages/account/AccountSettingsShell";
 
 type TotpSetupResponse = { setupId: string; secret: string; otpauthUri: string };
 
@@ -742,7 +743,12 @@ export default function SecuritySettings() {
   }
 
   return (
-    <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+    <AccountSettingsShell>
+      <div className="max-w-4xl">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Security</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
+          Passkeys, 2-step verification, devices, and account recovery.
+        </p>
       <AccountSecuritySection
         email={email}
         recoveryRemaining={recoveryRemaining}
@@ -886,6 +892,7 @@ export default function SecuritySettings() {
         onVerify={(code) => void handleTotpVerifySetup(code)}
         onCompleteClose={closeTotpDialog}
       />
-    </div>
+      </div>
+    </AccountSettingsShell>
   );
 }

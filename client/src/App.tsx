@@ -29,6 +29,10 @@ import AuthSignUp from "@/pages/AuthSignUp";
 import AuthEmailChange from "@/pages/AuthEmailChange";
 import AuthTotp from "@/pages/AuthTotp";
 import SecuritySettings from "@/pages/SecuritySettings";
+import AccountOverview from "@/pages/account/AccountOverview";
+import AccountActivity from "@/pages/account/AccountActivity";
+import AccountPreferences from "@/pages/account/AccountPreferences";
+import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -75,6 +79,9 @@ function Router() {
           <Route path="/auth/email-change" component={AuthEmailChange} />
           <Route path="/auth/totp" component={AuthTotp} />
           <Route path="/account/security" component={SecuritySettings} />
+          <Route path="/account/activity" component={AccountActivity} />
+          <Route path="/account/preferences" component={AccountPreferences} />
+          <Route path="/account" component={AccountOverview} />
           {/* Fallback to 404 */}
           <Route component={NotFound} />
         </Switch>
@@ -88,6 +95,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <ThemePreferenceRoot />
         <Router />
         <Toaster />
       </AuthProvider>

@@ -126,7 +126,7 @@ export default function AuthEmailChange() {
 
   const handleCancel = () => {
     clearEmailChangeTokenCache();
-    setLocation("/account/security");
+    setLocation("/account");
   };
 
   const confirmSubmitDisabled = phase === "loading" || !token || verifyBusy;
@@ -218,7 +218,7 @@ export default function AuthEmailChange() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => setLocation("/account/security")} size="lg">
+                <Button onClick={() => setLocation("/account")} size="lg">
                   Go to Security Settings
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/")} size="lg">
@@ -252,7 +252,7 @@ export default function AuthEmailChange() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => setLocation("/account/security")} size="lg">
+                <Button onClick={() => setLocation("/account")} size="lg">
                   Go to Security Settings
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/")} size="lg">

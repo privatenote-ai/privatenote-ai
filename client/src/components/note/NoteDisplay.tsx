@@ -11,6 +11,7 @@ import {
   UserX,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
   importAesGcmKeyFromUrlFragment,
@@ -328,6 +329,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         payloadBytes.aadBytes,
       );
       setNoteContent(decryptedContent);
+      reportNoteOpenedIfSignedIn(id);
     } catch (cryptoError) {
       console.error("Crypto error:", cryptoError);
       throw new Error("Failed to decrypt the note. The encryption key may be invalid or the data may have been tampered with.");
@@ -454,6 +456,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       );
 
       setNoteContent(decryptedContent);
+      reportNoteOpenedIfSignedIn(id);
 
       // Hide password input after successful decryption
       setIsPasswordProtected(false);

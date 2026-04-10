@@ -2589,6 +2589,59 @@ async function schedulePendingAccountDeletion(
   return { ok: true };
 }
 
+const FREE_TIER_USAGE_LIMITS = {
+  notesPerDay: 10,
+  aiUsesPerDay: 2,
+} as const;
+
+const ACCOUNT_ACTIVITY_EVENT_TYPES = new Set([
+  "note_created",
+  "ai_note_created",
+  "note_opened",
+  "note_expired",
+]);
+
+function usageLimitsForPlan(plan: string | null | undefined): {
+  notesPerDay: number | null;
+  aiUsesPerDay: number | null;
+} {
+  const p = (plan || "free").toLowerCase();
+  if (p === "pro" || p === "business") {
+    return { notesPerDay: null, aiUsesPerDay: null };
+  }
+  return {
+    notesPerDay: FREE_TIER_USAGE_LIMITS.notesPerDay,
+    aiUsesPerDay: FREE_TIER_USAGE_LIMITS.aiUsesPerDay,
+  };
+}
+
+async function recordAccountActivity(
+  env: Env,
+  userId: string,
+  eventType: string,
+  noteId: string | null
+): Promise<void> {
+  if (!env.AUTH_DB) return;
+  if (!ACCOUNT_ACTIVITY_EVENT_TYPES.has(eventType)) return;
+  const id = crypto.randomUUID();
+  try {
+    await env.AUTH_DB.prepare(
+      `INSERT INTO account_activity (id, user_id, event_type, note_id, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    )
+      .bind(id, userId, eventType, noteId)
+      .run();
+  } catch (e) {
+    console.warn("[account_activity] insert failed:", e);
+  }
+}
+
+const RATE_LIMIT_ACCOUNT_ACTIVITY_POST = {
+  MAX_REQUESTS: 48,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:acct_act:",
+};
+
 async function getSessionFromRequest(
   env: Env,
   request: Request,
@@ -3417,7 +3470,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      "SELECT id, email, status, email_verified FROM users WHERE id = ? LIMIT 1"
+      "SELECT id, email, status, email_verified, created_at, plan, email_notifications FROM users WHERE id = ? LIMIT 1"
     )
       .bind(session.id)
       .first<{
@@ -3425,6 +3478,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         email: string | null;
         status: string | null;
         email_verified: number | null;
+        created_at: string | null;
+        plan: string | null;
+        email_notifications: number | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
@@ -3441,7 +3497,180 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         hasPasskeys: usablePasskeyCount > 0,
         emailVerified: (user?.email_verified ?? 0) === 1,
         lastStepUpAt: session.lastStepUpAt,
+        createdAt: user?.created_at ?? null,
+        plan: user?.plan ?? "free",
+        emailNotifications: (user?.email_notifications ?? 1) === 1,
       }),
+      { status: 200, headers }
+    );
+  }
+
+  if (pathname === "/api/auth/account/summary" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const user = await env.AUTH_DB.prepare(
+      `SELECT id, email, created_at, plan, email_notifications FROM users WHERE id = ? LIMIT 1`
+    )
+      .bind(session.id)
+      .first<{
+        id: string;
+        email: string | null;
+        created_at: string | null;
+        plan: string | null;
+        email_notifications: number | null;
+      }>();
+
+    const limits = usageLimitsForPlan(user?.plan);
+    let notesToday = 0;
+    let aiToday = 0;
+    let notesMonth = 0;
+    let aiMonth = 0;
+    try {
+      const usageRow = await env.AUTH_DB.prepare(
+        `SELECT
+          SUM(CASE WHEN event_type = 'note_created' AND date(created_at) = date('now') THEN 1 ELSE 0 END) AS n_day,
+          SUM(CASE WHEN event_type = 'ai_note_created' AND date(created_at) = date('now') THEN 1 ELSE 0 END) AS a_day,
+          SUM(CASE WHEN event_type = 'note_created' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS n_mo,
+          SUM(CASE WHEN event_type = 'ai_note_created' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) AS a_mo
+         FROM account_activity WHERE user_id = ?`
+      )
+        .bind(session.id)
+        .first<{ n_day: number | null; a_day: number | null; n_mo: number | null; a_mo: number | null }>();
+      notesToday = Number(usageRow?.n_day ?? 0);
+      aiToday = Number(usageRow?.a_day ?? 0);
+      notesMonth = Number(usageRow?.n_mo ?? 0);
+      aiMonth = Number(usageRow?.a_mo ?? 0);
+    } catch (e) {
+      console.warn("[account/summary] usage query failed (migration missing?):", e);
+    }
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        email: user?.email ?? null,
+        createdAt: user?.created_at ?? null,
+        plan: user?.plan ?? "free",
+        emailNotifications: (user?.email_notifications ?? 1) === 1,
+        limits: {
+          notesPerDay: limits.notesPerDay,
+          aiUsesPerDay: limits.aiUsesPerDay,
+        },
+        usage: {
+          notesToday,
+          aiToday,
+          notesMonth,
+          aiMonth,
+        },
+        storageUsedBytes: null,
+      }),
+      { status: 200, headers }
+    );
+  }
+
+  if (pathname === "/api/auth/account/activity" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const url = new URL(request.url);
+    const limitRaw = Number(url.searchParams.get("limit") ?? "30");
+    const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 30));
+
+    let events: Array<{ id: string; type: string; noteId: string | null; createdAt: string }> = [];
+    try {
+      const res = await env.AUTH_DB.prepare(
+        `SELECT id, event_type, note_id, created_at FROM account_activity
+         WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`
+      )
+        .bind(session.id, limit)
+        .all<{ id: string; event_type: string; note_id: string | null; created_at: string }>();
+      events = (res.results || []).map((r) => ({
+        id: r.id,
+        type: r.event_type,
+        noteId: r.note_id,
+        createdAt: r.created_at,
+      }));
+    } catch (e) {
+      console.warn("[account/activity] list failed:", e);
+    }
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(JSON.stringify({ ok: true, events }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/activity" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const rl = await checkRateLimit(env, session.id, RATE_LIMIT_ACCOUNT_ACTIVITY_POST);
+    if (!rl.allowed) {
+      return jsonResponse({ message: "Too many requests" }, 429, request);
+    }
+
+    let body: { event?: string; noteId?: string };
+    try {
+      body = (await request.json()) as { event?: string; noteId?: string };
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    if (body.event !== "note_opened") {
+      return jsonResponse({ message: "Unsupported event" }, 400, request);
+    }
+    const noteId = typeof body.noteId === "string" ? body.noteId : "";
+    if (!isValidNoteId(noteId)) {
+      return jsonResponse({ message: "Invalid note id" }, 400, request);
+    }
+
+    await recordAccountActivity(env, session.id, "note_opened", noteId);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    let body: { emailNotifications?: boolean };
+    try {
+      body = (await request.json()) as { emailNotifications?: boolean };
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    if (typeof body.emailNotifications !== "boolean") {
+      return jsonResponse({ message: "emailNotifications boolean required" }, 400, request);
+    }
+    const flag = body.emailNotifications ? 1 : 0;
+    await env.AUTH_DB.prepare(`UPDATE users SET email_notifications = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(flag, session.id)
+      .run();
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(
+      JSON.stringify({ ok: true, emailNotifications: body.emailNotifications }),
       { status: 200, headers }
     );
   }
@@ -6216,6 +6445,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (doResponse.ok && noteForAnalytics) {
       noteForAnalytics.id = id;
       await storage.trackNoteCreation(noteForAnalytics, { aiEnhanced: aiMode });
+    }
+
+    if (doResponse.ok && env.AUTH_DB) {
+      const sessionForUsage = await getSessionFromRequest(env, request, { rotate: false });
+      if (sessionForUsage) {
+        await recordAccountActivity(
+          env,
+          sessionForUsage.id,
+          aiMode ? "ai_note_created" : "note_created",
+          id,
+        );
+      }
     }
 
     if (doResponse.ok && aiMode) {

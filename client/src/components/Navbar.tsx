@@ -163,11 +163,18 @@ export const Navbar: React.FC = () => {
                     </div>
                     <div className="py-1">
                       <NavLink
+                        href="/account"
+                        closeMenu={closeMenu}
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                      >
+                        Account
+                      </NavLink>
+                      <NavLink
                         href="/account/security"
                         closeMenu={closeMenu}
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
                       >
-                        Security settings
+                        Security
                       </NavLink>
                       <button
                         type="button"
@@ -259,7 +266,7 @@ export const Navbar: React.FC = () => {
 
                   {authLoading ? null : user?.email ? (
                     <>
-                      <NavLink href="/account/security" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
+                      <NavLink href="/account" closeMenu={closeMenu} className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors">
                         <Shield className="h-4 w-4" />
                         <span>Account</span>
                       </NavLink>

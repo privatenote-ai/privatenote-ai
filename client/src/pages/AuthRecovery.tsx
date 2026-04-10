@@ -70,7 +70,7 @@ export default function AuthRecovery() {
                 and add a new passkey, or enable 2-step verification as a backup.
               </p>
               <Button asChild>
-                <a href="/account/security">Go to security settings</a>
+                <a href="/account">Go to your account</a>
               </Button>
             </div>
           )}
