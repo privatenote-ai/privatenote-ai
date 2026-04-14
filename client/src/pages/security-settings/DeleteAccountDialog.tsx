@@ -171,7 +171,7 @@ export function DeleteAccountDialog({
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {emailIsFallback
                     ? "If you can't complete passkey verification, use email as a backup method. This will schedule deletion after 48 hours (not immediate)."
-                    : "We&apos;ll send a single-use confirmation code to your account email. Enter it below to prove you can read that inbox."}
+                    : "We'll send a single-use confirmation code to your account email. Enter it below to prove you can read that inbox."}
                 </p>
                 <Button
                   type="button"

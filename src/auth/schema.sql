@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS webauthn_credentials (
   user_id TEXT NOT NULL,
   credential_id TEXT NOT NULL,
   public_key TEXT NOT NULL,
+  display_name TEXT,
   counter INTEGER DEFAULT 0,
   transports TEXT,
   created_at TEXT DEFAULT (datetime('now')),
