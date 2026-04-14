@@ -6,6 +6,7 @@ import {
   getLoadedModelIdWebLLM,
   getWebLLMLEngine,
   isModelInCacheWebLLM,
+  deleteWebLLMModelFromCache,
 } from "./webllm-engine";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import {
@@ -224,6 +225,82 @@ function getSelectedModel(): string | null {
   } catch {
     return null;
   }
+}
+
+async function listWebLLMDatabaseNames(): Promise<string[]> {
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") {
+    return [];
+  }
+  try {
+    const databases = await indexedDB.databases();
+    return databases
+      .filter((db) => db.name && (db.name.includes("webllm") || db.name.includes("mlc")))
+      .map((db) => db.name!);
+  } catch (error) {
+    console.warn("[AI] Failed to inspect IndexedDB model cache:", error);
+    return [];
+  }
+}
+
+function deleteIndexedDbDatabase(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.deleteDatabase(name);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function collectKnownModelIds(preferredModelId?: string): string[] {
+  const ids = new Set<string>();
+  if (preferredModelId) ids.add(preferredModelId);
+  const loaded = getLoadedModelIdWebLLM();
+  if (loaded) ids.add(loaded);
+  const saved = getSelectedModel();
+  if (saved && isModelAvailable(saved) && !isHiddenLocalModelId(saved)) {
+    ids.add(saved);
+  }
+  ids.add(findSuitableModel());
+  return [...ids];
+}
+
+async function hasAnyWebLLMCacheState(modelId?: string): Promise<boolean> {
+  try {
+    if (modelId && (await isModelInCacheWebLLM(modelId))) {
+      return true;
+    }
+  } catch (error) {
+    console.warn("[AI] Failed to check model cache state:", error);
+  }
+  const dbNames = await listWebLLMDatabaseNames();
+  return dbNames.length > 0;
+}
+
+function isLikelyRecoverableLoadError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("model") ||
+    lower.includes("appconfig") ||
+    lower.includes("cache") ||
+    lower.includes("indexeddb") ||
+    lower.includes("database") ||
+    lower.includes("fetch") ||
+    lower.includes("network") ||
+    lower.includes("wasm") ||
+    lower.includes("unexpected")
+  );
+}
+
+export async function resetLocalAiLoadState(preferredModelId?: string): Promise<void> {
+  clearEngine();
+  const knownModelIds = collectKnownModelIds(preferredModelId);
+  await Promise.allSettled(knownModelIds.map((modelId) => deleteWebLLMModelFromCache(modelId)));
+  const dbNames = await listWebLLMDatabaseNames();
+  await Promise.allSettled(dbNames.map((name) => deleteIndexedDbDatabase(name)));
 }
 
 export interface ModelLoadProgress {
@@ -468,18 +545,44 @@ export async function initializeClientLLM(
 
   engineLoadingTargetModelId = modelId;
   engineLoadingPromise = (async () => {
+    let recoveryAttempted = false;
     try {
       console.log("[AI] Loading model:", modelId, USE_CUSTOM_WEBLLM_HOST ? "(self-hosted)" : "(prebuilt)");
 
-      await loadModelWebLLM(modelId, (p) => {
-        if (p.status === "loading") {
-          const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
+      const runLoad = async (): Promise<void> => {
+        await loadModelWebLLM(modelId, (p) => {
+          if (p.status === "loading") {
+            const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
+            notifyLoadProgressSubscribers({
+              progress: progressPercent,
+              text: userFacingLocalAiLoadProgress(p.file, p.progress),
+            });
+          }
+        });
+      };
+
+      try {
+        await runLoad();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const cachedStateExists = await hasAnyWebLLMCacheState(modelId);
+        if (!recoveryAttempted && cachedStateExists && isLikelyRecoverableLoadError(errorMessage)) {
+          recoveryAttempted = true;
+          console.warn("[AI] Clearing broken local model state and retrying once:", modelId, errorMessage);
           notifyLoadProgressSubscribers({
-            progress: progressPercent,
-            text: userFacingLocalAiLoadProgress(p.file, p.progress),
+            progress: 8,
+            text: "Resetting a broken model download…",
           });
+          await resetLocalAiLoadState(modelId);
+          notifyLoadProgressSubscribers({
+            progress: 12,
+            text: "Retrying private AI download…",
+          });
+          await runLoad();
+        } else {
+          throw error;
         }
-      });
+      }
 
       const engine = getWebLLMLEngine();
       if (!engine) {
