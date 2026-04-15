@@ -396,6 +396,24 @@ function getPasskeyLabel(transports: string[] | null): string {
   return "Passkey";
 }
 
+function normalizePasskeyDisplayName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const normalized = raw.trim().replace(/\s+/g, " ");
+  if (!normalized) return null;
+  return normalized.slice(0, 80);
+}
+
+async function webauthnCredentialsHaveDisplayNameColumn(env: Env): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  try {
+    const info = await env.AUTH_DB.prepare("PRAGMA table_info(webauthn_credentials)")
+      .all<{ name: string }>();
+    return (info.results || []).some((row) => row.name === "display_name");
+  } catch {
+    return false;
+  }
+}
+
 function generateMagicEmailOtpDigits(): string {
   const buf = new Uint8Array(4);
   crypto.getRandomValues(buf);
@@ -1521,6 +1539,8 @@ type AuditEventType =
   | "login_failed"
   | "passkey_registered"
   | "passkey_used"
+  | "passkey_renamed"
+  | "passkey_deleted"
   | "passkey_reset"
   | "recovery_code_generated"
   | "recovery_code_used"
@@ -2384,12 +2404,8 @@ async function requirePasskeyEnrollmentProof(
   if (!env.AUTH_DB) {
     return jsonResponse({ message: "Auth database not configured" }, 501, request);
   }
-  const row = await env.AUTH_DB.prepare(
-    "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
-  )
-    .bind(session.id)
-    .first<{ count: number }>();
-  const hasExistingPasskeys = (row?.count ?? 0) > 0;
+  const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
+  const hasExistingPasskeys = usablePasskeyCount > 0;
 
   if (hasExistingPasskeys) {
     if (!isStepUpFresh(session.lastStepUpAt)) {
@@ -2429,12 +2445,8 @@ async function requirePasskeyEnrollmentProofAtRegisterVerify(
   if (!env.AUTH_DB) {
     return jsonResponse({ message: "Auth database not configured" }, 501, request);
   }
-  const row = await env.AUTH_DB.prepare(
-    "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
-  )
-    .bind(session.id)
-    .first<{ count: number }>();
-  const hasExistingPasskeys = (row?.count ?? 0) > 0;
+  const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
+  const hasExistingPasskeys = usablePasskeyCount > 0;
   if (!hasExistingPasskeys && !isRecentAuthFresh(session.lastAuthAt)) {
     return jsonResponse(
       {
@@ -2601,12 +2613,21 @@ const ACCOUNT_ACTIVITY_EVENT_TYPES = new Set([
   "note_expired",
 ]);
 
+type AccountType = "free" | "personal_premium" | "business_premium";
+
+function normalizeAccountType(raw: string | null | undefined): AccountType {
+  const value = (raw || "free").toLowerCase();
+  if (value === "personal_premium" || value === "pro") return "personal_premium";
+  if (value === "business_premium" || value === "business") return "business_premium";
+  return "free";
+}
+
 function usageLimitsForPlan(plan: string | null | undefined): {
   notesPerDay: number | null;
   aiUsesPerDay: number | null;
 } {
-  const p = (plan || "free").toLowerCase();
-  if (p === "pro" || p === "business") {
+  const accountType = normalizeAccountType(plan);
+  if (accountType === "personal_premium" || accountType === "business_premium") {
     return { notesPerDay: null, aiUsesPerDay: null };
   }
   return {
@@ -3122,19 +3143,32 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       createdAt: new Date().toISOString(),
     };
 
-    await env.AUTH_DB.prepare(
-      "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    )
-      .bind(
-        crypto.randomUUID(),
-        userId,
-        credentialId,
-        publicKey,
-        counter ?? 0,
-        JSON.stringify(credentialMetadata), // Store metadata in transports field as JSON
-        new Date().toISOString()
-      )
-      .run();
+    const hasDisplayNameColumn = await webauthnCredentialsHaveDisplayNameColumn(env);
+    const insertStatement = hasDisplayNameColumn
+      ? "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, display_name, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      : "INSERT INTO webauthn_credentials (id, user_id, credential_id, public_key, counter, transports, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    const insertBinding = hasDisplayNameColumn
+      ? [
+          crypto.randomUUID(),
+          userId,
+          credentialId,
+          publicKey,
+          null,
+          counter ?? 0,
+          JSON.stringify(credentialMetadata),
+          new Date().toISOString(),
+        ]
+      : [
+          crypto.randomUUID(),
+          userId,
+          credentialId,
+          publicKey,
+          counter ?? 0,
+          JSON.stringify(credentialMetadata),
+          new Date().toISOString(),
+        ];
+
+    await env.AUTH_DB.prepare(insertStatement).bind(...insertBinding).run();
 
     await env.AUTH_DB.prepare(
       "UPDATE users SET status = ?, email_verified = CASE WHEN email IS NULL THEN email_verified ELSE 1 END, updated_at = ? WHERE id = ?"
@@ -3202,6 +3236,45 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
     });
+
+    const accountEmail = typeof challengeRecord.email === "string" ? challengeRecord.email.trim().toLowerCase() : "";
+    if (accountEmail) {
+      const passkeyDevice = credentialMetadata.deviceInfo || "this device";
+      const passkeyType = getPasskeyLabel(transports || null);
+      const securityUrl = `${getMagicLinkOrigin(env, request)}/account/security`;
+      const emailResult = await sendEmail(env, {
+        to: accountEmail,
+        subject: "Passkey added to your PrivateNote account",
+        text:
+          `A new passkey was added to your PrivateNote account.\n\n` +
+          `Passkey type: ${passkeyType}\n` +
+          `Device: ${passkeyDevice}\n\n` +
+          `If this was you, no further action is needed.\n\n` +
+          `If this was not you, review your passkeys in Security settings and remove any you do not recognize:\n${securityUrl}\n\n` +
+          `If anything looks wrong, secure your account immediately and contact support at contact@privatenote.ai.`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Passkey added</h2>
+            <p>A new passkey was added to your PrivateNote account.</p>
+            <p>
+              <strong>Passkey type:</strong> ${passkeyType}<br />
+              <strong>Device:</strong> ${passkeyDevice}
+            </p>
+            <p>If this was you, no further action is needed.</p>
+            <p>If this was not you, review your passkeys in Security settings and remove any you do not recognize.</p>
+            <p style="margin: 24px 0;">
+              <a href="${securityUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
+                Open Security settings
+              </a>
+            </p>
+            <p style="color: #4b5563;">If anything looks wrong, secure your account immediately and contact <a href="mailto:contact@privatenote.ai">contact@privatenote.ai</a>.</p>
+          </div>
+        `,
+      });
+      if (!emailResult.ok) {
+        console.warn("[AUTH] Failed to send passkey-added email:", emailResult.error);
+      }
+    }
 
     return jsonResponse({ ok: true }, 200, request);
   }
@@ -3470,7 +3543,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      "SELECT id, email, status, email_verified, created_at, plan, email_notifications FROM users WHERE id = ? LIMIT 1"
+      "SELECT id, email, status, email_verified, created_at, plan, account_type, business_display_name, email_notifications FROM users WHERE id = ? LIMIT 1"
     )
       .bind(session.id)
       .first<{
@@ -3480,6 +3553,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         email_verified: number | null;
         created_at: string | null;
         plan: string | null;
+        account_type: string | null;
+        business_display_name: string | null;
         email_notifications: number | null;
       }>();
 
@@ -3498,7 +3573,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         emailVerified: (user?.email_verified ?? 0) === 1,
         lastStepUpAt: session.lastStepUpAt,
         createdAt: user?.created_at ?? null,
-        plan: user?.plan ?? "free",
+        plan: normalizeAccountType(user?.account_type ?? user?.plan),
+        accountType: normalizeAccountType(user?.account_type ?? user?.plan),
+        businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
       }),
       { status: 200, headers }
@@ -3514,7 +3591,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const user = await env.AUTH_DB.prepare(
-      `SELECT id, email, created_at, plan, email_notifications FROM users WHERE id = ? LIMIT 1`
+      `SELECT id, email, created_at, plan, account_type, business_display_name, email_notifications FROM users WHERE id = ? LIMIT 1`
     )
       .bind(session.id)
       .first<{
@@ -3522,10 +3599,13 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         email: string | null;
         created_at: string | null;
         plan: string | null;
+        account_type: string | null;
+        business_display_name: string | null;
         email_notifications: number | null;
       }>();
 
-    const limits = usageLimitsForPlan(user?.plan);
+    const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
+    const limits = usageLimitsForPlan(normalizedAccountType);
     let notesToday = 0;
     let aiToday = 0;
     let notesMonth = 0;
@@ -3555,9 +3635,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     return new Response(
       JSON.stringify({
         ok: true,
+        id: user?.id ?? session.id,
         email: user?.email ?? null,
         createdAt: user?.created_at ?? null,
-        plan: user?.plan ?? "free",
+        plan: normalizedAccountType,
+        accountType: normalizedAccountType,
+        businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         limits: {
           notesPerDay: limits.notesPerDay,
@@ -3896,20 +3979,31 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    const rows = await env.AUTH_DB.prepare(
-      "SELECT id, credential_id, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC"
-    )
-      .bind(session.id)
-      .all<{ id: string; credential_id: string; transports: string | null; created_at: string; last_used_at: string | null }>();
+    const hasDisplayNameColumn = await webauthnCredentialsHaveDisplayNameColumn(env);
+    const rows = hasDisplayNameColumn
+      ? await env.AUTH_DB.prepare(
+          "SELECT id, credential_id, display_name, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC"
+        )
+          .bind(session.id)
+          .all<{ id: string; credential_id: string; display_name: string | null; transports: string | null; created_at: string; last_used_at: string | null }>()
+      : await env.AUTH_DB.prepare(
+          "SELECT id, credential_id, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC"
+        )
+          .bind(session.id)
+          .all<{ id: string; credential_id: string; transports: string | null; created_at: string; last_used_at: string | null }>();
 
     const passkeys = (rows.results || []).map((row) => {
       const transports = parseTransports(row.transports) || null;
+      const generatedLabel = getPasskeyLabel(transports);
+      const displayName = "display_name" in row && typeof row.display_name === "string" ? row.display_name.trim() : "";
       return {
         id: row.id,
         createdAt: row.created_at,
         lastUsedAt: row.last_used_at,
         transports,
-        label: getPasskeyLabel(transports),
+        label: displayName || generatedLabel,
+        generatedLabel,
+        customLabel: displayName || null,
       };
     });
 
@@ -3917,6 +4011,120 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
     return new Response(JSON.stringify({ ok: true, passkeys }), { status: 200, headers });
+  }
+
+  if (pathname.startsWith("/api/auth/passkeys/") && method === "PATCH") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const hasDisplayNameColumn = await webauthnCredentialsHaveDisplayNameColumn(env);
+    if (!hasDisplayNameColumn) {
+      return jsonResponse(
+        { message: "Passkey naming is not available until the latest database migration is applied." },
+        409,
+        request,
+      );
+    }
+
+    const passkeyId = pathname.slice("/api/auth/passkeys/".length).trim();
+    if (!passkeyId) {
+      return jsonResponse({ message: "Passkey not found" }, 404, request);
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+
+    const displayName = normalizePasskeyDisplayName(body.displayName);
+    const existing = await env.AUTH_DB.prepare(
+      "SELECT id, display_name FROM webauthn_credentials WHERE id = ? AND user_id = ? LIMIT 1"
+    )
+      .bind(passkeyId, session.id)
+      .first<{ id: string; display_name: string | null }>();
+    if (!existing) {
+      return jsonResponse({ message: "Passkey not found" }, 404, request);
+    }
+
+    await env.AUTH_DB.prepare("UPDATE webauthn_credentials SET display_name = ? WHERE id = ? AND user_id = ?")
+      .bind(displayName, passkeyId, session.id)
+      .run();
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "passkey_renamed",
+      status: "success",
+      details: { passkeyId, renamed: true },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true, displayName }, 200, request);
+  }
+
+  if (pathname.startsWith("/api/auth/passkeys/") && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const passkeyId = pathname.slice("/api/auth/passkeys/".length).trim();
+    if (!passkeyId) {
+      return jsonResponse({ message: "Passkey not found" }, 404, request);
+    }
+
+    const existing = await env.AUTH_DB.prepare(
+      "SELECT id FROM webauthn_credentials WHERE id = ? AND user_id = ? LIMIT 1"
+    )
+      .bind(passkeyId, session.id)
+      .first<{ id: string }>();
+    if (!existing) {
+      return jsonResponse({ message: "Passkey not found" }, 404, request);
+    }
+
+    const hasPasskeys = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
+    const verifiedTotpRow = await env.AUTH_DB.prepare(
+      "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1"
+    )
+      .bind(session.id)
+      .first<{ encrypted_secret: string }>();
+
+    const deleteGate = await gateSecondFactorForAccountTakeover(
+      env,
+      request,
+      session,
+      hasPasskeys,
+      verifiedTotpRow,
+      undefined,
+      SENSITIVE_ACTION_TOTP_RL.KEY_PREFIX_PASSKEY_RESET,
+      "passkey_reset",
+    );
+    if (deleteGate) return deleteGate;
+
+    await env.AUTH_DB.prepare("DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?")
+      .bind(passkeyId, session.id)
+      .run();
+
+    await logAuditEvent(env, {
+      userId: session.id,
+      eventType: "passkey_deleted",
+      status: "success",
+      details: { passkeyId },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   if (pathname === "/api/auth/passkeys/reset" && method === "POST") {
@@ -3934,12 +4142,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
-    const passkeyCountReset = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
-    const hasPasskeysReset = (passkeyCountReset?.count ?? 0) > 0;
+    const hasPasskeysReset = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
     const verifiedTotpRowReset = await env.AUTH_DB.prepare(
       "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
     )
@@ -4119,12 +4322,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
-    const passkeyCountForRecovery = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
-    const hasPasskeysForRecovery = (passkeyCountForRecovery?.count ?? 0) > 0;
+    const hasPasskeysForRecovery = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
     const verifiedTotpRowRecovery = await env.AUTH_DB.prepare(
       "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
     )
@@ -4777,13 +4975,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const newEmail = emailChangeBody.newEmail;
     const emailChangeTotpCode = emailChangeBody.totpCode;
 
-    const passkeyCount = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?",
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
-
-    const hasPasskeys = (passkeyCount?.count ?? 0) > 0;
+    const hasPasskeys = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
 
     const verifiedTotpRow = await env.AUTH_DB.prepare(
       "SELECT encrypted_secret FROM totp_secrets WHERE user_id = ? AND verified = 1 LIMIT 1",
@@ -5572,12 +5764,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const passkeyCountTotp = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
-    const hasPasskeysTotp = (passkeyCountTotp?.count ?? 0) > 0;
+    const hasPasskeysTotp = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
     if (hasPasskeysTotp && !isStepUpFresh(session.lastStepUpAt)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }
@@ -5775,12 +5962,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
 
-    const passkeyCountDisable = await env.AUTH_DB.prepare(
-      "SELECT COUNT(*) as count FROM webauthn_credentials WHERE user_id = ?"
-    )
-      .bind(session.id)
-      .first<{ count: number }>();
-    const hasPasskeysDisable = (passkeyCountDisable?.count ?? 0) > 0;
+    const hasPasskeysDisable = (await countUsableWebauthnCredentialsForUser(env, session.id)) > 0;
     if (hasPasskeysDisable && !isStepUpFresh(session.lastStepUpAt)) {
       return jsonResponse({ message: "Step-up required" }, 403, request);
     }

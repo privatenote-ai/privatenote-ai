@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@huggingface/transformers": "^4.0.1",
+    "@huggingface/transformers": "^4.1.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@mlc-ai/web-llm": "^0.2.80",
     "@neondatabase/serverless": "^0.10.4",

@@ -60,7 +60,7 @@ import {
 const LLM_STRIP_DEBUG =
   import.meta.env.DEV === true || String(import.meta.env.VITE_DEBUG_LLM_STRIP || "").toLowerCase() === "true";
 
-// Preferred models for pickers (Qwen 0.6B intentionally omitted — default is Gemma 2 2B)
+// Preferred models for pickers (Qwen 0.6B is auto-selected on mobile, not listed here)
 const PREFERRED_MODELS = [
   "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
   "Qwen3-1.7B-q4f16_1-MLC",                 // Fallback / alternate small instruct

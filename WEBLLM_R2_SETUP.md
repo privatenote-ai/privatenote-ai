@@ -149,11 +149,25 @@ webllm-models/ (R2 bucket)
 
 ## 🔒 Security & CORS
 
-The Worker route (`/models/*`) automatically:
-- ✅ Sets proper CORS headers
-- ✅ Uses long cache headers (1 year, immutable)
-- ✅ Supports range requests (for partial downloads)
-- ✅ Sets correct content types
+### If you use `VITE_WEBLLM_MODEL_BASE_URL` → `https://pub-….r2.dev` (public R2 URL)
+
+Browsers **require CORS** on cross-origin `fetch()`. R2 does **not** send `Access-Control-Allow-Origin` for your Pages origin until you set a **bucket CORS policy**. Otherwise you see:
+
+`Origin https://….privatenote-ai.pages.dev is not allowed by Access-Control-Allow-Origin` (often with HTTP 200).
+
+**Fix:** attach CORS to the **same bucket** that backs that `pub-…` URL (Dashboard → R2 → bucket → **Settings** → **CORS policy**, or CLI):
+
+```bash
+npx wrangler r2 bucket cors set YOUR_BUCKET_NAME --file scripts/r2-cors-webllm-browser.json
+```
+
+`scripts/r2-cors-webllm-browser.json` follows the [Wrangler / R2 CORS API shape](https://developers.cloudflare.com/r2/buckets/cors/#add-cors-policies-via-wrangler-cli): a top-level **`rules`** array, each rule with **`allowed.origins` / `allowed.methods` / `allowed.headers`** (not `AllowedOrigins`). It uses **`origins: ["*"]`** for **public, unauthenticated** model weights. Tighten to explicit `https://…` origins if you prefer.
+
+After saving CORS, hard-refresh the app and retry.
+
+### Worker `/models/*` (if you proxy files through the API Worker)
+
+When the Worker serves bytes from R2, it can attach CORS like the rest of the API. That path is optional in this repo; direct `pub-*.r2.dev` always needs **bucket CORS** as above.
 
 ## 💰 Cost Estimate
 
@@ -208,8 +222,8 @@ To update models:
 - Check Worker logs: `wrangler tail`
 
 ### CORS errors
-- Verify CORS headers in `serveModelFile()` function
-- Check allowed origins in `routes.ts`
+- If the model URL is **`pub-*.r2.dev`**, set **R2 bucket CORS** (see **Security & CORS** above), not only CSP.
+- If the model URL is your **Worker** origin, ensure the request `Origin` is allowed in `src/trustedOrigins.ts` and that responses include CORS headers.
 
 ### 404 errors
 - Verify file paths match R2 object keys

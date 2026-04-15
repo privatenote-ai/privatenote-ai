@@ -4,7 +4,6 @@ import {
   ChevronUp,
   ArrowLeft,
   ArrowUp,
-  Loader2,
   Zap,
   ZoomIn,
   FileText,
@@ -19,8 +18,11 @@ import {
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/clientLLM";
+import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
+import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
+import { WritingPencilIcon } from "./WritingPencilIcon";
 
 function templateChipClass(active: boolean): string {
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
@@ -125,6 +127,10 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const skipPromptGlowRef = useRef(true);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId);
   const hasPromptText = aiPrompt.trim().length > 0;
+  const generationHeadline = isGeneratingContent
+    ? aiGenerationStatusText?.trim() || "Generating…"
+    : "";
+  const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
 
   useEffect(() => {
     if (skipPromptGlowRef.current) {
@@ -276,7 +282,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
                 >
                   {isGeneratingContent ? (
-                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    generationGlyph === "brain" ? (
+                      <ThinkingBrainIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                    ) : (
+                      <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                    )
                   ) : (
                     <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
                   )}
@@ -284,25 +294,35 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[1.25rem]">
-                <Sparkles
-                  className={[
-                    "h-4 w-4 shrink-0 text-primary",
-                    hasPromptText && !isGeneratingContent && !isAiModelLoading
-                      ? "animate-pulse"
-                      : "opacity-40",
-                  ].join(" ")}
-                  aria-hidden
-                />
+                {isGeneratingContent ? (
+                  generationGlyph === "brain" ? (
+                    <ThinkingBrainIcon sizeClassName="h-9 w-9" className="text-primary" />
+                  ) : (
+                    <WritingPencilIcon sizeClassName="h-9 w-9" className="text-primary" />
+                  )
+                ) : (
+                  <Sparkles
+                    className={[
+                      "h-4 w-4 shrink-0 text-primary",
+                      hasPromptText && !isAiModelLoading ? "animate-pulse" : "opacity-40",
+                    ].join(" ")}
+                    aria-hidden
+                  />
+                )}
                 <span
-                  className={[
-                    "text-xs font-medium",
-                    hasPromptText && !isGeneratingContent && !isAiModelLoading
-                      ? "text-primary dark:text-blue-300"
-                      : "text-gray-500 dark:text-gray-400",
-                  ].join(" ")}
+                  className={
+                    isGeneratingContent
+                      ? "text-[13px] font-medium leading-snug text-foreground/90 dark:text-gray-100 sm:text-sm"
+                      : [
+                          "text-xs font-medium",
+                          hasPromptText && !isAiModelLoading
+                            ? "text-primary dark:text-blue-300"
+                            : "text-gray-500 dark:text-gray-400",
+                        ].join(" ")
+                  }
                 >
                   {isGeneratingContent
-                    ? aiGenerationStatusText?.trim() || "Generating…"
+                    ? generationHeadline
                     : isAiModelLoading
                       ? "Getting your private AI ready…"
                       : hasPromptText

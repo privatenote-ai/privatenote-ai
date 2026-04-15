@@ -13,6 +13,7 @@ import {
   type AccountDeleteMethod,
 } from "@/pages/security-settings/DeleteAccountDialog";
 import { PasskeyResetDialog } from "@/pages/security-settings/PasskeyResetDialog";
+import { ManagePasskeysDialog } from "@/pages/security-settings/ManagePasskeysDialog";
 import { DevicesSection } from "@/pages/security-settings/DevicesSection";
 import { isForbiddenApiError } from "@/pages/security-settings/forbidden";
 import { TotpSetupDialog } from "@/pages/security-settings/TotpSetupDialog";
@@ -89,6 +90,9 @@ export default function SecuritySettings() {
   const [passkeyResetDialogOpen, setPasskeyResetDialogOpen] = useState(false);
   const [passkeyResetTotpCode, setPasskeyResetTotpCode] = useState("");
   const [recoveryTotpCode, setRecoveryTotpCode] = useState("");
+  const [managePasskeysOpen, setManagePasskeysOpen] = useState(false);
+  const [renamingPasskeyId, setRenamingPasskeyId] = useState<string | null>(null);
+  const [deletingPasskeyId, setDeletingPasskeyId] = useState<string | null>(null);
 
   const dateFormatter = useMemo(
     () =>
@@ -128,6 +132,12 @@ export default function SecuritySettings() {
   const closePasskeyResetDialog = useCallback(() => {
     setPasskeyResetDialogOpen(false);
     setPasskeyResetTotpCode("");
+  }, []);
+
+  const closeManagePasskeysDialog = useCallback(() => {
+    setManagePasskeysOpen(false);
+    setRenamingPasskeyId(null);
+    setDeletingPasskeyId(null);
   }, []);
 
   const closeTotpDialog = useCallback(() => {
@@ -242,6 +252,52 @@ export default function SecuritySettings() {
       setRegisteringPasskey(false);
     }
   }, [passkeys.length, toast, refreshAll]);
+
+  const handleRenamePasskey = useCallback(
+    async (passkeyId: string, displayName: string) => {
+      setRenamingPasskeyId(passkeyId);
+      try {
+        await apiRequest(`/api/auth/passkeys/${passkeyId}`, "PATCH", { displayName });
+        toast({
+          title: "Passkey updated",
+          description: displayName.trim() ? "Passkey name saved." : "Passkey name cleared.",
+        });
+        await refreshAll();
+      } catch (error) {
+        toast({
+          title: "Rename failed",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "destructive",
+        });
+        throw error;
+      } finally {
+        setRenamingPasskeyId(null);
+      }
+    },
+    [refreshAll, toast],
+  );
+
+  const handleDeletePasskey = useCallback(
+    async (passkeyId: string, label: string) => {
+      const confirmed = window.confirm(`Delete ${label}? You may need to verify with a passkey first.`);
+      if (!confirmed) return;
+      setDeletingPasskeyId(passkeyId);
+      try {
+        await withOptionalStepUp(() => apiRequest(`/api/auth/passkeys/${passkeyId}`, "DELETE"), stepUpForRetry);
+        toast({ title: "Passkey deleted", description: "The selected passkey was removed." });
+        await refreshAll();
+      } catch (error) {
+        toast({
+          title: "Delete failed",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setDeletingPasskeyId(null);
+      }
+    },
+    [refreshAll, stepUpForRetry, toast],
+  );
 
   const handleRevokeAllSessions = useCallback(async () => {
     const confirmed = window.confirm("Sign out every session except this one?");
@@ -761,7 +817,6 @@ export default function SecuritySettings() {
         totpSettingUp={totpSettingUp}
         totpDisabling={totpDisabling}
         generatingRecoveryCodes={generatingRecoveryCodes}
-        resettingPasskeys={resettingPasskeys}
         recoveryTotpCode={recoveryTotpCode}
         onRecoveryTotpChange={setRecoveryTotpCode}
         onCopyEmail={() => void copyEmail()}
@@ -769,7 +824,7 @@ export default function SecuritySettings() {
         onTotpDisable={() => void handleTotpDisable()}
         onTotpSetup={() => void handleTotpSetup()}
         onAddPasskey={() => void handleAddPasskey()}
-        onResetPasskeys={() => void handleResetPasskeys()}
+        onOpenManagePasskeys={() => setManagePasskeysOpen(true)}
         onGenerateRecoveryCodes={() => void handleGenerateRecoveryCodes()}
       />
 
@@ -876,6 +931,19 @@ export default function SecuritySettings() {
         onClose={closePasskeyResetDialog}
         onRemoveWithPasskey={() => void handlePasskeyResetWithPasskey()}
         onRemoveWithTotp={() => void handlePasskeyResetWithTotp()}
+      />
+
+      <ManagePasskeysDialog
+        open={managePasskeysOpen}
+        passkeys={passkeys}
+        registeringPasskey={registeringPasskey}
+        renamingPasskeyId={renamingPasskeyId}
+        deletingPasskeyId={deletingPasskeyId}
+        dateFormatter={dateFormatter}
+        onClose={closeManagePasskeysDialog}
+        onAddPasskey={() => void handleAddPasskey()}
+        onRenamePasskey={handleRenamePasskey}
+        onDeletePasskey={handleDeletePasskey}
       />
 
       <TotpSetupDialog

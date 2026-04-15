@@ -203,7 +203,7 @@ export default function AuthMagic() {
       setHasPasskeys(true);
       toast({
         title: "Passkey added",
-        description: "You can sign in with this passkey. The event is recorded in your audit log under Account security.",
+        description: "You can sign in with this passkey on this device.",
       });
     } catch (error) {
       toast({

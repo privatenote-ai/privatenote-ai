@@ -1,4 +1,11 @@
-import { ModelRegistry, TextStreamer, env, pipeline } from "@huggingface/transformers";
+import {
+  AutoProcessor,
+  Gemma4ForConditionalGeneration,
+  ModelRegistry,
+  TextStreamer,
+  env,
+  pipeline,
+} from "@huggingface/transformers";
 import type { ModelLoadProgress } from "./clientLLM";
 
 type ProgressCallback = (progress: ModelLoadProgress) => void;
@@ -10,8 +17,11 @@ const DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE = "onnx-community/SmolLM-135M-Instruc
  * Enable with `VITE_TRANSFORMERS_DESKTOP_MAC_DEV=true` (see `getActiveTransformersLocalModelId`).
  */
 const DEFAULT_TRANSFORMERS_MODEL_ID_DESKTOP_MAC_DEV = "onnx-community/Llama-3.2-1B-Instruct-ONNX";
+/** Text-only Gemma 4 (Transformers.js ONNX). Enable with `VITE_TRANSFORMERS_GEMMA4_TEXT=true` on desktop Mac dev. */
+const DEFAULT_TRANSFORMERS_GEMMA4_MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
 const TRANSFORMERS_MOBILE_TASK = "text-generation";
 const TRANSFORMERS_MOBILE_Q4_DTYPE = "q4";
+const TRANSFORMERS_GEMMA4_DTYPE = "q4f16" as const;
 const DEFAULT_TRANSFORMERS_REMOTE_HOST = "https://huggingface.co/";
 const rawTransformersRemoteHost =
   (import.meta.env.VITE_TRANSFORMERS_REMOTE_HOST as string | undefined)?.trim() ?? "";
@@ -35,6 +45,7 @@ function envFlagTruthy(value: unknown): boolean {
 }
 
 const TRANSFORMERS_DESKTOP_MAC_DEV_FLAG = envFlagTruthy(import.meta.env.VITE_TRANSFORMERS_DESKTOP_MAC_DEV);
+const TRANSFORMERS_GEMMA4_TEXT_FLAG = envFlagTruthy(import.meta.env.VITE_TRANSFORMERS_GEMMA4_TEXT);
 
 type NavigatorWithWebGpu = Navigator & {
   gpu?: { requestAdapter(): Promise<unknown> };
@@ -81,12 +92,15 @@ type ChatMessage = {
   content: string;
 };
 
-type TransformersDtype = "q4";
+type TransformersDtype = "q4" | "q4f16";
 type BackendAttempt = {
   device: "webgpu" | "wasm";
   dtype: TransformersDtype;
   label: string;
 };
+
+type Gemma4Processor = Awaited<ReturnType<typeof AutoProcessor.from_pretrained>>;
+type Gemma4Model = Awaited<ReturnType<typeof Gemma4ForConditionalGeneration.from_pretrained>>;
 
 type TextGenerationPipelineLike = {
   tokenizer: unknown;
@@ -105,6 +119,9 @@ type StoredWebGpuSkipState = {
 
 let generatorPromise: Promise<TextGenerationPipelineLike> | null = null;
 let generatorInstance: TextGenerationPipelineLike | null = null;
+let gemma4Processor: Gemma4Processor | null = null;
+let gemma4Model: Gemma4Model | null = null;
+let gemma4InitInFlight: Promise<void> | null = null;
 let activeBackendLabel: string | null = null;
 /** Set when a pipeline has finished loading; cleared in `clearTransformersMobileEngine`. */
 let activeTransformersLoadedModelId: string | null = null;
@@ -116,18 +133,22 @@ export function getActiveTransformersLoadedModelId(): string | null {
 function logTransformersResolvedModel(modelId: string): void {
   const mobileEnv = (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim() || null;
   const desktopEnv = (import.meta.env.VITE_TRANSFORMERS_DESKTOP_MODEL_ID as string | undefined)?.trim() || null;
-  const route = shouldPreferTransformersMobileExperiment()
-    ? "mobile-transformers"
-    : TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
-      ? "desktop-mac-dev-transformers"
-      : "transformers-fallback-selection";
+  const gemma4Env = (import.meta.env.VITE_TRANSFORMERS_GEMMA4_MODEL_ID as string | undefined)?.trim() || null;
+  const route =
+    TRANSFORMERS_GEMMA4_TEXT_FLAG && TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
+      ? "desktop-mac-dev-gemma4-text"
+      : TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
+        ? "desktop-mac-dev-transformers"
+        : "transformers-optional-fallback";
   console.log("[AI] Transformers.js resolved Hugging Face model id for this session:", modelId);
   console.log("[AI] Transformers.js model selection detail:", {
     modelId,
     route,
     desktopMacDevFlag: TRANSFORMERS_DESKTOP_MAC_DEV_FLAG,
+    gemma4TextFlag: TRANSFORMERS_GEMMA4_TEXT_FLAG,
     envMobileModelId: mobileEnv,
     envDesktopModelId: desktopEnv,
+    envGemma4ModelId: gemma4Env,
     remoteHost: getTransformersRemoteHost(),
   });
 }
@@ -219,24 +240,30 @@ export function shouldPreferTransformersMobileExperiment(): boolean {
 }
 
 /**
- * Use Transformers.js for on-device text generation (mobile path, or Mac desktop when
- * `VITE_TRANSFORMERS_DESKTOP_MAC_DEV` is enabled). iOS is still blocked in `initializeTransformersMobile`.
+ * Use Transformers.js only for the optional Mac desktop dev path (`VITE_TRANSFORMERS_DESKTOP_MAC_DEV`).
+ * Mobile uses WebLLM (e.g. Qwen3-0.6B) again; iOS remains subject to browser WebGPU support.
  */
 export function shouldUseTransformersJsLocalPath(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
-  if (TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()) {
-    return true;
-  }
-  return shouldPreferTransformersMobileExperiment();
+  return TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely();
+}
+
+/**
+ * Gemma 4 via `AutoProcessor` + `Gemma4ForConditionalGeneration` (Hub ONNX recipe), text-only messages.
+ * Requires {@link shouldUseTransformersJsLocalPath} (desktop Mac dev) and `VITE_TRANSFORMERS_GEMMA4_TEXT=true`.
+ */
+export function shouldUseGemma4TransformersTextPath(): boolean {
+  return shouldUseTransformersJsLocalPath() && TRANSFORMERS_GEMMA4_TEXT_FLAG;
 }
 
 export function getActiveTransformersLocalModelId(): string {
   const mobileOverride = (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim();
   const desktopOverride = (import.meta.env.VITE_TRANSFORMERS_DESKTOP_MODEL_ID as string | undefined)?.trim();
-  if (shouldPreferTransformersMobileExperiment()) {
-    return mobileOverride || DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE;
-  }
+  const gemma4Override = (import.meta.env.VITE_TRANSFORMERS_GEMMA4_MODEL_ID as string | undefined)?.trim();
   if (TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()) {
+    if (TRANSFORMERS_GEMMA4_TEXT_FLAG) {
+      return gemma4Override || DEFAULT_TRANSFORMERS_GEMMA4_MODEL_ID;
+    }
     return desktopOverride || DEFAULT_TRANSFORMERS_MODEL_ID_DESKTOP_MAC_DEV;
   }
   return mobileOverride || DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE;
@@ -244,13 +271,14 @@ export function getActiveTransformersLocalModelId(): string {
 
 function approximateTransformersModelSizeMB(modelId: string): number {
   if (/SmolLM-135M/i.test(modelId)) return 140;
+  if (/gemma-4-E2B/i.test(modelId)) return 1800;
   if (/Llama-3\.2-1B/i.test(modelId)) return 750;
   if (/[12]\s*B|1\.7B|2B/i.test(modelId)) return 750;
   return 500;
 }
 
 export function isTransformersMobileLoaded(): boolean {
-  return generatorInstance !== null;
+  return generatorInstance !== null || (gemma4Model !== null && gemma4Processor !== null);
 }
 
 function readStoredWebGpuSkipState(): StoredWebGpuSkipState | null {
@@ -305,7 +333,7 @@ function clearStoredWebGpuSkipState(): void {
   }
 }
 
-function getPreferredBackendAttempts(): BackendAttempt[] {
+function buildBackendAttempts(dtype: TransformersDtype): BackendAttempt[] {
   if (isIOSWebKit()) {
     return [];
   }
@@ -314,11 +342,15 @@ function getPreferredBackendAttempts(): BackendAttempt[] {
   const shouldSkipWebGpu = readStoredWebGpuSkipState() !== null;
   if (hasWebGpuSurface && !shouldSkipWebGpu) {
     return [
-      { device: "webgpu", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "webgpu/q4" },
-      { device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" },
+      { device: "webgpu", dtype, label: `webgpu/${dtype}` },
+      { device: "wasm", dtype, label: `wasm/${dtype}` },
     ];
   }
-  return [{ device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" }];
+  return [{ device: "wasm", dtype, label: `wasm/${dtype}` }];
+}
+
+function getPreferredBackendAttempts(): BackendAttempt[] {
+  return buildBackendAttempts(TRANSFORMERS_MOBILE_Q4_DTYPE);
 }
 
 function describeNextAttempt(attempt: BackendAttempt | undefined): string {
@@ -365,10 +397,12 @@ async function withBackendInitTimeout<T>(
 
 export function getTransformersMobileModelInfo() {
   const name = getActiveTransformersLocalModelId();
-  const isMobile = shouldPreferTransformersMobileExperiment();
-  const variantLabel = isMobile
-    ? "Compact mobile fallback (experimental)"
-    : "Desktop Transformers.js test (Llama 3.2 1B–class)";
+  const isDesktopDev = TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely();
+  const variantLabel = shouldUseGemma4TransformersTextPath()
+    ? "Desktop Transformers.js (Gemma 4 E2B text-only)"
+    : isDesktopDev
+      ? "Desktop Transformers.js test (Llama 3.2 1B–class)"
+      : "Transformers.js fallback (experimental)";
   return {
     name,
     variantLabel,
@@ -381,6 +415,160 @@ export function getTransformersMobileModelInfo() {
   };
 }
 
+function toGemma4ChatMessages(
+  messages: ChatMessage[],
+): Array<{ role: string; content: Array<{ type: string; text: string }> }> {
+  return messages.map((m) => ({
+    role: m.role,
+    content: [{ type: "text", text: m.content }],
+  }));
+}
+
+async function initializeTransformersGemma4Text(onProgress?: ProgressCallback): Promise<void> {
+  if (isIOSWebKit()) {
+    onProgress?.({
+      progress: 0,
+      text: "On-device AI unavailable on this device",
+      detail: TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
+    });
+    throw new Error(TRANSFORMERS_MOBILE_IOS_DISABLED_REASON);
+  }
+
+  if (gemma4Model && gemma4Processor) {
+    console.log("[AI] Transformers.js Gemma 4 session already loaded (reusing)", {
+      modelId: activeTransformersLoadedModelId,
+      backend: activeBackendLabel,
+    });
+    onProgress?.({ progress: 100, text: "Ready to generate" });
+    return;
+  }
+
+  if (gemma4InitInFlight) {
+    await gemma4InitInFlight;
+    onProgress?.({ progress: 100, text: "Ready to generate" });
+    return;
+  }
+
+  configureTransformersEnv();
+  onProgress?.({ progress: 0, text: "Preparing private AI…" });
+
+  gemma4InitInFlight = (async () => {
+    const attempts = buildBackendAttempts(TRANSFORMERS_GEMMA4_DTYPE);
+    if (attempts.length === 0) {
+      const msg = "No on-device backend is available for this platform.";
+      onProgress?.({ progress: 0, text: "Could not start on-device AI", detail: msg });
+      throw new Error(msg);
+    }
+    const storedSkip = readStoredWebGpuSkipState();
+    const modelId = getActiveTransformersLocalModelId();
+    logTransformersResolvedModel(modelId);
+    console.log("[AI] Initializing Transformers.js Gemma 4 runtime", {
+      modelId,
+      remoteHost: getTransformersRemoteHost(),
+      backendsToTry: attempts.map((a) => a.label),
+      webgpuSkip: storedSkip,
+    });
+    if (storedSkip) {
+      console.warn("[AI] Skipping mobile Transformers WebGPU attempt due to stored failure state", {
+        reason: storedSkip.reason,
+        updatedAt: storedSkip.updatedAt,
+        appVersion: storedSkip.appVersion,
+      });
+    }
+
+    let lastError: unknown = null;
+    for (const [index, attempt] of attempts.entries()) {
+      console.log("[AI] Trying Gemma 4 Transformers backend:", attempt.label);
+      onProgress?.({
+        progress: 2,
+        text: `Preparing private AI (${attempt.label})…`,
+        detail:
+          attempt.device === "wasm"
+            ? "CPU backend startup can take several minutes on first load for larger models."
+            : undefined,
+      });
+
+      try {
+        const progress_callback = (status: unknown) => {
+          const rec = status as Record<string, unknown>;
+          logTransformersPipelineProgress(modelId, rec);
+          const mapped = mapTransformersProgress(rec);
+          if (mapped) onProgress?.(mapped);
+        };
+        const loadAll = (async () => {
+          gemma4Processor = await AutoProcessor.from_pretrained(modelId, { progress_callback });
+          gemma4Model = await Gemma4ForConditionalGeneration.from_pretrained(modelId, {
+            device: attempt.device,
+            dtype: TRANSFORMERS_GEMMA4_DTYPE,
+            progress_callback,
+          });
+        })();
+        await withBackendInitTimeout(loadAll, attempt);
+        activeBackendLabel = attempt.label;
+        activeTransformersLoadedModelId = modelId;
+        if (attempt.device === "webgpu") {
+          clearStoredWebGpuSkipState();
+        }
+        console.log("[AI] Transformers.js Gemma 4 model is loaded and runnable.", {
+          modelId,
+          backend: attempt.label,
+          note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
+        });
+        onProgress?.({ progress: 100, text: "Ready to generate" });
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt.device === "webgpu") {
+          const message = error instanceof Error ? error.message : String(error);
+          const reason = message.includes("Timed out")
+            ? MOBILE_WEBGPU_SKIP_REASON_TIMEOUT
+            : MOBILE_WEBGPU_SKIP_REASON_FAILURE;
+          persistWebGpuSkipState(reason);
+          console.warn("[AI] Persisted mobile Transformers WebGPU skip state", {
+            reason,
+            appVersion: TRANSFORMERS_MOBILE_RUNTIME_APP_VERSION,
+            nextAttempt: attempts[index + 1]?.label ?? null,
+          });
+        }
+        if (attempt.device === "wasm") {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.includes("Load failed")) {
+            console.warn(
+              "[AI] Mobile Transformers WASM load failed after successful network checks; this usually indicates a browser/runtime limitation rather than a bucket CORS problem.",
+            );
+          }
+        }
+        console.error("[AI] Gemma 4 Transformers backend failed:", attempt.label, error);
+        console.warn("[AI] Gemma 4 Transformers backend fallback:", describeNextAttempt(attempts[index + 1]));
+        onProgress?.({
+          progress: 2,
+          text: `Backend ${attempt.label} failed`,
+          detail: formatInitErrorDetail(error),
+        });
+        gemma4Processor = null;
+        gemma4Model = null;
+      }
+    }
+
+    const lastDetail = lastError != null ? formatInitErrorDetail(lastError) : "Unknown error";
+    onProgress?.({
+      progress: 0,
+      text: "Could not start on-device AI",
+      detail: lastDetail,
+    });
+
+    throw lastError instanceof Error
+      ? new Error(`All Gemma 4 Transformers backends failed. Last error: ${lastError.message}`)
+      : new Error("All Gemma 4 Transformers backends failed.");
+  })();
+
+  try {
+    await gemma4InitInFlight;
+  } finally {
+    gemma4InitInFlight = null;
+  }
+}
+
 export async function initializeTransformersMobile(onProgress?: ProgressCallback): Promise<void> {
   if (isIOSWebKit()) {
     onProgress?.({
@@ -389,6 +577,10 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       detail: TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
     });
     throw new Error(TRANSFORMERS_MOBILE_IOS_DISABLED_REASON);
+  }
+
+  if (shouldUseGemma4TransformersTextPath()) {
+    return initializeTransformersGemma4Text(onProgress);
   }
 
   if (generatorInstance) {
@@ -445,9 +637,9 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
         text: `Preparing private AI (${attempt.label})…`,
         detail:
           attempt.device === "wasm"
-            ? shouldPreferTransformersMobileExperiment()
-              ? "Mobile CPU startup can take up to about a minute on first load."
-              : "CPU backend startup can take several minutes on first load for larger models."
+            ? TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
+              ? "CPU backend startup can take several minutes on first load for larger models."
+              : "Mobile CPU startup can take up to about a minute on first load."
             : undefined,
       });
 
@@ -529,10 +721,91 @@ export function getActiveTransformersMobileBackendLabel(): string | null {
   return activeBackendLabel;
 }
 
+async function generateTransformersGemma4Text(
+  messages: ChatMessage[],
+  onToken?: (text: string) => void,
+): Promise<string> {
+  const processor = gemma4Processor;
+  const model = gemma4Model;
+  if (!processor || !model) {
+    throw new Error("Transformers Gemma 4 runtime not initialized");
+  }
+  const tokenizer = processor.tokenizer;
+  if (!tokenizer) {
+    throw new Error("Gemma processor has no tokenizer");
+  }
+
+  const hubMessages = toGemma4ChatMessages(messages);
+  const templated = processor.apply_chat_template(hubMessages as never, {
+    enable_thinking: false,
+    add_generation_prompt: true,
+  } as never);
+
+  let inputs: Record<string, unknown>;
+  if (typeof templated === "string") {
+    inputs = (await processor(templated, { add_special_tokens: false })) as Record<string, unknown>;
+  } else {
+    inputs = templated as Record<string, unknown>;
+  }
+
+  let streamed = "";
+  const streamer = new TextStreamer(tokenizer, {
+    skip_prompt: true,
+    skip_special_tokens: true,
+    callback_function: (text: string) => {
+      streamed += text;
+      onToken?.(text);
+    },
+  });
+
+  const outputs = await model.generate({
+    ...inputs,
+    max_new_tokens: 512,
+    do_sample: false,
+    streamer,
+  } as Parameters<Gemma4Model["generate"]>[0]);
+
+  const trimmed = streamed.trim();
+  if (trimmed.length > 0) {
+    return trimmed;
+  }
+
+  const inputIds = inputs.input_ids as { dims?: { at(n: number): number } } | undefined;
+  if (
+    inputIds?.dims &&
+    outputs &&
+    typeof outputs === "object" &&
+    outputs !== null &&
+    "slice" in outputs &&
+    typeof (outputs as { slice?: unknown }).slice === "function"
+  ) {
+    const start = inputIds.dims.at(-1);
+    const sliced = (outputs as { slice: (a: null, b: [number, null]) => unknown }).slice(null, [
+      start,
+      null,
+    ]);
+    const decoded = processor.batch_decode(sliced as never, { skip_special_tokens: true });
+    const first = Array.isArray(decoded) ? decoded[0] : decoded;
+    if (typeof first === "string" && first.trim().length > 0) {
+      return first.trim();
+    }
+  }
+
+  return trimmed;
+}
+
 export async function generateTransformersMobile(
   messages: ChatMessage[],
   onToken?: (text: string) => void,
 ): Promise<string> {
+  if (shouldUseGemma4TransformersTextPath()) {
+    console.log("[AI] Transformers.js Gemma 4 generate", {
+      modelId: activeTransformersLoadedModelId,
+      backend: activeBackendLabel,
+    });
+    return generateTransformersGemma4Text(messages, onToken);
+  }
+
   if (!generatorInstance) {
     throw new Error("Transformers mobile runtime not initialized");
   }
@@ -576,6 +849,12 @@ export async function generateTransformersMobile(
 }
 
 export function clearTransformersMobileEngine(): void {
+  if (gemma4Model) {
+    void gemma4Model.dispose();
+  }
+  gemma4Model = null;
+  gemma4Processor = null;
+  gemma4InitInFlight = null;
   if (generatorInstance && "dispose" in generatorInstance && typeof generatorInstance.dispose === "function") {
     void generatorInstance.dispose();
   }
@@ -589,17 +868,28 @@ export async function resetTransformersMobileCache(): Promise<void> {
   clearTransformersMobileEngine();
   clearStoredWebGpuSkipState();
   const mid = getActiveTransformersLocalModelId();
-  console.log("[AI] Clearing Transformers.js pipeline cache for model:", mid);
-  const clearTasks = [
-    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
-      device: "webgpu",
-      dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
-    }),
-    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
-      device: "wasm",
-      dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
-    }),
-  ];
+  console.log("[AI] Clearing Transformers.js cache for model:", mid);
+  const clearTasks = shouldUseGemma4TransformersTextPath()
+    ? [
+        ModelRegistry.clear_cache(mid, {
+          device: "webgpu",
+          dtype: TRANSFORMERS_GEMMA4_DTYPE,
+        }),
+        ModelRegistry.clear_cache(mid, {
+          device: "wasm",
+          dtype: TRANSFORMERS_GEMMA4_DTYPE,
+        }),
+      ]
+    : [
+        ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
+          device: "webgpu",
+          dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
+        }),
+        ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
+          device: "wasm",
+          dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
+        }),
+      ];
   const results = await Promise.allSettled(clearTasks);
   results.forEach((result) => {
     if (result.status === "rejected") {

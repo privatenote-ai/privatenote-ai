@@ -43,16 +43,35 @@ export function localAiDraftingLabel(
 ): string {
   switch (type) {
     case "summarize":
-      return "Drafting your summary…";
+      return "Writing your summary…";
     case "secure":
-      return "Drafting redacted text…";
+      return "Writing redacted text…";
     case "improve":
-      return "Drafting clearer wording…";
+      return "Writing clearer wording…";
     case "simplify":
-      return "Drafting simpler wording…";
+      return "Writing simpler wording…";
     case "ask":
-      return "Drafting…";
+      return "Writing…";
   }
+}
+
+/**
+ * Which animated affordance matches the current headline (brain = cognitive / setup; pencil = streaming text).
+ */
+export function getLocalAiGenerationGlyph(headline: string): "brain" | "pencil" {
+  const t = headline.trim().toLowerCase();
+  if (
+    t.includes("thinking") ||
+    t.includes("analyzing") ||
+    t.includes("finalizing") ||
+    (t.includes("loading") && t.includes("private ai")) ||
+    t.includes("preparing private ai") ||
+    t === "working…" ||
+    t === "working"
+  ) {
+    return "brain";
+  }
+  return "pencil";
 }
 
 /** Phase 4 — parse, strip reasoning tags, clean, validate (and optional repair). */

@@ -5,20 +5,54 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { initializeClientLLM } from "@/utils/clientLLM";
+import {
+  getAvailableModels,
+  getRecommendedModelForDevice,
+  getWebLLMSupportHint,
+  initializeClientLLM,
+  isWebLLMSupported,
+} from "@/utils/clientLLM";
 import { useToast } from "@/hooks/use-toast";
 
 type DeviceType = "mobile" | "laptop" | "desktop" | "";
 
 type VariantKey = "ultraLite" | "midRange" | "highEnd" | "multilingual" | "powerhouse";
 
-const VARIANT_MLC_ID: Record<VariantKey, string> = {
-  ultraLite: "gemma-2-2b-it-q4f16_1-MLC",
-  midRange: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-  highEnd: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-  multilingual: "gemma-2-2b-it-q4f16_1-MLC",
-  powerhouse: "DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC",
+const VARIANT_MODEL_CANDIDATES: Record<VariantKey, string[]> = {
+  ultraLite: [
+    "gemma-2-2b-it-q4f16_1-MLC",
+    "Qwen3-1.7B-q4f16_1-MLC",
+    "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+  ],
+  midRange: [
+    "Qwen3-1.7B-q4f16_1-MLC",
+    "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+    "gemma-2-2b-it-q4f16_1-MLC",
+  ],
+  highEnd: [
+    "Qwen3-4B-q4f16_1-MLC",
+    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    "Llama-3.1-8B-Instruct-q4f16_1-MLC",
+  ],
+  multilingual: [
+    "Qwen3-1.7B-q4f16_1-MLC",
+    "gemma-2-2b-it-q4f16_1-MLC",
+    "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+  ],
+  powerhouse: [
+    "Qwen3-4B-q4f16_1-MLC",
+    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    "Llama-3.1-8B-Instruct-q4f16_1-MLC",
+  ],
 };
+
+function pickCatalogModel(candidates: string[]): string | null {
+  const available = new Set(getAvailableModels());
+  for (const modelId of candidates) {
+    if (available.has(modelId)) return modelId;
+  }
+  return null;
+}
 
 const getHardwareStats = (): {
   ram: number | "Unknown";
@@ -168,7 +202,11 @@ function LlmUi() {
   }, [primaryLanguage, deviceType, ramValue, isNonEnglish, isLaptopOrDesktop, isMobileChosen, hasWebGPU, coreValue]);
 
   const recommendationReady = Boolean(recommendation);
-  const recommendedModelId = recommendation ? VARIANT_MLC_ID[recommendation.variant] : null;
+  const recommendedModelId = recommendation
+    ? pickCatalogModel(VARIANT_MODEL_CANDIDATES[recommendation.variant]) ?? getRecommendedModelForDevice()
+    : null;
+  const webLlmReady = isWebLLMSupported();
+  const webLlmHint = getWebLLMSupportHint();
 
   const handleBackgroundDownload = async () => {
     if (!recommendedModelId || isDownloading) return;
@@ -213,10 +251,20 @@ function LlmUi() {
             <Badge variant="secondary">Cores: {typeof stats.cores === "number" ? stats.cores : "Unknown"}</Badge>
             <Badge variant="secondary">GPU: {stats.gpu}</Badge>
             <Badge variant="secondary">Device: {stats.isMobile ? "Mobile" : "Desktop/Laptop"}</Badge>
+            <Badge variant={webLlmReady ? "default" : "destructive"}>
+              Runtime: {webLlmReady ? "WebLLM available" : "WebLLM unavailable"}
+            </Badge>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            We’ll use your hardware signals as a baseline and then refine the pick with your language and device class.
+            This page tests the same WebLLM runtime used by the app. It does not use Transformers.js.
           </p>
+          {webLlmHint ? (
+            <p className="text-sm text-red-600 dark:text-red-300">{webLlmHint}</p>
+          ) : (
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              We’ll use your hardware signals as a baseline and then refine the pick with your language and device class.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -278,6 +326,7 @@ function LlmUi() {
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-primary text-white">{recommendation?.tier}</Badge>
+                {recommendedModelId ? <Badge variant="secondary">{recommendedModelId}</Badge> : null}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">{recommendation?.context}</p>
 
@@ -323,6 +372,13 @@ function LlmUi() {
                     <TableCell className="font-semibold">Recommended profile</TableCell>
                     <TableCell className="font-semibold">{recommendation?.tier}</TableCell>
                     <TableCell className="font-semibold">Ready to queue</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-semibold">Catalog-backed model</TableCell>
+                    <TableCell className="font-semibold">{recommendedModelId ?? "No compatible model found"}</TableCell>
+                    <TableCell className="font-semibold">
+                      {recommendedModelId ? "Download target is valid" : "Selection needs investigation"}
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

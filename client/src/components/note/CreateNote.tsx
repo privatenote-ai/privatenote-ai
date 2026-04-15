@@ -41,6 +41,7 @@ import {
   localAiAnalyzingPromptLabel,
   localAiAnalyzingDetailHint,
   LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS,
+  getLocalAiGenerationGlyph,
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -81,6 +82,8 @@ import { NoteSettingsPanel } from "./NoteSettingsPanel";
 import { AiComposer } from "./AiComposer";
 import type { AiPostGenTransform } from "./AiComposer";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
+import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
+import { WritingPencilIcon } from "./WritingPencilIcon";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -1181,16 +1184,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/12 text-primary">
-              <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+            <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
+              {getLocalAiGenerationGlyph(localAiDialogPrimaryLine(aiProgress)) === "brain" ? (
+                <ThinkingBrainIcon sizeClassName="h-14 w-14" />
+              ) : (
+                <WritingPencilIcon sizeClassName="h-14 w-14" />
+              )}
             </div>
-            <DialogTitle className="text-center text-base sm:text-lg">
+            <DialogTitle className="text-center text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
               {localAiDialogPrimaryLine(aiProgress)}
             </DialogTitle>
             <DialogDescription asChild>
-              <div className="space-y-3 pt-1 text-center text-sm text-muted-foreground">
+              <div className="space-y-3 pt-2 text-center">
                 {aiProgress?.detail ? (
-                  <p className="text-xs text-foreground/85">{aiProgress.detail}</p>
+                  <p className="text-sm font-medium leading-snug text-foreground/90">{aiProgress.detail}</p>
                 ) : null}
                 <div className="mx-auto h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted">
                   <div
@@ -1202,7 +1209,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     }}
                   />
                 </div>
-                <p>
+                <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground/85">
                   Private AI runs entirely in your browser. Longer tasks and slower devices can take
                   noticeably more time than cloud APIs — that&apos;s normal for local generation.
                 </p>

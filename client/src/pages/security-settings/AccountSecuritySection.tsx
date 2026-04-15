@@ -17,7 +17,6 @@ type Props = {
   totpSettingUp: boolean;
   totpDisabling: boolean;
   generatingRecoveryCodes: boolean;
-  resettingPasskeys: boolean;
   /** When passkeys + TOTP, optional code to generate recovery codes without a passkey prompt. */
   recoveryTotpCode: string;
   onRecoveryTotpChange: (value: string) => void;
@@ -26,7 +25,7 @@ type Props = {
   onTotpDisable: () => void;
   onTotpSetup: () => void;
   onAddPasskey: () => void;
-  onResetPasskeys: () => void;
+  onOpenManagePasskeys: () => void;
   onGenerateRecoveryCodes: () => void;
 };
 
@@ -42,7 +41,6 @@ export function AccountSecuritySection({
   totpSettingUp,
   totpDisabling,
   generatingRecoveryCodes,
-  resettingPasskeys,
   recoveryTotpCode,
   onRecoveryTotpChange,
   onCopyEmail,
@@ -50,7 +48,7 @@ export function AccountSecuritySection({
   onTotpDisable,
   onTotpSetup,
   onAddPasskey,
-  onResetPasskeys,
+  onOpenManagePasskeys,
   onGenerateRecoveryCodes,
 }: Props) {
   const [passkeyHelpOpen, setPasskeyHelpOpen] = useState(false);
@@ -71,7 +69,7 @@ export function AccountSecuritySection({
             Manage how you sign in and protect your account.
           </p>
         </div>
-        <div className="space-y-5 rounded-xl border border-blue-200/80 p-4 dark:border-blue-900/60">
+        <div className="space-y-5">
           <div>
             <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
@@ -90,28 +88,25 @@ export function AccountSecuritySection({
                       : "No passkeys added"}
                   </p>
                 </div>
-                <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end lg:self-center">
-                  <Button size="sm" onClick={onAddPasskey} disabled={registeringPasskey} className="w-full sm:w-auto">
+                <div className="flex w-full lg:w-auto lg:justify-end lg:self-center">
+                  <Button
+                    variant={hasPasskeys ? "outline" : "default"}
+                    size="sm"
+                    onClick={hasPasskeys ? onOpenManagePasskeys : onAddPasskey}
+                    disabled={registeringPasskey}
+                    className="w-full sm:w-auto"
+                  >
                     {registeringPasskey ? (
                       <>
                         <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                         Adding...
                       </>
+                    ) : hasPasskeys ? (
+                      "Manage passkeys"
                     ) : (
                       "Add passkey"
                     )}
                   </Button>
-                  {hasPasskeys && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onResetPasskeys}
-                      disabled={resettingPasskeys}
-                      className="w-full sm:w-auto"
-                    >
-                      Remove all passkeys
-                    </Button>
-                  )}
                 </div>
               </div>
             </div>

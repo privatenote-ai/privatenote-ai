@@ -1,5 +1,6 @@
 -- Auth schema for D1 (Cloudflare)
 -- Apply with: wrangler d1 execute <DB_NAME> --file=src/auth/schema.sql
+-- Wrangler-managed baseline (local dev + deploy): src/auth/d1-migrations/0001_auth_schema.sql — update both when changing tables.
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -10,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT,
   last_login_at TEXT,
   plan TEXT NOT NULL DEFAULT 'free',
+  account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
+  business_display_name TEXT,
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1))
 );
 
@@ -18,6 +21,7 @@ CREATE TABLE IF NOT EXISTS webauthn_credentials (
   user_id TEXT NOT NULL,
   credential_id TEXT NOT NULL,
   public_key TEXT NOT NULL,
+  display_name TEXT,
   counter INTEGER DEFAULT 0,
   transports TEXT,
   created_at TEXT DEFAULT (datetime('now')),

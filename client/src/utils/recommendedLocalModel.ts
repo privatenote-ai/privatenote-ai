@@ -41,6 +41,16 @@ function getRamGb(): number {
   return (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 0;
 }
 
+/** Phone / tablet UA (includes iPad; excludes desktop Mac unless touch “desktop mode”). */
+export function isMobileFormFactor(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua))
+  );
+}
+
 function isModelInCatalog(modelId: string): boolean {
   if (USE_CUSTOM_WEBLLM_HOST) {
     return OUR_WEBLLM_MODEL_RECORDS.some((r) => r.model_id === modelId);
@@ -100,11 +110,22 @@ export async function primeLocalModelGpuLimit(): Promise<void> {
 /** Raw hardware tier ignoring premium (for diagnostics / UX labels). Not authoritative until GPU is primed. */
 export function getHardwareTierModelIdSync(): string {
   if (!gpuPrimed) {
-    return MODEL_GEMMA_2_2B;
+    return isMobileFormFactor()
+      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B])
+      : MODEL_GEMMA_2_2B;
   }
   const limit = gpuStorageLimitCached;
-  if (limit !== null && limit < VRAM_LIMIT_BYTES) return MODEL_GEMMA_2_2B;
+  if (limit !== null && limit < VRAM_LIMIT_BYTES) {
+    return isMobileFormFactor()
+      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B])
+      : MODEL_GEMMA_2_2B;
+  }
   const strong = getCores() >= 8 && getRamGb() >= 8;
+  if (isMobileFormFactor()) {
+    return strong
+      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B])
+      : pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B]);
+  }
   return strong ? MODEL_QWEN_4 : MODEL_GEMMA_2_2B;
 }
 
@@ -114,25 +135,35 @@ export function getHardwareTierModelIdSync(): string {
  * function uses GPU cache when primed, otherwise a conservative cap (no 4B) from cores/RAM only.
  */
 export function getRecommendedLocalModelIdSync(): string {
+  const mobile = isMobileFormFactor();
+  const mobilePick = [MODEL_QWEN_0_6, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7] as const;
+  const desktopFreePick = [MODEL_GEMMA_2_2B, MODEL_QWEN_1_7] as const;
+
   if (!isLocalLlmPremium()) {
-    return pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
+    return mobile ? pickFirstAvailableModel([...mobilePick]) : pickFirstAvailableModel([...desktopFreePick]);
   }
 
   const strong = getCores() >= 8 && getRamGb() >= 8;
 
   if (!gpuPrimed) {
-    return pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
+    return mobile
+      ? pickFirstAvailableModel([...mobilePick])
+      : pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
 
   const limit = gpuStorageLimitCached;
   if (limit !== null && limit < VRAM_LIMIT_BYTES) {
-    return pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
+    return mobile
+      ? pickFirstAvailableModel([...mobilePick])
+      : pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
 
   if (strong) {
-    return pickFirstAvailableModel([MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
+    return mobile
+      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7])
+      : pickFirstAvailableModel([MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
-  return pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
+  return mobile ? pickFirstAvailableModel([...mobilePick]) : pickFirstAvailableModel([...desktopFreePick]);
 }
 
 export async function getRecommendedLocalModelId(): Promise<string> {

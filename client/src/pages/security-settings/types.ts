@@ -20,4 +20,6 @@ export type PasskeyInfo = {
   lastUsedAt: string | null;
   transports: string[] | null;
   label: string;
+  generatedLabel?: string;
+  customLabel?: string | null;
 };
