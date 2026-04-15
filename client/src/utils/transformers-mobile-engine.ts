@@ -405,6 +405,7 @@ export function getTransformersMobileModelInfo() {
       : "Transformers.js fallback (experimental)";
   return {
     name,
+    loadedModelId: getActiveTransformersLoadedModelId(),
     variantLabel,
     sizeMB: approximateTransformersModelSizeMB(name),
     cacheKey: `transformers_local_pipeline_v3_${name.replace(/[^a-zA-Z0-9]+/g, "_")}`,

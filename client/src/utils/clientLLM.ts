@@ -19,6 +19,7 @@ import {
   resetTransformersMobileCache,
   isIOSWebKit,
   TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
+  getActiveTransformersLoadedModelId,
 } from "./transformers-mobile-engine";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import {
@@ -1372,6 +1373,17 @@ export async function getStorageInfo(): Promise<{
 }
 
 /**
+ * Hugging Face / MLC model id currently in memory for generation, or null before the first successful load.
+ * On WebLLM, this is the id passed to `CreateMLCEngine`; `getModelInfo().name` is the device pick / next-load candidate and may differ until init finishes.
+ */
+export function getLoadedLocalModelId(): string | null {
+  if (shouldUseTransformersJsLocalPath()) {
+    return getActiveTransformersLoadedModelId();
+  }
+  return getLoadedModelIdWebLLM();
+}
+
+/**
  * Get model information
  */
 export function getModelInfo() {
@@ -1380,9 +1392,11 @@ export function getModelInfo() {
   }
   const available = getAvailableModels();
   const modelId = findSuitableModel();
+  const loadedModelId = getLoadedModelIdWebLLM();
 
   return {
     name: modelId,
+    loadedModelId,
     variantLabel: getLocalAiTierLabelForModelId(modelId),
     sizeMB: estimateModelSizeMB(modelId),
     cacheKey: MODEL_CACHE_KEY,
