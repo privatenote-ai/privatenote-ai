@@ -5,10 +5,10 @@ type ProgressCallback = (progress: ModelLoadProgress) => void;
 
 const TRANSFORMERS_MOBILE_MODEL_ID =
   (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim() ||
-  "onnx-community/Qwen2.5-0.5B-Instruct";
+  "onnx-community/SmolLM-135M-Instruct-ONNX";
 const TRANSFORMERS_MOBILE_TASK = "text-generation";
 const TRANSFORMERS_MOBILE_Q4_DTYPE = "q4";
-const DEFAULT_TRANSFORMERS_REMOTE_HOST = "https://pub-ece66cd0bdf346c581dd0869271cbb5d.r2.dev/";
+const DEFAULT_TRANSFORMERS_REMOTE_HOST = "https://huggingface.co/";
 const rawTransformersRemoteHost =
   (import.meta.env.VITE_TRANSFORMERS_REMOTE_HOST as string | undefined)?.trim() ?? "";
 const rawTransformersRemotePathTemplate =
@@ -214,7 +214,7 @@ export function getTransformersMobileModelInfo() {
   return {
     name: TRANSFORMERS_MOBILE_MODEL_ID,
     variantLabel: "Compact mobile fallback (experimental)",
-    sizeMB: 470,
+    sizeMB: 140,
     cacheKey: "transformers_mobile_pipeline_v2",
     availableModels: 1,
     preferredModels: [TRANSFORMERS_MOBILE_MODEL_ID],

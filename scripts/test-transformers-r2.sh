@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Verify a public R2 mirror for the mobile Transformers.js runtime.
+# Verify a public host for the mobile Transformers.js runtime.
 # Usage:
 #   ./scripts/test-transformers-r2.sh
 #   TRANSFORMERS_REMOTE_HOST=https://pub-...r2.dev \
-#   TRANSFORMERS_MODEL_ID=onnx-community/Qwen2.5-0.5B-Instruct \
+#   TRANSFORMERS_MODEL_ID=onnx-community/SmolLM-135M-Instruct-ONNX \
 #   ./scripts/test-transformers-r2.sh
 
 set -euo pipefail
 
-TRANSFORMERS_REMOTE_HOST="${TRANSFORMERS_REMOTE_HOST:-https://pub-ece66cd0bdf346c581dd0869271cbb5d.r2.dev}"
-TRANSFORMERS_MODEL_ID="${TRANSFORMERS_MODEL_ID:-onnx-community/Qwen2.5-0.5B-Instruct}"
+TRANSFORMERS_REMOTE_HOST="${TRANSFORMERS_REMOTE_HOST:-https://huggingface.co}"
+TRANSFORMERS_MODEL_ID="${TRANSFORMERS_MODEL_ID:-onnx-community/SmolLM-135M-Instruct-ONNX}"
 TRANSFORMERS_REVISION="${TRANSFORMERS_REVISION:-main}"
 if [ -z "${TRANSFORMERS_REMOTE_PATH_TEMPLATE:-}" ]; then
   TRANSFORMERS_REMOTE_PATH_TEMPLATE='{model}/resolve/{revision}/'
@@ -66,7 +66,7 @@ require_200() {
   fi
 }
 
-echo -e "${BLUE}🧪 Testing Transformers.js public R2 mirror${NC}"
+echo -e "${BLUE}🧪 Testing Transformers.js public host${NC}"
 echo "Host:     $(trim_trailing_slash "$TRANSFORMERS_REMOTE_HOST")"
 echo "Model:    $TRANSFORMERS_MODEL_ID"
 echo "Revision: $TRANSFORMERS_REVISION"
@@ -94,5 +94,5 @@ printf "%s\n" "$preflight_headers" | awk 'BEGIN{IGNORECASE=1} /^Access-Control-A
 
 echo
 echo -e "${BLUE}Result${NC}"
-echo "If any file is 404, the R2 mirror layout does not match the runtime path template."
+echo "If any file is 404, the host layout does not match the runtime path template."
 echo "If files are 200 but CORS headers are missing, browser fetches will still fail."
