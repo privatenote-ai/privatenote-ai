@@ -3,9 +3,13 @@ import type { ModelLoadProgress } from "./clientLLM";
 
 type ProgressCallback = (progress: ModelLoadProgress) => void;
 
-const TRANSFORMERS_MOBILE_MODEL_ID =
-  (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim() ||
-  "onnx-community/SmolLM-135M-Instruct-ONNX";
+/** Mobile / narrow pipeline (Android, etc.). */
+const DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE = "onnx-community/SmolLM-135M-Instruct-ONNX";
+/**
+ * Desktop Mac dev test: ~1B instruct ONNX in the same class as small Gemma for quality checks.
+ * Enable with `VITE_TRANSFORMERS_DESKTOP_MAC_DEV=true` (see `getActiveTransformersLocalModelId`).
+ */
+const DEFAULT_TRANSFORMERS_MODEL_ID_DESKTOP_MAC_DEV = "onnx-community/Llama-3.2-1B-Instruct-ONNX";
 const TRANSFORMERS_MOBILE_TASK = "text-generation";
 const TRANSFORMERS_MOBILE_Q4_DTYPE = "q4";
 const DEFAULT_TRANSFORMERS_REMOTE_HOST = "https://huggingface.co/";
@@ -18,8 +22,59 @@ const TRANSFORMERS_MOBILE_RUNTIME_APP_VERSION =
 const MOBILE_WEBGPU_SKIP_KEY = "transformers_mobile_skip_webgpu_v1";
 const MOBILE_WEBGPU_SKIP_REASON_TIMEOUT = "timeout";
 const MOBILE_WEBGPU_SKIP_REASON_FAILURE = "failure";
-const WEBGPU_BACKEND_INIT_TIMEOUT_MS = 15000;
+/** Desktop / non-mobile: ONNX WebGPU first init can be slow but failures should surface sooner than on phone. */
+const WEBGPU_BACKEND_INIT_TIMEOUT_MS_DESKTOP = 45000;
+/** Android and other mobile (non‑iOS): shader compile + session setup often exceeds 15s on first run. */
+const WEBGPU_BACKEND_INIT_TIMEOUT_MS_MOBILE = 90000;
 const WASM_BACKEND_INIT_TIMEOUT_MS = 60000;
+
+function envFlagTruthy(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  const s = String(value).trim().toLowerCase();
+  return s === "1" || s === "true" || s === "on" || s === "yes";
+}
+
+const TRANSFORMERS_DESKTOP_MAC_DEV_FLAG = envFlagTruthy(import.meta.env.VITE_TRANSFORMERS_DESKTOP_MAC_DEV);
+
+type NavigatorWithWebGpu = Navigator & {
+  gpu?: { requestAdapter(): Promise<unknown> };
+};
+
+/** Thrown and surfaced in UI when the mobile Transformers path is blocked on iOS/iPadOS. */
+export const TRANSFORMERS_MOBILE_IOS_DISABLED_REASON =
+  "Local mobile inference is disabled on iOS due to current WebGPU/WASM runtime limitations.";
+
+export function isIOSWebKit(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const iOS =
+    /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return iOS;
+}
+
+/** Non–iPad-desktop-mode Mac (Chrome/Safari/Firefox on macOS). */
+export function isDesktopMacAgentLikely(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (!/Macintosh/i.test(navigator.userAgent)) return false;
+  if (isIOSWebKit()) return false;
+  return true;
+}
+
+function hasWebGpuRequestAdapterSurface(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const gpu = (navigator as NavigatorWithWebGpu).gpu;
+  return typeof gpu?.requestAdapter === "function";
+}
+
+/** True for coarse mobile/tablet form factors (used for WebGPU init timeout only). */
+function isMobileFormFactorForTimeout(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -100,6 +155,7 @@ function mapTransformersProgress(status: Record<string, unknown>): ModelLoadProg
 
 export function isTransformersMobileLikelySupported(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (isIOSWebKit()) return false;
   return typeof indexedDB !== "undefined" && typeof WebAssembly !== "undefined";
 }
 
@@ -110,6 +166,37 @@ export function shouldPreferTransformersMobileExperiment(): boolean {
     /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua) ||
     (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
   return isMobileDevice;
+}
+
+/**
+ * Use Transformers.js for on-device text generation (mobile path, or Mac desktop when
+ * `VITE_TRANSFORMERS_DESKTOP_MAC_DEV` is enabled). iOS is still blocked in `initializeTransformersMobile`.
+ */
+export function shouldUseTransformersJsLocalPath(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()) {
+    return true;
+  }
+  return shouldPreferTransformersMobileExperiment();
+}
+
+export function getActiveTransformersLocalModelId(): string {
+  const mobileOverride = (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim();
+  const desktopOverride = (import.meta.env.VITE_TRANSFORMERS_DESKTOP_MODEL_ID as string | undefined)?.trim();
+  if (shouldPreferTransformersMobileExperiment()) {
+    return mobileOverride || DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE;
+  }
+  if (TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()) {
+    return desktopOverride || DEFAULT_TRANSFORMERS_MODEL_ID_DESKTOP_MAC_DEV;
+  }
+  return mobileOverride || DEFAULT_TRANSFORMERS_MODEL_ID_MOBILE;
+}
+
+function approximateTransformersModelSizeMB(modelId: string): number {
+  if (/SmolLM-135M/i.test(modelId)) return 140;
+  if (/Llama-3\.2-1B/i.test(modelId)) return 750;
+  if (/[12]\s*B|1\.7B|2B/i.test(modelId)) return 750;
+  return 500;
 }
 
 export function isTransformersMobileLoaded(): boolean {
@@ -169,9 +256,13 @@ function clearStoredWebGpuSkipState(): void {
 }
 
 function getPreferredBackendAttempts(): BackendAttempt[] {
-  const hasWebGpu = typeof navigator !== "undefined" && "gpu" in navigator;
+  if (isIOSWebKit()) {
+    return [];
+  }
+  // `navigator.gpu` existing is not a guarantee ONNX Runtime Web + this model will run; still stricter than `"gpu" in navigator`.
+  const hasWebGpuSurface = hasWebGpuRequestAdapterSurface();
   const shouldSkipWebGpu = readStoredWebGpuSkipState() !== null;
-  if (hasWebGpu && !shouldSkipWebGpu) {
+  if (hasWebGpuSurface && !shouldSkipWebGpu) {
     return [
       { device: "webgpu", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "webgpu/q4" },
       { device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" },
@@ -184,8 +275,20 @@ function describeNextAttempt(attempt: BackendAttempt | undefined): string {
   return attempt ? `Falling back to ${attempt.label}.` : "No further backend attempts remain.";
 }
 
+function getWebGpuBackendInitTimeoutMs(): number {
+  if (isMobileFormFactorForTimeout() && !isIOSWebKit()) {
+    return WEBGPU_BACKEND_INIT_TIMEOUT_MS_MOBILE;
+  }
+  return WEBGPU_BACKEND_INIT_TIMEOUT_MS_DESKTOP;
+}
+
 function getBackendInitTimeoutMs(attempt: BackendAttempt): number {
-  return attempt.device === "wasm" ? WASM_BACKEND_INIT_TIMEOUT_MS : WEBGPU_BACKEND_INIT_TIMEOUT_MS;
+  if (attempt.device === "wasm") return WASM_BACKEND_INIT_TIMEOUT_MS;
+  return getWebGpuBackendInitTimeoutMs();
+}
+
+function formatInitErrorDetail(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function createBackendTimeoutError(label: string, timeoutMs: number): Error {
@@ -211,19 +314,33 @@ async function withBackendInitTimeout<T>(
 }
 
 export function getTransformersMobileModelInfo() {
+  const name = getActiveTransformersLocalModelId();
+  const isMobile = shouldPreferTransformersMobileExperiment();
+  const variantLabel = isMobile
+    ? "Compact mobile fallback (experimental)"
+    : "Desktop Transformers.js test (Llama 3.2 1B–class)";
   return {
-    name: TRANSFORMERS_MOBILE_MODEL_ID,
-    variantLabel: "Compact mobile fallback (experimental)",
-    sizeMB: 140,
-    cacheKey: "transformers_mobile_pipeline_v2",
+    name,
+    variantLabel,
+    sizeMB: approximateTransformersModelSizeMB(name),
+    cacheKey: `transformers_local_pipeline_v3_${name.replace(/[^a-zA-Z0-9]+/g, "_")}`,
     availableModels: 1,
-    preferredModels: [TRANSFORMERS_MOBILE_MODEL_ID],
+    preferredModels: [name],
     localLlmPremium: false,
-    hardwareTierIfPremium: "Compact mobile fallback (experimental)",
+    hardwareTierIfPremium: variantLabel,
   };
 }
 
 export async function initializeTransformersMobile(onProgress?: ProgressCallback): Promise<void> {
+  if (isIOSWebKit()) {
+    onProgress?.({
+      progress: 0,
+      text: "On-device AI unavailable on this device",
+      detail: TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
+    });
+    throw new Error(TRANSFORMERS_MOBILE_IOS_DISABLED_REASON);
+  }
+
   if (generatorInstance) {
     onProgress?.({ progress: 100, text: "Ready to generate" });
     return;
@@ -240,9 +357,15 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
 
   try {
     const attempts = getPreferredBackendAttempts();
+    if (attempts.length === 0) {
+      const msg = "No on-device backend is available for this platform.";
+      onProgress?.({ progress: 0, text: "Could not start on-device AI", detail: msg });
+      throw new Error(msg);
+    }
     const storedSkip = readStoredWebGpuSkipState();
+    const modelId = getActiveTransformersLocalModelId();
     console.log("[AI] Initializing mobile Transformers runtime", {
-      model: TRANSFORMERS_MOBILE_MODEL_ID,
+      model: modelId,
       remoteHost: getTransformersRemoteHost(),
       attempts: attempts.map((attempt) => attempt.label),
       webgpuSkip: storedSkip,
@@ -263,12 +386,14 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
         text: `Preparing private AI (${attempt.label})…`,
         detail:
           attempt.device === "wasm"
-            ? "Mobile CPU startup can take up to about a minute on first load."
+            ? shouldPreferTransformersMobileExperiment()
+              ? "Mobile CPU startup can take up to about a minute on first load."
+              : "CPU backend startup can take several minutes on first load for larger models."
             : undefined,
       });
 
       try {
-        generatorPromise = pipeline(TRANSFORMERS_MOBILE_TASK, TRANSFORMERS_MOBILE_MODEL_ID, {
+        generatorPromise = pipeline(TRANSFORMERS_MOBILE_TASK, modelId, {
           device: attempt.device,
           dtype: attempt.dtype,
           progress_callback: (status) => {
@@ -309,10 +434,22 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
         }
         console.error("[AI] Mobile Transformers backend failed:", attempt.label, error);
         console.warn("[AI] Mobile Transformers backend fallback:", describeNextAttempt(attempts[index + 1]));
+        onProgress?.({
+          progress: 2,
+          text: `Backend ${attempt.label} failed`,
+          detail: formatInitErrorDetail(error),
+        });
         generatorInstance = null;
         generatorPromise = null;
       }
     }
+
+    const lastDetail = lastError != null ? formatInitErrorDetail(lastError) : "Unknown error";
+    onProgress?.({
+      progress: 0,
+      text: "Could not start on-device AI",
+      detail: lastDetail,
+    });
 
     throw lastError instanceof Error
       ? new Error(`All mobile Transformers backends failed. Last error: ${lastError.message}`)
@@ -381,12 +518,13 @@ export function clearTransformersMobileEngine(): void {
 export async function resetTransformersMobileCache(): Promise<void> {
   clearTransformersMobileEngine();
   clearStoredWebGpuSkipState();
+  const mid = getActiveTransformersLocalModelId();
   const clearTasks = [
-    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, TRANSFORMERS_MOBILE_MODEL_ID, {
+    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
       device: "webgpu",
       dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
     }),
-    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, TRANSFORMERS_MOBILE_MODEL_ID, {
+    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
       device: "wasm",
       dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
     }),

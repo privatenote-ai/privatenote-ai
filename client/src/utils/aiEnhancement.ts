@@ -5,7 +5,7 @@ import {
   initializeClientLLM,
   getModelInfo,
   getWebLLMBrowserSupportLevel,
-  getWebLLMSupportHint,
+  getLocalAiSupportHint,
   type ProgressCallback,
   type WebLLMBrowserSupportLevel,
 } from "./clientLLM";
@@ -41,7 +41,7 @@ export async function enhanceNoteHybrid(
 
   if (!preferClientSide || !isLocalAiSupported()) {
     throw new AiEnhanceError(
-      getWebLLMSupportHint() ?? "On-device AI is not supported in this browser.",
+      getLocalAiSupportHint() ?? "On-device AI is not supported in this browser.",
       "client",
     );
   }
@@ -97,6 +97,6 @@ export function getAiCapabilities(): AiCapabilitiesSnapshot {
     clientSideLoaded: isEngineLoaded(),
     modelInfo: isLocalAiSupported() ? getModelInfo() : null,
     webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
-    webLlmSupportHint: getWebLLMSupportHint(),
+    webLlmSupportHint: getLocalAiSupportHint(),
   };
 }

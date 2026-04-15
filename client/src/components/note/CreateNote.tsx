@@ -32,7 +32,7 @@ import {
   initializeClientLLM,
   isEngineLoaded,
   isLocalAiSupported,
-  getWebLLMSupportHint,
+  getLocalAiSupportHint,
   getRecommendedLocalModelId,
   resetLocalAiLoadState,
   type ModelLoadProgress,
@@ -135,6 +135,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [aiModelProgress, setAiModelProgress] = useState<{
     progress: number;
     text: string;
+    detail?: string;
   } | null>(null);
   const [showCloudLitePrompt, setShowCloudLitePrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
@@ -221,7 +222,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
       if (!isLocalAiSupported()) {
-        throw new Error(getWebLLMSupportHint() ?? "Local AI is not supported in this browser.");
+        throw new Error(getLocalAiSupportHint() ?? "Local AI is not supported in this browser.");
       }
       const modelId = await getRecommendedLocalModelId();
       await initializeClientLLM(onProgress, modelId);
@@ -238,12 +239,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiModelProgress(null);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      toast({
+        title: "On-device AI could not start",
+        description: message,
+        variant: "destructive",
+      });
       setAiModelProgress(null);
       triggerCloudLitePrompt();
     } finally {
       setIsAiModelLoading(false);
     }
-  }, [ensureFreeLocalModel, isAiModelLoading]);
+  }, [ensureFreeLocalModel, isAiModelLoading, toast]);
 
   const resetFreeModelDownloadState = useCallback(async () => {
     setShowCloudLitePrompt(false);

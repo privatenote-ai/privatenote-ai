@@ -9,7 +9,7 @@ import {
   deleteWebLLMModelFromCache,
 } from "./webllm-engine";
 import {
-  shouldPreferTransformersMobileExperiment,
+  shouldUseTransformersJsLocalPath,
   isTransformersMobileLikelySupported,
   initializeTransformersMobile,
   generateTransformersMobile,
@@ -17,6 +17,8 @@ import {
   isTransformersMobileLoaded,
   getTransformersMobileModelInfo,
   resetTransformersMobileCache,
+  isIOSWebKit,
+  TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
 } from "./transformers-mobile-engine";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import {
@@ -197,7 +199,7 @@ export function getDeviceInfo(): {
     hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
     localLlmPremium: isLocalLlmPremium(),
     webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
-    webLlmSupportHint: getWebLLMSupportHint(),
+    webLlmSupportHint: getLocalAiSupportHint(),
   };
 }
 
@@ -365,7 +367,7 @@ export function getLocalAiTierLabelForModelId(modelId: string): string {
 }
 
 function getActiveModelId(): string {
-  if (shouldPreferTransformersMobileExperiment()) {
+  if (shouldUseTransformersJsLocalPath()) {
     return getTransformersMobileModelInfo().name;
   }
   return getLoadedModelIdWebLLM() || findSuitableModel();
@@ -414,12 +416,26 @@ export function getWebLLMSupportHint(): string | null {
   return "On-device AI needs a modern browser with WebAssembly, IndexedDB, and Web Crypto.";
 }
 
+/**
+ * User-facing explanation when {@link isLocalAiSupported} is false, including the mobile Transformers path and iOS.
+ */
+export function getLocalAiSupportHint(): string | null {
+  if (typeof window === "undefined") return null;
+  if (shouldUseTransformersJsLocalPath() && isIOSWebKit()) {
+    return `${TRANSFORMERS_MOBILE_IOS_DISABLED_REASON} Use cloud AI or a desktop browser.`;
+  }
+  if (shouldUseTransformersJsLocalPath() && !isTransformersMobileLikelySupported()) {
+    return "On-device AI is not supported in this browser.";
+  }
+  return getWebLLMSupportHint();
+}
+
 export function isWebLLMSupported(): boolean {
   return getWebLLMBrowserSupportLevel() === "supported";
 }
 
 export function isLocalAiSupported(): boolean {
-  if (shouldPreferTransformersMobileExperiment()) {
+  if (shouldUseTransformersJsLocalPath()) {
     return isTransformersMobileLikelySupported();
   }
   return isWebLLMSupported();
@@ -485,9 +501,16 @@ export async function initializeClientLLM(
   onProgress?: ProgressCallback,
   preferredModelId?: string
 ): Promise<MLCEngineInterface> {
-  if (shouldPreferTransformersMobileExperiment()) {
+  if (shouldUseTransformersJsLocalPath()) {
+    if (isIOSWebKit()) {
+      throw new Error(
+        getLocalAiSupportHint() ?? TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
+      );
+    }
     if (!isTransformersMobileLikelySupported()) {
-      throw new Error("On-device AI is not supported in this browser.");
+      throw new Error(
+        getLocalAiSupportHint() ?? "On-device AI is not supported in this browser.",
+      );
     }
     await initializeTransformersMobile(onProgress);
     return null as unknown as MLCEngineInterface;
@@ -806,7 +829,7 @@ export async function enhanceNoteClientSide(
     disableOutputRepairPass?: boolean;
   }
 ): Promise<string> {
-  if (shouldPreferTransformersMobileExperiment()) {
+  if (shouldUseTransformersJsLocalPath()) {
     await initializeClientLLM(onProgress);
 
     const modelId = getActiveModelId();
@@ -1135,7 +1158,7 @@ function messageContentToString(content: unknown): string {
  */
 export async function isModelCached(): Promise<boolean> {
   try {
-    if (shouldPreferTransformersMobileExperiment()) {
+    if (shouldUseTransformersJsLocalPath()) {
       return false;
     }
     const saved = getSelectedModel();
@@ -1157,7 +1180,7 @@ export async function listCachedModels(): Promise<string[]> {
     const base = databases
       .filter(db => db.name && (db.name.includes('webllm') || db.name.includes('mlc')))
       .map(db => db.name!);
-    return shouldPreferTransformersMobileExperiment()
+    return shouldUseTransformersJsLocalPath()
       ? [...base, "transformers.js browser cache (model registry)"]
       : base;
   } catch (error) {
@@ -1216,7 +1239,7 @@ export async function getStorageInfo(): Promise<{
  * Get model information
  */
 export function getModelInfo() {
-  if (shouldPreferTransformersMobileExperiment()) {
+  if (shouldUseTransformersJsLocalPath()) {
     return getTransformersMobileModelInfo();
   }
   const available = getAvailableModels();

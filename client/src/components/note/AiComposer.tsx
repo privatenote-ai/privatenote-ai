@@ -18,7 +18,7 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import { isLocalAiSupported, getWebLLMSupportHint } from "@/utils/clientLLM";
+import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/clientLLM";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 
@@ -70,7 +70,7 @@ export type AiComposerProps = {
   /** Shown under the prompt while the model runs (load + generate use separate states). */
   aiGenerationStatusText?: string | null;
   isAiModelLoading: boolean;
-  aiModelProgress: { progress: number; text: string } | null;
+  aiModelProgress: { progress: number; text: string; detail?: string } | null;
   transformHistory: AiPostGenTransform[];
   onGenerate: (override?: {
     prompt?: string;
@@ -334,9 +334,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               )}
 
-            {!isLocalAiSupported() && getWebLLMSupportHint() && (
+            {!isLocalAiSupported() && getLocalAiSupportHint() && (
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
-                {getWebLLMSupportHint()}
+                {getLocalAiSupportHint()}
               </p>
             )}
 
@@ -357,6 +357,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       style={{ width: `${aiModelProgress.progress}%` }}
                     />
                   </div>
+                  {aiModelProgress.detail ? (
+                    <p className="text-xs text-blue-800/95 dark:text-blue-200/90 break-words">
+                      {aiModelProgress.detail}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}
