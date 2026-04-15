@@ -6,7 +6,18 @@ import {
   getLoadedModelIdWebLLM,
   getWebLLMLEngine,
   isModelInCacheWebLLM,
+  deleteWebLLMModelFromCache,
 } from "./webllm-engine";
+import {
+  shouldPreferTransformersMobileExperiment,
+  isTransformersMobileLikelySupported,
+  initializeTransformersMobile,
+  generateTransformersMobile,
+  clearTransformersMobileEngine,
+  isTransformersMobileLoaded,
+  getTransformersMobileModelInfo,
+  resetTransformersMobileCache,
+} from "./transformers-mobile-engine";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import {
   getRecommendedLocalModelIdSync,
@@ -226,6 +237,83 @@ function getSelectedModel(): string | null {
   }
 }
 
+async function listWebLLMDatabaseNames(): Promise<string[]> {
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") {
+    return [];
+  }
+  try {
+    const databases = await indexedDB.databases();
+    return databases
+      .filter((db) => db.name && (db.name.includes("webllm") || db.name.includes("mlc")))
+      .map((db) => db.name!);
+  } catch (error) {
+    console.warn("[AI] Failed to inspect IndexedDB model cache:", error);
+    return [];
+  }
+}
+
+function deleteIndexedDbDatabase(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.deleteDatabase(name);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function collectKnownModelIds(preferredModelId?: string): string[] {
+  const ids = new Set<string>();
+  if (preferredModelId) ids.add(preferredModelId);
+  const loaded = getLoadedModelIdWebLLM();
+  if (loaded) ids.add(loaded);
+  const saved = getSelectedModel();
+  if (saved && isModelAvailable(saved) && !isHiddenLocalModelId(saved)) {
+    ids.add(saved);
+  }
+  ids.add(findSuitableModel());
+  return [...ids];
+}
+
+async function hasAnyWebLLMCacheState(modelId?: string): Promise<boolean> {
+  try {
+    if (modelId && (await isModelInCacheWebLLM(modelId))) {
+      return true;
+    }
+  } catch (error) {
+    console.warn("[AI] Failed to check model cache state:", error);
+  }
+  const dbNames = await listWebLLMDatabaseNames();
+  return dbNames.length > 0;
+}
+
+function isLikelyRecoverableLoadError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("model") ||
+    lower.includes("appconfig") ||
+    lower.includes("cache") ||
+    lower.includes("indexeddb") ||
+    lower.includes("database") ||
+    lower.includes("fetch") ||
+    lower.includes("network") ||
+    lower.includes("wasm") ||
+    lower.includes("unexpected")
+  );
+}
+
+export async function resetLocalAiLoadState(preferredModelId?: string): Promise<void> {
+  clearEngine();
+  await resetTransformersMobileCache();
+  const knownModelIds = collectKnownModelIds(preferredModelId);
+  await Promise.allSettled(knownModelIds.map((modelId) => deleteWebLLMModelFromCache(modelId)));
+  const dbNames = await listWebLLMDatabaseNames();
+  await Promise.allSettled(dbNames.map((name) => deleteIndexedDbDatabase(name)));
+}
+
 export interface ModelLoadProgress {
   progress: number;
   text: string;
@@ -277,6 +365,9 @@ export function getLocalAiTierLabelForModelId(modelId: string): string {
 }
 
 function getActiveModelId(): string {
+  if (shouldPreferTransformersMobileExperiment()) {
+    return getTransformersMobileModelInfo().name;
+  }
   return getLoadedModelIdWebLLM() || findSuitableModel();
 }
 
@@ -325,6 +416,13 @@ export function getWebLLMSupportHint(): string | null {
 
 export function isWebLLMSupported(): boolean {
   return getWebLLMBrowserSupportLevel() === "supported";
+}
+
+export function isLocalAiSupported(): boolean {
+  if (shouldPreferTransformersMobileExperiment()) {
+    return isTransformersMobileLikelySupported();
+  }
+  return isWebLLMSupported();
 }
 
 /** Narrowing for TS lib sets that omit WebGPU on `Navigator`. */
@@ -387,6 +485,14 @@ export async function initializeClientLLM(
   onProgress?: ProgressCallback,
   preferredModelId?: string
 ): Promise<MLCEngineInterface> {
+  if (shouldPreferTransformersMobileExperiment()) {
+    if (!isTransformersMobileLikelySupported()) {
+      throw new Error("On-device AI is not supported in this browser.");
+    }
+    await initializeTransformersMobile(onProgress);
+    return null as unknown as MLCEngineInterface;
+  }
+
   if (isLoadedWebLLM() && !preferredModelId) {
     return getWebLLMLEngine()!;
   }
@@ -468,18 +574,44 @@ export async function initializeClientLLM(
 
   engineLoadingTargetModelId = modelId;
   engineLoadingPromise = (async () => {
+    let recoveryAttempted = false;
     try {
       console.log("[AI] Loading model:", modelId, USE_CUSTOM_WEBLLM_HOST ? "(self-hosted)" : "(prebuilt)");
 
-      await loadModelWebLLM(modelId, (p) => {
-        if (p.status === "loading") {
-          const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
+      const runLoad = async (): Promise<void> => {
+        await loadModelWebLLM(modelId, (p) => {
+          if (p.status === "loading") {
+            const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
+            notifyLoadProgressSubscribers({
+              progress: progressPercent,
+              text: userFacingLocalAiLoadProgress(p.file, p.progress),
+            });
+          }
+        });
+      };
+
+      try {
+        await runLoad();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const cachedStateExists = await hasAnyWebLLMCacheState(modelId);
+        if (!recoveryAttempted && cachedStateExists && isLikelyRecoverableLoadError(errorMessage)) {
+          recoveryAttempted = true;
+          console.warn("[AI] Clearing broken local model state and retrying once:", modelId, errorMessage);
           notifyLoadProgressSubscribers({
-            progress: progressPercent,
-            text: userFacingLocalAiLoadProgress(p.file, p.progress),
+            progress: 8,
+            text: "Resetting a broken model download…",
           });
+          await resetLocalAiLoadState(modelId);
+          notifyLoadProgressSubscribers({
+            progress: 12,
+            text: "Retrying private AI download…",
+          });
+          await runLoad();
+        } else {
+          throw error;
         }
-      });
+      }
 
       const engine = getWebLLMLEngine();
       if (!engine) {
@@ -528,7 +660,7 @@ export function getEngine(): MLCEngineInterface {
  * Check if engine is loaded
  */
 export function isEngineLoaded(): boolean {
-  return isLoadedWebLLM();
+  return isLoadedWebLLM() || isTransformersMobileLoaded();
 }
 
 /**
@@ -536,6 +668,7 @@ export function isEngineLoaded(): boolean {
  */
 export function clearEngine(): void {
   unloadModelWebLLM();
+  clearTransformersMobileEngine();
   engineLoadingPromise = null;
   engineLoadingTargetModelId = null;
   clearLoadProgressSubscribers();
@@ -673,6 +806,103 @@ export async function enhanceNoteClientSide(
     disableOutputRepairPass?: boolean;
   }
 ): Promise<string> {
+  if (shouldPreferTransformersMobileExperiment()) {
+    await initializeClientLLM(onProgress);
+
+    const modelId = getActiveModelId();
+    const modelTier = "small";
+    const prompt =
+      options?.finalUserMessage?.trim() ??
+      prependBaseInstruction(getEnhancementPrompt(content, type));
+
+    let system =
+      type === "secure"
+        ? buildSecureSystemPrompt()
+        : buildSystemPrompt({ ...options, modelTier, enhancementType: type });
+
+    if (type === "ask" || type === "improve" || type === "simplify") {
+      system +=
+        "\n\nNever output <redacted_thinking>, <think>, or any XML-style reasoning tags. " +
+        "Do not show planning steps or analysis. Reply with only the final message text the user asked for.";
+    }
+
+    if (onProgress) {
+      onProgress({
+        progress: 18,
+        text: localAiThinkingLabel(),
+        detail: localAiThinkingDetailHint(),
+      });
+    }
+
+    let streamedLen = 0;
+    const raw = await generateTransformersMobile(
+      [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+      onProgress
+        ? (piece) => {
+            streamedLen += piece.length;
+            onProgress({
+              progress: Math.min(92, 28 + Math.min(streamedLen / 3, 64)),
+              text: localAiDraftingLabel(type),
+              detail: `${streamedLen.toLocaleString()} characters so far`,
+            });
+          }
+        : undefined,
+    );
+
+    if (onProgress) {
+      onProgress({
+        progress: 94,
+        text: localAiFinalizingLabel(),
+        detail: undefined,
+      });
+    }
+
+    let answer = extractUserFacingAnswer(raw.trim());
+    answer = removeClosedRedactedThinkingBlocks(answer);
+    answer = stripRedactedThinkingTags(answer);
+
+    if (!answer) {
+      throw new Error("On-device AI returned no usable note after processing.");
+    }
+
+    let out = cleanOutput(answer);
+    const validation = validateLocalLlmOutput(out, {
+      enhancementType: type,
+      modelTier,
+      userRequest: content,
+      templateId: options?.templateId,
+    });
+
+    if (!validation.ok && validation.repairable && !options?.disableOutputRepairPass) {
+      const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues)}`;
+      const repaired = await generateTransformersMobile(
+        [
+          { role: "system", content: system },
+          { role: "user", content: repairPrompt },
+        ],
+        undefined,
+      );
+      out = cleanOutput(
+        stripRedactedThinkingTags(
+          removeClosedRedactedThinkingBlocks(extractUserFacingAnswer(repaired.trim())),
+        ),
+      );
+    }
+
+    if (LLM_STRIP_DEBUG) {
+      console.warn("[PrivateNote][LLM] mobile transformers completion", {
+        modelId,
+        type,
+        modelTier,
+      });
+    }
+
+    return out;
+  }
+
   // Initialize engine if needed
   const engine = await initializeClientLLM(onProgress);
 
@@ -905,6 +1135,9 @@ function messageContentToString(content: unknown): string {
  */
 export async function isModelCached(): Promise<boolean> {
   try {
+    if (shouldPreferTransformersMobileExperiment()) {
+      return false;
+    }
     const saved = getSelectedModel();
     const id =
       saved && isModelAvailable(saved) ? saved : findSuitableModel();
@@ -921,9 +1154,12 @@ export async function isModelCached(): Promise<boolean> {
 export async function listCachedModels(): Promise<string[]> {
   try {
     const databases = await indexedDB.databases();
-    return databases
+    const base = databases
       .filter(db => db.name && (db.name.includes('webllm') || db.name.includes('mlc')))
       .map(db => db.name!);
+    return shouldPreferTransformersMobileExperiment()
+      ? [...base, "transformers.js browser cache (model registry)"]
+      : base;
   } catch (error) {
     console.warn("[AI] Failed to list cached models:", error);
     return [];
@@ -980,6 +1216,9 @@ export async function getStorageInfo(): Promise<{
  * Get model information
  */
 export function getModelInfo() {
+  if (shouldPreferTransformersMobileExperiment()) {
+    return getTransformersMobileModelInfo();
+  }
   const available = getAvailableModels();
   const modelId = findSuitableModel();
 

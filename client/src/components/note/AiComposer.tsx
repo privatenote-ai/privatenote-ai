@@ -18,7 +18,7 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import { isWebLLMSupported, getWebLLMSupportHint } from "@/utils/clientLLM";
+import { isLocalAiSupported, getWebLLMSupportHint } from "@/utils/clientLLM";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 
@@ -334,7 +334,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               )}
 
-            {!isWebLLMSupported() && getWebLLMSupportHint() && (
+            {!isLocalAiSupported() && getWebLLMSupportHint() && (
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
                 {getWebLLMSupportHint()}
               </p>

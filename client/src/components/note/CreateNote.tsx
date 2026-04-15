@@ -31,9 +31,10 @@ import {
   enhanceNoteClientSide,
   initializeClientLLM,
   isEngineLoaded,
-  isWebLLMSupported,
+  isLocalAiSupported,
   getWebLLMSupportHint,
   getRecommendedLocalModelId,
+  resetLocalAiLoadState,
   type ModelLoadProgress,
 } from "@/utils/clientLLM";
 import {
@@ -219,7 +220,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
-      if (!isWebLLMSupported()) {
+      if (!isLocalAiSupported()) {
         throw new Error(getWebLLMSupportHint() ?? "Local AI is not supported in this browser.");
       }
       const modelId = await getRecommendedLocalModelId();
@@ -244,9 +245,34 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
   }, [ensureFreeLocalModel, isAiModelLoading]);
 
+  const resetFreeModelDownloadState = useCallback(async () => {
+    setShowCloudLitePrompt(false);
+    try {
+      const modelId = await getRecommendedLocalModelId();
+      await resetLocalAiLoadState(modelId);
+      toast({
+        title: "On-device AI reset",
+        description: "The incomplete download was cleared. You can try downloading it again.",
+      });
+    } catch (error) {
+      console.warn("[AI] Failed to reset local model state before retry:", error);
+      toast({
+        title: "Reset failed",
+        description: "We couldn't clear the local AI download on this device.",
+        variant: "destructive",
+      });
+      return;
+    }
+  }, [toast]);
+
+  const retryFreeModelDownloadAfterReset = useCallback(async () => {
+    await resetFreeModelDownloadState();
+    void startFreeModelDownload();
+  }, [resetFreeModelDownloadState, startFreeModelDownload]);
+
   const enterAiMode = useCallback(() => {
     setIsAiMode(true);
-    if (!isWebLLMSupported()) return;
+    if (!isLocalAiSupported()) return;
     if (isEngineLoaded()) return;
     if (getLocalAiPreloadNetworkPolicy() === "confirm") {
       setCellularPreloadConfirmOpen(true);
@@ -1212,18 +1238,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           <AlertDialogHeader>
             <AlertDialogTitle>Local AI couldn&apos;t start</AlertDialogTitle>
             <AlertDialogDescription>
-              We couldn&apos;t download the on-device AI for this device. You can try again or use
-              Cloud Lite with limited privacy once it&apos;s available.
+              We couldn&apos;t prepare the on-device AI for this device. Try again to clear the
+              incomplete download and start over, or use Cloud Lite with limited privacy once it&apos;s
+              available.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
-                setShowCloudLitePrompt(false);
-                void startFreeModelDownload();
+                void retryFreeModelDownloadAfterReset();
               }}
             >
-              Try Again
+              Reset AI and try again
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {

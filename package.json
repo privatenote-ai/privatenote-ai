@@ -17,10 +17,13 @@
     "deploy": "wrangler deploy",
     "check": "tsc",
     "test:unit": "tsx --test client/src/utils/meetingRequestStructuredHint.test.ts client/src/utils/templateStructuredHint.test.ts client/src/components/note/promptTemplates.test.ts shared/analyticsMetrics.test.ts shared/kdfParamsV2.test.ts shared/noteExpiry.test.ts shared/noteAad.test.ts shared/noteCryptoWire.test.ts shared/noteId.test.ts shared/urlFragmentKey.test.ts shared/noteMetaEligibility.test.ts shared/storedNotePayload.test.ts src/durable_objects/secure_note_storage.test.ts src/trustedOrigins.test.ts",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:auth:migrate:local": "wrangler d1 migrations apply privatenote-auth --local",
+    "db:auth:migrate:remote": "wrangler d1 migrations apply privatenote-auth --remote"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@huggingface/transformers": "^4.0.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@mlc-ai/web-llm": "^0.2.80",
     "@neondatabase/serverless": "^0.10.4",

@@ -1,0 +1,34 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://privatenote.ai",
+          "https://www.privatenote.ai",
+          "https://app.privatenote.ai",
+          "https://privatenote-ai.pages.dev",
+          "https://client-llm.privatenote-ai.pages.dev",
+          "https://premium.privatenote-ai.pages.dev",
+          "http://localhost:5000",
+          "http://localhost:5173",
+          "http://127.0.0.1:5000",
+          "http://127.0.0.1:5173",
+          "https://localhost:5173",
+          "https://localhost:5174",
+          "https://127.0.0.1:5173",
+          "https://127.0.0.1:5174"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["*"]
+      },
+      "exposeHeaders": [
+        "Content-Length",
+        "Content-Type",
+        "ETag",
+        "Accept-Ranges",
+        "Content-Range"
+      ],
+      "maxAgeSeconds": 86400
+    }
+  ]
+}

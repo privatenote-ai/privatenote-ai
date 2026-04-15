@@ -1,6 +1,6 @@
 import {
   enhanceNoteClientSide,
-  isWebLLMSupported,
+  isLocalAiSupported,
   isEngineLoaded,
   initializeClientLLM,
   getModelInfo,
@@ -39,7 +39,7 @@ export async function enhanceNoteHybrid(
 ): Promise<AiEnhanceResponse> {
   const { preferClientSide = true, onProgress } = options;
 
-  if (!preferClientSide || !isWebLLMSupported()) {
+  if (!preferClientSide || !isLocalAiSupported()) {
     throw new AiEnhanceError(
       getWebLLMSupportHint() ?? "On-device AI is not supported in this browser.",
       "client",
@@ -93,9 +93,9 @@ export interface AiCapabilitiesSnapshot {
  */
 export function getAiCapabilities(): AiCapabilitiesSnapshot {
   return {
-    clientSideSupported: isWebLLMSupported(),
+    clientSideSupported: isLocalAiSupported(),
     clientSideLoaded: isEngineLoaded(),
-    modelInfo: isWebLLMSupported() ? getModelInfo() : null,
+    modelInfo: isLocalAiSupported() ? getModelInfo() : null,
     webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
     webLlmSupportHint: getWebLLMSupportHint(),
   };
