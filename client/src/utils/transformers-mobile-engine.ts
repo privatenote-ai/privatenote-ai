@@ -8,7 +8,6 @@ const TRANSFORMERS_MOBILE_MODEL_ID =
   "onnx-community/Qwen2.5-0.5B-Instruct";
 const TRANSFORMERS_MOBILE_TASK = "text-generation";
 const TRANSFORMERS_MOBILE_Q4_DTYPE = "q4";
-const TRANSFORMERS_MOBILE_WASM_FALLBACK_DTYPE = "q4f16";
 const DEFAULT_TRANSFORMERS_REMOTE_HOST = "https://pub-ece66cd0bdf346c581dd0869271cbb5d.r2.dev/";
 const rawTransformersRemoteHost =
   (import.meta.env.VITE_TRANSFORMERS_REMOTE_HOST as string | undefined)?.trim() ?? "";
@@ -27,7 +26,7 @@ type ChatMessage = {
   content: string;
 };
 
-type TransformersDtype = "q4" | "q4f16";
+type TransformersDtype = "q4";
 type BackendAttempt = {
   device: "webgpu" | "wasm";
   dtype: TransformersDtype;
@@ -176,13 +175,9 @@ function getPreferredBackendAttempts(): BackendAttempt[] {
     return [
       { device: "webgpu", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "webgpu/q4" },
       { device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" },
-      { device: "wasm", dtype: TRANSFORMERS_MOBILE_WASM_FALLBACK_DTYPE, label: "wasm/q4f16" },
     ];
   }
-  return [
-    { device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" },
-    { device: "wasm", dtype: TRANSFORMERS_MOBILE_WASM_FALLBACK_DTYPE, label: "wasm/q4f16" },
-  ];
+  return [{ device: "wasm", dtype: TRANSFORMERS_MOBILE_Q4_DTYPE, label: "wasm/q4" }];
 }
 
 function describeNextAttempt(attempt: BackendAttempt | undefined): string {
@@ -304,6 +299,14 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
             nextAttempt: attempts[index + 1]?.label ?? null,
           });
         }
+        if (attempt.device === "wasm") {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.includes("Load failed")) {
+            console.warn(
+              "[AI] Mobile Transformers WASM load failed after successful network checks; this usually indicates a browser/runtime limitation rather than a bucket CORS problem.",
+            );
+          }
+        }
         console.error("[AI] Mobile Transformers backend failed:", attempt.label, error);
         console.warn("[AI] Mobile Transformers backend fallback:", describeNextAttempt(attempts[index + 1]));
         generatorInstance = null;
@@ -386,10 +389,6 @@ export async function resetTransformersMobileCache(): Promise<void> {
     ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, TRANSFORMERS_MOBILE_MODEL_ID, {
       device: "wasm",
       dtype: TRANSFORMERS_MOBILE_Q4_DTYPE,
-    }),
-    ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, TRANSFORMERS_MOBILE_MODEL_ID, {
-      device: "wasm",
-      dtype: TRANSFORMERS_MOBILE_WASM_FALLBACK_DTYPE,
     }),
   ];
   const results = await Promise.allSettled(clearTasks);
