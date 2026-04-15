@@ -19,7 +19,8 @@ const TRANSFORMERS_MOBILE_RUNTIME_APP_VERSION =
 const MOBILE_WEBGPU_SKIP_KEY = "transformers_mobile_skip_webgpu_v1";
 const MOBILE_WEBGPU_SKIP_REASON_TIMEOUT = "timeout";
 const MOBILE_WEBGPU_SKIP_REASON_FAILURE = "failure";
-const BACKEND_INIT_TIMEOUT_MS = 15000;
+const WEBGPU_BACKEND_INIT_TIMEOUT_MS = 15000;
+const WASM_BACKEND_INIT_TIMEOUT_MS = 60000;
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -188,17 +189,25 @@ function describeNextAttempt(attempt: BackendAttempt | undefined): string {
   return attempt ? `Falling back to ${attempt.label}.` : "No further backend attempts remain.";
 }
 
-function createBackendTimeoutError(label: string): Error {
-  return new Error(`Timed out after ${BACKEND_INIT_TIMEOUT_MS}ms while initializing ${label}.`);
+function getBackendInitTimeoutMs(attempt: BackendAttempt): number {
+  return attempt.device === "wasm" ? WASM_BACKEND_INIT_TIMEOUT_MS : WEBGPU_BACKEND_INIT_TIMEOUT_MS;
 }
 
-async function withBackendInitTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+function createBackendTimeoutError(label: string, timeoutMs: number): Error {
+  return new Error(`Timed out after ${timeoutMs}ms while initializing ${label}.`);
+}
+
+async function withBackendInitTimeout<T>(
+  promise: Promise<T>,
+  attempt: BackendAttempt,
+): Promise<T> {
+  const timeoutMs = getBackendInitTimeoutMs(attempt);
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => reject(createBackendTimeoutError(label)), BACKEND_INIT_TIMEOUT_MS);
+        timeoutId = setTimeout(() => reject(createBackendTimeoutError(attempt.label, timeoutMs)), timeoutMs);
       }),
     ]);
   } finally {
@@ -257,6 +266,10 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       onProgress?.({
         progress: 2,
         text: `Preparing private AI (${attempt.label})…`,
+        detail:
+          attempt.device === "wasm"
+            ? "Mobile CPU startup can take up to about a minute on first load."
+            : undefined,
       });
 
       try {
@@ -269,7 +282,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
           },
         }) as Promise<TextGenerationPipelineLike>;
 
-        generatorInstance = await withBackendInitTimeout(generatorPromise, attempt.label);
+        generatorInstance = await withBackendInitTimeout(generatorPromise, attempt);
         activeBackendLabel = attempt.label;
         if (attempt.device === "webgpu") {
           clearStoredWebGpuSkipState();
