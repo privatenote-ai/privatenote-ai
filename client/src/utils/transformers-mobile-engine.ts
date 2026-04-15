@@ -106,6 +106,56 @@ type StoredWebGpuSkipState = {
 let generatorPromise: Promise<TextGenerationPipelineLike> | null = null;
 let generatorInstance: TextGenerationPipelineLike | null = null;
 let activeBackendLabel: string | null = null;
+/** Set when a pipeline has finished loading; cleared in `clearTransformersMobileEngine`. */
+let activeTransformersLoadedModelId: string | null = null;
+
+export function getActiveTransformersLoadedModelId(): string | null {
+  return activeTransformersLoadedModelId;
+}
+
+function logTransformersResolvedModel(modelId: string): void {
+  const mobileEnv = (import.meta.env.VITE_TRANSFORMERS_MOBILE_MODEL_ID as string | undefined)?.trim() || null;
+  const desktopEnv = (import.meta.env.VITE_TRANSFORMERS_DESKTOP_MODEL_ID as string | undefined)?.trim() || null;
+  const route = shouldPreferTransformersMobileExperiment()
+    ? "mobile-transformers"
+    : TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
+      ? "desktop-mac-dev-transformers"
+      : "transformers-fallback-selection";
+  console.log("[AI] Transformers.js resolved Hugging Face model id for this session:", modelId);
+  console.log("[AI] Transformers.js model selection detail:", {
+    modelId,
+    route,
+    desktopMacDevFlag: TRANSFORMERS_DESKTOP_MAC_DEV_FLAG,
+    envMobileModelId: mobileEnv,
+    envDesktopModelId: desktopEnv,
+    remoteHost: getTransformersRemoteHost(),
+  });
+}
+
+/** Logs download / load milestones from Transformers.js `progress_callback`. */
+function logTransformersPipelineProgress(modelId: string, status: Record<string, unknown>): void {
+  const fileRaw = status.file ?? status.name;
+  const file = typeof fileRaw === "string" && fileRaw.length > 0 ? fileRaw : null;
+  const st = status.status;
+  const progress = status.progress;
+
+  if (st === "ready" || st === "done") {
+    console.log("[AI] Transformers model load milestone: ready", { modelId, status: st });
+    return;
+  }
+
+  if (file && (st === "initiate" || st === "download" || st === "progress")) {
+    const pct =
+      typeof progress === "number"
+        ? progress > 1
+          ? Math.round(Math.min(100, Math.max(0, progress)))
+          : Math.round(Math.min(1, Math.max(0, progress)) * 100)
+        : null;
+    if (pct === null || pct === 0 || pct === 100 || pct % 25 === 0) {
+      console.log("[AI] Transformers model asset fetch", { modelId, file, status: st, progressPercent: pct });
+    }
+  }
+}
 
 function getTransformersRemoteHost(): string {
   const configured = rawTransformersRemoteHost || DEFAULT_TRANSFORMERS_REMOTE_HOST;
@@ -342,12 +392,20 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
   }
 
   if (generatorInstance) {
+    console.log("[AI] Transformers.js session already loaded (reusing)", {
+      modelId: activeTransformersLoadedModelId,
+      backend: activeBackendLabel,
+    });
     onProgress?.({ progress: 100, text: "Ready to generate" });
     return;
   }
 
   if (generatorPromise) {
     await generatorPromise;
+    console.log("[AI] Transformers.js session ready after in-flight load", {
+      modelId: activeTransformersLoadedModelId,
+      backend: activeBackendLabel,
+    });
     onProgress?.({ progress: 100, text: "Ready to generate" });
     return;
   }
@@ -364,10 +422,11 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
     }
     const storedSkip = readStoredWebGpuSkipState();
     const modelId = getActiveTransformersLocalModelId();
-    console.log("[AI] Initializing mobile Transformers runtime", {
-      model: modelId,
+    logTransformersResolvedModel(modelId);
+    console.log("[AI] Initializing Transformers.js runtime", {
+      modelId,
       remoteHost: getTransformersRemoteHost(),
-      attempts: attempts.map((attempt) => attempt.label),
+      backendsToTry: attempts.map((attempt) => attempt.label),
       webgpuSkip: storedSkip,
     });
     if (storedSkip) {
@@ -397,17 +456,24 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
           device: attempt.device,
           dtype: attempt.dtype,
           progress_callback: (status) => {
-            const mapped = mapTransformersProgress(status as Record<string, unknown>);
+            const rec = status as Record<string, unknown>;
+            logTransformersPipelineProgress(modelId, rec);
+            const mapped = mapTransformersProgress(rec);
             if (mapped) onProgress?.(mapped);
           },
         }) as Promise<TextGenerationPipelineLike>;
 
         generatorInstance = await withBackendInitTimeout(generatorPromise, attempt);
         activeBackendLabel = attempt.label;
+        activeTransformersLoadedModelId = modelId;
         if (attempt.device === "webgpu") {
           clearStoredWebGpuSkipState();
         }
-        console.log("[AI] Mobile Transformers backend ready:", attempt.label);
+        console.log("[AI] Transformers.js model is loaded and runnable.", {
+          modelId,
+          backend: attempt.label,
+          note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
+        });
         onProgress?.({ progress: 100, text: "Ready to generate" });
         return;
       } catch (error) {
@@ -471,7 +537,10 @@ export async function generateTransformersMobile(
     throw new Error("Transformers mobile runtime not initialized");
   }
 
-  console.log("[AI] Generating with mobile Transformers backend:", activeBackendLabel);
+  console.log("[AI] Transformers.js generate", {
+    modelId: activeTransformersLoadedModelId,
+    backend: activeBackendLabel,
+  });
 
   let streamed = "";
   const safeStreamer =
@@ -513,12 +582,14 @@ export function clearTransformersMobileEngine(): void {
   generatorInstance = null;
   generatorPromise = null;
   activeBackendLabel = null;
+  activeTransformersLoadedModelId = null;
 }
 
 export async function resetTransformersMobileCache(): Promise<void> {
   clearTransformersMobileEngine();
   clearStoredWebGpuSkipState();
   const mid = getActiveTransformersLocalModelId();
+  console.log("[AI] Clearing Transformers.js pipeline cache for model:", mid);
   const clearTasks = [
     ModelRegistry.clear_pipeline_cache(TRANSFORMERS_MOBILE_TASK, mid, {
       device: "webgpu",
