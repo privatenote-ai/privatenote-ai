@@ -60,6 +60,17 @@ import {
 const LLM_STRIP_DEBUG =
   import.meta.env.DEV === true || String(import.meta.env.VITE_DEBUG_LLM_STRIP || "").toLowerCase() === "true";
 
+/** Verbose WebLLM chat/stream logs (Thinking… phase). On by default on iOS WebKit for field debugging. */
+const WEBLLM_CHAT_DEBUG =
+  import.meta.env.DEV === true ||
+  String(import.meta.env.VITE_DEBUG_WEBLLM_CHAT || "").toLowerCase() === "true" ||
+  (typeof navigator !== "undefined" && isIOSWebKit());
+
+function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
+  if (!WEBLLM_CHAT_DEBUG) return;
+  console.warn(`[PrivateNote][LLM][chat] ${phase}`, payload);
+}
+
 // Preferred models for pickers (Qwen 0.6B is auto-selected on mobile, not listed here)
 const PREFERRED_MODELS = [
   "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
@@ -981,6 +992,17 @@ export async function enhanceNoteClientSide(
   ): Promise<{ cleaned: string; finishReason: string | null; rawLen: number; diagnosis: ReturnType<typeof diagnoseThinkingStrip> }> {
     const draftingLabel = draftingLabelOverride ?? localAiDraftingLabel(type);
 
+    const chatMessages = [
+      { role: "system" as const, content: system },
+      { role: "user" as const, content: userPrompt },
+    ];
+    const baseChatOpts = {
+      messages: chatMessages,
+      max_tokens: maxTokens,
+      temperature: temp,
+      stop: stopSequences,
+    };
+
     if (onProgress) {
       onProgress({
         progress: 18,
@@ -988,57 +1010,170 @@ export async function enhanceNoteClientSide(
         detail: localAiThinkingDetailHint(),
       });
     }
-    const stream = await engine.chat.completions.create({
-      messages: [
-        { role: "system" as const, content: system },
-        { role: "user" as const, content: userPrompt },
-      ],
-      max_tokens: maxTokens,
+
+    logWebLlmChat("thinking_phase_start", {
+      modelId,
+      modelTier,
+      type,
+      maxTokens,
       temperature: temp,
-      stop: stopSequences,
-      stream: true,
-      stream_options: { include_usage: true },
+      stopCount: stopSequences.length,
+      isIOSWebKit: isIOSWebKit(),
+      userAgentSnippet:
+        typeof navigator !== "undefined" ? String(navigator.userAgent).slice(0, 200) : "",
+      userPromptChars: userPrompt.length,
+      systemChars: system.length,
     });
+
+    async function consumeCompletionStream(stream: AsyncIterable<unknown>): Promise<{
+      acc: string;
+      finishReason: string | null;
+      usage: unknown;
+    }> {
+      let acc = "";
+      let finishReason: string | null = null;
+      let usage: unknown;
+      let lastProgressAt = 0;
+      let draftingStarted = false;
+      const progressThrottleMs = 160;
+      let chunkCount = 0;
+      const streamStartedAt = Date.now();
+      try {
+        for await (const chunk of stream) {
+          chunkCount += 1;
+          if (chunkCount === 1) {
+            logWebLlmChat("first_stream_chunk", {
+              elapsedMs: Date.now() - streamStartedAt,
+              topKeys:
+                chunk && typeof chunk === "object"
+                  ? Object.keys(chunk as object).slice(0, 16)
+                  : [],
+            });
+          }
+          const ch = (chunk as { choices?: Array<{ finish_reason?: string; delta?: { content?: unknown } }> })
+            .choices?.[0];
+          if (ch?.finish_reason) {
+            finishReason = String(ch.finish_reason);
+          }
+          const delta = ch?.delta?.content;
+          const piece = messageContentToString(delta);
+          if (piece) {
+            if (!draftingStarted && onProgress) {
+              draftingStarted = true;
+              onProgress({
+                progress: 28,
+                text: draftingLabel,
+                detail: undefined,
+              });
+              lastProgressAt = Date.now();
+              logWebLlmChat("first_token_text", {
+                elapsedMs: Date.now() - streamStartedAt,
+                pieceLen: piece.length,
+              });
+            }
+            acc += piece;
+            if (onProgress) {
+              const now = Date.now();
+              if (now - lastProgressAt >= progressThrottleMs) {
+                lastProgressAt = now;
+                onProgress({
+                  progress: Math.min(92, 28 + Math.min(acc.length / 3, 64)),
+                  text: draftingLabel,
+                  detail: `${acc.length.toLocaleString()} characters so far`,
+                });
+              }
+            }
+          }
+          if (chunk && typeof chunk === "object" && "usage" in chunk && (chunk as { usage?: unknown }).usage) {
+            usage = (chunk as { usage: unknown }).usage;
+          }
+        }
+      } catch (loopErr) {
+        logWebLlmChat("stream_iterator_failed", {
+          chunkCount,
+          accLen: acc.length,
+          message: loopErr instanceof Error ? loopErr.message : String(loopErr),
+          name: loopErr instanceof Error ? loopErr.name : typeof loopErr,
+          stack: loopErr instanceof Error ? loopErr.stack : undefined,
+        });
+        throw loopErr;
+      }
+
+      logWebLlmChat("stream_iterator_done", {
+        chunkCount,
+        accLen: acc.length,
+        finishReason,
+        totalMs: Date.now() - streamStartedAt,
+      });
+
+      return { acc, finishReason, usage };
+    }
+
     let acc = "";
     let finishReason: string | null = null;
     let usage: unknown;
-    let lastProgressAt = 0;
-    let draftingStarted = false;
-    const progressThrottleMs = 160;
-    for await (const chunk of stream) {
-      const ch = chunk.choices?.[0];
-      if (ch?.finish_reason) {
-        finishReason = String(ch.finish_reason);
-      }
-      const delta = ch?.delta?.content;
-      const piece = messageContentToString(delta);
-      if (piece) {
-        if (!draftingStarted && onProgress) {
-          draftingStarted = true;
+    let streamPath: "stream_with_usage" | "stream_plain" | "non_stream" = "stream_with_usage";
+
+    try {
+      logWebLlmChat("completions_create_stream_with_usage", {});
+      const stream = (await engine.chat.completions.create({
+        ...baseChatOpts,
+        stream: true,
+        stream_options: { include_usage: true },
+      })) as AsyncIterable<unknown>;
+      const consumed = await consumeCompletionStream(stream);
+      acc = consumed.acc;
+      finishReason = consumed.finishReason;
+      usage = consumed.usage;
+    } catch (e1) {
+      logWebLlmChat("stream_with_usage_failed", {
+        message: e1 instanceof Error ? e1.message : String(e1),
+        name: e1 instanceof Error ? e1.name : typeof e1,
+        stack: e1 instanceof Error ? e1.stack : undefined,
+      });
+      try {
+        logWebLlmChat("retry_completions_create_stream_plain", {});
+        const stream = (await engine.chat.completions.create({
+          ...baseChatOpts,
+          stream: true,
+        })) as AsyncIterable<unknown>;
+        const consumed = await consumeCompletionStream(stream);
+        acc = consumed.acc;
+        finishReason = consumed.finishReason;
+        usage = consumed.usage;
+        streamPath = "stream_plain";
+      } catch (e2) {
+        logWebLlmChat("stream_plain_failed", {
+          message: e2 instanceof Error ? e2.message : String(e2),
+          name: e2 instanceof Error ? e2.name : typeof e2,
+          stack: e2 instanceof Error ? e2.stack : undefined,
+        });
+        logWebLlmChat("fallback_completions_non_stream", {});
+        const reply = await engine.chat.completions.create(baseChatOpts);
+        streamPath = "non_stream";
+        const content = reply.choices?.[0]?.message?.content;
+        acc = messageContentToString(content);
+        const fr = reply.choices?.[0]?.finish_reason;
+        finishReason = fr != null ? String(fr) : null;
+        if (reply && typeof reply === "object" && "usage" in reply) {
+          usage = (reply as { usage?: unknown }).usage;
+        }
+        if (onProgress && acc.length > 0) {
           onProgress({
-            progress: 28,
+            progress: 56,
             text: draftingLabel,
-            detail: undefined,
+            detail: `${acc.length.toLocaleString()} characters (non-streaming)`,
           });
-          lastProgressAt = Date.now();
         }
-        acc += piece;
-        if (onProgress) {
-          const now = Date.now();
-          if (now - lastProgressAt >= progressThrottleMs) {
-            lastProgressAt = now;
-            onProgress({
-              progress: Math.min(92, 28 + Math.min(acc.length / 3, 64)),
-              text: draftingLabel,
-              detail: `${acc.length.toLocaleString()} characters so far`,
-            });
-          }
-        }
-      }
-      if (chunk && typeof chunk === "object" && "usage" in chunk && chunk.usage) {
-        usage = chunk.usage;
       }
     }
+
+    logWebLlmChat("thinking_phase_end", {
+      streamPath,
+      accLen: acc.length,
+      finishReason,
+    });
+
     if (onProgress) {
       onProgress({
         progress: 94,
@@ -1068,6 +1203,7 @@ export async function enhanceNoteClientSide(
       console.error("[PrivateNote][LLM] strip failed — empty user-facing text", {
         modelId,
         type,
+        streamPath,
         maxTokensRequested: maxTokens,
         finishReason,
         usage,
