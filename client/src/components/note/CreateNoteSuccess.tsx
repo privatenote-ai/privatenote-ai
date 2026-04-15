@@ -104,11 +104,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           <div className="max-w-3xl mx-auto">
             <div className="p-0 sm:p-0 break-words">
               <div className="flex flex-col space-y-5 sm:space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="relative flex min-h-10 items-center justify-center sm:min-h-0 sm:justify-between">
                   <button
                     onClick={() => void onShareLink()}
                     type="button"
-                    className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                    className="absolute left-0 inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 sm:static"
                     title="Share link"
                   >
                     <Share2 className="h-4 w-4 mr-1.5 text-primary shrink-0" />
@@ -116,10 +116,21 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   </button>
                   <button
                     type="button"
+                    onClick={() => setShowSuccessQr((open) => !open)}
+                    aria-expanded={showSuccessQr}
+                    aria-label={showSuccessQr ? "Hide QR code" : "Share via QR code"}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/80 px-3 py-2 text-sm font-medium text-primary hover:bg-gray-50/80 dark:bg-gray-900/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:hidden"
+                    title="Show or hide QR code"
+                  >
+                    <QrCode className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="whitespace-nowrap">QR code</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setShowSuccessHelp((open) => !open)}
                     aria-expanded={showSuccessHelp}
                     aria-label="Show security tips"
-                    className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                    className="absolute right-0 inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 sm:static"
                   >
                     <CircleHelp className="h-5 w-5 text-primary" />
                   </button>
@@ -158,8 +169,63 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   </div>
                 </div>
 
+                <div className="sm:hidden pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowSuccessQr((open) => !open)}
+                    aria-expanded={showSuccessQr}
+                    className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm"
+                  >
+                    <QrCode className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    Share via QR code
+                  </button>
+                </div>
+
                 <div className="mt-8 sm:mt-10 pt-2 pb-5">
-                  <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-2 sm:gap-3">
+                  <div className="flex flex-col items-stretch gap-3 sm:hidden">
+                    <button
+                      type="button"
+                      onClick={() => void onCopyLink()}
+                      className={`inline-flex w-full items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                        successLinkCopied
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                          : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                      }`}
+                      title="Copy link to clipboard"
+                      aria-live="polite"
+                    >
+                      {successLinkCopied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-1.5 shrink-0" />
+                          Link copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-1.5 shrink-0" />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuccessQr((open) => !open)}
+                      aria-expanded={showSuccessQr}
+                      className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm py-1"
+                    >
+                      <QrCode className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                      Share via QR code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCreateNewNote}
+                      className="inline-flex w-full items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                      Create Another Note
+                    </button>
+                  </div>
+
+                  <div className="hidden sm:grid sm:grid-cols-[auto,minmax(0,1fr),auto] sm:items-center sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setShowSuccessQr((open) => !open)}
@@ -208,7 +274,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   {showSuccessQr && (
                     <div
                       ref={successQrSectionRef}
-                      className="mt-10 mx-auto flex w-full max-w-xs flex-col items-center gap-4"
+                      className="mt-6 sm:mt-10 mx-auto flex w-full max-w-xs flex-col items-center gap-4"
                     >
                       <div className="w-full flex items-center justify-between">
                         <button
