@@ -718,6 +718,21 @@ export function clearEngine(): void {
 }
 
 /**
+ * WebLLM/MLC throws when the Metal/WebGPU device is lost (memory pressure, tab backgrounding)
+ * or when the WASM engine was disposed but JS still holds a stale reference.
+ */
+export function isWebLlmGpuOrDisposeFailure(error: unknown): boolean {
+  const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return (
+    msg.includes("disposed") ||
+    msg.includes("device was lost") ||
+    msg.includes("gpudevicelost") ||
+    msg.includes("gpu device lost") ||
+    (msg.includes("webgpu") && msg.includes("lost"))
+  );
+}
+
+/**
  * Generate prompt for enhancement type
  */
 function getEnhancementPrompt(
