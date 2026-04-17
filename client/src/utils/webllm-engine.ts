@@ -68,12 +68,18 @@ function isIosWebKitForWebLlm(): boolean {
   );
 }
 
-/** Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode). */
+/**
+ * Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode).
+ *
+ * iPhone 13 Safari reports ~256 MB `maxStorageBufferBindingSize`; SmolLM2's compiled wasm is
+ * `ctx4k_cs1k` but MLC honors a smaller runtime override when allocating KV cache. Keep the
+ * smallest model at 1024 — a single prefill chunk fits and decode has max headroom.
+ */
 function contextWindowForModelRecord(modelId: string): number {
   if (!isIosWebKitForWebLlm()) return 4096;
-  if (/SmolLM2-(360M|135M)/i.test(modelId)) return 2048;
-  if (/SmolLM2-1\.7B/i.test(modelId)) return 3072;
-  if (/Qwen3-0\.6B|gemma-3-1b/i.test(modelId)) return 3072;
+  if (/SmolLM2-(360M|135M)/i.test(modelId)) return 1024;
+  if (/SmolLM2-1\.7B/i.test(modelId)) return 2048;
+  if (/Qwen3-0\.6B|gemma-3-1b/i.test(modelId)) return 2048;
   return 4096;
 }
 
@@ -204,9 +210,10 @@ export async function generateWebLLM(
   const { temperature, max_new_tokens } = DEFAULT_INFERENCE;
   let maxTokens = Math.min(max_new_tokens, 2048);
   if (isIosWebKitForWebLlm() && loadedModelId && /SmolLM2-(360M|135M)/i.test(loadedModelId)) {
-    maxTokens = Math.min(maxTokens, 512);
+    // Keep prefill + decode well under the ctx=1024 budget so KV cache never approaches the buffer cap.
+    maxTokens = Math.min(maxTokens, 384);
   } else if (isIosWebKitForWebLlm()) {
-    maxTokens = Math.min(maxTokens, 768);
+    maxTokens = Math.min(maxTokens, 640);
   }
   const opts = {
     messages: msgs,
@@ -237,7 +244,7 @@ export async function generateWebLLM(
       if (full) return extractUserFacingAnswer(full);
     } catch (e) {
       if (isWebLlmGpuOrDisposeFailure(e)) {
-        unloadModelWebLLM();
+        void unloadModelWebLLM();
         throw e instanceof Error ? e : new Error(String(e));
       }
       console.warn('[PrivateNote] generateWebLLM: streaming failed, falling back to non-streaming', e);
@@ -255,10 +262,29 @@ export async function generateWebLLM(
   return extractUserFacingAnswer(extractContentText(content));
 }
 
-export function unloadModelWebLLM(): void {
+/**
+ * Release the GPU device + WASM tokenizer held by the MLC engine.
+ *
+ * Awaiting `engine.unload()` matters on iOS Safari: after a device-lost we otherwise leak the
+ * GPU device and the WASM tokenizer pointer, which surfaces on the next call as
+ * `BindingError: Cannot pass deleted object as a pointer of type Tokenizer*`.
+ */
+export async function unloadModelWebLLM(): Promise<void> {
+  const prev = engine;
   engine = null;
   loadedModelId = null;
   lastResolvedAppConfig = undefined;
+  if (!prev) return;
+  const prevWithUnload = prev as MLCEngineInterface & { unload?: () => Promise<void> };
+  if (typeof prevWithUnload.unload !== 'function') return;
+  try {
+    await prevWithUnload.unload();
+  } catch (e) {
+    // Expected after a device-lost — the engine is already torn down at the Metal layer.
+    if (!isWebLlmGpuOrDisposeFailure(e)) {
+      console.warn('[PrivateNote] unloadModelWebLLM: engine.unload() threw', e);
+    }
+  }
 }
 
 /** Same appConfig used when loading (for cache lookup). */

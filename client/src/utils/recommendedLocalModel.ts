@@ -12,7 +12,9 @@ export const MODEL_QWEN_1_7 = "Qwen3-1.7B-q4f16_1-MLC";
 export const MODEL_QWEN_4 = "Qwen3-4B-q4f16_1-MLC";
 /** Default free-tier baseline (requires WebGPU `shader-f16` in MLC build). */
 export const MODEL_GEMMA_2_2B = "gemma-2-2b-it-q4f16_1-MLC";
-/** ~580 MB MLC footprint; fits iPhone-class `maxStorageBufferBindingSize` ~0.7GB. */
+/** ~376 MB MLC footprint, requires `shader-f16` — preferred on iPhone 13 / iOS 17+ Safari. */
+export const MODEL_SMOLLM2_360M_Q4F16 = "SmolLM2-360M-Instruct-q4f16_1-MLC";
+/** ~580 MB MLC footprint, no shader-f16 required — fallback for older WebGPU implementations. */
 export const MODEL_SMOLLM2_360M_Q4F32 = "SmolLM2-360M-Instruct-q4f32_1-MLC";
 
 /** Below this maxStorageBufferBindingSize, avoid 4B even for premium (many mobile / low-end GPUs). */
@@ -29,13 +31,24 @@ function mobileGpuBindingTooTightForQwen06First(): boolean {
   return !gpuPrimed || (gpuStorageLimitCached !== null && gpuStorageLimitCached < MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES);
 }
 
+/** Prefer the f16 SmolLM2 when the GPU reports `shader-f16` — it needs ~35% less VRAM than q4f32. */
+function smallestMobileSmolLm2(): string {
+  if (shaderF16Cached === true) return MODEL_SMOLLM2_360M_Q4F16;
+  return MODEL_SMOLLM2_360M_Q4F32;
+}
+
 /** Ordered mobile catalog ids: tight / unprimed GPU → SmolLM2 first; roomy Android → Qwen 0.6 first. */
 function mobilePickOrdered(includeQwen4: boolean): readonly string[] {
+  const smol = smallestMobileSmolLm2();
+  // When shader-f16 is confirmed, keep the f32 SmolLM2 as a secondary fallback for catalogs that
+  // don't mirror the f16 shards (custom host case). When unknown, f32 is the initial pick.
+  const smolSecondary = smol === MODEL_SMOLLM2_360M_Q4F16 ? [MODEL_SMOLLM2_360M_Q4F32] : [];
+
   if (mobileGpuBindingTooTightForQwen06First()) {
     if (includeQwen4) {
-      return [MODEL_SMOLLM2_360M_Q4F32, MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B];
+      return [smol, ...smolSecondary, MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B];
     }
-    return [MODEL_SMOLLM2_360M_Q4F32, MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
+    return [smol, ...smolSecondary, MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
   }
   if (includeQwen4) {
     return [MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7];
@@ -45,6 +58,7 @@ function mobilePickOrdered(includeQwen4: boolean): readonly string[] {
 
 let gpuPrimed = false;
 let gpuStorageLimitCached: number | null = null;
+let shaderF16Cached: boolean | null = null;
 let gpuPrimePromise: Promise<void> | null = null;
 
 /** True after {@link primeLocalModelGpuLimit} has resolved (GPU limit may still be null if probe failed). */
@@ -111,18 +125,41 @@ export function isLocalLlmPremium(): boolean {
   return String(import.meta.env.VITE_LOCAL_LLM_PREMIUM || "").toLowerCase() === "true";
 }
 
-export async function getGpuStorageLimit(): Promise<number | null> {
-  if (typeof navigator === "undefined" || !navigator.gpu?.requestAdapter) return null;
+/** Single adapter probe → { maxStorageBufferBindingSize, hasShaderF16 }. Null limit / false when unknown. */
+async function probeGpuCapabilities(): Promise<{ storageLimit: number | null; shaderF16: boolean | null }> {
+  if (typeof navigator === "undefined" || !navigator.gpu?.requestAdapter) {
+    return { storageLimit: null, shaderF16: null };
+  }
   try {
     const adapter = await requestWebGpuAdapterWithRetries({ logToConsole: false });
-    if (!adapter || typeof adapter !== "object" || !("limits" in adapter)) return null;
+    if (!adapter || typeof adapter !== "object") return { storageLimit: null, shaderF16: null };
     const limits = (adapter as { limits?: { maxStorageBufferBindingSize?: number } }).limits;
-    if (!limits) return null;
-    const n = limits.maxStorageBufferBindingSize;
-    return typeof n === "number" && n > 0 ? n : null;
+    const storageRaw = limits?.maxStorageBufferBindingSize;
+    const storageLimit = typeof storageRaw === "number" && storageRaw > 0 ? storageRaw : null;
+
+    const features = (adapter as { features?: { has?: (k: string) => boolean } }).features;
+    let shaderF16: boolean | null = null;
+    if (features && typeof features.has === "function") {
+      try {
+        shaderF16 = features.has("shader-f16") === true;
+      } catch {
+        shaderF16 = null;
+      }
+    }
+    return { storageLimit, shaderF16 };
   } catch {
-    return null;
+    return { storageLimit: null, shaderF16: null };
   }
+}
+
+export async function getGpuStorageLimit(): Promise<number | null> {
+  const { storageLimit } = await probeGpuCapabilities();
+  return storageLimit;
+}
+
+/** True when probed adapter advertised `shader-f16`. Null when adapter could not be reached. */
+export function isShaderF16Supported(): boolean | null {
+  return shaderF16Cached;
 }
 
 /** Populate GPU limit cache; safe to call multiple times (deduped). */
@@ -130,7 +167,9 @@ export async function primeLocalModelGpuLimit(): Promise<void> {
   if (gpuPrimed) return;
   if (!gpuPrimePromise) {
     gpuPrimePromise = (async () => {
-      gpuStorageLimitCached = await getGpuStorageLimit();
+      const caps = await probeGpuCapabilities();
+      gpuStorageLimitCached = caps.storageLimit;
+      shaderF16Cached = caps.shaderF16;
       gpuPrimed = true;
     })();
   }

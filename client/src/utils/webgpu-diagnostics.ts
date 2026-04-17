@@ -235,3 +235,18 @@ export async function collectWebGpuDiagnosticsJson(): Promise<string> {
   const { report } = await probeWebGpuForLocalLlm({ logToConsole: false });
   return JSON.stringify(report, null, 2);
 }
+
+/** Check if the first hardware adapter advertises `shader-f16`. Null when no adapter. */
+export async function detectShaderF16Support(): Promise<boolean | null> {
+  const adapter = await requestWebGpuAdapterWithRetries({ logToConsole: false });
+  if (adapter == null || typeof adapter !== "object" || !("features" in adapter)) {
+    return null;
+  }
+  const features = (adapter as { features?: { has?: (k: string) => boolean } }).features;
+  if (!features || typeof features.has !== "function") return false;
+  try {
+    return features.has("shader-f16") === true;
+  } catch {
+    return false;
+  }
+}

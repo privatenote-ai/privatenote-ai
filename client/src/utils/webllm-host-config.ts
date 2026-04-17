@@ -26,9 +26,18 @@ export const WEBLLM_WASM_BASE_URL = rawWasmBase;
  */
 export const OUR_WEBLLM_MODEL_RECORDS: OurWebLLMModelRecord[] = [
   {
+    model_id: 'SmolLM2-360M-Instruct-q4f16_1-MLC',
+    wasm_file: 'SmolLM2-360M-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm',
+    // Matches prebuilt config; f16 variant is ~35% less VRAM than q4f32.
+    vram_required_MB: 376.06,
+    low_resource_required: true,
+    required_features: ['shader-f16'],
+  },
+  {
     model_id: 'SmolLM2-360M-Instruct-q4f32_1-MLC',
     wasm_file: 'SmolLM2-360M-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm',
-    vram_required_MB: 700,
+    // Matches prebuilt config so MLC's pre-check matches the adapter's real limit.
+    vram_required_MB: 579.61,
     low_resource_required: true,
   },
   {

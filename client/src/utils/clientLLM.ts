@@ -30,6 +30,7 @@ import {
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
+  MODEL_SMOLLM2_360M_Q4F16,
   MODEL_SMOLLM2_360M_Q4F32,
   MODEL_QWEN_0_6,
   MODEL_GEMMA_2_2B,
@@ -77,9 +78,11 @@ function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
   console.warn(`[PrivateNote][LLM][chat] ${phase}`, payload);
 }
 
-// Preferred models for pickers (Qwen 0.6B is hidden from UI; mobile auto-pick prefers SmolLM2 when GPU binding is tight)
+// Preferred models for pickers (Qwen 0.6B is hidden from UI; mobile auto-pick prefers SmolLM2 when GPU binding is tight).
+// The f16 variant of SmolLM2-360M (~376 MB VRAM) is preferred on shader-f16 GPUs; f32 (~580 MB) is the compat fallback.
 const PREFERRED_MODELS = [
-  MODEL_SMOLLM2_360M_Q4F32,                // Ultra-compact, iPhone 13 / low-memory Safari
+  MODEL_SMOLLM2_360M_Q4F16,                // iPhone 13 / iOS 17+ Safari (requires shader-f16)
+  MODEL_SMOLLM2_360M_Q4F32,                // Fallback for WebGPU without shader-f16
   "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
   "Qwen3-1.7B-q4f16_1-MLC",                 // Fallback / alternate small instruct
   "Qwen3-4B-q4f16_1-MLC",                  // Premium + strong desktop + GPU headroom
@@ -719,10 +722,15 @@ export function isEngineLoaded(): boolean {
 }
 
 /**
- * Clear the engine instance (useful for testing or memory management)
+ * Clear the engine instance (useful for testing or memory management).
+ *
+ * `unloadModelWebLLM` is async (it awaits `engine.unload()` to release the GPU device and
+ * WASM tokenizer). We don't block callers here — they typically run inside error handlers —
+ * but the next WebLLM load awaits its own `CreateMLCEngine`, so any lingering dispose work is
+ * serialized naturally.
  */
 export function clearEngine(): void {
-  unloadModelWebLLM();
+  void unloadModelWebLLM();
   clearTransformersMobileEngine();
   engineLoadingPromise = null;
   engineLoadingTargetModelId = null;
@@ -1004,7 +1012,8 @@ export async function enhanceNoteClientSide(
 
   /** iOS WebLLM: long decode grows KV cache — cap completion budget to reduce mid-run device lost. */
   if (isIOSWebKit() && !shouldUseTransformersJsLocalPath()) {
-    const iosCap = modelTier === "small" ? 448 : modelTier === "medium" ? 640 : 768;
+    // Keep this in sync with `webllm-engine.ts` (SmolLM2 on iOS runs at ctx=1024).
+    const iosCap = modelTier === "small" ? 384 : modelTier === "medium" ? 560 : 768;
     maxTokens = Math.min(maxTokens, iosCap);
   }
 
@@ -1186,20 +1195,9 @@ export async function enhanceNoteClientSide(
           name: e1 instanceof Error ? e1.name : typeof e1,
           stack: e1 instanceof Error ? e1.stack : undefined,
         });
-        if (isWebLlmGpuOrDisposeFailure(e1)) {
-          clearEngine();
-          throw e1 instanceof Error ? e1 : new Error(String(e1));
-        }
-        logWebLlmChat("fallback_completions_non_stream_after_ios_stream", {});
-        try {
-          const reply = await engine.chat.completions.create(baseChatOpts);
-          applyNonStreamReply(reply);
-        } catch (e2) {
-          if (isWebLlmGpuOrDisposeFailure(e2)) {
-            clearEngine();
-          }
-          throw e2 instanceof Error ? e2 : new Error(String(e2));
-        }
+        /** After GPU loss the WASM tokenizer is often invalid; non-stream `create` then throws BindingError. */
+        clearEngine();
+        throw e1 instanceof Error ? e1 : new Error(String(e1));
       }
     } else {
       try {
@@ -1508,6 +1506,7 @@ export {
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
+  MODEL_SMOLLM2_360M_Q4F16,
   MODEL_SMOLLM2_360M_Q4F32,
   MODEL_QWEN_0_6,
   MODEL_QWEN_1_7,
