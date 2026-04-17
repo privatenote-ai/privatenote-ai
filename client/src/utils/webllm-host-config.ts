@@ -26,6 +26,12 @@ export const WEBLLM_WASM_BASE_URL = rawWasmBase;
  */
 export const OUR_WEBLLM_MODEL_RECORDS: OurWebLLMModelRecord[] = [
   {
+    model_id: 'SmolLM2-360M-Instruct-q4f32_1-MLC',
+    wasm_file: 'SmolLM2-360M-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm',
+    vram_required_MB: 700,
+    low_resource_required: true,
+  },
+  {
     model_id: 'Qwen3-0.6B-q4f16_1-MLC',
     wasm_file: 'Qwen3-0.6B-q4f16_1-ctx4k_cs1k-webgpu.wasm',
     vram_required_MB: 1403.34,

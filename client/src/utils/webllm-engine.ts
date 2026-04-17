@@ -6,6 +6,7 @@
 import {
   CreateMLCEngine,
   modelVersion,
+  prebuiltAppConfig,
   deleteModelAllInfoInCache,
   hasModelInCache,
   type AppConfig,
@@ -26,11 +27,14 @@ import {
   extractUserFacingAnswer,
 } from '@shared/parseThinkingOutput';
 import { userFacingLocalAiLoadProgress } from './localAiUxText';
+import { isWebLlmGpuOrDisposeFailure } from './webLlmGpuErrors';
 
 type ProgressCallback = (p: ModelProgress) => void;
 
 let engine: MLCEngineInterface | null = null;
 let loadedModelId: string | null = null;
+/** AppConfig passed to the last successful `CreateMLCEngine` (custom host or iOS-tweaked prebuilt). */
+let lastResolvedAppConfig: AppConfig | undefined;
 
 export function isLoadedWebLLM(): boolean {
   return engine !== null && loadedModelId !== null;
@@ -54,16 +58,55 @@ function mapProgressReport(report: InitProgressReport, modelId: string): ModelPr
   };
 }
 
+/** Same heuristic as `isIOSWebKit` in transformers-mobile-engine (avoid importing that module here). */
+function isIosWebKitForWebLlm(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return (
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+/** Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode). */
+function contextWindowForModelRecord(modelId: string): number {
+  if (!isIosWebKitForWebLlm()) return 4096;
+  if (/SmolLM2-(360M|135M)/i.test(modelId)) return 2048;
+  if (/SmolLM2-1\.7B/i.test(modelId)) return 3072;
+  if (/Qwen3-0\.6B|gemma-3-1b/i.test(modelId)) return 3072;
+  return 4096;
+}
+
 function buildCustomModelList(): ModelRecord[] {
   return OUR_WEBLLM_MODEL_RECORDS.map((r) => ({
     model: `${WEBLLM_MODEL_BASE_URL.replace(/\/$/, '')}/${r.model_id}`,
     model_id: r.model_id,
     model_lib: `${WEBLLM_WASM_BASE_URL.replace(/\/$/, '')}/${modelVersion}/${r.wasm_file}`,
-    overrides: { context_window_size: 4096 },
+    overrides: { context_window_size: contextWindowForModelRecord(r.model_id) },
     vram_required_MB: r.vram_required_MB,
     low_resource_required: r.low_resource_required,
     ...(r.required_features && { required_features: r.required_features }),
   }));
+}
+
+/** Prebuilt catalog: narrow context for the one model we load on iOS (full list kept for MLC lookup). */
+function buildIosPrebuiltAppConfig(modelId: string): AppConfig | undefined {
+  if (!isIosWebKitForWebLlm()) return undefined;
+  const list = prebuiltAppConfig?.model_list;
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+  const ctxTarget = contextWindowForModelRecord(modelId);
+  return {
+    model_list: list.map((entry) => {
+      const rec = entry as ModelRecord;
+      if (rec.model_id !== modelId) return rec;
+      const prev = rec.overrides?.context_window_size;
+      const nextCtx = Math.min(ctxTarget, prev ?? 8192);
+      return {
+        ...rec,
+        overrides: { ...rec.overrides, context_window_size: nextCtx },
+      };
+    }),
+  };
 }
 
 export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallback): Promise<void> {
@@ -75,6 +118,7 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
 
   engine = null;
   loadedModelId = null;
+  lastResolvedAppConfig = undefined;
 
   console.log(
     '[PrivateNote] loadModelWebLLM: loading',
@@ -96,7 +140,14 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
   };
 
   if (USE_CUSTOM_WEBLLM_HOST) {
-    engineConfig.appConfig = { model_list: buildCustomModelList() };
+    lastResolvedAppConfig = { model_list: buildCustomModelList() };
+    engineConfig.appConfig = lastResolvedAppConfig;
+  } else {
+    const iosCfg = buildIosPrebuiltAppConfig(modelId);
+    if (iosCfg) {
+      lastResolvedAppConfig = iosCfg;
+      engineConfig.appConfig = iosCfg;
+    }
   }
 
   try {
@@ -108,6 +159,7 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
     console.error('[PrivateNote] loadModelWebLLM: error', e);
     engine = null;
     loadedModelId = null;
+    lastResolvedAppConfig = undefined;
     const msg = e instanceof Error ? e.message : String(e);
     onProgress({ status: 'error', error: msg });
     throw e;
@@ -133,16 +185,6 @@ function extractContentText(content: unknown): string {
   return '';
 }
 
-/** Same heuristic as `isIOSWebKit` in transformers-mobile-engine (avoid importing that module here). */
-function isIosWebKitForWebLlm(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  return (
-    /iPhone|iPad|iPod/i.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
-}
-
 export async function generateWebLLM(
   messages: WebLLMChatMessage[],
   onToken?: (text: string) => void,
@@ -160,7 +202,12 @@ export async function generateWebLLM(
   if (msgs.length === 0) return '';
 
   const { temperature, max_new_tokens } = DEFAULT_INFERENCE;
-  const maxTokens = Math.min(max_new_tokens, 2048);
+  let maxTokens = Math.min(max_new_tokens, 2048);
+  if (isIosWebKitForWebLlm() && loadedModelId && /SmolLM2-(360M|135M)/i.test(loadedModelId)) {
+    maxTokens = Math.min(maxTokens, 512);
+  } else if (isIosWebKitForWebLlm()) {
+    maxTokens = Math.min(maxTokens, 768);
+  }
   const opts = {
     messages: msgs,
     temperature: temperature ?? 0.6,
@@ -189,6 +236,10 @@ export async function generateWebLLM(
       flushAnswer();
       if (full) return extractUserFacingAnswer(full);
     } catch (e) {
+      if (isWebLlmGpuOrDisposeFailure(e)) {
+        unloadModelWebLLM();
+        throw e instanceof Error ? e : new Error(String(e));
+      }
       console.warn('[PrivateNote] generateWebLLM: streaming failed, falling back to non-streaming', e);
     }
     const reply = await engine.chat.completions.create(opts);
@@ -207,12 +258,13 @@ export async function generateWebLLM(
 export function unloadModelWebLLM(): void {
   engine = null;
   loadedModelId = null;
+  lastResolvedAppConfig = undefined;
 }
 
 /** Same appConfig used when loading (for cache lookup). */
 export function getWebLLMAppConfig(): AppConfig | undefined {
-  if (!USE_CUSTOM_WEBLLM_HOST) return undefined;
-  return { model_list: buildCustomModelList() };
+  if (USE_CUSTOM_WEBLLM_HOST) return { model_list: buildCustomModelList() };
+  return lastResolvedAppConfig;
 }
 
 /** Delete the given WebLLM model from IndexedDB cache. Use same appConfig as load so the correct record is removed. */

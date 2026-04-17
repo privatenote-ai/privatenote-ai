@@ -41,6 +41,7 @@ import {
   removeClosedRedactedThinkingBlocks,
 } from "@shared/parseThinkingOutput";
 import { probeWebGpuForLocalLlm } from "./webgpu-diagnostics";
+import { isWebLlmGpuOrDisposeFailure } from "./webLlmGpuErrors";
 import {
   estimateModelSizeMB,
   getModelTier,
@@ -728,25 +729,7 @@ export function clearEngine(): void {
   clearLoadProgressSubscribers();
 }
 
-/**
- * WebLLM/MLC throws when the Metal/WebGPU device is lost (memory pressure, tab backgrounding)
- * or when the WASM engine was disposed but JS still holds a stale reference.
- */
-export function isWebLlmGpuOrDisposeFailure(error: unknown): boolean {
-  const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
-  const name = (error instanceof Error ? error.name : "").toLowerCase();
-  return (
-    msg.includes("disposed") ||
-    msg.includes("device was lost") ||
-    msg.includes("gpudevicelost") ||
-    msg.includes("gpu device lost") ||
-    (msg.includes("webgpu") && msg.includes("lost")) ||
-    name.includes("binding") ||
-    msg.includes("tokenizer") ||
-    msg.includes("cannot pass deleted object") ||
-    msg.includes("deleted object")
-  );
-}
+export { isWebLlmGpuOrDisposeFailure };
 
 /**
  * Generate prompt for enhancement type
@@ -1019,6 +1002,12 @@ export async function enhanceNoteClientSide(
     maxTokens = Math.max(scaled, 896);
   }
 
+  /** iOS WebLLM: long decode grows KV cache — cap completion budget to reduce mid-run device lost. */
+  if (isIOSWebKit() && !shouldUseTransformersJsLocalPath()) {
+    const iosCap = modelTier === "small" ? 448 : modelTier === "medium" ? 640 : 768;
+    maxTokens = Math.min(maxTokens, iosCap);
+  }
+
   const stopSequences =
     modelTier === "small"
       ? (["\n\n\n", "---", "Note:", "Human:", "AI:"] as string[])
@@ -1256,8 +1245,15 @@ export async function enhanceNoteClientSide(
             throw e2 instanceof Error ? e2 : new Error(String(e2));
           }
           logWebLlmChat("fallback_completions_non_stream", {});
-          const reply = await engine.chat.completions.create(baseChatOpts);
-          applyNonStreamReply(reply);
+          try {
+            const reply = await engine.chat.completions.create(baseChatOpts);
+            applyNonStreamReply(reply);
+          } catch (e3) {
+            if (isWebLlmGpuOrDisposeFailure(e3)) {
+              clearEngine();
+            }
+            throw e3 instanceof Error ? e3 : new Error(String(e3));
+          }
         }
       }
     }
