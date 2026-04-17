@@ -1012,8 +1012,17 @@ export async function enhanceNoteClientSide(
 
   /** iOS WebLLM: long decode grows KV cache — cap completion budget to reduce mid-run device lost. */
   if (isIOSWebKit() && !shouldUseTransformersJsLocalPath()) {
-    // Keep this in sync with `webllm-engine.ts` (SmolLM2 on iOS runs at ctx=1024).
-    const iosCap = modelTier === "small" ? 384 : modelTier === "medium" ? 560 : 768;
+    // Keep these in sync with `contextWindowForModelRecord` / maxTokens caps in webllm-engine.ts.
+    // SmolLM2 q4f16 gets a roomier budget because its f16 KV cache is half the size of f32.
+    const isSmolF16Ios =
+      modelTier === "small" && /SmolLM2-(360M|135M).*q4f16/i.test(modelId);
+    const iosCap = isSmolF16Ios
+      ? 768
+      : modelTier === "small"
+        ? 320
+        : modelTier === "medium"
+          ? 560
+          : 768;
     maxTokens = Math.min(maxTokens, iosCap);
   }
 
