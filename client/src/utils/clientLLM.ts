@@ -72,8 +72,12 @@ function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
   console.warn(`[PrivateNote][LLM][chat] ${phase}`, payload);
 }
 
+/** SmolLM2 360M with fp32 scales — ≈580 MB download, fits the ~700 MB Safari tab budget on iPhone 13-class devices. */
+export const MODEL_SMOLLM2_360M_Q4F32 = "SmolLM2-360M-Instruct-q4f32_1-MLC";
+
 // Preferred models for pickers (Qwen 0.6B is auto-selected on mobile, not listed here)
 const PREFERRED_MODELS = [
+  MODEL_SMOLLM2_360M_Q4F32,                // Ultra-compact, iPhone 13 / low-memory Safari
   "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
   "Qwen3-1.7B-q4f16_1-MLC",                 // Fallback / alternate small instruct
   "Qwen3-4B-q4f16_1-MLC",                  // Premium + strong desktop + GPU headroom
@@ -372,6 +376,8 @@ function clearLoadProgressSubscribers(): void {
 
 /** User-visible tier label for pickers and status (no internal model IDs). */
 export function getLocalAiTierLabelForModelId(modelId: string): string {
+  if (/SmolLM2-360M/i.test(modelId)) return "Ultra-compact (iPhone-safe, sub-1GB)";
+  if (/SmolLM2-135M/i.test(modelId)) return "Ultra-compact (tiny, demo-only)";
   const mb = estimateModelSizeMB(modelId);
   if (mb <= 400) return "Compact (fast, lower footprint)";
   if (mb >= 2500) return "Large (richer output)";
