@@ -27,6 +27,47 @@ export const VRAM_LIMIT_BYTES = 128 * 1024 * 1024;
  */
 export const MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES = 1024 * 1024 * 1024;
 
+/**
+ * Gemma-2-2B needs ~1.9 GB VRAM. Require the adapter to report ≥ 1.5 GB
+ * `maxStorageBufferBindingSize` before we surface it as a "boost" option on mobile.
+ * iPhone 15 Pro / 16 / 17 (A17 / A18) typically report ≥ 2 GB.
+ */
+export const MOBILE_BINDING_MIN_FOR_GEMMA_2_2B_BYTES = 1.5 * 1024 * 1024 * 1024;
+
+const MOBILE_BOOST_KEY = "privatenote_mobile_gemma_boost";
+
+/** True when the user has opted into the Gemma-2-2B boost on mobile. */
+export function getIsMobileBoostEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(MOBILE_BOOST_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setMobileBoostEnabled(on: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (on) {
+      localStorage.setItem(MOBILE_BOOST_KEY, "1");
+    } else {
+      localStorage.removeItem(MOBILE_BOOST_KEY);
+    }
+  } catch {
+    /* private mode — ignore */
+  }
+}
+
+/**
+ * True when the GPU probe has confirmed enough binding headroom for Gemma-2-2B on this device.
+ * Returns false until `primeLocalModelGpuLimit` has resolved.
+ */
+export function isMobileBoostCapable(): boolean {
+  if (!gpuPrimed) return false;
+  return gpuStorageLimitCached !== null && gpuStorageLimitCached >= MOBILE_BINDING_MIN_FOR_GEMMA_2_2B_BYTES;
+}
+
 function mobileGpuBindingTooTightForQwen06First(): boolean {
   return !gpuPrimed || (gpuStorageLimitCached !== null && gpuStorageLimitCached < MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES);
 }
@@ -43,6 +84,14 @@ function mobilePickOrdered(includeQwen4: boolean): readonly string[] {
   // When shader-f16 is confirmed, keep the f32 SmolLM2 as a secondary fallback for catalogs that
   // don't mirror the f16 shards (custom host case). When unknown, f32 is the initial pick.
   const smolSecondary = smol === MODEL_SMOLLM2_360M_Q4F16 ? [MODEL_SMOLLM2_360M_Q4F32] : [];
+
+  // User-opted boost: promote Gemma-2-2B to first position when the GPU probe confirms headroom.
+  if (isMobileBoostCapable() && getIsMobileBoostEnabled()) {
+    if (includeQwen4) {
+      return [MODEL_GEMMA_2_2B, MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_QWEN_1_7, smol, ...smolSecondary];
+    }
+    return [MODEL_GEMMA_2_2B, MODEL_QWEN_0_6, MODEL_QWEN_1_7, smol, ...smolSecondary];
+  }
 
   if (mobileGpuBindingTooTightForQwen06First()) {
     if (includeQwen4) {
