@@ -38,6 +38,7 @@ import {
   stripRedactedThinkingTags,
   removeClosedRedactedThinkingBlocks,
 } from "@shared/parseThinkingOutput";
+import { probeWebGpuForLocalLlm } from "./webgpu-diagnostics";
 import {
   estimateModelSizeMB,
   getModelTier,
@@ -473,15 +474,16 @@ async function assertWebGpuAdapterAvailable(): Promise<void> {
         "WebGPU is not available. On-device AI cannot run in this browser."
     );
   }
-  let adapter: unknown = null;
-  try {
-    adapter = await gpu.requestAdapter();
-  } catch (e) {
-    console.warn("[PrivateNote][AI] navigator.gpu.requestAdapter failed:", e);
-  }
+  const { adapter, report } = await probeWebGpuForLocalLlm({ logToConsole: true });
   if (adapter == null) {
+    const fallbackHint = report.hardwareDeniedButFallbackWorked
+      ? " Safari returned a software-only (fallback) adapter in diagnostics, but not a hardware adapter—MLC WebLLM still cannot start."
+      : "";
     throw new Error(
-      "WebGPU did not return a GPU adapter. On-device AI cannot run here—try updating the browser and GPU drivers, use Chrome or Edge, or try another device."
+      "WebGPU did not return a hardware GPU adapter. On-device AI cannot run in this tab." +
+        fallbackHint +
+        " Open Safari (not an in-app browser), use HTTPS or localhost, fully quit Safari after toggling Experimental Features, then retry." +
+        " Filter the console for [PrivateNote][WebGPU] for a full JSON probe, or use “Run WebGPU diagnostics” on /test-llm."
     );
   }
 }
@@ -1412,6 +1414,8 @@ export function getModelInfo() {
     hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
   };
 }
+
+export { collectWebGpuDiagnosticsJson, probeWebGpuForLocalLlm } from "./webgpu-diagnostics";
 
 export {
   getRecommendedLocalModelId,

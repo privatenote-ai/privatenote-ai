@@ -5,6 +5,7 @@
  */
 import { prebuiltAppConfig } from "@mlc-ai/web-llm";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
+import { requestWebGpuAdapterWithRetries } from "./webgpu-diagnostics";
 
 export const MODEL_QWEN_0_6 = "Qwen3-0.6B-q4f16_1-MLC";
 export const MODEL_QWEN_1_7 = "Qwen3-1.7B-q4f16_1-MLC";
@@ -86,9 +87,11 @@ export function isLocalLlmPremium(): boolean {
 export async function getGpuStorageLimit(): Promise<number | null> {
   if (typeof navigator === "undefined" || !navigator.gpu?.requestAdapter) return null;
   try {
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter?.limits) return null;
-    const n = adapter.limits.maxStorageBufferBindingSize;
+    const adapter = await requestWebGpuAdapterWithRetries({ logToConsole: false });
+    if (!adapter || typeof adapter !== "object" || !("limits" in adapter)) return null;
+    const limits = (adapter as { limits?: { maxStorageBufferBindingSize?: number } }).limits;
+    if (!limits) return null;
+    const n = limits.maxStorageBufferBindingSize;
     return typeof n === "number" && n > 0 ? n : null;
   } catch {
     return null;
