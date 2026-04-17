@@ -48,6 +48,7 @@ import {
 } from "@shared/modelTier";
 import { FEW_SHOT_APPENDIX_COMPACT, FEW_SHOT_APPENDIX_FULL } from "./localLlmFewShots";
 import {
+  publicModelNameForLoadProgress,
   userFacingLocalAiLoadProgress,
   localAiThinkingLabel,
   localAiThinkingDetailHint,
@@ -637,7 +638,7 @@ export async function initializeClientLLM(
             const progressPercent = Math.round(Math.min(1, Math.max(0, p.progress)) * 100);
             notifyLoadProgressSubscribers({
               progress: progressPercent,
-              text: userFacingLocalAiLoadProgress(p.file, p.progress),
+              text: userFacingLocalAiLoadProgress(p.file, p.progress, modelId),
             });
           }
         });
@@ -653,12 +654,12 @@ export async function initializeClientLLM(
           console.warn("[AI] Clearing broken local model state and retrying once:", modelId, errorMessage);
           notifyLoadProgressSubscribers({
             progress: 8,
-            text: "Resetting a broken model download…",
+            text: `Resetting download for ${publicModelNameForLoadProgress(modelId)}…`,
           });
           await resetLocalAiLoadState(modelId);
           notifyLoadProgressSubscribers({
             progress: 12,
-            text: "Retrying private AI download…",
+            text: `Retrying download for ${publicModelNameForLoadProgress(modelId)}…`,
           });
           await runLoad();
         } else {

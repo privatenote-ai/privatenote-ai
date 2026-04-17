@@ -44,11 +44,11 @@ export function getWebLLMLEngine(): MLCEngineInterface | null {
   return engine;
 }
 
-function mapProgressReport(report: InitProgressReport): ModelProgress {
+function mapProgressReport(report: InitProgressReport, modelId: string): ModelProgress {
   return {
     status: 'loading',
     progress: report.progress,
-    file: userFacingLocalAiLoadProgress(report.text, report.progress),
+    file: userFacingLocalAiLoadProgress(report.text, report.progress, modelId),
     loadedBytes: 0,
     totalBytes: 0,
   };
@@ -84,14 +84,14 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
   onProgress({
     status: 'loading',
     progress: 0,
-    file: userFacingLocalAiLoadProgress(undefined, 0),
+    file: userFacingLocalAiLoadProgress(undefined, 0, modelId),
     loadedBytes: 0,
     totalBytes: 0,
   });
 
   const engineConfig: { initProgressCallback: (r: InitProgressReport) => void; appConfig?: AppConfig } = {
     initProgressCallback: (report: InitProgressReport) => {
-      onProgress(mapProgressReport(report));
+      onProgress(mapProgressReport(report, modelId));
     },
   };
 
