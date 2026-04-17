@@ -12,9 +12,36 @@ export const MODEL_QWEN_1_7 = "Qwen3-1.7B-q4f16_1-MLC";
 export const MODEL_QWEN_4 = "Qwen3-4B-q4f16_1-MLC";
 /** Default free-tier baseline (requires WebGPU `shader-f16` in MLC build). */
 export const MODEL_GEMMA_2_2B = "gemma-2-2b-it-q4f16_1-MLC";
+/** ~580 MB MLC footprint; fits iPhone-class `maxStorageBufferBindingSize` ~0.7GB. */
+export const MODEL_SMOLLM2_360M_Q4F32 = "SmolLM2-360M-Instruct-q4f32_1-MLC";
 
 /** Below this maxStorageBufferBindingSize, avoid 4B even for premium (many mobile / low-end GPUs). */
 export const VRAM_LIMIT_BYTES = 128 * 1024 * 1024;
+
+/**
+ * Qwen3-0.6B lists ~1.4GB VRAM in MLC prebuilt config; Safari often reports maxStorageBufferBindingSize ~0.7GB
+ * on iPhone — leading Qwen first causes immediate GPU device lost. Prefer SmolLM2 when under this cap
+ * (or before the GPU probe has run: conservative for first mobile paint).
+ */
+export const MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES = 1024 * 1024 * 1024;
+
+function mobileGpuBindingTooTightForQwen06First(): boolean {
+  return !gpuPrimed || (gpuStorageLimitCached !== null && gpuStorageLimitCached < MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES);
+}
+
+/** Ordered mobile catalog ids: tight / unprimed GPU → SmolLM2 first; roomy Android → Qwen 0.6 first. */
+function mobilePickOrdered(includeQwen4: boolean): readonly string[] {
+  if (mobileGpuBindingTooTightForQwen06First()) {
+    if (includeQwen4) {
+      return [MODEL_SMOLLM2_360M_Q4F32, MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B];
+    }
+    return [MODEL_SMOLLM2_360M_Q4F32, MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
+  }
+  if (includeQwen4) {
+    return [MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7];
+  }
+  return [MODEL_QWEN_0_6, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7];
+}
 
 let gpuPrimed = false;
 let gpuStorageLimitCached: number | null = null;
@@ -114,20 +141,20 @@ export async function primeLocalModelGpuLimit(): Promise<void> {
 export function getHardwareTierModelIdSync(): string {
   if (!gpuPrimed) {
     return isMobileFormFactor()
-      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B])
+      ? pickFirstAvailableModel(mobilePickOrdered(false))
       : MODEL_GEMMA_2_2B;
   }
   const limit = gpuStorageLimitCached;
   if (limit !== null && limit < VRAM_LIMIT_BYTES) {
     return isMobileFormFactor()
-      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B])
+      ? pickFirstAvailableModel(mobilePickOrdered(false))
       : MODEL_GEMMA_2_2B;
   }
   const strong = getCores() >= 8 && getRamGb() >= 8;
   if (isMobileFormFactor()) {
     return strong
-      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B])
-      : pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_GEMMA_2_2B]);
+      ? pickFirstAvailableModel(mobilePickOrdered(true))
+      : pickFirstAvailableModel(mobilePickOrdered(false));
   }
   return strong ? MODEL_QWEN_4 : MODEL_GEMMA_2_2B;
 }
@@ -139,37 +166,52 @@ export function getHardwareTierModelIdSync(): string {
  */
 export function getRecommendedLocalModelIdSync(): string {
   const mobile = isMobileFormFactor();
-  const mobilePick = [MODEL_QWEN_0_6, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7] as const;
   const desktopFreePick = [MODEL_GEMMA_2_2B, MODEL_QWEN_1_7] as const;
 
   if (!isLocalLlmPremium()) {
-    return mobile ? pickFirstAvailableModel([...mobilePick]) : pickFirstAvailableModel([...desktopFreePick]);
+    return mobile
+      ? pickFirstAvailableModel(mobilePickOrdered(false))
+      : pickFirstAvailableModel([...desktopFreePick]);
   }
 
   const strong = getCores() >= 8 && getRamGb() >= 8;
 
   if (!gpuPrimed) {
     return mobile
-      ? pickFirstAvailableModel([...mobilePick])
+      ? pickFirstAvailableModel(mobilePickOrdered(strong))
       : pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
 
   const limit = gpuStorageLimitCached;
   if (limit !== null && limit < VRAM_LIMIT_BYTES) {
     return mobile
-      ? pickFirstAvailableModel([...mobilePick])
+      ? pickFirstAvailableModel(mobilePickOrdered(strong))
       : pickFirstAvailableModel([MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
 
   if (strong) {
     return mobile
-      ? pickFirstAvailableModel([MODEL_QWEN_0_6, MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7])
+      ? pickFirstAvailableModel(mobilePickOrdered(true))
       : pickFirstAvailableModel([MODEL_QWEN_4, MODEL_GEMMA_2_2B, MODEL_QWEN_1_7]);
   }
-  return mobile ? pickFirstAvailableModel([...mobilePick]) : pickFirstAvailableModel([...desktopFreePick]);
+  return mobile
+    ? pickFirstAvailableModel(mobilePickOrdered(false))
+    : pickFirstAvailableModel([...desktopFreePick]);
 }
 
 export async function getRecommendedLocalModelId(): Promise<string> {
   await primeLocalModelGpuLimit();
   return getRecommendedLocalModelIdSync();
+}
+
+/**
+ * When true, a saved catalog id (e.g. Qwen3-0.6B) should not be honored on this phone:
+ * MLC lists ~1.4GB for Qwen3-0.6B while Safari often exposes maxStorageBufferBindingSize ~0.7GB.
+ */
+export function savedMobileModelOverGpuBindingCap(modelId: string): boolean {
+  if (modelId !== MODEL_QWEN_0_6) return false;
+  if (!isMobileFormFactor()) return false;
+  if (!gpuPrimed) return false;
+  if (gpuStorageLimitCached === null) return false;
+  return gpuStorageLimitCached < MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES;
 }

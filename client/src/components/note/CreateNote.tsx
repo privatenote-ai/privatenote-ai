@@ -35,6 +35,8 @@ import {
   getLocalAiSupportHint,
   getRecommendedLocalModelId,
   resetLocalAiLoadState,
+  clearEngine,
+  isWebLlmGpuOrDisposeFailure,
   type ModelLoadProgress,
 } from "@/utils/clientLLM";
 import {
@@ -326,6 +328,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         templateId: selectedTemplateId ?? undefined,
       });
     } catch (error) {
+      if (isWebLlmGpuOrDisposeFailure(error)) {
+        clearEngine();
+      }
       console.warn("[AI] Local AI failed:", error);
       triggerCloudLitePrompt();
       throw error;

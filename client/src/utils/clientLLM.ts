@@ -29,6 +29,8 @@ import {
   getHardwareTierModelIdSync,
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
+  savedMobileModelOverGpuBindingCap,
+  MODEL_SMOLLM2_360M_Q4F32,
   MODEL_QWEN_0_6,
   MODEL_GEMMA_2_2B,
 } from "./recommendedLocalModel";
@@ -73,10 +75,7 @@ function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
   console.warn(`[PrivateNote][LLM][chat] ${phase}`, payload);
 }
 
-/** SmolLM2 360M with fp32 scales — ≈580 MB download, fits the ~700 MB Safari tab budget on iPhone 13-class devices. */
-export const MODEL_SMOLLM2_360M_Q4F32 = "SmolLM2-360M-Instruct-q4f32_1-MLC";
-
-// Preferred models for pickers (Qwen 0.6B is auto-selected on mobile, not listed here)
+// Preferred models for pickers (Qwen 0.6B is hidden from UI; mobile auto-pick prefers SmolLM2 when GPU binding is tight)
 const PREFERRED_MODELS = [
   MODEL_SMOLLM2_360M_Q4F32,                // Ultra-compact, iPhone 13 / low-memory Safari
   "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
@@ -568,10 +567,21 @@ export async function initializeClientLLM(
   } else {
     // Check for saved model preference
     const savedModel = getSelectedModel();
-    if (savedModel && isModelAvailable(savedModel) && !isHiddenLocalModelId(savedModel)) {
+    if (
+      savedModel &&
+      isModelAvailable(savedModel) &&
+      !isHiddenLocalModelId(savedModel) &&
+      !savedMobileModelOverGpuBindingCap(savedModel)
+    ) {
       modelId = savedModel;
       console.log("[AI] Using saved model preference:", modelId);
     } else {
+      if (savedModel && savedMobileModelOverGpuBindingCap(savedModel)) {
+        console.warn(
+          "[AI] Ignoring saved model for this GPU binding cap (mobile Qwen3-0.6B oversize):",
+          savedModel,
+        );
+      }
       // Find a suitable model based on device capabilities
       modelId = findSuitableModel();
       console.log("[AI] Auto-selected model:", modelId);
@@ -1500,8 +1510,11 @@ export {
   getGpuStorageLimit,
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
+  savedMobileModelOverGpuBindingCap,
+  MODEL_SMOLLM2_360M_Q4F32,
   MODEL_QWEN_0_6,
   MODEL_QWEN_1_7,
   MODEL_QWEN_4,
   MODEL_GEMMA_2_2B,
+  MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES,
 } from "./recommendedLocalModel";
