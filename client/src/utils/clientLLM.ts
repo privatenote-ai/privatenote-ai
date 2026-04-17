@@ -723,12 +723,17 @@ export function clearEngine(): void {
  */
 export function isWebLlmGpuOrDisposeFailure(error: unknown): boolean {
   const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  const name = (error instanceof Error ? error.name : "").toLowerCase();
   return (
     msg.includes("disposed") ||
     msg.includes("device was lost") ||
     msg.includes("gpudevicelost") ||
     msg.includes("gpu device lost") ||
-    (msg.includes("webgpu") && msg.includes("lost"))
+    (msg.includes("webgpu") && msg.includes("lost")) ||
+    name.includes("binding") ||
+    msg.includes("tokenizer") ||
+    msg.includes("cannot pass deleted object") ||
+    msg.includes("deleted object")
   );
 }
 
@@ -1138,25 +1143,35 @@ export async function enhanceNoteClientSide(
     let usage: unknown;
     let streamPath: "stream_with_usage" | "stream_plain" | "non_stream" = "stream_with_usage";
 
-    try {
-      logWebLlmChat("completions_create_stream_with_usage", {});
-      const stream = (await engine.chat.completions.create({
-        ...baseChatOpts,
-        stream: true,
-        stream_options: { include_usage: true },
-      })) as AsyncIterable<unknown>;
-      const consumed = await consumeCompletionStream(stream);
-      acc = consumed.acc;
-      finishReason = consumed.finishReason;
-      usage = consumed.usage;
-    } catch (e1) {
-      logWebLlmChat("stream_with_usage_failed", {
-        message: e1 instanceof Error ? e1.message : String(e1),
-        name: e1 instanceof Error ? e1.name : typeof e1,
-        stack: e1 instanceof Error ? e1.stack : undefined,
-      });
+    const applyNonStreamReply = (reply: unknown): void => {
+      streamPath = "non_stream";
+      const r = reply as {
+        choices?: Array<{ finish_reason?: string; message?: { content?: unknown } }>;
+        usage?: unknown;
+      };
+      const content = r.choices?.[0]?.message?.content;
+      acc = messageContentToString(content);
+      const fr = r.choices?.[0]?.finish_reason;
+      finishReason = fr != null ? String(fr) : null;
+      if (reply && typeof reply === "object" && "usage" in reply) {
+        usage = (reply as { usage?: unknown }).usage;
+      }
+      if (onProgress && acc.length > 0) {
+        onProgress({
+          progress: 56,
+          text: draftingLabel,
+          detail: `${acc.length.toLocaleString()} characters (non-streaming)`,
+        });
+      }
+    };
+
+    /** iOS Safari: streaming with `stream_options.include_usage` can corrupt the WASM tokenizer mid-run; use plain streaming first. */
+    const iosChat = isIOSWebKit();
+
+    if (iosChat) {
+      streamPath = "stream_plain";
       try {
-        logWebLlmChat("retry_completions_create_stream_plain", {});
+        logWebLlmChat("ios_completions_create_stream_plain_first", {});
         const stream = (await engine.chat.completions.create({
           ...baseChatOpts,
           stream: true,
@@ -1165,29 +1180,73 @@ export async function enhanceNoteClientSide(
         acc = consumed.acc;
         finishReason = consumed.finishReason;
         usage = consumed.usage;
-        streamPath = "stream_plain";
-      } catch (e2) {
-        logWebLlmChat("stream_plain_failed", {
-          message: e2 instanceof Error ? e2.message : String(e2),
-          name: e2 instanceof Error ? e2.name : typeof e2,
-          stack: e2 instanceof Error ? e2.stack : undefined,
+      } catch (e1) {
+        logWebLlmChat("ios_stream_plain_failed", {
+          message: e1 instanceof Error ? e1.message : String(e1),
+          name: e1 instanceof Error ? e1.name : typeof e1,
+          stack: e1 instanceof Error ? e1.stack : undefined,
         });
-        logWebLlmChat("fallback_completions_non_stream", {});
-        const reply = await engine.chat.completions.create(baseChatOpts);
-        streamPath = "non_stream";
-        const content = reply.choices?.[0]?.message?.content;
-        acc = messageContentToString(content);
-        const fr = reply.choices?.[0]?.finish_reason;
-        finishReason = fr != null ? String(fr) : null;
-        if (reply && typeof reply === "object" && "usage" in reply) {
-          usage = (reply as { usage?: unknown }).usage;
+        if (isWebLlmGpuOrDisposeFailure(e1)) {
+          clearEngine();
+          throw e1 instanceof Error ? e1 : new Error(String(e1));
         }
-        if (onProgress && acc.length > 0) {
-          onProgress({
-            progress: 56,
-            text: draftingLabel,
-            detail: `${acc.length.toLocaleString()} characters (non-streaming)`,
+        logWebLlmChat("fallback_completions_non_stream_after_ios_stream", {});
+        try {
+          const reply = await engine.chat.completions.create(baseChatOpts);
+          applyNonStreamReply(reply);
+        } catch (e2) {
+          if (isWebLlmGpuOrDisposeFailure(e2)) {
+            clearEngine();
+          }
+          throw e2 instanceof Error ? e2 : new Error(String(e2));
+        }
+      }
+    } else {
+      try {
+        logWebLlmChat("completions_create_stream_with_usage", {});
+        const stream = (await engine.chat.completions.create({
+          ...baseChatOpts,
+          stream: true,
+          stream_options: { include_usage: true },
+        })) as AsyncIterable<unknown>;
+        const consumed = await consumeCompletionStream(stream);
+        acc = consumed.acc;
+        finishReason = consumed.finishReason;
+        usage = consumed.usage;
+      } catch (e1) {
+        logWebLlmChat("stream_with_usage_failed", {
+          message: e1 instanceof Error ? e1.message : String(e1),
+          name: e1 instanceof Error ? e1.name : typeof e1,
+          stack: e1 instanceof Error ? e1.stack : undefined,
+        });
+        if (isWebLlmGpuOrDisposeFailure(e1)) {
+          clearEngine();
+          throw e1 instanceof Error ? e1 : new Error(String(e1));
+        }
+        try {
+          logWebLlmChat("retry_completions_create_stream_plain", {});
+          const stream = (await engine.chat.completions.create({
+            ...baseChatOpts,
+            stream: true,
+          })) as AsyncIterable<unknown>;
+          const consumed = await consumeCompletionStream(stream);
+          acc = consumed.acc;
+          finishReason = consumed.finishReason;
+          usage = consumed.usage;
+          streamPath = "stream_plain";
+        } catch (e2) {
+          logWebLlmChat("stream_plain_failed", {
+            message: e2 instanceof Error ? e2.message : String(e2),
+            name: e2 instanceof Error ? e2.name : typeof e2,
+            stack: e2 instanceof Error ? e2.stack : undefined,
           });
+          if (isWebLlmGpuOrDisposeFailure(e2)) {
+            clearEngine();
+            throw e2 instanceof Error ? e2 : new Error(String(e2));
+          }
+          logWebLlmChat("fallback_completions_non_stream", {});
+          const reply = await engine.chat.completions.create(baseChatOpts);
+          applyNonStreamReply(reply);
         }
       }
     }

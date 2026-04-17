@@ -133,6 +133,16 @@ function extractContentText(content: unknown): string {
   return '';
 }
 
+/** Same heuristic as `isIOSWebKit` in transformers-mobile-engine (avoid importing that module here). */
+function isIosWebKitForWebLlm(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return (
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
 export async function generateWebLLM(
   messages: WebLLMChatMessage[],
   onToken?: (text: string) => void,
@@ -162,7 +172,7 @@ export async function generateWebLLM(
       const chunks = await engine.chat.completions.create({
         ...opts,
         stream: true,
-        stream_options: { include_usage: true },
+        ...(isIosWebKitForWebLlm() ? {} : { stream_options: { include_usage: true } }),
       });
 
       const [pushAnswer, flushAnswer] = createRedactedThinkingStreamFilter((s) => onToken(s));

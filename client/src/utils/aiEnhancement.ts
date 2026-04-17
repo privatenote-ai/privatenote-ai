@@ -79,7 +79,7 @@ export async function enhanceNoteHybrid(
     }
     console.error("[AI] Client-side enhancement failed:", error);
     const message = isWebLlmGpuOrDisposeFailure(error)
-      ? "On-device GPU reset or ran out of memory (WebGPU device lost). Try a smaller model—for example SmolLM2 360M—then initialize private AI again, and close other Safari tabs if it keeps happening."
+      ? "On-device AI crashed during generation (WebGPU device lost, memory pressure, or a Safari WASM bug). Try a smaller model—for example SmolLM2 360M—then initialize private AI again; avoid starting two enhancements at once, and close other Safari tabs if it keeps happening."
       : error instanceof Error
         ? error.message
         : "Failed to enhance note with on-device AI.";
