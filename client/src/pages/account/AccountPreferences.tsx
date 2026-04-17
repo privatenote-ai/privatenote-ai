@@ -14,12 +14,6 @@ import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
-import {
-  isMobileFormFactor,
-  isMobileBoostCapable,
-  getIsMobileBoostEnabled,
-  setMobileBoostEnabled,
-} from "@/utils/recommendedLocalModel";
 
 export default function AccountPreferences() {
   const { user, loading: authLoading } = useAuth();
@@ -27,14 +21,6 @@ export default function AccountPreferences() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingEmailPref, setSavingEmailPref] = useState(false);
-  const [mobileBoost, setMobileBoostState] = useState(() => getIsMobileBoostEnabled());
-
-  const onMobileBoostChange = (checked: boolean) => {
-    setMobileBoostEnabled(checked);
-    setMobileBoostState(checked);
-  };
-
-  const showMobileBoostCard = isMobileFormFactor() && isMobileBoostCapable();
 
   const loadSummary = useCallback(async () => {
     try {
@@ -179,34 +165,6 @@ export default function AccountPreferences() {
             </div>
           </CardContent>
         </Card>
-
-        {showMobileBoostCard && (
-          <Card className="border-gray-200 dark:border-gray-800">
-            <CardHeader>
-              <CardTitle className="text-lg">On-device AI boost</CardTitle>
-              <CardDescription>
-                Your device has enough GPU memory to run a more capable model.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="mobile-boost" className="text-base">
-                    Use Gemma 2 (2B) on this device
-                  </Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    A larger model with better writing quality. Requires a one-time download (~1.9 GB) and may be slower to start. Reload the app after switching.
-                  </p>
-                </div>
-                <Switch
-                  id="mobile-boost"
-                  checked={mobileBoost}
-                  onCheckedChange={onMobileBoostChange}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         <Card className="border-gray-200 dark:border-gray-800">
           <CardHeader>

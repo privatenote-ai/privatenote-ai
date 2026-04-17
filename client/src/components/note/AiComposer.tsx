@@ -19,6 +19,12 @@ import {
 } from "@/components/note/promptTemplates";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/clientLLM";
 import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
+import {
+  isMobileFormFactor,
+  isMobileBoostCapable,
+  getIsMobileBoostEnabled,
+  setMobileBoostEnabled,
+} from "@/utils/recommendedLocalModel";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
@@ -44,6 +50,51 @@ function StepRow({ step, label }: { step: number; label: string }) {
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {label}
       </span>
+    </div>
+  );
+}
+
+/** Inline opt-in toggle for the Gemma-2-2B boost on capable newer phones. */
+function MobileBoostToggle() {
+  const [enabled, setEnabled] = useState(() => getIsMobileBoostEnabled());
+
+  if (!isMobileFormFactor() || !isMobileBoostCapable()) return null;
+
+  const toggle = () => {
+    const next = !enabled;
+    setMobileBoostEnabled(next);
+    setEnabled(next);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-200 dark:border-violet-800/60 bg-violet-50/80 dark:bg-violet-950/30 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-violet-900 dark:text-violet-200 leading-tight">
+          Performance boost — Gemma 2 (2B)
+        </p>
+        <p className="text-xs text-violet-700 dark:text-violet-300/80 mt-0.5 leading-snug">
+          {enabled
+            ? "Larger model active. Reload app to switch."
+            : "Your device supports a better model. Reload after enabling."}
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        onClick={toggle}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${
+          enabled
+            ? "border-violet-600 bg-violet-600 dark:border-violet-400 dark:bg-violet-500"
+            : "border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700"
+        }`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+            enabled ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
     </div>
   );
 }
@@ -385,6 +436,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               </div>
             )}
+
+            <MobileBoostToggle />
           </div>
         ) : noteContent ? (
           <div>
