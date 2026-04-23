@@ -28,6 +28,7 @@ import {
 } from '@shared/parseThinkingOutput';
 import { userFacingLocalAiLoadProgress } from './localAiUxText';
 import { isWebLlmGpuOrDisposeFailure } from './webLlmGpuErrors';
+import { recordLocalLlmGpuOrRuntimeFailure } from './localLlmSessionSignals';
 
 type ProgressCallback = (p: ModelProgress) => void;
 
@@ -68,27 +69,11 @@ function isIosWebKitForWebLlm(): boolean {
   );
 }
 
-/**
- * Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode).
- *
- * iPhone 13 Safari reports ~256 MB `maxStorageBufferBindingSize`; SmolLM2's compiled wasm is
- * `ctx4k_cs1k` but MLC honors a smaller runtime override when allocating KV cache.
- *
- * KV cache math (SmolLM2-360M: 32 layers · 5 KV heads · head_dim 64):
- *   ctx=3072, f16 KV → ~126 MB  (safe on iPhone 13)
- *   ctx=2048, f16 KV → ~84 MB
- *   ctx=1024, f16 KV → ~42 MB
- *   ctx=1024, f32 KV → ~84 MB   (f32 variant doubles everything)
- *
- * q4f16 has enough headroom for a real prompt (system + few-shot + note + question) with room
- * to decode; q4f32 stays tight because f32 KV doubles the per-token cost.
- */
+/** Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode). */
 function contextWindowForModelRecord(modelId: string): number {
   if (!isIosWebKitForWebLlm()) return 4096;
-  if (/SmolLM2-(360M|135M).*q4f16/i.test(modelId)) return 3072;
-  if (/SmolLM2-(360M|135M)/i.test(modelId)) return 1024;
-  if (/SmolLM2-1\.7B/i.test(modelId)) return 2048;
-  if (/Qwen3-0\.6B|gemma-3-1b/i.test(modelId)) return 2048;
+  if (/Qwen3-0\.6B/i.test(modelId)) return 2048;
+  if (/gemma-2-2b/i.test(modelId)) return 2048;
   return 4096;
 }
 
@@ -219,12 +204,10 @@ export async function generateWebLLM(
   const { temperature, max_new_tokens } = DEFAULT_INFERENCE;
   let maxTokens = Math.min(max_new_tokens, 2048);
   if (isIosWebKitForWebLlm() && loadedModelId) {
-    // Caps must be in sync with `contextWindowForModelRecord`: the request fits prefill + decode
-    // into the iOS ctx budget. f16 KV is half of f32, so the f16 SmolLM2 gets the bigger window.
-    if (/SmolLM2-(360M|135M).*q4f16/i.test(loadedModelId)) {
-      maxTokens = Math.min(maxTokens, 768);
-    } else if (/SmolLM2-(360M|135M)/i.test(loadedModelId)) {
-      maxTokens = Math.min(maxTokens, 320);
+    if (/Qwen3-0\.6B/i.test(loadedModelId)) {
+      maxTokens = Math.min(maxTokens, 640);
+    } else if (/gemma-2-2b/i.test(loadedModelId)) {
+      maxTokens = Math.min(maxTokens, 560);
     } else {
       maxTokens = Math.min(maxTokens, 640);
     }
@@ -258,6 +241,7 @@ export async function generateWebLLM(
       if (full) return extractUserFacingAnswer(full);
     } catch (e) {
       if (isWebLlmGpuOrDisposeFailure(e)) {
+        recordLocalLlmGpuOrRuntimeFailure(loadedModelId);
         void unloadModelWebLLM();
         throw e instanceof Error ? e : new Error(String(e));
       }

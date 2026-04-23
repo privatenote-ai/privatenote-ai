@@ -84,7 +84,7 @@ export default function TestClientLLM() {
       if (partialMatch) return partialMatch;
     }
     // Use device-recommended model if available, otherwise first available preferred model
-    if (available.includes(deviceRecommendedModel)) {
+    if (deviceRecommendedModel && available.includes(deviceRecommendedModel)) {
       return deviceRecommendedModel;
     }
     return availablePreferred[0] || available[0] || preferred[0];

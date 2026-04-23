@@ -8,10 +8,12 @@ import {
   isModelInCacheWebLLM,
   deleteWebLLMModelFromCache,
 } from "./webllm-engine";
+import { recordLocalLlmGpuOrRuntimeFailure, recordLocalLlmInitFailure } from "./localLlmSessionSignals";
 import {
   shouldUseTransformersJsLocalPath,
   isTransformersMobileLikelySupported,
   initializeTransformersMobile,
+  initializeTransformersGemma4Text,
   generateTransformersMobile,
   clearTransformersMobileEngine,
   isTransformersMobileLoaded,
@@ -24,16 +26,17 @@ import {
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import {
   getRecommendedLocalModelIdSync,
+  getLocalAiOffer,
+  getDeviceTier,
   primeLocalModelGpuLimit,
-  isLocalLlmPremium,
   getHardwareTierModelIdSync,
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
-  MODEL_SMOLLM2_360M_Q4F16,
-  MODEL_SMOLLM2_360M_Q4F32,
+  isLocalLlmPremium,
   MODEL_QWEN_0_6,
   MODEL_GEMMA_2_2B,
+  MODEL_GEMMA_4_TRANSFORMER,
 } from "./recommendedLocalModel";
 import {
   extractUserFacingAnswer,
@@ -78,23 +81,13 @@ function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
   console.warn(`[PrivateNote][LLM][chat] ${phase}`, payload);
 }
 
-// Preferred models for pickers (Qwen 0.6B is hidden from UI; mobile auto-pick prefers SmolLM2 when GPU binding is tight).
-// The f16 variant of SmolLM2-360M (~376 MB VRAM) is preferred on shader-f16 GPUs; f32 (~580 MB) is the compat fallback.
-const PREFERRED_MODELS = [
-  MODEL_SMOLLM2_360M_Q4F16,                // iPhone 13 / iOS 17+ Safari (requires shader-f16)
-  MODEL_SMOLLM2_360M_Q4F32,                // Fallback for WebGPU without shader-f16
-  "gemma-2-2b-it-q4f16_1-MLC",             // Default free + capable baseline
-  "Qwen3-1.7B-q4f16_1-MLC",                 // Fallback / alternate small instruct
-  "Qwen3-4B-q4f16_1-MLC",                  // Premium + strong desktop + GPU headroom
-  "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-  "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-  "Llama-3.1-8B-Instruct-q4f16_1-MLC",
-];
+/** Picker ordering (first in catalog wins). Policy: {@link getLocalAiOffer}. */
+const PREFERRED_MODELS = [MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
 
-const DEFAULT_MODEL = MODEL_GEMMA_2_2B;
+const DEFAULT_MODEL = MODEL_QWEN_0_6;
 
-function isHiddenLocalModelId(id: string): boolean {
-  return id === MODEL_QWEN_0_6;
+function isHiddenLocalModelId(_id: string): boolean {
+  return false;
 }
 
 /** Qwen 0.6B is not offered in UI pickers; legacy saves fall back to the device default. */
@@ -113,10 +106,18 @@ export function getAvailableModels(): string[] {
 }
 
 function isModelAvailable(modelId: string): boolean {
+  if (modelId === MODEL_GEMMA_4_TRANSFORMER) return true;
   if (USE_CUSTOM_WEBLLM_HOST) {
     return OUR_WEBLLM_MODEL_RECORDS.some((r) => r.model_id === modelId);
   }
   return prebuiltAppConfig.model_list.some((m) => m.model_id === modelId);
+}
+
+function isSavedModelAllowedByOffer(modelId: string): boolean {
+  const offer = getLocalAiOffer();
+  if (!offer.enabled) return false;
+  const allowed = new Set([offer.defaultModel, ...offer.boostModels].filter(Boolean) as string[]);
+  return allowed.has(modelId);
 }
 
 /**
@@ -126,11 +127,13 @@ export function getPreferredModels(): string[] {
   return [...PREFERRED_MODELS];
 }
 
-/**
- * Sync snapshot of recommended catalog id (may run before GPU prime — prefer {@link getRecommendedLocalModelId} when priming first).
- */
-export function getRecommendedModelForDevice(): string {
+/** Sync snapshot — prefer {@link getRecommendedLocalModelId} so GPU tier is primed first. */
+export function getRecommendedModelForDevice(): string | null {
   return getRecommendedLocalModelIdSync();
+}
+
+function getUserFacingRecommendedModelLabel(modelId: string | null): string {
+  return modelId ? getLocalAiTierLabelForModelId(modelId) : "Unavailable on this device";
 }
 
 /**
@@ -216,31 +219,38 @@ export function getDeviceInfo(): {
     localModelGpuLimitPrimed: isLocalModelGpuLimitPrimed(),
     gpuMaxStorageBufferBindingSizeCached: getCachedMaxStorageBufferBindingSize(),
     uaSniffHintsForUx: collectDeviceUaSniffHintsForUx(),
-    recommendedModel: getLocalAiTierLabelForModelId(getRecommendedLocalModelIdSync()),
-    hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
+    recommendedModel: getUserFacingRecommendedModelLabel(getRecommendedLocalModelIdSync()),
+    hardwareTierIfPremium: getUserFacingRecommendedModelLabel(getHardwareTierModelIdSync()),
     localLlmPremium: isLocalLlmPremium(),
     webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
     webLlmSupportHint: getLocalAiSupportHint(),
   };
 }
 
-/**
- * Pick a catalog model from saved preference or {@link getRecommendedLocalModelIdSync} (GPU + CPU/RAM; not UA).
- */
+/** Device recommendation when no saved preference (see {@link initializeClientLLM}). */
 function findSuitableModel(): string {
   const deviceSelectedModel = getRecommendedLocalModelIdSync();
-
-  if (isModelAvailable(deviceSelectedModel)) {
-    console.log(
-      "[AI] Device-selected model:",
-      deviceSelectedModel,
-      isLocalLlmPremium() ? "(premium tier)" : "(free tier → Gemma 2 2B)"
-    );
+  if (
+    deviceSelectedModel === MODEL_GEMMA_4_TRANSFORMER &&
+    isSavedModelAllowedByOffer(deviceSelectedModel)
+  ) {
     return deviceSelectedModel;
   }
+  if (
+    deviceSelectedModel &&
+    isModelAvailable(deviceSelectedModel) &&
+    isSavedModelAllowedByOffer(deviceSelectedModel)
+  ) {
+    return deviceSelectedModel;
+  }
+  return pickFirstAvailableWebLlmDefault();
+}
 
-  console.log("[AI] Using default model:", DEFAULT_MODEL);
-  return DEFAULT_MODEL;
+function pickFirstAvailableWebLlmDefault(): string {
+  const offer = getLocalAiOffer();
+  if (!offer.enabled || !offer.defaultModel) return MODEL_QWEN_0_6;
+  if (offer.defaultModel === MODEL_GEMMA_4_TRANSFORMER) return MODEL_QWEN_0_6;
+  return isModelAvailable(offer.defaultModel) ? offer.defaultModel : MODEL_QWEN_0_6;
 }
 
 // Cache key for IndexedDB
@@ -381,8 +391,7 @@ function clearLoadProgressSubscribers(): void {
 
 /** User-visible tier label for pickers and status (no internal model IDs). */
 export function getLocalAiTierLabelForModelId(modelId: string): string {
-  if (/SmolLM2-360M/i.test(modelId)) return "Ultra-compact (iPhone-safe, sub-1GB)";
-  if (/SmolLM2-135M/i.test(modelId)) return "Ultra-compact (tiny, demo-only)";
+  if (modelId === MODEL_GEMMA_4_TRANSFORMER) return "Experimental (Gemma 4, Transformers)";
   const mb = estimateModelSizeMB(modelId);
   if (mb <= 400) return "Compact (fast, lower footprint)";
   if (mb >= 2500) return "Large (richer output)";
@@ -393,6 +402,8 @@ function getActiveModelId(): string {
   if (shouldUseTransformersJsLocalPath()) {
     return getTransformersMobileModelInfo().name;
   }
+  const transformersActive = getActiveTransformersLoadedModelId();
+  if (transformersActive) return transformersActive;
   return getLoadedModelIdWebLLM() || findSuitableModel();
 }
 
@@ -461,7 +472,9 @@ export function isLocalAiSupported(): boolean {
   if (shouldUseTransformersJsLocalPath()) {
     return isTransformersMobileLikelySupported();
   }
-  return isWebLLMSupported();
+  if (!isWebLLMSupported()) return false;
+  if (isLocalModelGpuLimitPrimed() && !getLocalAiOffer().enabled) return false;
+  return true;
 }
 
 /** Narrowing for TS lib sets that omit WebGPU on `Navigator`. */
@@ -544,6 +557,11 @@ export async function initializeClientLLM(
     return getWebLLMLEngine()!;
   }
 
+  if (isTransformersMobileLoaded() && !preferredModelId) {
+    onProgress?.({ progress: 100, text: "Ready to generate" });
+    return null as unknown as MLCEngineInterface;
+  }
+
   if (!isWebLLMSupported()) {
     throw new Error(
       getWebLLMSupportHint() ??
@@ -555,27 +573,34 @@ export async function initializeClientLLM(
 
   await primeLocalModelGpuLimit();
 
+  if (!getLocalAiOffer().enabled) {
+    throw new Error(
+      "On-device AI is not available on this GPU. The reported WebGPU storage buffer binding limit is too low or unknown.",
+    );
+  }
+
   // Determine which model to use
   let modelId: string;
   if (preferredModelId) {
-    // Use explicitly requested model, validate it's available
-    if (isModelAvailable(preferredModelId)) {
-      modelId = preferredModelId;
-      console.log("[AI] Using requested model:", modelId);
-    } else {
+    if (!isModelAvailable(preferredModelId)) {
       const available = getAvailableModels().slice(0, 5).join(", ");
       throw new Error(
         `Model "${preferredModelId}" is not available. ` +
-        `Available models include: ${available}... (${getAvailableModels().length} total)`
+          `Available models include: ${available}... (${getAvailableModels().length} total)`,
       );
     }
+    if (!isSavedModelAllowedByOffer(preferredModelId)) {
+      throw new Error(`Model "${preferredModelId}" is not allowed for this device tier or session.`);
+    }
+    modelId = preferredModelId;
+    console.log("[AI] Using requested model:", modelId);
   } else {
-    // Check for saved model preference
     const savedModel = getSelectedModel();
     if (
       savedModel &&
       isModelAvailable(savedModel) &&
       !isHiddenLocalModelId(savedModel) &&
+      isSavedModelAllowedByOffer(savedModel) &&
       !savedMobileModelOverGpuBindingCap(savedModel)
     ) {
       modelId = savedModel;
@@ -583,13 +608,34 @@ export async function initializeClientLLM(
     } else {
       if (savedModel && savedMobileModelOverGpuBindingCap(savedModel)) {
         console.warn(
-          "[AI] Ignoring saved model for this GPU binding cap (mobile Qwen3-0.6B oversize):",
+          "[AI] Ignoring saved model for this GPU binding cap (Qwen 0.6 not safe):",
           savedModel,
         );
       }
-      // Find a suitable model based on device capabilities
       modelId = findSuitableModel();
       console.log("[AI] Auto-selected model:", modelId);
+    }
+  }
+
+  if (modelId === MODEL_GEMMA_4_TRANSFORMER) {
+    if (getDeviceTier() !== "newest") {
+      throw new Error("Gemma 4 (Transformers) requires the newest device tier.");
+    }
+    if (isIOSWebKit()) {
+      throw new Error(
+        getLocalAiSupportHint() ?? TRANSFORMERS_MOBILE_IOS_DISABLED_REASON,
+      );
+    }
+    addLoadProgressSubscriber(onProgress);
+    try {
+      await initializeTransformersGemma4Text(onProgress, MODEL_GEMMA_4_TRANSFORMER);
+      notifyLoadProgressSubscribers({ progress: 100, text: "Ready to generate" });
+      clearLoadProgressSubscribers();
+      return null as unknown as MLCEngineInterface;
+    } catch (error: unknown) {
+      clearLoadProgressSubscribers();
+      recordLocalLlmInitFailure(modelId);
+      throw error;
     }
   }
 
@@ -686,6 +732,8 @@ export async function initializeClientLLM(
       engineLoadingPromise = null;
       engineLoadingTargetModelId = null;
       clearLoadProgressSubscribers();
+
+      recordLocalLlmInitFailure(modelId);
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("[AI] On-device AI load failed:", modelId, errorMessage);
@@ -871,7 +919,7 @@ export async function enhanceNoteClientSide(
     disableOutputRepairPass?: boolean;
   }
 ): Promise<string> {
-  if (shouldUseTransformersJsLocalPath()) {
+  if (shouldUseTransformersJsLocalPath() || isTransformersMobileLoaded()) {
     await initializeClientLLM(onProgress);
 
     const modelId = getActiveModelId();
@@ -1012,17 +1060,8 @@ export async function enhanceNoteClientSide(
 
   /** iOS WebLLM: long decode grows KV cache — cap completion budget to reduce mid-run device lost. */
   if (isIOSWebKit() && !shouldUseTransformersJsLocalPath()) {
-    // Keep these in sync with `contextWindowForModelRecord` / maxTokens caps in webllm-engine.ts.
-    // SmolLM2 q4f16 gets a roomier budget because its f16 KV cache is half the size of f32.
-    const isSmolF16Ios =
-      modelTier === "small" && /SmolLM2-(360M|135M).*q4f16/i.test(modelId);
-    const iosCap = isSmolF16Ios
-      ? 768
-      : modelTier === "small"
-        ? 320
-        : modelTier === "medium"
-          ? 560
-          : 768;
+    const iosCap =
+      modelTier === "small" ? 640 : modelTier === "medium" ? 560 : 768;
     maxTokens = Math.min(maxTokens, iosCap);
   }
 
@@ -1205,6 +1244,9 @@ export async function enhanceNoteClientSide(
           stack: e1 instanceof Error ? e1.stack : undefined,
         });
         /** After GPU loss the WASM tokenizer is often invalid; non-stream `create` then throws BindingError. */
+        if (isWebLlmGpuOrDisposeFailure(e1)) {
+          recordLocalLlmGpuOrRuntimeFailure(getLoadedModelIdWebLLM());
+        }
         clearEngine();
         throw e1 instanceof Error ? e1 : new Error(String(e1));
       }
@@ -1227,6 +1269,7 @@ export async function enhanceNoteClientSide(
           stack: e1 instanceof Error ? e1.stack : undefined,
         });
         if (isWebLlmGpuOrDisposeFailure(e1)) {
+          recordLocalLlmGpuOrRuntimeFailure(getLoadedModelIdWebLLM());
           clearEngine();
           throw e1 instanceof Error ? e1 : new Error(String(e1));
         }
@@ -1248,6 +1291,7 @@ export async function enhanceNoteClientSide(
             stack: e2 instanceof Error ? e2.stack : undefined,
           });
           if (isWebLlmGpuOrDisposeFailure(e2)) {
+            recordLocalLlmGpuOrRuntimeFailure(getLoadedModelIdWebLLM());
             clearEngine();
             throw e2 instanceof Error ? e2 : new Error(String(e2));
           }
@@ -1257,6 +1301,7 @@ export async function enhanceNoteClientSide(
             applyNonStreamReply(reply);
           } catch (e3) {
             if (isWebLlmGpuOrDisposeFailure(e3)) {
+              recordLocalLlmGpuOrRuntimeFailure(getLoadedModelIdWebLLM());
               clearEngine();
             }
             throw e3 instanceof Error ? e3 : new Error(String(e3));
@@ -1391,7 +1436,7 @@ function messageContentToString(content: unknown): string {
  */
 export async function isModelCached(): Promise<boolean> {
   try {
-    if (shouldUseTransformersJsLocalPath()) {
+    if (shouldUseTransformersJsLocalPath() || isTransformersMobileLoaded()) {
       return false;
     }
     const saved = getSelectedModel();
@@ -1476,6 +1521,8 @@ export function getLoadedLocalModelId(): string | null {
   if (shouldUseTransformersJsLocalPath()) {
     return getActiveTransformersLoadedModelId();
   }
+  const t = getActiveTransformersLoadedModelId();
+  if (t) return t;
   return getLoadedModelIdWebLLM();
 }
 
@@ -1487,8 +1534,8 @@ export function getModelInfo() {
     return getTransformersMobileModelInfo();
   }
   const available = getAvailableModels();
-  const modelId = findSuitableModel();
-  const loadedModelId = getLoadedModelIdWebLLM();
+  const modelId = getActiveModelId();
+  const loadedModelId = getLoadedLocalModelId();
 
   return {
     name: modelId,
@@ -1499,7 +1546,7 @@ export function getModelInfo() {
     availableModels: available.length,
     preferredModels: PREFERRED_MODELS,
     localLlmPremium: isLocalLlmPremium(),
-    hardwareTierIfPremium: getLocalAiTierLabelForModelId(getHardwareTierModelIdSync()),
+    hardwareTierIfPremium: getUserFacingRecommendedModelLabel(getHardwareTierModelIdSync()),
   };
 }
 
@@ -1509,17 +1556,21 @@ export {
   getRecommendedLocalModelId,
   getRecommendedLocalModelIdSync,
   getHardwareTierModelIdSync,
+  getGpuCapabilities,
+  getDeviceTier,
+  type DeviceTier,
+  getLocalAiOffer,
   primeLocalModelGpuLimit,
   isLocalLlmPremium,
   getGpuStorageLimit,
   isLocalModelGpuLimitPrimed,
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
-  MODEL_SMOLLM2_360M_Q4F16,
-  MODEL_SMOLLM2_360M_Q4F32,
   MODEL_QWEN_0_6,
-  MODEL_QWEN_1_7,
-  MODEL_QWEN_4,
   MODEL_GEMMA_2_2B,
-  MOBILE_BINDING_MAX_FOR_QWEN_0_6_FIRST_BYTES,
+  MODEL_GEMMA_4_TRANSFORMER,
+  MIN_BINDING_FOR_QWEN06,
+  MIN_BINDING_FOR_CAPABLE,
+  MIN_BINDING_FOR_GEMMA22B,
+  MIN_BINDING_FOR_GEMMA42B,
 } from "./recommendedLocalModel";

@@ -230,6 +230,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         throw new Error(getLocalAiSupportHint() ?? "Local AI is not supported in this browser.");
       }
       const modelId = await getRecommendedLocalModelId();
+      if (!modelId) {
+        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
+      }
       await initializeClientLLM(onProgress, modelId);
     },
     [],
@@ -261,6 +264,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowCloudLitePrompt(false);
     try {
       const modelId = await getRecommendedLocalModelId();
+      if (!modelId) {
+        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
+      }
       await resetLocalAiLoadState(modelId);
       toast({
         title: "On-device AI reset",
@@ -318,6 +324,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         ? { templateName: selectedTemplate.name, templateDescription: selectedTemplate.description }
         : undefined;
       const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId());
+      if (!modelId) {
+        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
+      }
       const finalUserMessage =
         useBuild && selectedTemplate
           ? buildPromptFromTemplate(selectedTemplate, content.trim(), modelId, aiSentenceLength)
@@ -736,6 +745,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     [selectedTemplateId],
   );
 
+  const handleUseFallbackTemplate = useCallback((text: string) => {
+    setNoteContentFromAiOutput(text);
+    setTransformHistory([]);
+    setShowPrompt(false);
+    setAiDraftAccepted(true);
+  }, [setNoteContentFromAiOutput]);
+
   const executeAiGenerate = async (
     promptToUse: string,
     enhancementTypeToUse: "improve" | "summarize" | "secure" | "ask",
@@ -784,6 +800,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const handleBackButton = () => {
     if (aiDraftAccepted) {
+      if (!isLocalAiSupported()) {
+        setShowPrompt(true);
+      }
       setAiDraftAccepted(false);
       return;
     }
@@ -1048,6 +1067,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onSentenceLengthChange={handleSentenceLengthChange}
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
+                onUseFallbackTemplate={handleUseFallbackTemplate}
               />
             </div>
           ) : null}

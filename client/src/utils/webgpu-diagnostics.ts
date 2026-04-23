@@ -1,6 +1,11 @@
 /**
  * WebGPU adapter probing and structured diagnostics for Safari / iOS field debugging.
  * `navigator.gpu` can exist while `requestAdapter()` still returns null (policy, GPU process, or options).
+ *
+ * `maxStorageBufferBindingSize` (surfaced in adapter summaries) is one WebGPU limit among many. Callers
+ * that choose local LLM models should treat it as a **negative filter** (e.g. avoid leading with large
+ * models when the limit is very low), not as total VRAM or a guarantee that a given model will run or
+ * stay stable under tab memory pressure, KV growth, or driver quirks.
  */
 
 const GPU_LOG = "[PrivateNote][WebGPU]";

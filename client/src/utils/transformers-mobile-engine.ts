@@ -396,13 +396,16 @@ async function withBackendInitTimeout<T>(
 }
 
 export function getTransformersMobileModelInfo() {
-  const name = getActiveTransformersLocalModelId();
+  const name = getActiveTransformersLoadedModelId() ?? getActiveTransformersLocalModelId();
   const isDesktopDev = TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely();
-  const variantLabel = shouldUseGemma4TransformersTextPath()
-    ? "Desktop Transformers.js (Gemma 4 E2B text-only)"
-    : isDesktopDev
-      ? "Desktop Transformers.js test (Llama 3.2 1B–class)"
-      : "Transformers.js fallback (experimental)";
+  const variantLabel =
+    name && /gemma-4/i.test(name)
+      ? "Transformers.js (Gemma 4 E2B)"
+      : shouldUseGemma4TransformersTextPath()
+        ? "Desktop Transformers.js (Gemma 4 E2B text-only)"
+        : isDesktopDev
+          ? "Desktop Transformers.js test (Llama 3.2 1B–class)"
+          : "Transformers.js fallback (experimental)";
   return {
     name,
     loadedModelId: getActiveTransformersLoadedModelId(),
@@ -425,7 +428,11 @@ function toGemma4ChatMessages(
   }));
 }
 
-async function initializeTransformersGemma4Text(onProgress?: ProgressCallback): Promise<void> {
+/** Gemma 4 (Transformers.js ONNX). Pass `preferredModelId` when loading from app tier policy (not Mac dev). */
+export async function initializeTransformersGemma4Text(
+  onProgress?: ProgressCallback,
+  preferredModelId?: string
+): Promise<void> {
   if (isIOSWebKit()) {
     onProgress?.({
       progress: 0,
@@ -461,7 +468,11 @@ async function initializeTransformersGemma4Text(onProgress?: ProgressCallback): 
       throw new Error(msg);
     }
     const storedSkip = readStoredWebGpuSkipState();
-    const modelId = getActiveTransformersLocalModelId();
+    const modelId =
+      preferredModelId?.trim() ||
+      (shouldUseGemma4TransformersTextPath()
+        ? getActiveTransformersLocalModelId()
+        : DEFAULT_TRANSFORMERS_GEMMA4_MODEL_ID);
     logTransformersResolvedModel(modelId);
     console.log("[AI] Initializing Transformers.js Gemma 4 runtime", {
       modelId,

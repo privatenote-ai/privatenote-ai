@@ -95,17 +95,9 @@ const TECHNICAL_LOAD_PROGRESS_LINE =
  */
 export function publicModelNameForLoadProgress(modelId: string): string {
   const id = modelId.trim();
-  if (/SmolLM2-360M/i.test(id)) return "SmolLM2 360M";
-  if (/SmolLM2-135M/i.test(id)) return "SmolLM2 135M";
-  if (/SmolLM2-1\.7B/i.test(id)) return "SmolLM2 1.7B";
   if (/Qwen3-0\.6B/i.test(id)) return "Qwen3 0.6B";
-  if (/Qwen3-1\.7B/i.test(id)) return "Qwen3 1.7B";
-  if (/Qwen3-4B/i.test(id)) return "Qwen3 4B";
-  if (/gemma-3/i.test(id)) return "Gemma 3 1B";
   if (/gemma-2-2b/i.test(id)) return "Gemma 2 2B";
-  if (/Llama-3\.2-1B/i.test(id)) return "Llama 3.2 1B";
-  if (/Llama-3\.2-3B/i.test(id)) return "Llama 3.2 3B";
-  if (/Llama-3[._]1-8B|Llama-3\.1-8B/i.test(id)) return "Llama 3.1 8B";
+  if (/gemma-4/i.test(id)) return "Gemma 4";
   const stripped = id.replace(/-MLC.*$/i, "").replace(/_/g, " ");
   return stripped.replace(/-/g, " ").replace(/\s+/g, " ").trim() || id;
 }

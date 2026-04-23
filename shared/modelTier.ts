@@ -9,18 +9,7 @@ const DEFAULT_MODEL_SIZE_MB = 200;
 
 export function estimateModelSizeMB(modelId: string): number {
   const id = modelId;
-  // SmolLM2 family — explicit before the generic size heuristics so the q4f32_1
-  // 360M variant reports its real on-disk footprint (≈580 MB) rather than the
-  // generic 200 MB fallback. 135M is the smallest usable SmolLM2 checkpoint.
-  if (/SmolLM2-360M/i.test(id)) {
-    if (/q4f32/i.test(id)) return 580;
-    if (/q0f16/i.test(id)) return 730;
-    return 380;
-  }
-  if (/SmolLM2-135M/i.test(id)) return 170;
-  if (/SmolLM2-1\.7B/i.test(id)) {
-    return /q4f32/i.test(id) ? 1100 : 900;
-  }
+  if (/gemma-4-E2B/i.test(id)) return 1800;
   if (
     id.includes("270m") ||
     id.includes("270M") ||
@@ -65,9 +54,7 @@ export function estimateModelSizeMB(modelId: string): number {
 }
 
 export function getModelTier(modelId: string): ModelTier {
-  // SmolLM2 360M / 135M behave like small models (tight prompts, clamped
-  // temperature) even though the fp32-scale variant is ~580 MB on disk.
-  if (/SmolLM2-(360M|135M)/i.test(modelId)) return "small";
+  if (/gemma-4/i.test(modelId) && !/MLC$/i.test(modelId)) return "large";
   const sizeMB = estimateModelSizeMB(modelId);
   if (sizeMB <= 400) return "small";
   if (sizeMB <= 2000) return "medium";
