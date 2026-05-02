@@ -19,6 +19,13 @@
   
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
   
+  <!--
+    Prefill guard — MUST be the first script and MUST be synchronous (no async/defer).
+    Moves #text=<secret> from location.hash into sessionStorage and clears the URL
+    fragment before Turnstile or any other third-party code can read it.
+  -->
+  <script src="/prefill-guard.js"></script>
+
   <!-- Cloudflare Turnstile (only loaded on creation page, not note viewing) -->
   <!-- Note: Turnstile uses dynamic versioned URLs, so SRI is not practical -->
   <!-- The script is only loaded on pages that use AI features, not on note viewing pages -->

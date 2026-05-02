@@ -12,6 +12,7 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     passwordProtectedNotes: 0,
     aiEnhancedNotes: 0,
     blogViews: {},
+    referrerCounts: {},
     averageExpirationDays: 0,
     expiryRangeDistribution: {
       oneHourOrLess: 0,
@@ -43,6 +44,7 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     ...base,
     ...metrics,
     blogViews: metrics.blogViews || {},
+    referrerCounts: metrics.referrerCounts || {},
     expiryRangeDistribution: {
       ...base.expiryRangeDistribution,
       ...(metrics.expiryRangeDistribution || {}),
@@ -73,6 +75,7 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
     aiEnhancedNotes: base.aiEnhancedNotes + add.aiEnhancedNotes,
     averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
     blogViews: { ...base.blogViews },
+    referrerCounts: { ...(base.referrerCounts || {}) },
     expiryRangeDistribution: {
       oneHourOrLess: base.expiryRangeDistribution.oneHourOrLess + add.expiryRangeDistribution.oneHourOrLess,
       oneDayOrLess: base.expiryRangeDistribution.oneDayOrLess + add.expiryRangeDistribution.oneDayOrLess,
@@ -95,6 +98,10 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
 
   for (const [slug, views] of Object.entries(add.blogViews)) {
     merged.blogViews[slug] = (merged.blogViews[slug] || 0) + views;
+  }
+
+  for (const [ref, count] of Object.entries(add.referrerCounts || {})) {
+    merged.referrerCounts[ref] = (merged.referrerCounts[ref] || 0) + count;
   }
 
   return merged;

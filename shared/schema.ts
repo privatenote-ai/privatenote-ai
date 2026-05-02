@@ -92,6 +92,7 @@ export interface DailyMetrics {
   passwordProtectedNotes: number;
   aiEnhancedNotes: number;
   blogViews: Record<string, number>; // slug -> views
+  referrerCounts: Record<string, number>; // sanitized referrer name -> note count
   averageExpirationDays: number;
   expiryRangeDistribution: {
     oneHourOrLess: number;
