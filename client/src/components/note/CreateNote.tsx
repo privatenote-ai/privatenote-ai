@@ -972,7 +972,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   // ── Create form ───────────────────────────────────────────────────────────
   return (
-    <section className="max-w-3xl mx-auto">
+    <section className="w-full max-w-none mx-auto">
       <div className="pt-4">
         {/* Mode toggle */}
         <div className="mb-6">

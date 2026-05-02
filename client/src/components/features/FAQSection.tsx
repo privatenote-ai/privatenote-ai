@@ -140,7 +140,7 @@ export const FAQSection: React.FC = () => {
         <div className="absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-primary/10 blur-[120px]" />
         <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
-      <div className="px-4 py-16 sm:px-6 lg:px-8 max-w-5xl mx-auto relative z-10">
+      <div className="px-4 py-16 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
           <div>
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-primary">
@@ -181,7 +181,7 @@ export const FAQSection: React.FC = () => {
             </AccordionItem>
           ))}
         </Accordion>
-        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-5xl">
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-7xl">
           Still unsure? See{' '}
           <Link
             href="/how-it-works"

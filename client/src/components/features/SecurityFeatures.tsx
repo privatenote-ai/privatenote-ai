@@ -37,7 +37,7 @@ const features = [
 
 export const SecurityFeatures: React.FC = () => {
   return (
-    <section className="relative px-4 py-12 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <section className="relative px-4 py-12 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="text-center mb-8 sm:mb-12">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Key Features</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">

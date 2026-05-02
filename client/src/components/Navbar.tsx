@@ -81,13 +81,14 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-blue-100/80 dark:border-gray-800/80 shadow-[0_1px_6px_rgba(15,23,42,0.05)]">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      {/* Same max width + horizontal padding as main content (e.g. Home note editor column) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4 md:gap-6">
           {/* Left: Logo */}
           <NavLink
             href="/"
             closeMenu={closeMenu}
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex shrink-0 items-center gap-2 cursor-pointer"
           >
             <Logo size={30} className="shrink-0" />
             <span className="font-bold text-2xl text-primary">
@@ -96,111 +97,117 @@ export const Navbar: React.FC = () => {
             </span>
           </NavLink>
 
-          {/* Center: Desktop Links */}
-          <div className="hidden md:flex flex-1 items-center justify-center gap-7 text-sm font-medium">
-            <NavLink
-              href="/"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
+          {/* Desktop: primary links (left, widened) + About + account (right) */}
+          <div className="hidden md:flex flex-1 min-w-0 items-center justify-between gap-6 lg:gap-8">
+            <nav
+              className="flex flex-wrap items-center justify-start gap-x-10 gap-y-1 text-sm font-medium lg:gap-x-12 lg:text-[15px]"
+              aria-label="Primary"
             >
-              Write a Note
-            </NavLink>
-            <NavLink
-              href="/password-generator"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Share a Password
-            </NavLink>
-            <NavLink
-              href="/how-it-works"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              How It Works
-            </NavLink>
-            <NavLink
-              href="/security-resources"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Security
-            </NavLink>
-            <NavLink
-              href="/blog"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Blog
-            </NavLink>
-            <NavLink
-              href="/about"
-              closeMenu={closeMenu}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              About
-            </NavLink>
-          </div>
+              <NavLink
+                href="/"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                Write a Note
+              </NavLink>
+              <NavLink
+                href="/password-generator"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                Share a Password
+              </NavLink>
+              <NavLink
+                href="/how-it-works"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                How It Works
+              </NavLink>
+              <NavLink
+                href="/security-resources"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                Security
+              </NavLink>
+              <NavLink
+                href="/blog"
+                closeMenu={closeMenu}
+                className="text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                Blog
+              </NavLink>
+            </nav>
 
-          {/* Right: Desktop Auth */}
-          <div className="hidden md:flex items-center gap-3" ref={profileRef}>
-            {authLoading ? null : user?.email ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsProfileOpen((open) => !open)}
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary text-white text-sm font-semibold"
-                  aria-haspopup="menu"
-                  aria-expanded={isProfileOpen}
-                >
-                  {initials}
-                </button>
-                {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.email}</p>
-                    </div>
-                    <div className="py-1">
-                      <NavLink
-                        href="/account/security"
-                        closeMenu={closeMenu}
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                      >
-                        Security settings
-                      </NavLink>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          signOut();
-                          setIsProfileOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                      >
-                        Sign out
-                      </button>
-                    </div>
+            <div className="flex shrink-0 items-center gap-x-10 lg:gap-x-12">
+              <NavLink
+                href="/about"
+                closeMenu={closeMenu}
+                className="text-sm font-medium lg:text-[15px] text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+              >
+                About
+              </NavLink>
+              <div className="flex items-center gap-3 mr-1" ref={profileRef}>
+                {authLoading ? null : user?.email ? (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsProfileOpen((open) => !open)}
+                      className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary text-white text-sm font-semibold"
+                      aria-haspopup="menu"
+                      aria-expanded={isProfileOpen}
+                    >
+                      {initials}
+                    </button>
+                    {isProfileOpen && (
+                      <div className="absolute right-0 mt-2 w-52 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.email}</p>
+                        </div>
+                        <div className="py-1">
+                          <NavLink
+                            href="/account/security"
+                            closeMenu={closeMenu}
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                          >
+                            Security settings
+                          </NavLink>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              signOut();
+                              setIsProfileOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                          >
+                            Sign out
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : isAuthRoute ? null : (
+                  <>
+                    <NavLink
+                      href="/auth/sign-in"
+                      closeMenu={closeMenu}
+                      className="inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Sign in
+                    </NavLink>
+                    <NavLink
+                      href="/auth/sign-up"
+                      closeMenu={closeMenu}
+                      className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
+                    >
+                      Sign up
+                    </NavLink>
+                  </>
                 )}
               </div>
-            ) : isAuthRoute ? null : (
-              <>
-                <NavLink
-                  href="/auth/sign-in"
-                  closeMenu={closeMenu}
-                  className="inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-                >
-                  Sign in
-                </NavLink>
-                <NavLink
-                  href="/auth/sign-up"
-                  closeMenu={closeMenu}
-                  className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
-                >
-                  Sign up
-                </NavLink>
-              </>
-            )}
+            </div>
           </div>
 
           {/* Right: Mobile Menu */}
