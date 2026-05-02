@@ -18,13 +18,13 @@ const Home: React.FC = () => {
   return (
     <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} pb-20`}>
       {!isCreateSuccessView && (
-        <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+        <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
               <span className="block">Your Messages,</span>
               <span className="block mt-1 text-primary">Your Privacy</span>
             </h1>
-            <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+            <p className="mt-3 max-w-4xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-5xl">
               End-to-end encrypted notes that self-destruct after reading.
               More secure than alternatives, with client-side encryption ensuring your messages stay private.
             </p>
@@ -33,8 +33,8 @@ const Home: React.FC = () => {
       )}
 
       {/* Create Note or Result - Main Feature */}
-      <div className={`${isCreateSuccessView ? "mt-0" : "mt-8"} mb-8 py-4 px-4`}>
-        <div className="max-w-5xl mx-auto">
+      <div className={`${isCreateSuccessView ? "mt-0" : "mt-8"} mb-8 py-4 px-4 sm:px-6 lg:px-8`}>
+        <div className="max-w-7xl mx-auto">
           {showCreateNote ? (
             <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
           ) : (
@@ -55,7 +55,7 @@ const Home: React.FC = () => {
         </div>
 
         {/* Why PrivateNote */}
-        <div className="px-4 pt-14 pb-20 sm:px-6 lg:px-8 max-w-5xl mx-auto relative z-10">
+        <div className="px-4 pt-14 pb-20 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
           <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
             <div>
               <div className="inline-flex items-center rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300 shadow-sm">
@@ -92,7 +92,7 @@ const Home: React.FC = () => {
         </div>
 
         {/* How It Stays Private */}
-        <div className="px-4 pt-8 pb-20 sm:px-6 lg:px-8 max-w-5xl mx-auto mt-10 sm:mt-16 relative z-0">
+        <div className="px-4 pt-8 pb-20 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-10 sm:mt-16 relative z-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">

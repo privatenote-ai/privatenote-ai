@@ -70,7 +70,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   if (!createdNoteMeta) {
     return (
       <section
-        className="max-w-3xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
+        className="max-w-7xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
         aria-live="polite"
       >
         Preparing secure note…
@@ -86,14 +86,14 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   } = createdNoteMeta;
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
+    <section className="w-full max-w-7xl mx-auto py-4 sm:py-6">
       <div className="space-y-6 sm:space-y-7">
         <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
               Your secure note is <span className="text-primary italic">ready</span>
             </h1>
-            <div className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl space-y-1 md:space-y-2">
+            <div className="mt-3 max-w-4xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-5xl space-y-1 md:space-y-2">
               <p className="m-0">Your disappearing private note is encrypted in your browser.</p>
               <p className="m-0">Only someone with this link can read it.</p>
             </div>
@@ -101,7 +101,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         </section>
 
         <div className="mb-12 py-4 sm:py-6 px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto">
+          <div className="w-full max-w-none mx-auto">
             <div className="p-0 sm:p-0 break-words">
               <div className="flex flex-col space-y-5 sm:space-y-6">
                 <div className="relative flex min-h-10 items-center justify-center sm:min-h-0 sm:justify-between">
