@@ -1121,10 +1121,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
           {!isAiMode ? (
             <div className="mb-4">
-              <NotePlaintextUtf8Meter
-                noteContent={noteContent}
-                maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}
-              />
               {showPrefillBanner && (
                 <div
                   role="status"
@@ -1150,6 +1146,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                   </button>
                 </div>
               )}
+              <NotePlaintextUtf8Meter
+                noteContent={noteContent}
+                maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}
+              />
               <textarea
                 value={noteContent}
                 onChange={(e) =>
