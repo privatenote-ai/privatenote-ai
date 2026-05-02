@@ -28,13 +28,13 @@ export default function HowItWorks() {
   ];
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 pt-24 pb-20 mb-20 relative">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
       {/* Reduced background glows (less noise) */}
       <div className="absolute top-[-80px] right-1/4 w-80 h-80 bg-primary/10 blur-[130px] -z-10" />
       <div className="absolute bottom-[120px] left-1/4 w-56 h-56 bg-blue-500/10 blur-[120px] -z-10" />
 
-      {/* Hero Header (slightly tighter) */}
-      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
+      {/* Hero Header */}
+      <div className="text-center mb-12 relative z-10">
         <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
           Security by <span className="text-primary italic">Design</span>
         </h1>
@@ -261,7 +261,7 @@ export default function HowItWorks() {
               </svg>
             </div>
 
-            <div className="mt-10max-w-2xl md:order-2 md:w-1/2">
+            <div className="mt-10 max-w-2xl md:order-2 md:w-1/2">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
                 Manual Reveal
               </h2>

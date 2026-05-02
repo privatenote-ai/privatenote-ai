@@ -22,6 +22,58 @@ import {
   noteExpiryPresetIdToSeconds,
 } from '@shared/noteExpiry';
 import { normalizeUrlFragmentKey } from '@shared/urlFragmentKey';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+const PASSWORD_FAQ_ITEMS = [
+  {
+    id: 'pw-faq-random',
+    question: 'Is the password truly random?',
+    answer:
+      'Yes. All passwords are generated using the Web Crypto API (`crypto.getRandomValues`), which provides cryptographically secure randomness. No server is involved — the entire generation happens in your browser before anything is displayed.',
+  },
+  {
+    id: 'pw-faq-length',
+    question: 'How long should my password be?',
+    answer:
+      'For most accounts, 20 characters is excellent. For high-value targets (banking, email, password manager master password) go to 28–32 characters. Length is the single most important factor: each extra character multiplies the search space exponentially.',
+  },
+  {
+    id: 'pw-faq-symbols',
+    question: 'Why do some symbols get excluded?',
+    answer:
+      'We use a transport-safe symbol set that works reliably across all websites, terminals, and APIs. Characters like quotes, backticks, and backslashes can break form fields or shell commands, causing lockouts. The included symbols (`!@#$%^&*-_=+`) give you strong entropy without compatibility headaches.',
+  },
+  {
+    id: 'pw-faq-share',
+    question: 'Is it safe to share a password via the encrypted note link?',
+    answer:
+      'The password is encrypted in your browser before it leaves your device. Anyone who has the link can read it once — after that the note self-destructs. Treat the link like a one-time key: send it through a trusted channel and use a short expiration. Pair it with a separately shared passphrase for extra protection.',
+  },
+  {
+    id: 'pw-faq-store',
+    question: 'Should I use this to store passwords long-term?',
+    answer:
+      'No — PrivateNote is designed for one-time secure delivery, not long-term storage. Use a dedicated password manager (Bitwarden, 1Password, etc.) to store passwords permanently. Use PrivateNote to securely hand off a newly generated password to a colleague or service.',
+  },
+  {
+    id: 'pw-faq-entropy',
+    question: 'What does the strength score mean?',
+    answer:
+      'The score estimates entropy — how many guesses an attacker would need to crack your password by brute force. A 24-character mixed password has billions of billions of possible combinations. "Very Strong" means it would take longer than the age of the universe to crack with current hardware, even with a botnet.',
+  },
+  {
+    id: 'pw-faq-memorable',
+    question: 'Should I memorise generated passwords?',
+    answer:
+      'Generally no — that defeats the purpose of using a password manager. The exception is your password manager master password, which you should memorise (or store on paper in a physically secure place). For everything else, let the manager remember the random string for you.',
+  },
+];
+
 
 const PasswordGenerator: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -398,7 +450,7 @@ const PasswordGenerator: React.FC = () => {
   if (sharedNoteUrl) {
     return (
       <div className="pt-24 pb-20">
-        <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
+        <section className="w-full max-w-4xl mx-auto py-4 sm:py-6">
           <div className="space-y-6 sm:space-y-7">
             <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
               <div className="text-center">
@@ -412,8 +464,8 @@ const PasswordGenerator: React.FC = () => {
               </div>
             </section>
 
-            <div className="mb-12 py-4 sm:py-6 px-4 sm:px-6">
-              <div className="max-w-3xl mx-auto">
+            <div className="mb-12 py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+              <div className="max-w-4xl mx-auto">
                 <div className="p-0 sm:p-0 break-words">
                   <div className="flex flex-col space-y-5 sm:space-y-6">
                     <div className="flex items-center justify-between">
@@ -623,7 +675,7 @@ const PasswordGenerator: React.FC = () => {
 
   return (
     <div className="pt-24 pb-20">
-      <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+      <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center">
           <h1 className="page-title text-gray-900 dark:text-white">
             Strong <span className="text-primary italic">Password </span> Generator
@@ -634,8 +686,8 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </section>
 
-      <div className="mt-8 mb-8 py-4 px-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="mt-8 mb-8 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
           <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col">
             <div className="mb-4">
 
@@ -814,7 +866,7 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-6 flex justify-center px-4">
+      <div className="mt-6 flex justify-center px-4 sm:px-6 lg:px-8">
         <Link
           href="/blog/how-we-generate-passwords"
           className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -824,7 +876,7 @@ const PasswordGenerator: React.FC = () => {
         </Link>
       </div>
 
-      <section ref={featuresSectionRef} className="relative px-4 pt-20 pb-12 sm:px-6 sm:pt-24 lg:px-8 max-w-5xl mx-auto">
+      <section ref={featuresSectionRef} className="relative px-4 pt-20 pb-12 sm:px-6 sm:pt-24 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center mb-8 sm:mb-12">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">How generation stays trustworthy</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -867,6 +919,53 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </section>
 
+      {/* Password FAQ */}
+      <section className="mt-20 border-t border-gray-200/70 dark:border-gray-800/70 bg-gray-50/60 dark:bg-gray-900/40 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-primary/10 blur-[120px]" />
+          <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[120px]" />
+        </div>
+        <div className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto relative z-10">
+            <div className="mb-10">
+              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
+                FAQ
+              </h2>
+              <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">
+                Common questions about password strength, randomness, and secure sharing.
+              </p>
+            </div>
+
+            <Accordion
+              type="single"
+              collapsible
+              className="rounded-3xl border border-primary/20 dark:border-primary/15 bg-white/85 dark:bg-gray-950/80 backdrop-blur shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_10px_40px_rgba(15,23,42,0.09)] ring-1 ring-primary/10 dark:ring-primary/5"
+            >
+              {PASSWORD_FAQ_ITEMS.map((item, index) => (
+                <AccordionItem
+                  key={item.id}
+                  value={item.id}
+                  className={`group border-b border-gray-200/70 dark:border-gray-800/70 overflow-hidden transition-colors duration-150 data-[state=open]:bg-primary/[0.035] dark:data-[state=open]:bg-primary/[0.07] ${index === PASSWORD_FAQ_ITEMS.length - 1 ? 'border-b-0' : ''}`}
+                >
+                  <AccordionTrigger className="items-start gap-3 text-left text-sm sm:text-base text-gray-900 dark:text-white px-6 py-5 hover:no-underline hover:bg-gray-50/70 dark:hover:bg-gray-900/50 data-[state=open]:text-primary transition-colors [&>svg]:mt-1.5 [&>svg]:shrink-0 [&>svg]:text-gray-400 data-[state=open]:[&>svg]:text-primary">
+                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-violet-500/15 text-xs font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/25 shadow-[0_0_8px_rgba(99,102,241,0.15)]">
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 flex-1 pt-1.5 leading-snug">{item.question}</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-6 leading-relaxed">
+                    <div className="pl-12 border-l-2 border-primary/25 ml-4">
+                      {item.answer}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
 
     </div>
   );

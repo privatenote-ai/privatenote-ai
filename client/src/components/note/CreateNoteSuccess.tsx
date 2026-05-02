@@ -70,7 +70,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   if (!createdNoteMeta) {
     return (
       <section
-        className="max-w-7xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
+        className="max-w-4xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
         aria-live="polite"
       >
         Preparing secure note…
@@ -86,7 +86,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   } = createdNoteMeta;
 
   return (
-    <section className="w-full max-w-7xl mx-auto py-4 sm:py-6">
+    <section className="w-full max-w-4xl mx-auto py-4 sm:py-6">
       <div className="space-y-6 sm:space-y-7">
         <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
           <div className="text-center">
