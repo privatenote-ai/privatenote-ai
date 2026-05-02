@@ -15,6 +15,7 @@ const EMPTY_DAILY_METRICS: DailyMetrics = {
   passwordProtectedNotes: 0,
   aiEnhancedNotes: 0,
   blogViews: {},
+  referrerCounts: {},
   averageExpirationDays: 0,
   expiryRangeDistribution: {
     oneHourOrLess: 0,
@@ -44,6 +45,7 @@ const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
     ...EMPTY_DAILY_METRICS,
     ...metrics,
     blogViews: metrics.blogViews || {},
+    referrerCounts: metrics.referrerCounts || {},
     expiryRangeDistribution: {
       ...EMPTY_DAILY_METRICS.expiryRangeDistribution,
       ...(metrics.expiryRangeDistribution || {})
@@ -484,6 +486,40 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Partner / Referrer Breakdown */}
+            {Object.keys(metrics.referrerCounts || {}).length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Notes Created via Partners</CardTitle>
+                  <CardDescription>
+                    Websites using the <code className="text-xs bg-muted px-1 py-0.5 rounded">#text=…&amp;from=</code> prefill integration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-muted-foreground">
+                          <th className="pb-2 font-medium">Partner / Referrer</th>
+                          <th className="pb-2 font-medium text-right">Notes Created</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(metrics.referrerCounts)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([ref, count]) => (
+                            <tr key={ref} className="border-b border-border/50 last:border-0">
+                              <td className="py-2 font-mono text-xs">{ref}</td>
+                              <td className="py-2 text-right tabular-nums">{count}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

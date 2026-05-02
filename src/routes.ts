@@ -6378,7 +6378,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     if (doResponse.ok && noteForAnalytics) {
       noteForAnalytics.id = id;
-      await storage.trackNoteCreation(noteForAnalytics, { aiEnhanced: aiMode });
+      const rawReferrer = typeof requestBody?.referrer === "string" ? requestBody.referrer : null;
+      const sanitizedReferrer = rawReferrer
+        ? rawReferrer.replace(/[^a-zA-Z0-9.\-_ ]/g, "").slice(0, 60).trim() || null
+        : null;
+      await storage.trackNoteCreation(noteForAnalytics, {
+        aiEnhanced: aiMode,
+        referrer: sanitizedReferrer,
+      });
     }
 
     if (doResponse.ok && aiMode) {

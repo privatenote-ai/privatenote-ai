@@ -22,6 +22,7 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 
 interface AnalyticsContext {
   aiEnhanced?: boolean;
+  referrer?: string | null;
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
@@ -287,6 +288,12 @@ class MemStorage {
     if (context?.aiEnhanced) {
       metrics.aiEnhancedNotes++;
     }
+
+    if (context?.referrer) {
+      if (!metrics.referrerCounts) metrics.referrerCounts = {};
+      metrics.referrerCounts[context.referrer] =
+        (metrics.referrerCounts[context.referrer] ?? 0) + 1;
+    }
     
     // Track expiration days
     const expirationDate = new Date(note.expiresAt);
@@ -496,6 +503,12 @@ class KVAnalyticsStorage {
     }
     if (context?.aiEnhanced) {
       metrics.aiEnhancedNotes++;
+    }
+
+    if (context?.referrer) {
+      if (!metrics.referrerCounts) metrics.referrerCounts = {};
+      metrics.referrerCounts[context.referrer] =
+        (metrics.referrerCounts[context.referrer] ?? 0) + 1;
     }
 
     const expirationDate = new Date(note.expiresAt);
