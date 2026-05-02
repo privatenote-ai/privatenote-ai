@@ -72,9 +72,13 @@ import {
   Settings,
   Sparkles,
   Loader2,
+  Info,
+  X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
 import { useQrShare } from "@/hooks/useQrShare";
+import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
+import { findTrustedPartner } from "@/config/trustedPrefillPartners";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import { NoteSettingsPanel } from "./NoteSettingsPanel";
@@ -181,6 +185,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     showSuccessQr,
     successQrSectionRef,
   });
+
+  // ── URL-fragment prefill (e.g. from passwrds.lu) ──────────────────────────
+  // Reads #text=<url-encoded-secret> on mount, removes it from the address bar
+  // before paint, and pre-populates the textarea. The plaintext never leaves
+  // the browser until the user explicitly clicks "Share Private Note".
+  const {
+    prefillText,
+    referrer: prefillReferrer,
+    showBanner: showPrefillBanner,
+    dismissBanner: dismissPrefillBanner,
+    resetPrefill,
+  } = usePrefillFromFragment();
+
+  const prefillAppliedRef = useRef(false);
+  useEffect(() => {
+    if (prefillText && !prefillAppliedRef.current) {
+      prefillAppliedRef.current = true;
+      const { text } = truncateUtf8StringToMaxBytes(prefillText, MAX_NOTE_PLAINTEXT_UTF8_BYTES);
+      setNoteContent(text);
+    }
+  }, [prefillText]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
@@ -577,6 +602,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         isPasswordProtected,
         aad,
         _hp: honeypotValue,
+        ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
         ...(isPasswordProtected && {
           salt: saltBase64,
@@ -682,6 +708,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setSuccessLinkCopied(false);
     setCreatedNote(null);
     setNoteContent("");
+    resetPrefill();
     setAiPrompt(askAnythingScaffoldPrompt("2-3"));
     setOriginalPrompt("");
     setUserPromptHistory([]);
@@ -1063,6 +1090,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 noteContent={noteContent}
                 maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}
               />
+              {showPrefillBanner && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mb-3 flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+                >
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden />
+                  <span className="flex-1">
+                    {(() => {
+                      const partner = findTrustedPartner(prefillReferrer);
+                      return partner
+                        ? <>This note was pre-filled by <strong>{partner.displayName}</strong>. PrivateNote has not created or shared anything yet.</>
+                        : <>This note was pre-filled from an external website. PrivateNote has not created or shared anything yet.</>;
+                    })()}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Dismiss pre-fill notice"
+                    onClick={dismissPrefillBanner}
+                    className="shrink-0 rounded p-0.5 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <textarea
                 value={noteContent}
                 onChange={(e) =>
