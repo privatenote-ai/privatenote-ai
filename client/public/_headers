@@ -1,13 +1,13 @@
 /*
   # Cross-Origin Isolation — required for SharedArrayBuffer (used by WebLLM / MLC-AI on-device inference).
-  # Without these headers window.crossOriginIsolated = false and the WASM engine will not start
-  # in any browser, including Safari on macOS.
+  # Without COOP + COEP, window.crossOriginIsolated = false and the WASM threading engine cannot start.
   #
-  # COEP: require-corp
-  #   • Cross-origin subresources embedded in <script>/<link>/<img> etc. need either
-  #     a CORS header or Cross-Origin-Resource-Policy: cross-origin.
-  #   • fetch() calls with CORS mode (used for model-file downloads) are unaffected.
-  #   • Cloudflare Turnstile (challenges.cloudflare.com) ships CORP: cross-origin on its frames.
-  #   • HuggingFace CDN model files are fetched via fetch() with CORS, so they are unaffected.
+  # COEP: credentialless (preferred over require-corp for Cloudflare Pages)
+  #   • Enables cross-origin isolation without requiring every cross-origin sub-resource
+  #     to carry CORS or Cross-Origin-Resource-Policy headers.
+  #   • Cross-origin requests are made without credentials (cookies/auth), which is fine
+  #     for public CDN assets (fonts, model files, Turnstile scripts).
+  #   • Supported in Chrome 96+, Firefox 119+, Safari 17.2+.
+  #   • Falls back gracefully in older browsers (no isolation, local AI uses its own error path).
   Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Embedder-Policy: credentialless
