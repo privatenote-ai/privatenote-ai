@@ -431,12 +431,6 @@ export function getWebLLMBrowserSupportLevel(): WebLLMBrowserSupportLevel {
   if (typeof navigator === "undefined" || !("gpu" in navigator)) {
     return "missing-webgpu";
   }
-  // SharedArrayBuffer is required by the MLC WebLLM WASM engine and is only available
-  // when the page is cross-origin isolated (COOP + COEP response headers).
-  // Without isolation the engine will throw a low-level ReferenceError at init time.
-  if (typeof window.crossOriginIsolated !== "undefined" && !window.crossOriginIsolated) {
-    return "unsupported";
-  }
   return "supported";
 }
 
@@ -449,31 +443,6 @@ export function getWebLLMSupportHint(): string | null {
     if (h !== "localhost" && h !== "127.0.0.1") {
       return "On-device AI needs a secure context. Open this site over HTTPS (localhost is OK).";
     }
-  }
-  // Cross-origin isolation missing: COOP + COEP headers were not sent with the page.
-  // This disables SharedArrayBuffer in all browsers and is the most common reason local AI
-  // fails silently on Safari on macOS.
-  if (
-    typeof window !== "undefined" &&
-    typeof window.crossOriginIsolated !== "undefined" &&
-    !window.crossOriginIsolated
-  ) {
-    const isSafari =
-      typeof navigator !== "undefined" &&
-      /Safari/i.test(navigator.userAgent) &&
-      !/Chrome|Chromium|Edg/i.test(navigator.userAgent);
-    if (isSafari) {
-      return (
-        "On-device AI is not available in this Safari session. " +
-        "The page is missing cross-origin isolation headers (COOP + COEP) that Safari requires for the on-device WASM engine. " +
-        "Try: Safari → Settings → Advanced → Experimental Features → enable 'WebGPU' (if listed), " +
-        "then fully quit and reopen Safari. If running locally, restart the dev server to pick up the new security headers."
-      );
-    }
-    return (
-      "On-device AI requires cross-origin isolation headers (Cross-Origin-Opener-Policy + Cross-Origin-Embedder-Policy) " +
-      "which are currently missing from this page. Try reloading, or use a different browser."
-    );
   }
   if (level === "missing-webgpu") {
     return "On-device AI needs WebGPU. Use a recent Chrome, Edge, or Safari version, or another device with WebGPU enabled.";
