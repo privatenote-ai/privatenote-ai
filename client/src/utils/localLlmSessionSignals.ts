@@ -89,6 +89,17 @@ export function recordLocalLlmInitFailure(modelId: string): void {
   }
 }
 
+/** Clear all session-scoped failure flags so the next load attempt starts clean. */
+export function clearLocalLlmSessionSignals(): void {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 /** GPU device lost or runtime failure after a model was running. */
 export function recordLocalLlmGpuOrRuntimeFailure(modelId: string | null | undefined): void {
   if (!modelId) return;

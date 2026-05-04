@@ -8,7 +8,7 @@ import {
   isModelInCacheWebLLM,
   deleteWebLLMModelFromCache,
 } from "./webllm-engine";
-import { recordLocalLlmGpuOrRuntimeFailure, recordLocalLlmInitFailure } from "./localLlmSessionSignals";
+import { recordLocalLlmGpuOrRuntimeFailure, recordLocalLlmInitFailure, clearLocalLlmSessionSignals } from "./localLlmSessionSignals";
 import {
   shouldUseTransformersJsLocalPath,
   isTransformersMobileLikelySupported,
@@ -340,6 +340,9 @@ function isLikelyRecoverableLoadError(message: string): boolean {
 
 export async function resetLocalAiLoadState(preferredModelId?: string): Promise<void> {
   clearEngine();
+  // Clear session failure flags so the next load attempt is not blocked by a
+  // previous init failure (e.g. qwen06Failed) recorded in sessionStorage.
+  clearLocalLlmSessionSignals();
   await resetTransformersMobileCache();
   const knownModelIds = collectKnownModelIds(preferredModelId);
   await Promise.allSettled(knownModelIds.map((modelId) => deleteWebLLMModelFromCache(modelId)));

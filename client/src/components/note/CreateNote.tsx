@@ -252,7 +252,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
       if (!isLocalAiSupported()) {
-        throw new Error(getLocalAiSupportHint() ?? "Local AI is not supported in this browser.");
+        throw new Error(
+          getLocalAiSupportHint() ??
+            "On-device AI isn't available right now. If a previous attempt failed, try resetting and starting again."
+        );
       }
       const modelId = await getRecommendedLocalModelId();
       if (!modelId) {
