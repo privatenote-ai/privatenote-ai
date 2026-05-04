@@ -48,6 +48,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // Self-heal: re-fetch session when the tab regains visibility or focus.
+  // This makes the navbar update if a sign-in completed in another tab,
+  // or if a sign-in flow forgot to await refresh().
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+    const onFocus = () => {
+      void refresh();
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", onFocus);
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", onFocus);
+      }
+    };
+  }, [refresh]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,

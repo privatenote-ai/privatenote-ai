@@ -142,7 +142,7 @@ export default function AuthMagic() {
 
       setPhase("success");
       setFriendlyMessage("You're signed in.");
-      refresh();
+      await refresh();
       const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
       if (me && typeof me.hasPasskeys === "boolean") {
         setHasPasskeys(me.hasPasskeys);

@@ -39,7 +39,7 @@ export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
@@ -72,11 +72,14 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close menus on route change
+  // Close menus on route change, and re-check auth state.
+  // This is a safety net so the navbar always reflects sign-in state after
+  // any auth flow completes and redirects, even if the flow forgot to await refresh().
   useEffect(() => {
     setIsMenuOpen(false);
     setIsProfileOpen(false);
-  }, [location]);
+    void refreshAuth();
+  }, [location, refreshAuth]);
 
   const isAuthRoute = location.startsWith('/auth');
 
@@ -239,12 +242,23 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile / tablet / smaller laptop < xl: logo + hamburger */}
+      {/* Mobile / tablet / smaller laptop < xl: logo + (profile if signed in) + hamburger */}
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 xl:hidden" ref={menuRef}>
         <NavLink href="/" closeMenu={closeMenu} className="flex shrink-0 items-center gap-2 cursor-pointer">
           {logoInner}
         </NavLink>
-        <div className="relative flex shrink-0 items-center">
+        <div className="relative flex shrink-0 items-center gap-3">
+          {!authLoading && user?.email && (
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
+              aria-label={`Account menu for ${user.email}`}
+              title={user.email}
+            >
+              {initials}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
