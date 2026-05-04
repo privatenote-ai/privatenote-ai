@@ -46,6 +46,7 @@ const PRIVATENOTE_AI_WEB_HOSTS = new Set([
   "privatenote.ai",
   "www.privatenote.ai",
   "app.privatenote.ai",
+  "premium.privatenote.ai",
 ]);
 
 /** Cookie names for API host-only session storage (SameSite=None). */

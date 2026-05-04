@@ -43,6 +43,7 @@ describe("isTrustedBrowserOrigin", () => {
 
   it("allows explicit privatenote.ai web hosts", () => {
     assert.equal(isTrustedBrowserOrigin("https://app.privatenote.ai"), true);
+    assert.equal(isTrustedBrowserOrigin("https://premium.privatenote.ai"), true);
     assert.equal(isTrustedBrowserOrigin("https://www.privatenote.ai"), true);
   });
 
@@ -61,6 +62,7 @@ describe("isWebAuthnRpAllowedOrigin", () => {
     assert.equal(isWebAuthnRpAllowedOrigin("https://client-llm.privatenote-ai.pages.dev"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://privatenote.ai"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://app.privatenote.ai"), true);
+    assert.equal(isWebAuthnRpAllowedOrigin("https://premium.privatenote.ai"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("http://localhost:5173"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://localhost:5174"), true);
   });
