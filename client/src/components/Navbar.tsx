@@ -188,23 +188,23 @@ export const Navbar: React.FC = () => {
 
   return (
     <nav className={navShellClass}>
-      {/* Desktop ≥ lg. At lg–xl: everything inside the max-w-4xl column.
-          At xl+: logo and auth slip into the outer gutters of the editor column. */}
-      <div className="hidden lg:block px-4 sm:px-6 lg:px-8">
+      {/* Desktop ≥ xl only. Below xl the layout is too tight for 6 nav links + logo + auth,
+          so we keep the mobile hamburger menu through tablet / 13" laptop widths. */}
+      <div className="hidden xl:block px-4 sm:px-6 lg:px-8">
         <div className="relative mx-auto flex h-16 max-w-4xl items-center gap-6">
-          {/* Logo — inside column at lg, just outside the left edge at xl+ */}
+          {/* Logo — sits just outside the left edge of the editor column */}
           <NavLink
             href="/"
             closeMenu={closeMenu}
-            className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap xl:absolute xl:right-full xl:top-1/2 xl:-translate-y-1/2 xl:pr-6"
+            className="absolute right-full top-1/2 -translate-y-1/2 pr-6 flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap"
             aria-label="PrivateNote.ai home"
           >
             {logoInner}
           </NavLink>
 
-          {/* Primary links — compact centered group aligned to the editor column */}
+          {/* Primary links — centered group aligned to the editor column */}
           <nav
-            className="flex min-w-0 flex-1 items-center justify-end gap-x-5 xl:justify-center xl:gap-x-7 2xl:gap-x-8"
+            className="flex min-w-0 flex-1 items-center justify-center gap-x-7 2xl:gap-x-8"
             aria-label="Primary"
           >
             <NavLink href="/" closeMenu={closeMenu} className={desktopLink}>
@@ -227,10 +227,10 @@ export const Navbar: React.FC = () => {
             </NavLink>
           </nav>
 
-          {/* Auth — inside column at lg, just outside the right edge at xl+ */}
+          {/* Auth — sits just outside the right edge of the editor column */}
           {authCluster && (
             <div
-              className="flex min-w-max shrink-0 items-center gap-2.5 xl:absolute xl:left-full xl:top-1/2 xl:-translate-y-1/2 xl:pl-4 2xl:gap-3 2xl:pl-6"
+              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center gap-2.5 2xl:gap-3"
               ref={user?.email ? profileRef : undefined}
             >
               {authCluster}
@@ -239,8 +239,8 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile / tablet < lg: logo + hamburger */}
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:hidden" ref={menuRef}>
+      {/* Mobile / tablet / smaller laptop < xl: logo + hamburger */}
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6 xl:hidden" ref={menuRef}>
         <NavLink href="/" closeMenu={closeMenu} className="flex shrink-0 items-center gap-2 cursor-pointer">
           {logoInner}
         </NavLink>
