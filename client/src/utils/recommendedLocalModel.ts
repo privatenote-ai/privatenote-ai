@@ -4,19 +4,21 @@
  *
  * Binding bands (negative filters):
  * - &lt; 1.5 GiB → unsupported
- * - [1.5 GiB, 2.0 GiB) → standard (Qwen 0.6 only)
- * - ≥ 2.0 GiB → newest (Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks)
+ * - [1.5 GiB, 1.9 GiB) → standard (Qwen 0.6 only)
+ * - ≥ 1.9 GiB → newest (Gemma 2 2B default; Gemma 4 opt-in boost; Qwen 0.6 fallback)
  *
- * The 2.0 GiB threshold is set exactly at the value Apple Silicon (M1/M2/M3/M4) reports
- * for `maxStorageBufferBindingSize` (2,147,483,648 bytes), so all M-series Macs land in
- * the `newest` tier. Most discrete NVIDIA/AMD GPUs are well above this.
+ * The 1.9 GiB threshold sits just below the 2 GiB (2,147,483,648 bytes) value reported
+ * by Apple Silicon (M1/M2/M3/M4) for `maxStorageBufferBindingSize`, so all M-series Macs
+ * land in the `newest` tier with a small safety margin for browsers that report slightly
+ * lower numbers under throttling. Most discrete NVIDIA/AMD GPUs are well above this.
  *
  * Supported catalog (intentionally small):
- * - WebLLM: Qwen3-0.6B, Gemma 2 2B
- * - Transformers.js (`newest` default): Gemma 4 E2B ONNX
+ * - WebLLM (`newest` default): Gemma 2 2B
+ * - WebLLM (`standard` + safe fallback): Qwen 0.6
+ * - Transformers.js (`newest` opt-in boost): Gemma 4 E2B ONNX
  *
  * iOS exception: Transformers.js path is not reliable on iOS WebKit, so iOS devices
- * on `newest` tier still default to Qwen 0.6 (with Gemma 2 2B available as a fallback).
+ * never see the Gemma 4 boost (Gemma 2 2B remains the default).
  */
 import { prebuiltAppConfig } from "@mlc-ai/web-llm";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
@@ -43,14 +45,14 @@ export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
 export const MIN_BINDING_FOR_QWEN06 = 1.5 * 1024 * 1024 * 1024;
 
 /**
- * Lower bound of the "capable" band: Gemma 4 default + Gemma 2 2B / Qwen 0.6 fallbacks.
- * In [1.5 GiB, 2.0 GiB) → {@link DeviceTier} `standard` (Qwen 0.6 only); at or above → `newest`.
+ * Lower bound of the "capable" band: Gemma 2 2B default + Gemma 4 opt-in + Qwen 0.6 fallback.
+ * In [1.5 GiB, 1.9 GiB) → {@link DeviceTier} `standard` (Qwen 0.6 only); at or above → `newest`.
  *
- * Set to 2 GiB exactly because that's the value Apple Silicon (M1/M2/M3/M4) reports
- * for `maxStorageBufferBindingSize` — lowering further would not gain coverage and
- * raising would push all M-series Macs into the smaller-model tier.
+ * Set to 1.9 GiB so all Apple Silicon Macs (which report exactly 2 GiB) and any GPU that
+ * reports slightly under 2 GiB under load both land in the `newest` tier. Discrete NVIDIA/AMD
+ * GPUs are well above this threshold.
  */
-export const MIN_BINDING_FOR_CAPABLE = 2 * 1024 * 1024 * 1024;
+export const MIN_BINDING_FOR_CAPABLE = 1.9 * 1024 * 1024 * 1024;
 
 /** @deprecated Same as {@link MIN_BINDING_FOR_QWEN06} (1.5 GiB floor). */
 export const MIN_BINDING_FOR_GEMMA22B = MIN_BINDING_FOR_QWEN06;
@@ -71,7 +73,7 @@ export const ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES = 128 * 1024 * 1024;
 export const BINDING_STORAGE_BUFFER_TOO_LOW_FOR_DESKTOP_QWEN4_PREMIUM_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 export const VRAM_LIMIT_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 
-/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (2 GiB) — Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks. */
+/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (1.9 GiB) — Gemma 2 2B default; Gemma 4 opt-in boost; Qwen 0.6 fallback. */
 export type DeviceTier = "unsupported" | "standard" | "newest";
 
 export type LocalAiOffer = {
@@ -149,10 +151,13 @@ function isIOSWebKitLocal(): boolean {
 /**
  * Layer 3 — what we may load and offer in UI.
  *
- * On `newest` tier we lead with Gemma 4 (Transformers.js) — the strongest model
- * we ship — and offer Gemma 2 2B and Qwen 0.6 as fallback options. iOS WebKit
- * cannot reliably run Transformers.js, so iOS `newest` devices fall back to the
- * Qwen-led default with Gemma 2 2B as boost.
+ * On `newest` tier we lead with Gemma 2 2B (WebLLM) — a known-stable WebGPU build
+ * that runs well on Apple Silicon and discrete GPUs. Gemma 4 (Transformers.js) is
+ * an opt-in boost for users who explicitly enable it, and Qwen 0.6 is the safe
+ * fallback if Gemma 2 2B is not allowed (no shader-f16, or session-failed).
+ *
+ * iOS WebKit cannot reliably run Transformers.js, so iOS devices never see the
+ * Gemma 4 boost (Gemma 2 2B remains the default).
  */
 export function getLocalAiOffer(): LocalAiOffer {
   const tier = getDeviceTier();
@@ -168,44 +173,45 @@ export function getLocalAiOffer(): LocalAiOffer {
     };
   }
 
-  // newest: binding ≥ 2 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
+  // newest: binding ≥ 1.9 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
   const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
   const gemma4Allowed = !sessionGemma4BoostInvalidated() && !isIOSWebKitLocal();
 
-  if (gemma4Allowed) {
-    // Gemma 4 default; offer Gemma 2 2B + Qwen 0.6 as opt-in fallbacks.
-    const fallbacks: string[] = [];
-    if (gemma22Allowed) fallbacks.push(MODEL_GEMMA_2_2B);
-    fallbacks.push(MODEL_QWEN_0_6);
+  if (gemma22Allowed) {
+    // Gemma 2 2B default; Gemma 4 (Transformers) as opt-in boost; Qwen 0.6 safe fallback.
+    const boosts: string[] = [];
+    if (gemma4Allowed) boosts.push(MODEL_GEMMA_4_TRANSFORMER);
+    boosts.push(MODEL_QWEN_0_6);
     return {
       enabled: true,
-      defaultModel: MODEL_GEMMA_4_TRANSFORMER,
-      boostModels: fallbacks,
+      defaultModel: MODEL_GEMMA_2_2B,
+      boostModels: boosts,
     };
   }
 
-  // Gemma 4 not allowed (iOS or session-invalidated): Qwen default with Gemma 2 2B as boost.
-  const boost: string[] = [];
-  if (gemma22Allowed) {
-    boost.push(MODEL_GEMMA_2_2B);
-  }
+  // Gemma 2 2B not allowed (no shader-f16, or session-failed): fall back to Qwen 0.6.
+  // We do not offer Gemma 4 here — without f16 the device is on a fragile path.
   return {
     enabled: true,
     defaultModel: MODEL_QWEN_0_6,
-    boostModels: boost,
+    boostModels: [],
   };
 }
 
-/** True when Gemma 2 2B boost may appear (capable tier, not session-blocked). */
+/**
+ * True when Gemma 2 2B is offered as a boost (i.e. appears in `offer.boostModels`).
+ * In the current policy Gemma 2 2B is the *default* on the newest tier, never a boost,
+ * so this returns false. Kept for legacy UI gates that may still call it.
+ */
 export function isGemma22BoostCapable(): boolean {
-  return getDeviceTier() === "newest" && !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
+  const offer = getLocalAiOffer();
+  return offer.enabled && offer.boostModels.includes(MODEL_GEMMA_2_2B);
 }
 
 /** True when Gemma 4 Transformers boost may appear (newest tier, not iOS, not session-blocked). */
 export function isGemma4BoostCapable(): boolean {
-  return (
-    getDeviceTier() === "newest" && !sessionGemma4BoostInvalidated() && !isIOSWebKitLocal()
-  );
+  const offer = getLocalAiOffer();
+  return offer.enabled && offer.boostModels.includes(MODEL_GEMMA_4_TRANSFORMER);
 }
 
 /** @deprecated Use {@link isGemma22BoostCapable}. */
