@@ -291,11 +291,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const resetFreeModelDownloadState = useCallback(async () => {
     setShowCloudLitePrompt(false);
     try {
-      const modelId = await getRecommendedLocalModelId();
-      if (!modelId) {
-        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
-      }
-      await resetLocalAiLoadState(modelId);
+      // Always clear caches even when no modelId is resolvable — a stuck session
+      // failure flag would otherwise make getRecommendedLocalModelId() return null
+      // and block the reset entirely. resetLocalAiLoadState() handles undefined
+      // modelId by collecting known IDs internally and clears session flags first.
+      await resetLocalAiLoadState(undefined);
       toast({
         title: "On-device AI reset",
         description: "The incomplete download was cleared. You can try downloading it again.",
