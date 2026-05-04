@@ -4,8 +4,12 @@
  *
  * Binding bands (negative filters):
  * - &lt; 1.5 GiB → unsupported
- * - [1.5 GiB, 2.5 GiB) → standard (Qwen 0.6 only)
- * - ≥ 2.5 GiB → newest (Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks)
+ * - [1.5 GiB, 2.0 GiB) → standard (Qwen 0.6 only)
+ * - ≥ 2.0 GiB → newest (Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks)
+ *
+ * The 2.0 GiB threshold is set exactly at the value Apple Silicon (M1/M2/M3/M4) reports
+ * for `maxStorageBufferBindingSize` (2,147,483,648 bytes), so all M-series Macs land in
+ * the `newest` tier. Most discrete NVIDIA/AMD GPUs are well above this.
  *
  * Supported catalog (intentionally small):
  * - WebLLM: Qwen3-0.6B, Gemma 2 2B
@@ -39,10 +43,14 @@ export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
 export const MIN_BINDING_FOR_QWEN06 = 1.5 * 1024 * 1024 * 1024;
 
 /**
- * Lower bound of the “capable” band (former strong + newest): Gemma 2 boost + optional Gemma 4 boost.
- * In [1.5 GiB, 2.5 GiB) → {@link DeviceTier} `standard` (Qwen 0.6 only); at or above → `newest`.
+ * Lower bound of the "capable" band: Gemma 4 default + Gemma 2 2B / Qwen 0.6 fallbacks.
+ * In [1.5 GiB, 2.0 GiB) → {@link DeviceTier} `standard` (Qwen 0.6 only); at or above → `newest`.
+ *
+ * Set to 2 GiB exactly because that's the value Apple Silicon (M1/M2/M3/M4) reports
+ * for `maxStorageBufferBindingSize` — lowering further would not gain coverage and
+ * raising would push all M-series Macs into the smaller-model tier.
  */
-export const MIN_BINDING_FOR_CAPABLE = 2.5 * 1024 * 1024 * 1024;
+export const MIN_BINDING_FOR_CAPABLE = 2 * 1024 * 1024 * 1024;
 
 /** @deprecated Same as {@link MIN_BINDING_FOR_QWEN06} (1.5 GiB floor). */
 export const MIN_BINDING_FOR_GEMMA22B = MIN_BINDING_FOR_QWEN06;
@@ -63,7 +71,7 @@ export const ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES = 128 * 1024 * 1024;
 export const BINDING_STORAGE_BUFFER_TOO_LOW_FOR_DESKTOP_QWEN4_PREMIUM_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 export const VRAM_LIMIT_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 
-/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (2.5 GiB) — Gemma 2 + optional Gemma 4 boosts. */
+/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (2 GiB) — Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks. */
 export type DeviceTier = "unsupported" | "standard" | "newest";
 
 export type LocalAiOffer = {
@@ -160,7 +168,7 @@ export function getLocalAiOffer(): LocalAiOffer {
     };
   }
 
-  // newest: binding ≥ 2.5 GiB
+  // newest: binding ≥ 2 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
   const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
   const gemma4Allowed = !sessionGemma4BoostInvalidated() && !isIOSWebKitLocal();
 
