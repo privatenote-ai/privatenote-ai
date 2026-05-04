@@ -246,11 +246,21 @@ function findSuitableModel(): string {
   return pickFirstAvailableWebLlmDefault();
 }
 
+/**
+ * WebLLM-only fallback id. Used in the rare case a caller needs a real WebLLM
+ * model id (not Transformers.js) — walks the offer's default + boost list and
+ * picks the first WebLLM model that's actually available in the catalog.
+ */
 function pickFirstAvailableWebLlmDefault(): string {
   const offer = getLocalAiOffer();
-  if (!offer.enabled || !offer.defaultModel) return MODEL_QWEN_0_6;
-  if (offer.defaultModel === MODEL_GEMMA_4_TRANSFORMER) return MODEL_QWEN_0_6;
-  return isModelAvailable(offer.defaultModel) ? offer.defaultModel : MODEL_QWEN_0_6;
+  if (!offer.enabled) return MODEL_QWEN_0_6;
+  const candidates = [offer.defaultModel, ...offer.boostModels].filter(
+    (id): id is string => !!id && id !== MODEL_GEMMA_4_TRANSFORMER,
+  );
+  for (const id of candidates) {
+    if (isModelAvailable(id)) return id;
+  }
+  return MODEL_QWEN_0_6;
 }
 
 // Cache key for IndexedDB

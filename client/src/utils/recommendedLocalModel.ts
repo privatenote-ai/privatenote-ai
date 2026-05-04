@@ -5,11 +5,14 @@
  * Binding bands (negative filters):
  * - &lt; 1.5 GiB → unsupported
  * - [1.5 GiB, 2.5 GiB) → standard (Qwen 0.6 only)
- * - ≥ 2.5 GiB → newest (Qwen default + Gemma 2 + optional Gemma 4 boosts)
+ * - ≥ 2.5 GiB → newest (Gemma 4 default; Gemma 2 2B + Qwen 0.6 fallbacks)
  *
  * Supported catalog (intentionally small):
  * - WebLLM: Qwen3-0.6B, Gemma 2 2B
- * - Transformers.js (`newest` boost): Gemma 4 E2B ONNX
+ * - Transformers.js (`newest` default): Gemma 4 E2B ONNX
+ *
+ * iOS exception: Transformers.js path is not reliable on iOS WebKit, so iOS devices
+ * on `newest` tier still default to Qwen 0.6 (with Gemma 2 2B available as a fallback).
  */
 import { prebuiltAppConfig } from "@mlc-ai/web-llm";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
@@ -137,15 +140,17 @@ function isIOSWebKitLocal(): boolean {
 
 /**
  * Layer 3 — what we may load and offer in UI.
+ *
+ * On `newest` tier we lead with Gemma 4 (Transformers.js) — the strongest model
+ * we ship — and offer Gemma 2 2B and Qwen 0.6 as fallback options. iOS WebKit
+ * cannot reliably run Transformers.js, so iOS `newest` devices fall back to the
+ * Qwen-led default with Gemma 2 2B as boost.
  */
 export function getLocalAiOffer(): LocalAiOffer {
   const tier = getDeviceTier();
   if (tier === "unsupported") {
     return { enabled: false, defaultModel: null, boostModels: [] };
   }
-
-  const boost: string[] = [];
-  const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
 
   if (tier === "standard") {
     return {
@@ -155,12 +160,26 @@ export function getLocalAiOffer(): LocalAiOffer {
     };
   }
 
-  // newest: binding ≥ 2.5 GiB — Qwen default + Gemma 2 WebLLM + optional Gemma 4 (non‑iOS)
+  // newest: binding ≥ 2.5 GiB
+  const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
+  const gemma4Allowed = !sessionGemma4BoostInvalidated() && !isIOSWebKitLocal();
+
+  if (gemma4Allowed) {
+    // Gemma 4 default; offer Gemma 2 2B + Qwen 0.6 as opt-in fallbacks.
+    const fallbacks: string[] = [];
+    if (gemma22Allowed) fallbacks.push(MODEL_GEMMA_2_2B);
+    fallbacks.push(MODEL_QWEN_0_6);
+    return {
+      enabled: true,
+      defaultModel: MODEL_GEMMA_4_TRANSFORMER,
+      boostModels: fallbacks,
+    };
+  }
+
+  // Gemma 4 not allowed (iOS or session-invalidated): Qwen default with Gemma 2 2B as boost.
+  const boost: string[] = [];
   if (gemma22Allowed) {
     boost.push(MODEL_GEMMA_2_2B);
-  }
-  if (!sessionGemma4BoostInvalidated() && !isIOSWebKitLocal()) {
-    boost.push(MODEL_GEMMA_4_TRANSFORMER);
   }
   return {
     enabled: true,
@@ -286,20 +305,25 @@ function resolveRecommendedModelIdFromOffer(): string | null {
     return null;
   }
 
-  const wantGemma4 =
+  // Honor explicit user preferences (localStorage flags) when the model is part of
+  // the current offer (default or boost) and not session-failed. These preferences
+  // win over the offer default — e.g. on `newest` the default is Gemma 4 but a user
+  // who explicitly opted into Gemma 2 2B still gets Gemma 2 2B.
+  const allowed = new Set<string>([offer.defaultModel, ...offer.boostModels]);
+
+  if (
     getIsGemma4BoostEnabled() &&
-    offer.boostModels.includes(MODEL_GEMMA_4_TRANSFORMER) &&
-    !sessionGemma4BoostInvalidated();
-  if (wantGemma4) {
+    allowed.has(MODEL_GEMMA_4_TRANSFORMER) &&
+    !sessionGemma4BoostInvalidated()
+  ) {
     return MODEL_GEMMA_4_TRANSFORMER;
   }
 
-  const wantGemma22 =
+  if (
     getIsGemma22BoostEnabled() &&
-    offer.boostModels.includes(MODEL_GEMMA_2_2B) &&
-    offer.defaultModel === MODEL_QWEN_0_6 &&
-    !sessionGemma22WebLlmFailed();
-  if (wantGemma22) {
+    allowed.has(MODEL_GEMMA_2_2B) &&
+    !sessionGemma22WebLlmFailed()
+  ) {
     return MODEL_GEMMA_2_2B;
   }
 
