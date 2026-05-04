@@ -11,7 +11,7 @@ import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 export default function AuthTotp() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { refresh } = useAuth();
+  const { refreshUntilAuthenticated } = useAuth();
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,9 @@ export default function AuthTotp() {
     try {
       await apiRequest("/api/auth/totp/verify", "POST", { code: otpCode });
       toast({ title: "Verified", description: "You're signed in." });
-      await refresh();
+      // Retry refresh: D1 read-after-write lag can briefly return authenticated:false
+      // even though the verify endpoint just set auth_complete=1.
+      await refreshUntilAuthenticated();
       setLocation("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Verification failed";
