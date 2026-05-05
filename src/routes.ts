@@ -1397,18 +1397,25 @@ function webauthnCredentialRowIsCryptographicallyUsable(credentialId: string, pu
 
 async function countUsableWebauthnCredentialsForUser(env: Env, userId: string): Promise<number> {
   if (!env.AUTH_DB) return 0;
-  const rows = await env.AUTH_DB.prepare(
-    "SELECT credential_id, public_key FROM webauthn_credentials WHERE user_id = ?",
-  )
-    .bind(userId)
-    .all<{ credential_id: string; public_key: string }>();
-  let n = 0;
-  for (const row of rows.results || []) {
-    if (webauthnCredentialRowIsCryptographicallyUsable(row.credential_id, row.public_key)) {
-      n += 1;
+  try {
+    const rows = await env.AUTH_DB.prepare(
+      "SELECT credential_id, public_key FROM webauthn_credentials WHERE user_id = ?",
+    )
+      .bind(userId)
+      .all<{ credential_id: string; public_key: string }>();
+    let n = 0;
+    for (const row of rows.results || []) {
+      if (webauthnCredentialRowIsCryptographicallyUsable(row.credential_id, row.public_key)) {
+        n += 1;
+      }
     }
+    return n;
+  } catch (err) {
+    // Gracefully degrade: a missing table or D1 error should not crash auth endpoints.
+    // Returns 0 so callers treat the user as having no passkeys rather than a 500.
+    console.error("[countUsableWebauthnCredentials] D1 query failed:", err);
+    return 0;
   }
-  return n;
 }
 
 function getExpectedOrigin(request: Request): string | string[] | null {
