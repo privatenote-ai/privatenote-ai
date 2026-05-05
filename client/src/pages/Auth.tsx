@@ -151,11 +151,12 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
     }
     setIsUsingPasskey(true);
     try {
-      // Email is optional - if provided, use it to filter credentials; if not, use discoverable credentials
+      // Discoverable (resident) credentials only — server never returns allowCredentials from email
+      // (avoids account-enumeration and credential-id leaks). New passkeys use residentKey: "required".
       const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
         "/api/auth/webauthn/login/options",
         "POST",
-        email.trim() ? { email: email.trim() } : {}
+        {},
       );
       if (!data?.options) {
         throw new Error("Missing WebAuthn options from server.");

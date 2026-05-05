@@ -115,6 +115,13 @@ const MAGIC_LINK_RATE_LIMIT = {
   EMAIL_KEY_PREFIX: "magic_email_rate:",
 };
 
+/** Public passkey login options — no per-email DB probe; still cap abuse per IP. */
+const WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT = {
+  MAX_PER_IP: 60,
+  WINDOW_SECONDS: 60 * 60, // 1 hour
+  IP_KEY_PREFIX: "wauthn_login_opts_ip:",
+};
+
 // Audit log retention policy
 const AUDIT_LOG_RETENTION = {
   RETENTION_DAYS: 90, // Keep audit logs for 90 days (GDPR compliance)
@@ -3009,7 +3016,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         attestationType: "none",
         authenticatorSelection: {
           userVerification: "required",
-          residentKey: "preferred",
+          // Required so passkey login can use discoverable credentials only (no email-based allowCredentials).
+          residentKey: "required",
         },
         excludeCredentials: (credentials.results || [])
           .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
@@ -3315,30 +3323,38 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Origin not allowed" }, 403, request);
     }
 
+    // Optional email is stored on the challenge for diagnostics only — never used to build
+    // allowCredentials. Username-first flows that return per-user credential IDs let anyone
+    // probe whether an address has passkeys and leak stable credential handles. Login verify
+    // resolves the user from the presented credential_id alone (discoverable / resident keys).
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
-    let allowCredentials: Array<{ id: string; type: "public-key"; transports?: AuthenticatorTransportFuture[] }> = [];
 
-    if (email) {
-      const user = await env.AUTH_DB.prepare(
-        "SELECT id FROM users WHERE email = ? LIMIT 1"
-      )
-        .bind(email)
-        .first<{ id: string }>();
-
-      if (user?.id) {
-        const creds = await env.AUTH_DB.prepare(
-          "SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?"
-        )
-          .bind(user.id)
-          .all<{ credential_id: string; transports: string | null }>();
-
-        allowCredentials = (creds.results || [])
-          .filter((cred) => typeof cred.credential_id === "string" && cred.credential_id.length > 0)
-          .map((cred) => ({
-            id: cred.credential_id,
-            type: "public-key" as const,
-            transports: parseTransports(cred.transports),
-          }));
+    const requestUrl = new URL(request.url);
+    const isLocal = requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1";
+    const kv = env.RATE_LIMIT_KV || env.AUTH_KV || env.NOTES_KV;
+    const clientIp = getRequestIp(request);
+    if (kv && !isLocal && clientIp) {
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = now - (now % WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT.WINDOW_SECONDS);
+      const ipKey = `${WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}:${windowStart}`;
+      try {
+        const ipCount = (await kv.get(ipKey, { type: "json" })) as { count: number } | null;
+        if (ipCount && ipCount.count >= WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT.MAX_PER_IP) {
+          await logAuditEvent(env, {
+            userId: null,
+            eventType: "rate_limit_exceeded",
+            status: "warning",
+            details: { endpoint: "webauthn_login_options", limitType: "ip", ip: clientIp },
+            ip: clientIp,
+            userAgent: request.headers.get("User-Agent"),
+          });
+          return jsonResponse({ message: "Too many passkey sign-in attempts. Try again later." }, 429, request);
+        }
+        await kv.put(ipKey, JSON.stringify({ count: (ipCount?.count || 0) + 1 }), {
+          expirationTtl: WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT.WINDOW_SECONDS + 10,
+        });
+      } catch (error) {
+        console.error("[WEBAUTHN_LOGIN_OPTIONS_RATE_LIMIT] IP rate limit error:", error);
       }
     }
 
@@ -3346,12 +3362,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     try {
       options = await generateAuthenticationOptions({
         rpID,
-        allowCredentials: allowCredentials.length
-          ? allowCredentials.map((cred) => ({
-            id: cred.id,
-            transports: cred.transports,
-          }))
-          : undefined,
+        allowCredentials: undefined,
         userVerification: "required",
       });
     } catch (err) {
