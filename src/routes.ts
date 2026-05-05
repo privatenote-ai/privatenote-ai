@@ -2313,7 +2313,15 @@ async function createSession(
   userId: string,
   request: Request,
   authMethod: AuthMethod,
-  opts: { authComplete?: boolean } = {},
+  opts: {
+    authComplete?: boolean;
+    /**
+     * When set (including `null`), use this for `last_auth_at` instead of `now`.
+     * Session rotation must pass the revoked row's value so GET traffic does not
+     * refresh "recent sign-in" for first-passkey enrollment (10‑minute window).
+     */
+    lastAuthAtOverride?: string | null;
+  } = {},
 ): Promise<{ sessionId: string } | null> {
   if (!env.AUTH_DB) return null;
   const now = Date.now();
@@ -2340,6 +2348,8 @@ async function createSession(
   // complete sign-in flows. Rotation must pass the original value so pending-TOTP sessions
   // are not silently promoted to fully authenticated.
   const authCompleteValue = opts.authComplete === false ? 0 : 1;
+  const lastAuthAtForInsert =
+    opts.lastAuthAtOverride !== undefined ? opts.lastAuthAtOverride : nowIso;
   await env.AUTH_DB.prepare(
     "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket, auth_complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
@@ -2351,7 +2361,7 @@ async function createSession(
       absoluteExpiresAt,
       nowIso,
       nowIso,
-      nowIso,
+      lastAuthAtForInsert,
       lastStepUpAt,
       userAgent,
       ip,
@@ -2808,7 +2818,10 @@ async function getSessionFromRequest(
   // never be rotated: createSession defaults auth_complete to 1, which would bypass the second
   // factor and promote a half-authenticated session to fully authenticated.
   if (options.rotate && authComplete && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
-    const rotated = await createSession(env, row.user_id, request, "magic", { authComplete: true });
+    const rotated = await createSession(env, row.user_id, request, "magic", {
+      authComplete: true,
+      lastAuthAtOverride: row.last_auth_at ?? null,
+    });
     if (rotated?.sessionId) {
       newSessionId = rotated.sessionId;
       await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
