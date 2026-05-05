@@ -423,6 +423,44 @@ function normalizePasskeyDisplayName(raw: unknown): string | null {
   return normalized.slice(0, 80);
 }
 
+type UsersTableColumns = {
+  plan: boolean;
+  account_type: boolean;
+  business_display_name: boolean;
+  email_notifications: boolean;
+};
+
+async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
+  const defaults: UsersTableColumns = {
+    plan: false,
+    account_type: false,
+    business_display_name: false,
+    email_notifications: false,
+  };
+  if (!env.AUTH_DB) return defaults;
+  try {
+    const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+    const names = new Set((info.results || []).map((row) => row.name));
+    return {
+      plan: names.has("plan"),
+      account_type: names.has("account_type"),
+      business_display_name: names.has("business_display_name"),
+      email_notifications: names.has("email_notifications"),
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColumns): string {
+  const columns = [...baseColumns];
+  if (optionalColumns.plan) columns.push("plan");
+  if (optionalColumns.account_type) columns.push("account_type");
+  if (optionalColumns.business_display_name) columns.push("business_display_name");
+  if (optionalColumns.email_notifications) columns.push("email_notifications");
+  return columns.join(", ");
+}
+
 async function webauthnCredentialsHaveDisplayNameColumn(env: Env): Promise<boolean> {
   if (!env.AUTH_DB) return false;
   try {
@@ -3671,8 +3709,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
+    const userColumns = await getUsersTableColumns(env);
+    const userSelect = buildUserSelect(["id", "email", "status", "email_verified", "created_at"], userColumns);
     const user = await env.AUTH_DB.prepare(
-      "SELECT id, email, status, email_verified, created_at, plan, account_type, business_display_name, email_notifications FROM users WHERE id = ? LIMIT 1"
+      `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`
     )
       .bind(session.id)
       .first<{
@@ -3681,10 +3721,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         status: string | null;
         email_verified: number | null;
         created_at: string | null;
-        plan: string | null;
-        account_type: string | null;
-        business_display_name: string | null;
-        email_notifications: number | null;
+        plan?: string | null;
+        account_type?: string | null;
+        business_display_name?: string | null;
+        email_notifications?: number | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
@@ -3719,18 +3759,20 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
+    const userColumns = await getUsersTableColumns(env);
+    const userSelect = buildUserSelect(["id", "email", "created_at"], userColumns);
     const user = await env.AUTH_DB.prepare(
-      `SELECT id, email, created_at, plan, account_type, business_display_name, email_notifications FROM users WHERE id = ? LIMIT 1`
+      `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`
     )
       .bind(session.id)
       .first<{
         id: string;
         email: string | null;
         created_at: string | null;
-        plan: string | null;
-        account_type: string | null;
-        business_display_name: string | null;
-        email_notifications: number | null;
+        plan?: string | null;
+        account_type?: string | null;
+        business_display_name?: string | null;
+        email_notifications?: number | null;
       }>();
 
     const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
@@ -3872,6 +3914,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     if (typeof body.emailNotifications !== "boolean") {
       return jsonResponse({ message: "emailNotifications boolean required" }, 400, request);
+    }
+    const userColumns = await getUsersTableColumns(env);
+    if (!userColumns.email_notifications) {
+      return jsonResponse({ message: "Account preferences are not available until auth migrations are applied" }, 501, request);
     }
     const flag = body.emailNotifications ? 1 : 0;
     await env.AUTH_DB.prepare(`UPDATE users SET email_notifications = ?, updated_at = datetime('now') WHERE id = ?`)

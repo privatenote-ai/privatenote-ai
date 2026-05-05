@@ -112,9 +112,9 @@ export default function AuthTotp() {
             </Button>
           </form>
 
-          <div className="text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Lost access to your authenticator app?{" "}
+          <div className="text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <p>Lost access to your authenticator app?</p>
+            <p>
               <a href="/auth/recovery" className="text-primary hover:underline">
                 Use a recovery code
               </a>
