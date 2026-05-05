@@ -2368,9 +2368,12 @@ async function respondToMagicLinkConsume(
   headers.set("Referrer-Policy", "no-referrer");
   headers.set("Cache-Control", "no-store");
   if (session?.sessionId) {
+    const cookieMaxAge = totpRequired
+      ? SESSION_POLICY.PENDING_TOTP_SESSION_TTL_SECONDS
+      : SESSION_POLICY.TTL_SECONDS;
     headers.append(
       "Set-Cookie",
-      sessionCookie(session.sessionId, getSessionCookieKindForRequest(request)),
+      sessionCookie(session.sessionId, getSessionCookieKindForRequest(request), cookieMaxAge),
     );
   }
   headers.append("Set-Cookie", clearMagicPrepareCookieHeader());
@@ -2458,10 +2461,14 @@ async function createSession(
   return { sessionId };
 }
 
-function sessionCookie(sessionId: string, kind: SessionCookieKind): string {
+function sessionCookie(
+  sessionId: string,
+  kind: SessionCookieKind,
+  maxAgeSeconds: number = SESSION_POLICY.TTL_SECONDS,
+): string {
   // SameSite=None required for cross-origin requests (frontend on Pages, API on Workers)
   const name = sessionCookieNameForKind(kind);
-  return `${name}=${sessionId}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_POLICY.TTL_SECONDS}`;
+  return `${name}=${sessionId}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
 function clearSessionCookieHeader(kind: SessionCookieKind): string {
