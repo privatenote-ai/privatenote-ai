@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
+  FilePlus2,
+  Eye,
+  Clock,
+  Sparkles,
+  Shield,
+  Key,
+  Fingerprint,
+  Bell,
+  BellOff,
+  Sun,
+  Moon,
+  Monitor,
+} from "lucide-react";
+import { getThemePreference } from "@/hooks/useThemePreference";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AccountType = "free" | "personal_premium" | "business_premium";
 
@@ -18,92 +39,141 @@ type AccountSummary = {
   emailNotifications: boolean;
   limits: { notesPerDay: number | null; aiUsesPerDay: number | null };
   usage: { notesToday: number; aiToday: number; notesMonth: number; aiMonth: number };
-  storageUsedBytes: number | null;
 };
 
-const ACCOUNT_TYPE_META: Record<
-  AccountType,
-  {
-    label: string;
-    summary: string;
-    detail: string;
-    capabilities: string[];
-    futureItems: string[];
-  }
-> = {
-  free: {
-    label: "Free",
-    summary: "Secure notes with essential account features.",
-    detail: "Built for core secure-note sharing without premium branding or public receiving setup.",
-    capabilities: [
-      "Basic secure notes",
-      "Essential account controls",
-      "Upgrade path to Personal Premium or Business Premium",
-    ],
-    futureItems: [
-      "Limited AI and account features may expand later",
-      "Receive securely features are not part of Free",
-    ],
-  },
-  personal_premium: {
-    label: "Personal Premium",
-    summary: "For private individuals who want premium features without a public-facing business profile.",
-    detail: "Personal Premium stays privacy-first and avoids pushing public identity or public contact setup.",
-    capabilities: [
-      "Premium note controls",
-      "Enhanced account features",
-      "Privacy-first personal use",
-    ],
-    futureItems: [
-      "Lightweight personal receiving helpers are planned",
-      "Public business identity is not the focus of this type",
-    ],
-  },
-  business_premium: {
-    label: "Business Premium",
-    summary: "For businesses and public-facing professionals who want trusted, professional secure-note workflows.",
-    detail: "This is the future home for branded professional use, trusted identity, and public secure intake.",
-    capabilities: [
-      "Professional account positioning",
-      "Future business identity support",
-      "Future receive securely foundation",
-    ],
-    futureItems: [
-      "Public secure intake will be supported later",
-      "Verified business identity and contact methods are planned",
-    ],
-  },
+type MeResponse = {
+  id: string;
+  email: string | null;
+  hasPasskeys: boolean;
+  emailVerified: boolean;
 };
 
-const ACCOUNT_TYPE_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
+type ActivityEvent = {
+  id: string;
+  type: string;
+  noteId: string | null;
+  createdAt: string;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeAccountType(raw: string | null | undefined): AccountType {
-  const value = (raw || "free").toLowerCase();
-  if (value === "personal_premium" || value === "pro") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
+  const v = (raw ?? "free").toLowerCase();
+  if (v === "personal_premium" || v === "pro") return "personal_premium";
+  if (v === "business_premium" || v === "business") return "business_premium";
   return "free";
 }
 
-function formatInternalId(id: string | null | undefined): string {
+const PLAN_LABEL: Record<AccountType, string> = {
+  free: "Free",
+  personal_premium: "Personal Premium",
+  business_premium: "Business Premium",
+};
+
+const PLAN_BADGE_CLASS: Record<AccountType, string> = {
+  free: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  personal_premium: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  business_premium: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+};
+
+function eventLabel(type: string): string {
+  switch (type) {
+    case "note_created": return "Secure note created";
+    case "ai_note_created": return "AI-assisted note created";
+    case "note_opened": return "Note opened";
+    case "note_expired": return "Note expired";
+    default: return type.replace(/_/g, " ");
+  }
+}
+
+function EventIcon({ type }: { type: string }) {
+  const cls = "h-3.5 w-3.5";
+  switch (type) {
+    case "note_created": return <FilePlus2 className={cls} />;
+    case "ai_note_created": return <Sparkles className={cls} />;
+    case "note_opened": return <Eye className={cls} />;
+    case "note_expired": return <Clock className={cls} />;
+    default: return <FilePlus2 className={cls} />;
+  }
+}
+
+function eventAccent(type: string): string {
+  switch (type) {
+    case "note_created": return "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30";
+    case "ai_note_created": return "text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30";
+    case "note_opened": return "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30";
+    case "note_expired": return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
+    default: return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
+  }
+}
+
+function formatId(id: string | null | undefined): string {
   if (!id) return "—";
   if (id.length <= 16) return id;
   return `${id.slice(0, 8)}…${id.slice(-6)}`;
 }
 
+function ThemeLabel({ pref }: { pref: string }) {
+  if (pref === "light") return <><Sun className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Light</>;
+  if (pref === "dark") return <><Moon className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Dark</>;
+  return <><Monitor className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />System</>;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function AccountOverview() {
   const { user, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null);
+  const [sessionCount, setSessionCount] = useState<number | null>(null);
+  const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [themePref, setThemePref] = useState(getThemePreference());
 
-  const refresh = useCallback(async () => {
-    setLoadError(null);
+  // Keep theme label in sync with storage changes
+  useEffect(() => {
+    const sync = () => setThemePref(getThemePreference());
+    window.addEventListener("privatenote-theme", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("privatenote-theme", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoadError(false);
     try {
-      const data = await apiRequest<AccountSummary>("/api/auth/account/summary", "GET");
-      setSummary(data.ok ? { ...data, accountType: normalizeAccountType(data.accountType ?? data.plan) } : null);
+      const [summaryRes, meRes, totpRes, sessionsRes, activityRes] = await Promise.allSettled([
+        apiRequest<AccountSummary>("/api/auth/account/summary", "GET"),
+        apiRequest<MeResponse>("/api/auth/me", "GET"),
+        apiRequest<{ enabled: boolean }>("/api/auth/totp/status", "GET"),
+        apiRequest<{ sessions: { id: string }[] }>("/api/auth/sessions", "GET"),
+        apiRequest<{ ok: boolean; events: ActivityEvent[] }>("/api/auth/account/activity?limit=5", "GET"),
+      ]);
+
+      if (summaryRes.status === "fulfilled" && summaryRes.value.ok) {
+        setSummary({
+          ...summaryRes.value,
+          accountType: normalizeAccountType(
+            summaryRes.value.accountType ?? summaryRes.value.plan,
+          ),
+        });
+      } else {
+        setLoadError(true);
+      }
+      if (meRes.status === "fulfilled") setMe(meRes.value);
+      if (totpRes.status === "fulfilled") setTotpEnabled(totpRes.value.enabled);
+      if (sessionsRes.status === "fulfilled") {
+        setSessionCount(sessionsRes.value.sessions?.length ?? null);
+      }
+      if (activityRes.status === "fulfilled" && activityRes.value.ok) {
+        setRecentEvents(activityRes.value.events ?? []);
+      }
     } catch {
-      setSummary(null);
-      setLoadError("Could not load account details.");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -111,196 +181,277 @@ export default function AccountOverview() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    void refresh();
-  }, [authLoading, user, refresh]);
+    if (!user) { setLoading(false); return; }
+    void load();
+  }, [authLoading, user, load]);
 
   const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-      }),
+    () => new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }),
     [],
   );
 
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
       <AccountSettingsShell>
-        <Card>
-          <CardContent className="py-8">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Loading account…</p>
-          </CardContent>
-        </Card>
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 w-40 rounded bg-gray-200 dark:bg-gray-800" />
+          <div className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
+          <div className="h-36 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
+          <div className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
+        </div>
       </AccountSettingsShell>
     );
   }
 
+  // ── Not signed in ──────────────────────────────────────────────────────────
   if (!user) {
     return (
       <AccountSettingsShell>
-        <Card>
-          <CardContent className="py-8">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Sign in to view your account.</p>
-            <div className="mt-4">
-              <Button asChild>
-                <a href="/auth/sign-in">Sign in</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Sign in to view your account.</p>
+          <Button asChild size="sm">
+            <a href="/auth/sign-in">Sign in</a>
+          </Button>
+        </div>
       </AccountSettingsShell>
     );
   }
 
   const accountType = normalizeAccountType(summary?.accountType ?? summary?.plan);
-  const currentType = ACCOUNT_TYPE_META[accountType];
-  const alternateTypes = ACCOUNT_TYPE_ORDER.filter((type) => type !== accountType);
-  const usage = summary?.usage;
-  const limits = summary?.limits;
+  const planLabel = PLAN_LABEL[accountType];
+  const planBadge = PLAN_BADGE_CLASS[accountType];
+  const hasPasskeys = me?.hasPasskeys ?? false;
+  const emailVerified = me?.emailVerified ?? false;
 
+  // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
     <AccountSettingsShell>
-      <div className="space-y-10">
+      <div className="space-y-6">
+        {/* Page header */}
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Account</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Review who this account belongs to, what type of account it is, and what it is set up to support.
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Your identity, security, and settings at a glance.
           </p>
         </div>
 
         {loadError && (
           <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">
-            {loadError}
+            Some details could not be loaded.{" "}
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => { setLoading(true); void load(); }}
+            >
+              Retry
+            </button>
           </p>
         )}
 
-        <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Identity</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Basic account identity tied to your sign-in.
-            </p>
+        {/* ── Identity card ─────────────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-200 dark:divide-gray-800 overflow-hidden">
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-4 px-5 py-4 bg-gray-50/60 dark:bg-gray-900/40">
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Identity</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
+                {summary?.email ?? user.email ?? "—"}
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${planBadge}`}
+            >
+              {planLabel}
+            </span>
           </div>
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
-              <div className="text-base font-medium text-gray-900 dark:text-white">Email</div>
-              <div className="text-sm font-medium text-gray-900 dark:text-white break-all">{summary?.email ?? user.email ?? "—"}</div>
+
+          {/* Email verified */}
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Email verified</span>
+            {emailVerified ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" /> Verified
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <XCircle className="h-4 w-4" /> Not verified
+              </span>
+            )}
+          </div>
+
+          {/* Member since */}
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Member since</span>
+            <span className="text-sm text-gray-900 dark:text-white">
+              {summary?.createdAt ? dateFormatter.format(new Date(summary.createdAt)) : "—"}
+            </span>
+          </div>
+
+          {/* Account ID */}
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <span className="text-sm text-gray-500 dark:text-gray-500">Account ID</span>
+            <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
+              {formatId(summary?.id)}
+            </span>
+          </div>
+        </section>
+
+        {/* ── Security at a glance ──────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Security</p>
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
-              <div className="text-base font-medium text-gray-900 dark:text-white">Member since</div>
-              <div className="text-sm text-gray-900 dark:text-white">
-                {summary?.createdAt ? dateFormatter.format(new Date(summary.createdAt)) : "—"}
-              </div>
+            <Link href="/account/security">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
+                Manage <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          </div>
+
+          <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
+            {/* Passkeys */}
+            <div className="flex items-center justify-between gap-4 px-5 py-3">
+              <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Fingerprint className="h-4 w-4 text-gray-400" aria-hidden />
+                Passkey
+              </span>
+              {hasPasskeys ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" /> Set up
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
+                  <XCircle className="h-4 w-4" /> None
+                </span>
+              )}
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
-              <div className="text-base font-medium text-gray-900 dark:text-white">Account type</div>
-              <div className="text-sm text-gray-900 dark:text-white">{currentType.label}</div>
+
+            {/* 2-step verification */}
+            <div className="flex items-center justify-between gap-4 px-5 py-3">
+              <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Key className="h-4 w-4 text-gray-400" aria-hidden />
+                2-step verification
+              </span>
+              {totpEnabled === null ? (
+                <span className="text-xs text-gray-400">—</span>
+              ) : totpEnabled ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" /> Enabled
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
+                  <XCircle className="h-4 w-4" /> Disabled
+                </span>
+              )}
             </div>
-            <div className="border-t border-gray-200 dark:border-gray-800 grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
-              <div className="text-base font-medium text-gray-500 dark:text-gray-400">Account ID</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">{formatInternalId(summary?.id)}</div>
+
+            {/* Active sessions */}
+            <div className="flex items-center justify-between gap-4 px-5 py-3">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Active sessions</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                {sessionCount !== null ? sessionCount : "—"}
+              </span>
             </div>
           </div>
         </section>
 
-        <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plan and account type</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              PrivateNote uses account types to distinguish core use, premium scope, and future receiving features.
-            </p>
+        {/* ── Recent activity ────────────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Recent activity</p>
+            <Link href="/account/activity">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
+                View all <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
           </div>
-          <div className="rounded-lg border border-blue-200/80 p-5 dark:border-blue-900/60">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Current account type</p>
-                <h3 className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">{currentType.label}</h3>
-                <p className="mt-2 text-sm text-gray-900 dark:text-white">{currentType.summary}</p>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{currentType.detail}</p>
-                {accountType === "business_premium" && summary?.businessDisplayName && (
-                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                    Business display name: <span className="font-medium text-gray-900 dark:text-white">{summary.businessDisplayName}</span>
-                  </p>
-                )}
-              </div>
-              <div className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-gray-900 dark:text-gray-300">
-                Billing is not active yet. This page shows your current account type and where future upgrades will fit.
-              </div>
-            </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {alternateTypes.map((type) => {
-                const meta = ACCOUNT_TYPE_META[type];
+
+          {recentEvents.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-gray-500 dark:text-gray-400">
+              No activity yet. Create a note while signed in to see it here.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
+              {recentEvents.map((ev) => {
+                let relative = "";
+                try {
+                  relative = formatDistanceToNow(new Date(ev.createdAt), { addSuffix: true });
+                } catch {
+                  relative = ev.createdAt;
+                }
                 return (
-                  <div key={type} className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-base font-medium text-gray-900 dark:text-white">{meta.label}</p>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                        Planned
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{meta.summary}</p>
-                  </div>
+                  <li key={ev.id} className="flex items-center gap-3 px-5 py-3">
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${eventAccent(ev.type)}`}>
+                      <EventIcon type={ev.type} />
+                    </span>
+                    <span className="flex-1 text-sm text-gray-800 dark:text-gray-200">{eventLabel(ev.type)}</span>
+                    <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">{relative}</span>
+                  </li>
                 );
               })}
+            </ul>
+          )}
+        </section>
+
+        {/* ── Preferences quick-look ─────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Preferences</p>
+            <Link href="/account/preferences">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
+                Edit <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
+            <div className="flex items-center justify-between gap-4 px-5 py-3">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <ThemeLabel pref={themePref} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-3">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Email notifications</span>
+              {summary?.emailNotifications ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                  <Bell className="h-3.5 w-3.5" /> On
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-500">
+                  <BellOff className="h-3.5 w-3.5" /> Off
+                </span>
+              )}
             </div>
           </div>
         </section>
 
-        <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Capabilities</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              What this account type supports now, and what it is positioned to support later.
-            </p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-              <h3 className="text-base font-medium text-gray-900 dark:text-white">Available now</h3>
-              <ul className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                {currentType.capabilities.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+        {/* ── Plan ──────────────────────────────────────────────────────── */}
+        <section className="rounded-xl border border-blue-200/80 dark:border-blue-900/60 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Current plan</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
             </div>
-            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-              <h3 className="text-base font-medium text-gray-900 dark:text-white">Planned / coming later</h3>
-              <ul className="mt-3 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                {currentType.futureItems.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
+            <span className="rounded-md bg-gray-100 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 text-center">
+              Billing coming soon
+            </span>
           </div>
-        </section>
 
-        <section>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Usage</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Lightweight account-level usage only. No note content is shown here.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Notes created today</p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {usage
-                  ? `${usage.notesToday}${limits?.notesPerDay != null ? ` / ${limits.notesPerDay}` : " (unlimited)"}`
-                  : "—"}
-              </p>
+          {accountType === "free" && (
+            <div className="mt-4 pt-4 border-t border-blue-200/60 dark:border-blue-900/40 grid gap-3 sm:grid-cols-2">
+              {(["personal_premium", "business_premium"] as AccountType[]).map((t) => (
+                <div key={t} className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{PLAN_LABEL[t]}</p>
+                  <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
+                    Planned
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">AI-assisted creates today</p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {usage
-                  ? `${usage.aiToday}${limits?.aiUsesPerDay != null ? ` / ${limits.aiUsesPerDay}` : " (unlimited)"}`
-                  : "—"}
-              </p>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </AccountSettingsShell>
