@@ -5,7 +5,7 @@
  * Binding bands (negative filters):
  * - &lt; 1.5 GiB → unsupported
  * - [1.5 GiB, 1.9 GiB) → standard (Qwen 0.6 only)
- * - ≥ 1.9 GiB → newest (premium: Gemma 2 2B default; free: Qwen 0.6)
+ * - ≥ 1.9 GiB → newest (Gemma 2 2B default; Qwen 0.6 fallback)
  *
  * The 1.9 GiB threshold sits just below the 2 GiB (2,147,483,648 bytes) value reported
  * by Apple Silicon (M1/M2/M3/M4) for `maxStorageBufferBindingSize`, so all M-series Macs
@@ -13,10 +13,10 @@
  * lower numbers under throttling. Most discrete NVIDIA/AMD GPUs are well above this.
  *
  * Supported catalog (intentionally small):
- * - WebLLM (free default): Qwen 0.6
- * - WebLLM (premium newest default): Gemma 2 2B
+ * - WebLLM (standard default): Qwen 0.6
+ * - WebLLM (newest default): Gemma 2 2B
  *
- * Premium fallback remains Qwen 0.6 when the larger model cannot run.
+ * Fallback remains Qwen 0.6 when the larger model cannot run.
  */
 import { prebuiltAppConfig } from "@mlc-ai/web-llm";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
@@ -38,7 +38,7 @@ export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
 export const MIN_BINDING_FOR_QWEN06 = 1.5 * 1024 * 1024 * 1024;
 
 /**
- * Lower bound of the "capable" band: premium Gemma 2 2B default + Qwen 0.6 fallback.
+ * Lower bound of the "capable" band: Gemma 2 2B default + Qwen 0.6 fallback.
  * In [1.5 GiB, 1.9 GiB) → {@link DeviceTier} `standard` (Qwen 0.6 only); at or above → `newest`.
  *
  * Set to 1.9 GiB so all Apple Silicon Macs (which report exactly 2 GiB) and any GPU that
@@ -66,17 +66,13 @@ export const ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES = 128 * 1024 * 1024;
 export const BINDING_STORAGE_BUFFER_TOO_LOW_FOR_DESKTOP_QWEN4_PREMIUM_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 export const VRAM_LIMIT_BYTES = ABSOLUTE_LOW_GPU_BINDING_CUTOFF_BYTES;
 
-/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (1.9 GiB). Premium defaults to Gemma 2 2B; free remains Qwen 0.6. */
+/** `newest` = binding ≥ {@link MIN_BINDING_FOR_CAPABLE} (1.9 GiB). Defaults to Gemma 2 2B with Qwen 0.6 fallback. */
 export type DeviceTier = "unsupported" | "standard" | "newest";
 
 export type LocalAiOffer = {
   enabled: boolean;
   defaultModel: string | null;
   boostModels: string[];
-};
-
-export type LocalAiAccountPolicy = {
-  premium?: boolean;
 };
 
 export {
@@ -148,17 +144,17 @@ function isIOSWebKitLocal(): boolean {
 /**
  * Layer 3 — what we may load and offer in UI.
  *
- * Free accounts always use Qwen 0.6 when local AI is supported. Premium accounts
- * use Gemma 2 2B on newest-tier devices with shader-f16, with Qwen 0.6 as fallback
- * if the larger model is not allowed or fails in the session.
+ * All accounts use Qwen 0.6 on standard-tier devices. Newest-tier devices use
+ * Gemma 2 2B when shader-f16 is available, with Qwen 0.6 as fallback if the
+ * larger model is not allowed or fails in the session.
  */
-export function getLocalAiOffer(policy: LocalAiAccountPolicy = {}): LocalAiOffer {
+export function getLocalAiOffer(): LocalAiOffer {
   const tier = getDeviceTier();
   if (tier === "unsupported") {
     return { enabled: false, defaultModel: null, boostModels: [] };
   }
 
-  if (!policy.premium || tier === "standard") {
+  if (tier === "standard") {
     return {
       enabled: true,
       defaultModel: MODEL_QWEN_0_6,
@@ -169,7 +165,7 @@ export function getLocalAiOffer(policy: LocalAiAccountPolicy = {}): LocalAiOffer
   // newest: binding ≥ 1.9 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
   const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
   if (gemma22Allowed) {
-    // Premium default: Gemma 2 2B. Qwen 0.6 remains the safe fallback.
+    // Gemma 2 2B default. Qwen 0.6 remains the safe fallback.
     return {
       enabled: true,
       defaultModel: MODEL_GEMMA_2_2B,
@@ -178,7 +174,7 @@ export function getLocalAiOffer(policy: LocalAiAccountPolicy = {}): LocalAiOffer
   }
 
   // Gemma 2 2B not allowed (no shader-f16, or session-failed): fall back to Qwen 0.6.
-  // Without f16, the premium path falls back to Qwen 0.6.
+  // Without f16, fall back to Qwen 0.6.
   return {
     enabled: true,
     defaultModel: MODEL_QWEN_0_6,
@@ -297,8 +293,8 @@ export async function primeLocalModelGpuLimit(): Promise<void> {
   await gpuPrimePromise;
 }
 
-function resolveRecommendedModelIdFromOffer(policy: LocalAiAccountPolicy = {}): string | null {
-  const offer = getLocalAiOffer(policy);
+function resolveRecommendedModelIdFromOffer(): string | null {
+  const offer = getLocalAiOffer();
   if (!offer.enabled || !offer.defaultModel) {
     return null;
   }
@@ -308,16 +304,16 @@ function resolveRecommendedModelIdFromOffer(policy: LocalAiAccountPolicy = {}): 
 
 /** Hardware label helper — maps the premium-capable recommendation where applicable. */
 export function getHardwareTierModelIdSync(): string | null {
-  return resolveRecommendedModelIdFromOffer({ premium: true });
+  return resolveRecommendedModelIdFromOffer();
 }
 
-export function getRecommendedLocalModelIdSync(policy: LocalAiAccountPolicy = {}): string | null {
-  return resolveRecommendedModelIdFromOffer(policy);
+export function getRecommendedLocalModelIdSync(): string | null {
+  return resolveRecommendedModelIdFromOffer();
 }
 
-export async function getRecommendedLocalModelId(policy: LocalAiAccountPolicy = {}): Promise<string | null> {
+export async function getRecommendedLocalModelId(): Promise<string | null> {
   await primeLocalModelGpuLimit();
-  return getRecommendedLocalModelIdSync(policy);
+  return getRecommendedLocalModelIdSync();
 }
 
 /**

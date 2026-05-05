@@ -92,7 +92,6 @@ import type { AiPostGenTransform } from "./AiComposer";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
-import { useAuth } from "@/context/AuthContext";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -113,7 +112,6 @@ interface CreateNoteProps {
 }
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
-  const { user } = useAuth();
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
 
@@ -159,7 +157,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [userPromptHistory, setUserPromptHistory] = useState<string[]>([]);
   const [transformHistory, setTransformHistory] = useState<AiPostGenTransform[]>([]);
   const [aiDraftAccepted, setAiDraftAccepted] = useState(false);
-  const [isPremiumAccount, setIsPremiumAccount] = useState<boolean | null>(null);
 
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
@@ -218,36 +215,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
   }, [prefillText]);
 
-  const loadPremiumAccountStatus = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
-    try {
-      const data = await apiRequest<{
-        ok?: boolean;
-        accountType?: string | null;
-        plan?: string | null;
-      }>("/api/auth/account/summary", "GET");
-      const accountType = String(data.accountType ?? data.plan ?? "free").toLowerCase();
-      return accountType === "personal_premium" || accountType === "business_premium";
-    } catch {
-      return false;
-    }
-  }, [user]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) {
-      setIsPremiumAccount(false);
-      return;
-    }
-    setIsPremiumAccount(null);
-    void loadPremiumAccountStatus().then((premium) => {
-      if (!cancelled) setIsPremiumAccount(premium);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadPremiumAccountStatus, user]);
-
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
     (raw: string) => {
@@ -292,25 +259,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             "On-device AI isn't available right now. If a previous attempt failed, try resetting and starting again."
         );
       }
-      const premium = isPremiumAccount ?? (await loadPremiumAccountStatus());
-      if (isPremiumAccount === null) setIsPremiumAccount(premium);
-      const modelId = await getRecommendedLocalModelId({ premium });
+      const modelId = await getRecommendedLocalModelId();
       if (!modelId) {
         throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
       }
       try {
-        await initializeClientLLM(onProgress, modelId, { premium });
+        await initializeClientLLM(onProgress, modelId);
       } catch (error) {
-        if (premium && modelId === MODEL_GEMMA_2_2B) {
-          console.warn("[AI] Premium model failed; falling back to compact local model:", error);
+        if (modelId === MODEL_GEMMA_2_2B) {
+          console.warn("[AI] Gemma 2 failed; falling back to compact local model:", error);
           clearEngine();
-          await initializeClientLLM(onProgress, MODEL_QWEN_0_6, { premium });
+          await initializeClientLLM(onProgress, MODEL_QWEN_0_6);
           return;
         }
         throw error;
       }
     },
-    [isPremiumAccount, loadPremiumAccountStatus],
+    [],
   );
 
   const startFreeModelDownload = useCallback(async () => {
@@ -398,9 +363,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const baseOpts = selectedTemplate
         ? { templateName: selectedTemplate.name, templateDescription: selectedTemplate.description }
         : undefined;
-      const premium = isPremiumAccount ?? (await loadPremiumAccountStatus());
-      if (isPremiumAccount === null) setIsPremiumAccount(premium);
-      const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId({ premium }));
+      const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId());
       if (!modelId) {
         throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
       }

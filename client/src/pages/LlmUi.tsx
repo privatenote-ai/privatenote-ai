@@ -95,8 +95,7 @@ function LlmUi() {
   const ramValue = typeof stats.ram === "number" ? stats.ram : null;
   const webLlmReady = isWebLLMSupported();
   const webLlmHint = getWebLLMSupportHint();
-  const offer = probeReady ? getLocalAiOffer({ premium: false }) : null;
-  const premiumOffer = probeReady ? getLocalAiOffer({ premium: true }) : null;
+  const offer = probeReady ? getLocalAiOffer() : null;
   const deviceTier = probeReady ? getDeviceTier() : null;
   const recommendedModelId = probeReady ? getRecommendedModelForDevice() : null;
   const bindingSize = probeReady ? getCachedMaxStorageBufferBindingSize() : null;
@@ -138,15 +137,15 @@ function LlmUi() {
     }
 
     if (deviceTier === "newest") {
-      if (premiumOffer?.defaultModel?.includes("gemma-2-2b")) {
+      if (offer?.defaultModel?.includes("gemma-2-2b")) {
         return {
           tier: "Newest tier",
-          context: "Free accounts use Qwen 0.6. Premium accounts use Gemma 2 2B on this device, with Qwen 0.6 as fallback.",
+          context: "This device uses Gemma 2 2B by default, with Qwen 0.6 as fallback.",
         };
       }
       return {
         tier: "Newest tier",
-        context: "Free and premium accounts use Qwen 0.6 here because the larger premium model is not allowed in this session.",
+        context: "This device uses Qwen 0.6 because the larger model is not allowed in this session.",
       };
     }
 
@@ -154,7 +153,7 @@ function LlmUi() {
       tier: "Standard tier",
       context: "This device qualifies for the compact Qwen 0.6 default only.",
     };
-  }, [deviceTier, offer, premiumOffer, probeReady, webLlmHint]);
+  }, [deviceTier, offer, probeReady, webLlmHint]);
 
   const handleBackgroundDownload = async () => {
     if (!recommendedModelId || isDownloading) return;
@@ -304,8 +303,8 @@ function LlmUi() {
                 <TableCell>Primary capacity gate for local models</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Premium model</TableCell>
-                <TableCell>{premiumOffer ? (premiumOffer.defaultModel ?? "None") : "Pending"}</TableCell>
+                <TableCell>Default model</TableCell>
+                <TableCell>{offer ? (offer.defaultModel ?? "None") : "Pending"}</TableCell>
                 <TableCell>Gemma 2 when supported; otherwise Qwen 0.6</TableCell>
               </TableRow>
               <TableRow>
