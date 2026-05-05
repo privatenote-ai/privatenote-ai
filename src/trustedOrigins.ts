@@ -115,6 +115,16 @@ export function isPagesPreviewBrowserOrigin(origin: string): boolean {
 /**
  * Which session cookie this request should send/use for auth, based on trusted Origin or Referer.
  * Untrusted or missing Origin defaults to prod so curl and same-site tooling keep working.
+ *
+ * Falls back to the `X-Forwarded-Host` header set by the Pages Function proxy
+ * (`functions/api/[[path]].ts`) as a last resort: Safari same-origin GET `fetch()`
+ * calls omit both `Origin` and `Referer`, and without the host hint the worker
+ * would look up `pn_session` instead of `pn_session_preview` on `*.pages.dev`
+ * branch previews and return `{authenticated:false}` for a valid session.
+ *
+ * IMPORTANT: only used here to pick a cookie name (which is already harmless if
+ * wrong). Do NOT consult `X-Forwarded-Host` for CSRF / origin trust decisions —
+ * those must keep relying on browser-set `Origin` / `Referer`.
  */
 export function getSessionCookieKindForRequest(request: Request): SessionCookieKind {
   const originHeader = request.headers.get("Origin");
@@ -128,6 +138,10 @@ export function getSessionCookieKindForRequest(request: Request): SessionCookieK
         originStr = null;
       }
     }
+  }
+  if (!originStr) {
+    const xfh = request.headers.get("X-Forwarded-Host");
+    if (xfh) originStr = `https://${xfh}`;
   }
   if (originStr != null && isTrustedBrowserOrigin(originStr) && isPagesPreviewBrowserOrigin(originStr)) {
     return "preview";

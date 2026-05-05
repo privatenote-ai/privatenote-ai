@@ -99,7 +99,7 @@ type AuthMode = "sign-in" | "sign-up";
 
 export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
-  const { refresh } = useAuth();
+  const { refreshUntilAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
@@ -170,7 +170,9 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         challengeId: data.challengeId,
         credential: credentialToJson(credential),
       });
-      await refresh();
+      // Retry: D1 read-after-write lag can briefly return authenticated:false
+      // even though the verify endpoint just created the session.
+      await refreshUntilAuthenticated();
       // Redirect to home on successful login
       window.location.href = "/";
     } catch (error) {

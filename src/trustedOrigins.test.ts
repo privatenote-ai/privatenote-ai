@@ -120,8 +120,39 @@ describe("getSessionCookieKindForRequest", () => {
     assert.equal(getSessionCookieKindForRequest(req), "preview");
   });
 
-  it("defaults to prod when Origin/Referer are missing", () => {
+  it("falls back to X-Forwarded-Host when Origin and Referer are missing (Safari same-origin GET via Pages proxy)", () => {
+    const req = new Request("https://api.example.test/api/x", {
+      headers: { "X-Forwarded-Host": "branch.privatenote-ai.pages.dev" },
+    });
+    assert.equal(getSessionCookieKindForRequest(req), "preview");
+  });
+
+  it("X-Forwarded-Host pointing at a production Pages host stays prod", () => {
+    const req = new Request("https://api.example.test/api/x", {
+      headers: { "X-Forwarded-Host": "privatenote-ai.pages.dev" },
+    });
+    assert.equal(getSessionCookieKindForRequest(req), "prod");
+  });
+
+  it("X-Forwarded-Host pointing at an untrusted host stays prod (does not grant trust)", () => {
+    const req = new Request("https://api.example.test/api/x", {
+      headers: { "X-Forwarded-Host": "evil.pages.dev" },
+    });
+    assert.equal(getSessionCookieKindForRequest(req), "prod");
+  });
+
+  it("defaults to prod when Origin / Referer / X-Forwarded-Host are all missing", () => {
     const req = new Request("https://api.example.test/api/x");
+    assert.equal(getSessionCookieKindForRequest(req), "prod");
+  });
+
+  it("Origin still wins over X-Forwarded-Host (X-Forwarded-Host is only a last-resort fallback)", () => {
+    const req = new Request("https://api.example.test/api/x", {
+      headers: {
+        Origin: "https://privatenote-ai.pages.dev",
+        "X-Forwarded-Host": "branch.privatenote-ai.pages.dev",
+      },
+    });
     assert.equal(getSessionCookieKindForRequest(req), "prod");
   });
 });
