@@ -93,14 +93,12 @@ const PASSKEY_FIRST_ENROLL_AUTH_WINDOW_SECONDS = 10 * 60;
 // Tighter step-up window for recovery code regeneration (reduces window if session is compromised)
 const RECOVERY_CODE_STEP_UP_WINDOW_SECONDS = 2 * 60;
 
-// Recovery code rate limiting with progressive delays and account lockout
+// Recovery-code consume: per-IP window + progressive delay only. Never key lockout or primary
+// rate windows by email — unauthenticated callers could otherwise DoS a victim's recovery path.
 const RECOVERY_CODE_RATE_LIMIT = {
-  MAX_ATTEMPTS: 5, // attempts per window before lockout
+  MAX_ATTEMPTS_PER_IP: 24,
   WINDOW_SECONDS: 15 * 60, // 15 minute window
-  KEY_PREFIX: "recovery_rate_limit:",
-  LOCKOUT_THRESHOLD: 10, // total failed attempts before account lockout
-  LOCKOUT_DURATION_SECONDS: 60 * 60, // 1 hour lockout
-  LOCKOUT_KEY_PREFIX: "recovery_lockout:",
+  IP_KEY_PREFIX: "recovery_consume_ip:",
   // Progressive delays: delay = BASE_DELAY * 2^(attempts-1), capped at MAX_DELAY
   PROGRESSIVE_BASE_DELAY_MS: 500,
   PROGRESSIVE_MAX_DELAY_MS: 8000,
@@ -4443,97 +4441,66 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
-    // Enhanced rate limiting with progressive delays and account lockout
-    const rateLimitKey = `${RECOVERY_CODE_RATE_LIMIT.KEY_PREFIX}${email}`;
-    const lockoutKey = `${RECOVERY_CODE_RATE_LIMIT.LOCKOUT_KEY_PREFIX}${email}`;
-    const kv = env.RATE_LIMIT_KV || env.NOTES_KV;
+    const clientIp = getRequestIp(request);
+    const requestUrl = new URL(request.url);
+    const isLocal =
+      requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1";
+    const kv = env.RATE_LIMIT_KV || env.AUTH_KV || env.NOTES_KV;
     let currentAttempts = 0;
 
-    if (kv) {
+    if (kv && !isLocal && clientIp) {
       const now = Math.floor(Date.now() / 1000);
       const windowStart = now - (now % RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS);
+      const rateLimitKey = `${RECOVERY_CODE_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}`;
 
       try {
-        // Check for account lockout first
-        const lockoutData = await kv.get(lockoutKey, { type: 'json' }) as {
-          totalFailures: number;
-          lockedUntil?: number;
-          notifiedAt?: number;
+        const stored = (await kv.get(rateLimitKey, { type: "json" })) as {
+          count?: number;
+          windowStart?: number;
         } | null;
-
-        if (lockoutData?.lockedUntil && lockoutData.lockedUntil > now) {
-          const remainingMinutes = Math.ceil((lockoutData.lockedUntil - now) / 60);
-          // Audit log: account locked
-          await logAuditEvent(env, {
-            userId: null,
-            eventType: "rate_limit_exceeded",
-            status: "warning",
-            details: {
-              endpoint: "recovery_code",
-              reason: "account_locked",
-              emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
-              remainingMinutes,
-            },
-            ip: getRequestIp(request),
-            userAgent: request.headers.get("User-Agent"),
-          });
-          await jitterDelay();
-          return jsonResponse(
-            { message: `Account temporarily locked. Please try again in ${remainingMinutes} minutes.` },
-            429,
-            request
-          );
-        }
-
-        // Check window rate limit
-        const stored = await kv.get(rateLimitKey, { type: 'json' }) as { count?: number; windowStart?: number } | null;
 
         if (stored && stored.windowStart === windowStart) {
           currentAttempts = stored.count || 0;
-          if (currentAttempts >= RECOVERY_CODE_RATE_LIMIT.MAX_ATTEMPTS) {
-            // Audit log: rate limit exceeded
+          if (currentAttempts >= RECOVERY_CODE_RATE_LIMIT.MAX_ATTEMPTS_PER_IP) {
             await logAuditEvent(env, {
               userId: null,
               eventType: "rate_limit_exceeded",
               status: "warning",
-              details: { endpoint: "recovery_code", emailMasked: email.replace(/(.{2})(.*)(@.*)/, "$1***$3") },
-              ip: getRequestIp(request),
+              details: {
+                endpoint: "recovery_code_consume",
+                limitType: "ip",
+                ip: clientIp,
+              },
+              ip: clientIp,
               userAgent: request.headers.get("User-Agent"),
             });
             await jitterDelay();
             return jsonResponse(
-              { message: "Too many recovery attempts. Please try again later." },
+              { message: "Too many recovery attempts from this network. Please try again later." },
               429,
-              request
+              request,
             );
           }
-          await kv.put(rateLimitKey, JSON.stringify({
-            count: currentAttempts + 1,
-            windowStart,
-          }), {
+          await kv.put(rateLimitKey, JSON.stringify({ count: currentAttempts + 1, windowStart }), {
             expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
           });
           currentAttempts += 1;
         } else {
-          await kv.put(rateLimitKey, JSON.stringify({
-            count: 1,
-            windowStart,
-          }), {
+          await kv.put(rateLimitKey, JSON.stringify({ count: 1, windowStart }), {
             expirationTtl: RECOVERY_CODE_RATE_LIMIT.WINDOW_SECONDS + 10,
           });
           currentAttempts = 1;
         }
 
-        // Apply progressive delay based on attempt count
         if (currentAttempts > 1) {
           const progressiveDelay = Math.min(
             RECOVERY_CODE_RATE_LIMIT.PROGRESSIVE_BASE_DELAY_MS * Math.pow(2, currentAttempts - 1),
-            RECOVERY_CODE_RATE_LIMIT.PROGRESSIVE_MAX_DELAY_MS
+            RECOVERY_CODE_RATE_LIMIT.PROGRESSIVE_MAX_DELAY_MS,
           );
-          await new Promise(resolve => setTimeout(resolve, progressiveDelay));
+          await new Promise((resolve) => setTimeout(resolve, progressiveDelay));
         }
       } catch (error) {
-        console.error('[RECOVERY_RATE_LIMIT] Error checking rate limit:', error);
+        console.error("[RECOVERY_RATE_LIMIT] Error checking rate limit:", error);
         // Fail open on error
       }
     }
@@ -4564,56 +4531,6 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       }
     }
     if (!matchedId) {
-      // Track total failures for account lockout
-      if (kv) {
-        try {
-          const now = Math.floor(Date.now() / 1000);
-          const lockoutData = await kv.get(lockoutKey, { type: 'json' }) as {
-            totalFailures: number;
-            lockedUntil?: number;
-            notifiedAt?: number;
-          } | null;
-
-          const totalFailures = (lockoutData?.totalFailures || 0) + 1;
-
-          // Check if we should lock the account
-          if (totalFailures >= RECOVERY_CODE_RATE_LIMIT.LOCKOUT_THRESHOLD) {
-            const lockedUntil = now + RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS;
-            await kv.put(lockoutKey, JSON.stringify({
-              totalFailures,
-              lockedUntil,
-              notifiedAt: now,
-            }), {
-              expirationTtl: RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS + 60,
-            });
-
-            // Audit log: account locked due to too many failures
-            await logAuditEvent(env, {
-              userId: user.id,
-              eventType: "recovery_code_failed",
-              status: "failure",
-              details: {
-                reason: "account_locked_excessive_failures",
-                totalFailures,
-                lockoutDurationMinutes: Math.ceil(RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS / 60),
-              },
-              ip: getRequestIp(request),
-              userAgent: request.headers.get("User-Agent"),
-            });
-          } else {
-            await kv.put(lockoutKey, JSON.stringify({
-              totalFailures,
-              lockedUntil: lockoutData?.lockedUntil,
-            }), {
-              expirationTtl: RECOVERY_CODE_RATE_LIMIT.LOCKOUT_DURATION_SECONDS + 60,
-            });
-          }
-        } catch (error) {
-          console.error('[RECOVERY_LOCKOUT] Error updating lockout state:', error);
-        }
-      }
-
-      // Audit log: recovery code failed
       await logAuditEvent(env, {
         userId: user.id,
         eventType: "recovery_code_failed",
@@ -4641,13 +4558,12 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
-    // Clear lockout state on successful recovery
-    if (kv) {
+    // Reset per-IP recovery attempt counter on successful recovery
+    if (kv && clientIp) {
       try {
-        await kv.delete(lockoutKey);
-        await kv.delete(rateLimitKey);
+        await kv.delete(`${RECOVERY_CODE_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}`);
       } catch (error) {
-        console.error('[RECOVERY_LOCKOUT] Error clearing lockout state:', error);
+        console.error("[RECOVERY_RATE_LIMIT] Error clearing rate limit state:", error);
       }
     }
 
