@@ -83,6 +83,8 @@ const SESSION_POLICY = {
   TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days sliding
   ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 90, // 90 days absolute
   ROTATE_SECONDS: 60 * 60 * 24, // 24 hours
+  /** Half-authenticated (magic link before TOTP): fixed window, no 14-day slide. */
+  PENDING_TOTP_SESSION_TTL_SECONDS: 10 * 60,
 };
 
 const USER_STATUS_PENDING = "pending";
@@ -2258,8 +2260,13 @@ async function respondToMagicLinkConsume(
     .first<{ verified: number }>();
   if (totpCheck?.verified === 1 && session?.sessionId) {
     const pendingHash = await sha256Base64Url(session.sessionId);
-    await env.AUTH_DB.prepare("UPDATE sessions SET auth_complete = 0 WHERE session_id_hash = ?")
-      .bind(pendingHash)
+    const pendingUntil = new Date(
+      Date.now() + SESSION_POLICY.PENDING_TOTP_SESSION_TTL_SECONDS * 1000,
+    ).toISOString();
+    await env.AUTH_DB.prepare(
+      "UPDATE sessions SET auth_complete = 0, expires_at = ?, absolute_expires_at = ? WHERE session_id_hash = ?",
+    )
+      .bind(pendingUntil, pendingUntil, pendingHash)
       .run();
     totpRequired = true;
   }
@@ -2839,10 +2846,22 @@ async function getSessionFromRequest(
       });
     }
   } else {
-    const nextExpiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
-    await env.AUTH_DB.prepare("UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE session_id_hash = ?")
-      .bind(new Date().toISOString(), nextExpiresAt, sessionHash)
-      .run();
+    const seenIso = new Date().toISOString();
+    if (authComplete) {
+      const nextExpiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+      await env.AUTH_DB.prepare(
+        "UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE session_id_hash = ?",
+      )
+        .bind(seenIso, nextExpiresAt, sessionHash)
+        .run();
+    } else {
+      // Pending TOTP: do not slide expires_at — fixed short window set at magic-link verify.
+      await env.AUTH_DB.prepare(
+        "UPDATE sessions SET last_seen_at = ? WHERE session_id_hash = ? AND revoked_at IS NULL",
+      )
+        .bind(seenIso, sessionHash)
+        .run();
+    }
   }
 
   return {
@@ -5884,11 +5903,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Invalid code" }, 400, request);
     }
 
-    // Upgrade session to fully authenticated
+    // Upgrade session to fully authenticated and restore normal sliding / absolute TTL.
+    const nowMs = Date.now();
+    const nextExpiresAt = new Date(nowMs + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+    const nextAbsolute = new Date(nowMs + 1000 * SESSION_POLICY.ABSOLUTE_TTL_SECONDS).toISOString();
+    const seenIso = new Date().toISOString();
     await env.AUTH_DB.prepare(
-      "UPDATE sessions SET auth_complete = 1 WHERE session_id_hash = ?"
+      "UPDATE sessions SET auth_complete = 1, expires_at = ?, absolute_expires_at = ?, last_seen_at = ? WHERE session_id_hash = ?",
     )
-      .bind(session.sessionIdHash)
+      .bind(nextExpiresAt, nextAbsolute, seenIso, session.sessionIdHash)
       .run();
 
     // Clear rate limit on success
