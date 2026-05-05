@@ -2308,6 +2308,7 @@ async function createSession(
   userId: string,
   request: Request,
   authMethod: AuthMethod,
+  opts: { authComplete?: boolean } = {},
 ): Promise<{ sessionId: string } | null> {
   if (!env.AUTH_DB) return null;
   const now = Date.now();
@@ -2330,8 +2331,12 @@ async function createSession(
   // Passkey and recovery-code sign-in both count as strong verification for step-up-gated actions
   // (e.g. reset passkeys). Magic-link sessions stay without step-up until the user proves passkey/TOTP.
   const lastStepUpAt = authMethod === "passkey" || authMethod === "recovery" ? nowIso : null;
+  // Preserve the caller's auth_complete flag; default to 1 (fully authenticated) only for
+  // complete sign-in flows. Rotation must pass the original value so pending-TOTP sessions
+  // are not silently promoted to fully authenticated.
+  const authCompleteValue = opts.authComplete === false ? 0 : 1;
   await env.AUTH_DB.prepare(
-    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket, auth_complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   )
     .bind(
       id,
@@ -2349,6 +2354,7 @@ async function createSession(
       country,
       deviceLabel,
       clientBucket,
+      authCompleteValue,
     )
     .run();
 
@@ -2793,8 +2799,11 @@ async function getSessionFromRequest(
   const lastSeenMs = lastSeenAt ? new Date(lastSeenAt).getTime() : now;
 
   let newSessionId: string | undefined;
-  if (options.rotate && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
-    const rotated = await createSession(env, row.user_id, request, "magic");
+  // Only rotate fully-authenticated sessions. Pending-TOTP sessions (authComplete=false) must
+  // never be rotated: createSession defaults auth_complete to 1, which would bypass the second
+  // factor and promote a half-authenticated session to fully authenticated.
+  if (options.rotate && authComplete && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
+    const rotated = await createSession(env, row.user_id, request, "magic", { authComplete: true });
     if (rotated?.sessionId) {
       newSessionId = rotated.sessionId;
       await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ?, revoked_reason = ? WHERE session_id_hash = ?")
