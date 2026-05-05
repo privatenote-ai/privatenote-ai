@@ -770,19 +770,20 @@ export default function SecuritySettings() {
 
   if (authLoading || loading) {
     return (
-      <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <AccountSettingsShell>
         <Card>
           <CardContent className="py-8">
             <p className="text-sm text-gray-600 dark:text-gray-300">Loading security settings…</p>
           </CardContent>
         </Card>
-      </div>
+      </AccountSettingsShell>
     );
   }
 
-  if (!signedIn || !user) {
+  // Not signed in at all — AuthContext is the source of truth.
+  if (!user) {
     return (
-      <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+      <AccountSettingsShell>
         <Card>
           <CardHeader>
             <CardTitle>Security Settings</CardTitle>
@@ -790,11 +791,31 @@ export default function SecuritySettings() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <a href="/auth">Sign in</a>
+              <a href="/auth/sign-in">Sign in</a>
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </AccountSettingsShell>
+    );
+  }
+
+  // User is authenticated but the security data fetch failed (e.g. transient error).
+  // Show a retry option rather than a misleading "sign in" prompt.
+  if (!signedIn) {
+    return (
+      <AccountSettingsShell>
+        <Card>
+          <CardHeader>
+            <CardTitle>Could not load security settings</CardTitle>
+            <CardDescription>There was a problem fetching your security data.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => void refreshAll()} variant="outline">
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </AccountSettingsShell>
     );
   }
 
