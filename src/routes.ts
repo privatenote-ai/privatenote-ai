@@ -106,6 +106,19 @@ const RECOVERY_CODE_RATE_LIMIT = {
   PROGRESSIVE_MAX_DELAY_MS: 8000,
 };
 
+/**
+ * Per-account recovery consume **telemetry only** (distributed guessing across many IPs).
+ * Never used to block or 429 — victim recovery stays governed by per-IP limits only.
+ */
+const RECOVERY_CONSUME_ACCOUNT_TELEMETRY = {
+  KEY_PREFIX: "recovery_consume_acct:",
+  WINDOW_SECONDS: 24 * 60 * 60,
+  /** Console warn once per window when crossed */
+  WARN_THRESHOLD: 20,
+  /** Audit + console error when first crossed, then every +40 in same window */
+  ALERT_THRESHOLD: 60,
+};
+
 // Magic link send rate limiting (per IP and per email)
 const MAGIC_LINK_RATE_LIMIT = {
   MAX_PER_IP: 20, // max magic links per IP per window
@@ -1559,6 +1572,7 @@ type AuditEventType =
   | "recovery_code_generated"
   | "recovery_code_used"
   | "recovery_code_failed"
+  | "recovery_consume_guess_spike"
   | "account_deleted"
   | "account_delete_verification_started"
   | "account_delete_passkey_abandoned"
@@ -1637,6 +1651,57 @@ async function logAuditEvent(
   } catch (error) {
     // Log audit failures to console but don't throw - audit logging should never break auth flow
     console.error("[AUDIT] Failed to log event:", error);
+  }
+}
+
+/** Non-blocking: counts failed recovery consumes per user in KV for distributed-guess visibility. */
+async function recordRecoveryConsumeAccountGuessTelemetry(
+  env: Env,
+  kv: KVNamespace | undefined,
+  userId: string,
+  request: Request,
+  reason: "invalid_code" | "code_race",
+): Promise<void> {
+  if (!kv) return;
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - (now % RECOVERY_CONSUME_ACCOUNT_TELEMETRY.WINDOW_SECONDS);
+  const key = `${RECOVERY_CONSUME_ACCOUNT_TELEMETRY.KEY_PREFIX}${userId}`;
+  try {
+    const stored = (await kv.get(key, { type: "json" })) as { count?: number; windowStart?: number } | null;
+    let count = 1;
+    if (stored && stored.windowStart === windowStart) {
+      count = (stored.count || 0) + 1;
+    }
+    await kv.put(key, JSON.stringify({ count, windowStart }), {
+      expirationTtl: RECOVERY_CONSUME_ACCOUNT_TELEMETRY.WINDOW_SECONDS + 120,
+    });
+
+    if (count === RECOVERY_CONSUME_ACCOUNT_TELEMETRY.WARN_THRESHOLD) {
+      console.warn(
+        `[RECOVERY_TELEM_WARN] recovery_consume failures for user_id=${userId} count=${count} in ${RECOVERY_CONSUME_ACCOUNT_TELEMETRY.WINDOW_SECONDS}s window; possible distributed guessing`,
+      );
+    }
+
+    const alertAt = RECOVERY_CONSUME_ACCOUNT_TELEMETRY.ALERT_THRESHOLD;
+    if (count >= alertAt && (count === alertAt || (count - alertAt) % 40 === 0)) {
+      console.error(
+        `[RECOVERY_TELEM_ALERT] recovery_consume failure spike user_id=${userId} count=${count} reason=${reason}`,
+      );
+      await logAuditEvent(env, {
+        userId,
+        eventType: "recovery_consume_guess_spike",
+        status: "warning",
+        details: {
+          count,
+          windowSeconds: RECOVERY_CONSUME_ACCOUNT_TELEMETRY.WINDOW_SECONDS,
+          reason,
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+    }
+  } catch (e) {
+    console.error("[RECOVERY_TELEM] telemetry KV error:", e);
   }
 }
 
@@ -4571,6 +4636,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         ip: getRequestIp(request),
         userAgent: request.headers.get("User-Agent"),
       });
+      void recordRecoveryConsumeAccountGuessTelemetry(env, kv ?? undefined, user.id, request, "invalid_code");
       await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
@@ -4586,14 +4652,18 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const rowsAffected = (updateResult?.meta as { changes?: number } | undefined)?.changes ?? -1;
     if (rowsAffected === 0) {
       // Code was already used (e.g. by a parallel request) — treat as invalid
+      void recordRecoveryConsumeAccountGuessTelemetry(env, kv ?? undefined, user.id, request, "code_race");
       await jitterDelay();
       return jsonResponse({ message: "Invalid recovery attempt" }, 400, request);
     }
 
-    // Reset per-IP recovery attempt counter on successful recovery
-    if (kv && clientIp) {
+    // Reset per-IP recovery attempt counter and per-account telemetry on successful recovery
+    if (kv) {
       try {
-        await kv.delete(`${RECOVERY_CODE_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}`);
+        if (clientIp) {
+          await kv.delete(`${RECOVERY_CODE_RATE_LIMIT.IP_KEY_PREFIX}${clientIp}`);
+        }
+        await kv.delete(`${RECOVERY_CONSUME_ACCOUNT_TELEMETRY.KEY_PREFIX}${user.id}`);
       } catch (error) {
         console.error("[RECOVERY_RATE_LIMIT] Error clearing rate limit state:", error);
       }
