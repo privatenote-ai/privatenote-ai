@@ -37,6 +37,7 @@ import {
   MODEL_QWEN_0_6,
   MODEL_GEMMA_2_2B,
   MODEL_GEMMA_4_TRANSFORMER,
+  type LocalAiAccountPolicy,
 } from "./recommendedLocalModel";
 import {
   extractUserFacingAnswer,
@@ -113,8 +114,8 @@ function isModelAvailable(modelId: string): boolean {
   return prebuiltAppConfig.model_list.some((m) => m.model_id === modelId);
 }
 
-function isSavedModelAllowedByOffer(modelId: string): boolean {
-  const offer = getLocalAiOffer();
+function isSavedModelAllowedByOffer(modelId: string, policy: LocalAiAccountPolicy = {}): boolean {
+  const offer = getLocalAiOffer(policy);
   if (!offer.enabled) return false;
   const allowed = new Set([offer.defaultModel, ...offer.boostModels].filter(Boolean) as string[]);
   return allowed.has(modelId);
@@ -228,22 +229,22 @@ export function getDeviceInfo(): {
 }
 
 /** Device recommendation when no saved preference (see {@link initializeClientLLM}). */
-function findSuitableModel(): string {
-  const deviceSelectedModel = getRecommendedLocalModelIdSync();
+function findSuitableModel(policy: LocalAiAccountPolicy = {}): string {
+  const deviceSelectedModel = getRecommendedLocalModelIdSync(policy);
   if (
     deviceSelectedModel === MODEL_GEMMA_4_TRANSFORMER &&
-    isSavedModelAllowedByOffer(deviceSelectedModel)
+    isSavedModelAllowedByOffer(deviceSelectedModel, policy)
   ) {
     return deviceSelectedModel;
   }
   if (
     deviceSelectedModel &&
     isModelAvailable(deviceSelectedModel) &&
-    isSavedModelAllowedByOffer(deviceSelectedModel)
+    isSavedModelAllowedByOffer(deviceSelectedModel, policy)
   ) {
     return deviceSelectedModel;
   }
-  return pickFirstAvailableWebLlmDefault();
+  return pickFirstAvailableWebLlmDefault(policy);
 }
 
 /**
@@ -251,8 +252,8 @@ function findSuitableModel(): string {
  * model id (not Transformers.js) — walks the offer's default + boost list and
  * picks the first WebLLM model that's actually available in the catalog.
  */
-function pickFirstAvailableWebLlmDefault(): string {
-  const offer = getLocalAiOffer();
+function pickFirstAvailableWebLlmDefault(policy: LocalAiAccountPolicy = {}): string {
+  const offer = getLocalAiOffer(policy);
   if (!offer.enabled) return MODEL_QWEN_0_6;
   const candidates = [offer.defaultModel, ...offer.boostModels].filter(
     (id): id is string => !!id && id !== MODEL_GEMMA_4_TRANSFORMER,
@@ -549,7 +550,8 @@ async function checkStorageQuota(): Promise<number> {
  */
 export async function initializeClientLLM(
   onProgress?: ProgressCallback,
-  preferredModelId?: string
+  preferredModelId?: string,
+  policy: LocalAiAccountPolicy = {},
 ): Promise<MLCEngineInterface> {
   if (shouldUseTransformersJsLocalPath()) {
     if (isIOSWebKit()) {
@@ -586,7 +588,7 @@ export async function initializeClientLLM(
 
   await primeLocalModelGpuLimit();
 
-  if (!getLocalAiOffer().enabled) {
+  if (!getLocalAiOffer(policy).enabled) {
     throw new Error(
       "On-device AI is not available on this GPU. The reported WebGPU storage buffer binding limit is too low or unknown.",
     );
@@ -602,7 +604,7 @@ export async function initializeClientLLM(
           `Available models include: ${available}... (${getAvailableModels().length} total)`,
       );
     }
-    if (!isSavedModelAllowedByOffer(preferredModelId)) {
+    if (!isSavedModelAllowedByOffer(preferredModelId, policy)) {
       throw new Error(`Model "${preferredModelId}" is not allowed for this device tier or session.`);
     }
     modelId = preferredModelId;
@@ -613,7 +615,7 @@ export async function initializeClientLLM(
       savedModel &&
       isModelAvailable(savedModel) &&
       !isHiddenLocalModelId(savedModel) &&
-      isSavedModelAllowedByOffer(savedModel) &&
+      isSavedModelAllowedByOffer(savedModel, policy) &&
       !savedMobileModelOverGpuBindingCap(savedModel)
     ) {
       modelId = savedModel;
@@ -625,7 +627,7 @@ export async function initializeClientLLM(
           savedModel,
         );
       }
-      modelId = findSuitableModel();
+      modelId = findSuitableModel(policy);
       console.log("[AI] Auto-selected model:", modelId);
     }
   }

@@ -95,7 +95,8 @@ function LlmUi() {
   const ramValue = typeof stats.ram === "number" ? stats.ram : null;
   const webLlmReady = isWebLLMSupported();
   const webLlmHint = getWebLLMSupportHint();
-  const offer = probeReady ? getLocalAiOffer() : null;
+  const offer = probeReady ? getLocalAiOffer({ premium: false }) : null;
+  const premiumOffer = probeReady ? getLocalAiOffer({ premium: true }) : null;
   const deviceTier = probeReady ? getDeviceTier() : null;
   const recommendedModelId = probeReady ? getRecommendedModelForDevice() : null;
   const bindingSize = probeReady ? getCachedMaxStorageBufferBindingSize() : null;
@@ -137,21 +138,15 @@ function LlmUi() {
     }
 
     if (deviceTier === "newest") {
-      if (recommendedModelId?.includes("gemma-4")) {
+      if (premiumOffer?.defaultModel?.includes("gemma-2-2b")) {
         return {
           tier: "Newest tier",
-          context: "Gemma 4 is selected because the experimental boost is enabled and this device passed the highest tier.",
-        };
-      }
-      if (recommendedModelId?.includes("gemma-2-2b")) {
-        return {
-          tier: "Newest tier",
-          context: "Gemma 2 is selected because the boost is enabled and the adapter reports the required features.",
+          context: "Free accounts use Qwen 0.6. Premium accounts use Gemma 2 2B on this device, with Qwen 0.6 as fallback.",
         };
       }
       return {
         tier: "Newest tier",
-        context: "This device qualifies for boosts, but the default path remains Qwen 0.6 until a boost is enabled.",
+        context: "Free and premium accounts use Qwen 0.6 here because the larger premium model is not allowed in this session.",
       };
     }
 
@@ -159,7 +154,7 @@ function LlmUi() {
       tier: "Standard tier",
       context: "This device qualifies for the compact Qwen 0.6 default only.",
     };
-  }, [deviceTier, offer, probeReady, recommendedModelId, webLlmHint]);
+  }, [deviceTier, offer, premiumOffer, probeReady, webLlmHint]);
 
   const handleBackgroundDownload = async () => {
     if (!recommendedModelId || isDownloading) return;
@@ -189,7 +184,7 @@ function LlmUi() {
       <div className="text-center">
         <h1 className="page-title text-gray-900 dark:text-white">Assistant setup</h1>
         <p className="mt-3 text-base text-gray-600 dark:text-gray-300">
-          This page now reflects the same local-AI policy the app uses at runtime: WebGPU probe first, optional boosts second.
+          This page reflects the local-AI policy used at runtime: WebGPU probe first, then account tier.
         </p>
       </div>
 
@@ -309,9 +304,9 @@ function LlmUi() {
                 <TableCell>Primary capacity gate for local models</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Allowed boost models</TableCell>
-                <TableCell>{offer ? (offer.boostModels.length > 0 ? offer.boostModels.join(", ") : "None") : "Pending"}</TableCell>
-                <TableCell>Filtered by session failures, iOS rules, and required features</TableCell>
+                <TableCell>Premium model</TableCell>
+                <TableCell>{premiumOffer ? (premiumOffer.defaultModel ?? "None") : "Pending"}</TableCell>
+                <TableCell>Gemma 2 when supported; otherwise Qwen 0.6</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-semibold">Recommended model</TableCell>
