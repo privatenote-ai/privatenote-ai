@@ -399,7 +399,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                     <Button
                       type="submit"
                       disabled={isAnyAuthBusy}
-                      className="flex-1"
+                      className="flex-1 min-h-12 sm:min-h-0"
                       size="lg"
                     >
                       {isSendingMagicLink ? (
@@ -416,7 +416,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                         variant="outline"
                         onClick={() => void handleLoginPasskey()}
                         disabled={isAnyAuthBusy || !passkeySupported}
-                        className="flex-1"
+                        className="flex-1 min-h-12 sm:min-h-0"
                         size="lg"
                       >
                         {isUsingPasskey ? "Signing in…" : "Use passkey"}
