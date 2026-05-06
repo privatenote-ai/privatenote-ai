@@ -42,6 +42,10 @@ export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI = 1.0 * 1024 * 1024 * 1024;
 export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL = 600 * 1024 * 1024;
 /** Desktop Safari experimental floor for offering Gemma (900 MiB). */
 export const MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL = 900 * 1024 * 1024;
+/** iOS WebKit experimental floor for offering Qwen on phones/tablets (600 MiB). */
+export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL = 600 * 1024 * 1024;
+/** iOS WebKit experimental floor for offering Gemma (900 MiB). */
+export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 900 * 1024 * 1024;
 
 /**
  * Lower bound of the "capable" band: Gemma 2 2B default + Qwen 0.6 fallback.
@@ -123,6 +127,15 @@ function tierMin(a: DeviceTier, b: DeviceTier): DeviceTier {
 
 function bindingTier(webgpu: boolean, binding: number | null): DeviceTier {
   if (!webgpu || binding === null) return "unsupported";
+  if (isIOSWebKitLocal()) {
+    // iOS WebKit experimental tiering for iPhone/iPad validation:
+    // - >= 900 MiB: "newest" (Gemma default)
+    // - [600 MiB, 900 MiB): "standard" (Qwen)
+    // - < 600 MiB: unsupported
+    if (binding < MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL) return "unsupported";
+    if (binding < MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL) return "standard";
+    return "newest";
+  }
   if (isDesktopSafariLikely()) {
     // Safari-specific experimental tiering for local AI rollout:
     // - >= 900 MiB: "newest" (Gemma default)
@@ -170,6 +183,9 @@ function isDesktopSafariLikely(): boolean {
  * on the same Apple GPU. Allow an experimental 1.0 GiB Qwen floor there.
  */
 function getMinBindingForQwen06CurrentBrowser(): number {
+  if (isIOSWebKitLocal()) {
+    return MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL;
+  }
   if (isDesktopSafariLikely()) {
     return MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL;
   }
