@@ -148,7 +148,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     text: string;
     detail?: string;
   } | null>(null);
-  const [showCloudLitePrompt, setShowCloudLitePrompt] = useState(false);
+  const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
   const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("2-3");
@@ -249,7 +249,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   );
 
   // ── Local AI helpers ──────────────────────────────────────────────────────
-  const triggerCloudLitePrompt = () => setShowCloudLitePrompt(true);
+  const offerTemplateFallback = useCallback(() => {
+    setShowTemplateOfferPrompt(true);
+    setIsAiMode(true);
+    setSelectedTemplateId((prev) => prev ?? "ask-anything");
+    setShowPrompt(true);
+  }, []);
 
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
@@ -294,14 +299,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         variant: "destructive",
       });
       setAiModelProgress(null);
-      triggerCloudLitePrompt();
+      offerTemplateFallback();
     } finally {
       setIsAiModelLoading(false);
     }
-  }, [ensureFreeLocalModel, isAiModelLoading, toast]);
+  }, [ensureFreeLocalModel, isAiModelLoading, toast, offerTemplateFallback]);
 
   const resetFreeModelDownloadState = useCallback(async () => {
-    setShowCloudLitePrompt(false);
+    setShowTemplateOfferPrompt(false);
     try {
       // Always clear caches even when no modelId is resolvable — a stuck session
       // failure flag would otherwise make getRecommendedLocalModelId() return null
@@ -381,7 +386,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         clearEngine();
       }
       console.warn("[AI] Local AI failed:", error);
-      triggerCloudLitePrompt();
+      offerTemplateFallback();
       throw error;
     }
   };
@@ -1339,13 +1344,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showCloudLitePrompt} onOpenChange={setShowCloudLitePrompt}>
+      <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Local AI couldn&apos;t start</AlertDialogTitle>
             <AlertDialogDescription>
-              We couldn&apos;t prepare the on-device AI for this device. Try again to clear the
-              incomplete download and start over, or close this message and write manually.
+              We couldn&apos;t prepare on-device AI on this device right now. You can retry after
+              clearing the partial download, or continue with built-in writing templates.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1358,10 +1363,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setShowCloudLitePrompt(false);
+                setShowTemplateOfferPrompt(false);
+                setIsAiMode(true);
+                setShowPrompt(true);
+                aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              Close
+              Use templates
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

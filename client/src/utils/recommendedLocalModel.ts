@@ -36,6 +36,12 @@ export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
  * Below this, or unknown/null after probe → unsupported. (Negative filter, not VRAM.)
  */
 export const MIN_BINDING_FOR_QWEN06 = 1.5 * 1024 * 1024 * 1024;
+/** Desktop Safari fallback floor for experimental validation runs (1.0 GiB). */
+export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI = 1.0 * 1024 * 1024 * 1024;
+/** Desktop Safari experimental floor for offering Qwen (600 MiB). */
+export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL = 600 * 1024 * 1024;
+/** Desktop Safari experimental floor for offering Gemma (900 MiB). */
+export const MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL = 900 * 1024 * 1024;
 
 /**
  * Lower bound of the "capable" band: Gemma 2 2B default + Qwen 0.6 fallback.
@@ -116,7 +122,18 @@ function tierMin(a: DeviceTier, b: DeviceTier): DeviceTier {
 }
 
 function bindingTier(webgpu: boolean, binding: number | null): DeviceTier {
-  if (!webgpu || binding === null || binding < MIN_BINDING_FOR_QWEN06) return "unsupported";
+  if (!webgpu || binding === null) return "unsupported";
+  if (isDesktopSafariLikely()) {
+    // Safari-specific experimental tiering for local AI rollout:
+    // - >= 900 MiB: "newest" (Gemma default)
+    // - [600 MiB, 900 MiB): "standard" (Qwen)
+    // - < 600 MiB: unsupported (graceful cloud/template fallback)
+    if (binding < MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL) return "unsupported";
+    if (binding < MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL) return "standard";
+    return "newest";
+  }
+  const minForQwen = getMinBindingForQwen06CurrentBrowser();
+  if (binding < minForQwen) return "unsupported";
   if (binding < MIN_BINDING_FOR_CAPABLE) return "standard";
   return "newest";
 }
@@ -139,6 +156,24 @@ function isIOSWebKitLocal(): boolean {
   return (
     /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   );
+}
+
+function isDesktopSafariLikely(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isSafari = /Safari\//i.test(ua) && !/Chrome\/|Chromium\/|Edg\/|OPR\//i.test(ua);
+  return isSafari && !isIOSWebKitLocal();
+}
+
+/**
+ * Safari (desktop) occasionally reports lower WebGPU binding limits than Chromium
+ * on the same Apple GPU. Allow an experimental 1.0 GiB Qwen floor there.
+ */
+function getMinBindingForQwen06CurrentBrowser(): number {
+  if (isDesktopSafariLikely()) {
+    return MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL;
+  }
+  return MIN_BINDING_FOR_QWEN06;
 }
 
 /**
