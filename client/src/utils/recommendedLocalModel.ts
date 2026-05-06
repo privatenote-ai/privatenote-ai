@@ -42,10 +42,10 @@ export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI = 1.0 * 1024 * 1024 * 1024;
 export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL = 600 * 1024 * 1024;
 /** Desktop Safari experimental floor for offering Gemma (900 MiB). */
 export const MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL = 900 * 1024 * 1024;
-/** iOS WebKit experimental floor for offering Qwen on phones/tablets (600 MiB). */
-export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL = 600 * 1024 * 1024;
-/** iOS WebKit experimental floor for offering Gemma (900 MiB). */
-export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 900 * 1024 * 1024;
+/** iOS WebKit experimental floor for offering Qwen on phones/tablets (900 MiB). */
+export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL = 900 * 1024 * 1024;
+/** iOS WebKit experimental floor for offering Gemma (1.3 GiB). */
+export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 1.3 * 1024 * 1024 * 1024;
 
 /**
  * Lower bound of the "capable" band: Gemma 2 2B default + Qwen 0.6 fallback.
@@ -129,9 +129,9 @@ function bindingTier(webgpu: boolean, binding: number | null): DeviceTier {
   if (!webgpu || binding === null) return "unsupported";
   if (isIOSWebKitLocal()) {
     // iOS WebKit experimental tiering for iPhone/iPad validation:
-    // - >= 900 MiB: "newest" (Gemma default)
-    // - [600 MiB, 900 MiB): "standard" (Qwen)
-    // - < 600 MiB: unsupported
+    // - >= 1.3 GiB: "newest" (Gemma default)
+    // - [900 MiB, 1.3 GiB): "standard" (Qwen)
+    // - < 900 MiB: unsupported
     if (binding < MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL) return "unsupported";
     if (binding < MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL) return "standard";
     return "newest";
@@ -216,7 +216,16 @@ export function getLocalAiOffer(): LocalAiOffer {
   // newest: binding ≥ 1.9 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
   const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
   if (gemma22Allowed) {
-    // Gemma 2 2B default. Qwen 0.6 remains the safe fallback.
+    // iOS reliability strategy: lead with Qwen even on high-tier devices.
+    // Gemma remains available as an optional higher-capacity alternative.
+    if (isIOSWebKitLocal()) {
+      return {
+        enabled: true,
+        defaultModel: MODEL_QWEN_0_6,
+        boostModels: [MODEL_GEMMA_2_2B],
+      };
+    }
+    // Non-iOS: Gemma 2 2B default. Qwen 0.6 remains the safe fallback.
     return {
       enabled: true,
       defaultModel: MODEL_GEMMA_2_2B,

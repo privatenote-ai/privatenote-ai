@@ -116,17 +116,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowSuccessQr((open) => !open)}
-                    aria-expanded={showSuccessQr}
-                    aria-label={showSuccessQr ? "Hide QR code" : "Share via QR code"}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/80 px-3 py-2 text-sm font-medium text-primary hover:bg-gray-50/80 dark:bg-gray-900/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 sm:hidden"
-                    title="Show or hide QR code"
-                  >
-                    <QrCode className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="whitespace-nowrap">QR code</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setShowSuccessHelp((open) => !open)}
                     aria-expanded={showSuccessHelp}
                     aria-label="Show security tips"
@@ -167,18 +156,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       onFocus={(event) => event.currentTarget.select()}
                     />
                   </div>
-                </div>
-
-                <div className="sm:hidden pt-1 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowSuccessQr((open) => !open)}
-                    aria-expanded={showSuccessQr}
-                    className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm"
-                  >
-                    <QrCode className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                    Share via QR code
-                  </button>
                 </div>
 
                 <div className="mt-8 sm:mt-10 pt-2 pb-5">
