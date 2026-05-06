@@ -1,5 +1,5 @@
 /**
- * Write-with-AI templates optimized for Gemma 2 2B / Qwen 4B
+ * Write-with-AI templates optimized for Gemma 2 2B / Qwen 4B / mobile Qwen3-0.6B (WebLLM)
  *
  * Goals:
  * - Better user guidance in the UI
@@ -17,6 +17,11 @@
  */
 
 import { type ModelTier, getModelTier } from "@shared/modelTier";
+
+/** Qwen3-0.6B and similar — extra-tight prompts (mobile WebLLM). */
+export function isUltraSmallWebLlmModel(modelId: string): boolean {
+  return /0\.6B|0\.6b|270m|270M/i.test(modelId);
+}
 import { tryExtractMeetingRecipientAndTopic } from "@/utils/meetingRequestStructuredHint";
 import { buildSmallTierStructuredFieldsHint } from "@/utils/templateStructuredHint";
 
@@ -619,7 +624,37 @@ export function buildPromptFromTemplate(
   sentenceLengthPreset?: AiSentenceLengthId,
 ): string {
   const tier = getModelTier(modelId);
-  const lengthLine = resolveOutputLengthLine(tier, template.enhancementType, sentenceLengthPreset);
+  let lengthLine = resolveOutputLengthLine(tier, template.enhancementType, sentenceLengthPreset);
+  if (tier === "small" && isUltraSmallWebLlmModel(modelId)) {
+    if (template.enhancementType === "summarize") {
+      lengthLine =
+        "Output length: at most 3 bullets or 3 short sentences. One fact per line. No intro paragraph.";
+    } else if (template.enhancementType === "ask") {
+      lengthLine =
+        "Output length: 1–3 short sentences unless the user clearly asked for bullets, a list, or a longer reply.";
+    } else if (template.enhancementType === "secure") {
+      lengthLine =
+        "Output length: same structure as input. Replace only sensitive spans with [REDACTED]. One pass, no commentary.";
+    } else {
+      lengthLine =
+        "Output length: 1–3 short sentences unless the user clearly needs more.";
+    }
+    if (sentenceLengthPreset && template.enhancementType !== "secure") {
+      const range = (
+        {
+          "1-2": "1–2",
+          "2-3": "2–3",
+          "4-6": "4–6",
+          "7-10": "7–10",
+        } as const
+      )[sentenceLengthPreset];
+      if (template.enhancementType === "summarize") {
+        lengthLine = `Output length: about ${range} very short lines (bullets or sentences). No intro.`;
+      } else {
+        lengthLine = `Output length: about ${range} short sentences; stay tight for on-device limits.`;
+      }
+    }
+  }
 
   const extraSmall: string[] =
     tier === "small"
@@ -654,6 +689,14 @@ export function buildPromptFromTemplate(
     ? `\n${smallInstructionScaffold}`
     : "";
 
+  const ultraSmallBlock =
+    tier === "small" && isUltraSmallWebLlmModel(modelId)
+      ? [
+          "",
+          "On-device model is very small: one tight paragraph when possible. No preamble (“Sure”, “Here is”). Jump straight into the requested text.",
+        ].join("\n")
+      : "";
+
   const guidance =
     tier === "small" && template.smallModelGuidance
       ? template.smallModelGuidance
@@ -681,6 +724,7 @@ export function buildPromptFromTemplate(
     userInput,
     instructionScaffoldSection,
     exampleSection,
+    ultraSmallBlock,
   ]
     .join("\n")
     .trim();

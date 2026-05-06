@@ -134,6 +134,16 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    /**
+     * Cross-Origin Isolation headers — required for SharedArrayBuffer which WebLLM (MLC-AI)
+     * uses for its WASM engine. Without these, window.crossOriginIsolated = false and the
+     * on-device AI will fail with a low-level WASM error in all browsers including Safari.
+     * In production these are set via client/public/_headers (Cloudflare Pages).
+     */
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
     ...(devHost !== undefined ? { host: devHost } : {}),
     ...(useMkcert
       ? {

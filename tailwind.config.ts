@@ -84,10 +84,32 @@ export default {
             height: "0",
           },
         },
+        /** Synapse-style pulse for on-device AI “thinking” affordance */
+        "neuron-pulse": {
+          "0%, 100%": { opacity: "0.15", transform: "scale(0.65)" },
+          "35%": { opacity: "1", transform: "scale(1.25)" },
+          "55%": { opacity: "0.55", transform: "scale(0.95)" },
+          "70%": { opacity: "0.2", transform: "scale(0.75)" },
+        },
+        "brain-think": {
+          "0%, 100%": { opacity: "0.82", filter: "brightness(0.95)" },
+          "45%": { opacity: "1", filter: "brightness(1.08)" },
+        },
+        /** Hand-writing motion for streaming / “Writing…” phase */
+        "pencil-write": {
+          "0%, 100%": { transform: "rotate(-12deg) translate(0, 0)" },
+          "22%": { transform: "rotate(7deg) translate(3px, -2px)" },
+          "45%": { transform: "rotate(-5deg) translate(-2px, 2px)" },
+          "68%": { transform: "rotate(9deg) translate(2px, 1px)" },
+          "85%": { transform: "rotate(-4deg) translate(-1px, -1px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "neuron-pulse": "neuron-pulse 2.8s ease-in-out infinite",
+        "brain-think": "brain-think 2.8s ease-in-out infinite",
+        "pencil-write": "pencil-write 1.15s ease-in-out infinite",
       },
     },
   },

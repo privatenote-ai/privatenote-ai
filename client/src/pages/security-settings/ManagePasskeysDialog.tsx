@@ -107,7 +107,7 @@ export function ManagePasskeysDialog({
                                           setEditingId(null);
                                           setDraftName("");
                                         } catch {
-                                          // toast handled by parent
+                                          // toast already handled by parent
                                         }
                                       })();
                                     }}

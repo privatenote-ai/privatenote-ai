@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
-import { Copy, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { AccountSecuritySection } from "@/pages/security-settings/AccountSecuritySection";
 import { ChangeEmailDialog } from "@/pages/security-settings/ChangeEmailDialog";
 import {
@@ -27,6 +27,7 @@ import {
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { isServerStepUpFresh } from "@/pages/security-settings/isServerStepUpFresh";
+import { AccountSettingsShell } from "@/pages/account/AccountSettingsShell";
 
 type TotpSetupResponse = { setupId: string; secret: string; otpauthUri: string };
 
@@ -39,7 +40,6 @@ export default function SecuritySettings() {
   const {
     loading,
     signedIn,
-    userId,
     email,
     passkeys,
     setPasskeys,
@@ -202,20 +202,6 @@ export default function SecuritySettings() {
       });
     }
   }, [email, toast]);
-
-  const copyUserId = useCallback(async () => {
-    if (!userId) return;
-    try {
-      await navigator.clipboard.writeText(userId);
-      toast({ title: "User ID copied", description: "User ID copied to clipboard." });
-    } catch {
-      toast({
-        title: "Copy failed",
-        description: "Failed to copy User ID to clipboard.",
-        variant: "destructive",
-      });
-    }
-  }, [userId, toast]);
 
   const handleAddPasskey = useCallback(async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
@@ -769,19 +755,20 @@ export default function SecuritySettings() {
 
   if (authLoading || loading) {
     return (
-      <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <AccountSettingsShell>
         <Card>
           <CardContent className="py-8">
             <p className="text-sm text-gray-600 dark:text-gray-300">Loading security settings…</p>
           </CardContent>
         </Card>
-      </div>
+      </AccountSettingsShell>
     );
   }
 
-  if (!signedIn || !user) {
+  // Not signed in at all — AuthContext is the source of truth.
+  if (!user) {
     return (
-      <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+      <AccountSettingsShell>
         <Card>
           <CardHeader>
             <CardTitle>Security Settings</CardTitle>
@@ -789,16 +776,41 @@ export default function SecuritySettings() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <a href="/auth">Sign in</a>
+              <a href="/auth/sign-in">Sign in</a>
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </AccountSettingsShell>
+    );
+  }
+
+  // User is authenticated but the security data fetch failed (e.g. transient error).
+  // Show a retry option rather than a misleading "sign in" prompt.
+  if (!signedIn) {
+    return (
+      <AccountSettingsShell>
+        <Card>
+          <CardHeader>
+            <CardTitle>Could not load security settings</CardTitle>
+            <CardDescription>There was a problem fetching your security data.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => void refreshAll()} variant="outline">
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </AccountSettingsShell>
     );
   }
 
   return (
-    <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+    <AccountSettingsShell>
+      <>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Security</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
+          Passkeys, 2-step verification, devices, and account recovery.
+        </p>
       <AccountSecuritySection
         email={email}
         recoveryRemaining={recoveryRemaining}
@@ -831,30 +843,6 @@ export default function SecuritySettings() {
         onRevokeSession={(id) => void handleRevokeSession(id)}
       />
 
-      <div className="mb-12">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">User ID</h2>
-        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Your User ID can help support identify your account when needed.
-        </p>
-        <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-mono text-gray-700 dark:text-gray-300 truncate">{userId ?? "Loading..."}</p>
-            </div>
-            {userId && (
-              <button
-                type="button"
-                onClick={() => void copyUserId()}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                title="Copy User ID"
-              >
-                <Copy className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="mt-10 pt-2">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Danger zone</h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -868,9 +856,9 @@ export default function SecuritySettings() {
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
           >
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Delete account</p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Schedule account deletion</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Permanently delete your account. This cannot be undone.
+                You&apos;ll have 48 hours to cancel before it becomes permanent.
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -954,6 +942,7 @@ export default function SecuritySettings() {
         onVerify={(code) => void handleTotpVerifySetup(code)}
         onCompleteClose={closeTotpDialog}
       />
-    </div>
+      </>
+    </AccountSettingsShell>
   );
 }

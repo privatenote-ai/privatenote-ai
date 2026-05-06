@@ -31,16 +31,21 @@ import {
   enhanceNoteClientSide,
   initializeClientLLM,
   isEngineLoaded,
-  isWebLLMSupported,
-  getWebLLMSupportHint,
+  isLocalAiSupported,
+  getLocalAiSupportHint,
   getRecommendedLocalModelId,
+  MODEL_GEMMA_2_2B,
+  MODEL_QWEN_0_6,
   resetLocalAiLoadState,
+  clearEngine,
+  isWebLlmGpuOrDisposeFailure,
   type ModelLoadProgress,
 } from "@/utils/clientLLM";
 import {
   localAiAnalyzingPromptLabel,
   localAiAnalyzingDetailHint,
   LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS,
+  getLocalAiGenerationGlyph,
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -85,6 +90,8 @@ import { NoteSettingsPanel } from "./NoteSettingsPanel";
 import { AiComposer } from "./AiComposer";
 import type { AiPostGenTransform } from "./AiComposer";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
+import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
+import { WritingPencilIcon } from "./WritingPencilIcon";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -139,8 +146,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [aiModelProgress, setAiModelProgress] = useState<{
     progress: number;
     text: string;
+    detail?: string;
   } | null>(null);
-  const [showCloudLitePrompt, setShowCloudLitePrompt] = useState(false);
+  const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
   const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("2-3");
@@ -241,15 +249,36 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   );
 
   // ── Local AI helpers ──────────────────────────────────────────────────────
-  const triggerCloudLitePrompt = () => setShowCloudLitePrompt(true);
+  const offerTemplateFallback = useCallback(() => {
+    setShowTemplateOfferPrompt(true);
+    setIsAiMode(true);
+    setSelectedTemplateId((prev) => prev ?? "ask-anything");
+    setShowPrompt(true);
+  }, []);
 
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
-      if (!isWebLLMSupported()) {
-        throw new Error(getWebLLMSupportHint() ?? "Local AI is not supported in this browser.");
+      if (!isLocalAiSupported()) {
+        throw new Error(
+          getLocalAiSupportHint() ??
+            "On-device AI isn't available right now. If a previous attempt failed, try resetting and starting again."
+        );
       }
       const modelId = await getRecommendedLocalModelId();
-      await initializeClientLLM(onProgress, modelId);
+      if (!modelId) {
+        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
+      }
+      try {
+        await initializeClientLLM(onProgress, modelId);
+      } catch (error) {
+        if (modelId === MODEL_GEMMA_2_2B) {
+          console.warn("[AI] Gemma 2 failed; falling back to compact local model:", error);
+          clearEngine();
+          await initializeClientLLM(onProgress, MODEL_QWEN_0_6);
+          return;
+        }
+        throw error;
+      }
     },
     [],
   );
@@ -263,18 +292,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiModelProgress(null);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      toast({
+        title: "On-device AI could not start",
+        description: message,
+        variant: "destructive",
+      });
       setAiModelProgress(null);
-      triggerCloudLitePrompt();
+      offerTemplateFallback();
     } finally {
       setIsAiModelLoading(false);
     }
-  }, [ensureFreeLocalModel, isAiModelLoading]);
+  }, [ensureFreeLocalModel, isAiModelLoading, toast, offerTemplateFallback]);
 
   const resetFreeModelDownloadState = useCallback(async () => {
-    setShowCloudLitePrompt(false);
+    setShowTemplateOfferPrompt(false);
     try {
-      const modelId = await getRecommendedLocalModelId();
-      await resetLocalAiLoadState(modelId);
+      // Always clear caches even when no modelId is resolvable — a stuck session
+      // failure flag would otherwise make getRecommendedLocalModelId() return null
+      // and block the reset entirely. resetLocalAiLoadState() handles undefined
+      // modelId by collecting known IDs internally and clears session flags first.
+      await resetLocalAiLoadState(undefined);
       toast({
         title: "On-device AI reset",
         description: "The incomplete download was cleared. You can try downloading it again.",
@@ -297,7 +335,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const enterAiMode = useCallback(() => {
     setIsAiMode(true);
-    if (!isWebLLMSupported()) return;
+    if (!isLocalAiSupported()) return;
     if (isEngineLoaded()) return;
     if (getLocalAiPreloadNetworkPolicy() === "confirm") {
       setCellularPreloadConfirmOpen(true);
@@ -331,6 +369,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         ? { templateName: selectedTemplate.name, templateDescription: selectedTemplate.description }
         : undefined;
       const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId());
+      if (!modelId) {
+        throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
+      }
       const finalUserMessage =
         useBuild && selectedTemplate
           ? buildPromptFromTemplate(selectedTemplate, content.trim(), modelId, aiSentenceLength)
@@ -341,8 +382,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         templateId: selectedTemplateId ?? undefined,
       });
     } catch (error) {
+      if (isWebLlmGpuOrDisposeFailure(error)) {
+        clearEngine();
+      }
       console.warn("[AI] Local AI failed:", error);
-      triggerCloudLitePrompt();
+      offerTemplateFallback();
       throw error;
     }
   };
@@ -748,6 +792,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     [selectedTemplateId],
   );
 
+  const handleUseFallbackTemplate = useCallback((text: string) => {
+    setNoteContentFromAiOutput(text);
+    setTransformHistory([]);
+    setShowPrompt(false);
+    setAiDraftAccepted(true);
+  }, [setNoteContentFromAiOutput]);
+
   const executeAiGenerate = async (
     promptToUse: string,
     enhancementTypeToUse: "improve" | "summarize" | "secure" | "ask",
@@ -796,6 +847,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const handleBackButton = () => {
     if (aiDraftAccepted) {
+      if (!isLocalAiSupported()) {
+        setShowPrompt(true);
+      }
       setAiDraftAccepted(false);
       return;
     }
@@ -1060,6 +1114,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onSentenceLengthChange={handleSentenceLengthChange}
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
+                onUseFallbackTemplate={handleUseFallbackTemplate}
               />
             </div>
           ) : null}
@@ -1226,16 +1281,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/12 text-primary">
-              <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+            <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
+              {getLocalAiGenerationGlyph(localAiDialogPrimaryLine(aiProgress)) === "brain" ? (
+                <ThinkingBrainIcon sizeClassName="h-14 w-14" />
+              ) : (
+                <WritingPencilIcon sizeClassName="h-14 w-14" />
+              )}
             </div>
-            <DialogTitle className="text-center text-base sm:text-lg">
+            <DialogTitle className="text-center text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
               {localAiDialogPrimaryLine(aiProgress)}
             </DialogTitle>
             <DialogDescription asChild>
-              <div className="space-y-3 pt-1 text-center text-sm text-muted-foreground">
+              <div className="space-y-3 pt-2 text-center">
                 {aiProgress?.detail ? (
-                  <p className="text-xs text-foreground/85">{aiProgress.detail}</p>
+                  <p className="text-sm font-medium leading-snug text-foreground/90">{aiProgress.detail}</p>
                 ) : null}
                 <div className="mx-auto h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted">
                   <div
@@ -1247,7 +1306,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     }}
                   />
                 </div>
-                <p>
+                <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground/85">
                   Private AI runs entirely in your browser. Longer tasks and slower devices can take
                   noticeably more time than cloud APIs — that&apos;s normal for local generation.
                 </p>
@@ -1285,14 +1344,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showCloudLitePrompt} onOpenChange={setShowCloudLitePrompt}>
+      <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Local AI couldn&apos;t start</AlertDialogTitle>
             <AlertDialogDescription>
-              We couldn&apos;t prepare the on-device AI for this device. Try again to clear the
-              incomplete download and start over, or use Cloud Lite with limited privacy once it&apos;s
-              available.
+              We couldn&apos;t prepare on-device AI on this device right now. You can retry after
+              clearing the partial download, or continue with built-in writing templates.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1305,10 +1363,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                toast({ title: "Cloud Lite", description: "Cloud Lite is coming soon." });
+                setShowTemplateOfferPrompt(false);
+                setIsAiMode(true);
+                setShowPrompt(true);
+                aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              Use Cloud Lite (soon)
+              Use templates
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

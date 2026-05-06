@@ -8,10 +8,10 @@
 export function getApiContentSecurityPolicy(): string {
   return [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com 'wasm-unsafe-eval'",
+    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://privatenote.ai https://*.privatenote.ai https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com",
+    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://privatenote.ai https://*.privatenote.ai https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net",
     "img-src 'self' data: https:",
     "frame-src https://challenges.cloudflare.com",
     "base-uri 'none'",

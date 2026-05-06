@@ -1,5 +1,6 @@
 -- Auth schema for D1 (Cloudflare)
 -- Apply with: wrangler d1 execute <DB_NAME> --file=src/auth/schema.sql
+-- Wrangler-managed baseline (local dev + deploy): src/auth/d1-migrations/0001_auth_schema.sql — update both when changing tables.
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -8,7 +9,11 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active')),
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT,
-  last_login_at TEXT
+  last_login_at TEXT,
+  plan TEXT NOT NULL DEFAULT 'free',
+  account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
+  business_display_name TEXT,
+  email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
@@ -105,3 +110,14 @@ CREATE INDEX IF NOT EXISTS idx_pending_account_deletions_delete_after
   ON pending_account_deletions(delete_after_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_account_deletions_cancel_token
   ON pending_account_deletions(cancel_token_hash);
+
+CREATE TABLE IF NOT EXISTS account_activity (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  note_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_activity_user_created ON account_activity(user_id, created_at DESC);

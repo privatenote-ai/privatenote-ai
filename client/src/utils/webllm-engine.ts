@@ -6,6 +6,7 @@
 import {
   CreateMLCEngine,
   modelVersion,
+  prebuiltAppConfig,
   deleteModelAllInfoInCache,
   hasModelInCache,
   type AppConfig,
@@ -26,11 +27,15 @@ import {
   extractUserFacingAnswer,
 } from '@shared/parseThinkingOutput';
 import { userFacingLocalAiLoadProgress } from './localAiUxText';
+import { isWebLlmGpuOrDisposeFailure } from './webLlmGpuErrors';
+import { recordLocalLlmGpuOrRuntimeFailure } from './localLlmSessionSignals';
 
 type ProgressCallback = (p: ModelProgress) => void;
 
 let engine: MLCEngineInterface | null = null;
 let loadedModelId: string | null = null;
+/** AppConfig passed to the last successful `CreateMLCEngine` (custom host or iOS-tweaked prebuilt). */
+let lastResolvedAppConfig: AppConfig | undefined;
 
 export function isLoadedWebLLM(): boolean {
   return engine !== null && loadedModelId !== null;
@@ -44,14 +49,32 @@ export function getWebLLMLEngine(): MLCEngineInterface | null {
   return engine;
 }
 
-function mapProgressReport(report: InitProgressReport): ModelProgress {
+function mapProgressReport(report: InitProgressReport, modelId: string): ModelProgress {
   return {
     status: 'loading',
     progress: report.progress,
-    file: userFacingLocalAiLoadProgress(report.text, report.progress),
+    file: userFacingLocalAiLoadProgress(report.text, report.progress, modelId),
     loadedBytes: 0,
     totalBytes: 0,
   };
+}
+
+/** Same heuristic as `isIOSWebKit` in transformers-mobile-engine (avoid importing that module here). */
+function isIosWebKitForWebLlm(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return (
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+/** Tighter context on iPhone WebGPU reduces KV / buffer pressure (device lost mid-decode). */
+function contextWindowForModelRecord(modelId: string): number {
+  if (!isIosWebKitForWebLlm()) return 4096;
+  if (/Qwen3-0\.6B/i.test(modelId)) return 2048;
+  if (/gemma-2-2b/i.test(modelId)) return 2048;
+  return 4096;
 }
 
 function buildCustomModelList(): ModelRecord[] {
@@ -59,11 +82,31 @@ function buildCustomModelList(): ModelRecord[] {
     model: `${WEBLLM_MODEL_BASE_URL.replace(/\/$/, '')}/${r.model_id}`,
     model_id: r.model_id,
     model_lib: `${WEBLLM_WASM_BASE_URL.replace(/\/$/, '')}/${modelVersion}/${r.wasm_file}`,
-    overrides: { context_window_size: 4096 },
+    overrides: { context_window_size: contextWindowForModelRecord(r.model_id) },
     vram_required_MB: r.vram_required_MB,
     low_resource_required: r.low_resource_required,
     ...(r.required_features && { required_features: r.required_features }),
   }));
+}
+
+/** Prebuilt catalog: narrow context for the one model we load on iOS (full list kept for MLC lookup). */
+function buildIosPrebuiltAppConfig(modelId: string): AppConfig | undefined {
+  if (!isIosWebKitForWebLlm()) return undefined;
+  const list = prebuiltAppConfig?.model_list;
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+  const ctxTarget = contextWindowForModelRecord(modelId);
+  return {
+    model_list: list.map((entry) => {
+      const rec = entry as ModelRecord;
+      if (rec.model_id !== modelId) return rec;
+      const prev = rec.overrides?.context_window_size;
+      const nextCtx = Math.min(ctxTarget, prev ?? 8192);
+      return {
+        ...rec,
+        overrides: { ...rec.overrides, context_window_size: nextCtx },
+      };
+    }),
+  };
 }
 
 export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallback): Promise<void> {
@@ -75,6 +118,7 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
 
   engine = null;
   loadedModelId = null;
+  lastResolvedAppConfig = undefined;
 
   console.log(
     '[PrivateNote] loadModelWebLLM: loading',
@@ -84,19 +128,26 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
   onProgress({
     status: 'loading',
     progress: 0,
-    file: userFacingLocalAiLoadProgress(undefined, 0),
+    file: userFacingLocalAiLoadProgress(undefined, 0, modelId),
     loadedBytes: 0,
     totalBytes: 0,
   });
 
   const engineConfig: { initProgressCallback: (r: InitProgressReport) => void; appConfig?: AppConfig } = {
     initProgressCallback: (report: InitProgressReport) => {
-      onProgress(mapProgressReport(report));
+      onProgress(mapProgressReport(report, modelId));
     },
   };
 
   if (USE_CUSTOM_WEBLLM_HOST) {
-    engineConfig.appConfig = { model_list: buildCustomModelList() };
+    lastResolvedAppConfig = { model_list: buildCustomModelList() };
+    engineConfig.appConfig = lastResolvedAppConfig;
+  } else {
+    const iosCfg = buildIosPrebuiltAppConfig(modelId);
+    if (iosCfg) {
+      lastResolvedAppConfig = iosCfg;
+      engineConfig.appConfig = iosCfg;
+    }
   }
 
   try {
@@ -108,6 +159,7 @@ export async function loadModelWebLLM(modelId: string, onProgress: ProgressCallb
     console.error('[PrivateNote] loadModelWebLLM: error', e);
     engine = null;
     loadedModelId = null;
+    lastResolvedAppConfig = undefined;
     const msg = e instanceof Error ? e.message : String(e);
     onProgress({ status: 'error', error: msg });
     throw e;
@@ -150,7 +202,16 @@ export async function generateWebLLM(
   if (msgs.length === 0) return '';
 
   const { temperature, max_new_tokens } = DEFAULT_INFERENCE;
-  const maxTokens = Math.min(max_new_tokens, 2048);
+  let maxTokens = Math.min(max_new_tokens, 2048);
+  if (isIosWebKitForWebLlm() && loadedModelId) {
+    if (/Qwen3-0\.6B/i.test(loadedModelId)) {
+      maxTokens = Math.min(maxTokens, 640);
+    } else if (/gemma-2-2b/i.test(loadedModelId)) {
+      maxTokens = Math.min(maxTokens, 560);
+    } else {
+      maxTokens = Math.min(maxTokens, 640);
+    }
+  }
   const opts = {
     messages: msgs,
     temperature: temperature ?? 0.6,
@@ -162,7 +223,7 @@ export async function generateWebLLM(
       const chunks = await engine.chat.completions.create({
         ...opts,
         stream: true,
-        stream_options: { include_usage: true },
+        ...(isIosWebKitForWebLlm() ? {} : { stream_options: { include_usage: true } }),
       });
 
       const [pushAnswer, flushAnswer] = createRedactedThinkingStreamFilter((s) => onToken(s));
@@ -179,6 +240,11 @@ export async function generateWebLLM(
       flushAnswer();
       if (full) return extractUserFacingAnswer(full);
     } catch (e) {
+      if (isWebLlmGpuOrDisposeFailure(e)) {
+        recordLocalLlmGpuOrRuntimeFailure(loadedModelId);
+        void unloadModelWebLLM();
+        throw e instanceof Error ? e : new Error(String(e));
+      }
       console.warn('[PrivateNote] generateWebLLM: streaming failed, falling back to non-streaming', e);
     }
     const reply = await engine.chat.completions.create(opts);
@@ -194,15 +260,35 @@ export async function generateWebLLM(
   return extractUserFacingAnswer(extractContentText(content));
 }
 
-export function unloadModelWebLLM(): void {
+/**
+ * Release the GPU device + WASM tokenizer held by the MLC engine.
+ *
+ * Awaiting `engine.unload()` matters on iOS Safari: after a device-lost we otherwise leak the
+ * GPU device and the WASM tokenizer pointer, which surfaces on the next call as
+ * `BindingError: Cannot pass deleted object as a pointer of type Tokenizer*`.
+ */
+export async function unloadModelWebLLM(): Promise<void> {
+  const prev = engine;
   engine = null;
   loadedModelId = null;
+  lastResolvedAppConfig = undefined;
+  if (!prev) return;
+  const prevWithUnload = prev as MLCEngineInterface & { unload?: () => Promise<void> };
+  if (typeof prevWithUnload.unload !== 'function') return;
+  try {
+    await prevWithUnload.unload();
+  } catch (e) {
+    // Expected after a device-lost — the engine is already torn down at the Metal layer.
+    if (!isWebLlmGpuOrDisposeFailure(e)) {
+      console.warn('[PrivateNote] unloadModelWebLLM: engine.unload() threw', e);
+    }
+  }
 }
 
 /** Same appConfig used when loading (for cache lookup). */
 export function getWebLLMAppConfig(): AppConfig | undefined {
-  if (!USE_CUSTOM_WEBLLM_HOST) return undefined;
-  return { model_list: buildCustomModelList() };
+  if (USE_CUSTOM_WEBLLM_HOST) return { model_list: buildCustomModelList() };
+  return lastResolvedAppConfig;
 }
 
 /** Delete the given WebLLM model from IndexedDB cache. Use same appConfig as load so the correct record is removed. */

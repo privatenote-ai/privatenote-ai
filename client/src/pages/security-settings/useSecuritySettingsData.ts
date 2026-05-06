@@ -12,7 +12,6 @@ type MeResponse = {
 export function useSecuritySettingsData(fallbackEmail: string | null | undefined) {
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyInfo[]>([]);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -25,7 +24,6 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
   const refreshAuthAndAccount = useCallback(async (): Promise<boolean> => {
     try {
       const me = await apiRequest<MeResponse>("/api/auth/me", "GET");
-      setUserId(me.id);
       setEmail(me.email ?? fallbackEmail ?? null);
       setLastStepUpAt(me.lastStepUpAt ?? null);
       setEmailVerified(me.emailVerified === true);
@@ -78,7 +76,6 @@ export function useSecuritySettingsData(fallbackEmail: string | null | undefined
   return {
     loading,
     signedIn,
-    userId,
     email,
     passkeys,
     setPasskeys,

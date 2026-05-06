@@ -23,9 +23,10 @@ import {
   getDeviceInfo,
   getLocalAiTierLabelForModelId,
   isLocalModelHiddenFromUi,
+  collectWebGpuDiagnosticsJson,
 } from '@/utils/clientLLM';
 import { useToast } from '@/hooks/use-toast';
-import { Zap, CheckCircle, XCircle, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { Zap, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, Clipboard } from 'lucide-react';
 
 export default function TestClientLLM() {
   const [inputText, setInputText] = useState('');
@@ -43,6 +44,8 @@ export default function TestClientLLM() {
     webllmDatabases: string[];
   } | null>(null);
   const [cachedModels, setCachedModels] = useState<string[]>([]);
+  const [webGpuDiagJson, setWebGpuDiagJson] = useState<string | null>(null);
+  const [webGpuDiagLoading, setWebGpuDiagLoading] = useState(false);
   const { toast } = useToast();
 
   const preferredModels = getPreferredModels();
@@ -81,7 +84,7 @@ export default function TestClientLLM() {
       if (partialMatch) return partialMatch;
     }
     // Use device-recommended model if available, otherwise first available preferred model
-    if (available.includes(deviceRecommendedModel)) {
+    if (deviceRecommendedModel && available.includes(deviceRecommendedModel)) {
       return deviceRecommendedModel;
     }
     return availablePreferred[0] || available[0] || preferred[0];
@@ -90,6 +93,30 @@ export default function TestClientLLM() {
   // Use validatedSelectedModel as selectedModel
   const selectedModel = validatedSelectedModel;
   
+  const handleWebGpuDiagnostics = async () => {
+    setWebGpuDiagLoading(true);
+    setWebGpuDiagJson(null);
+    try {
+      const json = await collectWebGpuDiagnosticsJson();
+      setWebGpuDiagJson(json);
+      console.warn('[TestClientLLM] WebGPU diagnostics (also filter console for [PrivateNote][WebGPU])', json);
+    } catch (e) {
+      setWebGpuDiagJson(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }, null, 2));
+    } finally {
+      setWebGpuDiagLoading(false);
+    }
+  };
+
+  const copyWebGpuDiagnostics = async () => {
+    if (!webGpuDiagJson) return;
+    try {
+      await navigator.clipboard.writeText(webGpuDiagJson);
+      toast({ title: 'Copied', description: 'WebGPU diagnostics JSON is on the clipboard.' });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Clipboard permission denied.', variant: 'destructive' });
+    }
+  };
+
   const updateCapabilities = async () => {
     setCapabilities(getAiCapabilities());
     // Also update storage info
@@ -353,6 +380,43 @@ The platform is designed with privacy and security as top priorities.`,
                     ? deviceInfo.gpuMaxStorageBufferBindingSizeCached.toLocaleString()
                     : '—'}
                 </span>
+              </div>
+              <div className="pt-3 space-y-2">
+                <div className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Probes <span className="font-mono">requestAdapter()</span> (default, high-performance, low-power), then
+                  a diagnostic <span className="font-mono">forceFallbackAdapter</span> if hardware returned null. When
+                  Initialize fails, the console also prints{' '}
+                  <span className="font-mono">[PrivateNote][WebGPU]</span> lines plus a JSON blob.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleWebGpuDiagnostics()}
+                    disabled={webGpuDiagLoading}
+                  >
+                    {webGpuDiagLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Run WebGPU diagnostics
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void copyWebGpuDiagnostics()}
+                    disabled={!webGpuDiagJson}
+                  >
+                    <Clipboard className="h-4 w-4 mr-2" />
+                    Copy JSON
+                  </Button>
+                </div>
+                {webGpuDiagJson ? (
+                  <pre className="text-[10px] font-mono max-h-48 overflow-auto rounded border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900 whitespace-pre-wrap break-all">
+                    {webGpuDiagJson}
+                  </pre>
+                ) : null}
               </div>
               <div className="flex justify-between">
                 <span>hardwareConcurrency:</span>

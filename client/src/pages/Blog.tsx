@@ -66,7 +66,7 @@ export default function Blog() {
   ];
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 pt-24 pb-16 mb-24">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24">
       <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
         <h1 className="page-title mb-12 pb-2 leading-[1.1] text-primary relative z-10">
           Blog

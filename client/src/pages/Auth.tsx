@@ -99,7 +99,7 @@ type AuthMode = "sign-in" | "sign-up";
 
 export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
-  const { refresh } = useAuth();
+  const { refreshUntilAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
@@ -151,11 +151,12 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
     }
     setIsUsingPasskey(true);
     try {
-      // Email is optional - if provided, use it to filter credentials; if not, use discoverable credentials
+      // Discoverable (resident) credentials only — server never returns allowCredentials from email
+      // (avoids account-enumeration and credential-id leaks). New passkeys use residentKey: "required".
       const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
         "/api/auth/webauthn/login/options",
         "POST",
-        email.trim() ? { email: email.trim() } : {}
+        {},
       );
       if (!data?.options) {
         throw new Error("Missing WebAuthn options from server.");
@@ -170,7 +171,9 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
         challengeId: data.challengeId,
         credential: credentialToJson(credential),
       });
-      await refresh();
+      // Retry: D1 read-after-write lag can briefly return authenticated:false
+      // even though the verify endpoint just created the session.
+      await refreshUntilAuthenticated();
       // Redirect to home on successful login
       window.location.href = "/";
     } catch (error) {

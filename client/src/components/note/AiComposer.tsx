@@ -4,7 +4,6 @@ import {
   ChevronUp,
   ArrowLeft,
   ArrowUp,
-  Loader2,
   Zap,
   ZoomIn,
   FileText,
@@ -18,9 +17,16 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import { isWebLLMSupported, getWebLLMSupportHint } from "@/utils/clientLLM";
+import {
+  getLocalFallbackTemplateOptions,
+  isLocalFallbackTemplateId,
+} from "@/components/note/localFallbackTemplates";
+import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/clientLLM";
+import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
+import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
+import { WritingPencilIcon } from "./WritingPencilIcon";
 
 function templateChipClass(active: boolean): string {
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
@@ -70,7 +76,7 @@ export type AiComposerProps = {
   /** Shown under the prompt while the model runs (load + generate use separate states). */
   aiGenerationStatusText?: string | null;
   isAiModelLoading: boolean;
-  aiModelProgress: { progress: number; text: string } | null;
+  aiModelProgress: { progress: number; text: string; detail?: string } | null;
   transformHistory: AiPostGenTransform[];
   onGenerate: (override?: {
     prompt?: string;
@@ -92,6 +98,7 @@ export type AiComposerProps = {
   /** After generation, user must accept before Share / Customize appear. */
   aiDraftAccepted: boolean;
   onAcceptDraft: () => void;
+  onUseFallbackTemplate: (text: string) => void;
 };
 
 export const AiComposer: React.FC<AiComposerProps> = ({
@@ -119,12 +126,22 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onSentenceLengthChange,
   aiDraftAccepted,
   onAcceptDraft,
+  onUseFallbackTemplate,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
   const skipPromptGlowRef = useRef(true);
+  const localAiSupported = isLocalAiSupported();
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId);
   const hasPromptText = aiPrompt.trim().length > 0;
+  const generationHeadline = isGeneratingContent
+    ? aiGenerationStatusText?.trim() || "Generating…"
+    : "";
+  const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
+  const displayedTemplates = localAiSupported
+    ? promptTemplates
+    : promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id));
+  const fallbackOptions = getLocalFallbackTemplateOptions(selectedTemplateId, selectedSentenceLength);
 
   useEffect(() => {
     if (skipPromptGlowRef.current) {
@@ -155,7 +172,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             <StepRow step={1} label="Choose a template" />
             <div className="mb-1">
               <div className="flex flex-wrap gap-2">
-                {promptTemplates.slice(0, 5).map((template) => (
+                {displayedTemplates.slice(0, 5).map((template) => (
                   <button
                     key={template.id}
                     type="button"
@@ -170,7 +187,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               <div className="mt-3">
                 {showAllTemplates && (
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {promptTemplates.slice(5).map((template) => (
+                    {displayedTemplates.slice(5).map((template) => (
                       <button
                         key={template.id}
                         type="button"
@@ -227,92 +244,149 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
         {showPrompt ? (
           <div className="space-y-4 pt-2">
-            {/* Step 3 — write */}
-            <div>
-              <StepRow step={3} label="Write with AI" />
-              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
-                What do you want to say?
-              </h3>
+            {localAiSupported ? (
+              <div>
+                <StepRow step={3} label="Write with AI" />
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
+                  What do you want to say?
+                </h3>
 
-              <div className="relative min-w-0">
-                <div
-                  className={[
-                    "min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50",
-                    heroTypingGlow ? "ai-prompt-hero--typing" : "",
-                    hasPromptText
-                      ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
-                      : "",
-                  ].join(" ")}
-                >
-                  <textarea
-                    id="ai-prompt"
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
-                      e.preventDefault();
-                      if (isGeneratingContent || isAiModelLoading || !aiPrompt.trim()) return;
-                      onGenerate();
-                    }}
-                    rows={6}
-                    className="min-h-[11rem] w-full resize-y bg-transparent py-4 pl-5 pr-20 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
-                    placeholder={
-                      activePromptTemplate?.promptPlaceholder ??
-                      (aiEnhancementType === "summarize"
-                        ? "Paste a long text that you want to summarize..."
-                        : aiEnhancementType === "secure"
-                          ? "Paste text that might contain sensitive information to redact..."
-                          : "Describe what you want the AI to write for you...")
-                    }
-                  />
+                <div className="relative min-w-0">
+                  <div
+                    className={[
+                      "min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50",
+                      heroTypingGlow ? "ai-prompt-hero--typing" : "",
+                      hasPromptText
+                        ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
+                        : "",
+                    ].join(" ")}
+                  >
+                    <textarea
+                      id="ai-prompt"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (isGeneratingContent || isAiModelLoading || !aiPrompt.trim()) return;
+                        onGenerate();
+                      }}
+                      rows={6}
+                      className="min-h-[11rem] w-full resize-y bg-transparent py-4 pl-5 pr-20 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
+                      placeholder={
+                        activePromptTemplate?.promptPlaceholder ??
+                        (aiEnhancementType === "summarize"
+                          ? "Paste a long text that you want to summarize..."
+                          : aiEnhancementType === "secure"
+                            ? "Paste text that might contain sensitive information to redact..."
+                            : "Describe what you want the AI to write for you...")
+                      }
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onGenerate()}
+                    disabled={isGeneratingContent || isAiModelLoading || !hasPromptText}
+                    title="Generate with private AI (⌘/Ctrl+Enter)"
+                    aria-label="Generate with private AI"
+                    className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
+                  >
+                    {isGeneratingContent ? (
+                      generationGlyph === "brain" ? (
+                        <ThinkingBrainIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                      ) : (
+                        <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                      )
+                    ) : (
+                      <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
+                    )}
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onGenerate()}
-                  disabled={isGeneratingContent || isAiModelLoading || !hasPromptText}
-                  title="Generate with private AI (⌘/Ctrl+Enter)"
-                  aria-label="Generate with private AI"
-                  className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
-                >
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[1.25rem]">
                   {isGeneratingContent ? (
-                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    generationGlyph === "brain" ? (
+                      <ThinkingBrainIcon sizeClassName="h-9 w-9" className="text-primary" />
+                    ) : (
+                      <WritingPencilIcon sizeClassName="h-9 w-9" className="text-primary" />
+                    )
                   ) : (
-                    <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
+                    <Sparkles
+                      className={[
+                        "h-4 w-4 shrink-0 text-primary",
+                        hasPromptText && !isAiModelLoading ? "animate-pulse" : "opacity-40",
+                      ].join(" ")}
+                      aria-hidden
+                    />
                   )}
-                </button>
+                  <span
+                    className={
+                      isGeneratingContent
+                        ? "text-[13px] font-medium leading-snug text-foreground/90 dark:text-gray-100 sm:text-sm"
+                        : [
+                            "text-xs font-medium",
+                            hasPromptText && !isAiModelLoading
+                              ? "text-primary dark:text-blue-300"
+                              : "text-gray-500 dark:text-gray-400",
+                          ].join(" ")
+                    }
+                  >
+                    {isGeneratingContent
+                      ? generationHeadline
+                      : isAiModelLoading
+                        ? "Getting your private AI ready…"
+                        : hasPromptText
+                          ? "Tap the button or press ⌘/Ctrl+Enter"
+                          : "Start typing — your note stays on this device"}
+                  </span>
+                </div>
               </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <StepRow step={3} label="Curated Writing" />
+                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
+                    Local AI is not available on this device yet.
+                  </h3>
+                  <p className="text-sm text-gray-700 dark:text-gray-200">
+                    You still have access to a refined writing experience here, with curated message starters shaped to the template and length you choose.
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    We&apos;re building a native app to bring local AI to more devices.
+                  </p>
+                </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[1.25rem]">
-                <Sparkles
-                  className={[
-                    "h-4 w-4 shrink-0 text-primary",
-                    hasPromptText && !isGeneratingContent && !isAiModelLoading
-                      ? "animate-pulse"
-                      : "opacity-40",
-                  ].join(" ")}
-                  aria-hidden
-                />
-                <span
-                  className={[
-                    "text-xs font-medium",
-                    hasPromptText && !isGeneratingContent && !isAiModelLoading
-                      ? "text-primary dark:text-blue-300"
-                      : "text-gray-500 dark:text-gray-400",
-                  ].join(" ")}
-                >
-                  {isGeneratingContent
-                    ? aiGenerationStatusText?.trim() || "Generating…"
-                    : isAiModelLoading
-                      ? "Getting your private AI ready…"
-                      : hasPromptText
-                        ? "Tap the button or press ⌘/Ctrl+Enter"
-                        : "Start typing — your note stays on this device"}
-                </span>
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Signature message starters
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    Choose a polished starting point, add your details, and turn it into something unmistakably yours.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {fallbackOptions.map((option, index) => (
+                      <button
+                        key={`${option.label}-${index}`}
+                        type="button"
+                        onClick={() => onUseFallbackTemplate(option.text)}
+                        className="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-950/40 px-4 py-3 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                      >
+                        <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-sm leading-relaxed text-gray-800 dark:text-gray-100">
+                          {option.text}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {activePromptTemplate?.starterExamples &&
+            {localAiSupported &&
+              activePromptTemplate?.starterExamples &&
               activePromptTemplate.starterExamples.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
@@ -334,13 +408,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               )}
 
-            {!isWebLLMSupported() && getWebLLMSupportHint() && (
+            {!localAiSupported && getLocalAiSupportHint() && (
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
-                {getWebLLMSupportHint()}
+                {getLocalAiSupportHint()}
               </p>
             )}
 
-            {isAiModelLoading && aiModelProgress && (
+            {localAiSupported && isAiModelLoading && aiModelProgress && (
               <div className="space-y-3">
                 <div className="flex flex-col gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center justify-between">
@@ -357,9 +431,15 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       style={{ width: `${aiModelProgress.progress}%` }}
                     />
                   </div>
+                  {aiModelProgress.detail ? (
+                    <p className="text-xs text-blue-800/95 dark:text-blue-200/90 break-words">
+                      {aiModelProgress.detail}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}
+
           </div>
         ) : noteContent ? (
           <div>

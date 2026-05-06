@@ -87,9 +87,31 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(circle at 50% 0%, hsla(213, 100%, 96%, 0.8) 0%, hsla(213, 100%, 98%, 0.1) 50%, hsla(0, 0%, 100%, 0) 100%);
+    /*
+     * Light mode: subtle dot grid + two soft aurora spots at top corners.
+     * Layers (back-to-front): dot grid → right indigo glow → left blue glow.
+     */
+    background-color: hsl(210 50% 98%);
+    background-image:
+      /* 1 × 1 px dots on a 30 px grid — very low opacity so they whisper */
+      radial-gradient(circle, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+      /* top-right: soft indigo glow */
+      radial-gradient(ellipse 55% 45% at 88% -5%, hsla(245, 100%, 95%, 0.65) 0%, transparent 60%),
+      /* top-left: soft sky-blue glow */
+      radial-gradient(ellipse 70% 55% at 12% -8%, hsla(210, 100%, 92%, 0.85) 0%, transparent 60%);
+    background-size: 30px 30px, 100% 100%, 100% 100%;
     background-attachment: fixed;
-    background-size: 100% 100%;
+  }
+
+  /* Dark mode: same dot grid + muted deep-blue/violet aurora spots */
+  .dark body {
+    background-color: hsl(222.2 84% 4.9%);
+    background-image:
+      radial-gradient(circle, rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+      radial-gradient(ellipse 55% 45% at 88% -5%, hsla(250, 70%, 18%, 0.75) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 55% at 12% -8%, hsla(220, 80%, 16%, 0.85) 0%, transparent 60%);
+    background-size: 30px 30px, 100% 100%, 100% 100%;
+    background-attachment: fixed;
   }
 }
 

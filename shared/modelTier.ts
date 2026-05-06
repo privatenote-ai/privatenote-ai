@@ -9,6 +9,7 @@ const DEFAULT_MODEL_SIZE_MB = 200;
 
 export function estimateModelSizeMB(modelId: string): number {
   const id = modelId;
+  if (/gemma-4-E2B/i.test(id)) return 1800;
   if (
     id.includes("270m") ||
     id.includes("270M") ||
@@ -53,6 +54,7 @@ export function estimateModelSizeMB(modelId: string): number {
 }
 
 export function getModelTier(modelId: string): ModelTier {
+  if (/gemma-4/i.test(modelId) && !/MLC$/i.test(modelId)) return "large";
   const sizeMB = estimateModelSizeMB(modelId);
   if (sizeMB <= 400) return "small";
   if (sizeMB <= 2000) return "medium";

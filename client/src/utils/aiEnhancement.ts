@@ -1,11 +1,13 @@
 import {
   enhanceNoteClientSide,
-  isWebLLMSupported,
+  isLocalAiSupported,
   isEngineLoaded,
   initializeClientLLM,
   getModelInfo,
   getWebLLMBrowserSupportLevel,
-  getWebLLMSupportHint,
+  getLocalAiSupportHint,
+  clearEngine,
+  isWebLlmGpuOrDisposeFailure,
   type ProgressCallback,
   type WebLLMBrowserSupportLevel,
 } from "./clientLLM";
@@ -39,9 +41,9 @@ export async function enhanceNoteHybrid(
 ): Promise<AiEnhanceResponse> {
   const { preferClientSide = true, onProgress } = options;
 
-  if (!preferClientSide || !isWebLLMSupported()) {
+  if (!preferClientSide || !isLocalAiSupported()) {
     throw new AiEnhanceError(
-      getWebLLMSupportHint() ?? "On-device AI is not supported in this browser.",
+      getLocalAiSupportHint() ?? "On-device AI is not supported in this browser.",
       "client",
     );
   }
@@ -72,9 +74,15 @@ export async function enhanceNoteHybrid(
       source: "client",
     };
   } catch (error) {
+    if (isWebLlmGpuOrDisposeFailure(error)) {
+      clearEngine();
+    }
     console.error("[AI] Client-side enhancement failed:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to enhance note with on-device AI.";
+    const message = isWebLlmGpuOrDisposeFailure(error)
+      ? "On-device AI crashed during generation (WebGPU device lost, memory pressure, or a Safari WASM bug). Try again with the default smaller model, avoid starting two enhancements at once, and close other Safari tabs if it keeps happening."
+      : error instanceof Error
+        ? error.message
+        : "Failed to enhance note with on-device AI.";
     throw new AiEnhanceError(message, "client");
   }
 }
@@ -93,10 +101,10 @@ export interface AiCapabilitiesSnapshot {
  */
 export function getAiCapabilities(): AiCapabilitiesSnapshot {
   return {
-    clientSideSupported: isWebLLMSupported(),
+    clientSideSupported: isLocalAiSupported(),
     clientSideLoaded: isEngineLoaded(),
-    modelInfo: isWebLLMSupported() ? getModelInfo() : null,
+    modelInfo: isLocalAiSupported() ? getModelInfo() : null,
     webLlmSupportLevel: getWebLLMBrowserSupportLevel(),
-    webLlmSupportHint: getWebLLMSupportHint(),
+    webLlmSupportHint: getLocalAiSupportHint(),
   };
 }

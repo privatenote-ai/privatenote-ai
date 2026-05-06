@@ -43,16 +43,36 @@ export function localAiDraftingLabel(
 ): string {
   switch (type) {
     case "summarize":
-      return "Drafting your summary…";
+      return "Writing your summary…";
     case "secure":
-      return "Drafting redacted text…";
+      return "Writing redacted text…";
     case "improve":
-      return "Drafting clearer wording…";
+      return "Writing clearer wording…";
     case "simplify":
-      return "Drafting simpler wording…";
+      return "Writing simpler wording…";
     case "ask":
-      return "Drafting…";
+      return "Writing…";
   }
+}
+
+/**
+ * Which animated affordance matches the current headline (brain = cognitive / setup; pencil = streaming text).
+ */
+export function getLocalAiGenerationGlyph(headline: string): "brain" | "pencil" {
+  const t = headline.trim().toLowerCase();
+  if (
+    t.includes("thinking") ||
+    t.includes("analyzing") ||
+    t.includes("finalizing") ||
+    (t.includes("loading") &&
+      (t.includes("private ai") || /^loading .+\(\d{1,3}%\)$/i.test(t.trim()))) ||
+    t.includes("preparing private ai") ||
+    t === "working…" ||
+    t === "working"
+  ) {
+    return "brain";
+  }
+  return "pencil";
 }
 
 /** Phase 4 — parse, strip reasoning tags, clean, validate (and optional repair). */
@@ -67,14 +87,38 @@ export function localAiGenerationPhaseLabel(
   return localAiDraftingLabel(type);
 }
 
-export function userFacingLocalAiLoadProgress(raw: string | undefined, progressFraction: number): string {
+const TECHNICAL_LOAD_PROGRESS_LINE =
+  /Qwen|Llama|Gemma|gemma|DeepSeek|MLC|SmolLM|smollm|\.wasm|https?:\/\/|model_lib|params_|\/models\/|indexeddb|shard/i;
+
+/**
+ * Short label for load progress (catalog id → readable name; avoids raw URLs and internal paths).
+ */
+export function publicModelNameForLoadProgress(modelId: string): string {
+  const id = modelId.trim();
+  if (/Qwen3-0\.6B/i.test(id)) return "Qwen3 0.6B";
+  if (/gemma-2-2b/i.test(id)) return "Gemma 2 2B";
+  if (/gemma-4/i.test(id)) return "Gemma 4";
+  const stripped = id.replace(/-MLC.*$/i, "").replace(/_/g, " ");
+  return stripped.replace(/-/g, " ").replace(/\s+/g, " ").trim() || id;
+}
+
+export function userFacingLocalAiLoadProgress(
+  raw: string | undefined,
+  progressFraction: number,
+  modelId?: string,
+): string {
   const percent = Math.round(Math.min(1, Math.max(0, progressFraction)) * 100);
   const t = (raw ?? "").trim();
-  if (!t) return `Loading private AI (${percent}%)`;
-  if (
-    /Qwen|Llama|Gemma|gemma|DeepSeek|MLC|\.wasm|https?:\/\/|model_lib|params_|\/models\/|indexeddb|shard/i.test(t)
-  ) {
-    return `Loading private AI (${percent}%)`;
+  const headline = modelId
+    ? `Loading ${publicModelNameForLoadProgress(modelId)}`
+    : "Loading private AI";
+
+  if (!t) return `${headline} (${percent}%)`;
+  if (TECHNICAL_LOAD_PROGRESS_LINE.test(t)) {
+    return `${headline} (${percent}%)`;
+  }
+  if (modelId) {
+    return `${headline}: ${t} (${percent}%)`;
   }
   return t;
 }

@@ -140,10 +140,11 @@ export const FAQSection: React.FC = () => {
         <div className="absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-primary/10 blur-[120px]" />
         <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
-      <div className="px-4 py-16 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
+      <div className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto relative z-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10">
           <div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-primary">
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
               FAQ
             </h2>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">
@@ -156,32 +157,31 @@ export const FAQSection: React.FC = () => {
         <Accordion
           type="single"
           collapsible
-          className="rounded-3xl border border-gray-200/80 dark:border-gray-800/80 bg-white/85 dark:bg-gray-950/80 backdrop-blur shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+          className="rounded-3xl border border-primary/20 dark:border-primary/15 bg-white/85 dark:bg-gray-950/80 backdrop-blur shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_10px_40px_rgba(15,23,42,0.09)] ring-1 ring-primary/10 dark:ring-primary/5"
         >
           {FAQ_ITEMS.map((item, index) => (
             <AccordionItem
               key={item.id}
               value={item.id}
-              className={`border-b border-gray-200/70 dark:border-gray-800/70 ${index === FAQ_ITEMS.length - 1 ? 'border-b-0' : ''
-                }`}
+              className={`group border-b border-gray-200/70 dark:border-gray-800/70 overflow-hidden transition-colors duration-150 data-[state=open]:bg-primary/[0.035] dark:data-[state=open]:bg-primary/[0.07] ${index === FAQ_ITEMS.length - 1 ? 'border-b-0' : ''}`}
             >
-              <AccordionTrigger className="items-start gap-3 text-left text-sm sm:text-base text-gray-900 dark:text-white px-6 py-5 hover:no-underline hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition-colors [&>svg]:mt-1.5 [&>svg]:shrink-0">
+              <AccordionTrigger className="items-start gap-3 text-left text-sm sm:text-base text-gray-900 dark:text-white px-6 py-5 hover:no-underline hover:bg-gray-50/70 dark:hover:bg-gray-900/50 data-[state=open]:text-primary transition-colors [&>svg]:mt-1.5 [&>svg]:shrink-0 [&>svg]:text-gray-400 data-[state=open]:[&>svg]:text-primary">
                 <div className="flex min-w-0 flex-1 items-start gap-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/20">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-violet-500/15 text-xs font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/25 shadow-[0_0_8px_rgba(var(--primary-rgb,99,102,241),0.15)]">
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1 pt-1.5 leading-snug">{item.question}</span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-2 leading-relaxed">
-                <div className="pl-12">
+              <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-6 leading-relaxed">
+                <div className="pl-12 border-l-2 border-primary/25 ml-4">
                   {item.answer}
                 </div>
               </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
-        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-7xl">
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-4xl">
           Still unsure? See{' '}
           <Link
             href="/how-it-works"
@@ -192,6 +192,7 @@ export const FAQSection: React.FC = () => {
           {' '}
           — or start by writing a test note and opening it yourself; you can see the full flow in seconds.
         </p>
+        </div>
       </div>
     </section>
   );

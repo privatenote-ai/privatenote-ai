@@ -38,7 +38,7 @@ type Phase = "initial" | "confirm" | "loading" | "success" | "error";
 export default function AuthMagic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { refresh } = useAuth();
+  const { refreshUntilAuthenticated } = useAuth();
   const [phase, setPhase] = useState<Phase>("initial");
   const [token, setToken] = useState<string | null>(null);
   const [friendlyMessage, setFriendlyMessage] = useState<string>("");
@@ -142,7 +142,8 @@ export default function AuthMagic() {
 
       setPhase("success");
       setFriendlyMessage("You're signed in.");
-      refresh();
+      // Retry: D1 read-after-write lag can briefly return authenticated:false.
+      await refreshUntilAuthenticated();
       const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
       if (me && typeof me.hasPasskeys === "boolean") {
         setHasPasskeys(me.hasPasskeys);

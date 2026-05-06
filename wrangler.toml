@@ -26,6 +26,9 @@ id = "dcbc57c897c442deb18d99a1193267d4"
 binding = "AUTH_DB"
 database_name = "privatenote-auth"
 database_id = "b9ae1541-7226-40b6-9ff7-8ce49781b025"
+# Applies baseline auth tables (sessions, users, …) to local D1 on `wrangler dev` and on deploy.
+# Keep 0001 in sync with src/auth/schema.sql. Manual upgrades stay in src/auth/migrations/.
+migrations_dir = "src/auth/d1-migrations"
 #
 # [[durable_objects.bindings]]
 # name = "AUTH_TOKENS"
@@ -39,10 +42,15 @@ class_name = "AuthTokenStore"
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
-# SecureNoteStorageSql is already registered in production (historically via new_classes / Free-tier
-# SQLite-only DOs). Do NOT add new_sqlite_classes for the same class name — deploy fails with:
-# "Cannot apply new-sqlite-class migration ... already depended on by existing Durable Objects" (10074).
-# See https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
+# SecureNoteStorageSql uses the Durable Object SQL API (`state.storage.sql`). Local `wrangler dev`
+# (Miniflare) only enables SQL if the class was first registered with `new_sqlite_classes` — otherwise
+# note create returns: "SQL is not enabled for this Durable Object class". After local DO changes,
+# delete `.wrangler/state` once so local migrations re-apply cleanly.
+#
+# v5 `new_sqlite_classes = ["SecureNoteStorageSql"]` was removed from this file: production already
+# applied it; keeping it causes deploy error 10074 ("already depended on by existing Durable Objects").
+# Greenfield: if you create a brand-new Worker name, add a fresh migration with new_sqlite_classes
+# before first production deploy. See https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
 
 # Environment variables (set via wrangler secret put or dashboard)
 
@@ -79,4 +87,4 @@ persist = true
 head_sampling_rate = 1
 
 # Migration configuration
-# Keep all applied tags in this file. v1–v3 ran on this worker historically; v4 adds AuthTokenStore.
+# Keep all applied tags in this file. v4 adds AuthTokenStore; v5 registers SecureNoteStorageSql with SQLite (required for local dev).
