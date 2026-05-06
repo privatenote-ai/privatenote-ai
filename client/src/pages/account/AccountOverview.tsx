@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { formatDistanceToNow } from "date-fns";
@@ -21,6 +22,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Copy,
 } from "lucide-react";
 import { getThemePreference } from "@/hooks/useThemePreference";
 
@@ -107,12 +109,6 @@ function eventAccent(type: string): string {
   }
 }
 
-function formatId(id: string | null | undefined): string {
-  if (!id) return "—";
-  if (id.length <= 16) return id;
-  return `${id.slice(0, 8)}…${id.slice(-6)}`;
-}
-
 function ThemeLabel({ pref }: { pref: string }) {
   if (pref === "light") return <><Sun className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Light</>;
   if (pref === "dark") return <><Moon className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Dark</>;
@@ -122,6 +118,7 @@ function ThemeLabel({ pref }: { pref: string }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountOverview() {
+  const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -189,6 +186,21 @@ export default function AccountOverview() {
     () => new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }),
     [],
   );
+
+  const copyAccountId = useCallback(async () => {
+    const id = summary?.id;
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      toast({ title: "Account ID copied", description: "Account ID copied to clipboard." });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy account ID to clipboard.",
+        variant: "destructive",
+      });
+    }
+  }, [summary?.id, toast]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || loading) {
@@ -289,11 +301,26 @@ export default function AccountOverview() {
           </div>
 
           {/* Account ID */}
-          <div className="flex items-center justify-between gap-4 px-5 py-3">
-            <span className="text-sm text-gray-500 dark:text-gray-500">Account ID</span>
-            <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
-              {formatId(summary?.id)}
-            </span>
+          <div className="px-5 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Account ID</span>
+              {summary?.id ? (
+                <button
+                  type="button"
+                  onClick={() => void copyAccountId()}
+                  className="shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  title="Copy account ID"
+                >
+                  <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              ) : null}
+            </div>
+            <p className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+              {summary?.id ?? "—"}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Support may ask for this to verify your account.
+            </p>
           </div>
         </section>
 

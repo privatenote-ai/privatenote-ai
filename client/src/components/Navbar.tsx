@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, FileText, Info, Mail, Key } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 
@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
 
   /** Desktop nav link — visible pill hover with a slight lift */
   const desktopLink =
-    "relative px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md shadow-none transition-all duration-150 hover:text-primary hover:bg-primary/12 dark:hover:bg-primary/18 hover:-translate-y-px hover:shadow-none outline-none focus:outline-none focus:ring-0 lg:text-[15px] whitespace-nowrap";
+    "relative px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 rounded-md shadow-none transition-all duration-150 hover:text-black dark:hover:text-black hover:bg-primary/12 dark:hover:bg-primary/18 hover:-translate-y-px hover:shadow-none outline-none focus:outline-none focus:ring-0 lg:text-[15px] whitespace-nowrap";
 
   const authTextLink =
     "inline-flex items-center whitespace-nowrap rounded-md border-2 border-primary px-3 py-1.5 text-sm font-semibold text-primary shadow-none transition-all duration-150 hover:bg-primary hover:text-white hover:shadow-none outline-none focus:outline-none focus:ring-0";
@@ -112,7 +112,7 @@ export const Navbar: React.FC = () => {
     "inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 outline-none focus:outline-none focus:ring-0";
 
   const mobileItemClass =
-    "flex items-center gap-3 px-4 py-2.5 text-sm text-primary transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60";
+    "flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 dark:text-blue-400 transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   const navShellClass = [
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
@@ -144,14 +144,14 @@ export const Navbar: React.FC = () => {
               <NavLink
                 href="/account"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-blue-600 hover:text-black hover:bg-gray-50 dark:text-blue-400 dark:hover:text-black dark:hover:bg-gray-800/60"
               >
                 Account
               </NavLink>
               <NavLink
                 href="/account/security"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-blue-600 hover:text-black hover:bg-gray-50 dark:text-blue-400 dark:hover:text-black dark:hover:bg-gray-800/60"
               >
                 Security
               </NavLink>
@@ -315,6 +315,10 @@ export const Navbar: React.FC = () => {
                     <NavLink href="/account" closeMenu={closeMenu} className={mobileItemClass}>
                       <Shield className="h-4 w-4 shrink-0 opacity-80" />
                       <span>Account</span>
+                    </NavLink>
+                    <NavLink href="/account/security" closeMenu={closeMenu} className={mobileItemClass}>
+                      <ShieldCheck className="h-4 w-4 shrink-0 opacity-80" />
+                      <span>Security</span>
                     </NavLink>
                     <button
                       type="button"
