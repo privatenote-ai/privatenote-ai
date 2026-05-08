@@ -91,7 +91,13 @@
     min-width: 0;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    /*
+     * `overflow-x: hidden` paired with overflow-y visible makes many engines treat
+     * vertical overflow as scrollable on THAT element (`auto`), i.e. a nested scroll
+     * container—the “hero feels like its own scroll pane” symptom on home.
+     * `clip` hides horizontal bleed without collapsing overflow-y behavior the same way.
+     */
+    overflow-x: clip;
   }
 
   html,
@@ -125,7 +131,9 @@
       /* top-left: soft sky-blue glow */
       radial-gradient(ellipse 70% 55% at 12% -8%, hsla(210, 100%, 92%, 0.85) 0%, transparent 60%);
     background-size: 30px 30px, 100% 100%, 100% 100%;
-    background-attachment: fixed;
+    /* Avoid `fixed` — it paints in a separate layer so the dotted pattern / glow can
+       appear to glide past the hero while the page scrolls (double-scroll illusion). */
+    background-attachment: scroll;
   }
 
   /* Dark mode: same dot grid + muted deep-blue/violet aurora spots */
@@ -136,19 +144,7 @@
       radial-gradient(ellipse 55% 45% at 88% -5%, hsla(250, 70%, 18%, 0.75) 0%, transparent 60%),
       radial-gradient(ellipse 70% 55% at 12% -8%, hsla(220, 80%, 16%, 0.85) 0%, transparent 60%);
     background-size: 30px 30px, 100% 100%, 100% 100%;
-    background-attachment: fixed;
-  }
-
-  /*
-   * `background-attachment: fixed` makes mobile Safari repaint the backdrop during
-   * momentum scroll—often feels like the hero / top of the page scrolls separately
-   * from the document. Use a normal scrolling backdrop on touch and narrow layouts.
-   */
-  @media (max-width: 1024px), (hover: none) {
-    body,
-    .dark body {
-      background-attachment: scroll;
-    }
+    background-attachment: scroll;
   }
 }
 

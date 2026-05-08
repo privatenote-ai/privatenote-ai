@@ -114,7 +114,7 @@ function Router() {
     location.startsWith("/auth/totp");
 
   return (
-    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden">
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
       {showNavbar && <Navbar />}
       <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
