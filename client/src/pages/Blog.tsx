@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, ArrowRight, Tag, Clock } from 'lucide-react';
-import { format } from 'date-fns';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
 import { parseBlogPostTags } from '@/utils/blogPostTags';
@@ -10,25 +9,29 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 export default function Blog() {
+  const { language, t } = useLanguage();
+  const lp = (path: string) => localizedPath(path, language);
   const featuredPost = {
-    title: 'Why Privacy Matters',
-    excerpt: 'Privacy is not paranoia; it is good engineering and a basic human need for autonomy, experimentation, and dignity.',
+    title: t.blogPrivacyTitle,
+    excerpt: t.blogPrivacyExcerpt,
     author: 'PrivateNote.ai',
     slug: 'privacy-tools',
     publishedAt: new Date().toISOString(),
-    tags: ['privacy', 'tools', 'security'],
+    tags: [t.blogTagPrivacy, t.blogTagTools, t.blogTagSecurity],
   };
   const staticPosts: BlogPost[] = [
     {
       id: -1,
-      title: 'The Myth of "Good Enough" Security',
-      excerpt: 'Why modern threats demand architectural security, not just better habits.',
+      title: t.blogGoodEnoughTitle,
+      excerpt: t.blogGoodEnoughExcerpt,
       author: 'PrivateNote.ai',
       slug: 'myth-good-enough-security',
       publishedAt: new Date(),
-      tags: JSON.stringify(['security', 'privacy', 'authentication']),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagAuthentication]),
       content: '',
       coverImage: null,
       published: true,
@@ -37,12 +40,12 @@ export default function Blog() {
     },
     {
       id: -2,
-      title: 'How We Generate Secure Passwords',
-      excerpt: 'Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.',
+      title: t.blogPasswordTitle,
+      excerpt: t.blogPasswordExcerpt,
       author: 'PrivateNote.ai',
       slug: 'how-we-generate-passwords',
       publishedAt: new Date(),
-      tags: JSON.stringify(['passwords', 'security', 'cryptography']),
+      tags: JSON.stringify([t.blogTagPasswords, t.blogTagSecurity, t.blogTagCryptography]),
       content: '',
       coverImage: null,
       published: true,
@@ -69,18 +72,18 @@ export default function Blog() {
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24">
       <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
         <h1 className="page-title mb-12 pb-2 leading-[1.1] text-primary relative z-10">
-          Blog
+          {t.blog}
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
-          Latest insights and tips about privacy, security, and encryption
+          {t.blogSubtitle}
         </p>
       </div>
 
       {hasError ? (
         <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} />
+          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
           {staticPosts.map((post) => (
-            <BlogPostCard key={post.id} post={post} />
+            <BlogPostCard key={post.id} post={post} blogPath={lp("/blog")} />
           ))}
         </div>
       ) : isLoading ? (
@@ -101,18 +104,18 @@ export default function Blog() {
         </div>
       ) : combinedPosts.length > 0 ? (
         <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} />
+          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
           {combinedPosts.map((post) => (
-            <BlogPostCard key={post.id} post={post} />
+            <BlogPostCard key={post.id} post={post} blogPath={lp("/blog")} />
           ))}
         </div>
       ) : (
         <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} />
+          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
           <div className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 rounded-lg p-8 text-center">
-            <h2 className="text-xl font-medium mb-2">No posts yet</h2>
+            <h2 className="text-xl font-medium mb-2">{t.blogEmptyTitle}</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              We're working on creating some great content. Check back soon!
+              {t.blogEmptyBody}
             </p>
           </div>
         </div>
@@ -121,9 +124,10 @@ export default function Blog() {
   );
 }
 
-function BlogPostCard({ post }: { post: BlogPost }) {
+function BlogPostCard({ post, blogPath }: { post: BlogPost; blogPath: string }) {
+  const { language, t } = useLanguage();
   const formattedDate = post.publishedAt
-    ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
+    ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt))
     : '';
   const tagList = parseBlogPostTags(post.tags);
 
@@ -152,7 +156,7 @@ function BlogPostCard({ post }: { post: BlogPost }) {
           )}
         </div>
         <CardTitle className="text-xl font-bold">
-          <Link href={`/blog/${post.slug}`} className="hover:text-primary transition-colors">
+          <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
             {post.title}
           </Link>
         </CardTitle>
@@ -163,11 +167,11 @@ function BlogPostCard({ post }: { post: BlogPost }) {
       <CardFooter className="pt-0 flex justify-between items-center">
         <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
           <Clock className="h-4 w-4 mr-1" />
-          <span>by {post.author}</span>
+          <span>{t.blogByAuthor} {post.author}</span>
         </div>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/blog/${post.slug}`} className="flex items-center">
-            Read more <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href={`${blogPath}/${post.slug}`} className="flex items-center">
+            {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
       </CardFooter>
@@ -175,8 +179,9 @@ function BlogPostCard({ post }: { post: BlogPost }) {
   );
 }
 
-function FeaturedPostCard({ post }: { post: { title: string; excerpt: string; author: string; slug: string; publishedAt: string; tags: string[] } }) {
-  const formattedDate = format(new Date(post.publishedAt), 'MMMM d, yyyy');
+function FeaturedPostCard({ post, blogPath }: { post: { title: string; excerpt: string; author: string; slug: string; publishedAt: string; tags: string[] }; blogPath: string }) {
+  const { language, t } = useLanguage();
+  const formattedDate = new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt));
 
   return (
     <Card className="backdrop-blur-sm border border-primary/30 bg-primary/5 overflow-hidden">
@@ -185,11 +190,11 @@ function FeaturedPostCard({ post }: { post: { title: string; excerpt: string; au
           <Calendar className="h-4 w-4 mr-1" />
           <span>{formattedDate}</span>
           <div className="ml-auto flex items-center gap-2">
-            <Badge className="text-xs" variant="default">Featured</Badge>
+            <Badge className="text-xs" variant="default">{t.blogFeatured}</Badge>
           </div>
         </div>
         <CardTitle className="text-xl font-bold">
-          <Link href={`/blog/${post.slug}`} className="hover:text-primary transition-colors">
+          <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
             {post.title}
           </Link>
         </CardTitle>
@@ -200,11 +205,11 @@ function FeaturedPostCard({ post }: { post: { title: string; excerpt: string; au
       <CardFooter className="pt-0 flex justify-between items-center">
         <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
           <Clock className="h-4 w-4 mr-1" />
-          <span>by {post.author}</span>
+          <span>{t.blogByAuthor} {post.author}</span>
         </div>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/blog/${post.slug}`} className="flex items-center">
-            Read more <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href={`${blogPath}/${post.slug}`} className="flex items-center">
+            {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
       </CardFooter>

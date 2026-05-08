@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,12 +11,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
-  promptTemplates,
+  getPromptTemplatesForLanguage,
   getPromptTemplateById,
   AI_SENTENCE_LENGTH_OPTIONS,
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
+import type { SupportedLanguage } from "@/utils/translation";
 import {
   getLocalFallbackTemplateOptions,
   isLocalFallbackTemplateId,
@@ -59,6 +60,7 @@ export type AiPostGenTransform = {
 };
 
 export type AiComposerProps = {
+  language: SupportedLanguage;
   noteContent: string;
   applyNoteContentInput: (
     e: React.ChangeEvent<HTMLTextAreaElement>,
@@ -102,6 +104,7 @@ export type AiComposerProps = {
 };
 
 export const AiComposer: React.FC<AiComposerProps> = ({
+  language,
   noteContent,
   applyNoteContentInput,
   aiPrompt,
@@ -132,7 +135,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
-  const activePromptTemplate = getPromptTemplateById(selectedTemplateId);
+  const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
+  const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;
   const generationHeadline = isGeneratingContent
     ? aiGenerationStatusText?.trim() || "Generating…"
@@ -141,7 +145,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const displayedTemplates = localAiSupported
     ? promptTemplates
     : promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id));
-  const fallbackOptions = getLocalFallbackTemplateOptions(selectedTemplateId, selectedSentenceLength);
+  const fallbackOptions = getLocalFallbackTemplateOptions(
+    selectedTemplateId,
+    selectedSentenceLength,
+    language,
+  );
 
   useEffect(() => {
     if (skipPromptGlowRef.current) {

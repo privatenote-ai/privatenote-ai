@@ -61,6 +61,7 @@ import {
   localAiFinalizingLabel,
 } from "./localAiUxText";
 import { prependBaseInstruction } from "./baseInstruction";
+import type { SupportedLanguage } from "@/utils/translation";
 import {
   cleanOutput,
   validateLocalLlmOutput,
@@ -930,6 +931,8 @@ export async function enhanceNoteClientSide(
     templateId?: string;
     /** When true, skip the small-model second pass after failed validation. */
     disableOutputRepairPass?: boolean;
+    /** Locale for repair-pass instructions when validation fails. */
+    promptLocale?: SupportedLanguage;
   }
 ): Promise<string> {
   if (shouldUseTransformersJsLocalPath() || isTransformersMobileLoaded()) {
@@ -1003,7 +1006,7 @@ export async function enhanceNoteClientSide(
     });
 
     if (!validation.ok && validation.repairable && !options?.disableOutputRepairPass) {
-      const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues)}`;
+      const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues, options?.promptLocale ?? "en")}`;
       const repaired = await generateTransformersMobile(
         [
           { role: "system", content: system },
@@ -1425,7 +1428,7 @@ export async function enhanceNoteClientSide(
       });
     }
     const repairTemp = Math.min(temperature, 0.18);
-    const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues)}`;
+    const repairPrompt = `${prompt}\n\n${buildOutputRepairAddition(validation.issues, options?.promptLocale ?? "en")}`;
     out = (await streamOneUserTurn(repairPrompt, repairTemp, "Refining your note…")).cleaned;
   }
 

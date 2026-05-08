@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { formatDistanceToNow } from "date-fns";
@@ -80,10 +81,10 @@ const PLAN_BADGE_CLASS: Record<AccountType, string> = {
 
 function eventLabel(type: string): string {
   switch (type) {
-    case "note_created": return "Secure note created";
-    case "ai_note_created": return "AI-assisted note created";
-    case "note_opened": return "Note opened";
-    case "note_expired": return "Note expired";
+    case "note_created": return "authActivitySecureNoteCreated";
+    case "ai_note_created": return "authActivityAiNoteCreated";
+    case "note_opened": return "authActivityNoteOpened";
+    case "note_expired": return "authActivityNoteExpired";
     default: return type.replace(/_/g, " ");
   }
 }
@@ -109,16 +110,18 @@ function eventAccent(type: string): string {
   }
 }
 
-function ThemeLabel({ pref }: { pref: string }) {
-  if (pref === "light") return <><Sun className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Light</>;
-  if (pref === "dark") return <><Moon className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />Dark</>;
-  return <><Monitor className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />System</>;
+function ThemeLabel({ pref, t }: { pref: string; t: (key: string, fallback: string) => string }) {
+  if (pref === "light") return <><Sun className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />{t("authThemeLight", "Light")}</>;
+  if (pref === "dark") return <><Moon className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />{t("authThemeDark", "Dark")}</>;
+  return <><Monitor className="h-3.5 w-3.5 inline -mt-0.5 mr-1" />{t("authThemeSystem", "System")}</>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountOverview() {
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const { user, loading: authLoading } = useAuth();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -192,11 +195,14 @@ export default function AccountOverview() {
     if (!id) return;
     try {
       await navigator.clipboard.writeText(id);
-      toast({ title: "Account ID copied", description: "Account ID copied to clipboard." });
+      toast({
+        title: tx("authAccountIdCopiedTitle", "Account ID copied"),
+        description: tx("authAccountIdCopiedDesc", "Account ID copied to clipboard."),
+      });
     } catch {
       toast({
-        title: "Copy failed",
-        description: "Failed to copy account ID to clipboard.",
+        title: tx("authCopyFailedTitle", "Copy failed"),
+        description: tx("authCopyFailedDesc", "Failed to copy account ID to clipboard."),
         variant: "destructive",
       });
     }
@@ -221,9 +227,11 @@ export default function AccountOverview() {
     return (
       <AccountSettingsShell>
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Sign in to view your account.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {tx("authSignInToViewAccount", "Sign in to view your account.")}
+          </p>
           <Button asChild size="sm">
-            <a href="/auth/sign-in">Sign in</a>
+            <a href="/auth/sign-in">{tx("signIn", "Sign in")}</a>
           </Button>
         </div>
       </AccountSettingsShell>
@@ -242,9 +250,9 @@ export default function AccountOverview() {
       <div className="space-y-6">
         {/* Page header */}
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Account</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{tx("account", "Account")}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Your identity, security, and settings at a glance.
+            {tx("authOverviewSubtitle", "Your identity, security, and settings at a glance.")}
           </p>
         </div>
 
@@ -256,7 +264,7 @@ export default function AccountOverview() {
               className="underline underline-offset-2"
               onClick={() => { setLoading(true); void load(); }}
             >
-              Retry
+              {tx("authRetry", "Retry")}
             </button>
           </p>
         )}
@@ -266,7 +274,9 @@ export default function AccountOverview() {
           {/* Header row */}
           <div className="flex items-center justify-between gap-4 px-5 py-4 bg-gray-50/60 dark:bg-gray-900/40">
             <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Identity</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                {tx("authIdentity", "Identity")}
+              </p>
               <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
                 {summary?.email ?? user.email ?? "—"}
               </p>
@@ -280,21 +290,21 @@ export default function AccountOverview() {
 
           {/* Email verified */}
           <div className="flex items-center justify-between gap-4 px-5 py-3">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Email verified</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authEmailVerified", "Email verified")}</span>
             {emailVerified ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" /> Verified
+                <CheckCircle2 className="h-4 w-4" /> {tx("authVerified", "Verified")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                <XCircle className="h-4 w-4" /> Not verified
+                <XCircle className="h-4 w-4" /> {tx("authNotVerified", "Not verified")}
               </span>
             )}
           </div>
 
           {/* Member since */}
           <div className="flex items-center justify-between gap-4 px-5 py-3">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Member since</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authMemberSince", "Member since")}</span>
             <span className="text-sm text-gray-900 dark:text-white">
               {summary?.createdAt ? dateFormatter.format(new Date(summary.createdAt)) : "—"}
             </span>
@@ -303,13 +313,13 @@ export default function AccountOverview() {
           {/* Account ID */}
           <div className="px-5 py-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Account ID</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authAccountId", "Account ID")}</span>
               {summary?.id ? (
                 <button
                   type="button"
                   onClick={() => void copyAccountId()}
                   className="shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                  title="Copy account ID"
+                  title={tx("authCopyAccountId", "Copy account ID")}
                 >
                   <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </button>
@@ -319,7 +329,7 @@ export default function AccountOverview() {
               {summary?.id ?? "—"}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Support may ask for this to verify your account.
+              {tx("authAccountIdHelp", "Support may ask for this to verify your account.")}
             </p>
           </div>
         </section>
@@ -329,11 +339,11 @@ export default function AccountOverview() {
           <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Security</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{tx("security", "Security")}</p>
             </div>
             <Link href="/account/security">
               <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
-                Manage <ChevronRight className="h-3.5 w-3.5" />
+                {tx("authManage", "Manage")} <ChevronRight className="h-3.5 w-3.5" />
               </span>
             </Link>
           </div>
@@ -343,15 +353,15 @@ export default function AccountOverview() {
             <div className="flex items-center justify-between gap-4 px-5 py-3">
               <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Fingerprint className="h-4 w-4 text-gray-400" aria-hidden />
-                Passkey
+                {tx("authPasskey", "Passkey")}
               </span>
               {hasPasskeys ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" /> Set up
+                  <CheckCircle2 className="h-4 w-4" /> {tx("authSetUp", "Set up")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
-                  <XCircle className="h-4 w-4" /> None
+                  <XCircle className="h-4 w-4" /> {tx("authNone", "None")}
                 </span>
               )}
             </div>
@@ -360,24 +370,24 @@ export default function AccountOverview() {
             <div className="flex items-center justify-between gap-4 px-5 py-3">
               <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Key className="h-4 w-4 text-gray-400" aria-hidden />
-                2-step verification
+                {tx("authTwoStepVerification", "2-step verification")}
               </span>
               {totpEnabled === null ? (
                 <span className="text-xs text-gray-400">—</span>
               ) : totpEnabled ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" /> Enabled
+                  <CheckCircle2 className="h-4 w-4" /> {tx("authEnabled", "Enabled")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
-                  <XCircle className="h-4 w-4" /> Disabled
+                  <XCircle className="h-4 w-4" /> {tx("authDisabled", "Disabled")}
                 </span>
               )}
             </div>
 
             {/* Active sessions */}
             <div className="flex items-center justify-between gap-4 px-5 py-3">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Active sessions</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authActiveSessions", "Active sessions")}</span>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 {sessionCount !== null ? sessionCount : "—"}
               </span>
@@ -388,17 +398,17 @@ export default function AccountOverview() {
         {/* ── Recent activity ────────────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Recent activity</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{tx("authRecentActivity", "Recent activity")}</p>
             <Link href="/account/activity">
               <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
-                View all <ChevronRight className="h-3.5 w-3.5" />
+                {tx("authViewAll", "View all")} <ChevronRight className="h-3.5 w-3.5" />
               </span>
             </Link>
           </div>
 
           {recentEvents.length === 0 ? (
             <p className="px-5 py-6 text-sm text-gray-500 dark:text-gray-400">
-              No activity yet. Create a note while signed in to see it here.
+              {tx("authNoActivityYet", "No activity yet. Create a note while signed in to see it here.")}
             </p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
@@ -414,7 +424,9 @@ export default function AccountOverview() {
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${eventAccent(ev.type)}`}>
                       <EventIcon type={ev.type} />
                     </span>
-                    <span className="flex-1 text-sm text-gray-800 dark:text-gray-200">{eventLabel(ev.type)}</span>
+                    <span className="flex-1 text-sm text-gray-800 dark:text-gray-200">
+                      {tx(eventLabel(ev.type), eventLabel(ev.type))}
+                    </span>
                     <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">{relative}</span>
                   </li>
                 );
@@ -426,29 +438,29 @@ export default function AccountOverview() {
         {/* ── Preferences quick-look ─────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Preferences</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{tx("authNavPreferences", "Preferences")}</p>
             <Link href="/account/preferences">
               <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
-                Edit <ChevronRight className="h-3.5 w-3.5" />
+                {tx("authEdit", "Edit")} <ChevronRight className="h-3.5 w-3.5" />
               </span>
             </Link>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
             <div className="flex items-center justify-between gap-4 px-5 py-3">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authTheme", "Theme")}</span>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                <ThemeLabel pref={themePref} />
+                <ThemeLabel pref={themePref} t={tx} />
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 px-5 py-3">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Email notifications</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{tx("authEmailNotifications", "Email notifications")}</span>
               {summary?.emailNotifications ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-                  <Bell className="h-3.5 w-3.5" /> On
+                  <Bell className="h-3.5 w-3.5" /> {tx("authOn", "On")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-500">
-                  <BellOff className="h-3.5 w-3.5" /> Off
+                  <BellOff className="h-3.5 w-3.5" /> {tx("authOff", "Off")}
                 </span>
               )}
             </div>
@@ -459,11 +471,13 @@ export default function AccountOverview() {
         <section className="rounded-xl border border-blue-200/80 dark:border-blue-900/60 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Current plan</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                {tx("authCurrentPlan", "Current plan")}
+              </p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
             </div>
             <span className="rounded-md bg-gray-100 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 text-center">
-              Billing coming soon
+              {tx("authBillingComingSoon", "Billing coming soon")}
             </span>
           </div>
 
@@ -473,7 +487,7 @@ export default function AccountOverview() {
                 <div key={t} className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{PLAN_LABEL[t]}</p>
                   <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
-                    Planned
+                    {tx("authPlanned", "Planned")}
                   </span>
                 </div>
               ))}

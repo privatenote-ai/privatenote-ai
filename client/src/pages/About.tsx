@@ -1,7 +1,10 @@
 import React from 'react';
 import { GraduationCap, Heart, Coffee, Github, Linkedin, Twitter } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function About() {
+  const { t } = useLanguage();
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24 relative">
       {/* Ambient Background Glows */}
@@ -10,10 +13,10 @@ export default function About() {
 
       <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
         <h1 className="page-title mb-10 pb-1 leading-[1.05] text-primary relative z-10">
-          About
+          {t.aboutPageTitle}
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
-          The mission, values, and people behind privateNote.ai.
+          {t.aboutPageSubtitle}
         </p>
       </div>
 
@@ -32,23 +35,16 @@ export default function About() {
               <h2 className="text-xl font-medium mb-2 text-center md:text-left">Marjan Skrobot, Ph.D.</h2>
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-4 justify-center md:justify-start">
                 <GraduationCap className="h-4 w-4 mr-1" />
-                <span>Cryptography and Security Protocols</span>
+                <span>{t.aboutRole}</span>
               </div>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                I am passionate about personal freedom, the right to privacy, and making the world a bit better 
-                every day with a smile and warm connections. With a background in advanced cryptography, I've 
-                dedicated my career to protecting digital privacy and developing secure communication tools that 
-                respect fundamental human rights.
+                {t.aboutBio1}
               </p>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                My journey in cryptography began with a fascination for mathematics and evolved into a deep commitment 
-                to applying these principles to real-world privacy challenges. I believe that privacy isn't just a 
-                technical feature—it's a fundamental right that underpins our freedom of expression, thought, and association.
+                {t.aboutBio2}
               </p>
               <p className="text-gray-700 dark:text-gray-300">
-                Through privateNote.ai, I aim to provide a simple yet powerful tool that makes secure communication 
-                accessible to everyone. Beyond the technical aspects, I value human connection and believe that 
-                privacy technologies should enhance, rather than replace, meaningful human interactions.
+                {t.aboutBio3}
               </p>
             </div>
           </div>
@@ -58,15 +54,15 @@ export default function About() {
           <div className="flex items-start mb-4">
             <Heart className="h-6 w-6 text-primary mr-3 mt-1" />
             <div>
-              <h2 className="text-xl font-medium mb-2">My Mission</h2>
+              <h2 className="text-xl font-medium mb-2">{t.aboutMissionTitle}</h2>
               <p className="text-gray-700 dark:text-gray-300 mb-3">
-                I believe that privacy is essential for personal freedom and democracy to flourish. My mission is to:
+                {t.aboutMissionIntro}
               </p>
               <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
-                <li>Create accessible, user-friendly privacy tools that anyone can use</li>
-                <li>Educate people about digital privacy and security best practices</li>
-                <li>Advocate for stronger privacy protections in our increasingly digital world</li>
-                <li>Bridge the gap between complex cryptography and everyday users</li>
+                <li>{t.aboutMissionPrivacyTools}</li>
+                <li>{t.aboutMissionEducation}</li>
+                <li>{t.aboutMissionAdvocacy}</li>
+                <li>{t.aboutMissionBridge}</li>
               </ul>
             </div>
           </div>
@@ -74,9 +70,9 @@ export default function About() {
 
         <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
           <div className="text-center">
-            <h2 className="text-xl font-medium mb-4">Support My Work</h2>
+            <h2 className="text-xl font-medium mb-4">{t.aboutSupportTitle}</h2>
             <p className="text-gray-700 dark:text-gray-300 mb-6 max-w-lg mx-auto">
-              If you find privateNote.ai valuable, consider supporting my work. Your contribution helps me maintain this service and develop new privacy-focused tools.
+              {t.aboutSupportBody}
             </p>
             <a 
               href="https://www.buymeacoffee.com/marjanskrobot" 
@@ -85,14 +81,14 @@ export default function About() {
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFDD00] text-black font-medium rounded-lg hover:bg-[#FFDD00]/90 transition-colors"
             >
               <Coffee className="h-5 w-5" />
-              <span>Buy Me a Coffee</span>
+              <span>{t.aboutCoffeeButton}</span>
             </a>
           </div>
         </section>
 
         <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
           <div className="text-center">
-            <h2 className="text-xl font-medium mb-4">Connect With Me</h2>
+            <h2 className="text-xl font-medium mb-4">{t.aboutConnectTitle}</h2>
             <div className="flex justify-center gap-4">
               <a 
                 href="https://github.com/marjanskrobot" 

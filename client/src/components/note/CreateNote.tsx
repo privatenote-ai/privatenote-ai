@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,6 @@ import {
 } from "@shared/noteSizeLimits";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
-  noteExpiryPresetDisplayLabel,
   noteExpiryPresetIdToSeconds,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
@@ -49,7 +48,7 @@ import {
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
 import {
-  promptTemplates,
+  getPromptTemplatesForLanguage,
   buildPromptFromTemplate,
   formatSentenceLengthUserSuffix,
   applySentenceLengthToUserPrompt,
@@ -92,6 +91,8 @@ import type { AiPostGenTransform } from "./AiComposer";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
+import { useLanguage } from "@/context/LanguageContext";
+import type { SupportedLanguage } from "@/utils/translation";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -101,10 +102,24 @@ function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   return t;
 }
 
-function askAnythingScaffoldPrompt(sentenceLength: AiSentenceLengthId): string {
-  const t = promptTemplates.find((x) => x.id === "ask-anything");
-  const base = t?.userTemplate ?? "";
-  return `${base}\n${formatSentenceLengthUserSuffix(sentenceLength)}`;
+function askAnythingScaffoldPrompt(sentenceLength: AiSentenceLengthId, language: SupportedLanguage): string {
+  const templates = getPromptTemplatesForLanguage(language);
+  const tmpl = templates.find((x) => x.id === "ask-anything");
+  const base = tmpl?.userTemplate ?? "";
+  return `${base}\n${formatSentenceLengthUserSuffix(sentenceLength, language)}`;
+}
+
+function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
+  if (expiryValue === "5m") return t.expiry5m;
+  if (expiryValue === "10m") return t.expiry10m;
+  if (expiryValue === "30m") return t.expiry30m;
+  if (expiryValue === "1h") return t.expiry1h;
+  if (expiryValue === "2h") return t.expiry2h;
+  if (expiryValue === "8h") return t.expiry8h;
+  if (expiryValue === "1d") return t.expiry1d;
+  if (expiryValue === "3d") return t.expiry3d;
+  if (expiryValue === "7d") return t.expiry7d;
+  return expiryValue;
 }
 
 interface CreateNoteProps {
@@ -112,6 +127,9 @@ interface CreateNoteProps {
 }
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
+  const { t, language } = useLanguage();
+  const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
+
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
 
@@ -133,13 +151,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const aiComposerAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // ── AI state ──────────────────────────────────────────────────────────────
-  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt("2-3"));
+  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt("2-3", language));
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
     "improve" | "summarize" | "secure" | "ask"
   >(
     () =>
-      promptTemplates.find((x) => x.id === "ask-anything")?.enhancementType ?? "improve",
+      getPromptTemplatesForLanguage(language).find((x) => x.id === "ask-anything")
+        ?.enhancementType ?? "improve",
   );
   const [aiProgress, setAiProgress] = useState<ModelLoadProgress | null>(null);
   const [isAiModelLoading, setIsAiModelLoading] = useState(false);
@@ -328,6 +347,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
   }, [toast]);
 
+  useEffect(() => {
+    if (selectedTemplateId !== "ask-anything") return;
+    setAiPrompt(askAnythingScaffoldPrompt(aiSentenceLength, language));
+    // Only refresh scaffold when UI language changes (not when the user edits the prompt).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
+
   const retryFreeModelDownloadAfterReset = useCallback(async () => {
     await resetFreeModelDownloadState();
     void startFreeModelDownload();
@@ -374,12 +400,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       }
       const finalUserMessage =
         useBuild && selectedTemplate
-          ? buildPromptFromTemplate(selectedTemplate, content.trim(), modelId, aiSentenceLength)
+          ? buildPromptFromTemplate(
+              selectedTemplate,
+              content.trim(),
+              modelId,
+              aiSentenceLength,
+              language,
+            )
           : undefined;
       return await enhanceNoteClientSide(content, enhancementTypeForModel, (p) => setAiProgress(p), {
         ...baseOpts,
         ...(finalUserMessage ? { finalUserMessage } : {}),
         templateId: selectedTemplateId ?? undefined,
+        promptLocale: language,
       });
     } catch (error) {
       if (isWebLlmGpuOrDisposeFailure(error)) {
@@ -753,7 +786,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setCreatedNote(null);
     setNoteContent("");
     resetPrefill();
-    setAiPrompt(askAnythingScaffoldPrompt("2-3"));
+    setAiPrompt(askAnythingScaffoldPrompt("2-3", language));
     setOriginalPrompt("");
     setUserPromptHistory([]);
     setTransformHistory([]);
@@ -763,7 +796,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setSelectedTemplateId("ask-anything");
     setAiSentenceLength("2-3");
     setAiEnhancementType(
-      promptTemplates.find((x) => x.id === "ask-anything")?.enhancementType ?? "improve",
+      getPromptTemplatesForLanguage(language).find((x) => x.id === "ask-anything")
+        ?.enhancementType ?? "improve",
     );
     setPassword("");
     setShowPassword(false);
@@ -778,7 +812,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiPrompt("");
       return;
     }
-    setAiPrompt(template.userTemplate + formatSentenceLengthUserSuffix(aiSentenceLength));
+    setAiPrompt(
+      template.userTemplate + formatSentenceLengthUserSuffix(aiSentenceLength, language),
+    );
     setAiEnhancementType(template.enhancementType);
     setSelectedTemplateId(template.id);
   };
@@ -787,9 +823,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     (id: AiSentenceLengthId) => {
       setAiSentenceLength(id);
       if (selectedTemplateId === null) return;
-      setAiPrompt((p) => applySentenceLengthToUserPrompt(p, id));
+      setAiPrompt((p) => applySentenceLengthToUserPrompt(p, id, language));
     },
-    [selectedTemplateId],
+    [selectedTemplateId, language],
   );
 
   const handleUseFallbackTemplate = useCallback((text: string) => {
@@ -971,21 +1007,21 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     <>
       <span className="flex items-center whitespace-nowrap">
         <Eye className="h-3 w-3 mr-1 text-orange-500" />
-        Expires after {noteExpiryPresetDisplayLabel(expiryValue)} or 1 read
+        {t.expiresAfter} {translatedExpiryLabel(expiryValue, t)} {t.orOneRead}
       </span>
       {isPasswordProtected && (
         <>
           <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
           <span className="flex items-center whitespace-nowrap">
             <Key className="h-3 w-3 mr-1 text-yellow-500" />
-            Password protected
+            {t.passwordProtected}
           </span>
         </>
       )}
       <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
       <span className="flex items-center whitespace-nowrap">
         <Shield className="h-3 w-3 mr-1 text-green-500" />
-        End-to-end encrypted
+        {t.endToEndEncrypted}
       </span>
       <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
       <span className="flex items-center whitespace-nowrap">
@@ -995,7 +1031,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
       <span className="flex items-center whitespace-nowrap">
         <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
-        No tracking
+        {t.noTracking}
       </span>
     </>
   );
@@ -1045,7 +1081,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             >
               <div className="flex items-center justify-center">
                 <Lock className="h-4 w-4 mr-2" />
-                Write
+                {t.write}
               </div>
             </button>
             <button
@@ -1061,8 +1097,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             >
               <div className="flex items-center justify-center">
                 <Sparkles className="h-4 w-4 mr-2" />
-                <span className="inline md:hidden">Private AI</span>
-                <span className="hidden md:inline">Write with Private AI</span>
+                <span className="inline md:hidden">{t.privateAiShort}</span>
+                <span className="hidden md:inline">{t.writeWithPrivateAi}</span>
               </div>
             </button>
           </div>
@@ -1086,6 +1122,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           {isAiMode ? (
             <div ref={aiComposerAnchorRef} className="scroll-mt-20 md:scroll-mt-24">
               <AiComposer
+                language={language}
                 noteContent={noteContent}
                 applyNoteContentInput={applyNoteContentInput}
                 aiPrompt={aiPrompt}
@@ -1176,12 +1213,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                   applyNoteContentInput(
                     e,
                     MAX_NOTE_PLAINTEXT_UTF8_BYTES,
-                    `Notes are limited to ${String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024)} KB of UTF-8 text. Extra pasted text was removed.`,
+                    t.notesLimitTrimmed,
                   )
                 }
                 rows={6}
                 className="w-full px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                placeholder="Type your confidential message here..."
+                placeholder={t.typeHere}
                 required
               />
               <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
@@ -1221,12 +1258,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                   {showAdvancedOptions ? (
                     <>
                       <ChevronUp className="w-4 h-4 mr-1.5 text-primary" />
-                      <span>Hide Options</span>
+                      <span>{t.hideOptions}</span>
                     </>
                   ) : (
                     <>
                       <Settings className="w-4 h-4 mr-1.5 text-primary" />
-                      <span>Customize</span>
+                      <span>{t.customize}</span>
                     </>
                   )}
                 </button>
@@ -1258,12 +1295,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         />
                       </svg>
-                      Creating secure note...
+                      {t.creatingSecureNote}
                     </>
                   ) : (
                     <>
                       <Lock className="w-4 h-4 mr-1.5" />
-                      Share Private Note
+                      {t.sharePrivateNote}
                     </>
                   )}
                 </button>

@@ -1,6 +1,7 @@
 import React from "react";
 import { utf8ByteLength } from "@shared/noteSizeLimits";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function NotePlaintextUtf8Meter({
   noteContent,
@@ -12,6 +13,7 @@ export function NotePlaintextUtf8Meter({
   /** Merged onto the outer wrapper (e.g. `mb-0` when laid out in a row). */
   className?: string;
 }) {
+  const { t } = useLanguage();
   const used = utf8ByteLength(noteContent);
   const remaining = Math.max(0, maxBytes - used);
   const warn = remaining < 2 * 1024;
@@ -29,8 +31,8 @@ export function NotePlaintextUtf8Meter({
       <span className="tabular-nums">
         {" · "}
         {remaining >= 1024
-          ? `${(remaining / 1024).toFixed(1)} KB left`
-          : `${remaining.toLocaleString()} B left`}
+          ? `${(remaining / 1024).toFixed(1)} KB ${t.bytesLeft}`
+          : `${remaining.toLocaleString()} B ${t.bytesLeft}`}
       </span>
     </div>
   );

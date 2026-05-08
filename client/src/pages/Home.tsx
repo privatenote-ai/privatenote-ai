@@ -4,11 +4,13 @@ import { CreateNote } from '@/components/note/CreateNote';
 import { NoteResult } from '@/components/note/NoteResult';
 import { SecurityFeatures } from '@/components/features/SecurityFeatures';
 import { FAQSection } from '@/components/features/FAQSection';
+import { useLanguage } from '@/context/LanguageContext';
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
+  const { t } = useLanguage();
 
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
@@ -28,12 +30,11 @@ const Home: React.FC = () => {
           </div>
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
-              <span className="block">Your Messages,</span>
-              <span className="block mt-1 text-primary">Your Privacy</span>
+              <span className="block">{t.homeHeroLine1}</span>
+              <span className="block mt-1 text-primary">{t.homeHeroLine2}</span>
             </h1>
             <p className="mt-3 max-w-4xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-5xl">
-              End-to-end encrypted notes that self-destruct after reading.
-              More secure than alternatives, with client-side encryption ensuring your messages stay private.
+              {t.homeHeroSubtitle}
             </p>
           </div>
         </section>
@@ -66,24 +67,22 @@ const Home: React.FC = () => {
           <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
             <div>
               <div className="inline-flex items-center rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/80 dark:bg-gray-900/60 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300 shadow-sm">
-                Why PrivateNote
+                {t.whyPrivateNote}
               </div>
 
               <h2 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Share sensitive notes with confidence.
+                {t.shareSensitiveHeading}
               </h2>
 
               <p className="mt-3 text-base text-gray-600 dark:text-gray-300 max-w-xl">
-                PrivateNote keeps your messages private by encrypting in the browser and
-                letting the note disappear after it’s read. No accounts, no friction,
-                and no ads following you around.
+                {t.shareSensitiveBody}
               </p>
 
               <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
                 {[
-                  'Client-side encryption means the server never sees your plaintext.',
-                  'Read-once and expiring notes reduce exposure over time.',
-                  'No tracking cookies, no ads, and no third-party analytics on notes.',
+                  t.clientSideEncryption,
+                  t.readOnceExposure,
+                  t.noTrackingAds,
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
@@ -103,23 +102,23 @@ const Home: React.FC = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                A simple privacy flow you can trust.
+                {t.simplePrivacyFlow}
               </h3>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Clear steps, no hidden data collection.
+                {t.clearSteps}
               </p>
             </div>
             <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
               <Shield className="h-4 w-4" />
-              Privacy-first by design
+              {t.privacyFirst}
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[
-              { title: 'Write', detail: 'Compose your note in the browser — nothing is stored yet.' },
-              { title: 'Encrypt', detail: 'Your device encrypts the note before it leaves your screen.' },
-              { title: 'Share', detail: 'Send the link. The note disappears after it’s read or expires.' },
+              { title: t.write, detail: t.writeStepDetail },
+              { title: t.encrypt, detail: t.encryptStepDetail },
+              { title: t.share, detail: t.shareStepDetail },
             ].map((step, idx) => (
               <div
                 key={step.title}
@@ -142,10 +141,10 @@ const Home: React.FC = () => {
 
           <div className="mt-6 grid gap-3 text-xs text-gray-600 dark:text-gray-300 sm:grid-cols-2">
             {[
-              'No tracking cookies on note pages.',
-              'No third-party analytics scripts on notes.',
-              'Encryption keys stay in the link, not on our servers.',
-              'Minimal metadata stored only to enforce expiration.',
+              t.noTrackingCookies,
+              t.noThirdPartyAnalytics,
+              t.keysStayInLink,
+              t.minimalMetadata,
             ].map((detail) => (
               <div key={detail} className="flex items-start gap-2">
                 <span className="mt-0.5 text-primary">

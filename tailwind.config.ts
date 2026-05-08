@@ -105,8 +105,8 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 0.14s ease-out",
+        "accordion-up": "accordion-up 0.08s linear",
         "neuron-pulse": "neuron-pulse 2.8s ease-in-out infinite",
         "brain-think": "brain-think 2.8s ease-in-out infinite",
         "pencil-write": "pencil-write 1.15s ease-in-out infinite",

@@ -4,12 +4,16 @@
  */
 
 import {
+  getStructuredHintParsedCuesPrefix,
+  getStructuredHintRecipientLabel,
+  getStructuredSecondLabel,
+  type StructuredSecondLabelKey,
+} from "@/components/note/promptSmallModelLocale";
+import {
   buildMeetingStructuredHint,
   tryExtractMeetingRecipientAndTopic,
 } from "@/utils/meetingRequestStructuredHint";
-
-const PREFIX =
-  "Parsed cues (verify against USER REQUEST; ignore these lines if they disagree):\n";
+import type { SupportedLanguage } from "@/utils/translation";
 
 function trimField(s: string): string {
   return s.trim().replace(/[,:;]+$/, "").trim();
@@ -21,13 +25,13 @@ function trimField(s: string): string {
 function tryStructuredFieldsForTemplate(
   templateId: string,
   u: string
-): { recipient?: string; second?: string; secondLabel: string } | null {
+): { recipient?: string; second?: string; secondLabelKey: StructuredSecondLabelKey } | null {
   const meetingPair = tryExtractMeetingRecipientAndTopic(u);
   if (meetingPair) {
     return {
       recipient: meetingPair.recipient,
       second: meetingPair.topic,
-      secondLabel: "Purpose / topic",
+      secondLabelKey: "purpose_topic",
     };
   }
 
@@ -38,7 +42,7 @@ function tryStructuredFieldsForTemplate(
     return {
       recipient: trimField(ap[1]),
       second: trimField(ap[2]),
-      secondLabel: "What to address",
+      secondLabelKey: "what_to_address",
     };
   }
 
@@ -50,7 +54,7 @@ function tryStructuredFieldsForTemplate(
       return {
         recipient: trimField(noteTo[1]),
         second: trimField(noteTo[2]),
-        secondLabel: "Reason",
+        secondLabelKey: "reason",
       };
     }
     const my = u.match(/\bthank\s+my\s+([^.!?\n]{2,80}?)\s+for\s+([^.!\n]{4,220})/i);
@@ -58,7 +62,7 @@ function tryStructuredFieldsForTemplate(
       return {
         recipient: `my ${trimField(my[1])}`,
         second: trimField(my[2]),
-        secondLabel: "Reason",
+        secondLabelKey: "reason",
       };
     }
   }
@@ -70,7 +74,7 @@ function tryStructuredFieldsForTemplate(
     return {
       recipient: trimField(cg[1]),
       second: trimField(cg[2]),
-      secondLabel: "Achievement",
+      secondLabelKey: "achievement",
     };
   }
 
@@ -81,7 +85,7 @@ function tryStructuredFieldsForTemplate(
     return {
       recipient: trimField(wr[1]),
       second: trimField(wr[2]),
-      secondLabel: "Topic",
+      secondLabelKey: "topic",
     };
   }
 
@@ -94,21 +98,26 @@ function tryStructuredFieldsForTemplate(
 export function buildSmallTierStructuredFieldsHint(
   templateId: string,
   userInput: string,
-  enhancementType: "improve" | "summarize" | "secure" | "ask"
+  enhancementType: "improve" | "summarize" | "secure" | "ask",
+  language: SupportedLanguage = "en",
 ): string {
   if (enhancementType !== "improve" && enhancementType !== "ask") return "";
   const u = userInput.trim();
   if (!u) return "";
 
   if (templateId === "meeting-request") {
-    return buildMeetingStructuredHint(u);
+    return buildMeetingStructuredHint(u, language);
   }
 
   const fields = tryStructuredFieldsForTemplate(templateId, u);
   if (!fields?.recipient) return "";
 
+  const prefix = getStructuredHintParsedCuesPrefix(language);
+  const recipientLabel = getStructuredHintRecipientLabel(language);
+
   if (fields.second) {
-    return `${PREFIX}Recipient: ${fields.recipient}\n${fields.secondLabel}: ${fields.second}\n\n`;
+    const secondLabel = getStructuredSecondLabel(fields.secondLabelKey, language);
+    return `${prefix}${recipientLabel}: ${fields.recipient}\n${secondLabel}: ${fields.second}\n\n`;
   }
-  return `${PREFIX}Recipient: ${fields.recipient}\n\n`;
+  return `${prefix}${recipientLabel}: ${fields.recipient}\n\n`;
 }

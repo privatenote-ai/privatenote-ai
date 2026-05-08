@@ -1,48 +1,49 @@
 import React from 'react';
 import { Lock, Timer, Shield, DollarSign, Zap } from 'lucide-react';
-
-// Define the feature data for reuse
-const features = [
-  {
-    title: "Private AI Processing",
-    description: "Runs directly in your browser. Your prompts never leave your device.",
-    icon: <Lock className="h-6 w-6 text-primary" />
-  },
-  {
-    title: "Self-Destructing Notes",
-    description: "Read-once by default, with expiry you control: minutes, hours, or days.",
-    icon: <Timer className="h-6 w-6 text-primary" />
-  },
-  {
-    title: "One Link, No Accounts",
-    description: "Create a note, share the link, done. No sign‑ups, no friction.",
-    icon: <Shield className="h-6 w-6 text-primary" />
-  },
-  {
-    title: "Privacy, Not Paywalls",
-    description: "Core security is free. No subscriptions needed to keep notes protected.",
-    icon: <DollarSign className="h-6 w-6 text-primary" />
-  },
-  {
-    title: "Zero Tracking",
-    description: "No analytics, no ads, no data resale.",
-    icon: <Zap className="h-6 w-6 text-primary" />
-  },
-  {
-    title: "Post‑Quantum by Design",
-    description: "AES-GCM in the browser. The server never sees the encryption key or plaintext.",
-    icon: <Shield className="h-6 w-6 text-primary" />
-  }
-];
+import { useLanguage } from '@/context/LanguageContext';
 
 export const SecurityFeatures: React.FC = () => {
+  const { t } = useLanguage();
+  const features = [
+    {
+      title: t.featurePrivateAiTitle,
+      description: t.featurePrivateAiDescription,
+      icon: <Lock className="h-6 w-6 text-primary" />
+    },
+    {
+      title: t.featureSelfDestructTitle,
+      description: t.featureSelfDestructDescription,
+      icon: <Timer className="h-6 w-6 text-primary" />
+    },
+    {
+      title: t.featureOneLinkTitle,
+      description: t.featureOneLinkDescription,
+      icon: <Shield className="h-6 w-6 text-primary" />
+    },
+    {
+      title: t.featurePrivacyNotPaywallsTitle,
+      description: t.featurePrivacyNotPaywallsDescription,
+      icon: <DollarSign className="h-6 w-6 text-primary" />
+    },
+    {
+      title: t.featureZeroTrackingTitle,
+      description: t.featureZeroTrackingDescription,
+      icon: <Zap className="h-6 w-6 text-primary" />
+    },
+    {
+      title: t.featurePostQuantumTitle,
+      description: t.featurePostQuantumDescription,
+      icon: <Shield className="h-6 w-6 text-primary" />
+    }
+  ];
+
   return (
     <section className="relative py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8 sm:mb-12">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Key Features</h2>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.keyFeatures}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          Practical security, explained plainly.
+          {t.keyFeaturesSubtitle}
         </p>
       </div>
       
@@ -85,7 +86,7 @@ export const SecurityFeatures: React.FC = () => {
       </div>
 
       <div className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
-        Built for privacy-first sharing — no tracking, no ads, no data resale.
+        {t.featuresFooter}
       </div>
       </div>
     </section>

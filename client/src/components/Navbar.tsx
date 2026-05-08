@@ -3,6 +3,8 @@ import { useLocation } from 'wouter';
 import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -40,6 +42,7 @@ export const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
+  const { language, t } = useLanguage();
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
@@ -82,6 +85,7 @@ export const Navbar: React.FC = () => {
   }, [location, refreshAuth]);
 
   const isAuthRoute = location.startsWith('/auth');
+  const lp = (path: string) => localizedPath(path, language);
 
   const initials = React.useMemo(() => {
     if (!user?.email) return 'U';
@@ -137,7 +141,7 @@ export const Navbar: React.FC = () => {
         {isProfileOpen && (
           <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
             <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.signedInAs}</p>
               <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{user.email}</p>
             </div>
             <div className="py-1">
@@ -146,14 +150,14 @@ export const Navbar: React.FC = () => {
                 closeMenu={closeMenu}
                 className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
-                Account
+                {t.account}
               </NavLink>
               <NavLink
                 href="/account/security"
                 closeMenu={closeMenu}
                 className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
-                Security
+                {t.security}
               </NavLink>
               <button
                 type="button"
@@ -163,7 +167,7 @@ export const Navbar: React.FC = () => {
                 }}
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800/60"
               >
-                Sign out
+                {t.signOut}
               </button>
             </div>
           </div>
@@ -176,14 +180,14 @@ export const Navbar: React.FC = () => {
           closeMenu={closeMenu}
           className={authTextLink}
         >
-          Sign in
+          {t.signIn}
         </NavLink>
         <NavLink
           href="/auth/sign-up"
           closeMenu={closeMenu}
           className={authButtonLink}
         >
-          Sign up
+          {t.signUp}
         </NavLink>
       </>
     )
@@ -197,7 +201,7 @@ export const Navbar: React.FC = () => {
         <div className="relative mx-auto flex h-16 max-w-4xl items-center gap-6">
           {/* Logo — sits just outside the left edge of the editor column */}
           <NavLink
-            href="/"
+            href={lp("/")}
             closeMenu={closeMenu}
             className="absolute right-full top-1/2 -translate-y-1/2 pr-6 flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap"
             aria-label="PrivateNote.ai home"
@@ -210,23 +214,23 @@ export const Navbar: React.FC = () => {
             className="flex min-w-0 flex-1 items-center justify-center gap-x-7 2xl:gap-x-8"
             aria-label="Primary"
           >
-            <NavLink href="/" closeMenu={closeMenu} className={desktopLink}>
-              Write a Note
+            <NavLink href={lp("/")} closeMenu={closeMenu} className={desktopLink}>
+              {t.writeNote}
             </NavLink>
-            <NavLink href="/password-generator" closeMenu={closeMenu} className={desktopLink}>
-              Share a Password
+            <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
+              {t.sharePassword}
             </NavLink>
-            <NavLink href="/how-it-works" closeMenu={closeMenu} className={desktopLink}>
-              How It Works
+            <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={desktopLink}>
+              {t.howItWorks}
             </NavLink>
-            <NavLink href="/security-resources" closeMenu={closeMenu} className={desktopLink}>
-              Security
+            <NavLink href={lp("/security-resources")} closeMenu={closeMenu} className={desktopLink}>
+              {t.security}
             </NavLink>
-            <NavLink href="/blog" closeMenu={closeMenu} className={desktopLink}>
-              Blog
+            <NavLink href={lp("/blog")} closeMenu={closeMenu} className={desktopLink}>
+              {t.blog}
             </NavLink>
-            <NavLink href="/about" closeMenu={closeMenu} className={desktopLink}>
-              About
+            <NavLink href={lp("/about")} closeMenu={closeMenu} className={desktopLink}>
+              {t.about}
             </NavLink>
           </nav>
 
@@ -259,7 +263,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         <NavLink
-          href="/"
+          href={lp("/")}
           closeMenu={closeMenu}
           className="absolute left-1/2 -translate-x-1/2 flex shrink-0 items-center gap-2 cursor-pointer"
         >
@@ -273,7 +277,7 @@ export const Navbar: React.FC = () => {
             className="appearance-none border-0 bg-transparent shadow-none p-1 text-primary hover:text-primary/80 transition-colors"
             aria-expanded={isMenuOpen}
             aria-controls="mobile-menu"
-            aria-label="Toggle navigation"
+            aria-label={t.toggleNavigation}
           >
             {isMenuOpen ? (
               <X className="h-7 w-7" />
@@ -290,31 +294,31 @@ export const Navbar: React.FC = () => {
               className="fixed left-0 right-0 top-16 bottom-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-lg rounded-none shadow-lg border-t border-gray-200 dark:border-gray-800 overflow-y-auto z-50 transition-all duration-200 ease-in-out"
             >
               <div className="py-2">
-                <NavLink href="/" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Lock className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>Write a Note</span>
+                  <span>{t.writeNote}</span>
                 </NavLink>
-                <NavLink href="/password-generator" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Key className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>Share a Password</span>
+                  <span>{t.sharePassword}</span>
                 </NavLink>
 
-                <NavLink href="/how-it-works" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Shield className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>How It Works</span>
+                  <span>{t.howItWorks}</span>
                 </NavLink>
-                <NavLink href="/security-resources" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/security-resources")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Sparkles className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>Security</span>
+                  <span>{t.security}</span>
                 </NavLink>
-                <NavLink href="/blog" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/blog")} closeMenu={closeMenu} className={mobileItemClass}>
                   <FileText className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>Blog</span>
+                  <span>{t.blog}</span>
                 </NavLink>
 
-                <NavLink href="/about" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href={lp("/about")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Info className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>About</span>
+                  <span>{t.about}</span>
                 </NavLink>
 
                 <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
@@ -323,11 +327,11 @@ export const Navbar: React.FC = () => {
                   <>
                     <NavLink href="/account" closeMenu={closeMenu} className={mobileItemClass}>
                       <Shield className="h-4 w-4 shrink-0 opacity-80" />
-                      <span>Account</span>
+                      <span>{t.account}</span>
                     </NavLink>
                     <NavLink href="/account/security" closeMenu={closeMenu} className={mobileItemClass}>
                       <ShieldCheck className="h-4 w-4 shrink-0 opacity-80" />
-                      <span>Security</span>
+                      <span>{t.security}</span>
                     </NavLink>
                     <button
                       type="button"
@@ -335,18 +339,18 @@ export const Navbar: React.FC = () => {
                       className={`${mobileItemClass} w-full text-left`}
                     >
                       <Mail className="h-4 w-4 shrink-0 opacity-80" />
-                      <span>Sign out</span>
+                      <span>{t.signOut}</span>
                     </button>
                   </>
                 ) : isAuthRoute ? null : (
                   <>
                     <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
                       <Mail className="h-4 w-4 shrink-0 opacity-80" />
-                      <span>Sign in</span>
+                      <span>{t.signIn}</span>
                     </NavLink>
                     <NavLink href="/auth/sign-up" closeMenu={closeMenu} className={mobileItemClass}>
                       <Key className="h-4 w-4 shrink-0 opacity-80" />
-                      <span>Sign up</span>
+                      <span>{t.signUp}</span>
                     </NavLink>
                   </>
                 )}
@@ -367,7 +371,6 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
           )}
-          </div>
         </div>
     </nav>
   );

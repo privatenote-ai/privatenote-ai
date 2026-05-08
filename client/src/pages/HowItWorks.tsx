@@ -7,24 +7,31 @@ import {
   Share2,
   Sparkles,
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function HowItWorks() {
+  const { t } = useLanguage();
   const flowSteps = [
     {
-      title: "Write",
-      detail: "Compose your note in the browser — nothing is stored yet.",
+      title: t.write,
+      detail: t.writeStepDetail,
       icon: <PenLine className="h-5 w-5" />,
     },
     {
-      title: "Encrypt",
-      detail: "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
+      title: t.encrypt,
+      detail: t.howEncryptStepDetail,
       icon: <Lock className="h-5 w-5" />,
     },
     {
-      title: "Share",
-      detail: "Send the link. The note disappears after it’s read or expires.",
+      title: t.share,
+      detail: t.shareStepDetail,
       icon: <Share2 className="h-5 w-5" />,
     },
+  ];
+  const infrastructureItems = [
+    t.howInfrastructureItemCiphertext,
+    t.howInfrastructureItemMinimizedData,
+    t.howInfrastructureItemEuStorage,
   ];
 
   return (
@@ -36,10 +43,10 @@ export default function HowItWorks() {
       {/* Hero Header */}
       <div className="text-center mb-12 relative z-10">
         <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
-          Security by <span className="text-primary italic">Design</span>
+          {t.howHeroPrefix} <span className="text-primary italic">{t.howHeroAccent}</span>
         </h1>
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
-          Choose absolute privacy with Standard mode, or enable AI Assist for optional productivity.
+          {t.howHeroSubtitle}
         </p>
       </div>
 
@@ -49,10 +56,10 @@ export default function HowItWorks() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                A simple privacy flow you can trust.
+                {t.simplePrivacyFlow}
               </h2>
               <p className="mt-4 mb-6 text-sm text-gray-600 dark:text-gray-300">
-                Clear steps, no hidden data collection.
+                {t.clearSteps}
               </p>
             </div>
           </div>
@@ -82,18 +89,14 @@ export default function HowItWorks() {
           <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
             <div className="max-w-2xl md:w-1/2">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
-                Infrastructure
+                {t.howInfrastructureTitle}
               </h2>
               <p className="max-w-xl text-base text-gray-600 dark:text-gray-400 mb-5 leading-relaxed">
-                Utilizing Cloudflare&apos;s edge (Workers, KV, Durable Objects) to reduce latency and improve availability.
+                {t.howInfrastructureBody}
               </p>
 
               <div className="space-y-3">
-                {[
-                  "Notes stored as encrypted ciphertext",
-                  "Minimized data collection & short retention",
-                  "Future: EU-only storage (Premium feature)",
-                ].map((item, idx) => (
+                {infrastructureItems.map((item, idx) => (
                   <div
                     key={idx}
                     className="flex items-center gap-3 text-base text-gray-700 dark:text-gray-300"
@@ -114,7 +117,7 @@ export default function HowItWorks() {
                   viewBox="0 0 360 200"
                   fill="none"
                   role="img"
-                  aria-label="Robust infrastructure illustration"
+                  aria-label={t.howInfrastructureIllustration}
                 >
                   <g id="servers">
                     <rect
@@ -184,7 +187,7 @@ export default function HowItWorks() {
                 viewBox="0 0 360 200"
                 fill="none"
                 role="img"
-                aria-label="Manual reveal protection from link preview bots"
+                aria-label={t.howManualRevealIllustration}
               >
                 <g id="note">
                   <rect
@@ -263,13 +266,13 @@ export default function HowItWorks() {
 
             <div className="mt-10 max-w-2xl md:order-2 md:w-1/2">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
-                Manual Reveal
+                {t.howManualRevealTitle}
               </h2>
               <p className="text-base text-gray-600 dark:text-gray-400 mb-5 leading-relaxed">
-                Link preview bots in apps like Slack or iMessage can accidentally “read” a one-time note before your recipient sees it.
+                {t.howManualRevealBody}
               </p>
               <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                “Our manual reveal step forces human interaction, ensuring only the intended recipient consumes the note.”
+                “{t.howManualRevealQuote}”
               </p>
             </div>
           </div>
@@ -277,16 +280,16 @@ export default function HowItWorks() {
           <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl md:w-1/2">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
-                AI Assist (on your device)
+                {t.howAiAssistTitle}
               </h2>
               <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                If you turn on AI Assist, the note is decrypted only in your browser so a local model (WebLLM) can run the action you chose. Plaintext for that step stays on your device; our Worker never receives your note content for AI processing.
+                {t.howAiAssistBody1}
               </p>
               <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                The model and weights may download from public CDNs or repos configured for WebLLM—separate from your encrypted note payload. Results are merged into your draft locally before anything is encrypted again for upload.
+                {t.howAiAssistBody2}
               </p>
               <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                AI Assist still increases exposure versus Standard mode while the model runs (memory, downloads, and browser environment). Use it only when that trade-off is acceptable.
+                {t.howAiAssistCaution}
               </p>
             </div>
 
@@ -296,7 +299,7 @@ export default function HowItWorks() {
                 viewBox="0 0 360 200"
                 fill="none"
                 role="img"
-                aria-label="AI processing illustration with secure chip"
+                aria-label={t.howAiAssistIllustration}
               >
                 <g id="chip">
                   <rect
@@ -343,9 +346,9 @@ export default function HowItWorks() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8 p-10 rounded-[2.5rem] bg-primary text-white relative overflow-hidden group">
           <Sparkles className="absolute -right-10 -top-10 h-56 w-56 text-white/10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
           <div className="relative z-10">
-            <h3 className="text-3xl font-bold mb-2">Ready to secure your data?</h3>
+            <h3 className="text-3xl font-bold mb-2">{t.howCtaTitle}</h3>
             <p className="text-primary-foreground/80 font-medium">
-              Fast, ephemeral, and legally compliant.
+              {t.howCtaSubtitle}
             </p>
           </div>
           <div className="flex gap-4 relative z-10">
@@ -353,7 +356,7 @@ export default function HowItWorks() {
               href="/"
               className="px-8 py-4 bg-white text-primary rounded-2xl font-bold hover:shadow-xl transition-all hover:-translate-y-1"
             >
-              Start Writing
+              {t.howCtaButton}
             </Link>
           </div>
         </div>

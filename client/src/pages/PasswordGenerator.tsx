@@ -28,54 +28,27 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
-const PASSWORD_FAQ_ITEMS = [
-  {
-    id: 'pw-faq-random',
-    question: 'Is the password truly random?',
-    answer:
-      'Yes. All passwords are generated using the Web Crypto API (`crypto.getRandomValues`), which provides cryptographically secure randomness. No server is involved — the entire generation happens in your browser before anything is displayed.',
-  },
-  {
-    id: 'pw-faq-length',
-    question: 'How long should my password be?',
-    answer:
-      'For most accounts, 20 characters is excellent. For high-value targets (banking, email, password manager master password) go to 28–32 characters. Length is the single most important factor: each extra character multiplies the search space exponentially.',
-  },
-  {
-    id: 'pw-faq-symbols',
-    question: 'Why do some symbols get excluded?',
-    answer:
-      'We use a transport-safe symbol set that works reliably across all websites, terminals, and APIs. Characters like quotes, backticks, and backslashes can break form fields or shell commands, causing lockouts. The included symbols (`!@#$%^&*-_=+`) give you strong entropy without compatibility headaches.',
-  },
-  {
-    id: 'pw-faq-share',
-    question: 'Is it safe to share a password via the encrypted note link?',
-    answer:
-      'The password is encrypted in your browser before it leaves your device. Anyone who has the link can read it once — after that the note self-destructs. Treat the link like a one-time key: send it through a trusted channel and use a short expiration. Pair it with a separately shared passphrase for extra protection.',
-  },
-  {
-    id: 'pw-faq-store',
-    question: 'Should I use this to store passwords long-term?',
-    answer:
-      'No — PrivateNote is designed for one-time secure delivery, not long-term storage. Use a dedicated password manager (Bitwarden, 1Password, etc.) to store passwords permanently. Use PrivateNote to securely hand off a newly generated password to a colleague or service.',
-  },
-  {
-    id: 'pw-faq-entropy',
-    question: 'What does the strength score mean?',
-    answer:
-      'The score estimates entropy — how many guesses an attacker would need to crack your password by brute force. A 24-character mixed password has billions of billions of possible combinations. "Very Strong" means it would take longer than the age of the universe to crack with current hardware, even with a botnet.',
-  },
-  {
-    id: 'pw-faq-memorable',
-    question: 'Should I memorise generated passwords?',
-    answer:
-      'Generally no — that defeats the purpose of using a password manager. The exception is your password manager master password, which you should memorise (or store on paper in a physically secure place). For everything else, let the manager remember the random string for you.',
-  },
-];
+const PASSWORD_FAQ_ITEM_IDS = [
+  'random',
+  'length',
+  'symbols',
+  'share',
+  'store',
+  'entropy',
+  'memorable',
+] as const;
 
+type PasswordFaqItemId = (typeof PASSWORD_FAQ_ITEM_IDS)[number];
+
+const PASSWORD_FAQ_ITEMS: Array<{ id: PasswordFaqItemId }> = PASSWORD_FAQ_ITEM_IDS.map((id) => ({
+  id,
+}));
 
 const PasswordGenerator: React.FC = () => {
+  const { language, t } = useLanguage();
   const [password, setPassword] = useState('');
   const [length, setLength] = useState(DEFAULT_STRONG_PASSWORD_LENGTH);
   const [useUppercase, setUseUppercase] = useState(true);
@@ -125,8 +98,8 @@ const PasswordGenerator: React.FC = () => {
       // Validate at least one character set is selected
       if (!useUppercase && !useLowercase && !useNumbers && !useSymbols) {
         toast({
-          title: "Error",
-          description: "Please select at least one character set",
+          title: t.error,
+          description: t.passwordSelectOneCharSet,
           variant: "destructive",
         });
         return;
@@ -183,12 +156,12 @@ const PasswordGenerator: React.FC = () => {
     } catch (error) {
       console.error('Error generating password:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate password",
+        title: t.error,
+        description: t.passwordGenerateFailed,
         variant: "destructive",
       });
     }
-  }, [useUppercase, useLowercase, useNumbers, useSymbols, excludeSimilar, length, toast]);
+  }, [useUppercase, useLowercase, useNumbers, useSymbols, excludeSimilar, length, toast, t]);
 
   // Copy password to clipboard
   const copyToClipboard = async () => {
@@ -196,15 +169,15 @@ const PasswordGenerator: React.FC = () => {
       await navigator.clipboard.writeText(password);
       setCopied(true);
       toast({
-        title: "Copied!",
-        description: "Password copied to clipboard",
+        title: t.copied,
+        description: t.passwordCopied,
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       toast({
-        title: "Error",
-        description: "Failed to copy to clipboard",
+        title: t.error,
+        description: t.copyFailed,
         variant: "destructive",
       });
     }
@@ -214,8 +187,8 @@ const PasswordGenerator: React.FC = () => {
   const sharePasswordAsNote = async () => {
     if (!password) {
       toast({
-        title: "Error",
-        description: "No password to share",
+        title: t.error,
+        description: t.noPasswordToShare,
         variant: "destructive",
       });
       return;
@@ -259,16 +232,16 @@ const PasswordGenerator: React.FC = () => {
       setSharedNoteUrl(url);
 
       toast({
-        title: "Password shared!",
-        description: "Your password has been encrypted and shared as a private note",
+        title: t.passwordShared,
+        description: t.passwordSharedDescription,
       });
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Error sharing password as note:", error);
       }
       toast({
-        title: "Error",
-        description: "Failed to share password as private note",
+        title: t.error,
+        description: t.passwordShareFailed,
         variant: "destructive",
       });
     } finally {
@@ -318,7 +291,7 @@ const PasswordGenerator: React.FC = () => {
     navigator.clipboard.writeText(sharedNoteUrl);
     setSuccessLinkCopied(true);
     setCopied(true);
-    toast({ title: "Copied!", description: "Secret link copied to clipboard" });
+    toast({ title: t.copied, description: t.secretLinkCopied });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -357,7 +330,7 @@ const PasswordGenerator: React.FC = () => {
       try {
         const textBlob = new Blob([sharedNoteUrl], { type: "text/plain" });
         await navigator.clipboard.write([new ClipboardItem({ "image/png": pngFile, "text/plain": textBlob })]);
-        toast({ title: "QR and link copied", description: "Paste into Mail or another app." });
+        toast({ title: t.qrAndLinkCopied, description: t.pasteIntoMail });
         return;
       } catch { /* fall through */ }
     }
@@ -367,7 +340,7 @@ const PasswordGenerator: React.FC = () => {
   const downloadQrCode = async () => {
     try {
       const svgData = getQrSvgDataFromDom("password-qr-code");
-      if (!svgData) throw new Error("QR code not available.");
+      if (!svgData) throw new Error(t.qrCodeNotAvailable);
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
       const downloadLink = document.createElement('a');
@@ -377,10 +350,10 @@ const PasswordGenerator: React.FC = () => {
       downloadLink.click();
       document.body.removeChild(downloadLink);
       setTimeout(() => URL.revokeObjectURL(url), 100);
-      toast({ title: "QR Code Downloaded", description: "Attach the file manually in your email." });
+      toast({ title: t.qrCodeDownloaded, description: t.attachFileManually });
     } catch (error) {
       console.error("Error downloading QR code:", error);
-      toast({ title: "Error", description: "Could not download QR code.", variant: "destructive" });
+      toast({ title: t.error, description: t.qrCodeDownloadFailed, variant: "destructive" });
     }
   };
 
@@ -418,13 +391,13 @@ const PasswordGenerator: React.FC = () => {
   // Strength text and color based on requested length tiers
   const getStrengthText = () => {
     const tier = getLengthTier(password.length);
-    if (tier === 'very-weak') return { text: 'Very Weak', color: 'text-red-600' };
-    if (tier === 'weak') return { text: 'Weak', color: 'text-red-600/70' };
-    if (tier === 'fair') return { text: 'Fair', color: 'text-amber-500' };
-    if (tier === 'good') return { text: 'Good', color: 'text-emerald-500/50' };
-    if (tier === 'strong') return { text: 'Strong', color: 'text-teal-500/70' };
-    if (tier === 'very-strong') return { text: 'Very Strong', color: 'text-teal-600' };
-    return { text: 'Very Weak', color: 'text-red-600' };
+    if (tier === 'very-weak') return { text: t.strengthVeryWeak, color: 'text-red-600' };
+    if (tier === 'weak') return { text: t.strengthWeak, color: 'text-red-600/70' };
+    if (tier === 'fair') return { text: t.strengthFair, color: 'text-amber-500' };
+    if (tier === 'good') return { text: t.strengthGood, color: 'text-emerald-500/50' };
+    if (tier === 'strong') return { text: t.strengthStrong, color: 'text-teal-500/70' };
+    if (tier === 'very-strong') return { text: t.strengthVeryStrong, color: 'text-teal-600' };
+    return { text: t.strengthVeryWeak, color: 'text-red-600' };
   };
 
   const strengthInfo = getStrengthText();
@@ -455,11 +428,11 @@ const PasswordGenerator: React.FC = () => {
             <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
               <div className="text-center">
                 <h1 className="page-title text-gray-900 dark:text-white">
-                  Your Secure Password is <span className="text-primary italic">ready</span>
+                  {t.yourSecurePasswordIs} <span className="text-primary italic">{t.ready}</span>
                 </h1>
                 <div className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl space-y-1 md:space-y-2">
-                  <p className="m-0">Your password is encrypted in a private note.</p>
-                  <p className="m-0">Only someone with this link can read it.</p>
+                  <p className="m-0">{t.passwordEncryptedInPrivateNote}</p>
+                  <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
                 </div>
               </div>
             </section>
@@ -473,16 +446,16 @@ const PasswordGenerator: React.FC = () => {
                         onClick={shareLink}
                         type="button"
                         className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
-                        title="Share link"
+                        title={t.shareLink}
                       >
                         <Share2 className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                        Share
+                        {t.share}
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowSuccessHelp((open) => !open)}
                         aria-expanded={showSuccessHelp}
-                        aria-label="Show security tips"
+                        aria-label={t.showSecurityTips}
                         className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
                       >
                         <CircleHelp className="h-5 w-5 text-primary" />
@@ -495,16 +468,16 @@ const PasswordGenerator: React.FC = () => {
                         role="note"
                       >
                         <div className="space-y-2">
-                          <p className="m-0">Anyone with this link can read the password.</p>
-                          <p className="m-0">This link cannot be recovered if lost.</p>
-                          <p className="m-0">The note will self-destruct after being read.</p>
+                          <p className="m-0">{t.anyoneWithLinkCanReadPassword}</p>
+                          <p className="m-0">{t.linkCannotBeRecovered}</p>
+                          <p className="m-0">{t.noteSelfDestructAfterRead}</p>
                         </div>
                       </div>
                     )}
 
                     <div className="overflow-hidden rounded-lg border-2 border-primary">
                       <div className="bg-primary px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-white">
-                        Secure link
+                        {t.secureLink}
                       </div>
                       <div className="flex items-center bg-white dark:bg-gray-900 p-3 transition-transform active:scale-[1.02]">
                         <input
@@ -512,7 +485,7 @@ const PasswordGenerator: React.FC = () => {
                           readOnly
                           value={sharedNoteUrl}
                           className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
-                          aria-label="Encrypted password link"
+                          aria-label={t.encryptedPasswordLink}
                           onFocus={(event) => event.currentTarget.select()}
                         />
                       </div>
@@ -524,11 +497,11 @@ const PasswordGenerator: React.FC = () => {
                           type="button"
                           onClick={() => setShowSuccessQr((open) => !open)}
                           aria-expanded={showSuccessQr}
-                          aria-label={showSuccessQr ? "Hide QR Code" : "Share via QR Code"}
+                          aria-label={showSuccessQr ? t.hideQrCode : t.shareViaQrCode}
                           className="inline-flex shrink-0 items-center justify-center whitespace-nowrap py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
                         >
                           <QrCode className="h-4 w-4 mr-1.5 shrink-0 text-primary" aria-hidden />
-                          Share via QR Code
+                          {t.shareViaQrCode}
                         </button>
                         <button
                           type="button"
@@ -537,18 +510,18 @@ const PasswordGenerator: React.FC = () => {
                             ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
                             : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
                             }`}
-                          title="Copy link to clipboard"
+                          title={t.copyLinkToClipboard}
                           aria-live="polite"
                         >
                           {successLinkCopied ? (
                             <>
                               <Check className="h-4 w-4 mr-1.5 shrink-0" />
-                              Link copied
+                              {t.linkCopied}
                             </>
                           ) : (
                             <>
                               <Copy className="h-4 w-4 mr-1.5 shrink-0" />
-                              Copy Link
+                              {t.copyLink}
                             </>
                           )}
                         </button>
@@ -561,7 +534,7 @@ const PasswordGenerator: React.FC = () => {
                           className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
                         >
                           <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                          New Password
+                          {t.newPassword}
                         </button>
                       </div>
                     </div>
@@ -574,16 +547,16 @@ const PasswordGenerator: React.FC = () => {
                               onClick={shareQrCode}
                               type="button"
                               className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
-                              title="Share QR image"
+                              title={t.shareQrImage}
                             >
                               <Share2 className="h-4 w-4 mr-1.5 shrink-0 text-primary" />
-                              Share
+                              {t.share}
                             </button>
                             <button
                               type="button"
                               onClick={() => setShowQrHelp((open) => !open)}
                               aria-expanded={showQrHelp}
-                              aria-label="Show QR code tips"
+                              aria-label={t.showQrCodeTips}
                               className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
                             >
                               <CircleHelp className="h-5 w-5 text-primary" />
@@ -592,16 +565,16 @@ const PasswordGenerator: React.FC = () => {
                           {showQrHelp && (
                             <div className="w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/35 px-3 py-3 text-sm leading-snug text-blue-900 dark:text-blue-100">
                               <ul className="list-disc pl-4 space-y-1.5">
-                                <li>Scan to open on mobile.</li>
-                                <li>Anyone with this code can view the password.</li>
-                                <li>This code cannot be recovered if lost.</li>
+                                <li>{t.scanToOpenMobile}</li>
+                                <li>{t.anyoneWithCodeCanViewPassword}</li>
+                                <li>{t.codeCannotBeRecovered}</li>
                               </ul>
                             </div>
                           )}
                           <div className="w-full overflow-hidden rounded-lg border-2 border-primary/70 dark:border-primary/70">
                             <div className="bg-primary/70 px-3 py-1.5">
                               <div className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-white text-center leading-tight">
-                                QR Code
+                                {t.qrCode}
                               </div>
                             </div>
                             <div
@@ -616,10 +589,10 @@ const PasswordGenerator: React.FC = () => {
                               onClick={downloadQrCode}
                               type="button"
                               className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary/70 text-white rounded-md transition-colors hover:bg-primary/80 shadow-sm"
-                              title="Download QR code as SVG image"
+                              title={t.downloadQrCodeAsSvg}
                             >
                               <FileText className="h-4 w-4 mr-1.5 shrink-0" />
-                              Download QR Code
+                              {t.downloadQrCode}
                             </button>
                           </div>
                         </div>
@@ -632,7 +605,7 @@ const PasswordGenerator: React.FC = () => {
 
             <div className="text-center px-4 sm:px-6 lg:px-8 mt-6">
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-                <span>Powered by</span>
+                <span>{t.poweredBy}</span>
                 <span className="inline-flex items-center gap-0.5">
                   <img src="/favicon_passwords.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden />
                   <a
@@ -654,21 +627,18 @@ const PasswordGenerator: React.FC = () => {
 
   const securityApproachFeatures = [
     {
-      title: 'Crypto Web API',
-      description:
-        'Uses the Crypto Web API for cryptographically secure randomness. All password generation happens entirely in your browser—your password never leaves your device.',
+      title: t.cryptoWebApi,
+      description: t.cryptoWebApiDescription,
       icon: <Lock className="h-6 w-6 text-primary" />,
     },
     {
-      title: 'Unbiased Randomness',
-      description:
-        'Uses rejection sampling so every character has an equal chance of being selected, eliminating bias and making passwords harder to predict or crack.',
+      title: t.unbiasedRandomness,
+      description: t.unbiasedRandomnessDescription,
       icon: <Zap className="h-6 w-6 text-primary" />,
     },
     {
-      title: 'Smart Strength Analysis',
-      description:
-        'Advanced strength estimation analyzes patterns, common words, and realistic crack times for an accurate security assessment.',
+      title: t.smartStrengthAnalysis,
+      description: t.smartStrengthAnalysisDescription,
       icon: <BarChart3 className="h-6 w-6 text-primary" />,
     },
   ];
@@ -678,10 +648,10 @@ const PasswordGenerator: React.FC = () => {
       <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center">
           <h1 className="page-title text-gray-900 dark:text-white">
-            Strong <span className="text-primary italic">Password </span> Generator
+            {t.strongPasswordTitlePrefix} <span className="text-primary italic">{t.passwordTitleWord} </span> {t.generatorTitleWord}
           </h1>
           <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-            Create cryptographically secure passwords with unbiased randomness and accurate strength estimation.
+            {t.passwordGeneratorSubtitle}
           </p>
         </div>
       </section>
@@ -693,7 +663,7 @@ const PasswordGenerator: React.FC = () => {
 
               <div className="pt-5">
                 <div className="flex items-center gap-2 mb-6">
-                  <Label className="block w-24 text-gray-600 dark:text-gray-300 font-medium">Length:</Label>
+                  <Label className="block w-24 text-gray-600 dark:text-gray-300 font-medium">{t.length}:</Label>
                   <Slider
                     value={[length]}
                     min={8}
@@ -712,7 +682,7 @@ const PasswordGenerator: React.FC = () => {
                       checked={useUppercase}
                       onCheckedChange={(checked) => setUseUppercase(checked as boolean)}
                     />
-                    <Label htmlFor="uppercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">Uppercase Letters</Label>
+                    <Label htmlFor="uppercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.uppercaseLetters}</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -721,7 +691,7 @@ const PasswordGenerator: React.FC = () => {
                       checked={useLowercase}
                       onCheckedChange={(checked) => setUseLowercase(checked as boolean)}
                     />
-                    <Label htmlFor="lowercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">Lowercase Letters</Label>
+                    <Label htmlFor="lowercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.lowercaseLetters}</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -730,7 +700,7 @@ const PasswordGenerator: React.FC = () => {
                       checked={useNumbers}
                       onCheckedChange={(checked) => setUseNumbers(checked as boolean)}
                     />
-                    <Label htmlFor="numbers" className="text-gray-700 dark:text-gray-300 cursor-pointer">Numbers</Label>
+                    <Label htmlFor="numbers" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.numbers}</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -739,7 +709,7 @@ const PasswordGenerator: React.FC = () => {
                       checked={useSymbols}
                       onCheckedChange={(checked) => setUseSymbols(checked as boolean)}
                     />
-                    <Label htmlFor="symbols" className="text-gray-700 dark:text-gray-300 cursor-pointer">Symbols</Label>
+                    <Label htmlFor="symbols" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.symbols}</Label>
                   </div>
 
                   <div className="flex items-center space-x-2 md:col-span-2">
@@ -748,7 +718,7 @@ const PasswordGenerator: React.FC = () => {
                       checked={excludeSimilar}
                       onCheckedChange={(checked) => setExcludeSimilar(checked as boolean)}
                     />
-                    <Label htmlFor="exclude-similar" className="text-gray-700 dark:text-gray-300 cursor-pointer">Exclude Similar Characters (I, l, 1, O, 0)</Label>
+                    <Label htmlFor="exclude-similar" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.excludeSimilarCharacters}</Label>
                   </div>
                 </div>
               </div>
@@ -759,7 +729,7 @@ const PasswordGenerator: React.FC = () => {
               <div className="mt-3">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Password Strength</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.passwordStrength}</span>
                     <span className={`text-sm font-semibold ${strengthInfo.color}`}>
                       {strengthInfo.text}
                     </span>
@@ -791,14 +761,14 @@ const PasswordGenerator: React.FC = () => {
                       onClick={() => setShowPassword((v) => !v)}
                       className="shrink-0 rounded-lg p-1.5 text-primary hover:bg-primary/15 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                       aria-pressed={showPassword}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? t.hidePassword : t.showPassword}
+                      title={showPassword ? t.hidePassword : t.showPassword}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                     <p
                       className={`flex-1 min-w-0 text-center font-mono text-[0.8125rem] leading-tight text-gray-900 dark:text-white break-all select-all py-0.5 ${showPassword ? 'tracking-[0.1em]' : 'tracking-normal'}`}
-                      aria-label={showPassword ? "Generated password" : "Password hidden"}
+                      aria-label={showPassword ? t.generatedPassword : t.passwordHidden}
                     >
                       {showPassword ? password : '•'.repeat(password.length)}
                     </p>
@@ -807,8 +777,8 @@ const PasswordGenerator: React.FC = () => {
                         type="button"
                         onClick={copyToClipboard}
                         className="rounded-lg p-1.5 text-primary hover:bg-primary/15 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        aria-label={copied ? 'Copied' : 'Copy password'}
-                        title={copied ? 'Copied' : 'Copy password'}
+                        aria-label={copied ? t.copied : t.copyPassword}
+                        title={copied ? t.copied : t.copyPassword}
                       >
                         {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                       </button>
@@ -816,8 +786,8 @@ const PasswordGenerator: React.FC = () => {
                         type="button"
                         onClick={generatePassword}
                         className="rounded-lg p-1.5 text-primary hover:bg-primary/15 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 border border-transparent hover:border-primary/20"
-                        aria-label="Regenerate password"
-                        title="Regenerate password"
+                        aria-label={t.regeneratePassword}
+                        title={t.regeneratePassword}
                       >
                         <RefreshCw className="h-4 w-4" />
                       </button>
@@ -834,11 +804,11 @@ const PasswordGenerator: React.FC = () => {
                   >
                     {isSharing ? (
                       <>
-                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" /> Sharing...
+                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" /> {t.sharing}
                       </>
                     ) : (
                       <>
-                        <Share2 className="h-4 w-4 shrink-0" /> Share as a Note
+                        <Share2 className="h-4 w-4 shrink-0" /> {t.shareAsNote}
                       </>
                     )}
                   </button>
@@ -848,7 +818,7 @@ const PasswordGenerator: React.FC = () => {
 
             <div className="mt-6 pt-4 border-t border-gray-200/80 dark:border-gray-700/80 flex justify-end">
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-right">
-                <span>Powered by</span>
+                <span>{t.poweredBy}</span>
                 <span className="inline-flex items-center gap-0.5">
                   <img src="/favicon_passwords.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden />
                   <a
@@ -868,19 +838,19 @@ const PasswordGenerator: React.FC = () => {
 
       <div className="mt-6 flex justify-center px-4 sm:px-6 lg:px-8">
         <Link
-          href="/blog/how-we-generate-passwords"
+          href={`${localizedPath('/blog', language)}/how-we-generate-passwords`}
           className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
         >
-          Learn more about how we generate passwords
+          {t.learnHowWeGeneratePasswords}
           <ArrowRight className="h-4 w-4 ml-1" />
         </Link>
       </div>
 
       <section ref={featuresSectionRef} className="relative px-4 pt-20 pb-12 sm:px-6 sm:pt-24 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">How generation stays trustworthy</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.howGenerationStaysTrustworthy}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            The same ideas we use for Key Features—plain language, real cryptography.
+            {t.passwordTrustSubtitle}
           </p>
         </div>
 
@@ -929,10 +899,10 @@ const PasswordGenerator: React.FC = () => {
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="mb-10">
               <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
-                FAQ
+                {t.faq}
               </h2>
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">
-                Common questions about password strength, randomness, and secure sharing.
+                {t.passwordFaqSubtitle}
               </p>
             </div>
 
@@ -952,12 +922,12 @@ const PasswordGenerator: React.FC = () => {
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-violet-500/15 text-xs font-semibold tabular-nums leading-none text-primary ring-1 ring-primary/25 shadow-[0_0_8px_rgba(99,102,241,0.15)]">
                         {index + 1}
                       </span>
-                      <span className="min-w-0 flex-1 pt-1.5 leading-snug">{item.question}</span>
+                      <span className="min-w-0 flex-1 pt-1.5 leading-snug">{t[`passwordFaq_${item.id}_question`]}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-6 leading-relaxed">
                     <div className="pl-12 border-l-2 border-primary/25 ml-4">
-                      {item.answer}
+                      {t[`passwordFaq_${item.id}_answer`]}
                     </div>
                   </AccordionContent>
                 </AccordionItem>

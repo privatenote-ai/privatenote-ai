@@ -8,8 +8,31 @@ import {
   Binary,
   Layers,
 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 const SecurityOverview: React.FC = () => {
+  const { language, t } = useLanguage();
+  const infrastructureItems = [
+    {
+      title: t.securityCspTitle,
+      body: t.securityCspBody,
+    },
+    {
+      title: t.securityNoTrackingTitle,
+      body: t.securityNoTrackingBody,
+    },
+    {
+      title: t.securityTurnstileTitle,
+      body: t.securityTurnstileBody,
+    },
+  ];
+  const threatItems = [
+    { label: t.securityDeviceCompromiseTitle, sub: t.securityDeviceCompromiseBody },
+    { label: t.securityBrowserExtensionsTitle, sub: t.securityBrowserExtensionsBody },
+    { label: t.securityBundleManipulationTitle, sub: t.securityBundleManipulationBody },
+  ];
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24 relative">
@@ -20,10 +43,10 @@ const SecurityOverview: React.FC = () => {
         {/* Header Section */}
         <div className="max-w-4xl mx-auto text-center mb-24 relative z-10">
           <h1 className="page-title mb-10 pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 relative z-10">
-            Security <span className="text-primary italic">Architecture</span>
+            {t.securityHeroPrefix} <span className="text-primary italic">{t.securityHeroAccent}</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
-            Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.
+            {t.securityHeroSubtitle}
           </p>
         </div>
 
@@ -38,13 +61,13 @@ const SecurityOverview: React.FC = () => {
             <div className="relative z-10 space-y-24">
               <div className="text-center max-w-3xl mx-auto">
                 <div className="flex items-center justify-center gap-4 mb-4">
-                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">E2EE Model</h2>
+                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.securityE2eeTitle}</h2>
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  We utilize an End-to-End Encrypted (E2EE) model where the server is treated as an untrusted storage medium. Plaintext note content is never sent to our servers for storage or processing.
+                  {t.securityE2eeBody}
                 </p>
                 <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Optional AI assist runs in your browser with a local model when you enable it. We do not send your note text to PrivateNote.ai or third-party cloud APIs for AI inference.
+                  {t.securityAiLocalBody}
                 </p>
               </div>
 
@@ -53,27 +76,27 @@ const SecurityOverview: React.FC = () => {
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
                     <Lock className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Client-Side Encryption</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{t.securityClientEncryptionTitle}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.
+                    {t.securityClientEncryptionBody}
                   </p>
                 </div>
                 <div>
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
                     <Database className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Atomic State Management</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{t.securityAtomicTitle}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.
+                    {t.securityAtomicBody}
                   </p>
                 </div>
                 <div>
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3">
                     <Key className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Key Handling</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{t.securityKeyHandlingTitle}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Decryption keys are generated locally in your browser using the Web Crypto API’s cryptographically secure random source and encoded in Base58 for safe transmission.
+                    {t.securityKeyHandlingBody}
                   </p>
                 </div>
               </div>
@@ -87,33 +110,33 @@ const SecurityOverview: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-white/15 text-white flex items-center justify-center">
                   <Binary className="h-5 w-5" />
                 </div>
-                <h2 className="text-2xl font-bold text-white">Cryptographic Primitives</h2>
+                <h2 className="text-2xl font-bold text-white">{t.securityCryptoTitle}</h2>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-10">
                 <div>
-                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">Symmetric Encryption</h3>
+                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">{t.securitySymmetricTitle}</h3>
                   <ul className="space-y-4">
                     <li className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">AES-256-GCM</span>
-                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">Authenticated encryption with 128-bit auth tags. This prevents ciphertext manipulation by the server or middle-men.</span>
+                      <span className="text-sm font-semibold text-white">{t.securityAesTitle}</span>
+                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">{t.securityAesBody}</span>
                     </li>
                     <li className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">12-Byte Cryptographic IV</span>
-                      <span className="text-xs text-blue-100 mt-1">Unique Initialization Vectors prevent pattern recognition across multiple notes.</span>
+                      <span className="text-sm font-semibold text-white">{t.securityIvTitle}</span>
+                      <span className="text-xs text-blue-100 mt-1">{t.securityIvBody}</span>
                     </li>
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">Key Derivation (KDF)</h3>
+                  <h3 className="text-white/80 font-bold text-xs uppercase tracking-widest mb-4">{t.securityKdfTitle}</h3>
                   <ul className="space-y-4">
                     <li className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">Argon2id (v2 profile)</span>
-                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">Password-protected notes use Argon2id with memory-hard parameters (time=3, memory=64 MiB, parallelism=1) to increase brute-force cost, especially on GPU/ASIC attackers.</span>
+                      <span className="text-sm font-semibold text-white">{t.securityArgonTitle}</span>
+                      <span className="text-xs text-blue-100 mt-1 leading-relaxed">{t.securityArgonBody}</span>
                     </li>
                     <li className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">16-Byte Cryptographic Salt</span>
-                      <span className="text-xs text-blue-100 mt-1">Unique salt per note ensures protection against rainbow table attacks.</span>
+                      <span className="text-sm font-semibold text-white">{t.securitySaltTitle}</span>
+                      <span className="text-xs text-blue-100 mt-1">{t.securitySaltBody}</span>
                     </li>
                   </ul>
                 </div>
@@ -124,8 +147,35 @@ const SecurityOverview: React.FC = () => {
 
 
           {/* 3. Operational Security Section */}
-          <section className="flex flex-col gap-12 py-10">
-            <div className="w-full lg:w-1/2 lg:self-start border border-blue-200 dark:border-blue-800 rounded-[2rem]">
+          <section className="relative flex flex-col gap-12 py-10">
+            {/* Ambient accents for this section */}
+            <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+            <div className="pointer-events-none absolute -right-6 bottom-6 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl" />
+
+            <div className="relative overflow-hidden w-full lg:w-1/2 lg:self-start border border-blue-200 dark:border-blue-800 rounded-[2rem]">
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute right-6 top-6 hidden md:block"
+                initial={{ opacity: 0.35, y: 0 }}
+                animate={{ opacity: [0.35, 0.55, 0.35], y: [0, -4, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <svg className="h-24 w-24" viewBox="0 0 120 120" fill="none">
+                  <rect x="22" y="28" width="30" height="64" rx="6" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
+                  <rect x="34" y="40" width="10" height="4" rx="2" className="fill-primary/60" />
+                  <rect x="34" y="50" width="10" height="4" rx="2" className="fill-primary/45" />
+                  <circle cx="31" cy="74" r="3" className="fill-primary/55" />
+                  <circle cx="41" cy="74" r="3" className="fill-primary/35" />
+
+                  <rect x="66" y="18" width="30" height="74" rx="6" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
+                  <rect x="78" y="30" width="10" height="4" rx="2" className="fill-primary/60" />
+                  <rect x="78" y="40" width="10" height="4" rx="2" className="fill-primary/45" />
+                  <rect x="78" y="50" width="10" height="4" rx="2" className="fill-primary/35" />
+                  <circle cx="75" cy="74" r="3" className="fill-primary/55" />
+                  <circle cx="85" cy="74" r="3" className="fill-primary/35" />
+                </svg>
+              </motion.div>
+
               <div className="px-6 sm:px-8 lg:px-10 py-12 md:py-12">
                 <motion.h2
                   className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
@@ -134,23 +184,10 @@ const SecurityOverview: React.FC = () => {
                   viewport={{ once: true, amount: 0.4 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                 >
-                  Infrastructure
+                  {t.securityInfrastructureTitle}
                 </motion.h2>
                 <div className="space-y-5">
-                  {[
-                    {
-                      title: "Strict CSP Policy",
-                      body: "Content Security Policy blocks third-party scripts and cross-site injections.",
-                    },
-                    {
-                      title: "No Tracking Cookies",
-                      body: "Stateless API. No advertising or tracking pixels ever loaded.",
-                    },
-                    {
-                      title: "Turnstile Verification",
-                      body: "Human-only request verification prevents brute-force note enumeration.",
-                    },
-                  ].map((item, idx) => (
+                  {infrastructureItems.map((item, idx) => (
                     <motion.div
                       key={item.title}
                       initial={{ opacity: 0, y: 12 }}
@@ -166,7 +203,24 @@ const SecurityOverview: React.FC = () => {
               </div>
             </div>
 
-            <div className="w-full lg:w-[52%] lg:self-end border border-blue-200 dark:border-blue-800 rounded-[2rem] p-6 sm:p-8">
+            <div className="relative overflow-hidden w-full lg:w-[52%] lg:self-end border border-blue-200 dark:border-blue-800 rounded-[2rem] p-6 sm:p-8 lg:pl-24">
+              <div className="hidden lg:flex pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 items-center justify-center">
+                <svg className="h-28 w-28" viewBox="0 0 220 220" fill="none" aria-hidden="true">
+                  <circle cx="110" cy="110" r="64" className="fill-primary/5 stroke-primary/20" strokeWidth="2" />
+                  <circle cx="110" cy="110" r="36" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
+                  <path
+                    d="M42 110H90M130 110H178M110 42V90M110 130V178"
+                    className="stroke-primary/40"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="110" cy="110" r="8" className="fill-primary/70" />
+                  <circle cx="42" cy="110" r="4" className="fill-primary/50" />
+                  <circle cx="178" cy="110" r="4" className="fill-primary/50" />
+                  <circle cx="110" cy="42" r="4" className="fill-primary/50" />
+                  <circle cx="110" cy="178" r="4" className="fill-primary/50" />
+                </svg>
+              </div>
               <motion.h2
                 className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
                 initial={{ opacity: 0, y: 14 }}
@@ -174,7 +228,7 @@ const SecurityOverview: React.FC = () => {
                 viewport={{ once: true, amount: 0.4 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               >
-                Threat Model
+                {t.securityThreatModelTitle}
               </motion.h2>
               <motion.p
                 className="text-base text-gray-600 dark:text-gray-400 mb-6 italic"
@@ -183,14 +237,10 @@ const SecurityOverview: React.FC = () => {
                 viewport={{ once: true, amount: 0.4 }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
               >
-                No system is unbreakable. Our architecture addresses server-side threats, but client-side risks remain:
+                {t.securityThreatModelIntro}
               </motion.p>
               <div className="space-y-4 w-full">
-                {[
-                  { label: "Device Compromise", sub: "Malware can access browser RAM or screen content." },
-                  { label: "Browser Extensions", sub: "Extensions with broad permissions can read page data." },
-                  { label: "Bundle Manipulation", sub: "Compromised JS delivery could leak decryption keys." },
-                ].map((item, idx) => (
+                {threatItems.map((item, idx) => (
                   <motion.div
                     key={item.label}
                     className="text-base"
@@ -211,14 +261,14 @@ const SecurityOverview: React.FC = () => {
           <div className="p-12 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-primary/5 -z-10" />
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Technical Integrity</h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-md">We prioritize clarity and measurable security guarantees over marketing claims.</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t.securityIntegrityTitle}</h3>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md">{t.securityIntegrityBody}</p>
             </div>
             <Link
-              href="/"
+              href={localizedPath("/", language)}
               className="px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all hover:-translate-y-1 active:scale-95"
             >
-              Start Secure Session
+              {t.securityStartSession}
             </Link>
           </div>
         </div>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, User } from 'lucide-react';
-import { format } from 'date-fns';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
 import { parseBlogPostTags } from '@/utils/blogPostTags';
@@ -12,10 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
 import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
 import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 export default function BlogPostPage() {
-  const [_, params] = useRoute('/blog/:slug');
-  const slug = params?.slug;
+  const { language, t } = useLanguage();
+  const [_, params] = useRoute('/:language/blog/:slug');
+  const [, fallbackParams] = useRoute('/blog/:slug');
+  const blogPath = localizedPath('/blog', language);
+  const slug = params?.slug ?? fallbackParams?.slug;
 
   if (slug === 'privacy-tools') {
     return <PrivacyToolsPost />;
@@ -42,13 +46,13 @@ export default function BlogPostPage() {
       <div className="container mx-auto max-w-4xl px-4 pt-24 pb-16">
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
-            Failed to load blog post
+            {t.blogLoadFailedTitle}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
-            We encountered an error while loading this article. Please try again later.
+            {t.blogLoadFailedBody}
           </p>
-          <Link href="/blog" className="text-primary hover:underline">
-            Back to Blog
+          <Link href={blogPath} className="text-primary hover:underline">
+            {t.blogBackToBlog}
           </Link>
         </div>
       </div>
@@ -77,9 +81,9 @@ export default function BlogPostPage() {
     return (
       <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
         <div className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 rounded-lg p-8 text-center">
-          <h2 className="text-xl font-medium mb-2">Blog post not found</h2>
+          <h2 className="text-xl font-medium mb-2">{t.blogNotFoundTitle}</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            The article you're looking for doesn't exist or has been removed.
+            {t.blogNotFoundBody}
           </p>
         </div>
       </div>
@@ -87,7 +91,7 @@ export default function BlogPostPage() {
   }
 
   const formattedDate = post.publishedAt
-    ? format(new Date(post.publishedAt), 'MMMM d, yyyy')
+    ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt))
     : '';
   const tagList = parseBlogPostTags(post.tags);
 

@@ -2,13 +2,7 @@ import { Link, useLocation } from "wouter";
 import { User, Shield, History, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-
-const NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/account", label: "Account", icon: User },
-  { href: "/account/security", label: "Security", icon: Shield },
-  { href: "/account/activity", label: "Activity", icon: History },
-  { href: "/account/preferences", label: "Preferences", icon: SlidersHorizontal },
-];
+import { useLanguage } from "@/context/LanguageContext";
 
 function navItemActive(href: string, location: string): boolean {
   if (href === "/account") return location === "/account";
@@ -18,6 +12,14 @@ function navItemActive(href: string, location: string): boolean {
 export function AccountSettingsShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
+  const nav: { href: string; label: string; icon: LucideIcon }[] = [
+    { href: "/account", label: tx("account", "Account"), icon: User },
+    { href: "/account/security", label: tx("security", "Security"), icon: Shield },
+    { href: "/account/activity", label: tx("authNavActivity", "Activity"), icon: History },
+    { href: "/account/preferences", label: tx("authNavPreferences", "Preferences"), icon: SlidersHorizontal },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
@@ -34,9 +36,9 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
 
           <nav
             className="flex gap-1 overflow-x-auto border-b border-gray-200 pb-1 dark:border-gray-800 md:flex-col md:overflow-visible md:border-0 md:pb-0 md:pl-0.5"
-            aria-label="Account sections"
+            aria-label={tx("authAccountSectionsAria", "Account sections")}
           >
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {nav.map(({ href, label, icon: Icon }) => {
               const active = navItemActive(href, location);
               return (
                 <Link key={href} href={href}>

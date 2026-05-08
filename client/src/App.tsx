@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { Fragment, useEffect, type ComponentType } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -36,6 +37,71 @@ import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
+import type { SupportedLanguage } from "@/utils/translation";
+
+const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
+  { hrefLang: "en", path: "/" },
+  { hrefLang: "de", path: "/de" },
+  { hrefLang: "fr", path: "/fr" },
+  { hrefLang: "es", path: "/es" },
+  { hrefLang: "x-default", path: "/" },
+];
+
+function setHomeSeoLinks(language: SupportedLanguage) {
+  const origin = window.location.origin;
+  const canonicalPath = language === "en" ? "/" : `/${language}`;
+  const existing = document.head.querySelectorAll<HTMLLinkElement>(
+    'link[data-privatenote-home-locale="true"]',
+  );
+  existing.forEach((link) => link.remove());
+
+  const canonical = document.createElement("link");
+  canonical.rel = "canonical";
+  canonical.href = `${origin}${canonicalPath}`;
+  canonical.dataset.privatenoteHomeLocale = "true";
+  document.head.appendChild(canonical);
+
+  HOME_ALTERNATES.forEach((alternate) => {
+    const link = document.createElement("link");
+    link.rel = "alternate";
+    link.hreflang = alternate.hrefLang;
+    link.href = `${origin}${alternate.path}`;
+    link.dataset.privatenoteHomeLocale = "true";
+    document.head.appendChild(link);
+  });
+}
+
+function HomeRoute({ language = "en" }: { language?: SupportedLanguage }) {
+  const { language: activeLanguage, setLanguage } = useLanguage();
+
+  useEffect(() => {
+    if (activeLanguage !== language) {
+      setLanguage(language);
+    }
+    setHomeSeoLinks(language);
+  }, [activeLanguage, language, setLanguage]);
+
+  return <Home />;
+}
+
+function LocalizedRoute({
+  language,
+  component: Component,
+}: {
+  language: SupportedLanguage;
+  component: ComponentType;
+}) {
+  const { language: activeLanguage, setLanguage } = useLanguage();
+
+  useEffect(() => {
+    if (activeLanguage !== language) {
+      setLanguage(language);
+    }
+  }, [activeLanguage, language, setLanguage]);
+
+  return <Component />;
+}
 
 function Router() {
   const [location] = useLocation();
@@ -52,7 +118,24 @@ function Router() {
       {showNavbar && <Navbar />}
       <main className={`flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
-          <Route path="/" component={Home} />
+          <Route path="/" component={() => <HomeRoute />} />
+          <Route path="/de" component={() => <HomeRoute language="de" />} />
+          <Route path="/fr" component={() => <HomeRoute language="fr" />} />
+          <Route path="/es" component={() => <HomeRoute language="es" />} />
+          {(["de", "fr", "es"] as const).map((language) => (
+            <Fragment key={language}>
+              <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
+              <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
+              <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
+              <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
+              <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
+              <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
+              <Route path={`/${language}/blog/:slug`} component={() => <LocalizedRoute language={language} component={BlogPost} />} />
+              <Route path={`/${language}/blog`} component={() => <LocalizedRoute language={language} component={Blog} />} />
+              <Route path={`/${language}/privacy`} component={() => <LocalizedRoute language={language} component={Privacy} />} />
+              <Route path={`/${language}/terms`} component={() => <LocalizedRoute language={language} component={Terms} />} />
+            </Fragment>
+          ))}
           <Route path="/note/:id" component={ViewNote} />
           <Route path="/password-generator" component={PasswordGenerator} />
           <Route path="/privacy-tools" component={PrivacyTools} />
@@ -94,11 +177,13 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemePreferenceRoot />
-        <Router />
-        <Toaster />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ThemePreferenceRoot />
+          <Router />
+          <Toaster />
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

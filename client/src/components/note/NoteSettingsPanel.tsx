@@ -14,6 +14,20 @@ import {
   SIMPLE_PASSWORD_NOUNS,
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
+import { useLanguage } from "@/context/LanguageContext";
+
+function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
+  if (expiryValue === "5m") return t.expiry5m;
+  if (expiryValue === "10m") return t.expiry10m;
+  if (expiryValue === "30m") return t.expiry30m;
+  if (expiryValue === "1h") return t.expiry1h;
+  if (expiryValue === "2h") return t.expiry2h;
+  if (expiryValue === "8h") return t.expiry8h;
+  if (expiryValue === "1d") return t.expiry1d;
+  if (expiryValue === "3d") return t.expiry3d;
+  if (expiryValue === "7d") return t.expiry7d;
+  return expiryValue;
+}
 
 // Uniform integer in [0, max) — rejection sampling avoids modulo bias.
 const secureRandomInt = (max: number): number => {
@@ -84,6 +98,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   expiryValue,
   setExpiryValue,
 }) => {
+  const { t } = useLanguage();
+
   return (
     <div
       className={`mb-3 overflow-hidden transition-all duration-300 ease-in-out ${
@@ -102,9 +118,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 <span className="bg-green-50 dark:bg-green-900/30 p-1 rounded mr-2">
                   <Lock className="w-4 h-4 text-green-500 dark:text-green-400" />
                 </span>
-                <span className="block">Password</span>
+                <span className="block">{t.password}</span>
               </label>
-              <div className="mt-1 text-[10px] text-gray-400">Powered by passwords.lu</div>
+              <div className="mt-1 text-[10px] text-gray-400">{t.poweredBy} passwords.lu</div>
             </div>
           </div>
           <div className="col-span-2">
@@ -118,7 +134,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setPassword(e.target.value);
                     setPasswordSource("manual");
                   }}
-                  placeholder="Enter a secure password (optional)"
+                  placeholder={t.passwordPlaceholder}
                   className="w-full px-2.5 py-1.5 text-sm rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
                 />
                 <button
@@ -176,7 +192,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     title="Generate human-friendly password (easy to remember)"
                   >
                     <User className="h-4 w-4 mr-1" />
-                    <span>Simple</span>
+                    <span>{t.simple}</span>
                   </button>
                   <button
                     type="button"
@@ -188,7 +204,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     title="Generate strong password (very secure)"
                   >
                     <Shield className="h-4 w-4 mr-1" />
-                    <span>Strong</span>
+                    <span>{t.strong}</span>
                   </button>
                 </div>
               </div>
@@ -262,7 +278,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     />
                   </svg>
                 </span>
-                Expiration
+                {t.expiration}
               </label>
             </div>
             <div className="col-span-2">
@@ -284,7 +300,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               >
                 {NOTE_EXPIRY_PRESETS.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.label}
+                    {translatedExpiryLabel(p.id, t)}
                   </option>
                 ))}
               </select>

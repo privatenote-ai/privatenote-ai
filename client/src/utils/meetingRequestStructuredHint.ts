@@ -3,6 +3,9 @@
  * If confidence is low, returns an empty string — wrong hints hurt more than none.
  */
 
+import { buildLocalizedMeetingStructuredHint } from "@/components/note/promptSmallModelLocale";
+import type { SupportedLanguage } from "@/utils/translation";
+
 const MAX_RECIPIENT_CHARS = 100;
 const MAX_TOPIC_CHARS = 220;
 const MIN_CHARS = 3;
@@ -164,13 +167,12 @@ export function tryExtractMeetingRecipientAndTopic(
 /**
  * Best-effort lines for the model. Empty string if extraction is not confident.
  */
-export function buildMeetingStructuredHint(userInput: string): string {
+export function buildMeetingStructuredHint(
+  userInput: string,
+  language: SupportedLanguage = "en",
+): string {
   const pair = tryExtractMeetingRecipientAndTopic(userInput);
   if (!pair) return "";
 
-  return (
-    "Best-effort cues (auto-parsed; if anything does not match the USER REQUEST, ignore these lines and use the request only):\n" +
-    `- Recipient (from user): ${pair.recipient}\n` +
-    `- Purpose / topic (from user): ${pair.topic}\n\n`
-  );
+  return buildLocalizedMeetingStructuredHint(pair.recipient, pair.topic, language);
 }

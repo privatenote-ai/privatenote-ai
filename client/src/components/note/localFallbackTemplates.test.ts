@@ -18,7 +18,8 @@ describe("guided writing templates", () => {
 
   it("renders standardized placeholder labels for users", () => {
     const rendered = renderGuidedWritingTemplateText(
-      "Hi {{recipientName}}, thank you for {{supportType}}."
+      "Hi {{recipientName}}, thank you for {{supportType}}.",
+      "en",
     );
     assert.equal(rendered, "Hi [Recipient name], thank you for [Help, gift, or support].");
   });

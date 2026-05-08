@@ -21,6 +21,7 @@ import {
   describeWebAuthnEffectiveDomainError,
 } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 
@@ -100,6 +101,8 @@ type AuthMode = "sign-in" | "sign-up";
 export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
+  const { language, t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
@@ -146,7 +149,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
 
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
-      toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
+      toast({
+        title: tx("authPasskeysNotSupportedTitle", "Passkeys not supported"),
+        description: tx("authPasskeysNotSupportedDesc", "This browser does not support passkeys."),
+      });
       return;
     }
     setIsUsingPasskey(true);
@@ -164,7 +170,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       const publicKey = coerceLoginOptions(data.options);
       const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
       if (!credential) {
-        toast({ title: "Login cancelled", description: PASSKEY_FAIL_CANCELLED });
+        toast({ title: tx("authLoginCancelledTitle", "Login cancelled"), description: PASSKEY_FAIL_CANCELLED });
         return;
       }
       await apiRequest("/api/auth/webauthn/login/verify", "POST", {
@@ -178,7 +184,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       window.location.href = "/";
     } catch (error) {
       toast({
-        title: "Passkey login failed",
+        title: tx("authPasskeyLoginFailedTitle", "Passkey login failed"),
         description: passkeyFailureDescription(error),
         variant: "destructive",
       });
@@ -190,13 +196,16 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
   const sendMagicLinkRequest = async (options: { skipTypoCheck?: boolean } = {}) => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      toast({ title: "Email required", description: "Enter your email to continue." });
+      toast({
+        title: tx("authEmailRequiredTitle", "Email required"),
+        description: tx("authEmailRequiredDesc", "Enter your email to continue."),
+      });
       return;
     }
     if (!isPlausibleEmailFormat(trimmedEmail)) {
       toast({
-        title: "Invalid email",
-        description: "Enter a valid email address (example: you@domain.com).",
+        title: tx("authInvalidEmailTitle", "Invalid email"),
+        description: tx("authInvalidEmailDesc", "Enter a valid email address (example: you@domain.com)."),
         variant: "destructive",
       });
       return;
@@ -206,7 +215,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       return;
     }
     if (shouldShowTurnstile && !turnstileToken) {
-      toast({ title: "Human verification required", description: "Please complete the verification check." });
+      toast({
+        title: tx("authHumanVerificationTitle", "Human verification required"),
+        description: tx("authHumanVerificationDesc", "Please complete the verification check."),
+      });
       return;
     }
     setEmail(trimmedEmail);
@@ -216,17 +228,20 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
         "POST",
-        { email: trimmedEmail, turnstileToken }
+        { email: trimmedEmail, turnstileToken, locale: language }
       );
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
       }
       setView("sent");
-      toast({ title: "Check your email", description: "We sent a sign-in link if the address is valid." });
+      toast({
+        title: tx("authCheckEmailTitle", "Check your email"),
+        description: tx("authCheckEmailDesc", "We sent a sign-in link if the address is valid."),
+      });
     } catch {
       toast({
-        title: "Magic link failed",
-        description: "We couldn't send the link. Please try again.",
+        title: tx("authMagicLinkFailedTitle", "Magic link failed"),
+        description: tx("authMagicLinkFailedDesc", "We couldn't send the link. Please try again."),
         variant: "destructive",
       });
     } finally {
@@ -348,12 +363,14 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Header Section */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              {mode === "sign-up" ? "Create your account" : "Welcome back"}
+              {mode === "sign-up"
+                ? tx("authCreateYourAccount", "Create your account")
+                : tx("authWelcomeBack", "Welcome back")}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
               {mode === "sign-up"
-                ? "Create and share private notes that self-destruct after reading."
-                : "Sign in securely with your email or a passkey."}
+                ? tx("authSignUpSubtitle", "Create and share private notes that self-destruct after reading.")
+                : tx("authSignInSubtitle", "Sign in securely with your email or a passkey.")}
             </p>
           </div>
 
@@ -362,12 +379,12 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
             <Card className="border-2">
               <CardHeader>
                 <CardTitle className="text-xl">
-                  {mode === "sign-up" ? "Get started" : "Sign in"}
+                  {mode === "sign-up" ? tx("authGetStarted", "Get started") : tx("signIn", "Sign in")}
                 </CardTitle>
                 <CardDescription>
                   {mode === "sign-up"
-                    ? "Enter your email to create a passwordless account."
-                    : "Enter your email to receive a secure sign-in link or use passkey."}
+                    ? tx("authSignUpCardDesc", "Enter your email to create a passwordless account.")
+                    : tx("authSignInCardDesc", "Enter your email to receive a secure sign-in link or use passkey.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -380,7 +397,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                 >
                   <div className="space-y-2">
                     <label htmlFor="email-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Email address
+                      {tx("authEmailAddress", "Email address")}
                     </label>
                     <Input
                       id="email-input"
@@ -403,11 +420,11 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                       size="lg"
                     >
                       {isSendingMagicLink ? (
-                        <>Sending link...</>
+                        <>{tx("authSendingLink", "Sending link...")}</>
                       ) : mode === "sign-up" ? (
-                        "Create account"
+                        tx("authCreateAccountButton", "Create account")
                       ) : (
-                        "Continue with email"
+                        tx("authContinueWithEmail", "Continue with email")
                       )}
                     </Button>
                     {mode === "sign-in" && (
@@ -419,7 +436,9 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                         className="flex-1 min-h-12 sm:min-h-0"
                         size="lg"
                       >
-                        {isUsingPasskey ? "Signing in…" : "Use passkey"}
+                        {isUsingPasskey
+                          ? tx("authSigningIn", "Signing in...")
+                          : tx("authUsePasskey", "Use passkey")}
                       </Button>
                     )}
                   </div>
@@ -428,7 +447,9 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                     <div className="space-y-2">
                       <div id="auth-turnstile-container" className="min-h-[65px] flex justify-center" />
                       {!turnstileMounted && !turnstileError && (
-                        <p className="text-xs text-gray-500 text-center">Loading verification…</p>
+                        <p className="text-xs text-gray-500 text-center">
+                          {tx("authLoadingVerification", "Loading verification...")}
+                        </p>
                       )}
                       {turnstileError && (
                         <p className="text-xs text-red-500 text-center">{turnstileError}</p>
@@ -443,7 +464,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                       href="/auth/recovery"
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Use a recovery code
+                      {tx("authUseRecoveryCode", "Use a recovery code")}
                     </a>
                   </div>
                 )}
@@ -452,22 +473,22 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                   <div className="text-sm text-center text-gray-600 dark:text-gray-300">
                     {mode === "sign-up" ? (
                       <>
-                        Already have an account?{" "}
+                        {tx("authAlreadyHaveAccount", "Already have an account?")}{" "}
                         <a
                           href="/auth/sign-in"
                           className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                         >
-                          Sign in
+                          {tx("signIn", "Sign in")}
                         </a>
                       </>
                     ) : (
                       <>
-                        Don't have an account?{" "}
+                        {tx("authDontHaveAccount", "Don't have an account?")}{" "}
                         <a
                           href="/auth/sign-up"
                           className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                         >
-                          Sign up
+                          {tx("signUp", "Sign up")}
                         </a>
                       </>
                     )}
@@ -476,29 +497,29 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
 
                 {!passkeySupported && mode === "sign-in" && (
                   <p className="text-xs text-gray-500 text-center">
-                    This browser does not support passkeys.
+                    {tx("authPasskeysNotSupportedDesc", "This browser does not support passkeys.")}
                   </p>
                 )}
 
                 {mode === "sign-up" && (
                   <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    By continuing, you acknowledge that you understand and agree to the{" "}
+                    {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
                     <a
                       href="/terms"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Terms &amp; Conditions
+                      {tx("authTermsAndConditions", "Terms & Conditions")}
                     </a>{" "}
-                    and{" "}
+                    {tx("authAnd", "and")}{" "}
                     <a
                       href="/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Privacy Policy
+                      {tx("privacyPolicy", "Privacy Policy")}
                     </a>
                     .
                   </p>
@@ -517,16 +538,16 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                     </div>
                   </div>
                 </div>
-                <CardTitle className="text-2xl">Check your email</CardTitle>
+                <CardTitle className="text-2xl">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
                 <CardDescription className="text-base mt-2">
                   {mode === "sign-up" ? (
                     <>
-                      If this email address is valid, a secure link is on its way to{" "}
+                      {tx("authSignUpSentText", "If this email address is valid, a secure link is on its way to")}{" "}
                       <strong>{email.trim()}</strong>.
                     </>
                   ) : (
                     <>
-                      If an account can use this address, a secure sign-in link is on its way to{" "}
+                      {tx("authSignInSentText", "If an account can use this address, a secure sign-in link is on its way to")}{" "}
                       <strong>{email.trim()}</strong>.
                     </>
                   )}
@@ -535,7 +556,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
               <CardContent className="space-y-4">
                 <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    Check your inbox (and spam folder). It may take a minute to arrive.
+                    {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
                   </p>
                 </div>
                 <Button
@@ -547,12 +568,12 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                   className="w-full"
                   size="lg"
                 >
-                  Didn't receive an email? Try again
+                  {tx("authDidntReceive", "Didn't receive an email? Try again")}
                 </Button>
                 {showDebugMagicLinkUi && (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                      Development link:
+                      {tx("authDevelopmentLink", "Development link:")}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-300 break-all font-mono">
                       {debugMagicLink}
@@ -568,20 +589,20 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
       <AlertDialog open={typoDialogOpen} onOpenChange={setTypoDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unusual email domain</AlertDialogTitle>
+            <AlertDialogTitle>{tx("authUnusualEmailTitle", "Unusual email domain")}</AlertDialogTitle>
             <AlertDialogDescription>
-              That domain looks unusual and might be a typo. Continue anyway?
+              {tx("authUnusualEmailDesc", "That domain looks unusual and might be a typo. Continue anyway?")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogCancel>{tx("authGoBack", "Go back")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setTypoDialogOpen(false);
                 void sendMagicLinkRequest({ skipTypoCheck: true });
               }}
             >
-              Continue
+              {tx("authContinue", "Continue")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

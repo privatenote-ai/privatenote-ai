@@ -24,6 +24,32 @@ export function isUltraSmallWebLlmModel(modelId: string): boolean {
 }
 import { tryExtractMeetingRecipientAndTopic } from "@/utils/meetingRequestStructuredHint";
 import { buildSmallTierStructuredFieldsHint } from "@/utils/templateStructuredHint";
+import type { SupportedLanguage } from "@/utils/translation";
+import {
+  mergePromptTemplatesForLanguage,
+  formatSentenceLengthUserSuffix as formatSentenceLengthForLocale,
+  applySentenceLengthToUserPrompt as applySentenceLengthForLocale,
+  getLocalizedBaseInstruction,
+  getLocalizedPlaceholderBraceRule,
+  getLocalizedGroundingRulesSmall,
+  getLocalizedUserRequestLabel,
+  getLocalizedExampleShapePrefix,
+  getLocalizedUltraSmallNote,
+  getLocalizedExtraSmallLines,
+  buildOutputRepairAdditionLocalized,
+} from "./promptTemplateLocale";
+import {
+  classifyAskAnythingIntentForLocale,
+  getLocalizedAskAnythingIntentSection,
+  getLocalizedMediumStraightforwardLine,
+  getLocalizedOutputLengthInstruction,
+  getLocalizedResolveOutputLengthLine,
+  getLocalizedSmallInstructionScaffold,
+  getLocalizedUltraSmallOutputLengthLines,
+} from "./promptSmallModelLocale";
+
+export type { AskAnythingIntentRoute } from "./promptSmallModelLocale";
+export { classifyAskAnythingIntentForLocale } from "./promptSmallModelLocale";
 
 export interface PromptStarter {
   label: string;
@@ -87,183 +113,10 @@ const GROUNDING_RULES_SMALL = [
 const PLACEHOLDER_BRACE_RULE =
   "Hard rule: Never output {{ or }} in your answer. Use only real names and facts from the USER REQUEST and parsed cues when present.";
 
-const DEFAULT_SMALL_INSTRUCTION_SCAFFOLD_IMPROVE_ASK = [
-  "How to write it:",
-  "- Start naturally.",
-  "- State the main point clearly.",
-  "- Use only details from the USER REQUEST.",
-  "- End with one short natural closing line if it fits.",
-].join("\n");
-
-const SMALL_MODEL_INSTRUCTION_SCAFFOLDS: Record<string, string> = {
-  "ask-anything": [
-    "How to write it:",
-    "- Follow the exact user request.",
-    "- Output only the final text.",
-    "- No intro like “Sure” or “Here is”.",
-    "- No explanations unless the user asked for explanation.",
-  ].join("\n"),
-
-  "thank-you": [
-    "How to write it:",
-    "- Address the person exactly as the user described them.",
-    "- Thank them for the specific help, gift, or action.",
-    "- Add one short sincere line.",
-  ].join("\n"),
-
-  "meeting-request": [
-    "How to write it:",
-    "- Greet the person with the exact name or title from the user request.",
-    "- State that you want to schedule a meeting.",
-    "- Mention the topic clearly.",
-    "- If the user gave times, include them. Otherwise ask for availability.",
-  ].join("\n"),
-
-  birthday: [
-    "How to write it:",
-    "- Start with a birthday wish.",
-    "- Use the exact name if the user provided one.",
-    "- Mention relationship, memory, joke, age, or hobby only if the user included it.",
-  ].join("\n"),
-
-  apology: [
-    "How to write it:",
-    "- Apologize clearly for the exact issue the user described.",
-    "- Do not be defensive.",
-    "- Mention a fix only if the user gave one.",
-  ].join("\n"),
-
-  love: [
-    "How to write it:",
-    "- Keep it warm and personal.",
-    "- Mention only the feelings or details the user gave.",
-    "- Do not invent memories or promises.",
-  ].join("\n"),
-
-  congratulations: [
-    "How to write it:",
-    "- Congratulate the person on the exact achievement named by the user.",
-    "- Add one short proud or supportive line.",
-  ].join("\n"),
-
-  farewell: [
-    "How to write it:",
-    "- Thank the person or group for what the user actually mentioned.",
-    "- Keep the tone warm and positive.",
-    "- Include a memory only if the user gave one.",
-  ].join("\n"),
-
-  invitation: [
-    "How to write it:",
-    "- State the event clearly.",
-    "- Include date, time, and place only if the user gave them.",
-    "- Mention RSVP or what to bring only if the user asked.",
-  ].join("\n"),
-
-  condolence: [
-    "How to write it:",
-    "- Be gentle and simple.",
-    "- Mention only the loss or hard moment named by the user.",
-    "- Add one short supportive line.",
-  ].join("\n"),
-
-  reminder: [
-    "How to write it:",
-    "- Say what the reminder is about in plain words.",
-    "- Include deadline, time, or link only if the user gave them.",
-    "- Keep it polite and not pushy.",
-  ].join("\n"),
-};
-
-const SMALL_MODEL_SUMMARY_SECURE_SCAFFOLDS: Record<string, string> = {
-  "document-summary": [
-    "How to summarize:",
-    "- Use plain bullets only.",
-    "- One main idea per bullet.",
-    "- No repeated points.",
-    "- Focus on the most important facts, decisions, or takeaways.",
-  ].join("\n"),
-
-  "privacy-check": [
-    "How to redact:",
-    "- Keep the original wording and order.",
-    "- Replace only sensitive spans with [REDACTED].",
-    "- Do not summarize.",
-    "- Do not explain the changes.",
-  ].join("\n"),
-};
-
-export type AskAnythingIntentRoute =
-  | "message"
-  | "explain"
-  | "list"
-  | "rewrite"
-  | "default";
-
-export function classifyAskAnythingIntent(userInput: string): AskAnythingIntentRoute {
-  const u = userInput.trim();
-  if (!u) return "default";
-
-  if (
-    /\b(bullet|bullets|bullet-?point|outline|numbered\s+list|list\s+of|key\s+points)\b/i.test(
-      u
-    ) ||
-    /^\s*\d+[\).\]]\s+/m.test(u)
-  ) {
-    return "list";
-  }
-
-  if (
-    /\b(why\s|what\s+is\s|what\s+are\s|how\s+does\s|how\s+do\s|explain\s|define\s|meaning\s+of)\b/i.test(
-      u
-    )
-  ) {
-    return "explain";
-  }
-
-  if (
-    /\b(rewrite|rephrase|reword|polish|shorten|make\s+it\s+shorter|make\s+it\s+longer|change\s+the\s+tone|more\s+formal|more\s+casual)\b/i.test(
-      u
-    )
-  ) {
-    return "rewrite";
-  }
-
-  if (/\b(write|draft|email|e-mail|message|reply|respond|slack|text\s+to)\b/i.test(u)) {
-    return "message";
-  }
-
-  return "default";
-}
-
-function askAnythingIntentSection(route: AskAnythingIntentRoute): string {
-  const lines: Record<AskAnythingIntentRoute, string> = {
-    message:
-      "Intent: write a message or email.\n- Output only the finished message.\n- No meta advice.",
-    explain:
-      "Intent: answer or explain.\n- Use plain sentences.\n- No greeting unless the user asked for a message.",
-    list:
-      "Intent: list.\n- Use plain bullets (- or •).\n- No long intro before the list.",
-    rewrite:
-      "Intent: rewrite.\n- Keep the same facts.\n- Output only the rewritten text.",
-    default:
-      "Intent: follow the request exactly.\n- Output only what the user asked for.\n- No extra commentary.",
-  };
-  return lines[route];
-}
-
-function getSmallTierInstructionScaffold(template: PromptTemplate, tier: ModelTier): string {
-  if (tier !== "small") return "";
-  if (template.enhancementType === "summarize" || template.enhancementType === "secure") {
-    return SMALL_MODEL_SUMMARY_SECURE_SCAFFOLDS[template.id] ?? "";
-  }
-  if (template.enhancementType === "improve" || template.enhancementType === "ask") {
-    return (
-      SMALL_MODEL_INSTRUCTION_SCAFFOLDS[template.id] ??
-      DEFAULT_SMALL_INSTRUCTION_SCAFFOLD_IMPROVE_ASK
-    );
-  }
-  return "";
+export function classifyAskAnythingIntent(
+  userInput: string,
+): ReturnType<typeof classifyAskAnythingIntentForLocale> {
+  return classifyAskAnythingIntentForLocale(userInput, "en");
 }
 
 export type AiSentenceLengthId = "1-2" | "2-3" | "4-6" | "7-10";
@@ -276,85 +129,30 @@ export const AI_SENTENCE_LENGTH_OPTIONS: readonly { id: AiSentenceLengthId; labe
   { id: "7-10", label: "7 - 10" },
 ];
 
-const SENTENCE_LENGTH_USER_SUFFIX_RE = /\s*Write \([^)]+\) of sentences\.$/;
 const LEGACY_SENTENCE_USER_SUFFIX_RE = /\s*Use the sentence length I selected\.$/;
 
-/** End of the visible draft prompt, e.g. `Write (1 - 2) of sentences.` */
-export function formatSentenceLengthUserSuffix(preset: AiSentenceLengthId): string {
-  const opt = AI_SENTENCE_LENGTH_OPTIONS.find((o) => o.id === preset);
-  const label = opt?.label ?? "2 - 3";
-  return ` Write (${label}) of sentences.`;
+/** End of the visible draft prompt, e.g. `Write (1 - 2) of sentences.` (locale-aware). */
+export function formatSentenceLengthUserSuffix(
+  preset: AiSentenceLengthId,
+  language: SupportedLanguage = "en",
+): string {
+  return formatSentenceLengthForLocale(preset, language);
 }
 
 /** Replace an existing length clause when the user picks a different chip (or migrate legacy wording). */
-export function applySentenceLengthToUserPrompt(prompt: string, preset: AiSentenceLengthId): string {
-  const base = prompt.replace(SENTENCE_LENGTH_USER_SUFFIX_RE, "").replace(LEGACY_SENTENCE_USER_SUFFIX_RE, "");
-  return base + formatSentenceLengthUserSuffix(preset);
+export function applySentenceLengthToUserPrompt(
+  prompt: string,
+  preset: AiSentenceLengthId,
+  language: SupportedLanguage = "en",
+): string {
+  return applySentenceLengthForLocale(prompt, preset, language);
 }
 
 export function getOutputLengthInstruction(
   tier: ModelTier,
-  enhancementType: PromptTemplate["enhancementType"]
-): string {
-  if (enhancementType === "summarize") {
-    if (tier === "small") {
-      return "Output length: at most 4 bullet points. One short sentence per bullet. Use plain bullets only.";
-    }
-    if (tier === "medium") {
-      return "Output length: about 4–7 bullets. One clear sentence per bullet.";
-    }
-    return "Output length: about 5–10 bullets. Keep bullets scannable and non-redundant.";
-  }
-
-  if (enhancementType === "secure") {
-    if (tier === "small") {
-      return "Output length: keep the same structure as the input. Replace only sensitive spans with [REDACTED]. No explanation.";
-    }
-    return "Output length: match the input layout and redact in place only.";
-  }
-
-  if (enhancementType === "ask") {
-    if (tier === "small") {
-      return "Output length: 2–4 short sentences, unless the user clearly asked for bullets or steps.";
-    }
-    if (tier === "medium") {
-      return "Output length: about 3–6 sentences, or a compact bullet list if clearer.";
-    }
-    return "Output length: about 4–10 sentences unless a shorter answer fits better.";
-  }
-
-  if (tier === "small") {
-    return "Output length: 2–3 short sentences unless the user clearly needs more.";
-  }
-  if (tier === "medium") {
-    return "Output length: about 3–5 sentences unless the user asks for longer or shorter.";
-  }
-  return "Output length: about 4–8 sentences unless the user specifies a different length.";
-}
-
-/**
- * Applies the user’s sentence-length chip when building the model prompt.
- * Summary uses a prose/bullet-equivalent reading; secure/redact keeps tier-based length rules.
- */
-function resolveOutputLengthLine(
-  tier: ModelTier,
   enhancementType: PromptTemplate["enhancementType"],
-  preset: AiSentenceLengthId | undefined,
 ): string {
-  const base = getOutputLengthInstruction(tier, enhancementType);
-  if (!preset || enhancementType === "secure") return base;
-  const range = (
-    {
-      "1-2": "1–2",
-      "2-3": "2–3",
-      "4-6": "4–6",
-      "7-10": "7–10",
-    } as const
-  )[preset];
-  if (enhancementType === "summarize") {
-    return `Output length: about ${range} short summary sentences (or the same coverage as concise bullets).`;
-  }
-  return `Output length: about ${range} complete sentences unless the user asked for bullets, a list, or a different format.`;
+  return getLocalizedOutputLengthInstruction(tier, enhancementType, "en");
 }
 
 export const promptTemplates: PromptTemplate[] = [
@@ -608,10 +406,15 @@ export const promptTemplates: PromptTemplate[] = [
   },
 ];
 
+export function getPromptTemplatesForLanguage(language: SupportedLanguage): PromptTemplate[] {
+  return mergePromptTemplatesForLanguage(promptTemplates, language);
+}
+
 export function getPromptTemplateById(
-  id: string | null | undefined
+  id: string | null | undefined,
+  language: SupportedLanguage = "en",
 ): PromptTemplate | undefined {
-  return promptTemplates.find((t) => t.id === id);
+  return getPromptTemplatesForLanguage(language).find((t) => t.id === id);
 }
 
 /** @deprecated Use getModelTier from @shared/modelTier */
@@ -622,45 +425,29 @@ export function buildPromptFromTemplate(
   userInput: string,
   modelId: string,
   sentenceLengthPreset?: AiSentenceLengthId,
+  language: SupportedLanguage = "en",
 ): string {
   const tier = getModelTier(modelId);
-  let lengthLine = resolveOutputLengthLine(tier, template.enhancementType, sentenceLengthPreset);
-  if (tier === "small" && isUltraSmallWebLlmModel(modelId)) {
-    if (template.enhancementType === "summarize") {
-      lengthLine =
-        "Output length: at most 3 bullets or 3 short sentences. One fact per line. No intro paragraph.";
-    } else if (template.enhancementType === "ask") {
-      lengthLine =
-        "Output length: 1–3 short sentences unless the user clearly asked for bullets, a list, or a longer reply.";
-    } else if (template.enhancementType === "secure") {
-      lengthLine =
-        "Output length: same structure as input. Replace only sensitive spans with [REDACTED]. One pass, no commentary.";
-    } else {
-      lengthLine =
-        "Output length: 1–3 short sentences unless the user clearly needs more.";
-    }
-    if (sentenceLengthPreset && template.enhancementType !== "secure") {
-      const range = (
-        {
-          "1-2": "1–2",
-          "2-3": "2–3",
-          "4-6": "4–6",
-          "7-10": "7–10",
-        } as const
-      )[sentenceLengthPreset];
-      if (template.enhancementType === "summarize") {
-        lengthLine = `Output length: about ${range} very short lines (bullets or sentences). No intro.`;
-      } else {
-        lengthLine = `Output length: about ${range} short sentences; stay tight for on-device limits.`;
-      }
-    }
-  }
+  const lengthLine =
+    tier === "small" && isUltraSmallWebLlmModel(modelId)
+      ? getLocalizedUltraSmallOutputLengthLines(
+          template.enhancementType,
+          sentenceLengthPreset,
+          language,
+        )
+      : getLocalizedResolveOutputLengthLine(
+          tier,
+          template.enhancementType,
+          sentenceLengthPreset,
+          language,
+        );
 
+  const [ex1, ex2] = getLocalizedExtraSmallLines(language);
   const extraSmall: string[] =
     tier === "small"
-      ? ["Use simple words.", "Do not add a title."]
+      ? [ex1, ex2]
       : tier === "medium"
-        ? ["Keep sentences straightforward."]
+        ? [getLocalizedMediumStraightforwardLine(language)]
         : [];
 
   const useGrounding =
@@ -668,10 +455,15 @@ export function buildPromptFromTemplate(
     (template.enhancementType === "improve" || template.enhancementType === "ask");
 
   const structuredHint = useGrounding
-    ? buildSmallTierStructuredFieldsHint(template.id, userInput, template.enhancementType)
+    ? buildSmallTierStructuredFieldsHint(
+        template.id,
+        userInput,
+        template.enhancementType,
+        language,
+      )
     : "";
 
-  const smallInstructionScaffold = getSmallTierInstructionScaffold(template, tier);
+  const smallInstructionScaffold = getLocalizedSmallInstructionScaffold(template, tier, language);
 
   const skipExampleForSmallTier =
     tier === "small" &&
@@ -682,7 +474,7 @@ export function buildPromptFromTemplate(
 
   const exampleSection =
     template.outputExample && !skipExampleForSmallTier
-      ? `\nExample output shape only. Sample names and details are fictional. Use facts from the USER REQUEST only; do not copy sample names or wording:\n${template.outputExample}`
+      ? `\n${getLocalizedExampleShapePrefix(language)}\n${template.outputExample}`
       : "";
 
   const instructionScaffoldSection = smallInstructionScaffold
@@ -691,10 +483,7 @@ export function buildPromptFromTemplate(
 
   const ultraSmallBlock =
     tier === "small" && isUltraSmallWebLlmModel(modelId)
-      ? [
-          "",
-          "On-device model is very small: one tight paragraph when possible. No preamble (“Sure”, “Here is”). Jump straight into the requested text.",
-        ].join("\n")
+      ? ["", getLocalizedUltraSmallNote(language)].join("\n")
       : "";
 
   const guidance =
@@ -704,14 +493,17 @@ export function buildPromptFromTemplate(
 
   const askIntentSection =
     tier === "small" && template.id === "ask-anything"
-      ? `\n${askAnythingIntentSection(classifyAskAnythingIntent(userInput))}\n`
+      ? `\n${getLocalizedAskAnythingIntentSection(
+          classifyAskAnythingIntentForLocale(userInput, language),
+          language,
+        )}\n`
       : "";
 
   return [
-    tier === "small" ? BASE_INSTRUCTION_SMALL : BASE_INSTRUCTION,
+    getLocalizedBaseInstruction(tier, language),
     "",
-    PLACEHOLDER_BRACE_RULE,
-    useGrounding ? `\n${GROUNDING_RULES_SMALL}\n` : "",
+    getLocalizedPlaceholderBraceRule(language),
+    useGrounding ? `\n${getLocalizedGroundingRulesSmall(language)}\n` : "",
     "",
     guidance,
     askIntentSection,
@@ -720,7 +512,7 @@ export function buildPromptFromTemplate(
     ...extraSmall,
     "",
     structuredHint,
-    "User request:",
+    `${getLocalizedUserRequestLabel(language)}`,
     userInput,
     instructionScaffoldSection,
     exampleSection,
@@ -915,28 +707,9 @@ export function validateLocalLlmOutput(
   };
 }
 
-export function buildOutputRepairAddition(issues: LocalLlmValidationIssue[]): string {
-  const lines: string[] = [
-    "---",
-    "REGENERATE (your last answer failed checks). Use the same USER REQUEST above.",
-    "Rules for this attempt:",
-    "- Output only the final text. No preamble like “Here is” or “Sure”.",
-    "- No {{ or }} and no placeholder tokens.",
-    "- No “Final note:” and no thinking tags.",
-  ];
-
-  if (issues.includes("meeting_recipient_missing")) {
-    lines.push("- Greet or address the person using the exact name or title from the USER REQUEST.");
-  }
-
-  if (issues.includes("too_many_bullets_summarize")) {
-    lines.push("- Use at most 4 bullet points. One idea per bullet.");
-  }
-
-  if (issues.includes("thinking_tag")) {
-    lines.push("- Do not output <redacted_thinking>, <think>, or any XML-style reasoning tags.");
-  }
-
-  lines.push("Throw away the bad patterns above and write the correct version now.");
-  return lines.join("\n");
+export function buildOutputRepairAddition(
+  issues: LocalLlmValidationIssue[],
+  language: SupportedLanguage = "en",
+): string {
+  return buildOutputRepairAdditionLocalized(issues, language);
 }

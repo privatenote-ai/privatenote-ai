@@ -427,23 +427,69 @@ function normalizeMagicEmailCode(raw: unknown): string | null {
   return digits.length === 6 ? digits : null;
 }
 
-async function sendMagicSignInOtpEmail(env: Env, to: string, code: string): Promise<{ ok: boolean; error?: string }> {
-  const subject = "Your PrivateNote sign-in code";
-  const text = [
-    "PrivateNote sign-in code",
-    "",
-    `Your confirmation code is: ${code}`,
-    "",
-    "Enter this code after opening your magic link and pressing Continue.",
-    "",
-    "If you did not request this, you can ignore this email.",
-  ].join("\n");
+type AuthEmailLocale = "en" | "de" | "fr" | "es";
+function normalizeAuthEmailLocale(raw: unknown): AuthEmailLocale {
+  if (typeof raw !== "string") return "en";
+  const v = raw.trim().toLowerCase();
+  return v === "de" || v === "fr" || v === "es" ? v : "en";
+}
+
+function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailLocale {
+  const normalizedExplicit = normalizeAuthEmailLocale(explicit);
+  if (typeof explicit === "string" && normalizedExplicit !== "en") return normalizedExplicit;
+  const accept = request.headers.get("Accept-Language") || "";
+  const primary = accept.split(",")[0]?.trim().toLowerCase() || "";
+  if (primary.startsWith("de")) return "de";
+  if (primary.startsWith("fr")) return "fr";
+  if (primary.startsWith("es")) return "es";
+  return normalizedExplicit;
+}
+
+async function sendMagicSignInOtpEmail(
+  env: Env,
+  to: string,
+  code: string,
+  locale: AuthEmailLocale = "en",
+): Promise<{ ok: boolean; error?: string }> {
+  const copy = {
+    en: {
+      subject: "Your PrivateNote sign-in code",
+      title: "PrivateNote sign-in code",
+      lead: "Your confirmation code is:",
+      hint: "Enter this code on the page after you press Continue sign in.",
+      ignore: "If you did not request this, you can ignore this email.",
+    },
+    de: {
+      subject: "Ihr PrivateNote-Anmeldecode",
+      title: "PrivateNote-Anmeldecode",
+      lead: "Ihr Bestaetigungscode lautet:",
+      hint: "Geben Sie diesen Code auf der Seite ein, nachdem Sie auf Weiter zur Anmeldung geklickt haben.",
+      ignore: "Wenn Sie dies nicht angefordert haben, koennen Sie diese E-Mail ignorieren.",
+    },
+    fr: {
+      subject: "Votre code de connexion PrivateNote",
+      title: "Code de connexion PrivateNote",
+      lead: "Votre code de confirmation est :",
+      hint: "Saisissez ce code sur la page apres avoir clique sur Continuer la connexion.",
+      ignore: "Si vous n'avez pas demande ceci, vous pouvez ignorer cet e-mail.",
+    },
+    es: {
+      subject: "Tu codigo de inicio de sesion de PrivateNote",
+      title: "Codigo de inicio de sesion de PrivateNote",
+      lead: "Tu codigo de confirmacion es:",
+      hint: "Introduce este codigo en la pagina despues de pulsar Continuar inicio de sesion.",
+      ignore: "Si no solicitaste esto, puedes ignorar este correo.",
+    },
+  }[locale];
+  const subject = copy.subject;
+  const text = [copy.title, "", `${copy.lead} ${code}`, "", copy.hint, "", copy.ignore].join("\n");
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    "  <p style=\"margin: 0 0 12px; font-size: 18px; font-weight: 700;\">PrivateNote sign-in code</p>",
-    `  <p style=\"margin: 0 0 8px; color: #374151;\">Your confirmation code is:</p>`,
-    `  <p style=\"margin: 0 0 20px; font-size: 28px; letter-spacing: 0.2em; font-weight: 700; color: #111827;\">${code}</p>`,
-    "  <p style=\"margin: 0; color: #6B7280; font-size: 13px;\">Enter this code on the page after you press Continue sign in.</p>",
+    `  <p style="margin: 0 0 12px; font-size: 18px; font-weight: 700;">${copy.title}</p>`,
+    `  <p style="margin: 0 0 8px; color: #374151;">${copy.lead}</p>`,
+    `  <p style="margin: 0 0 20px; font-size: 28px; letter-spacing: 0.2em; font-weight: 700; color: #111827;">${code}</p>`,
+    `  <p style="margin: 0 0 10px; color: #6B7280; font-size: 13px;">${copy.hint}</p>`,
+    `  <p style="margin: 0; color: #6B7280; font-size: 12px;">${copy.ignore}</p>`,
     "</div>",
   ].join("");
   return sendEmail(env, { to, subject, text, html });
@@ -453,6 +499,7 @@ async function sendMagicLinkEmail(
   env: Env,
   to: string,
   magicUrl: string,
+  locale: AuthEmailLocale = "en",
 ): Promise<{ ok: boolean; error?: string }> {
   const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
   if (provider !== "resend") {
@@ -468,31 +515,72 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const subject = "Login to PrivateNote";
-  const text = [
-    "Login to PrivateNote",
-    "",
-    "Open this link in your browser, then press \"Continue sign in\" on the page (the link alone does not sign you in):",
-    magicUrl,
-    "",
-    "For security, finish sign-in in the same browser where you opened the link.",
-    "",
-    "If you did not request this, you can ignore this email.",
-  ].join("\n");
+  const copy = {
+    en: {
+      subject: "Login to PrivateNote",
+      title: "Login to PrivateNote",
+      body:
+        "Open the link below in this browser, then press Continue sign in. Opening the link only prepares sign-in; a confirmation step completes it.",
+      security: "For security: finish sign-in in the same browser where you opened the link.",
+      cta: "Sign in with Magic Link to PrivateNote",
+      ignore: "If you did not request this, you can ignore this email.",
+      footer: "Securely create, share, and destroy private notes - only the recipient can read them.",
+      textOpen:
+        'Open this link in your browser, then press "Continue sign in" on the page (the link alone does not sign you in):',
+    },
+    de: {
+      subject: "Bei PrivateNote anmelden",
+      title: "Bei PrivateNote anmelden",
+      body:
+        "Oeffnen Sie den folgenden Link in diesem Browser und klicken Sie dann auf Weiter zur Anmeldung. Das Oeffnen des Links bereitet nur die Anmeldung vor; ein Bestaetigungsschritt schliesst sie ab.",
+      security: "Zur Sicherheit: Schliessen Sie die Anmeldung im selben Browser ab, in dem Sie den Link geoeffnet haben.",
+      cta: "Mit Magic Link bei PrivateNote anmelden",
+      ignore: "Wenn Sie dies nicht angefordert haben, koennen Sie diese E-Mail ignorieren.",
+      footer: "Private Notizen sicher erstellen, teilen und zerstoeren - nur der Empfaenger kann sie lesen.",
+      textOpen:
+        'Oeffnen Sie diesen Link im Browser und druecken Sie dann auf der Seite "Weiter zur Anmeldung" (der Link allein meldet Sie nicht an):',
+    },
+    fr: {
+      subject: "Connexion a PrivateNote",
+      title: "Connexion a PrivateNote",
+      body:
+        "Ouvrez le lien ci-dessous dans ce navigateur, puis appuyez sur Continuer la connexion. Ouvrir le lien prepare seulement la connexion ; une etape de confirmation la finalise.",
+      security: "Pour votre securite : terminez la connexion dans le meme navigateur ou vous avez ouvert le lien.",
+      cta: "Se connecter avec un lien magique a PrivateNote",
+      ignore: "Si vous n'avez pas demande ceci, vous pouvez ignorer cet e-mail.",
+      footer: "Creez, partagez et detruisez des notes privees en toute securite - seul le destinataire peut les lire.",
+      textOpen:
+        'Ouvrez ce lien dans votre navigateur, puis appuyez sur "Continuer la connexion" sur la page (le lien seul ne vous connecte pas) :',
+    },
+    es: {
+      subject: "Iniciar sesion en PrivateNote",
+      title: "Iniciar sesion en PrivateNote",
+      body:
+        "Abre el enlace de abajo en este navegador y luego pulsa Continuar inicio de sesion. Abrir el enlace solo prepara el inicio; un paso de confirmacion lo completa.",
+      security: "Por seguridad: termina el inicio de sesion en el mismo navegador donde abriste el enlace.",
+      cta: "Iniciar sesion con enlace magico en PrivateNote",
+      ignore: "Si no solicitaste esto, puedes ignorar este correo.",
+      footer: "Crea, comparte y destruye notas privadas de forma segura - solo el destinatario puede leerlas.",
+      textOpen:
+        'Abre este enlace en tu navegador y luego pulsa "Continuar inicio de sesion" en la pagina (el enlace por si solo no inicia sesion):',
+    },
+  }[locale];
+  const subject = copy.subject;
+  const text = [copy.title, "", copy.textOpen, magicUrl, "", copy.security, "", copy.ignore].join("\n");
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    "  <div style=\"font-size: 20px; font-weight: 700; margin-bottom: 12px;\"><strong>Login to PrivateNote</strong></div>",
-    "  <p style=\"margin: 0 0 12px; color: #374151;\">Open the link below in this browser, then press <strong>Continue sign in</strong>. Opening the link only prepares sign-in; a confirmation step completes it.</p>",
-    "  <p style=\"margin: 0 0 20px; color: #374151; font-size: 14px;\"><strong>For security:</strong> finish sign-in in the same browser where you opened the link.</p>",
+    `  <div style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><strong>${copy.title}</strong></div>`,
+    `  <p style="margin: 0 0 12px; color: #374151;">${copy.body}</p>`,
+    `  <p style="margin: 0 0 20px; color: #374151; font-size: 14px;"><strong>${copy.security}</strong></p>`,
     "  <a href=\"" +
       magicUrl +
-      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
-    "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
+      `" referrerpolicy="no-referrer" style="display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;">${copy.cta}</a>`,
+    `  <p style="margin: 20px 0 0; color: #6B7280; font-size: 12px;">${copy.ignore}</p>`,
     "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
     "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
     "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote.ai</span>",
     "  </div>",
-    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
+    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 12px;">${copy.footer}</p>`,
     "</div>",
   ].join("");
 
@@ -2035,7 +2123,8 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
     }
     const otp = generateMagicEmailOtpDigits();
     otpHash = await sha256Base64Url(otp);
-    const sendResult = await sendMagicSignInOtpEmail(env, email, otp);
+    const locale = normalizeAuthEmailLocale(payload.locale);
+    const sendResult = await sendMagicSignInOtpEmail(env, email, otp, locale);
     if (!sendResult.ok) {
       await logAuditEvent(env, {
         userId: userIdForAudit,
@@ -2526,26 +2615,66 @@ async function schedulePendingAccountDeletion(
   const requestIp = getRequestIp(request);
   const webOrigin = getMagicLinkOrigin(env, request);
   const cancelUrl = `${webOrigin}/api/auth/account/delete/cancel?token=${encodeURIComponent(cancelToken)}`;
+  const locale = detectAuthEmailLocale(request);
+  const pendingDeletionCopy = {
+    en: {
+      subject: "Account deletion scheduled (48 hours) - PrivateNote",
+      title: "Account deletion scheduled",
+      body1: "Your PrivateNote account deletion was requested using a backup email verification method.",
+      body2: "Your account is scheduled for permanent deletion in 48 hours.",
+      body3: "If this was not you, cancel deletion immediately:",
+      cta: "Review cancellation",
+      body4: "If you do nothing, deletion will complete automatically after the waiting period.",
+    },
+    de: {
+      subject: "Kontoloeschung geplant (48 Stunden) - PrivateNote",
+      title: "Kontoloeschung geplant",
+      body1: "Die Loeschung Ihres PrivateNote-Kontos wurde ueber eine Backup-E-Mail-Verifizierung angefordert.",
+      body2: "Ihr Konto ist zur endgueltigen Loeschung in 48 Stunden eingeplant.",
+      body3: "Wenn Sie das nicht waren, stornieren Sie die Loeschung sofort:",
+      cta: "Stornierung pruefen",
+      body4: "Wenn Sie nichts unternehmen, wird die Loeschung nach der Wartezeit automatisch abgeschlossen.",
+    },
+    fr: {
+      subject: "Suppression de compte planifiee (48 heures) - PrivateNote",
+      title: "Suppression de compte planifiee",
+      body1: "La suppression de votre compte PrivateNote a ete demandee via une methode de verification e-mail de secours.",
+      body2: "Votre compte est programme pour une suppression definitive dans 48 heures.",
+      body3: "Si vous n'etes pas a l'origine de cette demande, annulez immediatement :",
+      cta: "Verifier l'annulation",
+      body4: "Si vous ne faites rien, la suppression sera finalisee automatiquement apres le delai d'attente.",
+    },
+    es: {
+      subject: "Eliminacion de cuenta programada (48 horas) - PrivateNote",
+      title: "Eliminacion de cuenta programada",
+      body1: "La eliminacion de tu cuenta de PrivateNote se solicito mediante verificacion por correo de respaldo.",
+      body2: "Tu cuenta quedara eliminada de forma permanente en 48 horas.",
+      body3: "Si no fuiste tu, cancela la eliminacion de inmediato:",
+      cta: "Revisar cancelacion",
+      body4: "Si no haces nada, la eliminacion se completara automaticamente despues del periodo de espera.",
+    },
+  }[locale];
 
   const emailResult = await sendEmail(env, {
     to: userEmail,
-    subject: "Account deletion scheduled (48 hours) - PrivateNote",
+    subject: pendingDeletionCopy.subject,
     text:
-      `Your PrivateNote account deletion was requested using a backup email verification method.\n\n` +
-      `Your account is scheduled for permanent deletion in 48 hours.\n\n` +
-      `If this was not you, cancel deletion now:\n${cancelUrl}\n\n` +
-      `If you do nothing, deletion will complete automatically after the waiting period.`,
+      `${pendingDeletionCopy.body1}\n\n` +
+      `${pendingDeletionCopy.body2}\n\n` +
+      `${pendingDeletionCopy.body3}\n${cancelUrl}\n\n` +
+      `${pendingDeletionCopy.body4}`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Account deletion scheduled</h2>
-        <p>Your PrivateNote account deletion was requested using a <strong>backup email verification method</strong>.</p>
-        <p>Your account is scheduled for permanent deletion in <strong>48 hours</strong>.</p>
-        <p>If this was not you, cancel deletion immediately:</p>
+        <h2>${pendingDeletionCopy.title}</h2>
+        <p>${pendingDeletionCopy.body1}</p>
+        <p>${pendingDeletionCopy.body2}</p>
+        <p>${pendingDeletionCopy.body3}</p>
         <p style="margin: 24px 0;">
           <a href="${cancelUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
-            Review cancellation
+            ${pendingDeletionCopy.cta}
           </a>
         </p>
+        <p>${pendingDeletionCopy.body4}</p>
       </div>
     `,
   });
@@ -3177,35 +3306,82 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
     const accountEmail = typeof challengeRecord.email === "string" ? challengeRecord.email.trim().toLowerCase() : "";
     if (accountEmail) {
+      const locale = detectAuthEmailLocale(request);
       const passkeyDevice = credentialMetadata.deviceInfo || "this device";
       const passkeyType = getPasskeyLabel(transports || null);
       const securityUrl = `${getMagicLinkOrigin(env, request)}/account/security`;
+      const passkeyAddedCopy = {
+        en: {
+          subject: "Passkey added to your PrivateNote account",
+          title: "Passkey added",
+          line1: "A new passkey was added to your PrivateNote account.",
+          typeLabel: "Passkey type:",
+          deviceLabel: "Device:",
+          line2: "If this was you, no further action is needed.",
+          line3: "If this was not you, review your passkeys in Security settings and remove any you do not recognize.",
+          cta: "Open Security settings",
+          line4: "If anything looks wrong, secure your account immediately and contact",
+        },
+        de: {
+          subject: "Passkey zu Ihrem PrivateNote-Konto hinzugefuegt",
+          title: "Passkey hinzugefuegt",
+          line1: "Ein neuer Passkey wurde zu Ihrem PrivateNote-Konto hinzugefuegt.",
+          typeLabel: "Passkey-Typ:",
+          deviceLabel: "Geraet:",
+          line2: "Wenn Sie das waren, ist keine weitere Aktion erforderlich.",
+          line3: "Wenn Sie das nicht waren, pruefen Sie Ihre Passkeys in den Sicherheitseinstellungen und entfernen Sie unbekannte Eintraege.",
+          cta: "Sicherheitseinstellungen oeffnen",
+          line4: "Wenn etwas verdaechtig ist, sichern Sie Ihr Konto sofort und kontaktieren Sie",
+        },
+        fr: {
+          subject: "Cle d'acces ajoutee a votre compte PrivateNote",
+          title: "Cle d'acces ajoutee",
+          line1: "Une nouvelle cle d'acces a ete ajoutee a votre compte PrivateNote.",
+          typeLabel: "Type de cle d'acces :",
+          deviceLabel: "Appareil :",
+          line2: "Si c'etait vous, aucune autre action n'est necessaire.",
+          line3: "Si ce n'etait pas vous, verifiez vos cles d'acces dans les parametres de securite et supprimez celles que vous ne reconnaissez pas.",
+          cta: "Ouvrir les parametres de securite",
+          line4: "Si quelque chose semble incorrect, securisez votre compte immediatement et contactez",
+        },
+        es: {
+          subject: "Passkey agregada a tu cuenta de PrivateNote",
+          title: "Passkey agregada",
+          line1: "Se agrego una nueva passkey a tu cuenta de PrivateNote.",
+          typeLabel: "Tipo de passkey:",
+          deviceLabel: "Dispositivo:",
+          line2: "Si fuiste tu, no necesitas hacer nada mas.",
+          line3: "Si no fuiste tu, revisa tus passkeys en Configuracion de seguridad y elimina las que no reconozcas.",
+          cta: "Abrir configuracion de seguridad",
+          line4: "Si algo parece incorrecto, protege tu cuenta de inmediato y contacta a",
+        },
+      }[locale];
       const emailResult = await sendEmail(env, {
         to: accountEmail,
-        subject: "Passkey added to your PrivateNote account",
+        subject: passkeyAddedCopy.subject,
         text:
-          `A new passkey was added to your PrivateNote account.\n\n` +
-          `Passkey type: ${passkeyType}\n` +
-          `Device: ${passkeyDevice}\n\n` +
-          `If this was you, no further action is needed.\n\n` +
-          `If this was not you, review your passkeys in Security settings and remove any you do not recognize:\n${securityUrl}\n\n` +
-          `If anything looks wrong, secure your account immediately and contact support at contact@privatenote.ai.`,
+          `${passkeyAddedCopy.line1}\n\n` +
+          `${passkeyAddedCopy.typeLabel} ${passkeyType}\n` +
+          `${passkeyAddedCopy.deviceLabel} ${passkeyDevice}\n\n` +
+          `${passkeyAddedCopy.line2}\n\n` +
+          `${passkeyAddedCopy.line3}\n${securityUrl}\n\n` +
+          `${passkeyAddedCopy.line4} contact@privatenote.ai.`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Passkey added</h2>
-            <p>A new passkey was added to your PrivateNote account.</p>
+            <h2>${passkeyAddedCopy.title}</h2>
+            <p>${passkeyAddedCopy.line1}</p>
             <p>
-              <strong>Passkey type:</strong> ${passkeyType}<br />
-              <strong>Device:</strong> ${passkeyDevice}
+              <strong>${passkeyAddedCopy.typeLabel}</strong> ${passkeyType}<br />
+              <strong>${passkeyAddedCopy.deviceLabel}</strong> ${passkeyDevice}
             </p>
-            <p>If this was you, no further action is needed.</p>
-            <p>If this was not you, review your passkeys in Security settings and remove any you do not recognize.</p>
+            <p>${passkeyAddedCopy.line2}</p>
+            <p>${passkeyAddedCopy.line3}</p>
             <p style="margin: 24px 0;">
               <a href="${securityUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
-                Open Security settings
+                ${passkeyAddedCopy.cta}
               </a>
             </p>
-            <p style="color: #4b5563;">If anything looks wrong, secure your account immediately and contact <a href="mailto:contact@privatenote.ai">contact@privatenote.ai</a>.</p>
+            <p style="color: #4b5563;">${passkeyAddedCopy.line4} <a href="mailto:contact@privatenote.ai">contact@privatenote.ai</a>.</p>
           </div>
         `,
       });
@@ -4126,20 +4302,64 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     // Notify user by email so they know if they did not initiate this (account may be compromised)
     const userEmail = (session.email ?? "").trim().toLowerCase();
     if (userEmail) {
+      const locale = detectAuthEmailLocale(request);
+      const recoveryCodesCopy = {
+        en: {
+          subject: "Recovery codes regenerated - PrivateNote",
+          title: "Recovery codes regenerated",
+          body1: "Your PrivateNote recovery codes were regenerated. Your previous unused recovery codes no longer work.",
+          body2: "If you did not do this, please secure your account:",
+          li1: "Revoke other sessions from Security Settings",
+          li2: "Add or verify your passkey",
+          footer: "This is an automated security notification.",
+        },
+        de: {
+          subject: "Wiederherstellungscodes neu erstellt - PrivateNote",
+          title: "Wiederherstellungscodes neu erstellt",
+          body1: "Ihre PrivateNote-Wiederherstellungscodes wurden neu erstellt. Ihre zuvor ungenutzten Codes sind nicht mehr gueltig.",
+          body2: "Wenn Sie das nicht waren, sichern Sie bitte Ihr Konto:",
+          li1: "Widerrufen Sie andere Sitzungen in den Sicherheitseinstellungen",
+          li2: "Fuegen Sie einen Passkey hinzu oder bestaetigen Sie ihn",
+          footer: "Dies ist eine automatische Sicherheitsbenachrichtigung.",
+        },
+        fr: {
+          subject: "Codes de recuperation regenerees - PrivateNote",
+          title: "Codes de recuperation regenerees",
+          body1: "Vos codes de recuperation PrivateNote ont ete regeneres. Vos anciens codes non utilises ne fonctionnent plus.",
+          body2: "Si vous n'etes pas a l'origine de cette action, securisez votre compte :",
+          li1: "Revoquez les autres sessions dans les parametres de securite",
+          li2: "Ajoutez ou verifiez votre cle d'acces",
+          footer: "Ceci est une notification de securite automatique.",
+        },
+        es: {
+          subject: "Codigos de recuperacion regenerados - PrivateNote",
+          title: "Codigos de recuperacion regenerados",
+          body1: "Tus codigos de recuperacion de PrivateNote se regeneraron. Tus codigos anteriores no usados ya no funcionan.",
+          body2: "Si no fuiste tu, protege tu cuenta:",
+          li1: "Revoca otras sesiones desde Configuracion de seguridad",
+          li2: "Agrega o verifica tu passkey",
+          footer: "Esta es una notificacion de seguridad automatica.",
+        },
+      }[locale];
       const emailResult = await sendEmail(env, {
         to: userEmail,
-        subject: "Recovery codes regenerated - PrivateNote",
-        text: `Your PrivateNote recovery codes were regenerated. Your previous unused recovery codes no longer work.\n\nIf you did not do this, please secure your account (change password if applicable, revoke other sessions, and add or verify your passkey) from Security Settings.\n\nThis is an automated security notification.`,
+        subject: recoveryCodesCopy.subject,
+        text:
+          `${recoveryCodesCopy.body1}\n\n` +
+          `${recoveryCodesCopy.body2}\n` +
+          `- ${recoveryCodesCopy.li1}\n` +
+          `- ${recoveryCodesCopy.li2}\n\n` +
+          `${recoveryCodesCopy.footer}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Recovery codes regenerated</h2>
-            <p>Your PrivateNote recovery codes were regenerated. Your previous <strong>unused</strong> recovery codes no longer work.</p>
-            <p>If you did not do this, please secure your account:</p>
+            <h2>${recoveryCodesCopy.title}</h2>
+            <p>${recoveryCodesCopy.body1}</p>
+            <p>${recoveryCodesCopy.body2}</p>
             <ul>
-              <li>Revoke other sessions from Security Settings</li>
-              <li>Add or verify your passkey</li>
+              <li>${recoveryCodesCopy.li1}</li>
+              <li>${recoveryCodesCopy.li2}</li>
             </ul>
-            <p style="color: #666; font-size: 14px;">This is an automated security notification.</p>
+            <p style="color: #666; font-size: 14px;">${recoveryCodesCopy.footer}</p>
           </div>
         `,
       });
@@ -4424,6 +4644,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     }
     console.log("[MAGIC_LINK] Body parsed, email present:", !!body?.email);
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
+    const locale = normalizeAuthEmailLocale(body?.locale);
     const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const responsePayload: Record<string, unknown> = {
       ok: true,
@@ -4539,6 +4760,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         userId,
         email,
         intent,
+        locale,
         createdAt: Date.now(),
         magicIpPrefix: magicCtx.ipPrefix,
         magicUaHash: magicCtx.uaHash,
@@ -4583,7 +4805,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           });
         } else {
           console.log("[MAGIC_LINK] Calling sendMagicLinkEmail via Resend...");
-          const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
+          const sendResult = await sendMagicLinkEmail(env, email, magicUrl, locale);
           if (!sendResult.ok) {
             console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);
             await logAuditEvent(env, {
@@ -4828,25 +5050,72 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     // Send verification email to new address (same origin rules as magic links)
     const webOrigin = getMagicLinkOrigin(env, request);
     const verifyUrl = `${webOrigin}/auth/email-change?token=${encodeURIComponent(token)}`;
+    const locale = detectAuthEmailLocale(request);
+    const verifyEmailCopy = {
+      en: {
+        subject: "Verify your new email address - PrivateNote",
+        title: "Verify your new email address",
+        body1: "You requested to change your email address for your PrivateNote account.",
+        body2:
+          "Open the link below, then press Confirm new email on the page to apply the change (this prevents automated link scanning from completing the update).",
+        cta: "Continue to verification",
+        expiry: "This link expires in 1 hour.",
+        ignore: "If you didn't request this change, please ignore this email and your account will remain unchanged.",
+      },
+      de: {
+        subject: "Neue E-Mail-Adresse bestaetigen - PrivateNote",
+        title: "Neue E-Mail-Adresse bestaetigen",
+        body1: "Sie haben angefordert, die E-Mail-Adresse Ihres PrivateNote-Kontos zu aendern.",
+        body2:
+          "Oeffnen Sie den folgenden Link und klicken Sie dann auf der Seite auf Neue E-Mail bestaetigen, um die Aenderung zu uebernehmen (dadurch wird verhindert, dass automatisches Link-Scanning die Aenderung abschliesst).",
+        cta: "Zur Verifizierung",
+        expiry: "Dieser Link laeuft in 1 Stunde ab.",
+        ignore: "Wenn Sie diese Aenderung nicht angefordert haben, ignorieren Sie diese E-Mail. Ihr Konto bleibt unveraendert.",
+      },
+      fr: {
+        subject: "Verifiez votre nouvelle adresse e-mail - PrivateNote",
+        title: "Verifiez votre nouvelle adresse e-mail",
+        body1: "Vous avez demande la modification de l'adresse e-mail de votre compte PrivateNote.",
+        body2:
+          "Ouvrez le lien ci-dessous, puis appuyez sur Confirmer le nouvel e-mail sur la page pour appliquer la modification (cela evite qu'un scan automatique de lien finalise la mise a jour).",
+        cta: "Continuer la verification",
+        expiry: "Ce lien expire dans 1 heure.",
+        ignore: "Si vous n'avez pas demande ce changement, ignorez cet e-mail et votre compte restera inchange.",
+      },
+      es: {
+        subject: "Verifica tu nuevo correo electronico - PrivateNote",
+        title: "Verifica tu nuevo correo electronico",
+        body1: "Solicitaste cambiar el correo electronico de tu cuenta de PrivateNote.",
+        body2:
+          "Abre el enlace de abajo y luego pulsa Confirmar nuevo correo en la pagina para aplicar el cambio (esto evita que el escaneo automatico de enlaces complete la actualizacion).",
+        cta: "Continuar con la verificacion",
+        expiry: "Este enlace vence en 1 hora.",
+        ignore: "Si no solicitaste este cambio, ignora este correo y tu cuenta seguira sin cambios.",
+      },
+    }[locale];
 
     console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
 
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
-      subject: "Verify your new email address - PrivateNote",
-      text: `You requested to change your email address for your PrivateNote account.\n\nOpen the link below in your browser, then press Confirm on the page to finish:\n${verifyUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this change, please ignore this email and your account will remain unchanged.`,
+      subject: verifyEmailCopy.subject,
+      text:
+        `${verifyEmailCopy.body1}\n\n` +
+        `${verifyEmailCopy.body2}\n${verifyUrl}\n\n` +
+        `${verifyEmailCopy.expiry}\n\n` +
+        `${verifyEmailCopy.ignore}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Verify your new email address</h2>
-          <p>You requested to change your email address for your PrivateNote account.</p>
-          <p>Open the link below, then press <strong>Confirm new email</strong> on the page to apply the change (this prevents automated link scanning from completing the update).</p>
+          <h2>${verifyEmailCopy.title}</h2>
+          <p>${verifyEmailCopy.body1}</p>
+          <p>${verifyEmailCopy.body2}</p>
           <p style="margin: 24px 0;">
             <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
-              Continue to verification
+              ${verifyEmailCopy.cta}
             </a>
           </p>
-          <p style="color: #666; font-size: 14px;">This link expires in 1 hour.</p>
-          <p style="color: #666; font-size: 14px;">If you didn't request this change, please ignore this email and your account will remain unchanged.</p>
+          <p style="color: #666; font-size: 14px;">${verifyEmailCopy.expiry}</p>
+          <p style="color: #666; font-size: 14px;">${verifyEmailCopy.ignore}</p>
         </div>
       `,
     });
@@ -5209,17 +5478,57 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       { expirationTtl: ACCOUNT_DELETE_EMAIL.TTL_SECONDS },
     );
 
+    const locale = detectAuthEmailLocale(request);
+    const deleteCodeCopy = {
+      en: {
+        subject: "Your account deletion confirmation code - PrivateNote",
+        title: "Account deletion confirmation",
+        body1: "You requested to delete your PrivateNote account. Verify it's you by entering this code where you started deletion:",
+        codeLabel: "Confirmation code",
+        expiry: "This code expires in 15 minutes and can be used only once.",
+        ignore: "If you did not request this, secure your account and ignore this email.",
+      },
+      de: {
+        subject: "Ihr Bestaetigungscode zur Kontoloeschung - PrivateNote",
+        title: "Kontoloeschung bestaetigen",
+        body1: "Sie haben die Loeschung Ihres PrivateNote-Kontos angefordert. Bestaetigen Sie Ihre Identitaet mit diesem Code an der Stelle, an der Sie die Loeschung gestartet haben:",
+        codeLabel: "Bestaetigungscode",
+        expiry: "Dieser Code laeuft in 15 Minuten ab und kann nur einmal verwendet werden.",
+        ignore: "Wenn Sie das nicht angefordert haben, sichern Sie Ihr Konto und ignorieren Sie diese E-Mail.",
+      },
+      fr: {
+        subject: "Votre code de confirmation de suppression de compte - PrivateNote",
+        title: "Confirmation de suppression de compte",
+        body1: "Vous avez demande la suppression de votre compte PrivateNote. Verifiez qu'il s'agit bien de vous en saisissant ce code la ou vous avez lance la suppression :",
+        codeLabel: "Code de confirmation",
+        expiry: "Ce code expire dans 15 minutes et ne peut etre utilise qu'une seule fois.",
+        ignore: "Si vous n'etes pas a l'origine de cette demande, securisez votre compte et ignorez cet e-mail.",
+      },
+      es: {
+        subject: "Tu codigo de confirmacion para eliminar la cuenta - PrivateNote",
+        title: "Confirmacion de eliminacion de cuenta",
+        body1: "Solicitaste eliminar tu cuenta de PrivateNote. Verifica que eres tu introduciendo este codigo donde iniciaste la eliminacion:",
+        codeLabel: "Codigo de confirmacion",
+        expiry: "Este codigo vence en 15 minutos y solo puede usarse una vez.",
+        ignore: "Si no solicitaste esto, protege tu cuenta e ignora este correo.",
+      },
+    }[locale];
+
     const emailResult = await sendEmail(env, {
       to: toEmail,
-      subject: "Your account deletion confirmation code - PrivateNote",
-      text: `You requested to delete your PrivateNote account.\n\nConfirmation code: ${otp}\n\nThis code expires in 15 minutes and can be used only once.\n\nIf you did not request this, secure your account and ignore this email.`,
+      subject: deleteCodeCopy.subject,
+      text:
+        `${deleteCodeCopy.body1}\n\n` +
+        `${deleteCodeCopy.codeLabel}: ${otp}\n\n` +
+        `${deleteCodeCopy.expiry}\n\n` +
+        `${deleteCodeCopy.ignore}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Account deletion confirmation</h2>
-          <p>You requested to delete your PrivateNote account. Verify it&apos;s you by entering this code where you started deletion:</p>
+          <h2>${deleteCodeCopy.title}</h2>
+          <p>${deleteCodeCopy.body1}</p>
           <p style="font-size: 28px; letter-spacing: 4px; font-weight: bold; margin: 24px 0;">${otp}</p>
-          <p style="color: #666; font-size: 14px;">This code expires in 15 minutes and can be used only once.</p>
-          <p style="color: #666; font-size: 14px;">If you did not request this, secure your account and ignore this email.</p>
+          <p style="color: #666; font-size: 14px;">${deleteCodeCopy.expiry}</p>
+          <p style="color: #666; font-size: 14px;">${deleteCodeCopy.ignore}</p>
         </div>
       `,
     });

@@ -21,6 +21,7 @@ import {
 } from '@/utils/encryption';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
+import { useLanguage } from '@/context/LanguageContext';
 
 type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated';
 
@@ -251,6 +252,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyMissing = false,
   linkKeyTruncated = false,
 }) => {
+  const { t } = useLanguage();
   const [noteContent, setNoteContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -529,9 +531,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             <div className="text-primary mb-4 flex justify-center">
               <Lock className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
             </div>
-            <h1 className="page-title text-gray-900 dark:text-white">Password Protected Note</h1>
+            <h1 className="page-title text-gray-900 dark:text-white">{t.passwordProtectedNote}</h1>
             <p className={NOTE_VIEW_HERO_SUBTITLE}>
-              This note is protected with a password. Enter the password to decrypt it.
+              {t.passwordProtectedDescription}
             </p>
 
             <div className="max-w-sm mx-auto mt-8 sm:mt-10 text-left">
@@ -543,7 +545,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     setPassword(e.target.value);
                     if (passwordDecryptError) setPasswordDecryptError(null);
                   }}
-                  placeholder="Enter password"
+                  placeholder={t.enterPassword}
                   aria-invalid={passwordDecryptError ? true : undefined}
                   className={`w-full px-4 py-3 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary pr-10 ${
                     passwordDecryptError
@@ -578,19 +580,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 {isDecrypting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Decrypting...
+                    {t.decrypting}
                   </>
                 ) : (
                   <>
                     <Unlock className="h-4 w-4 mr-2" />
-                    Decrypt Note
+                    {t.decryptNote}
                   </>
                 )}
               </button>
             </div>
 
             <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-              If you don&apos;t have the password, you won&apos;t be able to decrypt this note.
+              {t.noPasswordCannotDecrypt}
             </p>
 
             <div className="mt-8 sm:mt-10 max-w-2xl mx-auto">
@@ -629,10 +631,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           )}
 
           <h1 className="page-title text-gray-900 dark:text-white">
-            <span className="text-primary">Private Note</span>
+            <span className="text-primary">{t.privateNote}</span>
           </h1>
           <p className="m-0 mt-6 max-w-md mx-auto text-sm sm:text-base md:mt-7 md:max-w-3xl text-amber-800 dark:text-amber-200 font-medium leading-relaxed">
-            ⚠️ This note will be deleted after you leave or refresh this page.
+            ⚠️ {t.noteDeletedWarning}
           </p>
         </div>
 
@@ -650,7 +652,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-w-[170px]"
           >
             <Copy className="h-4 w-4 mr-2" />
-            Copy Note
+            {t.copyNote}
           </button>
           <button
             type="button"
@@ -658,16 +660,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium border border-primary/25 text-primary/80 rounded-md transition-colors hover:bg-primary/6 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 min-w-[170px]"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Create New Note
+            {t.createNewNote}
           </button>
         </div>
 
         <div className="mt-4 text-center">
           <p className="text-sm text-emerald-600 dark:text-emerald-400 min-h-[1.25rem]">
-            {copied ? "✔ Copied to clipboard" : ""}
+            {copied ? `✔ ${t.copiedToClipboard}` : ""}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Make sure to save this note securely.
+            {t.saveNoteSecurely}
           </p>
         </div>
       </section>

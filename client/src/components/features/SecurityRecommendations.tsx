@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 interface SecurityRecommendationProps {
   type?: 'compact' | 'full';
@@ -27,6 +29,8 @@ export const SecurityRecommendations: React.FC<SecurityRecommendationProps> = ({
 };
 
 const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'context'>> = ({ context }) => {
+  const { language, t } = useLanguage();
+  const passwordPath = localizedPath('/password-generator', language);
   let recommendations: React.ReactNode;
   
   switch (context) {
@@ -35,14 +39,14 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
         <>
           <h3 className="text-lg font-medium mb-2 flex items-center">
             <ShieldCheck className="h-5 w-5 text-green-500 mr-2" />
-            Great! Here are a few more tips:
+            {t.recommendSuccessTitle}
           </h3>
           <ul className="space-y-1 pl-7 list-disc text-sm">
-            <li>Store this link somewhere secure</li>
-            <li>Don't send it over unsecured channels</li>
-            <li>The note will expire in 24 hours for your security</li>
-            <li>For sensitive notes, enable password protection and share it separately</li>
-            <li>Consider using <Link href="/password-generator" className="text-primary hover:underline">our password generator</Link> for secure passwords</li>
+            <li>{t.recommendSuccess1}</li>
+            <li>{t.recommendSuccess2}</li>
+            <li>{t.recommendSuccess3}</li>
+            <li>{t.recommendSuccess4}</li>
+            <li>{t.recommendSuccess5} <Link href={passwordPath} className="text-primary hover:underline">{t.recommendPasswordGeneratorLink}</Link></li>
           </ul>
         </>
       );
@@ -52,13 +56,13 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
         <>
           <h3 className="text-lg font-medium mb-2 flex items-center">
             <ShieldAlert className="h-5 w-5 text-red-500 mr-2" />
-            Secure Note Tips
+            {t.recommendNoteTipsTitle}
           </h3>
           <ul className="space-y-1 pl-7 list-disc text-sm">
-            <li>Ensure you use the complete link including the part after the # symbol</li>
-            <li>The decryption key is never sent to our servers</li>
-            <li>If the note was already viewed, it might have been deleted</li>
-            <li>Notes automatically expire after 24 hours</li>
+            <li>{t.recommendError1}</li>
+            <li>{t.recommendError2}</li>
+            <li>{t.recommendError3}</li>
+            <li>{t.recommendError4}</li>
           </ul>
         </>
       );
@@ -68,14 +72,14 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
         <>
           <h3 className="text-lg font-medium mb-2 flex items-center">
             <Key className="h-5 w-5 text-primary mr-2" />
-            Password Security Tips
+            {t.recommendPasswordTipsTitle}
           </h3>
           <ul className="space-y-1 pl-7 list-disc text-sm">
-            <li>Use a different password for each account</li>
-            <li>Consider a password manager to store your passwords securely</li>
-            <li>Enable two-factor authentication when available</li>
-            <li>Change passwords for sensitive accounts every few months</li>
-            <li>Check if your accounts have been compromised at <a href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Have I Been Pwned</a></li>
+            <li>{t.recommendPassword1}</li>
+            <li>{t.recommendPassword2}</li>
+            <li>{t.recommendPassword3}</li>
+            <li>{t.recommendPassword4}</li>
+            <li>{t.recommendPassword5} <a href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Have I Been Pwned</a></li>
           </ul>
         </>
       );
@@ -85,14 +89,14 @@ const CompactRecommendations: React.FC<Pick<SecurityRecommendationProps, 'contex
         <>
           <h3 className="text-lg font-medium mb-2 flex items-center">
             <ShieldCheck className="h-5 w-5 text-primary mr-2" />
-            Quick Security Tips
+            {t.recommendQuickTitle}
           </h3>
           <ul className="space-y-1 pl-7 list-disc text-sm">
-            <li>Use strong, unique passwords for each account</li>
-            <li>Enable two-factor authentication when available</li>
-            <li>Keep your software and devices updated</li>
-            <li>Be cautious about the information you share online</li>
-            <li>Use encrypted services for sensitive communications</li>
+            <li>{t.recommendQuick1}</li>
+            <li>{t.recommendQuick2}</li>
+            <li>{t.recommendQuick3}</li>
+            <li>{t.recommendQuick4}</li>
+            <li>{t.recommendQuick5}</li>
           </ul>
         </>
       );
