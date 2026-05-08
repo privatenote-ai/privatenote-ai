@@ -92,9 +92,9 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 overflow-hidden pb-20`}>
+    <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 max-w-full overflow-x-hidden pb-20`}>
       {!isCreateSuccessView && (
-        <section className="relative px-4 pb-0 sm:px-6 lg:px-8 max-w-4xl mx-auto overflow-hidden">
+        <section className="relative mx-auto max-w-4xl overflow-x-hidden px-4 pb-0 sm:px-6 lg:px-8">
           {/* Soft radial glow behind the headline — gives depth to the hero */}
           <div
             className="pointer-events-none absolute inset-x-0 -top-12 -z-10 h-72 w-full"
@@ -129,7 +129,7 @@ const Home: React.FC = () => {
       <SecurityFeatures />
 
       {/* Why + How wrapper (enables overlap) */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-x-hidden">
         {/* Background treatment */}
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-0 h-[520px] w-[min(900px,130vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />

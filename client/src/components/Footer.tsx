@@ -29,8 +29,8 @@ export const Footer: React.FC = () => {
   }, []);
   
   return (
-    <footer className="relative overflow-hidden bg-primary/95 text-white">
-      <div className="pointer-events-none absolute inset-0">
+    <footer className="relative overflow-visible bg-primary/95 text-white">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 right-1/3 h-64 w-64 rounded-full bg-white/7 blur-[120px]" />
         <div className="absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-white/7 blur-[120px]" />
       </div>

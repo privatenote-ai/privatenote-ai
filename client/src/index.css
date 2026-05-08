@@ -246,4 +246,58 @@
   .ai-prompt-hero--typing {
     animation: ai-prompt-attention 1.1s ease-in-out 1;
   }
+
+  @keyframes how-visual-float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -8px, 0);
+    }
+  }
+
+  @keyframes how-visual-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  @keyframes how-visual-dash {
+    to {
+      stroke-dashoffset: -28;
+    }
+  }
+
+  .how-visual-float {
+    animation: how-visual-float 7s ease-in-out infinite;
+  }
+
+  .how-visual-pulse {
+    animation: how-visual-pulse 2.4s ease-in-out infinite;
+  }
+
+  .how-visual-dash {
+    animation: how-visual-dash 1.8s linear infinite;
+  }
+
+  @media (max-width: 639px) {
+    .how-visual-float,
+    .how-visual-pulse,
+    .how-visual-dash {
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .how-visual-float,
+    .how-visual-pulse,
+    .how-visual-dash {
+      animation: none;
+    }
+  }
 }

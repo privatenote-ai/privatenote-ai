@@ -250,7 +250,10 @@ async function main() {
       args: ["--no-sandbox", "--disable-gpu"],
     });
 
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+    });
 
     // Static prerendering runs without the Worker/API process. Public pages may
     // still ask for auth or account preference state while booting; answer those

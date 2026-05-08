@@ -36,7 +36,7 @@ export default function HowItWorks() {
   ];
 
   return (
-    <div className="mx-auto max-w-4xl overflow-hidden px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
+    <div className="mx-auto max-w-5xl overflow-hidden px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
       {/* Reduced background glows (less noise) */}
       <div className="absolute top-[-80px] right-1/4 w-80 h-80 bg-primary/10 blur-[130px] -z-10" />
       <div className="absolute bottom-[120px] left-1/4 w-56 h-56 bg-blue-500/10 blur-[120px] -z-10" />
@@ -86,9 +86,9 @@ export default function HowItWorks() {
         </section>
 
         {/* Infrastructure & Manual Reveal */}
-        <section className="space-y-20 pt-10">
-          <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
-            <div className="max-w-2xl md:w-1/2">
+        <section className="space-y-20 pt-10 lg:space-y-24">
+          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:gap-12">
+            <div className="max-w-2xl">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
                 {t.howInfrastructureTitle}
               </h2>
@@ -111,15 +111,32 @@ export default function HowItWorks() {
               </div>
             </div>
 
-            <div className="flex justify-center md:justify-end md:w-1/2">
-              <div className="relative w-full max-w-sm md:max-w-md">
+            <div className="flex min-w-0 justify-center lg:justify-end lg:-mr-10">
+              <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-xl">
+                <div className="pointer-events-none absolute inset-6 rounded-full bg-primary/10 blur-3xl" />
                 <svg
-                  className="h-auto w-full"
+                  className="how-visual-float relative block h-auto w-full drop-shadow-[0_18px_32px_rgba(37,99,235,0.14)] lg:drop-shadow-[0_24px_45px_rgba(37,99,235,0.18)]"
                   viewBox="0 0 360 200"
                   fill="none"
                   role="img"
                   aria-label={t.howInfrastructureIllustration}
                 >
+                  <defs>
+                    <linearGradient id="infraGlow" x1="80" y1="40" x2="280" y2="165" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="hsl(var(--primary))" stopOpacity="0.16" />
+                      <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="50" y="24" width="260" height="150" rx="28" fill="url(#infraGlow)" />
+                  <path
+                    className="how-visual-dash"
+                    d="M78 118 C116 70 144 146 180 92 C218 38 244 128 286 78"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="7 7"
+                    opacity="0.32"
+                  />
                   <g id="servers">
                     <rect
                       x="100"
@@ -131,7 +148,7 @@ export default function HowItWorks() {
                       stroke="hsl(var(--border))"
                       strokeWidth="2"
                     />
-                    <rect x="110" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect className="how-visual-pulse" x="110" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
                     <rect x="110" y="102" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
                     <rect x="110" y="112" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
                     <circle cx="113" cy="130" r="3" fill="hsl(var(--primary))" />
@@ -148,7 +165,7 @@ export default function HowItWorks() {
                       stroke="hsl(var(--border))"
                       strokeWidth="2"
                     />
-                    <rect x="167" y="62" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect className="how-visual-pulse" x="167" y="62" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
                     <rect x="167" y="72" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
                     <rect x="167" y="82" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
                     <rect x="167" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
@@ -169,7 +186,7 @@ export default function HowItWorks() {
                       stroke="hsl(var(--border))"
                       strokeWidth="2"
                     />
-                    <rect x="224" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
+                    <rect className="how-visual-pulse" x="224" y="92" width="25" height="4" rx="2" fill="hsl(var(--primary))" />
                     <rect x="224" y="102" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
                     <rect x="224" y="112" width="25" height="4" rx="2" fill="hsl(var(--primary))" opacity="0.6" />
                     <circle cx="227" cy="130" r="3" fill="hsl(var(--primary))" />
@@ -181,15 +198,24 @@ export default function HowItWorks() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
-            <div className="flex justify-center md:order-1 md:justify-start md:w-1/2 md:-mt-6">
-              <svg
-                className="h-auto w-full max-w-sm md:max-w-md"
-                viewBox="0 0 360 200"
-                fill="none"
-                role="img"
-                aria-label={t.howManualRevealIllustration}
-              >
+          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(420px,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
+            <div className="flex min-w-0 justify-center lg:-ml-10 lg:justify-start">
+              <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-xl">
+                <div className="pointer-events-none absolute inset-4 rounded-full bg-red-500/10 blur-3xl" />
+                <svg
+                  className="how-visual-float relative block h-auto w-full drop-shadow-[0_18px_32px_rgba(220,38,38,0.1)] lg:drop-shadow-[0_24px_45px_rgba(220,38,38,0.13)]"
+                  viewBox="0 0 360 200"
+                  fill="none"
+                  role="img"
+                  aria-label={t.howManualRevealIllustration}
+                >
+                <defs>
+                  <radialGradient id="threatGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(165 105) rotate(37) scale(155 82)">
+                    <stop stopColor="hsl(var(--primary))" stopOpacity="0.13" />
+                    <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+                <rect x="40" y="22" width="280" height="156" rx="30" fill="url(#threatGlow)" />
                 <g id="note">
                   <rect
                     x="130"
@@ -231,6 +257,7 @@ export default function HowItWorks() {
                   />
                   <circle cx="100" cy="125" r="3" fill="hsl(var(--primary))" />
                   <line
+                    className="how-visual-dash"
                     x1="120"
                     y1="150"
                     x2="145"
@@ -242,7 +269,8 @@ export default function HowItWorks() {
                   />
                 </g>
 
-                <g id="blocked">
+                <g id="blocked" className="how-visual-pulse">
+                  <circle cx="205" cy="105" r="22" fill="hsl(var(--destructive))" opacity="0.08" />
                   <line
                     x1="195"
                     y1="95"
@@ -262,10 +290,11 @@ export default function HowItWorks() {
                     strokeLinecap="round"
                   />
                 </g>
-              </svg>
+                </svg>
+              </div>
             </div>
 
-            <div className="mt-10 max-w-2xl md:order-2 md:w-1/2">
+            <div className="max-w-2xl">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
                 {t.howManualRevealTitle}
               </h2>
