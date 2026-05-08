@@ -289,15 +289,6 @@ export const WorkplaceTextsPost: React.FC = () => {
         <header className="mb-10">
           <h1 className="text-3xl font-bold mb-4">{t.blogWorkplaceTextsTitle}</h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl">{t.blogWorkplaceTextsExcerpt}</p>
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
-          >
-            {article.sourceLabel}
-            <ExternalLink className="ml-1 h-4 w-4" />
-          </a>
           <figure className="mt-6">
             <img
               src={heroImagePath}
@@ -351,6 +342,18 @@ export const WorkplaceTextsPost: React.FC = () => {
           >
             {article.ctaButton}
           </Link>
+        </div>
+
+        <div className="mt-8 border-t border-gray-200 pt-5 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center font-semibold text-primary hover:text-primary/80"
+          >
+            {article.sourceLabel}
+            <ExternalLink className="ml-1 h-4 w-4" />
+          </a>
         </div>
       </article>
     </div>

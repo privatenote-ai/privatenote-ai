@@ -71,8 +71,8 @@ export const Navbar: React.FC = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   // Close menus on route change, and re-check auth state.
@@ -275,7 +275,7 @@ export const Navbar: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="appearance-none border-0 bg-transparent shadow-none p-1 text-primary hover:text-primary/80 transition-colors"
+            className="nav-icon-button inline-flex h-10 w-10 appearance-none items-center justify-center border-0 bg-transparent p-0 text-primary shadow-none transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
             aria-expanded={isMenuOpen}
             aria-controls="mobile-menu"
             aria-label={t.toggleNavigation}
