@@ -305,7 +305,7 @@ export const WorkplaceTextsPost: React.FC = () => {
               className="w-full max-w-2xl max-h-[340px] mx-auto rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
               loading="lazy"
             />
-            <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               Photo by{" "}
               <a
                 href={heroImageCreditUrl}

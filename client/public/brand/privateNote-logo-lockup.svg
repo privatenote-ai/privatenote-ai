@@ -1,0 +1,19 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai logo lockup</title>
+  <desc id="desc">PrivateNote.ai wordmark with the sealed note logo.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="92" x2="0" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="192" height="192" rx="48" fill="#0000FF"/>
+  <g transform="translate(0 -16)">
+    <path d="M104 128L160 178L216 128V212H104V128Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="3"/>
+    <path d="M104 128L160 178L216 128Z" fill="url(#paper)" fill-opacity=".97"/>
+    <path d="M104 128L160 178L216 128" stroke="#0000FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="304" y="178" font-family="Inter, Arial, sans-serif" font-size="92" font-weight="800" fill="#0000FF">privateNote</text>
+  <text x="824" y="128" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800" fill="#0000FF">.ai</text>
+  <text x="308" y="230" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="600" fill="#4B5563">Encrypted notes that disappear after reading.</text>
+</svg>

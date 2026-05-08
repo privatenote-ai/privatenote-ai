@@ -7,6 +7,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
 import { Sun, Moon, Monitor, Bell } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
@@ -51,27 +53,35 @@ function ThemePicker({
 
 export default function AccountPreferences() {
   const { user, loading: authLoading } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const { preference: themePref, setPreference: setThemePref } = useThemePreferenceControls();
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingEmailPref, setSavingEmailPref] = useState(false);
+  const [savingLanguagePref, setSavingLanguagePref] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
-      const data = await apiRequest<{ ok: boolean; emailNotifications?: boolean }>(
+      const data = await apiRequest<{ ok: boolean; emailNotifications?: boolean; preferredLanguage?: SupportedLanguage | null }>(
         "/api/auth/account/summary",
         "GET",
       );
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
       }
+      if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
+        setPreferredLanguage(data.preferredLanguage);
+      } else {
+        setPreferredLanguage(language);
+      }
     } catch {
       /* non-critical */
     } finally {
       setPrefsLoading(false);
     }
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -91,6 +101,24 @@ export default function AccountPreferences() {
       setEmailNotifications(!checked);
     } finally {
       setSavingEmailPref(false);
+    }
+  };
+
+  const onPreferredLanguageChange = async (nextLanguage: SupportedLanguage) => {
+    if (!user) return;
+    const previousLanguage = preferredLanguage;
+    setSavingLanguagePref(true);
+    setPreferredLanguage(nextLanguage);
+    setLanguage(nextLanguage);
+    try {
+      await apiRequest("/api/auth/account/preferences", "PATCH", { preferredLanguage: nextLanguage });
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 2000);
+    } catch {
+      setPreferredLanguage(previousLanguage);
+      setLanguage(previousLanguage);
+    } finally {
+      setSavingLanguagePref(false);
     }
   };
 
@@ -166,6 +194,33 @@ export default function AccountPreferences() {
           </div>
         </section>
 
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">Language</p>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Choose your interface language. This syncs to your account.
+            </p>
+          </div>
+          <div className="px-5 py-5">
+            <Label htmlFor="preferred-language" className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">
+              Preferred language
+            </Label>
+            <select
+              id="preferred-language"
+              className="w-full max-w-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+              value={preferredLanguage}
+              disabled={savingLanguagePref}
+              onChange={(event) => void onPreferredLanguageChange(event.target.value as SupportedLanguage)}
+            >
+              {SUPPORTED_LANGUAGES.map((option) => (
+                <option key={option} value={option}>
+                  {option === "en" ? "English" : option === "de" ? "Deutsch" : option === "fr" ? "Français" : "Español"}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
         {/* ── Email notifications ────────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
@@ -204,7 +259,6 @@ export default function AccountPreferences() {
         <section className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-5 py-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Coming later</p>
           <ul className="space-y-2 text-sm text-gray-400 dark:text-gray-600">
-            <li>Language &amp; locale</li>
             <li>Notification digest frequency</li>
             <li>Note defaults (expiry, AI, etc.)</li>
           </ul>

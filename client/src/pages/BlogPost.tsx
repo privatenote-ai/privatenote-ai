@@ -103,7 +103,15 @@ export default function BlogPostPage() {
     <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16 mb-20">
       <article>
         <header className="mb-8">
+          <Link href={blogPath} className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
+            {t.blogBackToBlog}
+          </Link>
           <h1 className="page-title mb-3">{post.title}</h1>
+          {post.excerpt && (
+            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 mb-5">
+              {post.excerpt}
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-4 mb-6">
             <div className="flex items-center">

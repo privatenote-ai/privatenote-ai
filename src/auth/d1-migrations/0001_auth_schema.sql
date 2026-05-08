@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   plan TEXT NOT NULL DEFAULT 'free',
   account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
   business_display_name TEXT,
-  email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1))
+  email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
+  preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es'))
 );
 
 CREATE TABLE IF NOT EXISTS webauthn_credentials (

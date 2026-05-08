@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai logo mark</title>
+  <desc id="desc">Blue rounded square with a cream sealed note envelope.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="150" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="#0000FF"/>
+  <g transform="translate(0 -36)">
+    <path d="M112 184L256 312L400 184V400H112V184Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="7"/>
+    <path d="M112 184L256 312L400 184Z" fill="url(#paper)" fill-opacity=".97"/>
+    <path d="M112 184L256 312L400 184" stroke="#0000FF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

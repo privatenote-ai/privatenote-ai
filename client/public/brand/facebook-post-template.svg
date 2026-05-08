@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="58" x2="0" y2="142" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#F8FBFF"/>
+  <circle cx="1050" cy="64" r="280" fill="#E0E7FF" opacity=".72"/>
+  <circle cx="90" cy="10" r="240" fill="#DBEAFE" opacity=".66"/>
+  <g transform="translate(72 72)">
+    <rect width="104" height="104" rx="26" fill="#0000FF"/>
+    <g transform="translate(0 -10)">
+      <path d="M23 45L52 71L81 45V88H23V45Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="1.8"/>
+      <path d="M23 45L52 71L81 45Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M23 45L52 71L81 45" stroke="#0000FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="206" y="122" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="850" fill="#0000FF">privateNote</text>
+  <text x="452" y="99" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="850" fill="#0000FF">.ai</text>
+  <text x="72" y="292" font-family="Inter, Arial, sans-serif" font-size="66" font-weight="850" fill="#0F172A">Send sensitive info</text>
+  <text x="72" y="366" font-family="Inter, Arial, sans-serif" font-size="66" font-weight="850" fill="#0000FF">without permanent records.</text>
+  <text x="76" y="450" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="500" fill="#475569">Read-once encrypted notes for passwords, recovery codes, and private handoffs.</text>
+  <rect x="76" y="520" width="310" height="58" rx="15" fill="#0000FF"/>
+  <text x="108" y="558" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="white">privatenote.ai</text>
+</svg>

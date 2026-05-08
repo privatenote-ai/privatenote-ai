@@ -428,6 +428,7 @@ type UsersTableColumns = {
   account_type: boolean;
   business_display_name: boolean;
   email_notifications: boolean;
+  preferred_language: boolean;
 };
 
 async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
@@ -436,6 +437,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     account_type: false,
     business_display_name: false,
     email_notifications: false,
+    preferred_language: false,
   };
   if (!env.AUTH_DB) return defaults;
   try {
@@ -446,6 +448,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       account_type: names.has("account_type"),
       business_display_name: names.has("business_display_name"),
       email_notifications: names.has("email_notifications"),
+      preferred_language: names.has("preferred_language"),
     };
   } catch {
     return defaults;
@@ -458,6 +461,7 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.account_type) columns.push("account_type");
   if (optionalColumns.business_display_name) columns.push("business_display_name");
   if (optionalColumns.email_notifications) columns.push("email_notifications");
+  if (optionalColumns.preferred_language) columns.push("preferred_language");
   return columns.join(", ");
 }
 
@@ -3725,6 +3729,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         account_type?: string | null;
         business_display_name?: string | null;
         email_notifications?: number | null;
+        preferred_language?: string | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
@@ -3746,6 +3751,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         accountType: normalizeAccountType(user?.account_type ?? user?.plan),
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
+        preferredLanguage: user?.preferred_language ?? null,
       }),
       { status: 200, headers }
     );
@@ -3773,6 +3779,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         account_type?: string | null;
         business_display_name?: string | null;
         email_notifications?: number | null;
+        preferred_language?: string | null;
       }>();
 
     const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
@@ -3813,6 +3820,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         accountType: normalizedAccountType,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
+        preferredLanguage: user?.preferred_language ?? null,
         limits: {
           notesPerDay: limits.notesPerDay,
           aiUsesPerDay: limits.aiUsesPerDay,
@@ -3906,29 +3914,67 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    let body: { emailNotifications?: boolean };
+    let body: { emailNotifications?: boolean; preferredLanguage?: string | null };
     try {
-      body = (await request.json()) as { emailNotifications?: boolean };
+      body = (await request.json()) as { emailNotifications?: boolean; preferredLanguage?: string | null };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
-    if (typeof body.emailNotifications !== "boolean") {
-      return jsonResponse({ message: "emailNotifications boolean required" }, 400, request);
+    const hasEmailNotifications = typeof body.emailNotifications === "boolean";
+    const hasPreferredLanguage = Object.prototype.hasOwnProperty.call(body, "preferredLanguage");
+    if (!hasEmailNotifications && !hasPreferredLanguage) {
+      return jsonResponse(
+        { message: "At least one of emailNotifications or preferredLanguage is required" },
+        400,
+        request
+      );
     }
     const userColumns = await getUsersTableColumns(env);
-    if (!userColumns.email_notifications) {
+    if (hasEmailNotifications && !userColumns.email_notifications) {
       return jsonResponse({ message: "Account preferences are not available until auth migrations are applied" }, 501, request);
     }
-    const flag = body.emailNotifications ? 1 : 0;
-    await env.AUTH_DB.prepare(`UPDATE users SET email_notifications = ?, updated_at = datetime('now') WHERE id = ?`)
-      .bind(flag, session.id)
+    if (hasPreferredLanguage && !userColumns.preferred_language) {
+      return jsonResponse({ message: "Language preferences are not available until auth migrations are applied" }, 501, request);
+    }
+
+    let normalizedPreferredLanguage: string | null | undefined = undefined;
+    if (hasPreferredLanguage) {
+      const raw = body.preferredLanguage;
+      if (raw === null || raw === "") {
+        normalizedPreferredLanguage = null;
+      } else if (raw === "en" || raw === "de" || raw === "fr" || raw === "es") {
+        normalizedPreferredLanguage = raw;
+      } else {
+        return jsonResponse({ message: "preferredLanguage must be one of en, de, fr, es, or null" }, 400, request);
+      }
+    }
+
+    const updates: string[] = [];
+    const bindings: Array<number | string | null> = [];
+    if (hasEmailNotifications) {
+      updates.push("email_notifications = ?");
+      bindings.push(body.emailNotifications ? 1 : 0);
+    }
+    if (hasPreferredLanguage) {
+      updates.push("preferred_language = ?");
+      bindings.push(normalizedPreferredLanguage ?? null);
+    }
+    updates.push("updated_at = datetime('now')");
+    bindings.push(session.id);
+
+    await env.AUTH_DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`)
+      .bind(...bindings)
       .run();
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
     return new Response(
-      JSON.stringify({ ok: true, emailNotifications: body.emailNotifications }),
+      JSON.stringify({
+        ok: true,
+        emailNotifications: hasEmailNotifications ? body.emailNotifications : undefined,
+        preferredLanguage: hasPreferredLanguage ? (normalizedPreferredLanguage ?? null) : undefined,
+      }),
       { status: 200, headers }
     );
   }

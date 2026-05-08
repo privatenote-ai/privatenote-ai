@@ -169,14 +169,14 @@ function BlogPostCard({ post, blogPath }: { post: BlogPost; blogPath: string }) 
             </div>
           )}
         </div>
-        <CardTitle className="text-xl font-bold">
+        <CardTitle className="text-xl font-bold leading-tight">
           <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
-            {post.title}
+            <span className="line-clamp-2">{post.title}</span>
           </Link>
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <p className="text-gray-600 dark:text-gray-400">{post.excerpt}</p>
+        <p className="line-clamp-3 text-gray-600 dark:text-gray-400">{post.excerpt}</p>
       </CardContent>
       <CardFooter className="pt-0 flex justify-between items-center">
         <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
@@ -207,14 +207,14 @@ function FeaturedPostCard({ post, blogPath }: { post: { title: string; excerpt: 
             <Badge className="text-xs" variant="default">{t.blogFeatured}</Badge>
           </div>
         </div>
-        <CardTitle className="text-xl font-bold">
+        <CardTitle className="text-xl font-bold leading-tight">
           <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
-            {post.title}
+            <span className="line-clamp-2">{post.title}</span>
           </Link>
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <p className="text-gray-600 dark:text-gray-400">{post.excerpt}</p>
+        <p className="line-clamp-3 text-gray-600 dark:text-gray-400">{post.excerpt}</p>
       </CardContent>
       <CardFooter className="pt-0 flex justify-between items-center">
         <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
