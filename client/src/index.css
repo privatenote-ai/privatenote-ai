@@ -94,6 +94,15 @@
     overflow-x: hidden;
   }
 
+  html,
+  body {
+    position: relative;
+  }
+
+  body {
+    overscroll-behavior-x: none;
+  }
+
   img,
   svg,
   canvas,

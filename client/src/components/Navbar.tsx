@@ -43,7 +43,6 @@ export const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
   const { language, t } = useLanguage();
-  const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
@@ -59,19 +58,13 @@ export const Navbar: React.FC = () => {
     setIsMenuOpen(false);
   };
 
-  const toggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const toggleMenu = () => {
     setIsMenuOpen((open) => !open);
   };
 
-  // Handle clicks outside of menus
+  // Handle clicks outside of desktop profile menu.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close main menu when clicking outside (mobile view only)
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && window.innerWidth < 1280) {
-        setIsMenuOpen(false);
-      }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
       }
@@ -254,9 +247,9 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile / tablet / smaller laptop < xl: logo + (profile if signed in) + hamburger */}
-      <div className="xl:hidden" ref={menuRef}>
-        <div className="relative flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="relative z-10 flex min-w-10 items-center justify-start">
+      <div className="xl:hidden">
+        <div className="grid h-16 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center px-4 sm:px-6">
+          <div className="flex min-w-10 items-center justify-start">
             {!authLoading && user?.email ? (
               <button
                 type="button"
@@ -273,12 +266,12 @@ export const Navbar: React.FC = () => {
           <NavLink
             href={lp("/")}
             closeMenu={closeMenu}
-            className="absolute left-1/2 z-0 -translate-x-1/2 max-[430px]:left-4 max-[430px]:right-16 max-[430px]:translate-x-0 flex min-w-0 shrink-0 items-center gap-2 cursor-pointer"
+            className="mx-auto flex min-w-0 max-w-full shrink items-center justify-center gap-2 overflow-hidden whitespace-nowrap"
           >
             {logoInner}
           </NavLink>
 
-          <div className="relative z-10 flex w-10 items-center justify-end">
+          <div className="flex w-10 items-center justify-end">
             <button
               type="button"
               onClick={toggleMenu}
@@ -300,7 +293,7 @@ export const Navbar: React.FC = () => {
         {isMenuOpen && (
           <div
             id="mobile-menu"
-            className="fixed left-0 right-0 top-16 bottom-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-lg rounded-none shadow-lg border-t border-gray-200 dark:border-gray-800 overflow-y-auto z-50 transition-all duration-200 ease-in-out"
+            className="fixed inset-x-0 bottom-0 top-16 z-[100] overflow-y-auto border-t border-gray-200 bg-white/95 shadow-lg backdrop-blur-lg transition-all duration-200 ease-in-out dark:border-gray-800 dark:bg-gray-900/95"
           >
               <div className="py-2">
                 <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
