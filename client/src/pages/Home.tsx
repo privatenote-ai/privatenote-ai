@@ -271,7 +271,7 @@ const Home: React.FC = () => {
             <div
               ref={scrollerRef}
               onScroll={onBlogCarouselScroll}
-              className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 pt-12 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="md:hidden flex touch-pan-x gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth py-2 pt-12 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {blogPosts.map((post) => (
                 <article

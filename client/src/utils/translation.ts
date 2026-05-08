@@ -118,6 +118,7 @@ const defaultTranslations: Translations = {
   authActivityNoteOpened: "Note opened",
   authActivityNoteExpired: "Note expired",
   toggleNavigation: "Toggle navigation",
+  closeNavigationMenu: "Close menu",
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
   homeHeroSubtitle:
@@ -716,6 +717,7 @@ const deTranslations: Translations = {
   authActivityNoteOpened: "Notiz geöffnet",
   authActivityNoteExpired: "Notiz abgelaufen",
   toggleNavigation: "Navigation umschalten",
+  closeNavigationMenu: "Menü schließen",
   homeHeroLine1: "Ihre Nachrichten,",
   homeHeroLine2: "Ihre Privatsphäre",
   homeHeroSubtitle:
@@ -1319,6 +1321,7 @@ const frTranslations: Translations = {
   authActivityNoteOpened: "Note ouverte",
   authActivityNoteExpired: "Note expirée",
   toggleNavigation: "Afficher la navigation",
+  closeNavigationMenu: "Fermer le menu",
   homeHeroLine1: "Vos messages,",
   homeHeroLine2: "votre vie privée",
   homeHeroSubtitle:
@@ -1926,6 +1929,7 @@ const esTranslations: Translations = {
   authActivityNoteOpened: "Nota abierta",
   authActivityNoteExpired: "Nota expirada",
   toggleNavigation: "Alternar navegación",
+  closeNavigationMenu: "Cerrar menú",
   homeHeroLine1: "Tus mensajes,",
   homeHeroLine2: "tu privacidad",
   homeHeroSubtitle:

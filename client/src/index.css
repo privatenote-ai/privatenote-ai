@@ -138,6 +138,18 @@
     background-size: 30px 30px, 100% 100%, 100% 100%;
     background-attachment: fixed;
   }
+
+  /*
+   * `background-attachment: fixed` makes mobile Safari repaint the backdrop during
+   * momentum scroll—often feels like the hero / top of the page scrolls separately
+   * from the document. Use a normal scrolling backdrop on touch and narrow layouts.
+   */
+  @media (max-width: 1024px), (hover: none) {
+    body,
+    .dark body {
+      background-attachment: scroll;
+    }
+  }
 }
 
 @layer components {
@@ -171,12 +183,26 @@
   .nav-icon-button,
   .nav-icon-button:hover,
   .nav-icon-button:active,
+  .nav-summary-button,
+  .nav-summary-button:hover,
+  .nav-summary-button:active,
   .dark .nav-icon-button,
   .dark .nav-icon-button:hover,
-  .dark .nav-icon-button:active {
+  .dark .nav-icon-button:active,
+  .dark .nav-summary-button,
+  .dark .nav-summary-button:hover,
+  .dark .nav-summary-button:active {
     box-shadow: none !important;
     transform: none !important;
     background: transparent !important;
+  }
+
+  .nav-summary-button::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-summary-button::marker {
+    content: "";
   }
   
   /* Style for cards and panels */
