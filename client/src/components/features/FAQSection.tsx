@@ -15,6 +15,7 @@ const FAQ_ITEM_IDS = [
   'afterOpen',
   'linkLength',
   'password',
+  'breachCheck',
   'encryptionKey',
   'metadata',
   'recover',

@@ -1,16 +1,54 @@
-import React, { useState } from 'react';
-import { Shield, Check } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'wouter';
+import { Shield, Check, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { CreateNote } from '@/components/note/CreateNote';
 import { NoteResult } from '@/components/note/NoteResult';
 import { SecurityFeatures } from '@/components/features/SecurityFeatures';
 import { FAQSection } from '@/components/features/FAQSection';
 import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const blogPath = localizedPath('/blog', language);
+  const blogPosts = useMemo(
+    () => [
+      {
+        slug: 'workplace-texts-private-note',
+        title: t.blogWorkplaceTextsTitle,
+        excerpt: t.blogWorkplaceTextsExcerpt,
+      },
+      {
+        slug: 'myth-good-enough-security',
+        title: t.blogGoodEnoughTitle,
+        excerpt: t.blogGoodEnoughExcerpt,
+      },
+      {
+        slug: 'how-we-generate-passwords',
+        title: t.blogPasswordTitle,
+        excerpt: t.blogPasswordExcerpt,
+      },
+      {
+        slug: 'privacy-tools',
+        title: t.blogPrivacyTitle,
+        excerpt: t.blogPrivacyExcerpt,
+      },
+    ],
+    [
+      t.blogWorkplaceTextsTitle,
+      t.blogWorkplaceTextsExcerpt,
+      t.blogGoodEnoughTitle,
+      t.blogGoodEnoughExcerpt,
+      t.blogPasswordTitle,
+      t.blogPasswordExcerpt,
+      t.blogPrivacyTitle,
+      t.blogPrivacyExcerpt,
+    ],
+  );
+  const [activeBlogSlide, setActiveBlogSlide] = useState(0);
 
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
@@ -153,6 +191,80 @@ const Home: React.FC = () => {
                 <span>{detail}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-5 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{t.blog}</h3>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveBlogSlide((current) =>
+                    current === 0 ? blogPosts.length - 1 : current - 1,
+                  )
+                }
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Previous blog post"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveBlogSlide((current) =>
+                    current === blogPosts.length - 1 ? 0 : current + 1,
+                  )
+                }
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Next blog post"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 bg-gray-50/50 dark:bg-gray-800/40 min-h-[12rem]">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {blogPosts[activeBlogSlide].title}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {blogPosts[activeBlogSlide].excerpt}
+            </p>
+            <Link
+              href={`${blogPath}/${blogPosts[activeBlogSlide].slug}`}
+              className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
+            >
+              {t.blogReadMore}
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              {blogPosts.map((post, index) => (
+                <button
+                  key={post.slug}
+                  type="button"
+                  onClick={() => setActiveBlogSlide(index)}
+                  className={`h-2 rounded-full transition-all ${
+                    index === activeBlogSlide
+                      ? 'w-6 bg-primary'
+                      : 'w-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                  }`}
+                  aria-label={`Go to blog slide ${index + 1}`}
+                />
+              ))}
+            </div>
+            <Link
+              href={blogPath}
+              className="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+            >
+              {t.blog}
+            </Link>
           </div>
         </div>
       </section>

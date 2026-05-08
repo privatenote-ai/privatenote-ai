@@ -46,7 +46,6 @@ export const Navbar: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
-  const isBlogArticle = /^\/(?:de|fr|es)\/blog\/[^/]+$/.test(location) || /^\/blog\/[^/]+$/.test(location);
 
   // Solid translucent bg only after the user scrolls; transparent on hero
   useEffect(() => {
@@ -87,6 +86,7 @@ export const Navbar: React.FC = () => {
 
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
+  const isBlogArticle = /^\/(?:de|fr|es)\/blog\/[^/]+$/.test(location) || /^\/blog\/[^/]+$/.test(location);
 
   const initials = React.useMemo(() => {
     if (!user?.email) return 'U';
@@ -210,16 +210,6 @@ export const Navbar: React.FC = () => {
             {logoInner}
           </NavLink>
 
-          {isBlogArticle && (
-            <NavLink
-              href={lp("/blog")}
-              closeMenu={closeMenu}
-              className="absolute left-0 top-1/2 -translate-y-1/2 inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-primary/5 dark:border-gray-800 dark:bg-gray-900/80"
-            >
-              ← {t.blogBackToBlog}
-            </NavLink>
-          )}
-
           {/* Primary links — centered group aligned to the editor column */}
           <nav
             className="flex min-w-0 flex-1 items-center justify-center gap-x-7 2xl:gap-x-8"
@@ -260,15 +250,7 @@ export const Navbar: React.FC = () => {
       {/* Mobile / tablet / smaller laptop < xl: logo + (profile if signed in) + hamburger */}
       <div className="relative flex h-16 items-center justify-between px-4 sm:px-6 xl:hidden" ref={menuRef}>
         <div className="flex min-w-10 items-center justify-start">
-          {isBlogArticle ? (
-            <NavLink
-              href={lp("/blog")}
-              closeMenu={closeMenu}
-              className="inline-flex items-center whitespace-nowrap text-sm font-semibold text-primary"
-            >
-              ← {t.blogBackToBlog}
-            </NavLink>
-          ) : !authLoading && user?.email ? (
+          {!authLoading && user?.email ? (
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}

@@ -16,22 +16,22 @@ export default function Blog() {
   const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
   const featuredPost = {
-    title: t.blogPrivacyTitle,
-    excerpt: t.blogPrivacyExcerpt,
+    title: t.blogWorkplaceTextsTitle,
+    excerpt: t.blogWorkplaceTextsExcerpt,
     author: 'PrivateNote.ai',
-    slug: 'privacy-tools',
+    slug: 'workplace-texts-private-note',
     publishedAt: new Date().toISOString(),
-    tags: [t.blogTagPrivacy, t.blogTagTools, t.blogTagSecurity],
+    tags: [t.blogTagPrivacy, t.blogTagWorkplace, t.blogTagSecurity],
   };
   const staticPosts: BlogPost[] = [
     {
-      id: -3,
-      title: t.blogWorkplaceTextsTitle,
-      excerpt: t.blogWorkplaceTextsExcerpt,
+      id: -4,
+      title: t.blogPrivacyTitle,
+      excerpt: t.blogPrivacyExcerpt,
       author: 'PrivateNote.ai',
-      slug: 'workplace-texts-private-note',
+      slug: 'privacy-tools',
       publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagWorkplace, t.blogTagSecurity]),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagTools, t.blogTagSecurity]),
       content: '',
       coverImage: null,
       published: true,

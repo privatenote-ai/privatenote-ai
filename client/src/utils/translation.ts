@@ -199,6 +199,7 @@ const defaultTranslations: Translations = {
   viewLimitDescription: "Notes can only be viewed once for maximum security",
   viewDetails: "View details",
   passwordBreachCheckLabel: "Breach check:",
+  passwordBreachCheckProvider: "via HIBP",
   passwordBreachCheckShort: "Checks whether this password appears in known breaches.",
   passwordBreachCheckDetailsPrefix: "This page may contact",
   passwordBreachCheckDetailsSuffix:
@@ -576,6 +577,9 @@ const defaultTranslations: Translations = {
   homeFaq_password_question: "Can I protect a note with a password?",
   homeFaq_password_answer:
     "Yes. You can add an optional password for extra protection. Share the password separately from the link, for example in a different channel.",
+  homeFaq_breachCheck_question: "How does password breach checking work?",
+  homeFaq_breachCheck_answer:
+    "The check uses Have I Been Pwned with k-anonymity. Your browser sends only a hash prefix, never the full password.",
   homeFaq_encryptionKey_question: "Is the encryption key stored on your server?",
   homeFaq_encryptionKey_answer:
     "No. The decryption key lives after the # fragment in the link. Browsers never send that fragment to servers.",
@@ -723,7 +727,7 @@ const deTranslations: Translations = {
   clientSideEncryption: "Clientseitige Verschlüsselung bedeutet, dass der Server Ihren Klartext nie sieht.",
   readOnceExposure: "Einmaliges Lesen und ablaufende Notizen reduzieren die Sichtbarkeit über die Zeit.",
   noTrackingAds: "Keine Tracking-Cookies, keine Werbung und keine Drittanbieter-Analyse auf Notizen.",
-  simplePrivacyFlow: "Ein einfacher Datenschutzablauf, dem Sie vertrauen können.",
+  simplePrivacyFlow: "Ein einfacher Datenschutzprozess, dem Sie vertrauen können.",
   clearSteps: "Klare Schritte, keine versteckte Datenerfassung.",
   privacyFirst: "Datenschutz zuerst",
   write: "Schreiben",
@@ -796,6 +800,7 @@ const deTranslations: Translations = {
   viewLimitDescription: "Notizen können aus Sicherheitsgründen nur einmal angesehen werden",
   viewDetails: "Details anzeigen",
   passwordBreachCheckLabel: "Leak-Prüfung:",
+  passwordBreachCheckProvider: "über HIBP",
   passwordBreachCheckShort: "Prüft, ob dieses Passwort in bekannten Datenlecks vorkommt.",
   passwordBreachCheckDetailsPrefix: "Diese Seite kann",
   passwordBreachCheckDetailsSuffix:
@@ -1128,8 +1133,8 @@ const deTranslations: Translations = {
   blogGoodEnoughExcerpt: "Warum moderne Bedrohungen architektonische Sicherheit verlangen, nicht nur bessere Gewohnheiten.",
   blogPasswordTitle: "Wie wir sichere Passwörter erzeugen",
   blogPasswordExcerpt: "Erfahren Sie, wie wir kryptografische Zufälligkeit, unverzerrte Auswahl und intelligente Stärkaanalyse nutzen, um sichere Passwörter zu erstellen.",
-  blogWorkplaceTextsTitle: "Arbeitsplatz-Texts, Discovery und der Nutzen kurzlebiger Notizen",
-  blogWorkplaceTextsExcerpt: "Was die OpenAI-Textnachrichten-Debatte über schriftliche Spuren, Arbeitsplatzhygiene und PrivateNote für sensible Einmal-Kommunikation zeigt.",
+  blogWorkplaceTextsTitle: "Arbeitsplatznachrichten, Beweissicherung und der Nutzen kurzlebiger Notizen",
+  blogWorkplaceTextsExcerpt: "Was die OpenAI-Textnachrichten-Debatte über schriftliche Spuren, Kommunikationshygiene am Arbeitsplatz und PrivateNote für sensible Einmal-Kommunikation zeigt.",
   blogTagPrivacy: "Privatsphäre",
   blogTagTools: "Tools",
   blogTagSecurity: "Sicherheit",
@@ -1175,6 +1180,9 @@ const deTranslations: Translations = {
   homeFaq_password_question: "Kann ich eine Notiz mit einem Passwort schützen?",
   homeFaq_password_answer:
     "Ja. Sie können optional ein Passwort hinzufügen. Teilen Sie das Passwort getrennt vom Link, zum Beispiel über einen anderen Kanal.",
+  homeFaq_breachCheck_question: "Wie funktioniert die Leak-Prüfung für Passwörter?",
+  homeFaq_breachCheck_answer:
+    "Die Prüfung nutzt Have I Been Pwned mit k-Anonymität. Ihr Browser sendet nur ein Hash-Präfix, niemals das vollständige Passwort.",
   homeFaq_encryptionKey_question: "Wird der Verschlüsselungsschlüssel auf Ihrem Server gespeichert?",
   homeFaq_encryptionKey_answer:
     "Nein. Der Schlüssel befindet sich nach dem #-Fragment im Link. Browser senden dieses Fragment nicht an Server.",
@@ -1322,7 +1330,7 @@ const frTranslations: Translations = {
   clientSideEncryption: "Le chiffrement côté client signifie que le serveur ne voit jamais votre texte en clair.",
   readOnceExposure: "Les notes lisibles une seule fois et expirables réduisent l’exposition dans le temps.",
   noTrackingAds: "Pas de cookies de suivi, pas de publicité et pas d’analyse tierce sur les notes.",
-  simplePrivacyFlow: "Un parcours de confidentialité simple et fiable.",
+  simplePrivacyFlow: "Un parcours de confidentialité simple et digne de confiance.",
   clearSteps: "Des étapes claires, aucune collecte de données cachée.",
   privacyFirst: "Confidentialité dès la conception",
   write: "Écrire",
@@ -1397,6 +1405,7 @@ const frTranslations: Translations = {
     "Les notes ne peuvent être consultées qu’une seule fois pour une sécurité maximale",
   viewDetails: "Voir les détails",
   passwordBreachCheckLabel: "Vérification de fuite :",
+  passwordBreachCheckProvider: "via HIBP",
   passwordBreachCheckShort:
     "Vérifie si ce mot de passe apparaît dans des fuites connues.",
   passwordBreachCheckDetailsPrefix: "Cette page peut contacter",
@@ -1731,7 +1740,7 @@ const frTranslations: Translations = {
   blogGoodEnoughExcerpt: "Pourquoi les menaces modernes exigent une sécurité architecturale, pas seulement de meilleures habitudes.",
   blogPasswordTitle: "Comment nous générons des mots de passe sécurisés",
   blogPasswordExcerpt: "Découvrez comment nous utilisons l'aléatoire cryptographique, une sélection sans biais et une analyse intelligente de robustesse pour créer des mots de passe sûrs.",
-  blogWorkplaceTextsTitle: "Messages professionnels, discovery et intérêt des notes éphémères",
+  blogWorkplaceTextsTitle: "Messages professionnels, communication des preuves et intérêt des notes éphémères",
   blogWorkplaceTextsExcerpt: "Ce que la controverse autour des messages OpenAI enseigne sur les traces écrites, l'hygiène au travail et PrivateNote pour les communications sensibles ponctuelles.",
   blogTagPrivacy: "confidentialité",
   blogTagTools: "outils",
@@ -1778,6 +1787,9 @@ const frTranslations: Translations = {
   homeFaq_password_question: "Puis-je protéger une note avec un mot de passe ?",
   homeFaq_password_answer:
     "Oui. Vous pouvez ajouter un mot de passe optionnel. Partagez-le séparément du lien, par exemple via un autre canal.",
+  homeFaq_breachCheck_question: "Comment fonctionne la vérification des fuites de mot de passe ?",
+  homeFaq_breachCheck_answer:
+    "La vérification utilise Have I Been Pwned avec le principe de k-anonymat. Votre navigateur envoie uniquement un préfixe de hash, jamais le mot de passe complet.",
   homeFaq_encryptionKey_question: "La clé de chiffrement est-elle stockée sur votre serveur ?",
   homeFaq_encryptionKey_answer:
     "Non. La clé vit après le fragment # du lien. Les navigateurs n’envoient jamais ce fragment aux serveurs.",
@@ -1925,7 +1937,7 @@ const esTranslations: Translations = {
   clientSideEncryption: "El cifrado del lado del cliente significa que el servidor nunca ve tu texto sin cifrar.",
   readOnceExposure: "Las notas de una sola lectura y con caducidad reducen la exposición con el tiempo.",
   noTrackingAds: "Sin cookies de seguimiento, sin anuncios y sin analíticas de terceros en las notas.",
-  simplePrivacyFlow: "Un flujo de privacidad simple en el que puedes confiar.",
+  simplePrivacyFlow: "Un flujo de privacidad sencillo en el que puedes confiar.",
   clearSteps: "Pasos claros, sin recopilación de datos oculta.",
   privacyFirst: "Privacidad desde el diseño",
   write: "Escribir",
@@ -2001,6 +2013,7 @@ const esTranslations: Translations = {
     "Las notas solo pueden verse una vez para máxima seguridad",
   viewDetails: "Ver detalles",
   passwordBreachCheckLabel: "Comprobación de filtraciones:",
+  passwordBreachCheckProvider: "vía HIBP",
   passwordBreachCheckShort:
     "Comprueba si esta contraseña aparece en filtraciones conocidas.",
   passwordBreachCheckDetailsPrefix: "Esta página puede contactar con",
@@ -2335,7 +2348,7 @@ const esTranslations: Translations = {
   blogGoodEnoughExcerpt: "Por qué las amenazas modernas exigen seguridad arquitectónica, no solo mejores hábitos.",
   blogPasswordTitle: "Cómo generamos contraseñas seguras",
   blogPasswordExcerpt: "Aprende cómo usamos aleatoriedad criptográfica, selección sin sesgo y análisis inteligente de fortaleza para crear contraseñas seguras.",
-  blogWorkplaceTextsTitle: "Mensajes de trabajo, discovery legal y notas efímeras",
+  blogWorkplaceTextsTitle: "Mensajes de trabajo, prueba documental y notas efímeras",
   blogWorkplaceTextsExcerpt: "Qué enseña la controversia de textos de OpenAI sobre registros escritos, higiene laboral y el uso de PrivateNote para comunicación sensible de una sola vez.",
   blogTagPrivacy: "privacidad",
   blogTagTools: "herramientas",
@@ -2382,6 +2395,9 @@ const esTranslations: Translations = {
   homeFaq_password_question: "¿Puedo proteger una nota con contraseña?",
   homeFaq_password_answer:
     "Sí. Puedes añadir una contraseña opcional. Compártela por separado del enlace, por ejemplo en otro canal.",
+  homeFaq_breachCheck_question: "¿Cómo funciona la comprobación de filtraciones de contraseña?",
+  homeFaq_breachCheck_answer:
+    "La comprobación usa Have I Been Pwned con k-anonimato. Tu navegador solo envía un prefijo del hash, nunca la contraseña completa.",
   homeFaq_encryptionKey_question: "¿La clave de cifrado se guarda en su servidor?",
   homeFaq_encryptionKey_answer:
     "No. La clave vive después del fragmento # del enlace. Los navegadores nunca envían ese fragmento a los servidores.",

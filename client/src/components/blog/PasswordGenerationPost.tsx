@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { Lock, Zap, BarChart3, Shield, Check } from "lucide-react";
+import { ArrowLeft, Lock, Zap, BarChart3, Shield, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
@@ -252,6 +252,12 @@ export const PasswordGenerationPost: React.FC = () => {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
+      <Link
+        href={blogPath}
+        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
+      </Link>
       <article>
         <header className="mb-16">
           <h1 className="text-3xl font-bold mb-6">{t.blogPasswordTitle}</h1>

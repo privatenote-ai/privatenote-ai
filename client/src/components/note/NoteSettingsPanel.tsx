@@ -132,7 +132,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </span>
                 <span className="block">{t.password}</span>
               </label>
-              <div className="mt-1 text-[10px] text-gray-400">{t.poweredBy} passwords.lu</div>
+              <div className="mt-1 text-[10px] text-gray-400">
+                {t.poweredBy}{" "}
+                <a
+                  href="https://passwords.lu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline underline-offset-2 hover:opacity-90"
+                >
+                  passwords.lu
+                </a>
+              </div>
             </div>
           </div>
           <div className="col-span-2">
@@ -224,26 +234,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 <p>
                   <span className="font-medium text-gray-600 dark:text-gray-300">
                     {t.passwordBreachCheckLabel}
-                  </span>{" "}
-                  {t.passwordBreachCheckShort}
+                  </span>
+                  {" "}
+                  <a
+                    href="https://haveibeenpwned.com/Passwords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2 hover:opacity-90"
+                  >
+                    {t.passwordBreachCheckProvider}
+                  </a>
                 </p>
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
-                    {t.viewDetails}
-                  </summary>
-                  <p className="mt-1">
-                    {t.passwordBreachCheckDetailsPrefix}{" "}
-                    <a
-                      href="https://haveibeenpwned.com/Passwords"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline underline-offset-2 hover:opacity-90"
-                    >
-                      Have I Been Pwned
-                    </a>{" "}
-                    {t.passwordBreachCheckDetailsSuffix}
-                  </p>
-                </details>
               </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -265,11 +266,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       {breachState === "error" && t.passwordBreachUnavailable}
                     </span>
                   </div>
-                  {passwordSource === "simple" && (
-                    <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                      {t.passwordSimpleModeHint}
-                    </p>
-                  )}
                 </div>
               )}
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">

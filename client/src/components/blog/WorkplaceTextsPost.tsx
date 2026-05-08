@@ -15,194 +15,257 @@ type ArticleCopy = {
 };
 
 const sourceUrl = "https://www.businessinsider.com/openai-trial-exposes-truth-about-workplace-texts-2026-5";
+const heroImagePath = "/images/man texting- jonas-leupe-8pCtwj37VB4-unsplash.jpg";
+const heroImageCreditUrl =
+  "https://unsplash.com/photos/man-in-black-crew-neck-top-using-smartphone-8pCtwj37VB4?utm_source=unsplash&utm_medium=referral&utm_content=creditShareLink";
 
 const copy: Record<SupportedLanguage, ArticleCopy> = {
   en: {
     sourceLabel: "Inspired by reporting from Business Insider",
     intro: [
-      "A recent Business Insider article about the OpenAI trial highlighted a problem many teams underestimate: workplace texts, personal-device messages, AI notes, and chat records can become part of a legal or internal dispute long after the moment has passed.",
-      "The lesson is not to hide wrongdoing. The lesson is to stop treating every written channel as a harmless place for sensitive, unfinished, or context-heavy conversations.",
+      "The recent Business Insider coverage of the OpenAI trial is a reminder that modern workplace communication is effectively permanent.",
+      "Text messages, Slack conversations, AI meeting transcripts, synced devices, personal-phone chats, and collaboration tools can all become evidence long after the original context disappears.",
+      "The lesson is not to hide wrongdoing. It is to be intentional about what gets written, where it lives, and how long it survives.",
     ],
     sections: [
       {
-        title: "Written messages have a longer life than people expect",
+        title: "Written messages live longer than people expect",
         body: [
-          "A quick text can feel casual, but it still creates a record. In litigation or an internal investigation, relevance often matters more than whether the message lived on a work laptop, a personal phone, or a third-party app.",
-          "Screenshots, backups, notification previews, synced devices, AI meeting tools, and forwarded messages all multiply the places where a sensitive conversation can survive.",
+          "A quick message can feel informal and temporary, but digital communication rarely stays contained.",
+          "Screenshots, notification previews, cloud backups, synced devices, forwarded emails, AI-generated summaries, and archived chat histories all create additional copies that may persist for years.",
+          "As teams rely more on AI-powered tools, automatic records continue to grow. Meeting assistants generate transcripts, copilots summarize conversations, and productivity platforms increasingly turn temporary discussions into searchable institutional memory.",
+        ],
+      },
+      {
+        title: "Not every message needs to become permanent history",
+        body: [
+          "Some communication should absolutely be retained for accountability, operations, compliance, or legal obligations. But many messages do not need durable storage.",
+          "Temporary credentials, recovery codes, one-time instructions, sensitive drafts, private feedback, legal-sensitive context, and short-lived operational details often have a limited purpose and lifespan.",
+          "Good communication hygiene means distinguishing information that must persist from information that only needs to exist briefly.",
         ],
       },
       {
         title: "Where PrivateNote helps",
         body: [
-          "PrivateNote is built for cases where a written message is useful, but a permanent copy is unnecessary. Notes are encrypted in the browser before upload, the server stores only ciphertext, and the decryption key stays in the link rather than on the server.",
-          "For practical workplace hygiene, that means you can share a short-lived note for a password, recovery code, private draft, legal-sensitive detail, or temporary context without adding another permanent record to Slack, Teams, email, or SMS.",
+          "PrivateNote is useful when information needs to be shared briefly without creating another long-term searchable record.",
+          "Notes are encrypted in the browser before upload. The server stores only ciphertext, while the decryption key remains in the URL fragment and is not transmitted to the server in standard requests.",
+          "That helps teams share temporary information without automatically adding it to Slack archives, Teams history, email inboxes, SMS backups, or collaborative document systems.",
         ],
         bullets: [
-          "Use read-once notes when the recipient only needs the content once.",
-          "Use short expirations when the information has a limited purpose.",
-          "Use password protection for higher-risk handoffs and share the password separately.",
-          "Avoid putting the most sensitive material into tools that create transcripts, previews, or searchable archives.",
+          "Passwords and recovery codes",
+          "Temporary access instructions",
+          "Sensitive one-off operational details",
+          "Legal-sensitive drafts or context",
+          "Private handoffs between teammates",
+          "Information with a short operational lifespan",
         ],
       },
       {
         title: "What PrivateNote does not solve",
         body: [
-          "No tool can make an inappropriate message safe. Recipients can still screenshot, copy, photograph, or forward what they can see. A compromised device can also expose plaintext while the note is open.",
-          "PrivateNote reduces retention and server-side exposure. It does not replace judgment, legal advice, company policy, or a phone call when a topic is too nuanced for writing.",
+          "No tool can make an inappropriate message safe. Recipients can still screenshot, copy, photograph, or forward what they can see.",
+          "A compromised device can expose plaintext while a note is open. Ephemeral tools also do not replace legal obligations, company policy, retention requirements, or professional judgment.",
+          "PrivateNote reduces server-side exposure and long-term retention. It does not eliminate risk or replace live conversation when nuance matters more than convenience.",
         ],
       },
       {
         title: "A better rule for sensitive workplace communication",
         body: [
-          "Ask two questions before writing: does this need to be written, and does it need to persist?",
-          "If the answer to the first question is no, talk live. If the answer to the second is no, use an ephemeral, encrypted channel. That small habit can prevent temporary context from becoming permanent evidence.",
+          "Before sending a message, ask two questions: Does this need to be written? Does this need to persist?",
+          "If the answer to the first question is no, talk live. If the answer to the second is no, use an ephemeral and encrypted channel designed for temporary communication.",
+          "That small habit can prevent temporary context from becoming permanent evidence.",
         ],
       },
     ],
     ctaTitle: "Use privacy as a workflow, not a panic button",
     ctaBody:
-      "PrivateNote is most useful when teams adopt it before there is a problem: for secrets, temporary instructions, sensitive one-off context, and anything that should not become searchable workplace history.",
+      "Privacy tools are most effective when adopted before there is a problem. Use ephemeral communication for secrets, one-time instructions, and short-lived context that should not become permanent workplace history.",
     ctaButton: "Write a Private Note",
   },
   de: {
     sourceLabel: "Inspiriert durch Berichterstattung von Business Insider",
     intro: [
-      "Ein aktueller Business-Insider-Artikel zum OpenAI-Prozess zeigt ein Problem, das viele Teams unterschätzen: Arbeitsplatz-Texts, Nachrichten auf privaten Geräten, KI-Notizen und Chatverläufe können lange nach dem Moment Teil eines rechtlichen oder internen Streits werden.",
-      "Die Lehre ist nicht, Fehlverhalten zu verstecken. Die Lehre ist, nicht jeden schriftlichen Kanal als harmlosen Ort für sensible, unfertige oder kontextabhängige Gespräche zu behandeln.",
+      "Die aktuelle Berichterstattung von Business Insider zum OpenAI-Prozess erinnert daran, dass moderne Kommunikation am Arbeitsplatz faktisch dauerhaft ist.",
+      "Textnachrichten, Slack-Verläufe, KI-Meeting-Transkripte, synchronisierte Geräte, private Smartphone-Chats und Kollaborationstools können noch lange nach dem ursprünglichen Kontext zu Beweismitteln werden.",
+      "Die Lehre ist nicht, Fehlverhalten zu verstecken. Es geht darum, bewusst zu entscheiden, was schriftlich festgehalten wird, wo es gespeichert ist und wie lange es bestehen bleibt.",
     ],
     sections: [
       {
-        title: "Schriftliche Nachrichten leben länger, als man denkt",
+        title: "Schriftliche Nachrichten leben länger als erwartet",
         body: [
-          "Eine kurze Textnachricht fühlt sich informell an, erzeugt aber trotzdem einen Datensatz. In einem Verfahren oder einer internen Untersuchung zählt oft die Relevanz, nicht ob die Nachricht auf einem Arbeitslaptop, privaten Telefon oder in einer Drittanbieter-App lag.",
-          "Screenshots, Backups, Benachrichtigungsvorschauen, synchronisierte Geräte, KI-Meeting-Tools und weitergeleitete Nachrichten vervielfachen die Orte, an denen sensible Gespräche überleben können.",
+          "Eine kurze Nachricht wirkt oft informell und temporär, doch digitale Kommunikation bleibt selten wirklich begrenzt.",
+          "Screenshots, Benachrichtigungsvorschauen, Cloud-Backups, synchronisierte Geräte, weitergeleitete E-Mails, KI-Zusammenfassungen und Chat-Archive erzeugen zusätzliche Kopien, die über Jahre bestehen können.",
+          "Je stärker Teams auf KI-gestützte Tools setzen, desto mehr automatische Aufzeichnungen entstehen. Meeting-Assistenten schreiben Transkripte, Copilots fassen Gespräche zusammen, und Produktivitätsplattformen machen temporäre Diskussionen zu durchsuchbarem Unternehmensgedächtnis.",
+        ],
+      },
+      {
+        title: "Nicht jede Nachricht muss zur dauerhaften Akte werden",
+        body: [
+          "Manche Kommunikation muss aus Gründen der Nachvollziehbarkeit, des Betriebs, der Compliance oder rechtlicher Pflichten selbstverständlich aufbewahrt werden. Vieles muss es aber nicht.",
+          "Temporäre Zugangsdaten, Wiederherstellungscodes, einmalige Anweisungen, sensible Entwürfe, privates Feedback, rechtlich sensible Kontexte oder kurzlebige operative Details haben oft nur einen begrenzten Zweck und eine kurze Lebensdauer.",
+          "Gute Kommunikationshygiene heißt, klar zu unterscheiden: Was muss bleiben, und was muss nur kurz existieren?",
         ],
       },
       {
         title: "Wo PrivateNote hilft",
         body: [
-          "PrivateNote ist für Fälle gebaut, in denen eine schriftliche Nachricht nützlich ist, aber keine dauerhafte Kopie nötig ist. Notizen werden vor dem Upload im Browser verschlüsselt, der Server speichert nur Chiffretext, und der Entschlüsselungsschlüssel bleibt im Link statt auf dem Server.",
-          "Für praktische Arbeitsplatzhygiene heißt das: Sie können eine kurzlebige Notiz für ein Passwort, einen Wiederherstellungscode, einen privaten Entwurf, ein rechtlich sensibles Detail oder temporären Kontext teilen, ohne einen weiteren dauerhaften Eintrag in Slack, Teams, E-Mail oder SMS zu erzeugen.",
+          "PrivateNote ist nützlich, wenn Informationen kurz geteilt werden müssen, ohne einen weiteren langfristig durchsuchbaren Datensatz zu erzeugen.",
+          "Notizen werden vor dem Upload im Browser verschlüsselt. Der Server speichert nur Chiffretext, während der Entschlüsselungsschlüssel im URL-Fragment bleibt und bei Standardanfragen nicht an den Server übertragen wird.",
+          "So lassen sich temporäre Informationen teilen, ohne sie automatisch in Slack-Archiven, Teams-Historien, E-Mail-Postfächern, SMS-Backups oder kollaborativen Dokumentensystemen abzulegen.",
         ],
         bullets: [
-          "Nutzen Sie Einmal-Notizen, wenn Empfänger den Inhalt nur einmal benötigen.",
-          "Nutzen Sie kurze Ablaufzeiten, wenn Informationen nur einem begrenzten Zweck dienen.",
-          "Nutzen Sie Passwortschutz für riskantere Übergaben und teilen Sie das Passwort separat.",
-          "Vermeiden Sie besonders sensible Inhalte in Tools, die Transkripte, Vorschauen oder durchsuchbare Archive erzeugen.",
+          "Passwörter und Wiederherstellungscodes",
+          "Temporäre Zugriffsanweisungen",
+          "Sensible einmalige operative Details",
+          "Rechtlich sensible Entwürfe oder Kontexte",
+          "Private Übergaben zwischen Teammitgliedern",
+          "Informationen mit kurzer operativer Lebensdauer",
         ],
       },
       {
         title: "Was PrivateNote nicht löst",
         body: [
-          "Kein Tool macht eine unangemessene Nachricht sicher. Empfänger können weiterhin Screenshots machen, kopieren, fotografieren oder weiterleiten, was sie sehen. Ein kompromittiertes Gerät kann Klartext ebenfalls offenlegen, während die Notiz geöffnet ist.",
-          "PrivateNote reduziert Aufbewahrung und serverseitige Sichtbarkeit. Es ersetzt nicht Urteilsvermögen, Rechtsberatung, Unternehmensrichtlinien oder ein Telefonat, wenn ein Thema zu nuanciert für Schriftform ist.",
+          "Kein Tool macht eine unangemessene Nachricht sicher. Empfänger können weiterhin Screenshots erstellen, Inhalte kopieren, fotografieren oder weiterleiten.",
+          "Ein kompromittiertes Gerät kann Klartext offenlegen, solange eine Notiz geöffnet ist. Kurzlebige Tools ersetzen außerdem keine rechtlichen Pflichten, Unternehmensrichtlinien, Aufbewahrungsvorgaben oder professionelles Urteilsvermögen.",
+          "PrivateNote reduziert serverseitige Sichtbarkeit und langfristige Aufbewahrung. Es eliminiert Risiken nicht und ersetzt kein direktes Gespräch, wenn Nuance wichtiger ist als Bequemlichkeit.",
         ],
       },
       {
         title: "Eine bessere Regel für sensible Arbeitsplatzkommunikation",
         body: [
-          "Stellen Sie vor dem Schreiben zwei Fragen: Muss das schriftlich sein, und muss es dauerhaft bleiben?",
-          "Wenn die erste Antwort nein ist, sprechen Sie live. Wenn die zweite Antwort nein ist, nutzen Sie einen kurzlebigen, verschlüsselten Kanal. Diese kleine Gewohnheit kann verhindern, dass temporärer Kontext zu dauerhaftem Beweismaterial wird.",
+          "Stellen Sie vor dem Senden zwei Fragen: Muss das schriftlich sein? Muss es dauerhaft bleiben?",
+          "Wenn die erste Antwort nein ist, sprechen Sie direkt miteinander. Wenn die zweite Antwort nein ist, nutzen Sie einen kurzlebigen und verschlüsselten Kanal für temporäre Kommunikation.",
+          "Diese kleine Gewohnheit kann verhindern, dass temporärer Kontext zu dauerhaftem Beweismaterial wird.",
         ],
       },
     ],
     ctaTitle: "Nutzen Sie Privatsphäre als Arbeitsablauf, nicht als Panikknopf",
     ctaBody:
-      "PrivateNote ist am nützlichsten, wenn Teams es einsetzen, bevor es ein Problem gibt: für Geheimnisse, temporäre Anweisungen, sensible Einmal-Kontexte und alles, was nicht zur durchsuchbaren Arbeitsplatzhistorie werden sollte.",
+      "Datenschutztools sind am wirksamsten, wenn sie vor dem Problem eingesetzt werden. Nutzen Sie kurzlebige Kommunikation für Geheimnisse, einmalige Anweisungen und temporären Kontext, der nicht Teil einer dauerhaften Arbeitsplatzhistorie werden sollte.",
     ctaButton: "Private Notiz schreiben",
   },
   fr: {
     sourceLabel: "Inspiré par un article de Business Insider",
     intro: [
-      "Un récent article de Business Insider sur le procès OpenAI met en lumière un problème souvent sous-estimé : textos professionnels, messages sur appareils personnels, notes IA et historiques de chat peuvent entrer dans un litige ou une enquête interne longtemps après les faits.",
-      "La leçon n'est pas de cacher des fautes. La leçon est d'arrêter de traiter chaque canal écrit comme un endroit sans risque pour des conversations sensibles, incomplètes ou dépendantes du contexte.",
+      "La récente couverture de Business Insider sur le procès OpenAI rappelle qu’aujourd’hui, la communication au travail est pratiquement permanente.",
+      "SMS, conversations Slack, transcriptions de réunions IA, appareils synchronisés, chats sur téléphone personnel et outils collaboratifs peuvent devenir des preuves bien après la disparition du contexte initial.",
+      "La leçon n’est pas de dissimuler des fautes. Il s’agit de décider délibérément ce qui est écrit, où c’est stocké et combien de temps cela reste accessible.",
     ],
     sections: [
       {
-        title: "Les messages écrits vivent plus longtemps qu'on ne le pense",
+        title: "Les messages écrits vivent plus longtemps qu’on ne l’imagine",
         body: [
-          "Un texto rapide peut sembler informel, mais il crée tout de même une trace. Dans un litige ou une enquête interne, la pertinence compte souvent plus que le fait que le message se trouve sur un ordinateur de travail, un téléphone personnel ou une application tierce.",
-          "Captures d'écran, sauvegardes, aperçus de notifications, appareils synchronisés, outils de réunion IA et messages transférés multiplient les endroits où une conversation sensible peut survivre.",
+          "Un message rapide peut sembler informel et temporaire, mais la communication numérique reste rarement confinée.",
+          "Captures d’écran, aperçus de notifications, sauvegardes cloud, appareils synchronisés, e-mails transférés, résumés IA et historiques de chat créent des copies supplémentaires qui peuvent persister pendant des années.",
+          "Avec la montée des outils dopés à l’IA, les traces automatiques se multiplient. Les assistants de réunion génèrent des transcriptions, les copilotes résument les échanges, et les plateformes de productivité transforment de plus en plus les discussions temporaires en mémoire institutionnelle consultable.",
+        ],
+      },
+      {
+        title: "Tous les messages ne doivent pas devenir une trace permanente",
+        body: [
+          "Certaines communications doivent évidemment être conservées pour la responsabilité, la continuité opérationnelle, la conformité ou des obligations légales. Mais beaucoup ne le doivent pas.",
+          "Identifiants temporaires, codes de récupération, consignes à usage unique, brouillons sensibles, retours privés, contexte juridiquement sensible ou détails opérationnels de courte durée ont souvent un objectif limité et une durée de vie limitée.",
+          "Une bonne hygiène de communication consiste à distinguer ce qui doit persister de ce qui n’a besoin d’exister que brièvement.",
         ],
       },
       {
         title: "Là où PrivateNote aide",
         body: [
-          "PrivateNote est conçu pour les cas où un message écrit est utile, mais où une copie permanente ne l'est pas. Les notes sont chiffrées dans le navigateur avant l'envoi, le serveur ne stocke que du texte chiffré, et la clé de déchiffrement reste dans le lien plutôt que sur le serveur.",
-          "Pour une bonne hygiène au travail, vous pouvez partager une note de courte durée pour un mot de passe, un code de récupération, un brouillon privé, un détail juridiquement sensible ou un contexte temporaire sans ajouter une trace permanente à Slack, Teams, e-mail ou SMS.",
+          "PrivateNote est utile quand l’information doit être transmise brièvement, sans créer un nouvel enregistrement durable et consultable.",
+          "Les notes sont chiffrées dans le navigateur avant envoi. Le serveur ne stocke que du chiffré, tandis que la clé de déchiffrement reste dans le fragment d’URL et n’est pas transmise au serveur dans les requêtes standard.",
+          "En pratique, cela permet de partager des informations temporaires sans les ajouter automatiquement aux archives Slack, à l’historique Teams, aux boîtes e-mail, aux sauvegardes SMS ou aux systèmes documentaires collaboratifs.",
         ],
         bullets: [
-          "Utilisez des notes à lecture unique lorsque le destinataire n'a besoin du contenu qu'une fois.",
-          "Utilisez des expirations courtes lorsque l'information a un objectif limité.",
-          "Ajoutez un mot de passe pour les transmissions plus risquées et partagez-le séparément.",
-          "Évitez de placer les contenus les plus sensibles dans des outils qui créent transcriptions, aperçus ou archives consultables.",
+          "Mots de passe et codes de récupération",
+          "Consignes d’accès temporaires",
+          "Détails opérationnels sensibles à usage unique",
+          "Brouillons ou contexte juridiquement sensibles",
+          "Passations privées entre collègues",
+          "Informations à courte durée de vie opérationnelle",
         ],
       },
       {
         title: "Ce que PrivateNote ne résout pas",
         body: [
-          "Aucun outil ne rend sûr un message inapproprié. Les destinataires peuvent toujours capturer, copier, photographier ou transférer ce qu'ils voient. Un appareil compromis peut aussi exposer le texte en clair pendant l'ouverture de la note.",
-          "PrivateNote réduit la conservation et l'exposition côté serveur. Il ne remplace pas le jugement, le conseil juridique, les règles de l'entreprise ou un appel lorsque le sujet est trop nuancé pour l'écrit.",
+          "Aucun outil ne rend sûr un message inapproprié. Les destinataires peuvent toujours capturer, copier, photographier ou transférer ce qu’ils voient.",
+          "Un appareil compromis peut exposer le texte en clair pendant l’ouverture de la note. Les outils éphémères ne remplacent pas non plus les obligations légales, les politiques internes, les exigences de rétention ou le jugement professionnel.",
+          "PrivateNote réduit l’exposition côté serveur et la rétention long terme. Il n’élimine pas le risque et ne remplace pas une conversation en direct quand la nuance compte davantage que la commodité.",
         ],
       },
       {
         title: "Une meilleure règle pour les sujets sensibles",
         body: [
-          "Avant d'écrire, posez deux questions : cela doit-il être écrit, et cela doit-il persister ?",
-          "Si la première réponse est non, parlez en direct. Si la seconde est non, utilisez un canal éphémère et chiffré. Cette petite habitude peut empêcher un contexte temporaire de devenir une preuve permanente.",
+          "Avant d’envoyer un message, posez deux questions : faut-il l’écrire ? Doit-il persister ?",
+          "Si la première réponse est non, parlez en direct. Si la seconde est non, utilisez un canal éphémère et chiffré conçu pour la communication temporaire.",
+          "Cette petite habitude peut éviter qu’un contexte temporaire devienne une preuve permanente.",
         ],
       },
     ],
     ctaTitle: "Utilisez la confidentialité comme un processus, pas comme un bouton panique",
     ctaBody:
-      "PrivateNote est le plus utile lorsque les équipes l'adoptent avant un problème : pour les secrets, instructions temporaires, contextes sensibles ponctuels et tout ce qui ne devrait pas devenir un historique professionnel consultable.",
+      "Les outils de confidentialité sont les plus efficaces lorsqu’ils sont adoptés avant le problème. Utilisez la communication éphémère pour les secrets, les consignes à usage unique et les contextes temporaires qui ne doivent pas devenir un historique professionnel permanent.",
     ctaButton: "Écrire une note privée",
   },
   es: {
     sourceLabel: "Inspirado en un artículo de Business Insider",
     intro: [
-      "Un artículo reciente de Business Insider sobre el juicio de OpenAI subraya un problema que muchos equipos subestiman: textos de trabajo, mensajes en dispositivos personales, notas de IA e historiales de chat pueden entrar en una disputa legal o interna mucho después del momento original.",
-      "La lección no es ocultar malas conductas. La lección es dejar de tratar cada canal escrito como un lugar inocuo para conversaciones sensibles, incompletas o muy dependientes del contexto.",
+      "La reciente cobertura de Business Insider sobre el juicio de OpenAI recuerda que la comunicación laboral moderna es, en la práctica, permanente.",
+      "Mensajes de texto, conversaciones de Slack, transcripciones de reuniones con IA, dispositivos sincronizados, chats en teléfonos personales y herramientas colaborativas pueden convertirse en evidencia mucho después de que desaparece el contexto original.",
+      "La lección no es ocultar conductas indebidas. Es decidir con cuidado qué se escribe, dónde se guarda y cuánto tiempo permanece accesible.",
     ],
     sections: [
       {
-        title: "Los mensajes escritos viven más de lo que la gente espera",
+        title: "Los mensajes escritos duran más de lo que se espera",
         body: [
-          "Un texto rápido puede parecer informal, pero crea un registro. En un litigio o investigación interna, la relevancia suele importar más que si el mensaje estaba en un portátil de trabajo, un teléfono personal o una app de terceros.",
-          "Capturas, copias de seguridad, vistas previas de notificaciones, dispositivos sincronizados, herramientas de reuniones con IA y mensajes reenviados multiplican los lugares donde una conversación sensible puede sobrevivir.",
+          "Un mensaje rápido puede parecer informal y temporal, pero la comunicación digital rara vez queda contenida.",
+          "Capturas de pantalla, vistas previas de notificaciones, copias de seguridad en la nube, dispositivos sincronizados, correos reenviados, resúmenes generados por IA e historiales de chat crean copias adicionales que pueden persistir durante años.",
+          "A medida que los equipos dependen más de herramientas con IA, crece el número de registros automáticos. Los asistentes de reuniones generan transcripciones, los copilotos resumen conversaciones y las plataformas de productividad convierten debates temporales en memoria institucional consultable.",
+        ],
+      },
+      {
+        title: "No todo mensaje debe convertirse en registro permanente",
+        body: [
+          "Hay comunicaciones que sí deben conservarse por responsabilidad, continuidad operativa, cumplimiento o obligaciones legales. Pero muchas no.",
+          "Credenciales temporales, códigos de recuperación, instrucciones de un solo uso, borradores sensibles, comentarios privados, contexto legalmente sensible o detalles operativos de corta duración suelen tener un propósito y una vida útil limitados.",
+          "La buena higiene de comunicación consiste en distinguir qué información debe persistir y cuál solo necesita existir brevemente.",
         ],
       },
       {
         title: "Dónde ayuda PrivateNote",
         body: [
-          "PrivateNote está diseñado para casos en los que un mensaje escrito es útil, pero una copia permanente no. Las notas se cifran en el navegador antes de subirse, el servidor solo almacena texto cifrado y la clave de descifrado permanece en el enlace, no en el servidor.",
-          "Para una higiene práctica en el trabajo, puedes compartir una nota de corta duración para una contraseña, un código de recuperación, un borrador privado, un detalle legalmente sensible o contexto temporal sin añadir otro registro permanente a Slack, Teams, correo o SMS.",
+          "PrivateNote ayuda cuando la información debe comunicarse de forma breve sin crear otro registro buscable a largo plazo.",
+          "Las notas se cifran en el navegador antes de subirse. El servidor solo guarda texto cifrado, mientras la clave de descifrado permanece en el fragmento de la URL y no se transmite al servidor en solicitudes estándar.",
+          "En la práctica, permite compartir información temporal sin añadirla automáticamente a archivos de Slack, historial de Teams, bandejas de correo, copias SMS o sistemas colaborativos de documentos.",
         ],
         bullets: [
-          "Usa notas de una sola lectura cuando el destinatario solo necesite el contenido una vez.",
-          "Usa caducidades cortas cuando la información tenga un propósito limitado.",
-          "Usa protección con contraseña para entregas de mayor riesgo y comparte la contraseña por separado.",
-          "Evita poner material muy sensible en herramientas que crean transcripciones, vistas previas o archivos buscables.",
+          "Contraseñas y códigos de recuperación",
+          "Instrucciones temporales de acceso",
+          "Detalles operativos sensibles de una sola vez",
+          "Borradores o contexto legalmente sensibles",
+          "Entregas privadas entre compañeros",
+          "Información con vida operativa corta",
         ],
       },
       {
         title: "Lo que PrivateNote no resuelve",
         body: [
-          "Ninguna herramienta vuelve seguro un mensaje inapropiado. Los destinatarios aún pueden hacer capturas, copiar, fotografiar o reenviar lo que ven. Un dispositivo comprometido también puede exponer el texto mientras la nota está abierta.",
-          "PrivateNote reduce retención y exposición del lado del servidor. No sustituye el criterio, el asesoramiento legal, la política de la empresa ni una llamada cuando un tema tiene demasiados matices para escribirlo.",
+          "Ninguna herramienta hace seguro un mensaje inapropiado. Los destinatarios aún pueden hacer capturas, copiar, fotografiar o reenviar lo que ven.",
+          "Un dispositivo comprometido también puede exponer texto en claro mientras la nota está abierta. Las herramientas efímeras tampoco sustituyen obligaciones legales, políticas de la empresa, requisitos de retención ni criterio profesional.",
+          "PrivateNote reduce la exposición del lado del servidor y la retención a largo plazo. No elimina el riesgo ni reemplaza una conversación en vivo cuando el matiz importa más que la comodidad.",
         ],
       },
       {
         title: "Una regla mejor para comunicación laboral sensible",
         body: [
-          "Antes de escribir, haz dos preguntas: ¿esto necesita estar escrito, y necesita persistir?",
-          "Si la primera respuesta es no, habla en directo. Si la segunda es no, usa un canal efímero y cifrado. Ese pequeño hábito puede evitar que un contexto temporal se convierta en evidencia permanente.",
+          "Antes de enviar un mensaje, haz dos preguntas: ¿esto necesita escribirse? ¿esto necesita persistir?",
+          "Si la primera respuesta es no, habla en vivo. Si la segunda es no, usa un canal efímero y cifrado diseñado para comunicación temporal.",
+          "Ese pequeño hábito puede evitar que un contexto temporal se convierta en evidencia permanente.",
         ],
       },
     ],
     ctaTitle: "Usa la privacidad como flujo de trabajo, no como botón de pánico",
     ctaBody:
-      "PrivateNote es más útil cuando los equipos lo adoptan antes de que haya un problema: para secretos, instrucciones temporales, contexto sensible puntual y cualquier cosa que no debería convertirse en historial laboral buscable.",
+      "Las herramientas de privacidad funcionan mejor cuando se adoptan antes del problema. Usa comunicación efímera para secretos, instrucciones de un solo uso y contexto breve que no debería convertirse en historial laboral permanente.",
     ctaButton: "Escribir una nota privada",
   },
 };
@@ -235,6 +298,26 @@ export const WorkplaceTextsPost: React.FC = () => {
             {article.sourceLabel}
             <ExternalLink className="ml-1 h-4 w-4" />
           </a>
+          <figure className="mt-6">
+            <img
+              src={heroImagePath}
+              alt="Man using smartphone in an urban setting"
+              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
+              loading="lazy"
+            />
+            <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Photo by{" "}
+              <a
+                href={heroImageCreditUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 hover:opacity-90"
+              >
+                Jonas Leupe
+              </a>{" "}
+              on Unsplash.
+            </figcaption>
+          </figure>
         </header>
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
