@@ -17,7 +17,7 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import type { SupportedLanguage } from "@/utils/translation";
+import { getTranslations, type SupportedLanguage } from "@/utils/translation";
 import {
   getLocalFallbackTemplateOptions,
   isLocalFallbackTemplateId,
@@ -135,11 +135,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
+  const t = useMemo(() => getTranslations(language), [language]);
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;
   const generationHeadline = isGeneratingContent
-    ? aiGenerationStatusText?.trim() || "Generating…"
+    ? aiGenerationStatusText?.trim() || t.aiComposerGenerating
     : "";
   const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
   const displayedTemplates = localAiSupported
@@ -170,14 +171,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
       <div>
         <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
           <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-            <strong>Runs locally in your browser.</strong> Your text never leaves your device. No servers, no
-            tracking, no external storage.
+            <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
           </p>
         </div>
         {showPrompt ? (
           <>
             {/* Step 1 — templates (only while composing the prompt) */}
-            <StepRow step={1} label="Choose a template" />
+            <StepRow step={1} label={t.aiComposerChooseTemplate} />
             <div className="mb-1">
               <div className="flex flex-wrap gap-2">
                 {displayedTemplates.slice(0, 5).map((template) => (
@@ -217,12 +217,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {showAllTemplates ? (
                       <>
                         <ChevronUp className="h-3 w-3 mr-1" />
-                        Show fewer templates
+                        {t.aiComposerShowFewerTemplates}
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-3 w-3 mr-1" />
-                        Show more templates
+                        {t.aiComposerShowMoreTemplates}
                       </>
                     )}
                   </button>
@@ -232,7 +232,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
             {/* Step 2 — length */}
             <div className="mb-2 mt-5">
-              <StepRow step={2} label="Length in sentences" />
+              <StepRow step={2} label={t.aiComposerLengthInSentences} />
               <div className="flex flex-wrap gap-2">
                 {AI_SENTENCE_LENGTH_OPTIONS.map((opt) => (
                   <button
@@ -254,9 +254,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
           <div className="space-y-4 pt-2">
             {localAiSupported ? (
               <div>
-                <StepRow step={3} label="Write with AI" />
+                <StepRow step={3} label={t.aiComposerWriteWithAi} />
                 <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
-                  What do you want to say?
+                  {t.aiComposerWhatDoYouWantToSay}
                 </h3>
 
                 <div className="relative min-w-0">
@@ -284,10 +284,10 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       placeholder={
                         activePromptTemplate?.promptPlaceholder ??
                         (aiEnhancementType === "summarize"
-                          ? "Paste a long text that you want to summarize..."
+                          ? t.aiComposerPlaceholderSummarize
                           : aiEnhancementType === "secure"
-                            ? "Paste text that might contain sensitive information to redact..."
-                            : "Describe what you want the AI to write for you...")
+                            ? t.aiComposerPlaceholderSecure
+                            : t.aiComposerPlaceholderDefault)
                       }
                     />
                   </div>
@@ -296,8 +296,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     type="button"
                     onClick={() => onGenerate()}
                     disabled={isGeneratingContent || isAiModelLoading || !hasPromptText}
-                    title="Generate with private AI (⌘/Ctrl+Enter)"
-                    aria-label="Generate with private AI"
+                    title={t.aiComposerGenerateWithShortcut}
+                    aria-label={t.aiComposerGenerateWithPrivateAi}
                     className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
                   >
                     {isGeneratingContent ? (
@@ -343,34 +343,34 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {isGeneratingContent
                       ? generationHeadline
                       : isAiModelLoading
-                        ? "Getting your private AI ready…"
+                        ? t.aiComposerGettingReady
                         : hasPromptText
-                          ? "Tap the button or press ⌘/Ctrl+Enter"
-                          : "Start typing — your note stays on this device"}
+                          ? t.aiComposerTapOrShortcut
+                          : t.aiComposerStartTypingPrivate}
                   </span>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <StepRow step={3} label="Curated Writing" />
+                  <StepRow step={3} label={t.aiComposerCuratedWriting} />
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-                    Local AI is not available on this device yet.
+                    {t.aiComposerLocalAiUnavailableTitle}
                   </h3>
                   <p className="text-sm text-gray-700 dark:text-gray-200">
-                    You still have access to a refined writing experience here, with curated message starters shaped to the template and length you choose.
+                    {t.aiComposerLocalAiUnavailableBody1}
                   </p>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    We&apos;re building a native app to bring local AI to more devices.
+                    {t.aiComposerLocalAiUnavailableBody2}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Signature message starters
+                    {t.aiComposerSignatureStarters}
                   </p>
                   <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    Choose a polished starting point, add your details, and turn it into something unmistakably yours.
+                    {t.aiComposerSignatureStartersHint}
                   </p>
                   <div className="mt-4 space-y-3">
                     {fallbackOptions.map((option, index) => (
@@ -398,7 +398,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               activePromptTemplate.starterExamples.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                    Try an example
+                    {t.aiComposerTryExample}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {activePromptTemplate.starterExamples.map((starter, i) => (
@@ -458,10 +458,10 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   onClick={onBack}
                   aria-label={
                     aiDraftAccepted
-                      ? "Return to AI editing tools and accept note step"
+                      ? t.aiComposerAriaReturnToEditing
                       : transformHistory.length > 0
-                        ? "Undo last AI change to note content"
-                        : "Back to prompt"
+                        ? t.aiComposerAriaUndoLastChange
+                        : t.aiComposerAriaBackToPrompt
                   }
                   className="text-xs font-medium flex items-center shrink-0 rounded-lg border-2 border-blue-600 bg-white px-2.5 py-1 text-blue-700 shadow-sm hover:bg-blue-50 dark:border-blue-400 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
                 >
@@ -470,13 +470,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     aria-hidden
                     strokeWidth={2.5}
                   />
-                  {aiDraftAccepted ? "Back" : transformHistory.length > 0 ? "Undo" : "Back"}
+                  {aiDraftAccepted ? t.aiComposerBack : transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
                 </button>
               </div>
               <h4 className="justify-self-center self-end text-center text-sm font-medium text-gray-700 dark:text-gray-300 min-w-0 px-1 leading-snug">
-                AI-Generated Content{" "}
+                {t.aiComposerGeneratedContent}{" "}
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-                  (you can edit below)
+                  {t.aiComposerYouCanEditBelow}
                 </span>
               </h4>
               <div className="justify-self-end self-end min-w-0">
@@ -493,7 +493,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 applyNoteContentInput(
                   e,
                   MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES,
-                  `In AI mode, notes are limited to ${String(MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES / 1024)} KB of UTF-8 text. Extra pasted text was removed.`,
+                  t.aiComposerNotesLimitTrimmedAiMode.replace("{maxKb}", String(MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES / 1024)),
                 )
               }
               rows={6}
@@ -516,7 +516,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                   >
                     <Zap className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
-                    Improve
+                    {t.aiComposerImprove}
                   </button>
                   <button
                     type="button"
@@ -525,7 +525,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                   >
                     <ZoomIn className="h-4 w-4 mr-1 text-blue-500 shrink-0" />
-                    Summarize
+                    {t.aiComposerSummarize}
                   </button>
                   <button
                     type="button"
@@ -534,7 +534,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                   >
                     <FileText className="h-4 w-4 mr-1 text-purple-500 shrink-0" />
-                    Simplify
+                    {t.aiComposerSimplify}
                   </button>
                   <button
                     type="button"
@@ -543,7 +543,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
                   >
                     <RefreshCw className="h-4 w-4 mr-1 text-green-500 shrink-0" />
-                    Regenerate
+                    {t.aiComposerRegenerate}
                   </button>
                 </div>
                 <button
@@ -551,7 +551,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   onClick={onAcceptDraft}
                   className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 sm:ml-auto sm:w-auto sm:min-w-[12rem] sm:flex-1 sm:basis-0 sm:max-w-lg md:min-w-[14rem]"
                 >
-                  Accept note
+                  {t.aiComposerAcceptNote}
                 </button>
               </div>
             ) : null}

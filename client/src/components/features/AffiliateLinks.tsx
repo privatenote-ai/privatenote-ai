@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link } from 'wouter';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 import { 
   ExternalLink, 
   Shield, 
@@ -109,6 +111,7 @@ const securityCategories: SecurityCategory[] = [
 
 // Main full-sized affiliate links component
 export const AffiliateLinks: React.FC = () => {
+  const { language } = useLanguage();
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -127,7 +130,10 @@ export const AffiliateLinks: React.FC = () => {
       </div>
       
       <p className="mt-5 mb-2 text-center text-gray-700 dark:text-gray-300 text-xs">
-        <Link href="/security-resources" className="inline-flex items-center text-primary hover:underline">
+        <Link
+          href={localizedPath('/security-resources', language)}
+          className="inline-flex items-center text-primary hover:underline"
+        >
           <BookOpen className="h-3 w-3 mr-1" />
           View our complete security resources
         </Link>
@@ -145,6 +151,7 @@ export const AffiliateLinks: React.FC = () => {
 
 // Compact version for between navbar and hero
 export const CompactAffiliateLinks: React.FC = () => {
+  const { language } = useLanguage();
   // Only show top 5 most important security tools
   const topTools = securityCategories.slice(0, 5);
   
@@ -168,7 +175,7 @@ export const CompactAffiliateLinks: React.FC = () => {
             </a>
           ))}
           <Link 
-            href="/security-resources"
+            href={localizedPath('/security-resources', language)}
             className="text-[10px] font-medium text-primary hover:underline ml-1 flex items-center"
           >
             <span>More</span>

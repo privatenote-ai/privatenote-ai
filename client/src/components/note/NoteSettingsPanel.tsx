@@ -29,6 +29,18 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   return expiryValue;
 }
 
+function translatedStrengthLabel(
+  strength: PasswordStrength | null,
+  t: Record<string, string>,
+): string {
+  if (!strength) return "";
+  if (strength.score <= 0) return t.strengthVeryWeak ?? strength.label;
+  if (strength.score === 1) return t.strengthWeak ?? strength.label;
+  if (strength.score === 2) return t.strengthFair ?? strength.label;
+  if (strength.score === 3) return t.strengthStrong ?? strength.label;
+  return t.strengthVeryStrong ?? strength.label;
+}
+
 // Uniform integer in [0, max) — rejection sampling avoids modulo bias.
 const secureRandomInt = (max: number): number => {
   if (!Number.isInteger(max) || max <= 0) {
@@ -141,7 +153,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="px-2 py-1.5 bg-gray-100 dark:bg-gray-600 border-t border-b border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
-                  title={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? t.hidePassword : t.showPassword}
                 >
                   {showPassword ? (
                     <svg
@@ -189,7 +201,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       setPasswordSource("simple");
                     }}
                     className="px-2 py-1.5 bg-green-50 dark:bg-green-900/30 border border-gray-300 dark:border-gray-600 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center"
-                    title="Generate human-friendly password (easy to remember)"
+                    title={t.passwordGeneratorSimpleHint}
                   >
                     <User className="h-4 w-4 mr-1" />
                     <span>{t.simple}</span>
@@ -201,56 +213,67 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       setPasswordSource("strong");
                     }}
                     className="px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-t border-r border-b border-gray-300 dark:border-gray-600 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-r-md flex items-center"
-                    title="Generate strong password (very secure)"
+                    title={t.passwordGeneratorStrongHint}
                   >
                     <Shield className="h-4 w-4 mr-1" />
                     <span>{t.strong}</span>
                   </button>
                 </div>
               </div>
-              <p className="mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                <span className="font-medium text-gray-600 dark:text-gray-300">Breach check:</span>{" "}
-                If you type a password here, this page may contact{" "}
-                <a
-                  href="https://haveibeenpwned.com/Passwords"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2 hover:opacity-90"
-                >
-                  Have I Been Pwned
-                </a>{" "}
-                from your browser to see whether it appears in known breaches. Only part of a SHA-1
-                hash is sent (k-anonymity); your full password is not sent for this lookup.
-              </p>
+              <div className="mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                <p>
+                  <span className="font-medium text-gray-600 dark:text-gray-300">
+                    {t.passwordBreachCheckLabel}
+                  </span>{" "}
+                  {t.passwordBreachCheckShort}
+                </p>
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                    {t.viewDetails}
+                  </summary>
+                  <p className="mt-1">
+                    {t.passwordBreachCheckDetailsPrefix}{" "}
+                    <a
+                      href="https://haveibeenpwned.com/Passwords"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-2 hover:opacity-90"
+                    >
+                      Have I Been Pwned
+                    </a>{" "}
+                    {t.passwordBreachCheckDetailsSuffix}
+                  </p>
+                </details>
+              </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     {passwordStrength && (
                       <span className="whitespace-nowrap">
-                        Strength{" "}
+                        {t.passwordStrengthLabel}{" "}
                         <span className={`font-medium ${passwordStrength.color}`}>
-                          {passwordStrength.label}
+                          {translatedStrengthLabel(passwordStrength, t)}
                         </span>
                       </span>
                     )}
                     <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full"></span>
                     <span className="whitespace-nowrap">
-                      {breachState === "checking" && "Checking breaches"}
-                      {breachState === "safe" && "Not found in breaches"}
+                      {breachState === "checking" && t.passwordBreachChecking}
+                      {breachState === "safe" && t.passwordBreachNotFound}
                       {breachState === "pwned" &&
-                        `Found in breaches${breachCount ? ` (${breachCount.toLocaleString()})` : ""}`}
-                      {breachState === "error" && "Breach check unavailable"}
+                        `${t.passwordBreachFound}${breachCount ? ` (${breachCount.toLocaleString()})` : ""}`}
+                      {breachState === "error" && t.passwordBreachUnavailable}
                     </span>
                   </div>
                   {passwordSource === "simple" && (
                     <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                      Easier to remember than Strong mode (curated word list).
+                      {t.passwordSimpleModeHint}
                     </p>
                   )}
                 </div>
               )}
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Recipients will need a password to decrypt
+                {t.passwordRecipientsNeedToDecrypt}
               </div>
             </div>
           </div>
@@ -325,12 +348,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     />
                   </svg>
                 </span>
-                View Limit
+                {t.viewLimit}
               </div>
             </div>
             <div className="col-span-2">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Notes can only be viewed once for maximum security
+                {t.viewLimitDescription}
               </div>
             </div>
           </div>

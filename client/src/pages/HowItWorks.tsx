@@ -8,9 +8,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
 
 export default function HowItWorks() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const flowSteps = [
     {
       title: t.write,
@@ -353,7 +354,7 @@ export default function HowItWorks() {
           </div>
           <div className="flex gap-4 relative z-10">
             <Link
-              href="/"
+              href={localizedPath("/", language)}
               className="px-8 py-4 bg-white text-primary rounded-2xl font-bold hover:shadow-xl transition-all hover:-translate-y-1"
             >
               {t.howCtaButton}

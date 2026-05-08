@@ -61,7 +61,7 @@ export const SecurityEducation: React.FC = () => {
                 <span>{title}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pb-6 text-base">
+            <AccordionContent className="text-gray-600 dark:text-gray-400 px-6 pt-6 pb-6 text-base">
               <ul className="list-disc pl-5 space-y-2">
                 {items.map((item) => (
                   <li key={item}>{item}</li>

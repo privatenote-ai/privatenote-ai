@@ -1,6 +1,8 @@
 import React from 'react';
 import { useRoute } from 'wouter';
 import { Link } from 'wouter';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 import { 
   ChevronLeft, 
   ExternalLink, 
@@ -13,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const SecurityGuideDetail: React.FC = () => {
+  const { language } = useLanguage();
   const [, params] = useRoute('/security-guides/:topicId');
   const topicId = params?.topicId || '';
 
@@ -153,7 +156,10 @@ const SecurityGuideDetail: React.FC = () => {
       <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-blue-500/10 blur-[100px] -z-10" />
 
       <div className="max-w-4xl mx-auto text-center mb-12">
-        <Link href="/security-resources" className="inline-flex items-center text-sm font-semibold text-primary hover:gap-2 transition-all mb-8 group">
+        <Link
+          href={localizedPath('/security-resources', language)}
+          className="inline-flex items-center text-sm font-semibold text-primary hover:gap-2 transition-all mb-8 group"
+        >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Back to Security Resources
         </Link>
@@ -209,7 +215,7 @@ const SecurityGuideDetail: React.FC = () => {
             )
           ))}
           <Link
-            href="/security-resources"
+            href={localizedPath('/security-resources', language)}
             className="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary/90 transition-colors"
           >
             View All Resources

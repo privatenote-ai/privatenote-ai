@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'wouter';
 import { Shield, Lock, Eye, Key, BookOpen, ArrowRight, FileText, Download } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 // Category card for privacy tools and resources
 interface PrivacyCategory {
@@ -188,6 +190,7 @@ const freePrivacyTools: PrivacyTool[] = [
 ];
 
 export const PrivacyTools: React.FC = () => {
+  const { language } = useLanguage();
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Hero section */}
@@ -218,7 +221,7 @@ export const PrivacyTools: React.FC = () => {
       <div id="categories" className="mb-12">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Privacy Categories</h2>
-          <Link href="/privacy" className="text-primary hover:underline font-medium flex items-center">
+          <Link href={localizedPath("/privacy", language)} className="text-primary hover:underline font-medium flex items-center">
             View all categories <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </div>
@@ -253,7 +256,7 @@ export const PrivacyTools: React.FC = () => {
       <div className="mb-12">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Featured Resources</h2>
-          <Link href="/privacy/resources" className="text-primary hover:underline font-medium flex items-center">
+          <Link href={localizedPath("/privacy/resources", language)} className="text-primary hover:underline font-medium flex items-center">
             View all resources <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </div>
@@ -288,7 +291,7 @@ export const PrivacyTools: React.FC = () => {
       <div id="tools" className="mb-12">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Free Privacy Tools</h2>
-          <Link href="/privacy/tools" className="text-primary hover:underline font-medium flex items-center">
+          <Link href={localizedPath("/privacy/tools", language)} className="text-primary hover:underline font-medium flex items-center">
             View all tools <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </div>

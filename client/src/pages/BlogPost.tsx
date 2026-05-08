@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
 import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
 import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
+import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
@@ -29,6 +30,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'how-we-generate-passwords') {
     return <PasswordGenerationPost />;
+  }
+  if (slug === 'workplace-texts-private-note') {
+    return <WorkplaceTextsPost />;
   }
 
   const {

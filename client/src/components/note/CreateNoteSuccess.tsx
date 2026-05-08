@@ -1,6 +1,8 @@
 import React from "react";
 import type { RefObject } from "react";
 import { Link } from "wouter";
+import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
 import { QRCode } from "@/components/ui/qr-code";
 import {
   noteExpiryPresetDisplayLabel,
@@ -66,6 +68,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   onCreateNewNote,
   successQrSectionRef,
 }) => {
+  const { language } = useLanguage();
   const createdNoteMeta = createdNote.meta;
   if (!createdNoteMeta) {
     return (
@@ -359,7 +362,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 <li>
                   Use{" "}
                   <Link
-                    href="/password-generator"
+                    href={localizedPath("/password-generator", language)}
                     className="text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >

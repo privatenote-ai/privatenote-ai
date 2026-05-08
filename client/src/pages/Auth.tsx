@@ -22,6 +22,7 @@ import {
 } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 
@@ -505,7 +506,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                   <p className="text-xs text-gray-500 text-center leading-relaxed">
                     {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
                     <a
-                      href="/terms"
+                      href={localizedPath("/terms", language)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline"
@@ -514,7 +515,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                     </a>{" "}
                     {tx("authAnd", "and")}{" "}
                     <a
-                      href="/privacy"
+                      href={localizedPath("/privacy", language)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline"

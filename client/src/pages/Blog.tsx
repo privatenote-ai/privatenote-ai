@@ -25,6 +25,20 @@ export default function Blog() {
   };
   const staticPosts: BlogPost[] = [
     {
+      id: -3,
+      title: t.blogWorkplaceTextsTitle,
+      excerpt: t.blogWorkplaceTextsExcerpt,
+      author: 'PrivateNote.ai',
+      slug: 'workplace-texts-private-note',
+      publishedAt: new Date(),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagWorkplace, t.blogTagSecurity]),
+      content: '',
+      coverImage: null,
+      published: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
       id: -1,
       title: t.blogGoodEnoughTitle,
       excerpt: t.blogGoodEnoughExcerpt,

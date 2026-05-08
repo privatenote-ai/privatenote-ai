@@ -32,6 +32,7 @@ const FALLBACK_ROUTES = [
   "/de/blog/privacy-tools",
   "/de/blog/myth-good-enough-security",
   "/de/blog/how-we-generate-passwords",
+  "/de/blog/workplace-texts-private-note",
   "/de/privacy",
   "/de/terms",
   "/fr/password-generator",
@@ -44,6 +45,7 @@ const FALLBACK_ROUTES = [
   "/fr/blog/privacy-tools",
   "/fr/blog/myth-good-enough-security",
   "/fr/blog/how-we-generate-passwords",
+  "/fr/blog/workplace-texts-private-note",
   "/fr/privacy",
   "/fr/terms",
   "/es/password-generator",
@@ -56,6 +58,7 @@ const FALLBACK_ROUTES = [
   "/es/blog/privacy-tools",
   "/es/blog/myth-good-enough-security",
   "/es/blog/how-we-generate-passwords",
+  "/es/blog/workplace-texts-private-note",
   "/es/privacy",
   "/es/terms",
   "/privacy",
@@ -75,6 +78,7 @@ const FALLBACK_ROUTES = [
   "/blog/privacy-tools",
   "/blog/myth-good-enough-security",
   "/blog/how-we-generate-passwords",
+  "/blog/workplace-texts-private-note",
 ];
 
 // -------------------------------

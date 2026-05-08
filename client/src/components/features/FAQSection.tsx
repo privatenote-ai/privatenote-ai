@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { useLanguage } from '@/context/LanguageContext';
+import { localizedPath } from '@/utils/localizedPath';
 
 const FAQ_ITEM_IDS = [
   'howItWorks',
@@ -28,7 +29,7 @@ const FAQ_ITEM_IDS = [
 ] as const;
 
 export const FAQSection: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const faqItems = FAQ_ITEM_IDS.map((id) => ({
     id: `faq-${id}`,
     question: t[`homeFaq_${id}_question`],
@@ -111,7 +112,7 @@ export const FAQSection: React.FC = () => {
         <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 max-w-4xl">
           {t.homeFaqStillUnsure}{' '}
           <Link
-            href="/how-it-works"
+            href={localizedPath('/how-it-works', language)}
             className="font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 rounded-sm"
           >
             {t.howItWorks}
