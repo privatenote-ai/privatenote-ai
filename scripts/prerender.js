@@ -10,9 +10,12 @@ import { chromium } from "playwright";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const DIST_DIR = path.resolve(OUTPUT_DIR);
-const PREVIEW_URL = process.env.PREVIEW_URL || "http://localhost:4173";
+const PREVIEW_URL = process.env.PREVIEW_URL || "http://127.0.0.1:4173";
 const SITEMAP_PATH = process.env.SITEMAP_PATH || "/sitemap.xml";
 const SITEMAP_URL = `${PREVIEW_URL}${SITEMAP_PATH}`;
+const PREVIEW_ORIGIN = new URL(PREVIEW_URL);
+const PREVIEW_HOST = PREVIEW_ORIGIN.hostname;
+const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 
 // -------------------------------
 // Fallback routes (public-only)
@@ -85,11 +88,19 @@ const FALLBACK_ROUTES = [
 // Preview server helpers
 // -------------------------------
 function startPreview() {
-  const child = spawn("npm", ["run", "preview"], {
+  const previewIsHttps = PREVIEW_URL.startsWith("https:");
+  const child = spawn("npm", ["run", "preview", "--", "--host", PREVIEW_HOST, "--port", PREVIEW_PORT], {
     stdio: "inherit",
     shell: true,
     detached: true,
-    env: { ...process.env, NODE_ENV: "production" },
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      // The dev server defaults to HTTPS for browser APIs, but prerendering only
+      // needs a local static preview. Keep the preview protocol aligned with
+      // PREVIEW_URL so CI does not wait on http:// while Vite serves https://.
+      VITE_DEV_HTTP: previewIsHttps ? process.env.VITE_DEV_HTTP : "1",
+    },
   });
   child.__killed = false;
   return child;

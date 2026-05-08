@@ -114,11 +114,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
   return (
     <div
-      className={`mb-3 overflow-hidden transition-all duration-300 ease-in-out ${
-        showAdvancedOptions ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+        showAdvancedOptions ? "mb-3 grid-rows-[1fr] opacity-100" : "mb-0 grid-rows-[0fr] opacity-0"
       }`}
     >
-      <div className="max-w-2xl mx-auto">
+      <div className="overflow-hidden">
+        <div className="max-w-2xl mx-auto">
         {/* Password protection */}
         <div className="mt-2 grid grid-cols-3 gap-2 items-start py-2 px-1 mb-3 transition-colors">
           <div className="col-span-1">
@@ -353,6 +354,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

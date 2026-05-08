@@ -99,7 +99,7 @@ export const Navbar: React.FC = () => {
   const logoInner = (
     <>
       <Logo size={30} className="shrink-0" />
-      <span className="font-bold text-2xl text-primary">
+      <span className="font-bold text-xl sm:text-2xl text-primary">
         privateNote
         <span className="text-xs text-primary align-super ml-0.5">.ai</span>
       </span>
@@ -266,7 +266,7 @@ export const Navbar: React.FC = () => {
         <NavLink
           href={lp("/")}
           closeMenu={closeMenu}
-          className="absolute left-1/2 -translate-x-1/2 flex shrink-0 items-center gap-2 cursor-pointer"
+          className="absolute left-1/2 -translate-x-1/2 max-[430px]:left-4 max-[430px]:translate-x-0 flex shrink-0 items-center gap-2 cursor-pointer"
         >
           {logoInner}
         </NavLink>

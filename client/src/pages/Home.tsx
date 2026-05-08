@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { Link } from 'wouter';
 import { Shield, Check, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { CreateNote } from '@/components/note/CreateNote';
@@ -49,10 +49,46 @@ const Home: React.FC = () => {
     ],
   );
   const [activeBlogSlide, setActiveBlogSlide] = useState(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
     setShowCreateNote(true);
+  };
+
+  const updateBlogCarouselState = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 8);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+    const max = el.scrollWidth - el.clientWidth;
+    const p = max > 0 ? el.scrollLeft / max : 0;
+    setScrollProgress(Number.isFinite(p) ? p : 0);
+  };
+
+  useEffect(() => {
+    updateBlogCarouselState();
+    const el = scrollerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateBlogCarouselState);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [blogPosts.length]);
+
+  const onBlogCarouselScroll = (_e: UIEvent<HTMLDivElement>) => {
+    updateBlogCarouselState();
+  };
+
+  const scrollBlogCards = (dir: 'prev' | 'next') => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>('[data-blog-card]');
+    const cardWidth = card ? card.offsetWidth : el.clientWidth * 0.85;
+    const delta = dir === 'next' ? cardWidth * 1.05 : -cardWidth * 1.05;
+    el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
   return (
@@ -195,75 +231,111 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <section className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-4xl mx-auto" aria-labelledby="latest-blog-heading">
         <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-5 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{t.blog}</h3>
-            <div className="flex items-center gap-2">
+          <div className="text-center mb-6 sm:mb-7">
+            <h3 id="latest-blog-heading" className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              {t.blog}
+            </h3>
+          </div>
+
+          <div className="relative">
+            <div className="md:hidden absolute -top-1 right-0 flex items-center gap-2 z-10">
               <button
                 type="button"
-                onClick={() =>
-                  setActiveBlogSlide((current) =>
-                    current === 0 ? blogPosts.length - 1 : current - 1,
-                  )
-                }
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Previous blog post"
+                aria-label="Previous blog posts"
+                onClick={() => scrollBlogCards('prev')}
+                disabled={!canPrev}
+                className={`p-2 rounded-lg border border-primary/30 text-primary transition ${
+                  canPrev ? 'opacity-100 hover:bg-primary/10' : 'opacity-30 cursor-not-allowed'
+                }`}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setActiveBlogSlide((current) =>
-                    current === blogPosts.length - 1 ? 0 : current + 1,
-                  )
-                }
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Next blog post"
+                aria-label="Next blog posts"
+                onClick={() => scrollBlogCards('next')}
+                disabled={!canNext}
+                className={`p-2 rounded-lg border border-primary/30 text-primary transition ${
+                  canNext ? 'opacity-100 hover:bg-primary/10' : 'opacity-30 cursor-not-allowed'
+                }`}
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 bg-gray-50/50 dark:bg-gray-800/40 min-h-[12rem]">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {blogPosts[activeBlogSlide].title}
-            </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              {blogPosts[activeBlogSlide].excerpt}
-            </p>
-            <Link
-              href={`${blogPath}/${blogPosts[activeBlogSlide].slug}`}
-              className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
+            <div className="pointer-events-none md:hidden absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent" />
+            <div className="pointer-events-none md:hidden absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" />
+
+            <div
+              ref={scrollerRef}
+              onScroll={onBlogCarouselScroll}
+              className="md:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 pt-12 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
-              {t.blogReadMore}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5">
-              {blogPosts.map((post, index) => (
-                <button
+              {blogPosts.map((post) => (
+                <article
                   key={post.slug}
-                  type="button"
-                  onClick={() => setActiveBlogSlide(index)}
-                  className={`h-2 rounded-full transition-all ${
-                    index === activeBlogSlide
-                      ? 'w-6 bg-primary'
-                      : 'w-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
-                  }`}
-                  aria-label={`Go to blog slide ${index + 1}`}
-                />
+                  data-blog-card
+                  className="snap-start shrink-0 w-[84%] sm:w-[78%] rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-4"
+                >
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {post.title}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-3">
+                    {post.excerpt}
+                  </p>
+                  <Link
+                    href={`${blogPath}/${post.slug}`}
+                    className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
+                  >
+                    {t.blogReadMore}
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </article>
               ))}
             </div>
+
+            <div className="hidden md:grid md:grid-cols-3 gap-4">
+              {blogPosts.slice(0, 3).map((post) => (
+                <article
+                  key={post.slug}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-5 transition-all duration-200 hover:shadow-md"
+                >
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {post.title}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4">
+                    {post.excerpt}
+                  </p>
+                  <Link
+                    href={`${blogPath}/${post.slug}`}
+                    className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
+                  >
+                    {t.blogReadMore}
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </article>
+              ))}
+            </div>
+
+            <div className="md:hidden mt-4 flex items-center justify-center gap-2">
+              <div className="h-1 w-40 rounded bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded bg-primary transition-[width] duration-200"
+                  style={{ width: `${Math.max(8, Math.min(100, scrollProgress * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
             <Link
               href={blogPath}
-              className="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-md bg-primary/10 text-primary border border-primary/30"
             >
               {t.blog}
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

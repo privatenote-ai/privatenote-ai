@@ -15,7 +15,7 @@ type ArticleCopy = {
 };
 
 const sourceUrl = "https://www.businessinsider.com/openai-trial-exposes-truth-about-workplace-texts-2026-5";
-const heroImagePath = "/images/man texting- jonas-leupe-8pCtwj37VB4-unsplash.jpg";
+const heroImagePath = "/images/workplace-texting-jonas-leupe.jpg";
 const heroImageCreditUrl =
   "https://unsplash.com/photos/man-in-black-crew-neck-top-using-smartphone-8pCtwj37VB4?utm_source=unsplash&utm_medium=referral&utm_content=creditShareLink";
 
@@ -302,7 +302,7 @@ export const WorkplaceTextsPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt="Man using smartphone in an urban setting"
-              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
+              className="w-full max-w-2xl max-h-[340px] mx-auto rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
               loading="lazy"
             />
             <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400">
