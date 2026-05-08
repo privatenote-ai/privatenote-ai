@@ -160,13 +160,6 @@ export const Navbar: React.FC = () => {
   const mobileItemClass =
     "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
-  /** Guest auth in mobile nav drawer: sign-in secondary, sign-up primary CTA */
-  const mobileNavGuestSignInClass =
-    `${mobileItemClass} mx-3 rounded-xl border border-gray-200 bg-white/70 py-3.5 dark:border-gray-700 dark:bg-gray-950/40`;
-
-  const mobileNavGuestSignUpClass =
-    "mx-3 mb-0.5 mt-1 flex min-h-[3.125rem] items-center justify-center gap-2.5 rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-primary-foreground shadow-md shadow-primary/20 ring-1 ring-primary/25 transition hover:bg-primary/90 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
-
   const navShellClass = [
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
     'transition-[background-color,backdrop-filter,box-shadow,border-color] duration-200',
@@ -423,13 +416,13 @@ export const Navbar: React.FC = () => {
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
-                <NavLink href="/auth/sign-up" closeMenu={closeMenu} className={mobileNavGuestSignUpClass}>
-                  <Key className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
-                  <span>{t.signUp}</span>
-                </NavLink>
-                <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileNavGuestSignInClass}>
+                <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
                   <Mail className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                   <span>{t.signIn}</span>
+                </NavLink>
+                <NavLink href="/auth/sign-up" closeMenu={closeMenu} className={mobileItemClass}>
+                  <Key className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                  <span>{t.signUp}</span>
                 </NavLink>
                 <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
               </>
