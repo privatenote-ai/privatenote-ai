@@ -470,16 +470,11 @@ export default function AccountOverview() {
 
         {/* ── Plan ──────────────────────────────────────────────────────── */}
         <section className="rounded-xl border border-blue-200/80 dark:border-blue-900/60 p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                {tx("authCurrentPlan", "Current plan")}
-              </p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
-            </div>
-            <span className="rounded-md bg-gray-100 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 text-center">
-              {tx("authBillingComingSoon", "Billing coming soon")}
-            </span>
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+              {tx("authCurrentPlan", "Current plan")}
+            </p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
           </div>
 
           {accountType === "free" && (

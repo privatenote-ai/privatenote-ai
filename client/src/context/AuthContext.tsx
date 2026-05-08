@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
 
 type AuthUser = {
   email: string | null;
@@ -22,6 +24,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { language } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -68,8 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiRequest("/api/auth/logout", "POST");
     } finally {
       setUser(null);
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/account")) {
+        window.location.assign(localizedPath("/", language));
+      }
     }
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     refresh();
