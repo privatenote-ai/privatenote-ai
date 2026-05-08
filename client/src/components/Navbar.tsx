@@ -59,11 +59,17 @@ export const Navbar: React.FC = () => {
     setIsMenuOpen(false);
   };
 
+  const toggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsMenuOpen((open) => !open);
+  };
+
   // Handle clicks outside of menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Close main menu when clicking outside (mobile view only)
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && window.innerWidth < 768) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node) && window.innerWidth < 1280) {
         setIsMenuOpen(false);
       }
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
@@ -248,52 +254,54 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile / tablet / smaller laptop < xl: logo + (profile if signed in) + hamburger */}
-      <div className="relative flex h-16 items-center justify-between px-4 sm:px-6 xl:hidden" ref={menuRef}>
-        <div className="flex min-w-10 items-center justify-start">
-          {!authLoading && user?.email ? (
+      <div className="xl:hidden" ref={menuRef}>
+        <div className="relative flex h-16 items-center justify-between px-4 sm:px-6">
+          <div className="relative z-10 flex min-w-10 items-center justify-start">
+            {!authLoading && user?.email ? (
+              <button
+                type="button"
+                onClick={toggleMenu}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
+                aria-label={`Account menu for ${user.email}`}
+                title={user.email}
+              >
+                {initials}
+              </button>
+            ) : null}
+          </div>
+
+          <NavLink
+            href={lp("/")}
+            closeMenu={closeMenu}
+            className="absolute left-1/2 z-0 -translate-x-1/2 max-[430px]:left-4 max-[430px]:right-16 max-[430px]:translate-x-0 flex min-w-0 shrink-0 items-center gap-2 cursor-pointer"
+          >
+            {logoInner}
+          </NavLink>
+
+          <div className="relative z-10 flex w-10 items-center justify-end">
             <button
               type="button"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
-              aria-label={`Account menu for ${user.email}`}
-              title={user.email}
+              onClick={toggleMenu}
+              className="nav-icon-button inline-flex h-10 w-10 appearance-none items-center justify-center border-0 bg-transparent p-0 text-primary shadow-none transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-menu"
+              aria-label={t.toggleNavigation}
             >
-              {initials}
+              {isMenuOpen ? (
+                <X className="h-7 w-7" />
+              ) : (
+                <Menu className="h-7 w-7" />
+              )}
             </button>
-          ) : null}
+          </div>
         </div>
 
-        <NavLink
-          href={lp("/")}
-          closeMenu={closeMenu}
-          className="absolute left-1/2 -translate-x-1/2 max-[430px]:left-4 max-[430px]:translate-x-0 flex shrink-0 items-center gap-2 cursor-pointer"
-        >
-          {logoInner}
-        </NavLink>
-
-        <div className="flex w-10 items-center justify-end">
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="nav-icon-button inline-flex h-10 w-10 appearance-none items-center justify-center border-0 bg-transparent p-0 text-primary shadow-none transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
-            aria-expanded={isMenuOpen}
-            aria-controls="mobile-menu"
-            aria-label={t.toggleNavigation}
+        {/* Menu Dropdown - Mobile */}
+        {isMenuOpen && (
+          <div
+            id="mobile-menu"
+            className="fixed left-0 right-0 top-16 bottom-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-lg rounded-none shadow-lg border-t border-gray-200 dark:border-gray-800 overflow-y-auto z-50 transition-all duration-200 ease-in-out"
           >
-            {isMenuOpen ? (
-              <X className="h-7 w-7" />
-            ) : (
-              <Menu className="h-7 w-7" />
-            )}
-          </button>
-        </div>
-
-          {/* Menu Dropdown - Mobile */}
-          {isMenuOpen && (
-            <div
-              id="mobile-menu"
-              className="fixed left-0 right-0 top-16 bottom-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-lg rounded-none shadow-lg border-t border-gray-200 dark:border-gray-800 overflow-y-auto z-50 transition-all duration-200 ease-in-out"
-            >
               <div className="py-2">
                 <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
                   <Lock className="h-4 w-4 shrink-0 opacity-80" />
