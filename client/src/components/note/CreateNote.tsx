@@ -1062,7 +1062,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   // ── Create form ───────────────────────────────────────────────────────────
   return (
-    <section className="w-full max-w-none mx-auto">
+    <section className="mx-auto w-full min-w-0 max-w-full">
       <div className="pt-4">
         {/* Mode toggle */}
         <div className="mb-6">
@@ -1253,7 +1253,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 <button
                   type="button"
                   onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                  className="w-full sm:w-auto min-w-[180px] flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                  className="flex w-full min-w-0 items-center justify-center rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:w-auto sm:min-w-[180px]"
                 >
                   {showAdvancedOptions ? (
                     <>
@@ -1271,7 +1271,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full sm:w-auto min-w-[180px] flex items-center justify-center py-2.5 px-6 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>

@@ -85,6 +85,22 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  img,
+  svg,
+  canvas,
+  video {
+    max-width: 100%;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
     /*

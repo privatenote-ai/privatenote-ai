@@ -119,10 +119,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       }`}
     >
       <div className="overflow-hidden">
-        <div className="max-w-2xl mx-auto">
+        <div className="mx-auto w-full min-w-0 max-w-2xl">
         {/* Password protection */}
-        <div className="mt-2 grid grid-cols-3 gap-2 items-start py-2 px-1 mb-3 transition-colors">
-          <div className="col-span-1">
+        <div className="mt-2 grid grid-cols-1 gap-2 items-start py-2 px-1 mb-3 transition-colors sm:grid-cols-3">
+          <div className="sm:col-span-1">
             <div className="flex flex-col">
               <label
                 htmlFor="note-password"
@@ -146,9 +146,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
             </div>
           </div>
-          <div className="col-span-2">
-            <div className="relative">
-              <div className="flex">
+          <div className="min-w-0 sm:col-span-2">
+            <div className="relative min-w-0">
+              <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
+                <div className="flex min-w-0 flex-1">
                 <input
                   id="note-password"
                   type={showPassword ? "text" : "password"}
@@ -158,7 +159,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setPasswordSource("manual");
                   }}
                   placeholder={t.passwordPlaceholder}
-                  className="w-full px-2.5 py-1.5 text-sm rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
+                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                 />
                 <button
                   type="button"
@@ -204,14 +205,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </svg>
                   )}
                 </button>
-                <div className="flex">
+                </div>
+                <div className="grid grid-cols-2 min-[520px]:flex">
                   <button
                     type="button"
                     onClick={() => {
                       setPassword(generateHumanFriendlyPassword());
                       setPasswordSource("simple");
                     }}
-                    className="px-2 py-1.5 bg-green-50 dark:bg-green-900/30 border border-gray-300 dark:border-gray-600 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 flex items-center"
+                    className="flex min-w-0 items-center justify-center border border-gray-300 bg-green-50 px-2 py-1.5 text-xs text-green-700 hover:bg-green-100 dark:border-gray-600 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
                     title={t.passwordGeneratorSimpleHint}
                   >
                     <User className="h-4 w-4 mr-1" />
@@ -223,7 +225,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       setPassword(generateStrongPassword());
                       setPasswordSource("strong");
                     }}
-                    className="px-2 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-t border-r border-b border-gray-300 dark:border-gray-600 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-r-md flex items-center"
+                    className="flex min-w-0 items-center justify-center rounded-r-md border-b border-r border-t border-gray-300 bg-blue-50 px-2 py-1.5 text-xs text-blue-700 hover:bg-blue-100 dark:border-gray-600 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
                     title={t.passwordGeneratorStrongHint}
                   >
                     <Shield className="h-4 w-4 mr-1" />
@@ -278,8 +280,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
         {/* Expiry and view limit */}
         <div className="mt-3 flex flex-col space-y-2">
-          <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 transition-colors">
-            <div className="col-span-1">
+          <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
+            <div className="sm:col-span-1">
               <label
                 htmlFor="expiry-value"
                 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -301,7 +303,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 {t.expiration}
               </label>
             </div>
-            <div className="col-span-2">
+            <div className="min-w-0 sm:col-span-2">
               <select
                 id="expiry-value"
                 value={expiryValue}
@@ -327,8 +329,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 items-center py-2 px-1 transition-colors">
-            <div className="col-span-1">
+          <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
+            <div className="sm:col-span-1">
               <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                 <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
                   <svg
@@ -348,7 +350,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 {t.viewLimit}
               </div>
             </div>
-            <div className="col-span-2">
+            <div className="min-w-0 sm:col-span-2">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {t.viewLimitDescription}
               </div>

@@ -36,7 +36,7 @@ export default function HowItWorks() {
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
+    <div className="mx-auto max-w-4xl overflow-hidden px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
       {/* Reduced background glows (less noise) */}
       <div className="absolute top-[-80px] right-1/4 w-80 h-80 bg-primary/10 blur-[130px] -z-10" />
       <div className="absolute bottom-[120px] left-1/4 w-56 h-56 bg-blue-500/10 blur-[120px] -z-10" />
@@ -112,9 +112,9 @@ export default function HowItWorks() {
             </div>
 
             <div className="flex justify-center md:justify-end md:w-1/2">
-              <div className="relative">
+              <div className="relative w-full max-w-sm md:max-w-md">
                 <svg
-                  className="h-56 w-96 md:h-60 md:w-[28rem]"
+                  className="h-auto w-full"
                   viewBox="0 0 360 200"
                   fill="none"
                   role="img"
@@ -184,7 +184,7 @@ export default function HowItWorks() {
           <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
             <div className="flex justify-center md:order-1 md:justify-start md:w-1/2 md:-mt-6">
               <svg
-                className="h-56 w-96 md:h-60 md:w-[28rem]"
+                className="h-auto w-full max-w-sm md:max-w-md"
                 viewBox="0 0 360 200"
                 fill="none"
                 role="img"
@@ -296,7 +296,7 @@ export default function HowItWorks() {
 
             <div className="flex justify-center md:justify-end md:w-1/2">
               <svg
-                className="h-56 w-96 md:h-60 md:w-[28rem]"
+                className="h-auto w-full max-w-sm md:max-w-md"
                 viewBox="0 0 360 200"
                 fill="none"
                 role="img"

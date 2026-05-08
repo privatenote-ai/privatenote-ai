@@ -252,6 +252,29 @@ async function main() {
 
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
+    // Static prerendering runs without the Worker/API process. Public pages may
+    // still ask for auth or account preference state while booting; answer those
+    // locally so Vite does not proxy to localhost:8787 and spam/fail CI.
+    await page.route("**/api/**", async (route) => {
+      const url = new URL(route.request().url());
+      const json = (status, body) =>
+        route.fulfill({
+          status,
+          contentType: "application/json",
+          body: JSON.stringify(body),
+        });
+
+      if (url.pathname === "/api/auth/session") {
+        return json(200, { authenticated: false, user: null });
+      }
+
+      if (url.pathname === "/api/auth/account/summary") {
+        return json(200, { ok: false, preferredLanguage: null });
+      }
+
+      return json(404, { ok: false, error: "API unavailable during prerender" });
+    });
+
     // Set flags before your app boots
     await page.addInitScript(() => {
       try {
