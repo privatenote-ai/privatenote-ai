@@ -9,6 +9,7 @@ import https from "node:https";
 import { chromium } from "playwright";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
+const BUILD_DIR = path.resolve("dist");
 const DIST_DIR = path.resolve(OUTPUT_DIR);
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://127.0.0.1:4173";
 const SITEMAP_PATH = process.env.SITEMAP_PATH || "/sitemap.xml";
@@ -204,6 +205,13 @@ async function discoverRoutesFromSitemapOrFallback() {
 // -------------------------------
 // Output + HTML tweaks
 // -------------------------------
+async function prepareOutputDir() {
+  if (BUILD_DIR === DIST_DIR) return;
+
+  await fs.rm(DIST_DIR, { recursive: true, force: true });
+  await fs.cp(BUILD_DIR, DIST_DIR, { recursive: true });
+}
+
 function routeOutDir(route) {
   const rel = route.replace(/^\/+/, ""); // drop leading slash(es)
   return rel ? path.join(DIST_DIR, rel) : DIST_DIR;
@@ -213,7 +221,7 @@ function postProcessHTML(html) {
   let out = html;
 
   // Rewrite preview absolute URLs -> root-relative
-  out = out.replace(/https?:\/\/localhost:4173/gi, "");
+  out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
 
   // (Optional) hide cookie banners in the static snapshot (keeps HTML clean for bots)
   out = out.replace(
@@ -244,6 +252,7 @@ async function main() {
 
   try {
     await waitForServer(PREVIEW_URL);
+    await prepareOutputDir();
 
     browser = await chromium.launch({
       headless: true,
