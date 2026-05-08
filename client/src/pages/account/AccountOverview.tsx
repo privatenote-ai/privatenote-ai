@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
+import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -415,7 +416,7 @@ export default function AccountOverview() {
               {recentEvents.map((ev) => {
                 let relative = "";
                 try {
-                  relative = formatDistanceToNow(new Date(ev.createdAt), { addSuffix: true });
+                  relative = formatDistanceToNow(parseActivityCreatedAt(ev.createdAt), { addSuffix: true });
                 } catch {
                   relative = ev.createdAt;
                 }

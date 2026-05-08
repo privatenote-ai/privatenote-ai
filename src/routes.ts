@@ -517,70 +517,97 @@ async function sendMagicLinkEmail(
 
   const copy = {
     en: {
-      subject: "Login to PrivateNote",
-      title: "Login to PrivateNote",
-      body:
-        "Open the link below in this browser, then press Continue sign in. Opening the link only prepares sign-in; a confirmation step completes it.",
-      security: "For security: finish sign-in in the same browser where you opened the link.",
-      cta: "Sign in with Magic Link to PrivateNote",
-      ignore: "If you did not request this, you can ignore this email.",
-      footer: "Securely create, share, and destroy private notes - only the recipient can read them.",
-      textOpen:
-        'Open this link in your browser, then press "Continue sign in" on the page (the link alone does not sign you in):',
+      subject: "Continue to PrivateNote",
+      title: "Continue to PrivateNote",
+      intro: "Click the secure link below to continue:",
+      security:
+        "For security, complete sign-in in the same browser and device where you opened the link.",
+      expiry: "This link expires automatically and can only be used for this sign-in request.",
+      cta: "Continue to PrivateNote",
+      ignore: "If you did not request this email, you can safely ignore it.",
+      footer: "Securely create, share, and destroy private notes — only the recipient can read them.",
     },
     de: {
-      subject: "Bei PrivateNote anmelden",
-      title: "Bei PrivateNote anmelden",
-      body:
-        "Oeffnen Sie den folgenden Link in diesem Browser und klicken Sie dann auf Weiter zur Anmeldung. Das Oeffnen des Links bereitet nur die Anmeldung vor; ein Bestaetigungsschritt schliesst sie ab.",
-      security: "Zur Sicherheit: Schliessen Sie die Anmeldung im selben Browser ab, in dem Sie den Link geoeffnet haben.",
-      cta: "Mit Magic Link bei PrivateNote anmelden",
-      ignore: "Wenn Sie dies nicht angefordert haben, koennen Sie diese E-Mail ignorieren.",
-      footer: "Private Notizen sicher erstellen, teilen und zerstoeren - nur der Empfaenger kann sie lesen.",
-      textOpen:
-        'Oeffnen Sie diesen Link im Browser und druecken Sie dann auf der Seite "Weiter zur Anmeldung" (der Link allein meldet Sie nicht an):',
+      subject: "Weiter zu PrivateNote",
+      title: "Weiter zu PrivateNote",
+      intro: "Klicken Sie auf den sicheren Link unten, um fortzufahren:",
+      security:
+        "Aus Sicherheitsgruenden schliessen Sie die Anmeldung im selben Browser und auf demselben Geraet ab, auf dem Sie den Link geoeffnet haben.",
+      expiry:
+        "Dieser Link laeuft automatisch ab und kann nur fuer diese Anmeldeanfrage verwendet werden.",
+      cta: "Weiter zu PrivateNote",
+      ignore:
+        "Wenn Sie diese E-Mail nicht angefordert haben, koennen Sie sie getrost ignorieren.",
+      footer:
+        "Private Notizen sicher erstellen, teilen und zerstoeren — nur der Empfaenger kann sie lesen.",
     },
     fr: {
-      subject: "Connexion a PrivateNote",
-      title: "Connexion a PrivateNote",
-      body:
-        "Ouvrez le lien ci-dessous dans ce navigateur, puis appuyez sur Continuer la connexion. Ouvrir le lien prepare seulement la connexion ; une etape de confirmation la finalise.",
-      security: "Pour votre securite : terminez la connexion dans le meme navigateur ou vous avez ouvert le lien.",
-      cta: "Se connecter avec un lien magique a PrivateNote",
-      ignore: "Si vous n'avez pas demande ceci, vous pouvez ignorer cet e-mail.",
-      footer: "Creez, partagez et detruisez des notes privees en toute securite - seul le destinataire peut les lire.",
-      textOpen:
-        'Ouvrez ce lien dans votre navigateur, puis appuyez sur "Continuer la connexion" sur la page (le lien seul ne vous connecte pas) :',
+      subject: "Continuer avec PrivateNote",
+      title: "Continuer avec PrivateNote",
+      intro: "Cliquez sur le lien securise ci-dessous pour continuer :",
+      security:
+        "Pour votre securite, terminez la connexion dans le meme navigateur et sur le meme appareil que lors de l ouverture du lien.",
+      expiry:
+        "Ce lien expire automatiquement et ne peut etre utilise que pour cette demande de connexion.",
+      cta: "Continuer vers PrivateNote",
+      ignore:
+        "Si vous n'avez pas demande cet e-mail, vous pouvez l'ignorer en toute securite.",
+      footer:
+        "Creez, partagez et detruisez des notes privees en toute securite — seul le destinataire peut les lire.",
     },
     es: {
-      subject: "Iniciar sesion en PrivateNote",
-      title: "Iniciar sesion en PrivateNote",
-      body:
-        "Abre el enlace de abajo en este navegador y luego pulsa Continuar inicio de sesion. Abrir el enlace solo prepara el inicio; un paso de confirmacion lo completa.",
-      security: "Por seguridad: termina el inicio de sesion en el mismo navegador donde abriste el enlace.",
-      cta: "Iniciar sesion con enlace magico en PrivateNote",
-      ignore: "Si no solicitaste esto, puedes ignorar este correo.",
-      footer: "Crea, comparte y destruye notas privadas de forma segura - solo el destinatario puede leerlas.",
-      textOpen:
-        'Abre este enlace en tu navegador y luego pulsa "Continuar inicio de sesion" en la pagina (el enlace por si solo no inicia sesion):',
+      subject: "Continuar a PrivateNote",
+      title: "Continuar a PrivateNote",
+      intro: "Haz clic en el enlace seguro de abajo para continuar:",
+      security:
+        "Por seguridad, completa el inicio de sesion en el mismo navegador y dispositivo donde abriste el enlace.",
+      expiry:
+        "Este enlace caduca automaticamente y solo puede utilizarse para esta solicitud de inicio de sesion.",
+      cta: "Continuar a PrivateNote",
+      ignore:
+        "Si no solicitaste este correo, puedes ignorarlo sin problema.",
+      footer:
+        "Crea, comparte y destruye notas privadas de forma segura — solo el destinatario puede leerlas.",
     },
   }[locale];
   const subject = copy.subject;
-  const text = [copy.title, "", copy.textOpen, magicUrl, "", copy.security, "", copy.ignore].join("\n");
+  const text = [
+    copy.title,
+    "",
+    copy.intro,
+    magicUrl,
+    "",
+    copy.security,
+    "",
+    copy.expiry,
+    "",
+    copy.ignore,
+    "",
+    "—",
+    "PrivateNote",
+    copy.footer,
+  ].join("\n");
+  const securityHtml =
+    locale === "en"
+      ? "For security, complete sign-in in the <strong>same browser and device</strong> where you opened the link."
+      : locale === "de"
+        ? "Aus Sicherheitsgruenden schliessen Sie die Anmeldung im <strong>selben Browser und auf demselben Geraet</strong> ab, auf dem Sie den Link geoeffnet haben."
+        : locale === "fr"
+          ? "Pour votre securite, terminez la connexion dans le <strong>meme navigateur et sur le meme appareil</strong> que lors de l ouverture du lien."
+          : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    `  <div style="font-size: 20px; font-weight: 700; margin-bottom: 12px;"><strong>${copy.title}</strong></div>`,
-    `  <p style="margin: 0 0 12px; color: #374151;">${copy.body}</p>`,
-    `  <p style="margin: 0 0 20px; color: #374151; font-size: 14px;"><strong>${copy.security}</strong></p>`,
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${copy.title}</div>`,
+    `  <p style="margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;">${copy.intro}</p>`,
     "  <a href=\"" +
       magicUrl +
-      `" referrerpolicy="no-referrer" style="display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;">${copy.cta}</a>`,
-    `  <p style="margin: 20px 0 0; color: #6B7280; font-size: 12px;">${copy.ignore}</p>`,
-    "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
-    "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
-    "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote.ai</span>",
-    "  </div>",
-    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 12px;">${copy.footer}</p>`,
+      `" referrerpolicy="no-referrer" style="display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center; word-wrap: break-word;">${copy.cta}</a>`,
+    `  <p style="margin: 12px 0 0; color: #374151; font-size: 13px; line-height: 1.45;">${securityHtml}</p>`,
+    `  <p style="margin: 8px 0 0; color: #374151; font-size: 13px; line-height: 1.45;">${copy.expiry}</p>`,
+    `  <p style="margin: 10px 0 0; color: #6B7280; font-size: 12px; line-height: 1.45;">${copy.ignore}</p>`,
+    `  <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: 18px 0 14px;" />`,
+    `  <p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3;">PrivateNote</p>`,
+    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 12px; line-height: 1.42;">${copy.footer}</p>`,
     "</div>",
   ].join("");
 

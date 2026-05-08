@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { Fragment, useEffect, type ComponentType } from "react";
+import { Fragment, useEffect, useLayoutEffect, type ComponentType } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -105,6 +105,12 @@ function LocalizedRoute({
 
 function Router() {
   const [location] = useLocation();
+  /** Wouter navigations preserve scroll — reset so CTAs to home/read content start from the top. */
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
   const showNavbar =
     !isAuthRoute ||

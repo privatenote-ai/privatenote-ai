@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
+import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
 import { FilePlus2, Eye, Clock, Sparkles, Activity } from "lucide-react";
 
@@ -69,7 +70,7 @@ function groupEvents(events: ActivityEvent[]): EventGroup[] {
   for (const ev of events) {
     let label: string;
     try {
-      const d = new Date(ev.createdAt);
+      const d = parseActivityCreatedAt(ev.createdAt);
       if (isToday(d)) label = "Today";
       else if (isYesterday(d)) label = "Yesterday";
       else if (isThisWeek(d, { weekStartsOn: 1 })) label = "This week";
@@ -183,7 +184,7 @@ export default function AccountActivity() {
                     let relative = "";
                     let absolute = "";
                     try {
-                      const d = new Date(ev.createdAt);
+                      const d = parseActivityCreatedAt(ev.createdAt);
                       relative = formatDistanceToNow(d, { addSuffix: true });
                       absolute = new Intl.DateTimeFormat(undefined, {
                         dateStyle: "medium",

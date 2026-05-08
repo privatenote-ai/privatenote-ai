@@ -48,11 +48,12 @@ const Home: React.FC = () => {
       t.blogPrivacyExcerpt,
     ],
   );
-  const [activeBlogSlide, setActiveBlogSlide] = useState(0);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const blogCarouselBtnClass =
+    "inline-flex shrink-0 h-11 w-11 items-center justify-center rounded-full border border-gray-200/90 bg-white/95 text-primary shadow-md backdrop-blur-sm transition dark:border-gray-600 dark:bg-gray-900/95";
 
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
@@ -62,10 +63,10 @@ const Home: React.FC = () => {
   const updateBlogCarouselState = () => {
     const el = scrollerRef.current;
     if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
     setCanPrev(el.scrollLeft > 8);
-    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
-    const max = el.scrollWidth - el.clientWidth;
-    const p = max > 0 ? el.scrollLeft / max : 0;
+    setCanNext(el.scrollLeft < maxScroll - 8);
+    const p = maxScroll > 0 ? el.scrollLeft / maxScroll : 0;
     setScrollProgress(Number.isFinite(p) ? p : 0);
   };
 
@@ -86,8 +87,9 @@ const Home: React.FC = () => {
     const el = scrollerRef.current;
     if (!el) return;
     const card = el.querySelector<HTMLElement>('[data-blog-card]');
-    const cardWidth = card ? card.offsetWidth : el.clientWidth * 0.85;
-    const delta = dir === 'next' ? cardWidth * 1.05 : -cardWidth * 1.05;
+    const gapPx = 16;
+    const step = card ? card.offsetWidth + gapPx : Math.max(280, el.clientWidth * 0.4);
+    const delta = dir === 'next' ? step : -step;
     el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
@@ -231,98 +233,114 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-4xl mx-auto min-w-0" aria-labelledby="latest-blog-heading">
-        <div className="min-w-0 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-5 sm:p-6 shadow-sm">
-          <div className="text-center mb-6 sm:mb-7">
+      <section
+        className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-5xl xl:max-w-6xl mx-auto min-w-0"
+        aria-labelledby="latest-blog-heading"
+      >
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/90 dark:bg-gray-950/70 p-6 sm:p-8 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)] dark:shadow-[0_24px_60px_-32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+          <div className="text-center mb-6 sm:mb-8">
             <h3 id="latest-blog-heading" className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               {t.blog}
             </h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-lg mx-auto px-2">
+              {t.homeBlogCarouselHint}
+            </p>
           </div>
 
-          <div className="relative">
-            <div className="md:hidden absolute -top-1 right-0 flex items-center gap-2 z-10">
+          <div className="relative mx-auto">
+            {/* Mobile: compact controls */}
+            <div className="md:hidden absolute right-0 top-0 flex items-center gap-2 z-20">
               <button
                 type="button"
-                aria-label="Previous blog posts"
+                aria-label={t.homeBlogCarouselPrev}
                 onClick={() => scrollBlogCards('prev')}
                 disabled={!canPrev}
-                className={`p-2 rounded-lg border border-primary/30 text-primary transition ${
-                  canPrev ? 'opacity-100 hover:bg-primary/10' : 'opacity-30 cursor-not-allowed'
+                className={`${blogCarouselBtnClass} ${
+                  canPrev ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
                 }`}
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 type="button"
-                aria-label="Next blog posts"
+                aria-label={t.homeBlogCarouselNext}
                 onClick={() => scrollBlogCards('next')}
                 disabled={!canNext}
-                className={`p-2 rounded-lg border border-primary/30 text-primary transition ${
-                  canNext ? 'opacity-100 hover:bg-primary/10' : 'opacity-30 cursor-not-allowed'
+                className={`${blogCarouselBtnClass} ${
+                  canNext ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
                 }`}
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="pointer-events-none md:hidden absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent" />
-            <div className="pointer-events-none md:hidden absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent" />
+            {/* Desktop / tablet: side arrows */}
+            <button
+              type="button"
+              aria-label={t.homeBlogCarouselPrev}
+              onClick={() => scrollBlogCards('prev')}
+              disabled={!canPrev}
+              className={`${blogCarouselBtnClass} absolute left-0 top-[calc(50%-0.375rem)] z-20 hidden -translate-x-2 -translate-y-1/2 md:flex ${
+                canPrev ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
+              }`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              aria-label={t.homeBlogCarouselNext}
+              onClick={() => scrollBlogCards('next')}
+              disabled={!canNext}
+              className={`${blogCarouselBtnClass} absolute right-0 top-[calc(50%-0.375rem)] z-20 hidden translate-x-2 -translate-y-1/2 md:flex ${
+                canNext ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
+              }`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
 
+            <div className="pointer-events-none absolute inset-y-10 left-0 z-10 w-10 md:w-12 bg-gradient-to-r from-background to-transparent dark:from-gray-950" />
+            <div className="pointer-events-none absolute inset-y-10 right-0 z-10 w-10 md:w-12 bg-gradient-to-l from-background to-transparent dark:from-gray-950" />
+
+            {/* One track: snap carousel on all breakpoints; card width adapts */}
             <div
               ref={scrollerRef}
               onScroll={onBlogCarouselScroll}
-              className="md:hidden flex touch-pan-x gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-smooth py-2 pt-12 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              role="region"
+              aria-roledescription="carousel"
+              aria-label={t.blog}
+              className="flex snap-x snap-mandatory scroll-px-4 touch-pan-x gap-4 overflow-x-auto overscroll-x-contain scroll-smooth py-4 pt-14 md:mx-11 md:gap-6 md:scroll-px-2 md:px-2 md:pb-6 md:pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {blogPosts.map((post) => (
                 <article
                   key={post.slug}
                   data-blog-card
-                  className="snap-start shrink-0 w-[84%] sm:w-[78%] rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-4"
+                  className={
+                    'snap-start shrink-0 flex flex-col rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm ring-1 ring-black/[0.03] dark:border-gray-700/80 dark:bg-gray-900/80 dark:ring-white/[0.05] ' +
+                    'w-[min(100%-1.5rem,calc(100vw-3rem))] sm:w-[min(22rem,calc(100vw-4rem))] ' +
+                    'md:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]'
+                  }
                 >
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                  <h4 className="text-lg font-semibold leading-snug text-gray-900 dark:text-white line-clamp-2 min-h-[3.5rem]">
                     {post.title}
                   </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-3">
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3 min-h-[4.25rem]">
                     {post.excerpt}
                   </p>
                   <Link
                     href={`${blogPath}/${post.slug}`}
-                    className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
+                    className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:text-primary/85"
                   >
                     {t.blogReadMore}
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <ArrowRight className="ml-1 h-4 w-4 shrink-0" />
                   </Link>
                 </article>
               ))}
             </div>
 
-            <div className="hidden md:grid md:grid-cols-3 gap-4">
-              {blogPosts.slice(0, 3).map((post) => (
-                <article
-                  key={post.slug}
-                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 p-5 transition-all duration-200 hover:shadow-md"
-                >
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                    {post.title}
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4">
-                    {post.excerpt}
-                  </p>
-                  <Link
-                    href={`${blogPath}/${post.slug}`}
-                    className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80"
-                  >
-                    {t.blogReadMore}
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </article>
-              ))}
-            </div>
-
-            <div className="md:hidden mt-4 flex items-center justify-center gap-2">
-              <div className="h-1 w-40 rounded bg-muted overflow-hidden">
+            <div className="mt-2 flex items-center justify-center gap-2 md:mt-1">
+              <div className="h-1.5 w-44 sm:w-52 rounded-full bg-muted/80 overflow-hidden">
                 <div
-                  className="h-full rounded bg-primary transition-[width] duration-200"
+                  className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
                   style={{ width: `${Math.max(8, Math.min(100, scrollProgress * 100))}%` }}
                 />
               </div>
@@ -332,7 +350,7 @@ const Home: React.FC = () => {
           <div className="mt-8 text-center">
             <Link
               href={blogPath}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-md bg-primary/10 text-primary border border-primary/30"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:shadow-md bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               {t.blog}
               <ArrowRight className="w-4 h-4" />

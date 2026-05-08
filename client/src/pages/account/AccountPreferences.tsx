@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
-import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
 import { Sun, Moon, Monitor, Bell } from "lucide-react";
@@ -52,8 +53,15 @@ function ThemePicker({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountPreferences() {
+  const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const { language, setLanguage } = useLanguage();
+  /** Avoid stale closure inside loadSummary — must NOT refetch whenever `language` changes or we race the PATCH GET/overwrite UX. */
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
+
   const { preference: themePref, setPreference: setThemePref } = useThemePreferenceControls();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
@@ -73,15 +81,18 @@ export default function AccountPreferences() {
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
         setPreferredLanguage(data.preferredLanguage);
-      } else {
-        setPreferredLanguage(language);
+      } else if (data.ok) {
+        const fb = languageRef.current;
+        if (SUPPORTED_LANGUAGES.includes(fb)) {
+          setPreferredLanguage(fb);
+        }
       }
     } catch {
       /* non-critical */
     } finally {
       setPrefsLoading(false);
     }
-  }, [language]);
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -114,9 +125,17 @@ export default function AccountPreferences() {
       await apiRequest("/api/auth/account/preferences", "PATCH", { preferredLanguage: nextLanguage });
       setSavedIndicator(true);
       setTimeout(() => setSavedIndicator(false), 2000);
-    } catch {
+    } catch (e) {
       setPreferredLanguage(previousLanguage);
       setLanguage(previousLanguage);
+      const hint =
+        e instanceof ApiRequestError && e.bodyText.includes("migrations") ? "Server may need updates." : "";
+      toast({
+        title: "Could not save language",
+        description:
+          hint || (e instanceof ApiRequestError ? `Error ${e.status}. Try again in a moment.` : "Something went wrong."),
+        variant: "destructive",
+      });
     } finally {
       setSavingLanguagePref(false);
     }
@@ -196,10 +215,17 @@ export default function AccountPreferences() {
 
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Language</p>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Choose your interface language. This syncs to your account.
-            </p>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Language</p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  Choose your interface language. This syncs to your account.
+                </p>
+              </div>
+              {savedIndicator && (
+                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">Saved</span>
+              )}
+            </div>
           </div>
           <div className="px-5 py-5">
             <Label htmlFor="preferred-language" className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">

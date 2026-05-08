@@ -22,36 +22,44 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-6 lg:gap-8">
-        {/* Sidebar: inset matches navbar content (logo column); section links sit slightly right */}
-        <aside className="w-full shrink-0 md:w-44 md:pl-2 lg:pl-3">
+    <div className="mx-auto max-w-4xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-6 lg:gap-8">
+        {/* Sidebar: stacked card on mobile (touch targets); compact column on desktop */}
+        <aside className="w-full shrink-0 md:w-[11.75rem] md:pl-2 lg:w-44 lg:pl-3">
           {user?.email && (
-            <div className="mb-5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-900/60">
-              <p className="text-sm font-medium leading-snug text-gray-900 break-all dark:text-white">
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/60">
+              <p className="text-xs font-normal text-gray-500 dark:text-gray-400">{t.signedInAs}</p>
+              <p className="mt-1 text-sm font-medium leading-snug text-gray-900 break-words hyphens-auto dark:text-white">
                 {user.email}
               </p>
             </div>
           )}
 
           <nav
-            className="flex gap-1 overflow-x-auto border-b border-gray-200 pb-1 dark:border-gray-800 md:flex-col md:overflow-visible md:border-0 md:pb-0 md:pl-0.5"
+            className={
+              "flex flex-col gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900/40 " +
+              "md:gap-1 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:p-0"
+            }
             aria-label={tx("authAccountSectionsAria", "Account sections")}
           >
             {nav.map(({ href, label, icon: Icon }) => {
               const active = navItemActive(href, location);
               return (
-                <Link key={href} href={href}>
+                <Link
+                  key={href}
+                  href={href}
+                  className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
                   <span
-                    className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors md:w-full
-                      ${
-                        active
-                          ? "bg-primary/10 text-primary dark:bg-primary/15"
-                          : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/80"
-                      }`}
+                    className={
+                      `flex min-h-[2.75rem] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:min-h-0 md:gap-2.5 md:py-2 ` +
+                      (active
+                        ? "bg-white text-primary shadow-sm ring-1 ring-black/[0.04] dark:bg-gray-950 dark:text-primary dark:ring-white/[0.06] md:bg-primary/10 md:shadow-none md:ring-0 dark:md:bg-primary/15"
+                        : "text-gray-700 hover:bg-white/80 dark:text-gray-300 dark:hover:bg-gray-950/70 md:text-gray-600 md:hover:bg-gray-100 dark:md:text-gray-400 md:dark:hover:bg-gray-800/80")
+                    }
                   >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {label}
+                    <Icon className="h-5 w-5 shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
+                    <span className="min-w-0 flex-1 text-left leading-snug">{label}</span>
                   </span>
                 </Link>
               );
@@ -60,7 +68,9 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
         </aside>
 
         {/* Page content — same max width rail as Home / Navbar (max-w-4xl) */}
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-w-0 flex-1 border-t border-gray-100 pt-6 md:border-t-0 md:pt-0 dark:border-gray-800">
+          {children}
+        </div>
       </div>
     </div>
   );

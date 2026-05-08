@@ -530,31 +530,36 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const subject = "Login to PrivateNote";
+  const subject = "Continue to PrivateNote";
   const text = [
-    "Login to PrivateNote",
+    "Continue to PrivateNote",
     "",
-    "Open this link in your browser, then press \"Continue sign in\" on the page (the link alone does not sign you in):",
+    "Click the secure link below to continue:",
     magicUrl,
     "",
-    "For security, finish sign-in in the same browser where you opened the link.",
+    "For security, complete sign-in in the same browser and device where you opened the link.",
     "",
-    "If you did not request this, you can ignore this email.",
+    "This link expires automatically and can only be used for this sign-in request.",
+    "",
+    "If you did not request this email, you can safely ignore it.",
+    "",
+    "—",
+    "PrivateNote",
+    "Securely create, share, and destroy private notes — only the recipient can read them.",
   ].join("\n");
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    "  <div style=\"font-size: 20px; font-weight: 700; margin-bottom: 12px;\"><strong>Login to PrivateNote</strong></div>",
-    "  <p style=\"margin: 0 0 12px; color: #374151;\">Open the link below in this browser, then press <strong>Continue sign in</strong>. Opening the link only prepares sign-in; a confirmation step completes it.</p>",
-    "  <p style=\"margin: 0 0 20px; color: #374151; font-size: 14px;\"><strong>For security:</strong> finish sign-in in the same browser where you opened the link.</p>",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    "  <div style=\"font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;\">Continue to PrivateNote</div>",
+    "  <p style=\"margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;\">Click the secure link below to continue:</p>",
     "  <a href=\"" +
       magicUrl +
-      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 600;\">Sign in with Magic Link to PrivateNote</a>",
-    "  <p style=\"margin: 20px 0 0; color: #6B7280; font-size: 12px;\">If you did not request this, you can ignore this email.</p>",
-    "  <div style=\"margin-top: 28px; display: flex; align-items: center; gap: 10px;\">",
-    "    <img src=\"https://privatenote.ai/favicon.svg\" alt=\"PrivateNote\" width=\"24\" height=\"24\" style=\"display: block;\" />",
-    "    <span style=\"font-size: 14px; font-weight: 600;\">privateNote.ai</span>",
-    "  </div>",
-    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
+      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center; word-wrap: break-word;\">Continue to PrivateNote</a>",
+    "  <p style=\"margin: 12px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">For security, complete sign-in in the <strong>same browser and device</strong> where you opened the link.</p>",
+    "  <p style=\"margin: 8px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">This link expires automatically and can only be used for this sign-in request.</p>",
+    "  <p style=\"margin: 10px 0 0; color: #6B7280; font-size: 12px; line-height: 1.45;\">If you did not request this email, you can safely ignore it.</p>",
+    "  <hr style=\"border: 0; border-top: 1px solid #E5E7EB; margin: 18px 0 14px;\" />",
+    "  <p style=\"margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3;\">PrivateNote</p>",
+    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px; line-height: 1.42;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
     "</div>",
   ].join("");
 
@@ -2785,6 +2790,26 @@ function usageLimitsForPlan(plan: string | null | undefined): {
   };
 }
 
+/**
+ * SQLite `datetime('now')` is UTC clock time without a TZ suffix; JSON clients parsed it as local.
+ * Emit RFC3339 UTC (`...Z`) so Intl, Date, and date-fns interpret instants correctly in each viewer's TZ.
+ */
+function coerceAccountActivityCreatedAtUtcToIso(value: string): string {
+  const s = value.trim();
+  if (!s) return value;
+  if (s.endsWith("Z")) return s;
+  if (/GMT|UTC\b/i.test(s)) return value;
+  if (/[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{4}$/.test(s)) return s;
+
+  let candidate = s;
+  if (/^\d{4}-\d{2}-\d{2} \d/.test(candidate)) {
+    candidate = `${candidate.slice(0, 10)}T${candidate.slice(11)}`;
+  }
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(\.\d+)?/.exec(candidate);
+  if (!m) return value;
+  return `${m[1]}T${m[2]}${m[3] ?? ""}Z`;
+}
+
 export async function recordAccountActivity(
   env: Env,
   userId: string,
@@ -3861,7 +3886,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         id: r.id,
         type: r.event_type,
         noteId: r.note_id,
-        createdAt: r.created_at,
+        createdAt: coerceAccountActivityCreatedAtUtcToIso(r.created_at),
       }));
     } catch (e) {
       console.warn("[account/activity] list failed:", e);

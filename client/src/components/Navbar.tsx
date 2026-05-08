@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -37,8 +37,10 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children, className, closeMenu 
   );
 };
 
+type MobileSheet = "closed" | "nav" | "account";
+
 export const Navbar: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mobileSheet, setMobileSheet] = useState<MobileSheet>("closed");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
@@ -54,12 +56,23 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const closeMenu = useCallback(() => {
-    setIsMenuOpen(false);
+  const closeMobileSheetsAndProfile = useCallback(() => {
+    setMobileSheet("closed");
+    setIsProfileOpen(false);
   }, []);
 
-  const toggleMenu = useCallback(() => {
-    setIsMenuOpen((open) => !open);
+  /** Mobile nav drawer + desktop profile dropdown: close overlays when navigating */
+  const closeMenu = closeMobileSheetsAndProfile;
+
+  const toggleMobileNav = useCallback(() => {
+    setMobileSheet((s) => {
+      if (s === "nav") return "closed";
+      return "nav";
+    });
+  }, []);
+
+  const toggleMobileAccount = useCallback(() => {
+    setMobileSheet((s) => (s === "account" ? "closed" : "account"));
   }, []);
 
   // Handle clicks outside of desktop profile menu.
@@ -78,14 +91,14 @@ export const Navbar: React.FC = () => {
   // This is a safety net so the navbar always reflects sign-in state after
   // any auth flow completes and redirects, even if the flow forgot to await refresh().
   useEffect(() => {
-    setIsMenuOpen(false);
+    setMobileSheet("closed");
     setIsProfileOpen(false);
     void refreshAuth();
   }, [location, refreshAuth]);
 
   // Mobile sheet: reduce background scroll while open (avoid `position:fixed` on body — breaks nested `fixed` nav).
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (mobileSheet === "closed") return;
     const html = document.documentElement;
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
@@ -99,10 +112,10 @@ export const Navbar: React.FC = () => {
       body.style.overflow = prevBodyOverflow;
       body.style.overscrollBehavior = prevOverscroll;
     };
-  }, [isMenuOpen]);
+  }, [mobileSheet]);
 
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (mobileSheet === "closed") return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -111,7 +124,7 @@ export const Navbar: React.FC = () => {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isMenuOpen, closeMenu]);
+  }, [mobileSheet, closeMenu]);
 
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
@@ -151,7 +164,7 @@ export const Navbar: React.FC = () => {
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
     'transition-[background-color,backdrop-filter,box-shadow,border-color] duration-200',
     isScrolled
-      ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-blue-100/80 dark:border-gray-800/80 shadow-[0_1px_6px_rgba(15,23,42,0.05)]'
+      ? 'bg-background/95 backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]'
       : 'bg-transparent border-b border-transparent shadow-none backdrop-blur-0',
   ].join(' ');
 
@@ -283,9 +296,11 @@ export const Navbar: React.FC = () => {
             {!authLoading && user?.email ? (
               <button
                 type="button"
-                onClick={toggleMenu}
+                onClick={toggleMobileAccount}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
-                aria-label={`Account menu for ${user.email}`}
+                aria-expanded={mobileSheet === "account"}
+                aria-controls="mobile-account-sheet"
+                aria-label={`${t.account} · ${user.email}`}
                 title={user.email}
               >
                 {initials}
@@ -304,13 +319,13 @@ export const Navbar: React.FC = () => {
           <div className="flex w-10 shrink-0 items-center justify-end">
             <button
               type="button"
-              onClick={toggleMenu}
+              onClick={toggleMobileNav}
               className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
-              aria-expanded={isMenuOpen}
-              aria-controls="mobile-nav-overlay"
-              aria-label={isMenuOpen ? t.closeNavigationMenu : t.toggleNavigation}
+              aria-expanded={mobileSheet === "nav"}
+              aria-controls="mobile-nav-sheet"
+              aria-label={mobileSheet === "nav" ? t.closeNavigationMenu : t.toggleNavigation}
             >
-              {isMenuOpen ? (
+              {mobileSheet === "nav" ? (
                 <X className="h-7 w-7" strokeWidth={2} />
               ) : (
                 <Menu className="h-7 w-7" strokeWidth={2} />
@@ -321,23 +336,25 @@ export const Navbar: React.FC = () => {
       </div>
     </nav>
 
-    {isMenuOpen && (
+    {mobileSheet === "nav" && (
       <div
-        id="mobile-nav-overlay"
-        className="fixed inset-0 z-[9999] flex flex-col bg-background/98 backdrop-blur-md dark:bg-gray-950/98 xl:hidden"
+        id="mobile-nav-sheet"
+        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.toggleNavigation}
       >
-        <div className="shrink-0 border-b border-gray-200/80 dark:border-gray-800">
+        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
           <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
             <div className="flex min-w-10 items-center justify-start">
               {!authLoading && user?.email ? (
                 <button
                   type="button"
-                  onClick={closeMenu}
+                  onClick={toggleMobileAccount}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
-                  aria-label={t.closeNavigationMenu}
+                  aria-expanded={false}
+                  aria-controls="mobile-account-sheet"
+                  aria-label={`${t.account} · ${user.email}`}
                   title={user.email}
                 >
                   {initials}
@@ -356,8 +373,8 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={closeMenu}
                 className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
-                aria-expanded={isMenuOpen}
-                aria-controls="mobile-nav-overlay"
+                aria-expanded={mobileSheet === "nav"}
+                aria-controls="mobile-nav-sheet"
                 aria-label={t.closeNavigationMenu}
               >
                 <X className="h-7 w-7" strokeWidth={2} />
@@ -397,29 +414,7 @@ export const Navbar: React.FC = () => {
 
             <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
 
-            {authLoading ? null : user?.email ? (
-              <>
-                <NavLink href="/account" closeMenu={closeMenu} className={mobileItemClass}>
-                  <Shield className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>{t.account}</span>
-                </NavLink>
-                <NavLink href="/account/security" closeMenu={closeMenu} className={mobileItemClass}>
-                  <ShieldCheck className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>{t.security}</span>
-                </NavLink>
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeMenu();
-                    void signOut();
-                  }}
-                  className={`${mobileItemClass} w-full text-left`}
-                >
-                  <Mail className="h-4 w-4 shrink-0 opacity-80" />
-                  <span>{t.signOut}</span>
-                </button>
-              </>
-            ) : isAuthRoute ? null : (
+            {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
                 <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
                   <Mail className="h-4 w-4 shrink-0 opacity-80" />
@@ -429,10 +424,9 @@ export const Navbar: React.FC = () => {
                   <Key className="h-4 w-4 shrink-0 opacity-80" />
                   <span>{t.signUp}</span>
                 </NavLink>
+                <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
               </>
             )}
-
-            <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
 
             <a
               href="https://www.buymeacoffee.com/marjanskrobot"
@@ -450,6 +444,78 @@ export const Navbar: React.FC = () => {
         </nav>
       </div>
     )}
+
+    {mobileSheet === "account" && user?.email ? (
+      <div
+        id="mobile-account-sheet"
+        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.account}
+      >
+        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
+          <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
+            <div className="flex min-w-10 items-center justify-start">
+              <button
+                type="button"
+                onClick={toggleMobileAccount}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-0"
+                aria-label={t.closeNavigationMenu}
+                title={user.email}
+              >
+                {initials}
+              </button>
+            </div>
+            <NavLink
+              href={lp("/")}
+              closeMenu={closeMenu}
+              className="mx-auto flex min-w-0 max-w-full shrink items-center justify-center gap-2 overflow-hidden whitespace-nowrap"
+            >
+              {logoInner}
+            </NavLink>
+            <div className="flex w-10 shrink-0 items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setMobileSheet("nav")}
+                className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
+                aria-controls="mobile-nav-sheet"
+                aria-label={t.toggleNavigation}
+              >
+                <Menu className="h-7 w-7" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label={t.account}>
+          <div className="py-2">
+            <div className="border-b border-gray-100 px-5 pb-4 pt-1 dark:border-gray-800">
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.signedInAs}</p>
+              <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{user.email}</p>
+            </div>
+            <NavLink href="/account" closeMenu={closeMenu} className={mobileItemClass}>
+              <Shield className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.account}</span>
+            </NavLink>
+            <NavLink href="/account/security" closeMenu={closeMenu} className={mobileItemClass}>
+              <ShieldCheck className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.security}</span>
+            </NavLink>
+            <button
+              type="button"
+              onClick={() => {
+                closeMenu();
+                void signOut();
+              }}
+              className={`${mobileItemClass} w-full text-left`}
+            >
+              <LogOut className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.signOut}</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    ) : null}
     </>
   );
 };
