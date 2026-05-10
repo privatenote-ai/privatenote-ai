@@ -4,7 +4,7 @@ import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
-import { localizedPath } from '@/utils/localizedPath';
+import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -23,7 +23,10 @@ const NavLink: React.FC<NavLinkProps> = ({ href, children, className, closeMenu 
 
     // For the home path, force a full reload if we're already on home or viewing a note
     // This resets any in-page state (e.g., success view) back to the note editor.
-    if (href === '/' && (window.location.pathname === '/' || window.location.pathname.startsWith('/note/'))) {
+    if (
+      isLocaleSiteHomeHref(href) &&
+      (isLocaleSiteHomeHref(window.location.pathname) || window.location.pathname.startsWith('/note/'))
+    ) {
       window.location.href = href;
     } else {
       navigate(href);

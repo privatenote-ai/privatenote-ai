@@ -38,19 +38,39 @@ import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
-import type { SupportedLanguage } from "@/utils/translation";
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 
 const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
   { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de" },
-  { hrefLang: "fr", path: "/fr" },
-  { hrefLang: "es", path: "/es" },
+  { hrefLang: "de", path: "/de/" },
+  { hrefLang: "fr", path: "/fr/" },
+  { hrefLang: "es", path: "/es/" },
   { hrefLang: "x-default", path: "/" },
 ];
 
+function pathWithoutQueryOrHash(loc: string): string {
+  return loc.split(/[?#]/)[0] ?? "";
+}
+
+/** Language for hreflang/canonical when the URL is a locale home route (/, /de/, /de, …). */
+function homeSeoLanguageForPath(pathname: string): SupportedLanguage | null {
+  const p = pathname || "/";
+  if (p === "/") return "en";
+  const parts = p.split("/").filter(Boolean);
+  if (parts.length !== 1) return null;
+  const code = parts[0] as SupportedLanguage;
+  return SUPPORTED_LANGUAGES.includes(code) && code !== "en" ? code : null;
+}
+
+function removeHomeLocaleSeoLinks() {
+  document.head
+    .querySelectorAll<HTMLLinkElement>('link[data-privatenote-home-locale="true"]')
+    .forEach((link) => link.remove());
+}
+
 function setHomeSeoLinks(language: SupportedLanguage) {
   const origin = window.location.origin;
-  const canonicalPath = language === "en" ? "/" : `/${language}`;
+  const canonicalPath = language === "en" ? "/" : `/${language}/`;
   const existing = document.head.querySelectorAll<HTMLLinkElement>(
     'link[data-privatenote-home-locale="true"]',
   );
@@ -79,7 +99,6 @@ function HomeRoute({ language = "en" }: { language?: SupportedLanguage }) {
     if (activeLanguage !== language) {
       setLanguage(language);
     }
-    setHomeSeoLinks(language);
   }, [activeLanguage, language, setLanguage]);
 
   return <Home />;
@@ -105,8 +124,18 @@ function LocalizedRoute({
 
 function Router() {
   const [location] = useLocation();
-  /** Wouter navigations preserve scroll — reset so CTAs to home/read content start from the top. */
+
   useLayoutEffect(() => {
+    /** Hreflang + canonical for locale homes only; paths must match CDN 200s (e.g. …/de/, not …/de). */
+    const path = pathWithoutQueryOrHash(location);
+    const homeLang = homeSeoLanguageForPath(path);
+    if (homeLang === null) {
+      removeHomeLocaleSeoLinks();
+    } else {
+      setHomeSeoLinks(homeLang);
+    }
+
+    /** Wouter navigations preserve scroll — reset so CTAs to home/read content start from the top. */
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -126,8 +155,11 @@ function Router() {
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
           <Route path="/de" component={() => <HomeRoute language="de" />} />
+          <Route path="/de/" component={() => <HomeRoute language="de" />} />
           <Route path="/fr" component={() => <HomeRoute language="fr" />} />
+          <Route path="/fr/" component={() => <HomeRoute language="fr" />} />
           <Route path="/es" component={() => <HomeRoute language="es" />} />
+          <Route path="/es/" component={() => <HomeRoute language="es" />} />
           {(["de", "fr", "es"] as const).map((language) => (
             <Fragment key={language}>
               <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
