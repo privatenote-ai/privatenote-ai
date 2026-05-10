@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, User } from 'lucide-react';
@@ -14,6 +14,14 @@ import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost
 import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
+import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
+
+const STATIC_BLOG_SLUGS = [
+  'privacy-tools',
+  'myth-good-enough-security',
+  'how-we-generate-passwords',
+  'workplace-texts-private-note',
+] as const;
 
 export default function BlogPostPage() {
   const { language, t } = useLanguage();
@@ -21,6 +29,41 @@ export default function BlogPostPage() {
   const [, fallbackParams] = useRoute('/blog/:slug');
   const blogPath = localizedPath('/blog', language);
   const slug = params?.slug ?? fallbackParams?.slug;
+
+  const isStaticSlug =
+    !!slug && (STATIC_BLOG_SLUGS as readonly string[]).includes(slug);
+
+  const {
+    data: post,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['/api/blog', slug],
+    queryFn: getQueryFn<BlogPost>({ on401: 'returnNull' }),
+    enabled: !!slug && !isStaticSlug
+  });
+
+  useEffect(() => {
+    if (!slug || isStaticSlug) return;
+    if (error) {
+      setDocumentMeta(buildDocumentTitle(t.blogLoadFailedTitle), t.blogLoadFailedBody);
+      return;
+    }
+    if (isLoading) return;
+    if (!post) {
+      setDocumentMeta(buildDocumentTitle(t.blogNotFoundTitle), t.blogNotFoundBody);
+      return;
+    }
+    const publishedIso = toIsoString(post.publishedAt);
+    const modifiedIso = toIsoString(post.updatedAt);
+    setDocumentMeta(buildDocumentTitle(post.title), post.excerpt || t.blogSubtitle, {
+      ogType: "article",
+      image: post.coverImage ?? undefined,
+      articlePublishedTime: publishedIso,
+      articleModifiedTime: modifiedIso,
+      articleAuthor: post.author,
+    });
+  }, [slug, isStaticSlug, error, isLoading, post, t]);
 
   if (slug === 'privacy-tools') {
     return <PrivacyToolsPost />;
@@ -34,16 +77,6 @@ export default function BlogPostPage() {
   if (slug === 'workplace-texts-private-note') {
     return <WorkplaceTextsPost />;
   }
-
-  const {
-    data: post,
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['/api/blog', slug],
-    queryFn: getQueryFn<BlogPost>({ on401: 'returnNull' }),
-    enabled: !!slug
-  });
 
   if (error) {
     return (
@@ -152,6 +185,12 @@ export default function BlogPostPage() {
       </article>
     </div>
   );
+}
+
+function toIsoString(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  const d = value instanceof Date ? value : new Date(value as number | string);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 }
 
 // Plain text → paragraphs; escape so stored content cannot break out into HTML/JS.

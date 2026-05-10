@@ -39,6 +39,8 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import { setDocumentMeta } from "@/utils/documentMeta";
+import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 
 const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
   { hrefLang: "en", path: "/" },
@@ -124,6 +126,7 @@ function LocalizedRoute({
 
 function Router() {
   const [location] = useLocation();
+  const { t } = useLanguage();
 
   useLayoutEffect(() => {
     /** Hreflang + canonical for locale homes only; paths must match CDN 200s (e.g. …/de/, not …/de). */
@@ -135,11 +138,14 @@ function Router() {
       setHomeSeoLinks(homeLang);
     }
 
+    const meta = resolveDocumentMeta(path, t);
+    setDocumentMeta(meta.title, meta.description);
+
     /** Wouter navigations preserve scroll — reset so CTAs to home/read content start from the top. */
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-  }, [location]);
+  }, [location, t]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
   const showNavbar =
     !isAuthRoute ||

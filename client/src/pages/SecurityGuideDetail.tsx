@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRoute } from 'wouter';
 import { Link } from 'wouter';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
+import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
 import { 
   ChevronLeft, 
   ExternalLink, 
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 
 const SecurityGuideDetail: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [, params] = useRoute('/security-guides/:topicId');
   const topicId = params?.topicId || '';
 
@@ -139,7 +140,8 @@ const SecurityGuideDetail: React.FC = () => {
     // Additional guide content could be added for other topics...
   };
 
-  const guide = guides[topicId] || {
+  const rawGuide = guides[topicId];
+  const guide = rawGuide || {
     title: 'Guide Not Found',
     icon: <Shield className="h-8 w-8 text-gray-500" />,
     description: 'The requested guide could not be found.',
@@ -148,6 +150,18 @@ const SecurityGuideDetail: React.FC = () => {
       content: 'Sorry, we couldn\'t find information on this security topic. Please check the URL or return to the security resources page.'
     }]
   };
+
+  useEffect(() => {
+    const g = guides[topicId];
+    if (g) {
+      setDocumentMeta(buildDocumentTitle(g.title), g.description);
+      return;
+    }
+    setDocumentMeta(
+      buildDocumentTitle(t.documentMetaNotFoundTitle),
+      t.documentMetaNotFoundDescription,
+    );
+  }, [topicId, t]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24 relative">

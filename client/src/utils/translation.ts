@@ -616,6 +616,56 @@ const defaultTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Can I use this for passwords, recovery codes, or private keys?",
   homeFaq_sensitiveSecrets_answer:
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
+  documentMetaPrivacyToolsTitle: "Privacy tools & resources",
+  documentMetaPrivacyToolsDescription:
+    "Curated guides, tools, and resources to enhance your digital privacy and security.",
+  documentMetaContactTitle: "Contact",
+  documentMetaContactDescription:
+    "Questions, feedback, or support for PrivateNote.ai.",
+  documentMetaPrivacyPolicyDescription:
+    "How PrivateNote.ai handles personal data, retention, cookies, and your rights.",
+  documentMetaTermsDescription:
+    "Terms of service, acceptable use, disclaimers, and legal information for PrivateNote.ai.",
+  documentMetaNotFoundTitle: "Page not found",
+  documentMetaNotFoundDescription: "This URL does not exist on PrivateNote.ai.",
+  documentMetaViewNoteDescription:
+    "Open a one-time encrypted note in your browser. Your decryption key stays in the URL fragment.",
+  documentMetaBlogLoadingDescription:
+    "Latest insights and tips about privacy, security, and encryption.",
+  documentMetaRecoveryTitle: "Account recovery",
+  documentMetaRecoveryDescription:
+    "Sign in with a recovery code if you lost access to your passkeys or email.",
+  documentMetaEmailChangeTitle: "Change email",
+  documentMetaEmailChangeDescription:
+    "Confirm your identity to update the email on your account.",
+  documentMetaTotpTitle: "Two-step verification",
+  documentMetaTotpDescription:
+    "Enter your authenticator code to finish signing in.",
+  documentMetaSecurityGuideTitle: "Security guide",
+  documentMetaSecurityGuideDescription:
+    "Practical privacy guidance for VPNs, passwords, messaging, email, and browsers.",
+  documentMetaAuthRootTitle: "Sign in or sign up",
+  documentMetaAuthRootDescription:
+    "Create an account or sign in securely with email or a passkey.",
+  documentMetaAdminBlogTitle: "Blog admin",
+  documentMetaAdminBlogDescription: "Create and manage blog posts.",
+  documentMetaAnalyticsTitle: "Analytics",
+  documentMetaAnalyticsDescription: "Usage metrics for PrivateNote.ai.",
+  documentMetaAuditLogsTitle: "Audit logs",
+  documentMetaAuditLogsDescription: "Review security-sensitive events.",
+  documentMetaTestLlmTitle: "LLM test harness",
+  documentMetaTestLlmDescription: "Browser WebGPU and model diagnostics.",
+  documentMetaLlmUiTitle: "Assistant setup",
+  documentMetaLlmUiDescription: "Configure on-device AI assistance.",
+  documentMetaAccountSecurityTitle: "Security settings",
+  documentMetaAccountSecurityDescription:
+    "Passkeys, sessions, and preferences that protect your account.",
+  documentMetaAccountActivityTitle: "Activity",
+  documentMetaAccountActivityDescription:
+    "Recent account and note-related activity.",
+  documentMetaAccountPreferencesTitle: "Preferences",
+  documentMetaAccountPreferencesDescription:
+    "Theme, language, and notification settings.",
 };
 
 const deTranslations: Translations = {
@@ -1222,6 +1272,56 @@ const deTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Kann ich Passwörter, Wiederherstellungscodes oder private Schlüssel teilen?",
   homeFaq_sensitiveSecrets_answer:
     "Ja, wenn Sie die Grenzen kennen: Jeder mit Link und ggf. Passwort kann das Geheimnis lesen und kopieren oder fotografieren.",
+  documentMetaPrivacyToolsTitle: "Datenschutz-Tools & Ressourcen",
+  documentMetaPrivacyToolsDescription:
+    "Ausgewählte Leitfäden, Tools und Ressourcen für mehr digitale Privatsphäre und Sicherheit.",
+  documentMetaContactTitle: "Kontakt",
+  documentMetaContactDescription:
+    "Fragen, Feedback oder Support zu PrivateNote.ai.",
+  documentMetaPrivacyPolicyDescription:
+    "Wie PrivateNote.ai personenbezogene Daten verarbeitet, speichert und welche Rechte Sie haben.",
+  documentMetaTermsDescription:
+    "Nutzungsbedingungen, zulässige Nutzung, Haftungsausschlüsse und rechtliche Hinweise für PrivateNote.ai.",
+  documentMetaNotFoundTitle: "Seite nicht gefunden",
+  documentMetaNotFoundDescription: "Diese URL existiert nicht auf PrivateNote.ai.",
+  documentMetaViewNoteDescription:
+    "Öffnen Sie eine einmalige verschlüsselte Notiz im Browser. Der Entschlüsselungsschlüssel bleibt im URL-Fragment.",
+  documentMetaBlogLoadingDescription:
+    "Aktuelle Einblicke und Tipps zu Privatsphäre, Sicherheit und Verschlüsselung.",
+  documentMetaRecoveryTitle: "Kontowiederherstellung",
+  documentMetaRecoveryDescription:
+    "Melden Sie sich mit einem Wiederherstellungscode an, wenn Sie Zugang zu Passkeys oder E-Mail verloren haben.",
+  documentMetaEmailChangeTitle: "E-Mail ändern",
+  documentMetaEmailChangeDescription:
+    "Bestätigen Sie Ihre Identität, um die E-Mail Ihres Kontos zu aktualisieren.",
+  documentMetaTotpTitle: "Zwei-Schritt-Bestätigung",
+  documentMetaTotpDescription:
+    "Geben Sie den Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
+  documentMetaSecurityGuideTitle: "Sicherheitsleitfaden",
+  documentMetaSecurityGuideDescription:
+    "Praktische Tipps zu VPNs, Passwörtern, Messaging, E-Mail und Browsern.",
+  documentMetaAuthRootTitle: "Anmelden oder registrieren",
+  documentMetaAuthRootDescription:
+    "Konto erstellen oder sich sicher mit E-Mail oder Passkey anmelden.",
+  documentMetaAdminBlogTitle: "Blog-Administration",
+  documentMetaAdminBlogDescription: "Blogbeiträge erstellen und verwalten.",
+  documentMetaAnalyticsTitle: "Analysen",
+  documentMetaAnalyticsDescription: "Nutzungskennzahlen für PrivateNote.ai.",
+  documentMetaAuditLogsTitle: "Audit-Protokolle",
+  documentMetaAuditLogsDescription: "Sicherheitsrelevante Ereignisse einsehen.",
+  documentMetaTestLlmTitle: "LLM-Testumgebung",
+  documentMetaTestLlmDescription: "WebGPU- und Modell-Diagnose im Browser.",
+  documentMetaLlmUiTitle: "Assistent einrichten",
+  documentMetaLlmUiDescription: "Konfiguration der lokalen KI-Unterstützung.",
+  documentMetaAccountSecurityTitle: "Sicherheitseinstellungen",
+  documentMetaAccountSecurityDescription:
+    "Passkeys, Sitzungen und Einstellungen zum Schutz Ihres Kontos.",
+  documentMetaAccountActivityTitle: "Aktivität",
+  documentMetaAccountActivityDescription:
+    "Kürzliche Konto- und Notizaktivität.",
+  documentMetaAccountPreferencesTitle: "Einstellungen",
+  documentMetaAccountPreferencesDescription:
+    "Design, Sprache und Benachrichtigungen.",
 };
 
 const frTranslations: Translations = {
@@ -1832,6 +1932,56 @@ const frTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Puis-je l’utiliser pour des mots de passe, codes de récupération ou clés privées ?",
   homeFaq_sensitiveSecrets_answer:
     "Oui, si vous comprenez les limites : toute personne ayant le lien et le mot de passe éventuel peut lire le secret et le copier ou le capturer.",
+  documentMetaPrivacyToolsTitle: "Outils et ressources confidentialité",
+  documentMetaPrivacyToolsDescription:
+    "Guides, outils et ressources sélectionnés pour renforcer votre vie privée et votre sécurité numériques.",
+  documentMetaContactTitle: "Contact",
+  documentMetaContactDescription:
+    "Questions, retours ou assistance concernant PrivateNote.ai.",
+  documentMetaPrivacyPolicyDescription:
+    "Comment PrivateNote.ai traite les données personnelles, la conservation, les cookies et vos droits.",
+  documentMetaTermsDescription:
+    "Conditions d’utilisation, usage acceptable, clauses légales pour PrivateNote.ai.",
+  documentMetaNotFoundTitle: "Page introuvable",
+  documentMetaNotFoundDescription: "Cette URL n’existe pas sur PrivateNote.ai.",
+  documentMetaViewNoteDescription:
+    "Ouvrez une note chiffrée à usage unique dans votre navigateur. La clé de déchiffrement reste dans le fragment d’URL.",
+  documentMetaBlogLoadingDescription:
+    "Dernières analyses et conseils sur la confidentialité, la sécurité et le chiffrement.",
+  documentMetaRecoveryTitle: "Récupération du compte",
+  documentMetaRecoveryDescription:
+    "Connectez-vous avec un code de récupération si vous avez perdu l’accès aux passkeys ou à l’e-mail.",
+  documentMetaEmailChangeTitle: "Changer d’e-mail",
+  documentMetaEmailChangeDescription:
+    "Confirmez votre identité pour mettre à jour l’e-mail du compte.",
+  documentMetaTotpTitle: "Vérification en deux étapes",
+  documentMetaTotpDescription:
+    "Saisissez le code de votre application d’authentification pour terminer la connexion.",
+  documentMetaSecurityGuideTitle: "Guide sécurité",
+  documentMetaSecurityGuideDescription:
+    "Conseils pratiques sur les VPN, mots de passe, messagerie, e-mail et navigateurs.",
+  documentMetaAuthRootTitle: "Connexion ou inscription",
+  documentMetaAuthRootDescription:
+    "Créez un compte ou connectez-vous par e-mail ou passkey.",
+  documentMetaAdminBlogTitle: "Administration du blog",
+  documentMetaAdminBlogDescription: "Créer et gérer les articles du blog.",
+  documentMetaAnalyticsTitle: "Analytique",
+  documentMetaAnalyticsDescription: "Indicateurs d’usage pour PrivateNote.ai.",
+  documentMetaAuditLogsTitle: "Journaux d’audit",
+  documentMetaAuditLogsDescription: "Consulter les événements sensibles pour la sécurité.",
+  documentMetaTestLlmTitle: "Banc d’essai LLM",
+  documentMetaTestLlmDescription: "Diagnostics WebGPU et modèle dans le navigateur.",
+  documentMetaLlmUiTitle: "Configuration de l’assistant",
+  documentMetaLlmUiDescription: "Configurer l’assistance IA locale.",
+  documentMetaAccountSecurityTitle: "Paramètres de sécurité",
+  documentMetaAccountSecurityDescription:
+    "Passkeys, sessions et réglages qui protègent votre compte.",
+  documentMetaAccountActivityTitle: "Activité",
+  documentMetaAccountActivityDescription:
+    "Activité récente du compte et des notes.",
+  documentMetaAccountPreferencesTitle: "Préférences",
+  documentMetaAccountPreferencesDescription:
+    "Thème, langue et notifications.",
 };
 
 const esTranslations: Translations = {
@@ -2443,6 +2593,56 @@ const esTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "¿Puedo usarlo para contraseñas, códigos de recuperación o claves privadas?",
   homeFaq_sensitiveSecrets_answer:
     "Sí, si entiendes los límites: cualquiera con el enlace y la contraseña, si existe, puede leer el secreto y copiarlo o capturarlo.",
+  documentMetaPrivacyToolsTitle: "Herramientas y recursos de privacidad",
+  documentMetaPrivacyToolsDescription:
+    "Guías, herramientas y recursos seleccionados para mejorar tu privacidad y seguridad digital.",
+  documentMetaContactTitle: "Contacto",
+  documentMetaContactDescription:
+    "Preguntas, comentarios o soporte sobre PrivateNote.ai.",
+  documentMetaPrivacyPolicyDescription:
+    "Cómo PrivateNote.ai trata los datos personales, la retención, las cookies y tus derechos.",
+  documentMetaTermsDescription:
+    "Términos del servicio, uso aceptable, descargos de responsabilidad e información legal de PrivateNote.ai.",
+  documentMetaNotFoundTitle: "Página no encontrada",
+  documentMetaNotFoundDescription: "Esta URL no existe en PrivateNote.ai.",
+  documentMetaViewNoteDescription:
+    "Abre una nota cifrada de un solo uso en tu navegador. La clave de descifrado permanece en el fragmento de la URL.",
+  documentMetaBlogLoadingDescription:
+    "Últimas ideas y consejos sobre privacidad, seguridad y cifrado.",
+  documentMetaRecoveryTitle: "Recuperación de cuenta",
+  documentMetaRecoveryDescription:
+    "Inicia sesión con un código de recuperación si perdiste el acceso a tus passkeys o al correo.",
+  documentMetaEmailChangeTitle: "Cambiar correo",
+  documentMetaEmailChangeDescription:
+    "Confirma tu identidad para actualizar el correo de tu cuenta.",
+  documentMetaTotpTitle: "Verificación en dos pasos",
+  documentMetaTotpDescription:
+    "Introduce el código de tu aplicación de autenticación para terminar de iniciar sesión.",
+  documentMetaSecurityGuideTitle: "Guía de seguridad",
+  documentMetaSecurityGuideDescription:
+    "Orientación práctica sobre VPNs, contraseñas, mensajería, correo y navegadores.",
+  documentMetaAuthRootTitle: "Iniciar sesión o registrarse",
+  documentMetaAuthRootDescription:
+    "Crea una cuenta o inicia sesión de forma segura con correo o passkey.",
+  documentMetaAdminBlogTitle: "Administración del blog",
+  documentMetaAdminBlogDescription: "Crear y gestionar entradas del blog.",
+  documentMetaAnalyticsTitle: "Analíticas",
+  documentMetaAnalyticsDescription: "Métricas de uso de PrivateNote.ai.",
+  documentMetaAuditLogsTitle: "Registros de auditoría",
+  documentMetaAuditLogsDescription: "Revisar eventos relevantes para la seguridad.",
+  documentMetaTestLlmTitle: "Pruebas LLM",
+  documentMetaTestLlmDescription: "Diagnósticos de WebGPU y del modelo en el navegador.",
+  documentMetaLlmUiTitle: "Configuración del asistente",
+  documentMetaLlmUiDescription: "Configura la asistencia de IA en el dispositivo.",
+  documentMetaAccountSecurityTitle: "Ajustes de seguridad",
+  documentMetaAccountSecurityDescription:
+    "Passkeys, sesiones y preferencias que protegen tu cuenta.",
+  documentMetaAccountActivityTitle: "Actividad",
+  documentMetaAccountActivityDescription:
+    "Actividad reciente de la cuenta y las notas.",
+  documentMetaAccountPreferencesTitle: "Preferencias",
+  documentMetaAccountPreferencesDescription:
+    "Tema, idioma y notificaciones.",
 };
 
 const translations: Record<SupportedLanguage, Translations> = {

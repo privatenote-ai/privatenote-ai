@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai secure encrypted notes</title>
+  <desc id="desc">A PrivateNote.ai preview card for encrypted read-once notes.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="58" x2="0" y2="142" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="696" y1="142" x2="1076" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EEF4FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#F8FBFF"/>
+  <rect x="756" y="-110" width="520" height="520" rx="140" fill="#E0E7FF" opacity=".78"/>
+  <rect x="-128" y="-84" width="430" height="430" rx="118" fill="#DBEAFE" opacity=".68"/>
+  <g transform="translate(72 72)">
+    <rect width="104" height="104" rx="26" fill="#0000FF"/>
+    <g transform="translate(0 -10)">
+      <path d="M23 45L52 71L81 45V88H23V45Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="1.8"/>
+      <path d="M23 45L52 71L81 45Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M23 45L52 71L81 45" stroke="#0000FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="206" y="122" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="850" fill="#0000FF">privateNote</text>
+  <text x="452" y="99" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="850" fill="#0000FF">.ai</text>
+  <text x="72" y="292" font-family="Inter, Arial, sans-serif" font-size="66" font-weight="850" fill="#0F172A">Send sensitive info</text>
+  <text x="72" y="366" font-family="Inter, Arial, sans-serif" font-size="66" font-weight="850" fill="#0000FF">without permanent records.</text>
+  <text x="76" y="450" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="500" fill="#475569">Read-once encrypted notes for passwords, recovery codes,</text>
+  <text x="76" y="488" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="500" fill="#475569">and private handoffs.</text>
+  <rect x="76" y="538" width="310" height="58" rx="15" fill="#0000FF"/>
+  <text x="108" y="576" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="white">privatenote.ai</text>
+  <rect x="702" y="146" width="374" height="330" rx="34" fill="url(#panel)" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="756" y="210" width="266" height="22" rx="11" fill="#94A3B8" opacity=".52"/>
+  <rect x="756" y="260" width="214" height="22" rx="11" fill="#94A3B8" opacity=".34"/>
+  <rect x="756" y="310" width="246" height="22" rx="11" fill="#94A3B8" opacity=".34"/>
+  <rect x="756" y="360" width="188" height="22" rx="11" fill="#94A3B8" opacity=".34"/>
+  <circle cx="889" cy="520" r="76" fill="#0000FF"/>
+  <path d="M855 518L881 543L927 491" stroke="white" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
