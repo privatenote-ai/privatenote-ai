@@ -76,19 +76,17 @@ import {
   Settings,
   Sparkles,
   Loader2,
-  Info,
-  X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
 import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
-import { findTrustedPartner } from "@/config/trustedPrefillPartners";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import { NoteSettingsPanel } from "./NoteSettingsPanel";
 import { AiComposer } from "./AiComposer";
 import type { AiPostGenTransform } from "./AiComposer";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
+import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
 import { useLanguage } from "@/context/LanguageContext";
@@ -1178,31 +1176,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
           {!isAiMode ? (
             <div className="mb-4">
-              {showPrefillBanner && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="mb-3 flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
-                >
-                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden />
-                  <span className="flex-1">
-                    {(() => {
-                      const partner = findTrustedPartner(prefillReferrer);
-                      return partner
-                        ? <>This note was pre-filled by <strong>{partner.displayName}</strong>. PrivateNote has not created or shared anything yet.</>
-                        : <>This note was pre-filled from an external website. PrivateNote has not created or shared anything yet.</>;
-                    })()}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Dismiss pre-fill notice"
-                    onClick={dismissPrefillBanner}
-                    className="shrink-0 rounded p-0.5 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+              <PrefillPartnerBanner
+                visible={showPrefillBanner}
+                referrer={prefillReferrer}
+                onDismiss={dismissPrefillBanner}
+              />
               <NotePlaintextUtf8Meter
                 noteContent={noteContent}
                 maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}

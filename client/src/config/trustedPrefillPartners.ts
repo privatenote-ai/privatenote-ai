@@ -10,15 +10,31 @@
  * The `id` is matched case-insensitively against the sanitized `&from=` value.
  */
 
+/** Optional visual identity for the prefill banner (allowlisted partners only). */
+export interface TrustedPartnerBranding {
+  /** Path under `client/public`, e.g. `/images/partners/password-dots-logo.svg` */
+  logoSrc: string;
+  logoAlt: string;
+}
+
 export interface TrustedPartner {
   /** Exact id to match (case-insensitive). Should be the partner's domain. */
   id: string;
   /** Display name shown in the banner and stored in analytics. */
   displayName: string;
+  /** Rams-themed banner + logo when set (passwords.lu uses dot-grid mark). */
+  branding?: TrustedPartnerBranding;
 }
 
 export const TRUSTED_PREFILL_PARTNERS: readonly TrustedPartner[] = [
-  { id: "passwords.lu", displayName: "passwords.lu" },
+  {
+    id: "passwords.lu",
+    displayName: "passwords.lu",
+    branding: {
+      logoSrc: "/images/partners/password-dots-logo.svg",
+      logoAlt: "passwords.lu",
+    },
+  },
 ];
 
 /**

@@ -2,10 +2,15 @@
  * Local WebLLM / Transformers model policy: WebGPU binding tiers + session failure caps.
  * CPU cores and deviceMemory are not used for tiering — only WebGPU presence, probed binding size, and session signals.
  *
- * Binding bands (negative filters):
+ * Default binding bands (negative filters):
  * - &lt; 1.5 GiB → unsupported
  * - [1.5 GiB, 1.9 GiB) → standard (Qwen 0.6 only)
  * - ≥ 1.9 GiB → newest (Gemma 2 2B default; Qwen 0.6 fallback)
+ *
+ * iOS WebKit reports lower per-binding limits on recent iPhones. Field captures
+ * from iPhone 17 / Chrome iOS show a real Apple hardware adapter with
+ * `shader-f16` and a 1.0 GiB binding cap, so iOS uses a separate experimental
+ * Gemma floor at 1.0 GiB.
  *
  * The 1.9 GiB threshold sits just below the 2 GiB (2,147,483,648 bytes) value reported
  * by Apple Silicon (M1/M2/M3/M4) for `maxStorageBufferBindingSize`, so all M-series Macs
@@ -44,8 +49,8 @@ export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL = 600 * 1024 * 1
 export const MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL = 900 * 1024 * 1024;
 /** iOS WebKit experimental floor for offering Qwen on phones/tablets (900 MiB). */
 export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL = 900 * 1024 * 1024;
-/** iOS WebKit experimental floor for offering Gemma (1.3 GiB). */
-export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 1.3 * 1024 * 1024 * 1024;
+/** iOS WebKit experimental floor for offering Gemma (1.0 GiB). */
+export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 1.0 * 1024 * 1024 * 1024;
 
 /**
  * Lower bound of the "capable" band: Gemma 2 2B default + Qwen 0.6 fallback.
@@ -129,8 +134,8 @@ function bindingTier(webgpu: boolean, binding: number | null): DeviceTier {
   if (!webgpu || binding === null) return "unsupported";
   if (isIOSWebKitLocal()) {
     // iOS WebKit experimental tiering for iPhone/iPad validation:
-    // - >= 1.3 GiB: "newest" (Gemma default)
-    // - [900 MiB, 1.3 GiB): "standard" (Qwen)
+    // - >= 1.0 GiB: "newest" (Gemma default when shader-f16 is present)
+    // - [900 MiB, 1.0 GiB): "standard" (Qwen)
     // - < 900 MiB: unsupported
     if (binding < MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL) return "unsupported";
     if (binding < MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL) return "standard";
@@ -213,19 +218,10 @@ export function getLocalAiOffer(): LocalAiOffer {
     };
   }
 
-  // newest: binding ≥ 1.9 GiB (covers all Apple Silicon M-series Macs and most discrete GPUs)
+  // newest: default binding ≥ 1.9 GiB, with browser-specific experimental floors above.
   const gemma22Allowed = !sessionGemma22WebLlmFailed() && shaderF16Cached === true;
   if (gemma22Allowed) {
-    // iOS reliability strategy: lead with Qwen even on high-tier devices.
-    // Gemma remains available as an optional higher-capacity alternative.
-    if (isIOSWebKitLocal()) {
-      return {
-        enabled: true,
-        defaultModel: MODEL_QWEN_0_6,
-        boostModels: [MODEL_GEMMA_2_2B],
-      };
-    }
-    // Non-iOS: Gemma 2 2B default. Qwen 0.6 remains the safe fallback.
+    // Gemma 2 2B default. Qwen 0.6 remains the safe fallback.
     return {
       enabled: true,
       defaultModel: MODEL_GEMMA_2_2B,

@@ -66,6 +66,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        /** passwords.lu / Rams palette — partner chrome & shared branding */
+        rams: {
+          green: "#15803D",
+          orange: "#FF6B35",
+          red: "#DC2626",
+          offWhite: "#F5F5F4",
+          graphite: "#1C1C1C",
+          concrete: "#999A94",
+          olive: "#66735C",
+          beige: "#D6CBB7",
+          steel: "#D8D8D8",
+          signal: "#C0392B",
+          success: "#4CAF50",
+          darkBg: "#171717",
+          white: "#FFFFFF",
+        },
       },
       keyframes: {
         "accordion-down": {
