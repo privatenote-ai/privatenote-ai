@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Copy, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { PasskeyInfo } from "./types";
 
 type Props = {
@@ -60,6 +61,9 @@ export function AccountSecuritySection({
   const [recoveryHelpOpen, setRecoveryHelpOpen] = useState(false);
   const hasPasskeys = passkeys.length > 0;
   const hasRecoveryCodes = recoveryRemaining > 0;
+  const recoveryTotpReady = recoveryTotpCode.replace(/\D/g, "").length === 6;
+  const generateRecoveryBlockedByTotp =
+    recoveryAuthenticatorFallbackOpen && totpEnabled && !recoveryTotpReady;
   const recoveryGeneratedLabel = recoveryGeneratedAt
     ? dateFormatter.format(new Date(recoveryGeneratedAt))
     : null;
@@ -265,7 +269,12 @@ export function AccountSecuritySection({
                   variant="outline"
                   size="sm"
                   onClick={onGenerateRecoveryCodes}
-                  disabled={generatingRecoveryCodes}
+                  disabled={generatingRecoveryCodes || generateRecoveryBlockedByTotp}
+                  title={
+                    generateRecoveryBlockedByTotp
+                      ? "Enter the 6-digit authenticator code in the box below first"
+                      : undefined
+                  }
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 lg:w-auto"
                 >
                   {generatingRecoveryCodes ? "Generating..." : hasRecoveryCodes ? "Generate new codes" : "Generate recovery codes"}
@@ -275,17 +284,36 @@ export function AccountSecuritySection({
           </div>
 
           {recoveryAuthenticatorFallbackOpen && totpEnabled && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <div
+              className={cn(
+                "mt-3 rounded-lg border px-4 py-3 transition-colors",
+                recoveryTotpReady
+                  ? "border-emerald-200 bg-emerald-50/95 dark:border-emerald-800/55 dark:bg-emerald-950/30"
+                  : "border-amber-200 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/30",
+              )}
+            >
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {hasPasskeys
                   ? "Passkey unavailable or you cancelled?"
                   : "We could not complete verification"}
               </p>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                Enter the 6-digit code from your authenticator app, then tap <strong>Generate new codes</strong> again.
-              </p>
+              {recoveryTotpReady ? (
+                <div className="mt-2 flex items-start gap-2 text-sm text-emerald-900 dark:text-emerald-100">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  <p>
+                    <span className="font-medium">Code ready.</span> Use the{" "}
+                    <strong className="font-semibold">Generate new codes</strong> button in the row above to finish.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                  Type the 6-digit code from your authenticator. The <strong>Generate new codes</strong> button above
+                  turns on when the code is complete.
+                </p>
+              )}
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
+                  id="recovery-generate-totp"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
@@ -293,9 +321,19 @@ export function AccountSecuritySection({
                   value={recoveryTotpCode}
                   onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   disabled={generatingRecoveryCodes}
-                  className="h-9 max-w-xs"
+                  aria-describedby="recovery-generate-totp-hint"
+                  className={cn(
+                    "h-9 max-w-xs transition-[border-color,box-shadow]",
+                    recoveryTotpReady &&
+                      "border-emerald-500 ring-2 ring-emerald-500/35 focus-visible:ring-emerald-500/40 dark:border-emerald-500",
+                  )}
                   aria-label="Authenticator code for recovery code generation"
                 />
+                <p id="recovery-generate-totp-hint" className="sr-only">
+                  {recoveryTotpReady
+                    ? "Six digits entered. Activate Generate new codes in the recovery codes row above."
+                    : "Enter six digits; then the generate button above will enable."}
+                </p>
                 <Button
                   type="button"
                   variant="ghost"

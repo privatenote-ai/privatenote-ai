@@ -352,7 +352,8 @@ export default function SecuritySettings() {
           setRecoveryAuthenticatorFallbackOpen(true);
           toast({
             title: "Use your authenticator",
-            description: "Enter the 6-digit code below, then tap Generate new codes again.",
+            description:
+              "Enter the code below. When you have 6 digits, the Generate new codes button above turns on.",
           });
         }
         return;
