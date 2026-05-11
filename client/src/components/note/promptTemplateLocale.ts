@@ -6,7 +6,7 @@ import type {
   LocalLlmValidationIssue,
 } from "./promptTemplates";
 
-const AI_SENTENCE_LENGTH_LABELS: Record<AiSentenceLengthId, string> = {
+const AI_SENTENCE_LENGTH_LABELS: Record<Exclude<AiSentenceLengthId, "auto">, string> = {
   "1-2": "1 - 2",
   "2-3": "2 - 3",
   "4-6": "4 - 6",
@@ -595,7 +595,8 @@ export function formatSentenceLengthUserSuffix(
   preset: AiSentenceLengthId,
   language: SupportedLanguage = "en",
 ): string {
-  const label = AI_SENTENCE_LENGTH_LABELS[preset] ?? "2 - 3";
+  if (preset === "auto") return "";
+  const label = AI_SENTENCE_LENGTH_LABELS[preset];
   const fn = SENTENCE_SUFFIX[language] ?? SENTENCE_SUFFIX.en;
   return fn(label);
 }

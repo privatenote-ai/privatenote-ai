@@ -9,7 +9,21 @@ import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
 import { Sun, Moon, Monitor, Bell } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import { normalizeLanguageCode, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+
+function describeApiPreferenceError(error: unknown): string {
+  if (!(error instanceof ApiRequestError)) return "Something went wrong.";
+  try {
+    const parsed = JSON.parse(error.bodyText) as { message?: unknown };
+    if (typeof parsed.message === "string" && parsed.message.trim() !== "") {
+      return parsed.message;
+    }
+  } catch {
+    /* ignore */
+  }
+  if (error.bodyText.includes("migrations")) return "Server may need updates.";
+  return `Error ${error.status}. Try again in a moment.`;
+}
 
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
@@ -117,23 +131,24 @@ export default function AccountPreferences() {
 
   const onPreferredLanguageChange = async (nextLanguage: SupportedLanguage) => {
     if (!user) return;
+    if (!SUPPORTED_LANGUAGES.includes(nextLanguage)) return;
+    const canonical = normalizeLanguageCode(nextLanguage);
+    if (!SUPPORTED_LANGUAGES.includes(canonical)) return;
+
     const previousLanguage = preferredLanguage;
     setSavingLanguagePref(true);
-    setPreferredLanguage(nextLanguage);
-    setLanguage(nextLanguage);
+    setPreferredLanguage(canonical);
+    setLanguage(canonical);
     try {
-      await apiRequest("/api/auth/account/preferences", "PATCH", { preferredLanguage: nextLanguage });
+      await apiRequest("/api/auth/account/preferences", "PATCH", { preferredLanguage: canonical });
       setSavedIndicator(true);
       setTimeout(() => setSavedIndicator(false), 2000);
     } catch (e) {
       setPreferredLanguage(previousLanguage);
       setLanguage(previousLanguage);
-      const hint =
-        e instanceof ApiRequestError && e.bodyText.includes("migrations") ? "Server may need updates." : "";
       toast({
         title: "Could not save language",
-        description:
-          hint || (e instanceof ApiRequestError ? `Error ${e.status}. Try again in a moment.` : "Something went wrong."),
+        description: describeApiPreferenceError(e),
         variant: "destructive",
       });
     } finally {

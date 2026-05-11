@@ -4329,6 +4329,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     // Notify user by email so they know if they did not initiate this (account may be compromised)
     const userEmail = (session.email ?? "").trim().toLowerCase();
     if (userEmail) {
+      const recoveryEmailWebOrigin = getMagicLinkOrigin(env, request);
+      const recoveryEmailLogoUrl = `${recoveryEmailWebOrigin}/brand/privateNote-logo-lockup.png`;
       const locale = detectAuthEmailLocale(request);
       const recoveryCodesCopy = {
         en: {
@@ -4379,6 +4381,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           `${recoveryCodesCopy.footer}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
+              <tr>
+                <td>
+                  <a href="${recoveryEmailWebOrigin}" style="text-decoration: none;">
+                    <img src="${recoveryEmailLogoUrl}" alt="PrivateNote" width="200" border="0" style="display: block; max-width: 200px; height: auto; border: 0; outline: none;" />
+                  </a>
+                </td>
+              </tr>
+            </table>
             <h2>${recoveryCodesCopy.title}</h2>
             <p>${recoveryCodesCopy.body1}</p>
             <p>${recoveryCodesCopy.body2}</p>

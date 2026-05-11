@@ -52,6 +52,7 @@ import {
   buildPromptFromTemplate,
   formatSentenceLengthUserSuffix,
   applySentenceLengthToUserPrompt,
+  DEFAULT_AI_SENTENCE_LENGTH,
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
@@ -104,7 +105,8 @@ function askAnythingScaffoldPrompt(sentenceLength: AiSentenceLengthId, language:
   const templates = getPromptTemplatesForLanguage(language);
   const tmpl = templates.find((x) => x.id === "ask-anything");
   const base = tmpl?.userTemplate ?? "";
-  return `${base}\n${formatSentenceLengthUserSuffix(sentenceLength, language)}`;
+  const suffix = formatSentenceLengthUserSuffix(sentenceLength, language);
+  return suffix ? `${base}\n${suffix}` : base;
 }
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
@@ -149,7 +151,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const aiComposerAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // ── AI state ──────────────────────────────────────────────────────────────
-  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt("2-3", language));
+  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt(DEFAULT_AI_SENTENCE_LENGTH, language));
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
     "improve" | "summarize" | "secure" | "ask"
@@ -168,7 +170,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
-  const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("2-3");
+  const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>(DEFAULT_AI_SENTENCE_LENGTH);
   const [showPrompt, setShowPrompt] = useState<boolean>(true);
   const [originalPrompt, setOriginalPrompt] = useState<string>("");
   const [userPromptHistory, setUserPromptHistory] = useState<string[]>([]);
@@ -784,7 +786,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setCreatedNote(null);
     setNoteContent("");
     resetPrefill();
-    setAiPrompt(askAnythingScaffoldPrompt("2-3", language));
+    setAiPrompt(askAnythingScaffoldPrompt(DEFAULT_AI_SENTENCE_LENGTH, language));
     setOriginalPrompt("");
     setUserPromptHistory([]);
     setTransformHistory([]);
@@ -792,7 +794,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowPrompt(true);
     setAiDraftAccepted(false);
     setSelectedTemplateId("ask-anything");
-    setAiSentenceLength("2-3");
+    setAiSentenceLength(DEFAULT_AI_SENTENCE_LENGTH);
     setAiEnhancementType(
       getPromptTemplatesForLanguage(language).find((x) => x.id === "ask-anything")
         ?.enhancementType ?? "improve",

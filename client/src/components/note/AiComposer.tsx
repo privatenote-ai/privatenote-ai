@@ -13,7 +13,8 @@ import {
 import {
   getPromptTemplatesForLanguage,
   getPromptTemplateById,
-  AI_SENTENCE_LENGTH_OPTIONS,
+  AI_SENTENCE_LENGTH_OPTION_ORDER,
+  getAiSentenceLengthChipLabel,
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
@@ -234,15 +235,15 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             <div className="mb-2 mt-5">
               <StepRow step={2} label={t.aiComposerLengthInSentences} />
               <div className="flex flex-wrap gap-2">
-                {AI_SENTENCE_LENGTH_OPTIONS.map((opt) => (
+                {AI_SENTENCE_LENGTH_OPTION_ORDER.map((optId) => (
                   <button
-                    key={opt.id}
+                    key={optId}
                     type="button"
-                    onClick={() => onSentenceLengthChange(opt.id)}
-                    className={templateChipClass(selectedSentenceLength === opt.id)}
-                    aria-pressed={selectedSentenceLength === opt.id}
+                    onClick={() => onSentenceLengthChange(optId)}
+                    className={templateChipClass(selectedSentenceLength === optId)}
+                    aria-pressed={selectedSentenceLength === optId}
                   >
-                    {opt.label}
+                    {getAiSentenceLengthChipLabel(optId, t)}
                   </button>
                 ))}
               </div>

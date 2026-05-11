@@ -10,7 +10,7 @@ import type { ModelTier } from "@shared/modelTier";
 type PromptEnhancementType = "improve" | "summarize" | "secure" | "ask";
 
 /** Matches sentence-length chip ids used when resolving output length. */
-type AiSentenceLengthPresetId = "1-2" | "2-3" | "4-6" | "7-10";
+type AiSentenceLengthPresetId = "auto" | "1-2" | "2-3" | "4-6" | "7-10";
 
 export type AskAnythingIntentRoute =
   | "message"
@@ -318,7 +318,7 @@ export function getLocalizedOutputLengthInstruction(
   );
 }
 
-const RANGE: Record<AiSentenceLengthPresetId, string> = {
+const RANGE: Record<Exclude<AiSentenceLengthPresetId, "auto">, string> = {
   "1-2": "1–2",
   "2-3": "2–3",
   "4-6": "4–6",
@@ -332,7 +332,7 @@ export function getLocalizedResolveOutputLengthLine(
   language: SupportedLanguage,
 ): string {
   const base = getLocalizedOutputLengthInstruction(tier, enhancementType, language);
-  if (!preset || enhancementType === "secure") return base;
+  if (!preset || preset === "auto" || enhancementType === "secure") return base;
   const range = RANGE[preset];
   if (enhancementType === "summarize") {
     return L(
@@ -405,7 +405,7 @@ export function getLocalizedUltraSmallOutputLengthLines(
     );
   }
 
-  if (preset && enhancementType !== "secure") {
+  if (preset && preset !== "auto" && enhancementType !== "secure") {
     const range = RANGE[preset];
     if (enhancementType === "summarize") {
       lengthLine = L(

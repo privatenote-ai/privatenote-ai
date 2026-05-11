@@ -4,6 +4,7 @@ import {
   type GuidedWritingPlaceholder,
   type LocalFallbackTemplateOption,
   type GuidedWritingTemplateSet,
+  type GuidedWritingSentenceBucketId,
   LOCAL_FALLBACK_TEMPLATE_IDS,
   type LocalFallbackTemplateId,
   STANDARD_GUIDED_WRITING_BUCKETS,
@@ -256,13 +257,18 @@ export function getGuidedWritingTemplateSet(
   return set[templateId];
 }
 
+function guidedWritingBucketForSentenceLength(id: AiSentenceLengthId): GuidedWritingSentenceBucketId {
+  return id === "auto" ? "4-6" : id;
+}
+
 export function getLocalFallbackTemplateOptions(
   templateId: string | null | undefined,
   sentenceLength: AiSentenceLengthId,
   language: SupportedLanguage = "en",
 ): readonly LocalFallbackTemplateOption[] {
   const tplSet = getGuidedWritingTemplateSet(templateId, language);
-  return tplSet[sentenceLength].map((opt) => ({
+  const bucket = guidedWritingBucketForSentenceLength(sentenceLength);
+  return tplSet[bucket].map((opt) => ({
     ...opt,
     text: renderGuidedWritingTemplateText(opt.textTemplate, language),
   }));
@@ -272,7 +278,7 @@ export function getAllGuidedWritingTemplateIds(): readonly LocalFallbackTemplate
   return LOCAL_FALLBACK_TEMPLATE_IDS;
 }
 
-export function getStandardGuidedWritingBuckets(): readonly AiSentenceLengthId[] {
+export function getStandardGuidedWritingBuckets(): readonly GuidedWritingSentenceBucketId[] {
   return STANDARD_GUIDED_WRITING_BUCKETS;
 }
 

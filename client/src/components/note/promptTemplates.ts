@@ -24,7 +24,7 @@ export function isUltraSmallWebLlmModel(modelId: string): boolean {
 }
 import { tryExtractMeetingRecipientAndTopic } from "@/utils/meetingRequestStructuredHint";
 import { buildSmallTierStructuredFieldsHint } from "@/utils/templateStructuredHint";
-import type { SupportedLanguage } from "@/utils/translation";
+import type { SupportedLanguage, Translations } from "@/utils/translation";
 import {
   mergePromptTemplatesForLanguage,
   formatSentenceLengthUserSuffix as formatSentenceLengthForLocale,
@@ -119,15 +119,43 @@ export function classifyAskAnythingIntent(
   return classifyAskAnythingIntentForLocale(userInput, "en");
 }
 
-export type AiSentenceLengthId = "1-2" | "2-3" | "4-6" | "7-10";
+export type AiSentenceLengthId = "auto" | "1-2" | "2-3" | "4-6" | "7-10";
 
-/** Chips for “length in sentences” on the Write with AI flow. */
-export const AI_SENTENCE_LENGTH_OPTIONS: readonly { id: AiSentenceLengthId; label: string }[] = [
-  { id: "1-2", label: "1 - 2" },
-  { id: "2-3", label: "2 - 3" },
-  { id: "4-6", label: "4 - 6" },
-  { id: "7-10", label: "7 - 10" },
+/** Default: no fixed sentence count in the visible prompt; model follows general length guidance. */
+export const DEFAULT_AI_SENTENCE_LENGTH: AiSentenceLengthId = "auto";
+
+/** Display order for “length in sentences” chips in Write with AI. */
+export const AI_SENTENCE_LENGTH_OPTION_ORDER: readonly AiSentenceLengthId[] = [
+  "auto",
+  "1-2",
+  "2-3",
+  "4-6",
+  "7-10",
 ];
+
+const AI_SENTENCE_LENGTH_LABEL_KEYS: Record<AiSentenceLengthId, string> = {
+  auto: "aiComposerSentenceLengthAuto",
+  "1-2": "aiComposerSentenceLength12",
+  "2-3": "aiComposerSentenceLength23",
+  "4-6": "aiComposerSentenceLength46",
+  "7-10": "aiComposerSentenceLength710",
+};
+
+const AI_SENTENCE_LENGTH_LABEL_FALLBACK_EN: Record<AiSentenceLengthId, string> = {
+  auto: "Natural length",
+  "1-2": "1 - 2",
+  "2-3": "2 - 3",
+  "4-6": "4 - 6",
+  "7-10": "7 - 10",
+};
+
+/** Localized chip label for the sentence-length control (keys `aiComposerSentenceLength*`). */
+export function getAiSentenceLengthChipLabel(id: AiSentenceLengthId, t: Translations): string {
+  const key = AI_SENTENCE_LENGTH_LABEL_KEYS[id];
+  const fromT = t[key];
+  if (typeof fromT === "string" && fromT.trim() !== "") return fromT;
+  return AI_SENTENCE_LENGTH_LABEL_FALLBACK_EN[id];
+}
 
 const LEGACY_SENTENCE_USER_SUFFIX_RE = /\s*Use the sentence length I selected\.$/;
 

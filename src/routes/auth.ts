@@ -161,6 +161,28 @@ async function readJsonBody(request: Request): Promise<any> {
   }
 }
 
+/** BCP-47 primary subtag only — must match client `SUPPORTED_LANGUAGES`. */
+const ACCOUNT_PREFERRED_LANGUAGE_CODES = new Set(["en", "de", "fr", "es"]);
+
+function normalizeAccountPreferredLanguageInput(
+  raw: unknown
+): { ok: true; value: string | null } | { ok: false; message: string } {
+  if (raw === null) return { ok: true, value: null };
+  if (raw === "") return { ok: true, value: null };
+  if (typeof raw !== "string") {
+    return { ok: false, message: "preferredLanguage must be a string or null" };
+  }
+  const primary = raw.trim().toLowerCase().split("-")[0];
+  if (ACCOUNT_PREFERRED_LANGUAGE_CODES.has(primary)) {
+    return { ok: true, value: primary };
+  }
+  return {
+    ok: false,
+    message:
+      "preferredLanguage must be one of en, de, fr, es (or a regional tag such as en-US), or null",
+  };
+}
+
 /**
  * Normalize TOTP from JSON (string with optional separators, or integer 0–999999).
  * Returns a 6-digit string or "" so the second-factor gate does not ignore valid codes
@@ -3941,7 +3963,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     let body: { emailNotifications?: boolean; preferredLanguage?: string | null };
     try {
-      body = (await request.json()) as { emailNotifications?: boolean; preferredLanguage?: string | null };
+      body = (await readJsonBody(request)) as { emailNotifications?: boolean; preferredLanguage?: string | null };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
@@ -3964,14 +3986,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
 
     let normalizedPreferredLanguage: string | null | undefined = undefined;
     if (hasPreferredLanguage) {
-      const raw = body.preferredLanguage;
-      if (raw === null || raw === "") {
-        normalizedPreferredLanguage = null;
-      } else if (raw === "en" || raw === "de" || raw === "fr" || raw === "es") {
-        normalizedPreferredLanguage = raw;
-      } else {
-        return jsonResponse({ message: "preferredLanguage must be one of en, de, fr, es, or null" }, 400, request);
+      const parsed = normalizeAccountPreferredLanguageInput(body.preferredLanguage);
+      if (!parsed.ok) {
+        return jsonResponse({ message: parsed.message }, 400, request);
       }
+      normalizedPreferredLanguage = parsed.value;
     }
 
     const updates: string[] = [];
@@ -4620,12 +4639,23 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     // Notify user by email so they know if they did not initiate this (account may be compromised)
     const userEmail = (session.email ?? "").trim().toLowerCase();
     if (userEmail) {
+      const recoveryEmailWebOrigin = getMagicLinkOrigin(env, request);
+      const recoveryEmailLogoUrl = `${recoveryEmailWebOrigin}/brand/privateNote-logo-lockup.png`;
       const emailResult = await sendEmail(env, {
         to: userEmail,
         subject: "Recovery codes regenerated - PrivateNote",
         text: `Your PrivateNote recovery codes were regenerated. Your previous unused recovery codes no longer work.\n\nIf you did not do this, please secure your account (change password if applicable, revoke other sessions, and add or verify your passkey) from Security Settings.\n\nThis is an automated security notification.`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
+              <tr>
+                <td>
+                  <a href="${recoveryEmailWebOrigin}" style="text-decoration: none;">
+                    <img src="${recoveryEmailLogoUrl}" alt="PrivateNote" width="200" border="0" style="display: block; max-width: 200px; height: auto; border: 0; outline: none;" />
+                  </a>
+                </td>
+              </tr>
+            </table>
             <h2>Recovery codes regenerated</h2>
             <p>Your PrivateNote recovery codes were regenerated. Your previous <strong>unused</strong> recovery codes no longer work.</p>
             <p>If you did not do this, please secure your account:</p>

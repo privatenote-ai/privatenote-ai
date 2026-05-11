@@ -89,6 +89,7 @@ export default function SecuritySettings() {
   const [passkeyResetDialogOpen, setPasskeyResetDialogOpen] = useState(false);
   const [passkeyResetTotpCode, setPasskeyResetTotpCode] = useState("");
   const [recoveryTotpCode, setRecoveryTotpCode] = useState("");
+  const [recoveryAuthenticatorFallbackOpen, setRecoveryAuthenticatorFallbackOpen] = useState(false);
   const [managePasskeysOpen, setManagePasskeysOpen] = useState(false);
   const [renamingPasskeyId, setRenamingPasskeyId] = useState<string | null>(null);
   const [deletingPasskeyId, setDeletingPasskeyId] = useState<string | null>(null);
@@ -303,22 +304,59 @@ export default function SecuritySettings() {
     }
   }, [toast, refreshAll]);
 
+  const dismissRecoveryAuthenticatorFallback = useCallback(() => {
+    setRecoveryAuthenticatorFallbackOpen(false);
+    setRecoveryTotpCode("");
+  }, []);
+
   const handleGenerateRecoveryCodes = useCallback(async () => {
     setGeneratingRecoveryCodes(true);
     try {
-      const useTotp =
-        passkeys.length > 0 && totpEnabled && recoveryTotpCode.trim().length === 6;
-      const response = useTotp
-        ? await apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST", {
-            totpCode: recoveryTotpCode.trim(),
-          })
-        : await withOptionalStepUp(
-            () => apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST"),
-            stepUpForRetry,
+      const useTotp = totpEnabled && recoveryTotpCode.trim().length === 6;
+      if (useTotp) {
+        const response = await apiRequest<{ codes: string[] }>("/api/auth/recovery-codes/generate", "POST", {
+          totpCode: recoveryTotpCode.trim(),
+        });
+        setRecoveryCodes(response.codes);
+        setRecoveryTotpCode("");
+        setRecoveryAuthenticatorFallbackOpen(false);
+        toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+        return;
+      }
+
+      try {
+        const response = await apiRequest<{ codes: string[] }>(
+          "/api/auth/recovery-codes/generate",
+          "POST",
+        );
+        setRecoveryCodes(response.codes);
+        setRecoveryTotpCode("");
+        setRecoveryAuthenticatorFallbackOpen(false);
+        toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+        return;
+      } catch (firstError) {
+        if (!isForbiddenApiError(firstError)) throw firstError;
+        const stepped = await stepUpForRetry();
+        if (stepped) {
+          const response = await apiRequest<{ codes: string[] }>(
+            "/api/auth/recovery-codes/generate",
+            "POST",
           );
-      setRecoveryCodes(response.codes);
-      setRecoveryTotpCode("");
-      toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+          setRecoveryCodes(response.codes);
+          setRecoveryTotpCode("");
+          setRecoveryAuthenticatorFallbackOpen(false);
+          toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+          return;
+        }
+        if (totpEnabled) {
+          setRecoveryAuthenticatorFallbackOpen(true);
+          toast({
+            title: "Use your authenticator",
+            description: "Enter the 6-digit code below, then tap Generate new codes again.",
+          });
+        }
+        return;
+      }
     } catch (error) {
       toast({
         title: "Recovery codes failed",
@@ -329,7 +367,7 @@ export default function SecuritySettings() {
       setGeneratingRecoveryCodes(false);
       await refreshAll();
     }
-  }, [passkeys.length, recoveryTotpCode, stepUpForRetry, toast, totpEnabled, refreshAll]);
+  }, [recoveryTotpCode, stepUpForRetry, toast, totpEnabled, refreshAll]);
 
   const handleRevokeSession = useCallback(
     async (sessionId: string) => {
@@ -823,8 +861,10 @@ export default function SecuritySettings() {
         totpSettingUp={totpSettingUp}
         totpDisabling={totpDisabling}
         generatingRecoveryCodes={generatingRecoveryCodes}
+        recoveryAuthenticatorFallbackOpen={recoveryAuthenticatorFallbackOpen}
         recoveryTotpCode={recoveryTotpCode}
         onRecoveryTotpChange={setRecoveryTotpCode}
+        onDismissRecoveryAuthenticatorFallback={dismissRecoveryAuthenticatorFallback}
         onCopyEmail={() => void copyEmail()}
         onOpenChangeEmail={() => setEmailChangeDialogOpen(true)}
         onTotpDisable={() => void handleTotpDisable()}

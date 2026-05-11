@@ -17,9 +17,11 @@ type Props = {
   totpSettingUp: boolean;
   totpDisabling: boolean;
   generatingRecoveryCodes: boolean;
-  /** When passkeys + TOTP, optional code to generate recovery codes without a passkey prompt. */
+  /** Shown after passkey step-up fails or is cancelled; user enters TOTP and taps Generate again. */
+  recoveryAuthenticatorFallbackOpen: boolean;
   recoveryTotpCode: string;
   onRecoveryTotpChange: (value: string) => void;
+  onDismissRecoveryAuthenticatorFallback: () => void;
   onCopyEmail: () => void;
   onOpenChangeEmail: () => void;
   onTotpDisable: () => void;
@@ -41,8 +43,10 @@ export function AccountSecuritySection({
   totpSettingUp,
   totpDisabling,
   generatingRecoveryCodes,
+  recoveryAuthenticatorFallbackOpen,
   recoveryTotpCode,
   onRecoveryTotpChange,
+  onDismissRecoveryAuthenticatorFallback,
   onCopyEmail,
   onOpenChangeEmail,
   onTotpDisable,
@@ -255,23 +259,6 @@ export function AccountSecuritySection({
                 {recoveryGeneratedLabel && (
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Last generated {recoveryGeneratedLabel}</p>
                 )}
-                {hasPasskeys && totpEnabled && (
-                  <div className="mt-3 max-w-xs">
-                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-                      6-digit authenticator code (optional — skips passkey prompt)
-                    </p>
-                    <Input
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      placeholder="6-digit authenticator code"
-                      value={recoveryTotpCode}
-                      onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      disabled={generatingRecoveryCodes}
-                      className="h-9"
-                    />
-                  </div>
-                )}
               </div>
               <div className="lg:self-center">
                 <Button
@@ -286,6 +273,42 @@ export function AccountSecuritySection({
               </div>
             </div>
           </div>
+
+          {recoveryAuthenticatorFallbackOpen && totpEnabled && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {hasPasskeys
+                  ? "Passkey unavailable or you cancelled?"
+                  : "We could not complete verification"}
+              </p>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                Enter the 6-digit code from your authenticator app, then tap <strong>Generate new codes</strong> again.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="6-digit code"
+                  value={recoveryTotpCode}
+                  onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  disabled={generatingRecoveryCodes}
+                  className="h-9 max-w-xs"
+                  aria-label="Authenticator code for recovery code generation"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                  onClick={onDismissRecoveryAuthenticatorFallback}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Collapsible open={recoveryHelpOpen} onOpenChange={setRecoveryHelpOpen}>
             <div className="mt-3">
               <CollapsibleTrigger asChild>

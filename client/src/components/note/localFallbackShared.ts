@@ -78,7 +78,13 @@ export type LocalFallbackTemplateOption = GuidedWritingTemplateOption & {
   text: string;
 };
 
-export type GuidedWritingTemplateSet = Record<AiSentenceLengthId, readonly GuidedWritingTemplateOption[]>;
+/** Sentence-length buckets stored in guided-writing datasets (no `"auto"` row). */
+export type GuidedWritingSentenceBucketId = Exclude<AiSentenceLengthId, "auto">;
+
+export type GuidedWritingTemplateSet = Record<
+  GuidedWritingSentenceBucketId,
+  readonly GuidedWritingTemplateOption[]
+>;
 
 export const LOCAL_FALLBACK_TEMPLATE_IDS = [
   "ask-anything",
@@ -96,12 +102,12 @@ export const LOCAL_FALLBACK_TEMPLATE_IDS = [
 
 export type LocalFallbackTemplateId = (typeof LOCAL_FALLBACK_TEMPLATE_IDS)[number];
 
-export const STANDARD_GUIDED_WRITING_BUCKETS: readonly AiSentenceLengthId[] = [
+export const STANDARD_GUIDED_WRITING_BUCKETS: readonly GuidedWritingSentenceBucketId[] = [
   "1-2",
   "2-3",
   "4-6",
   "7-10",
-] as const;
+];
 
 export function guidedWritingOption(
   label: string,

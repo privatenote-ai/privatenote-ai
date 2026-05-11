@@ -16,6 +16,13 @@ describe("guided writing templates", () => {
     assert.deepEqual(unknown, askAnything);
   });
 
+  it("maps natural-length (auto) to the 4–6 starter bucket for offline templates", () => {
+    const id = "thank-you" as const;
+    const auto = getLocalFallbackTemplateOptions(id, "auto");
+    const mid = getLocalFallbackTemplateOptions(id, "4-6");
+    assert.deepEqual(auto, mid);
+  });
+
   it("renders standardized placeholder labels for users", () => {
     const rendered = renderGuidedWritingTemplateText(
       "Hi {{recipientName}}, thank you for {{supportType}}.",
