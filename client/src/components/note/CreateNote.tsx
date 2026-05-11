@@ -34,7 +34,6 @@ import {
   getLocalAiSupportHint,
   getRecommendedLocalModelId,
   MODEL_GEMMA_2_2B,
-  MODEL_LLAMA_3_2_1B,
   MODEL_QWEN_0_6,
   resetLocalAiLoadState,
   clearEngine,
@@ -291,12 +290,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       } catch (error) {
         if (modelId === MODEL_GEMMA_2_2B) {
           console.warn("[AI] Gemma 2 failed; falling back to compact local model:", error);
-          clearEngine();
-          await initializeClientLLM(onProgress, MODEL_QWEN_0_6);
-          return;
-        }
-        if (modelId === MODEL_LLAMA_3_2_1B) {
-          console.warn("[AI] Llama 3.2 1B failed; falling back to Qwen 0.6:", error);
           clearEngine();
           await initializeClientLLM(onProgress, MODEL_QWEN_0_6);
           return;

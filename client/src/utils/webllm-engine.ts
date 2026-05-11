@@ -73,7 +73,6 @@ function isIosWebKitForWebLlm(): boolean {
 function contextWindowForModelRecord(modelId: string): number {
   if (!isIosWebKitForWebLlm()) return 4096;
   if (/Qwen3-0\.6B/i.test(modelId)) return 2048;
-  if (/Llama-3\.2-1B/i.test(modelId)) return 2048;
   if (/gemma-2-2b/i.test(modelId)) return 2048;
   return 4096;
 }

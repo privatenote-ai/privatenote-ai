@@ -8,12 +8,10 @@
  * - ≥ 1.9 GiB → newest (Gemma 2 2B default; Qwen 0.6 fallback)
  *
  * iOS WebKit reports lower per-binding limits on recent iPhones, so tiering uses
- * experimental floors (600 MiB minimum / 1.0 GiB “newest” band — aligns with desktop
- * Safari’s experimental gate). Despite that,
- * On iOS WebKit we default to **Llama-3.2-1B q4f16** (lighter footprint than
- * Qwen3-0.6B in MLC metadata). Gemma 2 2B is not auto-offered — it still crashes
- * or evicts the tab on many phones when loaded first. Qwen 0.6 remains available
- * as a fallback model id.
+ * experimental floors (900 MiB Qwen / 1.0 GiB “newest” band). Despite that,
+ * {@link getLocalAiOffer} keeps **Qwen 0.6 only** on iOS: Gemma 2 2B still
+ * crashes or evicts the tab during load on real devices when used as the default —
+ * binding size is not a sufficient predictor of stability.
  *
  * The 1.9 GiB threshold sits just below the 2 GiB (2,147,483,648 bytes) value reported
  * by Apple Silicon (M1/M2/M3/M4) for `maxStorageBufferBindingSize`, so all M-series Macs
@@ -35,8 +33,6 @@ import {
 } from "./localLlmSessionSignals";
 
 export const MODEL_QWEN_0_6 = "Qwen3-0.6B-q4f16_1-MLC";
-/** Preferred on iPhone/iPad Safari — mirror weights + wasm on CDN when using custom WebLLM host. */
-export const MODEL_LLAMA_3_2_1B = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
 export const MODEL_GEMMA_2_2B = "gemma-2-2b-it-q4f16_1-MLC";
 /** Transformers.js Hub id — experimental boost on “newest” tier only. */
 export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
@@ -52,13 +48,8 @@ export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI = 1.0 * 1024 * 1024 * 1024;
 export const MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL = 600 * 1024 * 1024;
 /** Desktop Safari experimental floor for offering Gemma (900 MiB). */
 export const MIN_BINDING_FOR_CAPABLE_DESKTOP_SAFARI_EXPERIMENTAL = 900 * 1024 * 1024;
-/**
- * iOS WebKit minimum `maxStorageBufferBindingSize` to offer on-device AI at all.
- * Real phones often report ~680–720 MiB; the legacy 900 MiB gate blocked Llama-first policy.
- * Same value as {@link MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL} (600 MiB).
- */
-export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL =
-  MIN_BINDING_FOR_QWEN06_DESKTOP_SAFARI_EXPERIMENTAL;
+/** iOS WebKit experimental floor for offering Qwen on phones/tablets (900 MiB). Weaker devices stay unsupported. */
+export const MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL = 900 * 1024 * 1024;
 /** iOS WebKit experimental floor for offering Gemma (1.0 GiB). */
 export const MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL = 1.0 * 1024 * 1024 * 1024;
 
@@ -146,8 +137,8 @@ function bindingTier(webgpu: boolean, binding: number | null): DeviceTier {
     // iOS WebKit experimental tiering (diagnostics / session caps only).
     // Model choice ignores "newest" on iOS — see {@link getLocalAiOffer}.
     // - >= 1.0 GiB: "newest"
-    // - [600 MiB, 1.0 GiB): "standard"
-    // - < 600 MiB: unsupported (same gate as desktop Safari experimental)
+    // - [900 MiB, 1.0 GiB): "standard"
+    // - < 900 MiB: unsupported
     if (binding < MIN_BINDING_FOR_QWEN06_IOS_WEBKIT_EXPERIMENTAL) return "unsupported";
     if (binding < MIN_BINDING_FOR_CAPABLE_IOS_WEBKIT_EXPERIMENTAL) return "standard";
     return "newest";
@@ -211,9 +202,9 @@ function getMinBindingForQwen06CurrentBrowser(): number {
 /**
  * Layer 3 — what we may load and offer in UI.
  *
- * iOS WebKit uses Llama-3.2-1B first with Qwen 0.6 as fallback id. Non‑iOS:
- * standard tier → Qwen 0.6; newest tier → Gemma 2 2B when shader‑f16 is available,
- * otherwise Qwen 0.6.
+ * All accounts use Qwen 0.6 on standard-tier devices. Newest-tier devices use
+ * Gemma 2 2B when shader-f16 is available, with Qwen 0.6 as fallback if the
+ * larger model is not allowed or fails in the session.
  */
 export function getLocalAiOffer(): LocalAiOffer {
   const tier = getDeviceTier();
@@ -221,13 +212,13 @@ export function getLocalAiOffer(): LocalAiOffer {
     return { enabled: false, defaultModel: null, boostModels: [] };
   }
 
-  // iPhone/iPad WebKit: Llama-3.2-1B first (smaller than Qwen3-0.6 in MLC VRAM hints).
-  // No Gemma 2 2B default — tab crashes on load remain common. Qwen 0.6 as fallback id.
+  // iPhone/iPad WebKit: never auto-offer Gemma 2 2B — loading Gemma routinely crashes the page.
+  // Qwen 0.6 is the only supported WebLLM default here.
   if (isIOSWebKitLocal()) {
     return {
       enabled: true,
-      defaultModel: MODEL_LLAMA_3_2_1B,
-      boostModels: [MODEL_QWEN_0_6],
+      defaultModel: MODEL_QWEN_0_6,
+      boostModels: [],
     };
   }
 

@@ -451,7 +451,46 @@ export const AiComposer: React.FC<AiComposerProps> = ({
           </div>
         ) : noteContent ? (
           <div>
-            <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-x-2 gap-y-2">
+            {/* Mobile: stack back / title / KB so nothing shares one cramped row */}
+            <div className="mb-2 space-y-2 md:hidden">
+              <div className="flex justify-start">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  aria-label={
+                    aiDraftAccepted
+                      ? t.aiComposerAriaReturnToEditing
+                      : transformHistory.length > 0
+                        ? t.aiComposerAriaUndoLastChange
+                        : t.aiComposerAriaBackToPrompt
+                  }
+                  className="text-xs font-medium flex items-center shrink-0 rounded-lg border-2 border-blue-600 bg-white px-2.5 py-1 text-blue-700 shadow-sm hover:bg-blue-50 dark:border-blue-400 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                >
+                  <ArrowLeft
+                    className="h-3.5 w-3.5 mr-1 shrink-0 text-blue-600 dark:text-blue-400"
+                    aria-hidden
+                    strokeWidth={2.5}
+                  />
+                  {aiDraftAccepted ? t.aiComposerBack : transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
+                </button>
+              </div>
+              <h4 className="text-center text-sm font-medium text-gray-700 dark:text-gray-300 px-1 leading-snug">
+                {t.aiComposerGeneratedContent}{" "}
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                  {t.aiComposerYouCanEditBelow}
+                </span>
+              </h4>
+              <div className="flex justify-end">
+                <NotePlaintextUtf8Meter
+                  noteContent={noteContent}
+                  maxBytes={MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES}
+                  className="mb-0 text-right"
+                />
+              </div>
+            </div>
+
+            {/* md+: original single-row toolbar */}
+            <div className="mb-2 hidden md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end md:gap-x-2 md:gap-y-2">
               <div className="justify-self-start self-end">
                 <button
                   type="button"

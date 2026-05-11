@@ -35,7 +35,6 @@ import {
   savedMobileModelOverGpuBindingCap,
   isLocalLlmPremium,
   MODEL_QWEN_0_6,
-  MODEL_LLAMA_3_2_1B,
   MODEL_GEMMA_2_2B,
   MODEL_GEMMA_4_TRANSFORMER,
 } from "./recommendedLocalModel";
@@ -84,7 +83,7 @@ function logWebLlmChat(phase: string, payload: Record<string, unknown>): void {
 }
 
 /** Picker ordering (first in catalog wins). Policy: {@link getLocalAiOffer}. */
-const PREFERRED_MODELS = [MODEL_LLAMA_3_2_1B, MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
+const PREFERRED_MODELS = [MODEL_QWEN_0_6, MODEL_GEMMA_2_2B];
 
 const DEFAULT_MODEL = MODEL_QWEN_0_6;
 
@@ -1584,7 +1583,6 @@ export {
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
   MODEL_QWEN_0_6,
-  MODEL_LLAMA_3_2_1B,
   MODEL_GEMMA_2_2B,
   MODEL_GEMMA_4_TRANSFORMER,
   MIN_BINDING_FOR_QWEN06,

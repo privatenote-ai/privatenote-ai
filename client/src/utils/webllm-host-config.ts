@@ -30,13 +30,6 @@ export const OUR_WEBLLM_MODEL_RECORDS: OurWebLLMModelRecord[] = [
     vram_required_MB: 1403.34,
     low_resource_required: true,
   },
-  /** Lighter than Qwen3-0.6B per MLC table — default on iOS WebKit for field testing (mirror HF mlc-ai bundle + wasm). */
-  {
-    model_id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-    wasm_file: 'Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm',
-    vram_required_MB: 879.04,
-    low_resource_required: true,
-  },
   {
     model_id: 'gemma-2-2b-it-q4f16_1-MLC',
     wasm_file: 'gemma-2-2b-it-q4f16_1-ctx4k_cs1k-webgpu.wasm',
