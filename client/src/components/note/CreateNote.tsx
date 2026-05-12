@@ -68,6 +68,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Shield,
   Lock,
@@ -92,6 +93,7 @@ import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import type { SupportedLanguage } from "@/utils/translation";
+import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -311,12 +313,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiModelProgress(null);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
-      const message = error instanceof Error ? error.message : String(error);
-      toast({
-        title: "On-device AI could not start",
-        description: message,
-        variant: "destructive",
-      });
       setAiModelProgress(null);
       offerTemplateFallback();
     } finally {
@@ -586,6 +582,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return;
     }
 
+    if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
+      toast({
+        title: t.aiComposerPlaceholdersToastTitle,
+        description: t.aiComposerPlaceholdersBlockShare,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (utf8ByteLength(noteContent) > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
       toast({
         title: "Note too large",
@@ -832,7 +837,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setNoteContentFromAiOutput(text);
     setTransformHistory([]);
     setShowPrompt(false);
-    setAiDraftAccepted(true);
+    setAiDraftAccepted(false);
   }, [setNoteContentFromAiOutput]);
 
   const executeAiGenerate = async (
@@ -858,11 +863,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiDraftAccepted(false);
     } catch (error) {
       console.warn("[AI] Failed to generate content:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate AI content. Please try again.",
-        variant: "destructive",
-      });
+      if (isLocalAiSupported()) {
+        toast({
+          title: "Private AI paused",
+          description: "On-device generation did not finish. You can edit the prompt, try again, or use the templates below.",
+        });
+      }
     } finally {
       setIsGeneratingContent(false);
     }
@@ -933,7 +939,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiDraftAccepted(false);
       toast({ title: "Content Improved", description: "The AI has refined your content for better clarity and style." });
     } catch {
-      toast({ title: "Error", description: "Failed to improve content. Please try again.", variant: "destructive" });
+      if (isLocalAiSupported()) {
+        toast({
+          title: "No change applied",
+          description: "On-device AI could not refine this pass. Your previous text is still there.",
+        });
+      }
     } finally {
       setIsGeneratingContent(false);
       setAiProgress(null);
@@ -951,7 +962,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiDraftAccepted(false);
       toast({ title: "Content Summarized", description: "The AI has summarized your content to its key points." });
     } catch {
-      toast({ title: "Error", description: "Failed to summarize content. Please try again.", variant: "destructive" });
+      if (isLocalAiSupported()) {
+        toast({
+          title: "No change applied",
+          description: "On-device AI could not summarize this pass. Your previous text is still there.",
+        });
+      }
     } finally {
       setIsGeneratingContent(false);
       setAiProgress(null);
@@ -969,7 +985,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiDraftAccepted(false);
       toast({ title: "Content Simplified", description: "The AI has simplified your content for easier reading." });
     } catch {
-      toast({ title: "Error", description: "Failed to simplify content. Please try again.", variant: "destructive" });
+      if (isLocalAiSupported()) {
+        toast({
+          title: "No change applied",
+          description: "On-device AI could not simplify this pass. Your previous text is still there.",
+        });
+      }
     } finally {
       setIsGeneratingContent(false);
       setAiProgress(null);
@@ -995,7 +1016,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiDraftAccepted(false);
       toast({ title: "Content Regenerated", description: "The AI has created a new version based on your original prompt." });
     } catch {
-      toast({ title: "Error", description: "Failed to regenerate content. Please try again.", variant: "destructive" });
+      if (isLocalAiSupported()) {
+        toast({
+          title: "No change applied",
+          description: "On-device AI could not regenerate this pass. Your previous text is still there.",
+        });
+      }
     } finally {
       setIsGeneratingContent(false);
       setAiProgress(null);
@@ -1364,21 +1390,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Local AI couldn&apos;t start</AlertDialogTitle>
+            <AlertDialogTitle>Continue with built-in templates</AlertDialogTitle>
             <AlertDialogDescription>
-              We couldn&apos;t prepare on-device AI on this device right now. You can retry after
-              clearing the partial download, or continue with built-in writing templates.
+              On-device private AI is not running on this device right now. You can keep writing
+              using the curated starters, or clear any partial model download and try loading private
+              AI again.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
+                setShowTemplateOfferPrompt(false);
                 void retryFreeModelDownloadAfterReset();
               }}
             >
-              Reset AI and try again
-            </AlertDialogCancel>
+              Clear download and retry
+            </Button>
             <AlertDialogAction
+              className="w-full sm:w-auto"
               onClick={() => {
                 setShowTemplateOfferPrompt(false);
                 setIsAiMode(true);

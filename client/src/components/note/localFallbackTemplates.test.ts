@@ -3,9 +3,12 @@ import { describe, it } from "node:test";
 import {
   GUIDED_WRITING_PLACEHOLDER_LABELS,
   GUIDED_WRITING_TEMPLATES,
+  filterGuidedWritingTemplateOptions,
   getAllGuidedWritingTemplateIds,
   getLocalFallbackTemplateOptions,
   getStandardGuidedWritingBuckets,
+  listUnresolvedGuidedPlaceholderLabelsInNote,
+  noteHasUnresolvedGuidedPlaceholders,
   renderGuidedWritingTemplateText,
 } from "./localFallbackTemplates";
 
@@ -45,6 +48,19 @@ describe("guided writing templates", () => {
         assert.ok(options.length >= 2, `Expected at least 2 options for ${id}/${bucket}`);
       }
     }
+  });
+
+  it("detects unresolved bracket placeholders for a language", () => {
+    assert.equal(noteHasUnresolvedGuidedPlaceholders("Hello [Recipient name], thanks.", "en"), true);
+    assert.equal(noteHasUnresolvedGuidedPlaceholders("Hello Alex, thanks.", "en"), false);
+    assert.equal(listUnresolvedGuidedPlaceholderLabelsInNote("[Recipient name] and [Topic]", "en").length, 2);
+  });
+
+  it("filters offline starters by metadata", () => {
+    const opts = getLocalFallbackTemplateOptions("ask-anything", "1-2", "en");
+    const warmOnly = filterGuidedWritingTemplateOptions(opts, { tone: "warm" });
+    assert.ok(warmOnly.length >= 1);
+    assert.ok(warmOnly.every((o) => o.tone === "warm"));
   });
 
   it("keeps placeholders declared and renderable", () => {

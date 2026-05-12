@@ -23,14 +23,14 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warme Entwurfszeilen", "Hi {{recipientName}}, ich wollte mich schon laenger zu {{topic}} melden. Ich moechte sagen: {{mainMessage}} — und zwar weil {{reason}}. Ich wuensche dir eine gute restliche Woche.", {
+      option("Warme Entwurfszeilen", "Hi {{recipientName}}, ich wollte mich schon länger zu {{topic}} melden. Ich möchte sagen: {{mainMessage}} — und zwar weil {{reason}}. Ich wünsche dir eine gute restliche Woche.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "mainMessage", "reason"],
       }),
-      option("Klares Follow-up", "Hi {{recipientName}}, ich wollte bei {{topic}} nachfassen. Am wichtigsten ist mir: {{mainMessage}}. Sag Bescheid, wenn du mehr dazu sprechen moechtest.", {
+      option("Klares Follow-up", "Hi {{recipientName}}, ich wollte bei {{topic}} nachfassen. Am wichtigsten ist mir: {{mainMessage}}. Sag Bescheid, wenn du mehr dazu sprechen möchtest.", {
         tone: "professional",
         audience: "general",
         style: "direct",
@@ -39,14 +39,14 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Durchdachter Entwurf", "Hi {{recipientName}}, ich wollte dir kurz zu {{topic}} schreiben. Ich habe an {{relevantDetail}} gedacht und fand, eine Nachricht lohnt sich. Am wichtigsten: {{mainMessage}}. Ich schaetze besonders {{specificDetail}}. Melde dich, wenn du Zeit hast.", {
+      option("Durchdachter Entwurf", "Hi {{recipientName}}, ich wollte dir kurz zu {{topic}} schreiben. Ich habe an {{relevantDetail}} gedacht und fand, eine Nachricht lohnt sich. Am wichtigsten: {{mainMessage}}. Ich schätze besonders {{specificDetail}}. Melde dich, wenn du Zeit hast.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "relevantDetail", "mainMessage", "specificDetail"],
       }),
-      option("Ausgewogener Entwurf", "Hi {{recipientName}}, ich hoffe, dir geht es gut. Ich schreibe wegen {{topic}}, weil {{reason}}. Ich wollte dir sagen: {{mainMessage}}. Ausserdem: {{extraDetail}}. Antworte gern, wenn es dir passt.", {
+      option("Ausgewogener Entwurf", "Hi {{recipientName}}, ich hoffe, dir geht es gut. Ich schreibe wegen {{topic}}, weil {{reason}}. Ich wollte dir sagen: {{mainMessage}}. Außerdem: {{extraDetail}}. Antworte gern, wenn es dir passt.", {
         tone: "professional",
         audience: "general",
         style: "balanced",
@@ -55,14 +55,14 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Persoenlicher Brief", "Hi {{recipientName}}, ich hoffe, es geht dir gut. Ich wollte dir zu {{topic}} schreiben, weil es mich beschaeftigt. In den letzten {{timeframe}} habe ich viel an {{relevantDetail}} gedacht. Am wichtigsten ist mir: {{mainMessage}}. Zusaetzlich: {{extraDetail}}, weil es mir wichtig ist. Ich schaetze {{specificDetail}} sehr. Kein Druck mit der Antwort — ich wollte das einfach klar und ehrlich sagen.", {
+      option("Persönlicher Brief", "Hi {{recipientName}}, ich hoffe, es geht dir gut. Ich wollte dir zu {{topic}} schreiben, weil es mich beschäftigt. In den letzten {{timeframe}} habe ich viel an {{relevantDetail}} gedacht. Am wichtigsten ist mir: {{mainMessage}}. Zusätzlich: {{extraDetail}}, weil es mir wichtig ist. Ich schätze {{specificDetail}} sehr. Kein Druck mit der Antwort — ich wollte das einfach klar und ehrlich sagen.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "timeframe", "relevantDetail", "mainMessage", "extraDetail", "specificDetail"],
       }),
-      option("Ausfuehrliche Notiz", "Hi {{recipientName}}, ich wollte eine etwas laengere Nachricht zu {{topic}} schicken. Zuerst: {{mainMessage}}. Warum mir das wichtig ist: {{reason}}. Ausserdem: {{extraDetail}}. Wenn es passt, koennten wir {{nextStep}}. Wenn jetzt ein schlechter Zeitpunkt ist, ist das voellig okay. Ich wollte nur klar, freundlich und ehrlich sein.", {
+      option("Ausführliche Notiz", "Hi {{recipientName}}, ich wollte eine etwas längere Nachricht zu {{topic}} schicken. Zuerst: {{mainMessage}}. Warum mir das wichtig ist: {{reason}}. Außerdem: {{extraDetail}}. Wenn es passt, könnten wir {{nextStep}}. Wenn jetzt ein schlechter Zeitpunkt ist, ist das völlig okay. Ich wollte nur klar, freundlich und ehrlich sein.", {
         tone: "professional",
         audience: "general",
         style: "balanced",
@@ -171,7 +171,7 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Ausführliche Anfrage", "Hi {{recipientName}}, ich wollte Termine für ein Meeting zu {{topic}} vorschlagen. Ich denke, es wäre hilfreich, {{specificDetail}} durchzusprechen. Aktuell könnte ich am {{dayOrTime}}, ich passe mich aber gern an. Bitte sag mir, welche Zeit für dich passt. Ich koordiniere mich gern nach deinem Kalender.", {
+      option("Ausführliche Anfrage", "Hi {{recipientName}}, ich wollte ein Meeting zu {{topic}} vorschlagen. Ich denke, es wäre hilfreich, {{specificDetail}} durchzusprechen. Aktuell könnte ich am {{dayOrTime}}, kann mich aber gern anpassen. Sag mir bitte, welche Zeit für dich passt.", {
         tone: "professional",
         audience: "client",
         style: "balanced",
@@ -194,7 +194,7 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime", "alternateTime"],
       }),
-      option("Formelles Briefing", "Guten Tag {{recipientName}}, ich bitte um ein Meeting zu {{topic}}. Es gibt einige Punkte, die ich gern besprechen möchte, besonders {{specificDetail}}. Ein kurzes Gespräch würde die Dinge effizienter voranbringen. Meine aktuelle Verfügbarkeit ist {{dayOrTime}}, ich bin aber flexibel. Falls gewünscht, können wir auch per {{extraDetail}} sprechen. Bitte sagen Sie mir, was auf Ihrer Seite am besten passt. Vielen Dank.", {
+      option("Formelles Briefing", "Guten Tag {{recipientName}}, ich würde gern ein Meeting zu {{topic}} vereinbaren. Es gibt einige Punkte, die ich besprechen möchte, besonders {{specificDetail}}. Ein kurzes Gespräch würde die Dinge effizienter voranbringen. Ich bin am {{dayOrTime}} verfügbar, aber flexibel. Falls gewünscht, können wir auch per {{extraDetail}} sprechen. Bitte sagen Sie mir, welcher Termin Ihnen am besten passt. Vielen Dank.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -287,7 +287,7 @@ export const GUIDED_WRITING_TEMPLATES_DE: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Klare Entschuldigung", "Es tut mir leid, {{recipientName}}, wegen {{happened}}. Mir ist bewusst, dass mein Verhalten dich berührt hat, und das bedauere ich. Ich will es künftig besser machen.", {
+      option("Klare Entschuldigung", "Es tut mir leid, {{recipientName}}, wegen {{happened}}. Mir ist bewusst, dass mein Verhalten dich belastet hat, und das bedauere ich. Ich will es künftig besser machen.", {
         tone: "gentle",
         audience: "general",
         style: "direct",

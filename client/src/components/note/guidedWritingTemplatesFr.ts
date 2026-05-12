@@ -96,7 +96,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "result"],
       }),
-      option("Lignes bienveillantes", "Salut {{recipientName}}, merci pour {{supportType}}. C'était attentionné et généreux, et ça a fait une vraie différence. Je vous en suis très reconnaissant(e).", {
+      option("Lignes bienveillantes", "Bonjour {{recipientName}}, merci pour {{supportType}}. C'était attentionné et généreux, et cela a vraiment compté pour moi. Je vous en suis très reconnaissant(e).", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -128,7 +128,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "specificDetail", "resultOrSituation"],
       }),
-      option("Profonde reconnaissance", "Chère {{recipientName}}, chaleureux remerciements pour {{supportType}}. J'ai souvent repensé à tout ce que ça représentait pour moi. Ce n'était pas seulement généreux, c'était aussi très réfléchi. J'ai particulièrement apprécié {{specificDetail}}. Grâce à vous, {{positiveResult}}. Sache combien je vous en suis reconnaissant(e). Votre soutien a laissé une empreinte durable.", {
+      option("Profonde reconnaissance", "Chère {{recipientName}}, merci sincèrement pour {{supportType}}. J'ai souvent repensé à tout ce que cela représentait pour moi. Ce n'était pas seulement généreux, c'était aussi très attentionné. J'ai particulièrement apprécié {{specificDetail}}. Grâce à vous, {{positiveResult}}. Sachez combien je vous en suis reconnaissant(e). Votre soutien a laissé une empreinte durable.", {
         tone: "formal",
         audience: "general",
         style: "thoughtful",
@@ -139,7 +139,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
   },
   "meeting-request": {
     "1-2": [
-      option("Demande courte", "Salut {{recipientName}}, pourrions-nous convenir d'un rendez-vous au sujet de {{topic}} le {{dayOrTime}} ?", {
+      option("Demande courte", "Salut {{recipientName}}, est-ce qu'on peut prévoir un rendez-vous au sujet de {{topic}} le {{dayOrTime}} ?", {
         tone: "casual",
         audience: "coworker",
         style: "direct",
@@ -162,7 +162,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "dayOrTime"],
       }),
-      option("Relance", "Bonjour {{recipientName}}, je vous contacte pour organiser un appel au sujet de {{topic}}. Je pourrais le {{dayOrTime}}. Qu'est-ce qui vous arrange le mieux ?", {
+      option("Relance", "Bonjour {{recipientName}}, je vous contacte pour organiser un appel au sujet de {{topic}}. Je suis disponible le {{dayOrTime}}. Quel créneau vous conviendrait le mieux ?", {
         tone: "professional",
         audience: "client",
         style: "direct",
@@ -171,14 +171,14 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Demande détaillée", "Bonjour {{recipientName}}, je souhaitais proposer des créneaux pour un rendez-vous au sujet de {{topic}}. Je pense qu'il serait utile d'aborder {{specificDetail}}. Pour l'instant je suis disponible le {{dayOrTime}}, mais je m'adapte volontiers. Merci de me dire quel horaire vous convient. Je peux m'aligner sur votre calendrier.", {
+      option("Demande détaillée", "Bonjour {{recipientName}}, je souhaitais proposer des créneaux pour un rendez-vous au sujet de {{topic}}. Je pense qu'il serait utile d'aborder {{specificDetail}}. Je suis disponible le {{dayOrTime}}, mais je peux m'adapter si besoin. Merci de me dire quel horaire vous convient.", {
         tone: "professional",
         audience: "client",
         style: "balanced",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime"],
       }),
-      option("Demande formelle", "Bonjour {{recipientName}}, j'aimerais convenir d'un entretien au sujet de {{topic}}. Un bref échange aiderait à clarifier {{specificDetail}}. Je suis disponible le {{dayOrTime}}, ou bien le {{alternateTime}}. Merci de m'indiquer la date qui vous convient le mieux. Merci par avance.", {
+      option("Demande formelle", "Bonjour {{recipientName}}, j'aimerais convenir d'un entretien au sujet de {{topic}}. Un bref échange aiderait à clarifier {{specificDetail}}. Je suis disponible le {{dayOrTime}}, ou bien le {{alternateTime}}. Merci de m'indiquer la date qui vous convient le mieux.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -187,14 +187,14 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Briefing détaillé", "Bonjour {{recipientName}}, j'espère que tout va bien pour vous. Pourrions-nous planifier un rendez-vous au sujet de {{topic}} ? Je trouverais utile que nous discutions ensemble de {{specificDetail}} et que nous alignions les prochaines étapes. Je suis disponible le {{dayOrTime}}, et {{alternateTime}} pourrait aussi convenir. Si un autre jour vous arrange mieux, je m'adapterai volontiers. Merci de me dire ce qui fonctionne le mieux pour vous. J'apprécie votre temps et j'aimerais préparer l'échange avec soin.", {
+      option("Briefing détaillé", "Bonjour {{recipientName}}, j'espère que tout va bien pour vous. Pourrions-nous planifier un rendez-vous au sujet de {{topic}} ? Je trouverais utile que nous discutions ensemble de {{specificDetail}} et que nous alignions les prochaines étapes. Je suis disponible le {{dayOrTime}}, et {{alternateTime}} pourrait aussi convenir. Si un autre jour vous arrange mieux, je peux m'adapter. Merci de me dire ce qui vous convient le mieux. J'apprécie votre temps et j'aimerais préparer l'échange avec soin.", {
         tone: "professional",
         audience: "coworker",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime", "alternateTime"],
       }),
-      option("Briefing formel", "Bonjour {{recipientName}}, je vous prie de bien vouloir m'accorder un rendez-vous au sujet de {{topic}}. Il y a plusieurs points que j'aimerais aborder, notamment {{specificDetail}}. Un court échange permettrait d'avancer plus efficacement. Ma disponibilité actuelle est {{dayOrTime}}, mais je reste flexible. Si vous le souhaitez, nous pouvons aussi échanger par {{extraDetail}}. Merci de m'indiquer ce qui vous convient le mieux de votre côté. Merci.", {
+      option("Briefing formel", "Bonjour {{recipientName}}, je vous prie de bien vouloir m'accorder un rendez-vous au sujet de {{topic}}. Il y a plusieurs points que j'aimerais aborder, notamment {{specificDetail}}. Un court échange permettrait d'avancer plus efficacement. Je suis disponible le {{dayOrTime}}, mais je reste flexible. Si vous le souhaitez, nous pouvons aussi échanger par {{extraDetail}}. Merci de m'indiquer ce qui vous convient le mieux.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -706,7 +706,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "task", "dayOrTime"],
       }),
-      option("Rappel clair", "Bonjour {{recipientName}}, un rappel amical pour {{task}}. Nous espérons une clôture avant le {{deadline}}. Je sais que les agendas sont chargés — d'où cette courte note. En cas de question, n'hésite pas. Merci.", {
+      option("Rappel clair", "Bonjour {{recipientName}}, petit rappel pour {{task}}. Nous espérons finaliser avant le {{deadline}}. Je sais que les agendas sont chargés — d'où cette courte note. En cas de question, n'hésitez pas. Merci.", {
         tone: "professional",
         audience: "coworker",
         style: "balanced",
@@ -722,7 +722,7 @@ export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "task", "dayOrTime"],
       }),
-      option("Long rappel professionnel", "Bonjour {{recipientName}}, j'espère que tout va bien pour vous. Petit rappel pour {{task}}. Nous visons une clôture avant le {{deadline}}, d'où ce message en amont. En cas de problème, retard ou question, n'hésitez pas — je vous aiderai dans la mesure du possible. Merci pour votre attention.", {
+      option("Long rappel professionnel", "Bonjour {{recipientName}}, j'espère que tout va bien pour vous. Petit rappel pour {{task}}, avec le {{deadline}} comme échéance. En cas de problème, de retard ou de question, n'hésitez pas à me prévenir — je vous aiderai dans la mesure du possible. Merci pour votre attention.", {
         tone: "professional",
         audience: "client",
         style: "balanced",

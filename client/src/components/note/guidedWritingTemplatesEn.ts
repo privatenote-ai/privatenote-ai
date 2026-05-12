@@ -8,14 +8,14 @@ import {
 export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, GuidedWritingTemplateSet> = {
   "ask-anything": {
     "1-2": [
-      option("Warm opener", "Hi {{recipientName}}, just wanted to say {{mainMessage}}. Hope you are doing well.", {
+      option("Short line", "Hi {{recipientName}}, {{mainMessage}}", {
         tone: "warm",
         audience: "general",
         style: "balanced",
         sensitivity: "standard",
         placeholders: ["recipientName", "mainMessage"],
       }),
-      option("Clean note", "Hi {{recipientName}}, I wanted to reach out about {{topic}}. Let me know what works for you.", {
+      option("Quick ask", "Hi {{recipientName}}, about {{topic}} — what time works best for you?", {
         tone: "casual",
         audience: "general",
         style: "direct",
@@ -24,14 +24,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm draft", "Hi {{recipientName}}, I have been meaning to message you about {{topic}}. I wanted to say {{mainMessage}} because {{reason}}. Hope the rest of your week goes smoothly.", {
+      option("Follow-up", "Hi {{recipientName}}, circling back on {{topic}}. {{mainMessage}}. Context: {{reason}}.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "mainMessage", "reason"],
       }),
-      option("Clear follow-up", "Hi {{recipientName}}, I wanted to follow up about {{topic}}. The main thing I wanted to share is {{mainMessage}}. Let me know if you would like to talk more about it.", {
+      option("Work update", "Hi {{recipientName}}, quick update on {{topic}}: {{mainMessage}}. Say if you want more detail.", {
         tone: "professional",
         audience: "general",
         style: "direct",
@@ -40,14 +40,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful draft", "Hi {{recipientName}}, I wanted to send a quick note about {{topic}}. I have been thinking about {{relevantDetail}}, and I felt it was worth reaching out. What I really want to say is {{mainMessage}}. I appreciate {{specificDetail}}. Let me know if you want to talk more when you have time.", {
+      option("Mid-length note", "Hi {{recipientName}}, writing about {{topic}}. {{relevantDetail}} made me reach out. What I wanted to say is {{mainMessage}}. Thanks for {{specificDetail}} — reply whenever suits you.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "relevantDetail", "mainMessage", "specificDetail"],
       }),
-      option("Balanced draft", "Hi {{recipientName}}, I hope you are doing well. I am writing about {{topic}} because {{reason}}. I wanted to let you know {{mainMessage}}. I also wanted to mention {{extraDetail}}. Please feel free to reply whenever it is convenient.", {
+      option("Structured note", "Hi {{recipientName}}, {{topic}}: {{reason}}. {{mainMessage}}. Also: {{extraDetail}}. No rush on a reply.", {
         tone: "professional",
         audience: "general",
         style: "balanced",
@@ -56,14 +56,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Personal letter", "Hi {{recipientName}}, I hope you are doing well. I wanted to write to you about {{topic}} because it has been on my mind. Over the last {{timeframe}}, I have been thinking about {{relevantDetail}}. The main thing I wanted to say is {{mainMessage}}. I also wanted to mention {{extraDetail}} because it felt important. I really appreciate {{specificDetail}}. There is no pressure to reply right away. I just wanted to reach out properly and say this with care.", {
+      option("Longer note", "Hi {{recipientName}}, I am writing about {{topic}}. Over {{timeframe}}, {{relevantDetail}} kept coming up. What I need to say is {{mainMessage}}. {{extraDetail}} matters here too. I value {{specificDetail}}. Reply when you can; no pressure on timing.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "timeframe", "relevantDetail", "mainMessage", "extraDetail", "specificDetail"],
       }),
-      option("Full note", "Hi {{recipientName}}, I wanted to send a fuller note about {{topic}}. First, I want to say {{mainMessage}}. The reason this matters to me is {{reason}}. I also wanted to share {{extraDetail}}. If it makes sense, we could {{nextStep}}. If now is not the best time, that is completely okay too. I simply wanted to be clear, thoughtful, and honest in reaching out.", {
+      option("Longer work note", "Hi {{recipientName}}, fuller context on {{topic}}: {{mainMessage}}. Why it matters: {{reason}}. {{extraDetail}}. If useful, we can {{nextStep}}. If timing is bad, no problem — tell me what works later.", {
         tone: "professional",
         audience: "general",
         style: "balanced",
@@ -74,14 +74,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   "thank-you": {
     "1-2": [
-      option("Classic gratitude", "Thank you, {{recipientName}}, for {{supportType}}. It really meant a lot to me.", {
+      option("Simple thanks", "Thanks, {{recipientName}}, for {{supportType}} — it helped.", {
         tone: "warm",
         audience: "general",
         style: "direct",
         sensitivity: "standard",
         placeholders: ["recipientName", "supportType"],
       }),
-      option("Polished appreciation", "Thank you for {{specificDetail}}, {{recipientName}}. I truly appreciate your support.", {
+      option("Work thanks", "Thanks for {{specificDetail}}, {{recipientName}}. I owe you one.", {
         tone: "professional",
         audience: "coworker",
         style: "balanced",
@@ -90,14 +90,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm gratitude", "Thank you so much, {{recipientName}}, for {{actionTaken}}. Your support really helped with {{result}}. I appreciate it more than I can say.", {
+      option("Thanks with detail", "Thanks, {{recipientName}}, for {{actionTaken}}. It made {{result}} much easier.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "result"],
       }),
-      option("Gracious note", "Hi {{recipientName}}, thank you for {{supportType}}. It was thoughtful and generous, and it made a real difference. I am very grateful.", {
+      option("Short note", "Hi {{recipientName}}, thanks for {{supportType}}. It made a difference on my end.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -106,14 +106,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Heartfelt gratitude", "Hi {{recipientName}}, I wanted to thank you properly for {{actionTaken}}. It was incredibly thoughtful of you, and it helped me more than you probably realized. I especially appreciated {{specificDetail}}. Your kindness made a stressful time feel much lighter. Thank you again for being so generous and supportive.", {
+      option("Expanded thanks", "Hi {{recipientName}}, thank you for {{actionTaken}}. {{specificDetail}} stood out. It took weight off a busy week.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "specificDetail"],
       }),
-      option("Appreciative letter", "Thank you, {{recipientName}}, for {{supportType}}. I have been wanting to tell you how much I appreciated it. It meant a lot because {{reason}}. Your thoughtfulness did not go unnoticed. I feel very lucky to have your support.", {
+      option("Thanks with context", "Thanks, {{recipientName}}, for {{supportType}}. {{reason}}. I noticed the effort — it mattered.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -122,14 +122,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Gratitude letter", "Hi {{recipientName}}, I wanted to send a proper thank-you for {{actionTaken}}. I know it took time, effort, and care, and I do not take that lightly. What meant the most was {{specificDetail}}. It really helped with {{resultOrSituation}}, and it made things easier for me in a meaningful way. Your kindness came at exactly the right time. I am genuinely grateful for your support. Thank you again for showing up for me the way you did.", {
+      option("Longer thanks", "Hi {{recipientName}}, a real thank-you for {{actionTaken}}. I know it cost time and attention. {{specificDetail}} is what stuck with me. It changed {{resultOrSituation}} for the better. I am glad you were in my corner.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "specificDetail", "resultOrSituation"],
       }),
-      option("Deep appreciation", "Dear {{recipientName}}, thank you so much for {{supportType}}. I have been reflecting on how much it meant to me. It was not only generous, but also deeply thoughtful. I especially appreciated {{specificDetail}}. Because of you, {{positiveResult}}. Please know how grateful I am. Your support made a lasting impression on me, and I will remember it for a long time.", {
+      option("Formal thanks", "Dear {{recipientName}}, thank you for {{supportType}}. {{specificDetail}} was above and beyond. {{positiveResult}}. I will remember the help.", {
         tone: "formal",
         audience: "general",
         style: "thoughtful",
@@ -147,7 +147,7 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "dayOrTime"],
       }),
-      option("Executive request", "Hi {{recipientName}}, I would like to schedule a quick meeting to discuss {{topic}}. Please let me know your availability.", {
+      option("Executive request", "Hi {{recipientName}}, can we book a short meeting on {{topic}}? Send a few times that work.", {
         tone: "professional",
         audience: "client",
         style: "direct",
@@ -156,14 +156,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Clean request", "Hi {{recipientName}}, I would like to schedule a meeting about {{topic}}. Would {{dayOrTime}} work for you? If not, I am happy to find another time.", {
+      option("Clean request", "Hi {{recipientName}}, meeting on {{topic}} — does {{dayOrTime}} work? If not, propose another slot.", {
         tone: "professional",
         audience: "coworker",
         style: "balanced",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "dayOrTime"],
       }),
-      option("Polished follow-up", "Hi {{recipientName}}, I am reaching out to see if we can set up a call about {{topic}}. I am available on {{dayOrTime}}. Please let me know what works best for you.", {
+      option("Polished follow-up", "Hi {{recipientName}}, call about {{topic}}? I can do {{dayOrTime}} — what fits you?", {
         tone: "professional",
         audience: "client",
         style: "direct",
@@ -172,14 +172,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Polished request", "Hi {{recipientName}}, I wanted to reach out about scheduling a meeting to discuss {{topic}}. I think it would be helpful to talk through {{specificDetail}}. I am currently available on {{dayOrTime}}, but I can adjust if needed. Please let me know what time works best for you. I would be glad to coordinate around your schedule.", {
+      option("Polished request", "Hi {{recipientName}}, proposing a meeting on {{topic}} to cover {{specificDetail}}. I can do {{dayOrTime}} — say what works or suggest another slot.", {
         tone: "professional",
         audience: "client",
         style: "balanced",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime"],
       }),
-      option("Formal request", "Hello {{recipientName}}, I would appreciate the chance to meet regarding {{topic}}. I believe a short conversation would help clarify {{specificDetail}}. I am available on {{dayOrTime}} and can also offer {{alternateTime}} if that is easier. Please let me know your preferred time. Thank you in advance.", {
+      option("Formal request", "Hello {{recipientName}}, may we schedule a short meeting on {{topic}}? I would like to cover {{specificDetail}}. I am free {{dayOrTime}} or {{alternateTime}}. Please propose a time if neither fits.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -188,14 +188,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Detailed brief", "Hi {{recipientName}}, I hope you are doing well. I wanted to ask whether we could schedule a meeting to discuss {{topic}}. I think it would be useful to review {{specificDetail}} together and make sure we are aligned on next steps. I am available on {{dayOrTime}}, and I can also make {{alternateTime}} work if needed. If another day is better, I am happy to adjust. Please let me know what works best for you. I appreciate your time and would value the chance to talk this through properly.", {
+      option("Detailed brief", "Hi {{recipientName}}, could we book time for {{topic}}? I want to align on {{specificDetail}} and next steps. I am open {{dayOrTime}} or {{alternateTime}}; happy to move dates. Tell me what fits.", {
         tone: "professional",
         audience: "coworker",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime", "alternateTime"],
       }),
-      option("Formal brief", "Hello {{recipientName}}, I am writing to request a meeting about {{topic}}. There are a few points I would like to cover, especially {{specificDetail}}. I believe a short discussion would help move things forward more efficiently. My current availability is {{dayOrTime}}, though I can be flexible if another slot suits you better. If you prefer, we could also do this over {{extraDetail}}. Please let me know what works best on your side. Thank you for considering it.", {
+      option("Formal brief", "Hello {{recipientName}}, requesting a meeting about {{topic}}, mainly {{specificDetail}}. Availability: {{dayOrTime}}; flexible otherwise. We can meet live or over {{extraDetail}} — whichever you prefer.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -206,14 +206,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   birthday: {
     "1-2": [
-      option("Classic birthday wish", "Happy Birthday, {{recipientName}}! I hope your day is full of joy and good moments.", {
+      option("Short wish", "Happy birthday, {{recipientName}} — hope you have a lovely day.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName"],
       }),
-      option("Bright birthday note", "Happy Birthday, {{recipientName}}! Wishing you a wonderful year ahead.", {
+      option("Warm line", "Happy birthday, {{recipientName}}. Wishing you a good year ahead.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
@@ -222,14 +222,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm birthday note", "Happy Birthday, {{recipientName}}! I hope today brings you a lot of happiness and a chance to celebrate properly. You deserve a really good day.", {
+      option("Friend note", "Happy birthday, {{recipientName}}. Enjoy the day — you put a lot of good into the world.", {
         tone: "warm",
         audience: "friend",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName"],
       }),
-      option("Personal birthday note", "Happy Birthday, {{recipientName}}! I am so glad to have you in my life. I hope this year brings you more of {{joyWish}} and plenty of reasons to smile.", {
+      option("Wish plus detail", "Happy birthday, {{recipientName}}. Here is to more {{joyWish}} this year.", {
         tone: "warm",
         audience: "friend",
         style: "thoughtful",
@@ -238,14 +238,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful birthday message", "Happy Birthday, {{recipientName}}! I hope you get to spend today surrounded by people and things you love. You bring so much {{quality}} into the lives of people around you. I am really grateful for {{specificDetail}}. Wishing you a year filled with happiness, good health, and memorable moments.", {
+      option("Mid note", "Happy birthday, {{recipientName}}. People lean on your {{quality}} — thanks for that. {{specificDetail}} is one thing I will not forget. Have a great day.", {
         tone: "warm",
         audience: "friend",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "quality", "specificDetail"],
       }),
-      option("Warm personal greeting", "Happy Birthday, {{recipientName}}! I wanted to send you a proper message today because you mean a lot to me. I hope this year brings you {{goalOrWish}} and many moments that make you feel proud and happy. You deserve to be celebrated. Have an amazing day.", {
+      option("Cheer + goal", "Happy birthday, {{recipientName}}. Rooting for {{goalOrWish}} in the year ahead. Celebrate properly when you can.", {
         tone: "warm",
         audience: "friend",
         style: "celebratory",
@@ -254,14 +254,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long birthday message", "Happy Birthday, {{recipientName}}! I hope your day is filled with laughter, warmth, and all the little things that make you happiest. You are such a {{quality}} person, and it is a real gift to know you. One of the things I appreciate most about you is {{memory}}. I hope the year ahead brings you {{hopeOrGoal}}. You deserve good people, good health, and a lot of joy. Thank you for being exactly who you are. I hope today feels as special as you are to the people around you.", {
+      option("Longer wish", "Happy birthday, {{recipientName}}. You bring {{quality}} into rooms without trying. {{memory}} is one moment that stuck with me. For the next year: {{hopeOrGoal}}, good health, and time with people who get you. Enjoy today on your terms.", {
         tone: "warm",
         audience: "friend",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "quality", "memory", "hopeOrGoal"],
       }),
-      option("Long heartfelt greeting", "Happy Birthday, {{recipientName}}! I wanted to send more than a quick message because you truly deserve that. You have such a way of bringing {{quality}} into the lives of people around you. I am especially grateful for {{memory}}. I hope this next year gives you {{hopeOrGoal}}, along with plenty of peace, fun, and exciting moments. May you feel celebrated, appreciated, and deeply loved today. Have the happiest birthday.", {
+      option("Longer cheer", "Happy birthday, {{recipientName}}. You earn more than a one-line text — so here is a fuller cheer. Your {{quality}} changes weeks for the better. {{memory}} still makes me smile. Wishing you {{hopeOrGoal}} and a day that feels as good as you make things for others.", {
         tone: "warm",
         audience: "friend",
         style: "celebratory",
@@ -272,14 +272,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   apology: {
     "1-2": [
-      option("Direct apology", "I am sorry, {{recipientName}}, for {{happened}}. I know I should have handled it better.", {
+      option("Direct apology", "I am sorry, {{recipientName}}, for {{happened}}. I should have handled it better.", {
         tone: "gentle",
         audience: "general",
         style: "direct",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "happened"],
       }),
-      option("Simple sincere apology", "I am really sorry for {{happened}}. I understand why it hurt or caused frustration.", {
+      option("Short sorry", "I am sorry about {{happened}}. That was on me.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
@@ -288,14 +288,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Clear apology", "I am sorry, {{recipientName}}, for {{happened}}. I understand that my actions affected you, and I regret that. I will do better going forward.", {
+      option("Clear apology", "I am sorry, {{recipientName}}, for {{happened}}. It affected you, and I regret my part in it. I am open to hearing what would help.", {
         tone: "gentle",
         audience: "general",
         style: "direct",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "happened"],
       }),
-      option("Professional apology", "I want to apologize for {{issue}}. I understand the inconvenience this caused, and I take responsibility for it. I am working to make it right.", {
+      option("Professional apology", "I apologize for {{issue}}. I own the inconvenience and am working on a fix.", {
         tone: "professional",
         audience: "client",
         style: "balanced",
@@ -304,14 +304,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Sincere apology", "Hi {{recipientName}}, I want to sincerely apologize for {{happened}}. I understand that it caused {{impact}}, and I am sorry for putting you in that position. I should have handled it differently. I take full responsibility for my part in it. If possible, I would like to make things right by {{fixStep}}.", {
+      option("Sincere apology", "Hi {{recipientName}}, I am sorry for {{happened}}. It caused {{impact}}, and that is not what I want for you. Here is what I can offer now: {{fixStep}}.", {
         tone: "gentle",
         audience: "general",
         style: "thoughtful",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "happened", "impact", "fixStep"],
       }),
-      option("Thoughtful apology", "I have been reflecting on {{happened}}, and I want to say clearly that I am sorry. You did not deserve {{impact}}, and I regret the way I handled things. I understand why you feel {{feeling}}. I am not making excuses. I just want to acknowledge it honestly and do better.", {
+      option("Reflective apology", "About {{happened}}: I am sorry. The fallout included {{impact}}. If {{feeling}} is part of your reaction, I hear that. No excuses — I am trying to respond more carefully next time.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
@@ -320,14 +320,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long apology", "Hi {{recipientName}}, I wanted to send a proper apology for {{happened}}. I know that my actions caused {{impact}}, and I am genuinely sorry for that. Looking back, I should have handled the situation with more care and respect. You did not deserve the stress or disappointment this created. I take responsibility for my part in it. I also want to make things right by {{fixStep}}. I understand if it takes time to rebuild trust, but I wanted to say clearly that I am sorry and that I mean it.", {
+      option("Long apology", "Hi {{recipientName}}, I owe you an apology for {{happened}}. It led to {{impact}}, and I am sorry for the stress that added. I could have acted with more care. {{fixStep}} is what I can commit to now. If trust needs time, I understand — I still want you to know I mean the apology.", {
         tone: "gentle",
         audience: "general",
         style: "thoughtful",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "happened", "impact", "fixStep"],
       }),
-      option("Long thoughtful apology", "I am sorry, {{recipientName}}, for {{happened}}. I have thought a lot about it, and I can see how it affected you. I regret that I was not more careful, considerate, or honest in that moment. You deserved better from me. I am not trying to explain it away. I just want to acknowledge that I was wrong and that I am sorry. If you are open to it, I would like to make amends by {{fixStep}}. Thank you for reading this.", {
+      option("Long reflective apology", "I am sorry, {{recipientName}}, for {{happened}}. I have sat with how it landed on you. I regret not being clearer or kinder in the moment. {{fixStep}} is the amends I can make from here. Thank you for reading.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
@@ -338,14 +338,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   love: {
     "1-2": [
-      option("Short love note", "I love you, {{recipientName}}. You make my life brighter in so many ways.", {
+      option("Short love note", "I love you, {{recipientName}}.", {
         tone: "romantic",
         audience: "partner",
         style: "direct",
         sensitivity: "sensitive",
         placeholders: ["recipientName"],
       }),
-      option("Simple romantic note", "Just wanted to say I love you and appreciate you more than words can fully say.", {
+      option("Simple line", "Love you — thanks for being my person.", {
         tone: "romantic",
         audience: "partner",
         style: "gentle",
@@ -354,14 +354,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm romantic message", "I love you, {{recipientName}}, and I feel lucky to have you in my life. You bring me so much {{feeling}}. I hope you know how much you mean to me.", {
+      option("Warm note", "I love you, {{recipientName}}. You bring {{feeling}} into my days.", {
         tone: "romantic",
         audience: "partner",
         style: "thoughtful",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "feeling"],
       }),
-      option("Gentle love note", "Being with you makes ordinary days feel special. I love you for {{quality}}, and I never want to take that for granted. You mean so much to me.", {
+      option("Appreciation", "I love you for {{quality}}. Ordinary days feel better with you in them.", {
         tone: "romantic",
         audience: "partner",
         style: "gentle",
@@ -370,14 +370,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful love message", "I love you, {{recipientName}}, and I wanted to put that into words properly. One of the things I appreciate most about you is {{quality}}. You make me feel {{feeling}}, and that means more than I can explain. I am grateful for the way you show up in my life. Loving you is one of the easiest and best things I know.", {
+      option("Mid note", "I love you, {{recipientName}}. Your {{quality}} is one of the first things I brag about. Being with you feels like {{feeling}} — steady, real, ours.", {
         tone: "romantic",
         audience: "partner",
         style: "thoughtful",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "quality", "feeling"],
       }),
-      option("Tender romantic note", "Sometimes I do not say it enough, but I love you deeply. I love the way you {{specificDetail}}, and I love how being with you feels like {{feeling}}. You make life softer, funnier, and more meaningful. I am grateful for you every day. You mean so much to me.", {
+      option("Tender note", "Love you. The way you {{specificDetail}} still gets me. Life with you feels like {{feeling}}.", {
         tone: "romantic",
         audience: "partner",
         style: "gentle",
@@ -386,14 +386,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long romantic message", "I love you, {{recipientName}}, and I wanted to say it in a fuller way today. You bring so much {{feeling}} into my life, and I do not take that for granted. One of the things I cherish most about you is {{specificDetail}}. Being with you has changed my life for the better in so many quiet and meaningful ways. I love the way you {{quality}}. I feel incredibly lucky that I get to know you, love you, and share life with you. Thank you for being you. I love you more than I can put into one message.", {
+      option("Longer note", "I love you, {{recipientName}}. You bring {{feeling}} into ordinary days and make the good ones feel even better. {{specificDetail}} is something I never get tired of. You move through the world with {{quality}}, and I am grateful to share life with you.", {
         tone: "romantic",
         audience: "partner",
         style: "thoughtful",
         sensitivity: "sensitive",
         placeholders: ["recipientName", "feeling", "specificDetail", "quality"],
       }),
-      option("Long heartfelt love note", "You mean so much to me, {{recipientName}}. I love you for who you are, for how you make me feel, and for the way you bring {{feeling}} into my life. I keep thinking about {{memory}}, and it reminds me how lucky I am to have you. You have a way of making even hard days feel lighter. I admire {{quality}}, and I appreciate {{specificDetail}}. I hope you always know how deeply loved you are. I am so grateful for you.", {
+      option("Longer letter", "{{recipientName}} — I love you. {{memory}} is on my mind today. You bring {{feeling}} home with you. I admire your {{quality}} and the small thing: {{specificDetail}}. Thanks for staying in the work with me.", {
         tone: "romantic",
         audience: "partner",
         style: "gentle",
@@ -404,14 +404,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   congratulations: {
     "1-2": [
-      option("Classic congratulations", "Congratulations, {{recipientName}}, on {{achievement}}! That is such wonderful news.", {
+      option("Short cheer", "Congrats, {{recipientName}}, on {{achievement}} — well earned.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName", "achievement"],
       }),
-      option("Proud note", "Huge congratulations on {{achievement}}. You worked hard for this, and it shows.", {
+      option("Plain cheer", "Big congrats on {{achievement}}. The work showed.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
@@ -420,14 +420,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm congratulations", "Congratulations, {{recipientName}}, on {{achievement}}! I am so happy for you. You really deserve this moment.", {
+      option("Warm cheer", "Congrats, {{recipientName}}, on {{achievement}}. Happy for you — this was not luck.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName", "achievement"],
       }),
-      option("Professional congratulations", "Congratulations on {{achievement}}. Your hard work and dedication clearly paid off. Wishing you continued success in what comes next.", {
+      option("Work cheer", "Congratulations on {{achievement}}. Clear effort went in; good to see it land.", {
         tone: "professional",
         audience: "coworker",
         style: "supportive",
@@ -436,14 +436,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful congratulations", "Congratulations, {{recipientName}}, on {{achievement}}. This is such exciting and well-earned news. I know how much work, time, and effort went into reaching this point. You should feel incredibly proud of yourself. I am very happy for you and excited to see what comes next.", {
+      option("Mid cheer", "Congrats, {{recipientName}}, on {{achievement}}. Rarely is something this earned. Enjoy the win.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName", "achievement"],
       }),
-      option("Supportive congratulations", "I wanted to say a big congratulations on {{achievement}}. You have been working toward this for {{timeframe}}, and it is great to see that effort recognized. You earned this. I hope you take a moment to celebrate properly. Wishing you even more success ahead.", {
+      option("Timeline cheer", "Congratulations on {{achievement}}. {{timeframe}} of work went into this, and I am glad it paid off.", {
         tone: "professional",
         audience: "coworker",
         style: "supportive",
@@ -452,14 +452,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long congratulations note", "Congratulations, {{recipientName}}, on {{achievement}}. I was so happy to hear the news. You have worked hard for this, and it is great to see that effort pay off in such a meaningful way. One of the things I admire most is {{quality}}. You should be very proud of what you have accomplished. I hope you take time to enjoy this moment and celebrate it properly. You earned it. Wishing you even more success and happiness in the next chapter.", {
+      option("Long cheer", "Congrats, {{recipientName}}, on {{achievement}}. News like this is easy to cheer because it is true: you earned it. Your {{quality}} showed the whole way. Take a real beat to enjoy it — then keep going.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
         sensitivity: "standard",
         placeholders: ["recipientName", "achievement", "quality"],
       }),
-      option("Long proud message", "Huge congratulations on {{achievement}}, {{recipientName}}. This is such a wonderful milestone, and I know it did not happen by accident. Your {{quality}} really shines through. I have no doubt that you earned this with a lot of effort behind the scenes. It is exciting to see you reach this point. I hope you are taking a moment to appreciate how far you have come. You should be proud. I am certainly proud of you.", {
+      option("Long proud", "{{recipientName}} — huge congrats on {{achievement}}. Milestones like this take {{quality}} and a lot of work behind the scenes. Proud of you; enjoy the moment.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
@@ -470,14 +470,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   farewell: {
     "1-2": [
-      option("Classic goodbye", "It has been wonderful working with you all. Thank you for everything, and I wish you the best.", {
+      option("Short goodbye", "Thank you all — it has been a good run. Wishing you well.", {
         tone: "warm",
         audience: "team",
         style: "balanced",
         sensitivity: "standard",
         placeholders: [],
       }),
-      option("Warm farewell", "Thank you for the support and good memories. Wishing you all the very best.", {
+      option("Warm line", "Thanks for the support and the memories. Wishing everyone good things ahead.", {
         tone: "warm",
         audience: "team",
         style: "supportive",
@@ -486,14 +486,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm farewell", "As I head into my next chapter, I just want to say thank you for {{specificDetail}}. Working with you has meant a lot to me. I will be wishing you all the best.", {
+      option("Thanks + detail", "Heading out soon — thank you for {{specificDetail}}. This team mattered. Rooting for you all.", {
         tone: "warm",
         audience: "team",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["specificDetail"],
       }),
-      option("Professional goodbye", "Thank you for the opportunity to work with such a great team. I have learned a lot from this experience, and I truly appreciate your support. Wishing everyone continued success.", {
+      option("Professional sign-off", "Thank you for the stretch here — I learned plenty. Wishing the group continued wins.", {
         tone: "professional",
         audience: "team",
         style: "balanced",
@@ -502,14 +502,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful farewell", "As I get ready to leave, I wanted to say thank you to {{groupName}}. This experience has meant a lot to me, and I am grateful for {{specificDetail}}. I have genuinely appreciated being part of this team. I will miss {{memory}}. Wishing all of you continued success and happiness.", {
+      option("Mid goodbye", "{{groupName}} — thank you. {{specificDetail}} is what I will cite first. I will miss {{memory}}. Stay in touch if you want.", {
         tone: "warm",
         audience: "team",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["groupName", "specificDetail", "memory"],
       }),
-      option("Grateful goodbye", "It is not easy to say goodbye, but I wanted to take a moment to thank {{groupName}} for everything. I have learned so much here, and I am especially grateful for {{specificDetail}}. Working with you has been meaningful and memorable. I will carry a lot from this experience with me. Wishing you all the very best ahead.", {
+      option("Grateful exit", "Leaving {{groupName}} is not light. Thanks for {{specificDetail}} and for the pace you kept. Carrying a lot forward.", {
         tone: "warm",
         audience: "team",
         style: "supportive",
@@ -518,14 +518,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long farewell message", "As I prepare to move on, I wanted to send a proper thank-you to {{groupName}}. This chapter has meant a great deal to me, and I am truly grateful for {{specificDetail}}. I have learned so much from working alongside you. I will especially remember {{memory}}. Thank you for making this experience both meaningful and memorable. I will miss the people here and the moments we shared. Wishing you all continued success, happiness, and good things ahead.", {
+      option("Long goodbye", "{{groupName}} — a real thank-you before I go. {{specificDetail}} shaped my time here. {{memory}} is the snapshot I keep. Proud to have worked with you; ping me anytime.", {
         tone: "warm",
         audience: "team",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["groupName", "specificDetail", "memory"],
       }),
-      option("Long team goodbye", "Before I leave, I wanted to say how much I have appreciated being part of {{groupName}}. Thank you for your support, generosity, and encouragement along the way. This experience gave me a lot, both personally and professionally. I am especially thankful for {{specificDetail}}. While I am excited for what comes next, I will miss this team and the connections built here. I hope we stay in touch. Wishing all of you nothing but success and happiness moving forward.", {
+      option("Long sign-off", "Before I sign off from {{groupName}}: thanks for the trust and {{specificDetail}}. I am better at the job for having been here. Next chapter calls — still hoping our paths cross again.", {
         tone: "professional",
         audience: "team",
         style: "balanced",
@@ -536,14 +536,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   invitation: {
     "1-2": [
-      option("Classic invitation", "You are invited to {{eventName}} on {{date}} at {{place}}. I would love for you to come.", {
+      option("Short invite", "{{eventName}} — {{date}}, {{place}}. Come if you can.", {
         tone: "warm",
         audience: "general",
         style: "direct",
         sensitivity: "standard",
         placeholders: ["eventName", "date", "place"],
       }),
-      option("Casual invite", "We are getting together for {{eventName}} on {{dayOrTime}}, and I would love to have you there.", {
+      option("Casual invite", "{{eventName}} on {{dayOrTime}}. Would be great to see you.", {
         tone: "casual",
         audience: "friend",
         style: "direct",
@@ -552,14 +552,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Warm invitation", "I would love to invite you to {{eventName}} on {{date}} at {{place}}. It starts at {{time}}, and it would mean a lot if you could come. Let me know if you can make it.", {
+      option("Clear invite", "{{eventName}}: {{date}} at {{place}}, around {{time}}. RSVP when you can.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["eventName", "date", "place", "time"],
       }),
-      option("Friendly invite", "Hi {{recipientName}}, I am hosting {{eventName}} on {{dayOrTime}} at {{place}}. I would be really happy to celebrate with you. Hope you can make it.", {
+      option("Friend invite", "Hi {{recipientName}}, {{eventName}} at {{place}}, {{dayOrTime}}. Save a spot if it fits.", {
         tone: "casual",
         audience: "friend",
         style: "celebratory",
@@ -568,14 +568,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful invitation", "Hi {{recipientName}}, I wanted to invite you to {{eventName}} on {{date}} at {{place}}. We will be starting around {{time}}, and it would really mean a lot to have you there. It is a chance to {{occasion}}. Please let me know if you can make it. I would love to celebrate together.", {
+      option("Mid invite", "Hi {{recipientName}}, inviting you to {{eventName}} on {{date}} at {{place}}, start ~{{time}}. {{occasion}}. Let me know either way.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "eventName", "date", "place", "time", "occasion"],
       }),
-      option("Detailed invite", "You are warmly invited to {{eventName}} on {{date}} at {{place}}. We will start at {{time}} and would love to have you join us. It should be a lovely time with {{eventDetail}}. If you can come, please let me know by {{rsvpDate}}. I hope you can be there.", {
+      option("Detail invite", "{{eventName}} — {{date}}, {{place}}, {{time}}. Plan: {{eventDetail}}. RSVP by {{rsvpDate}}.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -584,14 +584,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long invitation message", "Hi {{recipientName}}, I wanted to send you a proper invitation to {{eventName}}. We will be gathering on {{date}} at {{place}}, starting around {{time}}. It would mean a lot to have you there and share the occasion with us. We are planning {{eventDetail}}, and I think it will be a really special time. Please let me know if you can make it by {{rsvpDate}}. I would genuinely love to celebrate together. Hope to see you there.", {
+      option("Long invite", "Hi {{recipientName}}, fuller invite for {{eventName}}: {{date}} at {{place}}, doors {{time}}. {{eventDetail}}. RSVP by {{rsvpDate}} — no stress if you cannot; just helps headcount.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "eventName", "date", "place", "time", "eventDetail", "rsvpDate"],
       }),
-      option("Long warm invite", "I would love to invite you to {{eventName}} on {{date}} at {{place}}. This event means a lot to me, and it would feel even more special with you there. We will begin at {{time}}, and we are planning {{eventDetail}}. There will be time to relax, celebrate, and enjoy the moment together. If you are able to come, please let me know by {{rsvpDate}}. I really hope you can join us. It would not be the same without you.", {
+      option("Long warm invite", "{{eventName}} on {{date}} at {{place}} ({{time}}). {{eventDetail}}. Means a lot if you can make it — reply by {{rsvpDate}} so I can plan food.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
@@ -602,14 +602,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
   },
   condolence: {
     "1-2": [
-      option("Gentle condolence", "I am so sorry for your loss, {{recipientName}}. Thinking of you and your family.", {
+      option("Gentle condolence", "I am so sorry for your loss, {{recipientName}}. You are in my thoughts.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
         sensitivity: "sensitive",
         placeholders: ["recipientName"],
       }),
-      option("Quiet support", "My heart is with you during this difficult time. I am so sorry for what you are going through.", {
+      option("Quiet support", "I heard your news, and I am so sorry. Thinking of you right now.", {
         tone: "gentle",
         audience: "general",
         style: "supportive",
@@ -618,14 +618,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Simple condolence", "I am so sorry for your loss, {{recipientName}}. Please know that I am thinking of you and sending you love. I hope you feel supported in the days ahead.", {
+      option("Simple condolence", "I am so sorry for your loss, {{recipientName}}. I am thinking of you.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
         sensitivity: "sensitive",
         placeholders: ["recipientName"],
       }),
-      option("Gentle support", "I was so sorry to hear about {{loss}}. Please know that I am thinking of you and your family. Sending you strength and care during this difficult time.", {
+      option("Gentle support", "I was sorry to hear about {{loss}}. I am thinking of you and your family.", {
         tone: "gentle",
         audience: "general",
         style: "supportive",
@@ -634,14 +634,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Warm condolence", "I was deeply sorry to hear about {{loss}}. Please accept my heartfelt condolences. I can only imagine how difficult this time must be for you and your family. I hope you are surrounded by love and support. Thinking of you and sending you strength.", {
+      option("Warm condolence", "I was sorry to hear about {{loss}}. Please accept my condolences. Wishing you a little ease in the coming days.", {
         tone: "gentle",
         audience: "general",
         style: "supportive",
         sensitivity: "sensitive",
         placeholders: ["loss"],
       }),
-      option("Gentle heartfelt note", "I am so sorry for your loss, {{recipientName}}. There are no perfect words for a moment like this, but I wanted to let you know that I am thinking of you. {{personName}} will be remembered for {{tribute}}. Please know that you are not alone. Sending you love and care.", {
+      option("Gentle heartfelt note", "I am so sorry for your loss, {{recipientName}}. {{personName}} will be remembered for {{tribute}}. I am here if you want company or practical help.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
@@ -650,14 +650,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long condolence message", "I was so sorry to hear about {{loss}}, {{recipientName}}. I cannot imagine how heavy this moment must feel, but I wanted to reach out and let you know that I am thinking of you. Please accept my heartfelt condolences. {{personName}} will be remembered for {{tribute}}. I hope you are surrounded by people who care for you and support you through this difficult time. If there is anything I can do, even something small, please let me know. Sending you love, strength, and comfort.", {
+      option("Long condolence message", "I was sorry to hear about {{loss}}, {{recipientName}}. My condolences to you and those close to you. {{personName}} will be remembered for {{tribute}}. There is no rush to reply — I just wanted you to know I am thinking of you.", {
         tone: "gentle",
         audience: "general",
         style: "supportive",
         sensitivity: "sensitive",
         placeholders: ["loss", "recipientName", "personName", "tribute"],
       }),
-      option("Long gentle support note", "I am deeply sorry for your loss. I know words can feel small in moments like this, but I wanted you to know that I am thinking of you and your family. {{personName}} clearly meant so much and will be remembered with love. I hope you find comfort in the people around you and in the memories you shared. Please take care of yourself as best you can. Sending you my heartfelt sympathy and support.", {
+      option("Long gentle support note", "I am deeply sorry for your loss. {{personName}} mattered to many people and will be remembered with care. Wishing you rest and support from the people around you. Reach out if a quiet walk or a meal would help — no pressure either way.", {
         tone: "gentle",
         audience: "general",
         style: "gentle",
@@ -700,14 +700,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Thoughtful reminder", "Hi {{recipientName}}, I wanted to send a quick reminder about {{task}}. The deadline is {{dayOrTime}}, so I just wanted to make sure it is on your radar. If you need anything from me to help move it along, please let me know. Thanks again for taking care of it.", {
+      option("Thoughtful reminder", "Hi {{recipientName}}, quick ping on {{task}} — due {{dayOrTime}}. Ping me if you need anything from my side.", {
         tone: "professional",
         audience: "coworker",
         style: "supportive",
         sensitivity: "standard",
         placeholders: ["recipientName", "task", "dayOrTime"],
       }),
-      option("Clear reminder", "Hello {{recipientName}}, just a gentle reminder about {{task}}. We are hoping to have it completed by {{deadline}}. I know schedules get busy, so I wanted to send a quick note in case this slipped through. Please let me know if you have any questions. Thank you.", {
+      option("Clear reminder", "Hello {{recipientName}}, gentle nudge on {{task}}. Target finish: {{deadline}}. Questions welcome.", {
         tone: "professional",
         audience: "coworker",
         style: "balanced",
@@ -716,14 +716,14 @@ export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Long reminder note", "Hi {{recipientName}}, I wanted to send a friendly reminder about {{task}}. The deadline is {{dayOrTime}}, and I just wanted to check in before then. I know you may have a lot going on, so this is simply meant as a helpful nudge. If there is anything you need from me to make it easier, please let me know. I appreciate your help with this. Thanks again for your time and attention.", {
+      option("Long reminder note", "Hi {{recipientName}}, checking in on {{task}} before {{dayOrTime}}. This is a light nudge, not pressure — tell me if the date needs to move or if something is blocked.", {
         tone: "professional",
         audience: "coworker",
         style: "supportive",
         sensitivity: "standard",
         placeholders: ["recipientName", "task", "dayOrTime"],
       }),
-      option("Long professional reminder", "Hello {{recipientName}}, I hope you are doing well. I wanted to follow up with a quick reminder about {{task}}. We are aiming to have this completed by {{deadline}}, so I wanted to check in ahead of time. If there are any issues, delays, or questions, feel free to let me know and I will do my best to help. Thank you for your attention to this. I appreciate it.", {
+      option("Long professional reminder", "Hello {{recipientName}}, a reminder about {{task}}, with {{deadline}} as the target. Please let me know early if anything is blocked, and I will help where I can.", {
         tone: "professional",
         audience: "client",
         style: "balanced",

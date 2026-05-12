@@ -2,6 +2,10 @@ import type { AiSentenceLengthId } from "./promptTemplates";
 import type { SupportedLanguage } from "@/utils/translation";
 import {
   type GuidedWritingPlaceholder,
+  type GuidedWritingTone,
+  type GuidedWritingAudience,
+  type GuidedWritingStyle,
+  type GuidedWritingSensitivity,
   type LocalFallbackTemplateOption,
   type GuidedWritingTemplateSet,
   type GuidedWritingSentenceBucketId,
@@ -272,6 +276,56 @@ export function getLocalFallbackTemplateOptions(
     ...opt,
     text: renderGuidedWritingTemplateText(opt.textTemplate, language),
   }));
+}
+
+/** Filters offline starters by metadata; empty fields mean “any”. */
+export type GuidedWritingStarterFilters = {
+  tone?: GuidedWritingTone | null;
+  audience?: GuidedWritingAudience | null;
+  style?: GuidedWritingStyle | null;
+  sensitivity?: GuidedWritingSensitivity | null;
+};
+
+export function filterGuidedWritingTemplateOptions(
+  options: readonly LocalFallbackTemplateOption[],
+  filters: GuidedWritingStarterFilters,
+): readonly LocalFallbackTemplateOption[] {
+  return options.filter((o) => {
+    if (filters.tone && o.tone !== filters.tone) return false;
+    if (filters.audience && o.audience !== filters.audience) return false;
+    if (filters.style && o.style !== filters.style) return false;
+    if (filters.sensitivity && o.sensitivity !== filters.sensitivity) return false;
+    return true;
+  });
+}
+
+/** True if the note still contains bracketed guided-writing labels for this UI language. */
+export function noteHasUnresolvedGuidedPlaceholders(
+  text: string,
+  language: SupportedLanguage,
+): boolean {
+  return listUnresolvedGuidedPlaceholderLabelsInNote(text, language).length > 0;
+}
+
+/** Human-readable placeholder labels still present as `[Label]` in the note. */
+export function listUnresolvedGuidedPlaceholderLabelsInNote(
+  text: string,
+  language: SupportedLanguage,
+): string[] {
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labelValues = new Set(Object.values(labels));
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const re = /\[[^\]]+\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const inner = m[0].slice(1, -1);
+    if (labelValues.has(inner) && !seen.has(inner)) {
+      seen.add(inner);
+      found.push(inner);
+    }
+  }
+  return found;
 }
 
 export function getAllGuidedWritingTemplateIds(): readonly LocalFallbackTemplateId[] {

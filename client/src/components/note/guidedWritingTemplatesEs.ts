@@ -96,7 +96,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "result"],
       }),
-      option("Líneas cercanas", "Hola {{recipientName}}, gracias por {{supportType}}. Fue atento y generoso y marcó una verdadera diferencia. Te lo agradezco de verdad.", {
+      option("Líneas cercanas", "Hola {{recipientName}}, gracias por {{supportType}}. Fue un detalle atento y generoso, y significó mucho para mí. Te lo agradezco de verdad.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -112,7 +112,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "specificDetail"],
       }),
-      option("Carta de gratitud", "Gracias, {{recipientName}}, por {{supportType}}. Hacía tiempo que quería decirte cuánto lo aprecié. Significó mucho porque {{reason}}. No pasó desapercibido para mí. Me siento afortunado de contar con tu apoyo.", {
+      option("Carta de gratitud", "Gracias, {{recipientName}}, por {{supportType}}. Hacía tiempo que quería decirte cuánto lo aprecié. Significó mucho porque {{reason}}. No pasó desapercibido para mí. Es una suerte contar con tu apoyo.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -121,14 +121,14 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Gracias largas", "Hola {{recipientName}}, quería mandarte un gracias de verdad por {{actionTaken}}. Sé que hay tiempo, esfuerzo y cuidado detrás, y no lo doy por sentado. Lo que más significó para mí fue {{specificDetail}}. Ayudó en {{resultOrSituation}} y hizo las cosas notablemente más llevaderas para mí. Tu amabilidad llegó en el momento justo. Te lo agradezco de corazón. Gracias por estar ahí para mí.", {
+      option("Gracias largas", "Hola {{recipientName}}, quería darte las gracias de verdad por {{actionTaken}}. Sé que hubo tiempo, esfuerzo y cuidado detrás, y no lo doy por sentado. Lo que más significó para mí fue {{specificDetail}}. Ayudó con {{resultOrSituation}} y me hizo las cosas más llevaderas. Tu amabilidad llegó en el momento justo. Te lo agradezco de corazón. Gracias por estar ahí para mí.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "actionTaken", "specificDetail", "resultOrSituation"],
       }),
-      option("Profundo reconocimiento", "Estimado/a {{recipientName}}, mil gracias por {{supportType}}. He pensado a menudo en cuánto significó para mí. No fue solo generoso, también muy considerado. Valoré especialmente {{specificDetail}}. Gracias a ti, {{positiveResult}}. Por favor, ten presente cuánto te lo agradezco. Tu apoyo dejó una huella duradera.", {
+      option("Profundo reconocimiento", "Hola {{recipientName}}, mil gracias por {{supportType}}. He pensado a menudo en cuánto significó para mí. No fue solo generoso, también muy considerado. Valoré especialmente {{specificDetail}}. Gracias a ti, {{positiveResult}}. Ten presente cuánto te lo agradezco. Tu apoyo dejó una huella duradera.", {
         tone: "formal",
         audience: "general",
         style: "thoughtful",
@@ -146,7 +146,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "dayOrTime"],
       }),
-      option("Solicitud profesional", "Hola {{recipientName}}, me gustaría programar una reunión breve sobre {{topic}}. Por favor indícame cuándo te viene bien.", {
+      option("Solicitud profesional", "Hola {{recipientName}}, me gustaría programar una reunión breve sobre {{topic}}. Dime, por favor, cuándo te viene bien.", {
         tone: "professional",
         audience: "client",
         style: "direct",
@@ -162,7 +162,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "dayOrTime"],
       }),
-      option("Seguimiento", "Hola {{recipientName}}, te escribo para coordinar una llamada sobre {{topic}}. El {{dayOrTime}} podría yo. ¿Qué te viene mejor?", {
+      option("Seguimiento", "Hola {{recipientName}}, te escribo para coordinar una llamada sobre {{topic}}. El {{dayOrTime}} me viene bien. ¿Qué te va mejor a ti?", {
         tone: "professional",
         audience: "client",
         style: "direct",
@@ -171,14 +171,14 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Solicitud detallada", "Hola {{recipientName}}, quería proponer horarios para una reunión sobre {{topic}}. Creo que ayudaría repasar {{specificDetail}}. Por ahora puedo el {{dayOrTime}}, pero me adapto con gusto. Por favor dime qué horario te conviene. Puedo coordinarme con tu calendario.", {
+      option("Solicitud detallada", "Hola {{recipientName}}, quería proponer horarios para una reunión sobre {{topic}}. Creo que ayudaría repasar {{specificDetail}}. Por ahora puedo el {{dayOrTime}}, pero puedo adaptarme si hace falta. Dime, por favor, qué horario te conviene.", {
         tone: "professional",
         audience: "client",
         style: "balanced",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime"],
       }),
-      option("Solicitud formal", "Buenos días, {{recipientName}}, me gustaría concertar una reunión sobre {{topic}}. Una conversación breve ayudaría a aclarar {{specificDetail}}. Estoy disponible el {{dayOrTime}}, o también el {{alternateTime}}. Por favor indíqueme la fecha que prefiera. Gracias de antemano.", {
+      option("Solicitud formal", "Buenos días, {{recipientName}}, me gustaría concertar una reunión sobre {{topic}}. Una conversación breve ayudaría a aclarar {{specificDetail}}. Estoy disponible el {{dayOrTime}}, o también el {{alternateTime}}. Indíqueme, por favor, qué fecha prefiere. Gracias de antemano.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -187,14 +187,14 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Briefing detallado", "Hola {{recipientName}}, espero que estés bien. ¿Podemos planificar una reunión sobre {{topic}}? Me parecería útil hablar juntos de {{specificDetail}} y alinear los próximos pasos. Estoy disponible el {{dayOrTime}}; {{alternateTime}} también podría servir. Si otro día te va mejor, me adapto con gusto. Por favor dime qué te funciona mejor. Valoro tu tiempo y me gustaría preparar la conversación con cuidado.", {
+      option("Briefing detallado", "Hola {{recipientName}}, espero que estés bien. ¿Podemos planificar una reunión sobre {{topic}}? Me parecería útil hablar de {{specificDetail}} y alinear los próximos pasos. Estoy disponible el {{dayOrTime}}; {{alternateTime}} también podría funcionar. Si otro día te va mejor, puedo adaptarme. Dime, por favor, qué te viene mejor. Valoro tu tiempo y me gustaría preparar la conversación con cuidado.", {
         tone: "professional",
         audience: "coworker",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "topic", "specificDetail", "dayOrTime", "alternateTime"],
       }),
-      option("Briefing formal", "Buenos días, {{recipientName}}, solicito una reunión sobre {{topic}}. Hay varios puntos que me gustaría tratar, en especial {{specificDetail}}. Una conversación breve haría avanzar las cosas con más eficiencia. Mi disponibilidad actual es {{dayOrTime}}, pero soy flexible. Si lo desea, también podemos hablar por {{extraDetail}}. Por favor indíqueme qué le conviene mejor de su lado. Gracias.", {
+      option("Briefing formal", "Buenos días, {{recipientName}}, me gustaría solicitar una reunión sobre {{topic}}. Hay varios puntos que quisiera tratar, en especial {{specificDetail}}. Una conversación breve ayudaría a avanzar con más eficiencia. Estoy disponible el {{dayOrTime}}, pero soy flexible. Si lo desea, también podemos hablar por {{extraDetail}}. Indíqueme, por favor, qué horario le conviene mejor. Gracias.", {
         tone: "formal",
         audience: "client",
         style: "balanced",
@@ -353,7 +353,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Líneas románticas cercanas", "Te amo, {{recipientName}}, y me siento afortunado de tenerte en mi vida. Me das tanto {{feeling}}. Espero que sepas cuánto significas para mí.", {
+      option("Líneas románticas cercanas", "Te amo, {{recipientName}}, y me siento muy feliz de tenerte en mi vida. Me das tanto {{feeling}}. Espero que sepas cuánto significas para mí.", {
         tone: "romantic",
         audience: "partner",
         style: "thoughtful",
@@ -385,7 +385,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Mensaje romántico largo", "Te amo, {{recipientName}}, y quería decirte hoy con más detalle cuánto. Traes tanto {{feeling}} a mi vida y no lo doy por sentado. Una de las cosas que más valoro en ti es {{specificDetail}}. Contigo mi vida ha cambiado de muchas formas silenciosas pero importantes. Me encanta cómo {{quality}}. Me siento increíblemente afortunado de amarte y compartir la vida contigo. Gracias por ser tú. Te amo más de lo que cabe en un mensaje.", {
+      option("Mensaje romántico largo", "Te amo, {{recipientName}}, y quería decirte hoy con más detalle cuánto. Traes tanto {{feeling}} a mi vida y no lo doy por sentado. Una de las cosas que más valoro en ti es {{specificDetail}}. Contigo mi vida ha cambiado de muchas formas silenciosas pero importantes. Me encanta cómo {{quality}}. Me siento profundamente agradecido de amarte y compartir la vida contigo. Gracias por ser tú. Te amo más de lo que cabe en un mensaje.", {
         tone: "romantic",
         audience: "partner",
         style: "thoughtful",
@@ -551,7 +551,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "2-3": [
-      option("Invitación cercana", "Te invito con gusto a {{eventName}} el {{date}} en {{place}}. Empieza a las {{time}} — significaría mucho para mí si puedes venir. Por favor avísame.", {
+      option("Invitación cercana", "Te invito con gusto a {{eventName}} el {{date}} en {{place}}. Empieza a las {{time}} — significaría mucho para mí si puedes venir. Avísame cuando puedas.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
@@ -567,14 +567,14 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "4-6": [
-      option("Invitación reflexiva", "Hola {{recipientName}}, me gustaría invitarte a {{eventName}} el {{date}} en {{place}}. Empezamos alrededor de las {{time}}, y significaría mucho para mí que estés. Es una ocasión para {{occasion}}. Por favor dime si puedes. Me gustaría celebrar juntos.", {
+      option("Invitación reflexiva", "Hola {{recipientName}}, me gustaría invitarte a {{eventName}} el {{date}} en {{place}}. Empezamos alrededor de las {{time}}, y significaría mucho para mí que estés. Es una ocasión para {{occasion}}. Dime, por favor, si puedes venir. Me gustaría que celebráramos juntos.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "eventName", "date", "place", "time", "occasion"],
       }),
-      option("Invitación detallada", "Estás cordialmente invitado/a a {{eventName}} el {{date}} en {{place}}. Empezamos a las {{time}} y nos encantaría que estés. Será un buen momento con {{eventDetail}}. Por favor confírmame antes del {{rsvpDate}}. Espero que puedas venir.", {
+      option("Invitación detallada", "Estás cordialmente invitado/a a {{eventName}} el {{date}} en {{place}}. Empezamos a las {{time}} y nos encantaría que estés. Será un buen momento con {{eventDetail}}. Confírmame antes del {{rsvpDate}}, por favor. Espero que puedas venir.", {
         tone: "warm",
         audience: "general",
         style: "balanced",
@@ -583,14 +583,14 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
       }),
     ],
     "7-10": [
-      option("Invitación larga", "Hola {{recipientName}}, quería enviarte una invitación de verdad a {{eventName}}. Nos reunimos el {{date}} en {{place}}, inicio alrededor de las {{time}}. Significaría mucho para mí que estés y celebremos juntos. Está previsto {{eventDetail}} — creo que será algo especial. Por favor avísame antes del {{rsvpDate}} si te viene bien. Me encantaría mucho. Espero verte.", {
+      option("Invitación larga", "Hola {{recipientName}}, quería enviarte una invitación de verdad a {{eventName}}. Nos reunimos el {{date}} en {{place}}, con inicio alrededor de las {{time}}. Significaría mucho para mí que estés y celebremos juntos. Está previsto {{eventDetail}} — creo que será algo especial. Avísame antes del {{rsvpDate}} si te viene bien. Me encantaría verte.", {
         tone: "warm",
         audience: "general",
         style: "thoughtful",
         sensitivity: "standard",
         placeholders: ["recipientName", "eventName", "date", "place", "time", "eventDetail", "rsvpDate"],
       }),
-      option("Invitación cálida extensa", "Te invito con mucho gusto a {{eventName}} el {{date}} en {{place}}. Esta ocasión me importa, y contigo sería aún más especial. Empezamos a las {{time}}, está previsto {{eventDetail}}. Habrá tiempo para relajarse, celebrar y disfrutar. Por favor confírmame antes del {{rsvpDate}}. Espero de verdad que puedas estar — sin ti no sería lo mismo.", {
+      option("Invitación cálida extensa", "Te invito con mucho gusto a {{eventName}} el {{date}} en {{place}}. Esta ocasión me importa, y contigo sería aún más especial. Empezamos a las {{time}}, y está previsto {{eventDetail}}. Habrá tiempo para relajarse, celebrar y disfrutar. Confírmame antes del {{rsvpDate}}, por favor. Espero de verdad que puedas venir — sin ti no sería lo mismo.", {
         tone: "warm",
         audience: "general",
         style: "celebratory",
@@ -690,7 +690,7 @@ export const GUIDED_WRITING_TEMPLATES_ES: Record<LocalFallbackTemplateId, Guided
         sensitivity: "standard",
         placeholders: ["recipientName", "task", "dayOrTime"],
       }),
-      option("Recordatorio profesional", "Recordatorio amable sobre {{task}}. Por favor envíalo antes del {{deadline}}, si es posible. Gracias.", {
+      option("Recordatorio profesional", "Recordatorio amable sobre {{task}}. Envíalo antes del {{deadline}}, si es posible. Gracias.", {
         tone: "professional",
         audience: "coworker",
         style: "direct",

@@ -176,7 +176,7 @@ const defaultTranslations: Translations = {
   aiComposerLocalAiUnavailableBody2: "We're building a native app to bring local AI to more devices.",
   aiComposerSignatureStarters: "Signature message starters",
   aiComposerSignatureStartersHint:
-    "Choose a polished starting point, add your details, and turn it into something unmistakably yours.",
+    "Choose a starter, replace every bracketed hint (for example [Recipient name]) with your own words, then tap Accept note.",
   aiComposerTryExample: "Try an example",
   aiComposerAriaReturnToEditing: "Return to AI editing tools and accept note step",
   aiComposerAriaUndoLastChange: "Undo last AI change to note content",
@@ -192,6 +192,19 @@ const defaultTranslations: Translations = {
   aiComposerSimplify: "Simplify",
   aiComposerRegenerate: "Regenerate",
   aiComposerAcceptNote: "Accept note",
+  aiComposerStarterFineTune: "Fine-tune starters (optional)",
+  aiComposerFilterAny: "Any",
+  aiComposerFilterTone: "Tone",
+  aiComposerFilterAudience: "Audience",
+  aiComposerFilterStyle: "Style",
+  aiComposerFilterSensitivity: "Sensitivity",
+  aiComposerStarterFiltersNoMatch: "No starters match these filters — showing both options for this length.",
+  aiComposerReplacePlaceholdersHint:
+    "Replace every bracketed placeholder in the note above (for example [Recipient name]) before you accept it.",
+  aiComposerPlaceholdersBlockShare:
+    "Your note still contains bracketed placeholders. Replace them with real words before sharing.",
+  aiComposerUnresolvedPlaceholdersList: "Still in the note:",
+  aiComposerPlaceholdersToastTitle: "Placeholders still in the note",
   sharePrivateNote: "Share Private Note",
   creatingSecureNote: "Creating secure note...",
   notesLimitTrimmed: "Notes are limited to 50 KB of UTF-8 text. Extra pasted text was removed.",
@@ -835,7 +848,7 @@ const deTranslations: Translations = {
     "Wir entwickeln eine native App, um lokale KI auf mehr Geräte zu bringen.",
   aiComposerSignatureStarters: "Signatur-Textstarter",
   aiComposerSignatureStartersHint:
-    "Wählen Sie einen geschliffenen Startpunkt, ergänzen Sie Ihre Details und machen Sie daraus Ihren eigenen Text.",
+    "Wählen Sie einen Starter, ersetzen Sie jede eckige Platzhalterangabe (z. B. [Empfängername]) durch Ihren Text und tippen Sie dann auf Notiz übernehmen.",
   aiComposerTryExample: "Beispiel ausprobieren",
   aiComposerAriaReturnToEditing: "Zu KI-Bearbeitung und Notiz-Annahme zurückkehren",
   aiComposerAriaUndoLastChange: "Letzte KI-Änderung am Notizinhalt rückgängig machen",
@@ -851,6 +864,20 @@ const deTranslations: Translations = {
   aiComposerSimplify: "Vereinfachen",
   aiComposerRegenerate: "Neu generieren",
   aiComposerAcceptNote: "Notiz übernehmen",
+  aiComposerStarterFineTune: "Starters feinjustieren (optional)",
+  aiComposerFilterAny: "Alle",
+  aiComposerFilterTone: "Ton",
+  aiComposerFilterAudience: "Adressat",
+  aiComposerFilterStyle: "Stil",
+  aiComposerFilterSensitivity: "Sensibilität",
+  aiComposerStarterFiltersNoMatch:
+    "Kein Starter passt zu diesen Filtern — es werden beide Optionen für diese Länge angezeigt.",
+  aiComposerReplacePlaceholdersHint:
+    "Ersetzen Sie alle Platzhalter in eckigen Klammern oben (z. B. [Empfängername]), bevor Sie die Notiz übernehmen.",
+  aiComposerPlaceholdersBlockShare:
+    "Die Notiz enthält noch Platzhalter in eckigen Klammern. Ersetzen Sie sie durch echten Text, bevor Sie teilen.",
+  aiComposerUnresolvedPlaceholdersList: "Noch in der Notiz:",
+  aiComposerPlaceholdersToastTitle: "Noch Platzhalter in der Notiz",
   sharePrivateNote: "Private Notiz teilen",
   creatingSecureNote: "Sichere Notiz wird erstellt...",
   notesLimitTrimmed: "Notizen sind auf 50 KB UTF-8-Text begrenzt. Zusätzlich eingefügter Text wurde entfernt.",
@@ -1497,7 +1524,7 @@ const frTranslations: Translations = {
     "Nous développons une application native pour apporter l’IA locale à davantage d’appareils.",
   aiComposerSignatureStarters: "Amorces de message signature",
   aiComposerSignatureStartersHint:
-    "Choisissez un point de départ soigné, ajoutez vos détails et transformez-le en un texte vraiment à vous.",
+    "Choisissez une amorce, remplacez chaque indice entre crochets (par ex. [Nom du destinataire]) par vos mots, puis touchez Accepter la note.",
   aiComposerTryExample: "Essayer un exemple",
   aiComposerAriaReturnToEditing: "Revenir aux outils d’édition IA et à l’étape d’acceptation",
   aiComposerAriaUndoLastChange: "Annuler la dernière modification IA du contenu",
@@ -1513,6 +1540,20 @@ const frTranslations: Translations = {
   aiComposerSimplify: "Simplifier",
   aiComposerRegenerate: "Régénérer",
   aiComposerAcceptNote: "Accepter la note",
+  aiComposerStarterFineTune: "Affiner les amorces (facultatif)",
+  aiComposerFilterAny: "Tous",
+  aiComposerFilterTone: "Ton",
+  aiComposerFilterAudience: "Public",
+  aiComposerFilterStyle: "Style",
+  aiComposerFilterSensitivity: "Sensibilité",
+  aiComposerStarterFiltersNoMatch:
+    "Aucune amorce ne correspond à ces filtres — les deux options pour cette longueur sont affichées.",
+  aiComposerReplacePlaceholdersHint:
+    "Remplacez chaque placeholder entre crochets dans la note ci-dessus (par ex. [Nom du destinataire]) avant d’accepter.",
+  aiComposerPlaceholdersBlockShare:
+    "La note contient encore des placeholders entre crochets. Remplacez-les par du texte réel avant de partager.",
+  aiComposerUnresolvedPlaceholdersList: "Encore dans la note :",
+  aiComposerPlaceholdersToastTitle: "Placeholders encore présents",
   sharePrivateNote: "Partager la note privée",
   creatingSecureNote: "Création de la note sécurisée...",
   notesLimitTrimmed: "Les notes sont limitées à 50 Ko de texte UTF-8. Le texte collé en trop a été supprimé.",
@@ -2162,7 +2203,7 @@ const esTranslations: Translations = {
     "Estamos creando una app nativa para llevar la IA local a más dispositivos.",
   aiComposerSignatureStarters: "Inicios de mensaje distintivos",
   aiComposerSignatureStartersHint:
-    "Elige un punto de partida pulido, añade tus detalles y conviértelo en algo claramente tuyo.",
+    "Elige un inicio, sustituye cada indicio entre corchetes (p. ej. [Nombre del destinatario]) por tus palabras y pulsa Aceptar nota.",
   aiComposerTryExample: "Probar un ejemplo",
   aiComposerAriaReturnToEditing:
     "Volver a las herramientas de edición con IA y al paso de aceptar nota",
@@ -2179,6 +2220,20 @@ const esTranslations: Translations = {
   aiComposerSimplify: "Simplificar",
   aiComposerRegenerate: "Regenerar",
   aiComposerAcceptNote: "Aceptar nota",
+  aiComposerStarterFineTune: "Afinar inicios (opcional)",
+  aiComposerFilterAny: "Cualquiera",
+  aiComposerFilterTone: "Tono",
+  aiComposerFilterAudience: "Destinatario",
+  aiComposerFilterStyle: "Estilo",
+  aiComposerFilterSensitivity: "Sensibilidad",
+  aiComposerStarterFiltersNoMatch:
+    "Ningún inicio coincide con estos filtros — se muestran ambas opciones para esta longitud.",
+  aiComposerReplacePlaceholdersHint:
+    "Sustituye todos los marcadores entre corchetes en la nota de arriba (p. ej. [Nombre del destinatario]) antes de aceptarla.",
+  aiComposerPlaceholdersBlockShare:
+    "La nota aún tiene marcadores entre corchetes. Sustitúyelos por texto real antes de compartir.",
+  aiComposerUnresolvedPlaceholdersList: "Aún en la nota:",
+  aiComposerPlaceholdersToastTitle: "Aún hay marcadores en la nota",
   sharePrivateNote: "Compartir nota privada",
   creatingSecureNote: "Creando nota segura...",
   notesLimitTrimmed: "Las notas están limitadas a 50 KB de texto UTF-8. Se eliminó el texto pegado sobrante.",
