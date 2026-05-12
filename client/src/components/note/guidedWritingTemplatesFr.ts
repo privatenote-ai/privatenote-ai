@@ -1,10 +1,9 @@
 import {
   guidedWritingOption as option,
-  type GuidedWritingTemplateSet,
-  type LocalFallbackTemplateId,
+  type GuidedWritingTemplateRecord,
 } from "./localFallbackShared";
 
-export const GUIDED_WRITING_TEMPLATES_FR: Record<LocalFallbackTemplateId, GuidedWritingTemplateSet> = {
+export const GUIDED_WRITING_TEMPLATES_FR: GuidedWritingTemplateRecord = {
   "ask-anything": {
     "1-2": [
       option("Ligne chaleureuse", "Salut {{recipientName}}, je voulais juste te dire : {{mainMessage}}. J'espère que tout va bien pour toi.", {

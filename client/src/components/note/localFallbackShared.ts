@@ -87,7 +87,6 @@ export type GuidedWritingTemplateSet = Record<
 >;
 
 export const LOCAL_FALLBACK_TEMPLATE_IDS = [
-  "ask-anything",
   "thank-you",
   "meeting-request",
   "birthday",
@@ -101,6 +100,12 @@ export const LOCAL_FALLBACK_TEMPLATE_IDS = [
 ] as const;
 
 export type LocalFallbackTemplateId = (typeof LOCAL_FALLBACK_TEMPLATE_IDS)[number];
+export type GuidedWritingTemplateId = "ask-anything" | LocalFallbackTemplateId;
+
+export type GuidedWritingTemplateRecord = Record<
+  GuidedWritingTemplateId,
+  GuidedWritingTemplateSet
+>;
 
 export const STANDARD_GUIDED_WRITING_BUCKETS: readonly GuidedWritingSentenceBucketId[] = [
   "1-2",

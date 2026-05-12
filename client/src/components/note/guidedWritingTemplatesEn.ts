@@ -1,11 +1,10 @@
 import {
   guidedWritingOption as option,
-  type GuidedWritingTemplateSet,
-  type LocalFallbackTemplateId,
+  type GuidedWritingTemplateRecord,
 } from "./localFallbackShared";
 
 /** English guided-writing starters (offline fallback templates). */
-export const GUIDED_WRITING_TEMPLATES_EN: Record<LocalFallbackTemplateId, GuidedWritingTemplateSet> = {
+export const GUIDED_WRITING_TEMPLATES_EN: GuidedWritingTemplateRecord = {
   "ask-anything": {
     "1-2": [
       option("Short line", "Hi {{recipientName}}, {{mainMessage}}", {

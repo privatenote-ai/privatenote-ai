@@ -94,6 +94,10 @@ import { WritingPencilIcon } from "./WritingPencilIcon";
 import { useLanguage } from "@/context/LanguageContext";
 import type { SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
+import {
+  generateHostedCloudDraft,
+  parseHostedCloudAiError,
+} from "@/utils/hostedCloudAi";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
@@ -178,6 +182,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [userPromptHistory, setUserPromptHistory] = useState<string[]>([]);
   const [transformHistory, setTransformHistory] = useState<AiPostGenTransform[]>([]);
   const [aiDraftAccepted, setAiDraftAccepted] = useState(false);
+  const [hostedCloudAiRemaining, setHostedCloudAiRemaining] = useState<number | null>(null);
+  const [hostedCloudAiLimit, setHostedCloudAiLimit] = useState(3);
+  const [hostedCloudAiStatusText, setHostedCloudAiStatusText] = useState<string | null>(null);
 
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
@@ -840,6 +847,72 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setAiDraftAccepted(false);
   }, [setNoteContentFromAiOutput]);
 
+  const handleHostedCloudGenerate = async (override?: {
+    prompt?: string;
+    enhancementType?: "improve" | "summarize" | "secure" | "ask";
+  }) => {
+    const promptToUse = override?.prompt ?? aiPrompt;
+    const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
+    if (!promptToUse.trim()) {
+      toast({ title: "Error", description: "Please enter a prompt first", variant: "destructive" });
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    setHostedCloudAiStatusText("Cloud assist is writing with Llama 3.2 3B...");
+    if (!originalPrompt) setOriginalPrompt(promptToUse);
+    setUserPromptHistory((prev) => {
+      if (prev.length === 0 || prev[prev.length - 1] !== promptToUse) {
+        return [...prev, promptToUse];
+      }
+      return prev;
+    });
+
+    try {
+      const response = await generateHostedCloudDraft({
+        prompt: promptToUse,
+        enhancementType: enhancementTypeToUse,
+        language,
+        sentenceLength: aiSentenceLength,
+      });
+      setHostedCloudAiLimit(response.limit);
+      setHostedCloudAiRemaining(response.remaining);
+      setNoteContentFromAiOutput(response.text);
+      setTransformHistory([]);
+      setShowPrompt(false);
+      setAiDraftAccepted(false);
+      toast({
+        title: "Cloud draft created",
+        description: `${response.remaining} of ${response.limit} free hosted drafts left today.`,
+      });
+    } catch (error) {
+      const parsed = parseHostedCloudAiError(error);
+      if (parsed.code === "hosted_ai_quota_exhausted") {
+        setHostedCloudAiRemaining(0);
+        toast({
+          title: "Free hosted drafts used",
+          description: "Use the offline templates today, or move to premium when it is available.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "prompt_too_long") {
+        toast({
+          title: "Prompt is too long",
+          description: parsed.message ?? "Shorten the prompt and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Cloud assist unavailable",
+          description: "Use the offline templates, or try hosted generation again later.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setHostedCloudAiStatusText(null);
+      setIsGeneratingContent(false);
+    }
+  };
+
   const executeAiGenerate = async (
     promptToUse: string,
     enhancementTypeToUse: "improve" | "summarize" | "secure" | "ask",
@@ -1160,12 +1233,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 showPrompt={showPrompt}
                 isGeneratingContent={isGeneratingContent}
                 aiGenerationStatusText={
-                  isGeneratingContent ? localAiDialogPrimaryLine(aiProgress) : null
+                  isGeneratingContent
+                    ? hostedCloudAiStatusText ?? localAiDialogPrimaryLine(aiProgress)
+                    : null
                 }
                 isAiModelLoading={isAiModelLoading}
                 aiModelProgress={aiModelProgress}
                 transformHistory={transformHistory}
                 onGenerate={(override) => void handleAiGenerate(override)}
+                onHostedCloudGenerate={(override) => void handleHostedCloudGenerate(override)}
+                hostedCloudAiRemaining={hostedCloudAiRemaining}
+                hostedCloudAiLimit={hostedCloudAiLimit}
                 onImprove={() => void handleImprove()}
                 onSummarize={() => void handleSummarize()}
                 onSimplify={() => void handleSimplify()}

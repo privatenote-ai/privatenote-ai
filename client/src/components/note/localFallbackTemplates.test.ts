@@ -13,10 +13,14 @@ import {
 } from "./localFallbackTemplates";
 
 describe("guided writing templates", () => {
-  it("falls back to ask-anything for an invalid template id", () => {
+  it("falls back to thank-you for an invalid template id", () => {
     const unknown = getLocalFallbackTemplateOptions("unknown-id", "2-3");
-    const askAnything = getLocalFallbackTemplateOptions("ask-anything", "2-3");
-    assert.deepEqual(unknown, askAnything);
+    const thankYou = getLocalFallbackTemplateOptions("thank-you", "2-3");
+    assert.deepEqual(unknown, thankYou);
+  });
+
+  it("does not offer the AI-instruction template when local AI is unavailable", () => {
+    assert.equal((getAllGuidedWritingTemplateIds() as readonly string[]).includes("ask-anything"), false);
   });
 
   it("maps natural-length (auto) to the 4–6 starter bucket for offline templates", () => {
@@ -57,7 +61,7 @@ describe("guided writing templates", () => {
   });
 
   it("filters offline starters by metadata", () => {
-    const opts = getLocalFallbackTemplateOptions("ask-anything", "1-2", "en");
+    const opts = getLocalFallbackTemplateOptions("thank-you", "1-2", "en");
     const warmOnly = filterGuidedWritingTemplateOptions(opts, { tone: "warm" });
     assert.ok(warmOnly.length >= 1);
     assert.ok(warmOnly.every((o) => o.tone === "warm"));

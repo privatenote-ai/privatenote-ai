@@ -29,6 +29,9 @@ database_id = "b9ae1541-7226-40b6-9ff7-8ce49781b025"
 # Applies baseline auth tables (sessions, users, …) to local D1 on `wrangler dev` and on deploy.
 # Keep 0001 in sync with src/auth/schema.sql. Manual upgrades stay in src/auth/migrations/.
 migrations_dir = "src/auth/d1-migrations"
+
+[ai]
+binding = "AI"
 #
 # [[durable_objects.bindings]]
 # name = "AUTH_TOKENS"

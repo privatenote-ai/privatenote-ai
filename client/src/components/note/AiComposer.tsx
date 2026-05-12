@@ -111,6 +111,12 @@ export type AiComposerProps = {
     prompt?: string;
     enhancementType?: "improve" | "summarize" | "secure" | "ask";
   }) => void;
+  onHostedCloudGenerate: (override?: {
+    prompt?: string;
+    enhancementType?: "improve" | "summarize" | "secure" | "ask";
+  }) => void;
+  hostedCloudAiRemaining: number | null;
+  hostedCloudAiLimit: number;
   onImprove: () => void;
   onSummarize: () => void;
   onSimplify: () => void;
@@ -145,6 +151,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   aiModelProgress,
   transformHistory,
   onGenerate,
+  onHostedCloudGenerate,
+  hostedCloudAiRemaining,
+  hostedCloudAiLimit,
   onImprove,
   onSummarize,
   onSimplify,
@@ -430,6 +439,61 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   </p>
                 </div>
 
+                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900/60 dark:bg-blue-950/25">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {t.aiComposerCloudAssistTitle}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+                        {t.aiComposerCloudAssistBody}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
+                      {hostedCloudAiRemaining === null
+                        ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
+                        : t.aiComposerCloudAssistRemaining
+                            .replace("{remaining}", String(hostedCloudAiRemaining))
+                            .replace("{limit}", String(hostedCloudAiLimit))}
+                    </span>
+                  </div>
+                  <label className="mt-3 block text-xs font-medium text-gray-700 dark:text-gray-300" htmlFor="hosted-ai-prompt">
+                    {t.aiComposerCloudAssistPromptLabel}
+                  </label>
+                  <div className="relative mt-1">
+                    <textarea
+                      id="hosted-ai-prompt"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      rows={4}
+                      className="min-h-[8rem] w-full resize-y rounded-lg border border-blue-200 bg-white px-3 py-2.5 pr-14 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-blue-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
+                      placeholder={t.aiComposerCloudAssistPlaceholder}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onHostedCloudGenerate()}
+                      disabled={isGeneratingContent || !hasPromptText || hostedCloudAiRemaining === 0}
+                      title={t.aiComposerCloudAssistButton}
+                      aria-label={t.aiComposerCloudAssistButton}
+                      className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-2 ring-white/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:ring-gray-950/90 dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      {isGeneratingContent ? (
+                        <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                      ) : (
+                        <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
+                      )}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                    <Sparkles className="h-4 w-4 shrink-0 text-blue-500" aria-hidden />
+                    <span>
+                      {hostedCloudAiRemaining === 0
+                        ? t.aiComposerCloudAssistNoFree
+                        : t.aiComposerCloudAssistTemplatesAlternative}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {t.aiComposerSignatureStarters}
@@ -695,44 +759,46 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
             {!aiDraftAccepted ? (
               <div className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex flex-wrap items-center justify-start gap-2">
-                  <button
-                    type="button"
-                    onClick={onImprove}
-                    disabled={isGeneratingContent}
-                    className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                  >
-                    <Zap className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
-                    {t.aiComposerImprove}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onSummarize}
-                    disabled={isGeneratingContent}
-                    className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                  >
-                    <ZoomIn className="h-4 w-4 mr-1 text-blue-500 shrink-0" />
-                    {t.aiComposerSummarize}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onSimplify}
-                    disabled={isGeneratingContent}
-                    className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                  >
-                    <FileText className="h-4 w-4 mr-1 text-purple-500 shrink-0" />
-                    {t.aiComposerSimplify}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRegenerate()}
-                    disabled={isGeneratingContent}
-                    className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1 text-green-500 shrink-0" />
-                    {t.aiComposerRegenerate}
-                  </button>
-                </div>
+                {localAiSupported ? (
+                  <div className="flex flex-wrap items-center justify-start gap-2">
+                    <button
+                      type="button"
+                      onClick={onImprove}
+                      disabled={isGeneratingContent}
+                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                    >
+                      <Zap className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
+                      {t.aiComposerImprove}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onSummarize}
+                      disabled={isGeneratingContent}
+                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                    >
+                      <ZoomIn className="h-4 w-4 mr-1 text-blue-500 shrink-0" />
+                      {t.aiComposerSummarize}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onSimplify}
+                      disabled={isGeneratingContent}
+                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                    >
+                      <FileText className="h-4 w-4 mr-1 text-purple-500 shrink-0" />
+                      {t.aiComposerSimplify}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRegenerate()}
+                      disabled={isGeneratingContent}
+                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 backdrop-blur-md hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1 text-green-500 shrink-0" />
+                      {t.aiComposerRegenerate}
+                    </button>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={onAcceptDraft}

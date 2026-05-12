@@ -1,8 +1,13 @@
 import type { DurableObjectNamespace, KVNamespace, D1Database } from "@cloudflare/workers-types";
 
+export type WorkersAiBinding = {
+  run: (model: string, input: unknown, options?: unknown) => Promise<unknown>;
+};
+
 export interface Env {
   NOTES_KV: KVNamespace;
   SECURE_NOTES: DurableObjectNamespace;
+  AI?: WorkersAiBinding;
   TURNSTILE_SECRET_KEY?: string;
   // Rate limiting KV namespace (can use same as NOTES_KV or separate)
   RATE_LIMIT_KV?: KVNamespace;

@@ -7,6 +7,7 @@ import {
   type GuidedWritingStyle,
   type GuidedWritingSensitivity,
   type LocalFallbackTemplateOption,
+  type GuidedWritingTemplateRecord,
   type GuidedWritingTemplateSet,
   type GuidedWritingSentenceBucketId,
   LOCAL_FALLBACK_TEMPLATE_IDS,
@@ -32,7 +33,7 @@ export { LOCAL_FALLBACK_TEMPLATE_IDS, type LocalFallbackTemplateId };
 
 const GUIDED_BY_LANG: Record<
   SupportedLanguage,
-  Record<LocalFallbackTemplateId, GuidedWritingTemplateSet>
+  GuidedWritingTemplateRecord
 > = {
   en: GUIDED_WRITING_TEMPLATES_EN,
   de: GUIDED_WRITING_TEMPLATES_DE,
@@ -225,7 +226,7 @@ export const GUIDED_WRITING_TEMPLATES = GUIDED_WRITING_TEMPLATES_EN;
 
 export function getGuidedWritingTemplatesForLanguage(
   language: SupportedLanguage,
-): Record<LocalFallbackTemplateId, GuidedWritingTemplateSet> {
+): GuidedWritingTemplateRecord {
   return GUIDED_BY_LANG[language] ?? GUIDED_BY_LANG.en;
 }
 
@@ -256,7 +257,7 @@ export function getGuidedWritingTemplateSet(
 ): GuidedWritingTemplateSet {
   const set = getGuidedWritingTemplatesForLanguage(language);
   if (!isLocalFallbackTemplateId(templateId)) {
-    return set["ask-anything"];
+    return set["thank-you"];
   }
   return set[templateId];
 }

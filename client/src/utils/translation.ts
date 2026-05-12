@@ -174,6 +174,17 @@ const defaultTranslations: Translations = {
   aiComposerLocalAiUnavailableBody1:
     "You still have access to a refined writing experience here, with curated message starters shaped to the template and length you choose.",
   aiComposerLocalAiUnavailableBody2: "We're building a native app to bring local AI to more devices.",
+  aiComposerCloudAssistTitle: "Cloud assist with Llama 3.2 3B",
+  aiComposerCloudAssistBody:
+    "Use up to 3 hosted drafts when private local AI is unavailable. Your prompt is sent to Cloudflare Workers AI for this draft only.",
+  aiComposerCloudAssistIncluded: "{count} free drafts",
+  aiComposerCloudAssistRemaining: "{remaining} of {limit} left",
+  aiComposerCloudAssistPromptLabel: "Describe the message",
+  aiComposerCloudAssistPlaceholder: "Write a birthday note for my wife that feels warm, personal, and not too formal...",
+  aiComposerCloudAssistButton: "Generate hosted draft",
+  aiComposerCloudAssistNoFree: "Free hosted drafts are used for today. Offline templates are still available below.",
+  aiComposerCloudAssistTemplatesAlternative:
+    "Prefer not to send text to cloud AI? Use the offline templates below instead.",
   aiComposerSignatureStarters: "Signature message starters",
   aiComposerSignatureStartersHint:
     "Choose a starter, replace every bracketed hint (for example [Recipient name]) with your own words, then tap Accept note.",

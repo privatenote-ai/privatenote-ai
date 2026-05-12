@@ -66,6 +66,16 @@ const AI_VERIFICATION = {
   KEY_PREFIX: "ai_verify:",
 };
 
+const HOSTED_AI_DRAFT = {
+  MODEL: "@cf/meta/llama-3.2-3b-instruct",
+  MODEL_LABEL: "Llama 3.2 3B",
+  FREE_USES: 3,
+  WINDOW_SECONDS: 24 * 60 * 60,
+  KEY_PREFIX: "hosted_ai_draft:",
+  MAX_PROMPT_CHARS: 2500,
+  MAX_OUTPUT_TOKENS: 260,
+};
+
 /** When set (KV), AI paths require a fresh Turnstile token until verification succeeds. */
 const TURNSTILE_CHALLENGE = {
   KEY_PREFIX: "turnstile_challenge:",
@@ -6223,6 +6233,232 @@ async function checkRateLimit(
   }
 }
 
+type HostedAiQuota = {
+  count: number;
+  windowStart: number;
+};
+
+function getHostedAiQuotaKey(identifier: string): string {
+  return `${HOSTED_AI_DRAFT.KEY_PREFIX}${identifier}`;
+}
+
+async function readHostedAiQuota(
+  env: Env,
+  identifier: string,
+): Promise<{ allowed: boolean; remaining: number; resetAt: number; nextCount: number }> {
+  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = now - (now % HOSTED_AI_DRAFT.WINDOW_SECONDS);
+  const resetAt = windowStart + HOSTED_AI_DRAFT.WINDOW_SECONDS;
+
+  try {
+    const stored = (await kv.get(getHostedAiQuotaKey(identifier), { type: "json" })) as HostedAiQuota | null;
+    const count = stored?.windowStart === windowStart ? stored.count : 0;
+    if (count >= HOSTED_AI_DRAFT.FREE_USES) {
+      return { allowed: false, remaining: 0, resetAt, nextCount: count };
+    }
+    return {
+      allowed: true,
+      remaining: HOSTED_AI_DRAFT.FREE_USES - count,
+      resetAt,
+      nextCount: count + 1,
+    };
+  } catch (error) {
+    console.error("[HOSTED_AI] Error reading quota:", error);
+    return {
+      allowed: true,
+      remaining: HOSTED_AI_DRAFT.FREE_USES,
+      resetAt,
+      nextCount: 1,
+    };
+  }
+}
+
+async function commitHostedAiQuota(
+  env: Env,
+  identifier: string,
+  count: number,
+  resetAt: number,
+): Promise<void> {
+  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
+  const now = Math.floor(Date.now() / 1000);
+  const windowStart = resetAt - HOSTED_AI_DRAFT.WINDOW_SECONDS;
+  try {
+    await kv.put(
+      getHostedAiQuotaKey(identifier),
+      JSON.stringify({ count, windowStart }),
+      { expirationTtl: Math.max(60, resetAt - now + 10) },
+    );
+  } catch (error) {
+    console.error("[HOSTED_AI] Error committing quota:", error);
+  }
+}
+
+function hostedAiLanguageLabel(raw: unknown): string {
+  const language = typeof raw === "string" ? raw.toLowerCase() : "en";
+  if (language.startsWith("de")) return "German";
+  if (language.startsWith("fr")) return "French";
+  if (language.startsWith("es")) return "Spanish";
+  return "English";
+}
+
+function hostedAiTaskInstruction(raw: unknown): string {
+  if (raw === "summarize") {
+    return "Summarize the user's text into a concise message that is ready to send.";
+  }
+  if (raw === "secure") {
+    return "Rewrite the user's text as a ready-to-send private note and remove unnecessary sensitive details.";
+  }
+  if (raw === "improve") {
+    return "Improve the user's draft into a natural, clear message that is ready to send.";
+  }
+  return "Write a natural message from the user's request that is ready to send.";
+}
+
+function hostedAiLengthInstruction(raw: unknown): string {
+  if (raw === "1-2") return "Keep it to 1 or 2 sentences.";
+  if (raw === "2-3") return "Keep it to 2 or 3 sentences.";
+  if (raw === "4-6") return "Keep it to 4 to 6 sentences.";
+  if (raw === "7-10") return "Keep it to 7 to 10 sentences.";
+  return "Use the natural length needed for the message.";
+}
+
+function extractHostedAiText(result: unknown): string {
+  const candidates: unknown[] = [result];
+  if (result && typeof result === "object") {
+    const record = result as Record<string, unknown>;
+    candidates.push(record.response, record.result, record.text, record.output_text);
+    if (Array.isArray(record.choices)) {
+      for (const choice of record.choices) {
+        if (choice && typeof choice === "object") {
+          const c = choice as Record<string, unknown>;
+          candidates.push(c.text);
+          if (c.message && typeof c.message === "object") {
+            candidates.push((c.message as Record<string, unknown>).content);
+          }
+        }
+      }
+    }
+  }
+  const text = candidates.find((candidate) => typeof candidate === "string" && candidate.trim().length > 0);
+  return typeof text === "string"
+    ? text.trim().replace(/^(final message|message|note):\s*/i, "").trim()
+    : "";
+}
+
+async function handleHostedAiDraft(request: Request, env: Env): Promise<Response> {
+  if (!env.AI) {
+    return jsonResponse(
+      {
+        error: "hosted_ai_unavailable",
+        message: "Hosted AI is not configured for this deployment.",
+      },
+      503,
+      request,
+    );
+  }
+
+  let body: any;
+  try {
+    body = await readJsonBody(request);
+  } catch {
+    return jsonResponse({ error: "invalid_json", message: "Invalid JSON" }, 400, request);
+  }
+
+  if (body?.consentToHostedAi !== true) {
+    return jsonResponse(
+      {
+        error: "hosted_ai_consent_required",
+        message: "Hosted AI requires consent because the prompt is sent to Cloudflare Workers AI.",
+      },
+      400,
+      request,
+    );
+  }
+
+  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) {
+    return jsonResponse({ error: "prompt_required", message: "Prompt is required" }, 400, request);
+  }
+  if (prompt.length > HOSTED_AI_DRAFT.MAX_PROMPT_CHARS) {
+    return jsonResponse(
+      {
+        error: "prompt_too_long",
+        message: `Prompt must be ${HOSTED_AI_DRAFT.MAX_PROMPT_CHARS} characters or fewer.`,
+      },
+      400,
+      request,
+    );
+  }
+
+  const clientId = getClientIdentifier(request);
+  const quota = await readHostedAiQuota(env, clientId);
+  if (!quota.allowed) {
+    return jsonResponse(
+      {
+        error: "hosted_ai_quota_exhausted",
+        message: "Free hosted drafts are used up for this device today.",
+        limit: HOSTED_AI_DRAFT.FREE_USES,
+        remaining: 0,
+        resetAt: quota.resetAt,
+      },
+      429,
+      request,
+    );
+  }
+
+  const language = hostedAiLanguageLabel(body?.language);
+  const messages = [
+    {
+      role: "system",
+      content: [
+        "You are PrivateNote cloud assist.",
+        "Output only the final note/message the user can send.",
+        "Do not explain your choices, do not add placeholders, and do not mention AI, Cloudflare, or PrivateNote.",
+        `Write in ${language}.`,
+        hostedAiTaskInstruction(body?.enhancementType),
+        hostedAiLengthInstruction(body?.sentenceLength),
+      ].join(" "),
+    },
+    { role: "user", content: prompt },
+  ];
+
+  try {
+    const result = await env.AI.run(HOSTED_AI_DRAFT.MODEL, {
+      messages,
+      max_tokens: HOSTED_AI_DRAFT.MAX_OUTPUT_TOKENS,
+      temperature: 0.45,
+    });
+    const text = extractHostedAiText(result);
+    if (!text) {
+      throw new Error("Workers AI returned an empty draft");
+    }
+    await commitHostedAiQuota(env, clientId, quota.nextCount, quota.resetAt);
+    return jsonResponse(
+      {
+        ok: true,
+        text,
+        model: HOSTED_AI_DRAFT.MODEL_LABEL,
+        limit: HOSTED_AI_DRAFT.FREE_USES,
+        remaining: Math.max(0, HOSTED_AI_DRAFT.FREE_USES - quota.nextCount),
+        resetAt: quota.resetAt,
+      },
+      200,
+      request,
+    );
+  } catch (error) {
+    console.error("[HOSTED_AI] Draft generation failed:", error);
+    return jsonResponse(
+      {
+        error: "hosted_ai_generation_failed",
+        message: "Hosted AI could not create a draft right now.",
+      },
+      502,
+      request,
+    );
+  }
+}
+
 function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
@@ -6605,6 +6841,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
   const storage = new CompositeStorage(env.NOTES_KV, analyticsKv);
   console.log(`[ROUTES] Storage initialized`);
+
+  if (pathname === "/api/ai/cloud-draft" && method === "POST") {
+    return handleHostedAiDraft(request, env);
+  }
 
   if (pathname === "/api/notes/turnstile-challenge" && method === "GET") {
     const clientId = getClientIdentifier(request);
