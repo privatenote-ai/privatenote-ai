@@ -99,7 +99,7 @@ function passkeyFailureDescription(error: unknown): string {
 
 type AuthMode = "sign-in" | "sign-up";
 
-export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
+export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
   const { language, t } = useLanguage();
@@ -364,14 +364,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Header Section */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              {mode === "sign-up"
-                ? tx("authCreateYourAccount", "Create your account")
-                : tx("authWelcomeBack", "Welcome back")}
+              {tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
-              {mode === "sign-up"
-                ? tx("authSignUpSubtitle", "Create and share private notes that self-destruct after reading.")
-                : tx("authSignInSubtitle", "Sign in securely with your email or a passkey.")}
+              {tx("authUnifiedSubtitle", "Enter your email to continue. If you’re new, we’ll create your account.")}
             </p>
           </div>
 
@@ -380,12 +376,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
             <Card className="border-2">
               <CardHeader>
                 <CardTitle className="text-xl">
-                  {mode === "sign-up" ? tx("authGetStarted", "Get started") : tx("signIn", "Sign in")}
+                  {tx("authGetStarted", "Get started")}
                 </CardTitle>
                 <CardDescription>
-                  {mode === "sign-up"
-                    ? tx("authSignUpCardDesc", "Enter your email to create a passwordless account.")
-                    : tx("authSignInCardDesc", "Enter your email to receive a secure sign-in link or use passkey.")}
+                  {tx("authUnifiedCardDesc", "Use a secure email link, or sign in faster with a passkey already saved on this device.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -422,26 +416,22 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                     >
                       {isSendingMagicLink ? (
                         <>{tx("authSendingLink", "Sending link...")}</>
-                      ) : mode === "sign-up" ? (
-                        tx("authCreateAccountButton", "Create account")
                       ) : (
                         tx("authContinueWithEmail", "Continue with email")
                       )}
                     </Button>
-                    {mode === "sign-in" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => void handleLoginPasskey()}
-                        disabled={isAnyAuthBusy || !passkeySupported}
-                        className="flex-1 min-h-12 sm:min-h-0"
-                        size="lg"
-                      >
-                        {isUsingPasskey
-                          ? tx("authSigningIn", "Signing in...")
-                          : tx("authUsePasskey", "Use passkey")}
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void handleLoginPasskey()}
+                      disabled={isAnyAuthBusy || !passkeySupported}
+                      className="flex-1 min-h-12 sm:min-h-0"
+                      size="lg"
+                    >
+                      {isUsingPasskey
+                        ? tx("authSigningIn", "Signing in...")
+                        : tx("authUsePasskey", "Use passkey")}
+                    </Button>
                   </div>
 
                   {shouldShowTurnstile && (
@@ -459,72 +449,42 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                   )}
                 </form>
 
-                {mode === "sign-in" && (
-                  <div className="text-center pt-2">
-                    <a
-                      href="/auth/recovery"
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {tx("authUseRecoveryCode", "Use a recovery code")}
-                    </a>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <div className="text-sm text-center text-gray-600 dark:text-gray-300">
-                    {mode === "sign-up" ? (
-                      <>
-                        {tx("authAlreadyHaveAccount", "Already have an account?")}{" "}
-                        <a
-                          href="/auth/sign-in"
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                        >
-                          {tx("signIn", "Sign in")}
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        {tx("authDontHaveAccount", "Don't have an account?")}{" "}
-                        <a
-                          href="/auth/sign-up"
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                        >
-                          {tx("signUp", "Sign up")}
-                        </a>
-                      </>
-                    )}
-                  </div>
+                <div className="text-center pt-2">
+                  <a
+                    href="/auth/recovery"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {tx("authUseRecoveryCode", "Use a recovery code")}
+                  </a>
                 </div>
 
-                {!passkeySupported && mode === "sign-in" && (
+                {!passkeySupported && (
                   <p className="text-xs text-gray-500 text-center">
                     {tx("authPasskeysNotSupportedDesc", "This browser does not support passkeys.")}
                   </p>
                 )}
 
-                {mode === "sign-up" && (
-                  <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
-                    <a
-                      href={localizedPath("/terms", language)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {tx("authTermsAndConditions", "Terms & Conditions")}
-                    </a>{" "}
-                    {tx("authAnd", "and")}{" "}
-                    <a
-                      href={localizedPath("/privacy", language)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {tx("privacyPolicy", "Privacy Policy")}
-                    </a>
-                    .
-                  </p>
-                )}
+                <p className="text-xs text-gray-500 text-center leading-relaxed">
+                  {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
+                  <a
+                    href={localizedPath("/terms", language)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {tx("authTermsAndConditions", "Terms & Conditions")}
+                  </a>{" "}
+                  {tx("authAnd", "and")}{" "}
+                  <a
+                    href={localizedPath("/privacy", language)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {tx("privacyPolicy", "Privacy Policy")}
+                  </a>
+                  .
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -541,17 +501,8 @@ export default function Auth({ mode = "sign-in" }: { mode?: AuthMode }) {
                 </div>
                 <CardTitle className="text-2xl">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
                 <CardDescription className="text-base mt-2">
-                  {mode === "sign-up" ? (
-                    <>
-                      {tx("authSignUpSentText", "If this email address is valid, a secure link is on its way to")}{" "}
-                      <strong>{email.trim()}</strong>.
-                    </>
-                  ) : (
-                    <>
-                      {tx("authSignInSentText", "If an account can use this address, a secure sign-in link is on its way to")}{" "}
-                      <strong>{email.trim()}</strong>.
-                    </>
-                  )}
+                  {tx("authUnifiedSentText", "If this address can receive PrivateNote email, a secure link is on its way to")}{" "}
+                  <strong>{email.trim()}</strong>.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

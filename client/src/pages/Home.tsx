@@ -1,10 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'wouter';
-import { Shield, Check, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { Shield, Check, ArrowRight } from 'lucide-react';
 import { CreateNote } from '@/components/note/CreateNote';
 import { NoteResult } from '@/components/note/NoteResult';
 import { SecurityFeatures } from '@/components/features/SecurityFeatures';
 import { FAQSection } from '@/components/features/FAQSection';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
@@ -18,79 +25,55 @@ const Home: React.FC = () => {
     () => [
       {
         slug: 'workplace-texts-private-note',
+        category: t.blogTagWorkplace,
         title: t.blogWorkplaceTextsTitle,
         excerpt: t.blogWorkplaceTextsExcerpt,
+        readTime: t.homeBlogReadTime6,
       },
       {
         slug: 'myth-good-enough-security',
+        category: t.blogTagSecurity,
         title: t.blogGoodEnoughTitle,
         excerpt: t.blogGoodEnoughExcerpt,
+        readTime: t.homeBlogReadTime5,
       },
       {
         slug: 'how-we-generate-passwords',
+        category: t.blogTagCryptography,
         title: t.blogPasswordTitle,
         excerpt: t.blogPasswordExcerpt,
+        readTime: t.homeBlogReadTime6,
       },
       {
         slug: 'privacy-tools',
+        category: t.blogTagPrivacy,
         title: t.blogPrivacyTitle,
         excerpt: t.blogPrivacyExcerpt,
+        readTime: t.homeBlogReadTime4,
       },
     ],
     [
+      t.blogTagWorkplace,
       t.blogWorkplaceTextsTitle,
       t.blogWorkplaceTextsExcerpt,
+      t.blogTagSecurity,
       t.blogGoodEnoughTitle,
       t.blogGoodEnoughExcerpt,
+      t.blogTagCryptography,
       t.blogPasswordTitle,
       t.blogPasswordExcerpt,
+      t.blogTagPrivacy,
       t.blogPrivacyTitle,
       t.blogPrivacyExcerpt,
+      t.homeBlogReadTime4,
+      t.homeBlogReadTime5,
+      t.homeBlogReadTime6,
     ],
   );
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const blogCarouselBtnClass =
-    "inline-flex shrink-0 h-11 w-11 items-center justify-center rounded-full border border-gray-200/90 bg-white/95 text-primary shadow-md backdrop-blur-sm transition dark:border-gray-600 dark:bg-gray-900/95";
 
   // This function would be called from NoteResult when user wants to create a new note
   const handleCreateNew = () => {
     setShowCreateNote(true);
-  };
-
-  const updateBlogCarouselState = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    setCanPrev(el.scrollLeft > 8);
-    setCanNext(el.scrollLeft < maxScroll - 8);
-    const p = maxScroll > 0 ? el.scrollLeft / maxScroll : 0;
-    setScrollProgress(Number.isFinite(p) ? p : 0);
-  };
-
-  useEffect(() => {
-    updateBlogCarouselState();
-    const el = scrollerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(updateBlogCarouselState);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [blogPosts.length]);
-
-  const onBlogCarouselScroll = (_e: UIEvent<HTMLDivElement>) => {
-    updateBlogCarouselState();
-  };
-
-  const scrollBlogCards = (dir: 'prev' | 'next') => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>('[data-blog-card]');
-    const gapPx = 16;
-    const step = card ? card.offsetWidth + gapPx : Math.max(280, el.clientWidth * 0.4);
-    const delta = dir === 'next' ? step : -step;
-    el.scrollBy({ left: delta, behavior: 'smooth' });
   };
 
   return (
@@ -234,128 +217,73 @@ const Home: React.FC = () => {
       </section>
 
       <section
-        className="px-4 pt-2 pb-12 sm:px-6 lg:px-8 max-w-5xl xl:max-w-6xl mx-auto min-w-0"
+        className="relative isolate overflow-hidden border-y border-gray-200/70 bg-gray-50/80 px-4 py-14 dark:border-gray-800/80 dark:bg-gray-950/55 sm:px-6 lg:px-8"
         aria-labelledby="latest-blog-heading"
       >
-        <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/90 dark:bg-gray-950/70 p-6 sm:p-8 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)] dark:shadow-[0_24px_60px_-32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
-          <div className="text-center mb-6 sm:mb-8">
-            <h3 id="latest-blog-heading" className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              {t.blog}
-            </h3>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-lg mx-auto px-2">
-              {t.homeBlogCarouselHint}
-            </p>
-          </div>
+        <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.08] [background-image:linear-gradient(to_right,#00000014_1px,transparent_1px),linear-gradient(to_bottom,#00000014_1px,transparent_1px)] [background-size:48px_48px] dark:opacity-[0.12]" />
 
-          <div className="relative mx-auto">
-            {/* Mobile: compact controls */}
-            <div className="md:hidden absolute right-0 top-0 flex items-center gap-2 z-20">
-              <button
-                type="button"
-                aria-label={t.homeBlogCarouselPrev}
-                onClick={() => scrollBlogCards('prev')}
-                disabled={!canPrev}
-                className={`${blogCarouselBtnClass} ${
-                  canPrev ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
-                }`}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                aria-label={t.homeBlogCarouselNext}
-                onClick={() => scrollBlogCards('next')}
-                disabled={!canNext}
-                className={`${blogCarouselBtnClass} ${
-                  canNext ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
-                }`}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
+        <div className="mx-auto max-w-6xl min-w-0">
+          <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                {t.homeBlogEyebrow}
+              </p>
+              <h3 id="latest-blog-heading" className="text-3xl font-semibold tracking-tight text-gray-950 dark:text-white">
+                {t.blogSubtitle}
+              </h3>
+              <p className="mt-3 text-base leading-7 text-gray-600 dark:text-gray-300">
+                {t.homeBlogCarouselHint}
+              </p>
             </div>
 
-            {/* Desktop / tablet: side arrows */}
-            <button
-              type="button"
-              aria-label={t.homeBlogCarouselPrev}
-              onClick={() => scrollBlogCards('prev')}
-              disabled={!canPrev}
-              className={`${blogCarouselBtnClass} absolute left-0 top-[calc(50%-0.375rem)] z-20 hidden -translate-x-2 -translate-y-1/2 md:flex ${
-                canPrev ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
-              }`}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              aria-label={t.homeBlogCarouselNext}
-              onClick={() => scrollBlogCards('next')}
-              disabled={!canNext}
-              className={`${blogCarouselBtnClass} absolute right-0 top-[calc(50%-0.375rem)] z-20 hidden translate-x-2 -translate-y-1/2 md:flex ${
-                canNext ? 'hover:bg-primary/10 hover:border-primary/40' : 'opacity-35 cursor-not-allowed'
-              }`}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-
-            <div className="pointer-events-none absolute inset-y-10 left-0 z-10 w-10 md:w-12 bg-gradient-to-r from-background to-transparent dark:from-gray-950" />
-            <div className="pointer-events-none absolute inset-y-10 right-0 z-10 w-10 md:w-12 bg-gradient-to-l from-background to-transparent dark:from-gray-950" />
-
-            {/* One track: snap carousel on all breakpoints; card width adapts */}
-            <div
-              ref={scrollerRef}
-              onScroll={onBlogCarouselScroll}
-              role="region"
-              aria-roledescription="carousel"
-              aria-label={t.blog}
-              className="flex snap-x snap-mandatory scroll-px-4 touch-pan-x gap-4 overflow-x-auto overscroll-x-contain scroll-smooth py-4 pt-14 md:mx-11 md:gap-6 md:scroll-px-2 md:px-2 md:pb-6 md:pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {blogPosts.map((post) => (
-                <article
-                  key={post.slug}
-                  data-blog-card
-                  className={
-                    'snap-start shrink-0 flex flex-col rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm ring-1 ring-black/[0.03] dark:border-gray-700/80 dark:bg-gray-900/80 dark:ring-white/[0.05] ' +
-                    'w-[min(100%-1.5rem,calc(100vw-3rem))] sm:w-[min(22rem,calc(100vw-4rem))] ' +
-                    'md:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]'
-                  }
-                >
-                  <h4 className="text-lg font-semibold leading-snug text-gray-900 dark:text-white line-clamp-2 min-h-[3.5rem]">
-                    {post.title}
-                  </h4>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3 min-h-[4.25rem]">
-                    {post.excerpt}
-                  </p>
-                  <Link
-                    href={`${blogPath}/${post.slug}`}
-                    className="mt-4 inline-flex items-center text-sm font-semibold text-primary hover:text-primary/85"
-                  >
-                    {t.blogReadMore}
-                    <ArrowRight className="ml-1 h-4 w-4 shrink-0" />
-                  </Link>
-                </article>
-              ))}
-            </div>
-
-            <div className="mt-2 flex items-center justify-center gap-2 md:mt-1">
-              <div className="h-1.5 w-44 sm:w-52 rounded-full bg-muted/80 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
-                  style={{ width: `${Math.max(8, Math.min(100, scrollProgress * 100))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center">
             <Link
               href={blogPath}
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:shadow-md bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-gray-950 transition-colors hover:text-primary dark:text-gray-100 dark:hover:text-primary"
             >
-              {t.blog}
-              <ArrowRight className="w-4 h-4" />
+              {t.homeBlogViewAll}
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
+
+          <Carousel opts={{ align: "start" }} className="px-0 md:px-10">
+            <CarouselContent>
+              {blogPosts.map((post) => (
+                <CarouselItem key={post.slug} className="basis-[88%] sm:basis-1/2 lg:basis-1/3">
+                  <Link
+                    href={`${blogPath}/${post.slug}`}
+                    className="group flex h-full min-h-[270px] flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-3 text-xs font-medium">
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">
+                        {post.category}
+                      </span>
+                      <span className="whitespace-nowrap text-gray-500 dark:text-gray-400">
+                        {post.readTime}
+                      </span>
+                    </div>
+                    <h4 className="text-xl font-semibold leading-snug text-gray-950 transition-colors group-hover:text-primary dark:text-white">
+                      {post.title}
+                    </h4>
+                    <p className="mt-4 flex-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                      {post.excerpt}
+                    </p>
+                    <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-950 dark:text-gray-100">
+                      {t.homeBlogReadArticle}
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    </span>
+                  </Link>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious
+              aria-label={t.homeBlogCarouselPrev}
+              className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
+            />
+            <CarouselNext
+              aria-label={t.homeBlogCarouselNext}
+              className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
+            />
+          </Carousel>
         </div>
       </section>
 

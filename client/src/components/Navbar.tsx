@@ -154,9 +154,6 @@ export const Navbar: React.FC = () => {
   const desktopLink =
     "relative px-3 py-1.5 text-sm font-medium text-primary rounded-md shadow-none transition-all duration-150 hover:text-black dark:hover:text-black hover:bg-primary/12 dark:hover:bg-primary/18 hover:-translate-y-px hover:shadow-none outline-none focus:outline-none focus:ring-0 lg:text-[15px] whitespace-nowrap";
 
-  const authTextLink =
-    "inline-flex items-center whitespace-nowrap rounded-md border-2 border-primary px-3 py-1.5 text-sm font-semibold text-primary shadow-none transition-all duration-150 hover:bg-primary hover:text-white hover:shadow-none outline-none focus:outline-none focus:ring-0";
-
   const authButtonLink =
     "inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 outline-none focus:outline-none focus:ring-0";
 
@@ -219,22 +216,13 @@ export const Navbar: React.FC = () => {
         )}
       </div>
     ) : (
-      <>
-        <NavLink
-          href="/auth/sign-in"
-          closeMenu={closeMenu}
-          className={authTextLink}
-        >
-          {t.signIn}
-        </NavLink>
-        <NavLink
-          href="/auth/sign-up"
-          closeMenu={closeMenu}
-          className={authButtonLink}
-        >
-          {t.signUp}
-        </NavLink>
-      </>
+      <NavLink
+        href="/auth"
+        closeMenu={closeMenu}
+        className={authButtonLink}
+      >
+        {t.signIn}
+      </NavLink>
     )
   ) : null;
 
@@ -419,13 +407,9 @@ export const Navbar: React.FC = () => {
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
-                <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href="/auth" closeMenu={closeMenu} className={mobileItemClass}>
                   <Mail className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                   <span>{t.signIn}</span>
-                </NavLink>
-                <NavLink href="/auth/sign-up" closeMenu={closeMenu} className={mobileItemClass}>
-                  <Key className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                  <span>{t.signUp}</span>
                 </NavLink>
                 <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
               </>

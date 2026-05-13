@@ -126,9 +126,8 @@ function metaForAuthSegments(segments: string[], t: Translations): { title: stri
   }
   switch (sub) {
     case "sign-in":
-      return { title: buildDocumentTitle(t.signIn), description: t.authSignInSubtitle };
     case "sign-up":
-      return { title: buildDocumentTitle(t.signUp), description: t.authSignUpSubtitle };
+      return { title: buildDocumentTitle(t.signIn), description: t.authUnifiedSubtitle };
     case "magic":
       return { title: buildDocumentTitle(t.authCheckEmailTitle), description: t.authCheckEmailDesc };
     case "recovery":
