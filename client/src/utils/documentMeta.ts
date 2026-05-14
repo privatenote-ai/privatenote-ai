@@ -41,7 +41,12 @@ function absoluteUrlFromHref(href: string): string {
 function canonicalPageUrl(canonicalPath?: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const path = canonicalPath ?? (typeof window !== "undefined" ? window.location.pathname : "/");
-  return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const canonicalPathname =
+    normalizedPath === "/" || normalizedPath.includes(".") || normalizedPath.endsWith("/")
+      ? normalizedPath
+      : `${normalizedPath}/`;
+  return `${origin}${canonicalPathname}`;
 }
 
 function upsertMetaProperty(property: string, content: string): void {
@@ -62,6 +67,16 @@ function upsertMetaName(name: string, content: string): void {
     document.head.appendChild(el);
   }
   el.setAttribute("content", content);
+}
+
+function upsertCanonical(href: string): void {
+  let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement("link");
+    el.rel = "canonical";
+    document.head.appendChild(el);
+  }
+  el.href = href;
 }
 
 function removeMetaProperty(property: string): void {
@@ -98,6 +113,7 @@ export function setDocumentMeta(title: string, description: string, options?: Do
   const imageUrl = absoluteUrlFromHref(imageHref);
   const ogType = options?.ogType ?? "website";
 
+  upsertCanonical(pageUrl);
   upsertMetaProperty("og:title", title);
   upsertMetaProperty("og:description", description);
   upsertMetaProperty("og:url", pageUrl);

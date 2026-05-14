@@ -1,2 +1,9 @@
-/*    /index.html   200
-
+/note/*    /index.html   200
+/auth/*    /index.html   200
+/magic     /index.html   200
+/account   /index.html   200
+/account/* /index.html   200
+/admin/*   /index.html   200
+/test-llm  /index.html   200
+/llm-ui    /index.html   200
+/*         /404.html     404

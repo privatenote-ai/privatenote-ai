@@ -11,3 +11,30 @@
   #   • Falls back gracefully in older browsers (no isolation, local AI uses its own error path).
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
+
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+
+/auth/*
+  X-Robots-Tag: noindex, nofollow
+
+/magic
+  X-Robots-Tag: noindex, nofollow
+
+/account
+  X-Robots-Tag: noindex, nofollow
+
+/account/*
+  X-Robots-Tag: noindex, nofollow
+
+/note/*
+  X-Robots-Tag: noindex, nofollow
+
+/test-llm
+  X-Robots-Tag: noindex, nofollow
+
+/llm-ui
+  X-Robots-Tag: noindex, nofollow
+
+/api/*
+  X-Robots-Tag: noindex, nofollow
