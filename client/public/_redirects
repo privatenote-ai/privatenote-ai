@@ -1,10 +1,6 @@
-/note/*    /index.html   200
-/auth      /index.html   200
-/auth/*    /index.html   200
-/magic     /index.html   200
-/account   /index.html   200
-/account/* /index.html   200
-/admin/*   /index.html   200
-/test-llm  /index.html   200
-/llm-ui    /index.html   200
-/*         /404.html     404
+# Prerendered routes (/, /blog/..., /de/, etc.) are static HTML and win over redirects.
+#
+# SPA fallback for client routes (/note/:id, /auth/*, /account/*, …).
+# Splat lines like /note/* are unreliable with `wrangler pages deploy` (workers-sdk#2671);
+# /note/:id is handled by functions/note/[[id]].ts. This catch-all covers the rest.
+/*    /index.html   200
