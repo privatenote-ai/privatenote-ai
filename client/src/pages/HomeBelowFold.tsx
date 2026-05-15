@@ -112,9 +112,12 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                 {t.homeBlogEyebrow}
               </p>
-              <h3 id="latest-blog-heading" className="text-3xl font-semibold tracking-tight text-gray-950 dark:text-white">
-                {t.blogSubtitle}
+              <h3 id="latest-blog-heading" className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-[1.625rem]">
+                {t.blog}
               </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[15px] sm:leading-7">
+                {t.blogSubtitle}
+              </p>
               <p className="mt-3 text-base leading-7 text-gray-600 dark:text-gray-300">{t.homeBlogCarouselHint}</p>
             </div>
 

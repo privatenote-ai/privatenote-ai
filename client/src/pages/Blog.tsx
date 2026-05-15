@@ -88,7 +88,7 @@ export default function Blog() {
         <h1 className="page-title mb-12 pb-2 leading-[1.1] text-primary relative z-10">
           {t.blog}
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed relative z-10">
+        <p className="mx-auto max-w-2xl text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-[17px] sm:leading-7 relative z-10">
           {t.blogSubtitle}
         </p>
       </div>

@@ -240,7 +240,7 @@ export const Navbar: React.FC = () => {
           <NavLink
             href={lp("/")}
             closeMenu={closeMenu}
-            className="absolute right-full top-1/2 -translate-y-1/2 pr-6 flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap"
+            className="absolute right-full top-1/2 flex shrink-0 -translate-y-1/2 xl:-translate-x-2 2xl:-translate-x-2.5 cursor-pointer items-center gap-2 whitespace-nowrap pr-6"
             aria-label="PrivateNote.ai home"
           >
             {logoInner}
