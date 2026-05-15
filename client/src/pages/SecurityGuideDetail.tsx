@@ -35,7 +35,7 @@ const SecurityGuideDetail: React.FC = () => {
     vpn: {
       title: 'VPN Services Guide',
       icon: <Globe className="h-8 w-8 text-blue-500" />,
-      description: 'Learn how to protect your internet browsing with a Virtual Private Network (VPN).',
+      description: 'Learn how VPNs protect internet browsing, reduce exposure on public Wi-Fi, hide your IP address, and fit into a practical privacy setup.',
       sections: [
         {
           title: 'What is a VPN?',
@@ -56,7 +56,7 @@ const SecurityGuideDetail: React.FC = () => {
     password: {
       title: 'Password Managers Guide',
       icon: <Lock className="h-8 w-8 text-indigo-500" />,
-      description: 'Learn how to securely store and generate strong passwords.',
+      description: 'Learn how password managers generate unique passwords, store them safely, reduce reuse, and make stronger account security practical.',
       sections: [
         {
           title: 'Why Password Managers are Essential',
@@ -77,7 +77,7 @@ const SecurityGuideDetail: React.FC = () => {
     messenger: {
       title: 'Secure Messaging Guide',
       icon: <Smartphone className="h-8 w-8 text-green-500" />,
-      description: 'Protect your conversations with end-to-end encrypted messaging apps.',
+      description: 'Protect private conversations with end-to-end encrypted messaging apps, safer defaults, disappearing messages, and reduced metadata exposure.',
       sections: [
         {
           title: 'Why Secure Messaging Matters',
@@ -98,7 +98,7 @@ const SecurityGuideDetail: React.FC = () => {
     email: {
       title: 'Secure Email Guide',
       icon: <Mail className="h-8 w-8 text-purple-500" />,
-      description: 'Protect your email communications from surveillance and data mining.',
+      description: 'Protect email communications from scanning, surveillance, account takeover, and data mining with encrypted providers and safer handling habits.',
       sections: [
         {
           title: 'The Problem with Standard Email',
@@ -119,7 +119,7 @@ const SecurityGuideDetail: React.FC = () => {
     browser: {
       title: 'Privacy Browsers Guide',
       icon: <Search className="h-8 w-8 text-orange-500" />,
-      description: 'Browse the web without being tracked by advertisers and data collectors.',
+      description: 'Browse with less tracking by choosing privacy-focused browsers, blocking invasive trackers, limiting fingerprinting, and controlling cookies.',
       sections: [
         {
           title: 'Browser Privacy Concerns',

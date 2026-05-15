@@ -442,7 +442,8 @@ const defaultTranslations: Translations = {
     "Generally no. That defeats the purpose of using a password manager. The exception is your password manager master password, which you should memorise or store on paper in a physically secure place.",
   howHeroPrefix: "Security by",
   howHeroAccent: "Design",
-  howHeroSubtitle: "Choose absolute privacy with Standard mode, or enable AI Assist for optional productivity.",
+  howHeroSubtitle:
+    "See how PrivateNote.ai protects sensitive messages with browser encryption, short-lived notes, manual reveal, and optional AI Assist that stays under your control.",
   howEncryptStepDetail:
     "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
   howInfrastructureTitle: "Infrastructure",
@@ -475,7 +476,8 @@ const defaultTranslations: Translations = {
   passwordGenerator: "Password Generator",
   contact: "Contact",
   footerTagline: "End-to-end encrypted notes",
-  blogSubtitle: "Latest insights and tips about privacy, security, and encryption",
+  blogSubtitle:
+    "Read practical guidance on private notes, encryption, password hygiene, secure sharing, and safer communication habits for everyday work and personal use.",
   blogFeatured: "Featured",
   blogReadMore: "Read more",
   homeBlogEyebrow: "Further reading",
@@ -569,7 +571,8 @@ const defaultTranslations: Translations = {
   recommendQuick4: "Be cautious about the information you share online",
   recommendQuick5: "Use encrypted services for sensitive communications",
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
-  blogGoodEnoughExcerpt: "Why modern threats demand architectural security, not just better habits.",
+  blogGoodEnoughExcerpt:
+    "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
   blogPasswordTitle: "How We Generate Secure Passwords",
   blogPasswordExcerpt: "Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.",
   blogWorkplaceTextsTitle: "Workplace Texts, Legal Discovery, and the Case for Ephemeral Notes",
@@ -582,7 +585,8 @@ const defaultTranslations: Translations = {
   blogTagCryptography: "cryptography",
   blogTagWorkplace: "workplace",
   aboutPageTitle: "About",
-  aboutPageSubtitle: "The mission, values, and people behind privateNote.ai.",
+  aboutPageSubtitle:
+    "Learn why PrivateNote.ai exists, the privacy values behind the product, and how simple encrypted tools can make sensitive communication safer.",
   aboutRole: "Cryptography and Security Protocols",
   aboutBio1:
     "I am passionate about personal freedom, the right to privacy, and making the world a bit better every day with a smile and warm connections. With a background in advanced cryptography, I've dedicated my career to protecting digital privacy and developing secure communication tools that respect fundamental human rights.",
@@ -657,20 +661,20 @@ const defaultTranslations: Translations = {
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
   documentMetaPrivacyToolsTitle: "Privacy tools & resources",
   documentMetaPrivacyToolsDescription:
-    "Curated guides, tools, and resources to enhance your digital privacy and security.",
+    "Explore curated privacy guides, security tools, and practical resources for protecting messages, passwords, browsing, identity, and personal data online.",
   documentMetaContactTitle: "Contact",
   documentMetaContactDescription:
-    "Questions, feedback, or support for PrivateNote.ai.",
+    "Contact PrivateNote.ai for support, feedback, product questions, security concerns, or help using encrypted one-time notes safely.",
   documentMetaPrivacyPolicyDescription:
-    "How PrivateNote.ai handles personal data, retention, cookies, and your rights.",
+    "Read how PrivateNote.ai handles personal data, encrypted note retention, cookies, analytics, security logs, and your privacy rights.",
   documentMetaTermsDescription:
-    "Terms of service, acceptable use, disclaimers, and legal information for PrivateNote.ai.",
+    "Review the PrivateNote.ai terms of use, acceptable use rules, service limitations, legal disclaimers, and responsibilities when using the site.",
   documentMetaNotFoundTitle: "Page not found",
   documentMetaNotFoundDescription: "This URL does not exist on PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Open a one-time encrypted note in your browser. Your decryption key stays in the URL fragment.",
   documentMetaBlogLoadingDescription:
-    "Latest insights and tips about privacy, security, and encryption.",
+    "Browse PrivateNote.ai articles about encryption, private communication, password safety, secure sharing, and practical digital security habits.",
   documentMetaRecoveryTitle: "Account recovery",
   documentMetaRecoveryDescription:
     "Sign in with a recovery code if you lost access to your passkeys or email.",
@@ -1123,7 +1127,8 @@ const deTranslations: Translations = {
     "Normalerweise nein. Dafür ist ein Passwortmanager da. Die Ausnahme ist Ihr Master-Passwort, das Sie sich merken sollten.",
   howHeroPrefix: "Sicherheit durch",
   howHeroAccent: "Design",
-  howHeroSubtitle: "Wählen Sie absolute Privatsphäre im Standardmodus oder aktivieren Sie AI Assist für optionale Produktivität.",
+  howHeroSubtitle:
+    "Erfahren Sie, wie PrivateNote.ai sensible Nachrichten mit Browser-Verschlüsselung, kurzlebigen Notizen, manuellem Öffnen und optionaler KI-Hilfe schützt.",
   howEncryptStepDetail:
     "Ihr Gerät verschlüsselt die Notiz, bevor sie Ihren Bildschirm verlässt und verschlüsselt auf unserem Server landet.",
   howInfrastructureTitle: "Infrastruktur",
@@ -1156,7 +1161,8 @@ const deTranslations: Translations = {
   passwordGenerator: "Passwortgenerator",
   contact: "Kontakt",
   footerTagline: "Ende-zu-Ende verschlüsselte Notizen",
-  blogSubtitle: "Aktuelle Einblicke und Tipps zu Privatsphäre, Sicherheit und Verschlüsselung",
+  blogSubtitle:
+    "Lesen Sie praktische Leitfäden zu privaten Notizen, Verschlüsselung, Passwort-Hygiene, sicherem Teilen und geschützter Kommunikation im Alltag.",
   blogFeatured: "Empfohlen",
   blogReadMore: "Weiterlesen",
   homeBlogEyebrow: "Weiterlesen",
@@ -1250,7 +1256,8 @@ const deTranslations: Translations = {
   recommendQuick4: "Seien Sie vorsichtig mit Informationen, die Sie online teilen",
   recommendQuick5: "Nutzen Sie verschlüsselte Dienste für vertrauliche Kommunikation",
   blogGoodEnoughTitle: "Der Mythos von \"gut genug\" bei Sicherheit",
-  blogGoodEnoughExcerpt: "Warum moderne Bedrohungen architektonische Sicherheit verlangen, nicht nur bessere Gewohnheiten.",
+  blogGoodEnoughExcerpt:
+    "Warum moderne Bedrohungen architektonische Sicherheit, kurzlebige sensible Daten, sichere Voreinstellungen und mehr als nur bessere Gewohnheiten verlangen.",
   blogPasswordTitle: "Wie wir sichere Passwörter erzeugen",
   blogPasswordExcerpt: "Erfahren Sie, wie wir kryptografische Zufälligkeit, unverzerrte Auswahl und intelligente Stärkaanalyse nutzen, um sichere Passwörter zu erstellen.",
   blogWorkplaceTextsTitle: "Arbeitsplatznachrichten, Beweissicherung und der Nutzen kurzlebiger Notizen",
@@ -1263,7 +1270,8 @@ const deTranslations: Translations = {
   blogTagCryptography: "Kryptografie",
   blogTagWorkplace: "Arbeitsplatz",
   aboutPageTitle: "Über mich",
-  aboutPageSubtitle: "Die Mission, Werte und Menschen hinter privateNote.ai.",
+  aboutPageSubtitle:
+    "Erfahren Sie, warum PrivateNote.ai entstanden ist, welche Datenschutzwerte das Produkt prägen und wie einfache verschlüsselte Tools Kommunikation sicherer machen.",
   aboutRole: "Kryptografie und Sicherheitsprotokolle",
   aboutBio1:
     "Mir liegen persönliche Freiheit, das Recht auf Privatsphäre und der Wunsch am Herzen, die Welt jeden Tag mit einem Lächeln und warmen Verbindungen ein kleines Stück besser zu machen. Mit meinem Hintergrund in fortgeschrittener Kryptografie habe ich meine Laufbahn dem Schutz digitaler Privatsphäre und der Entwicklung sicherer Kommunikationstools gewidmet, die grundlegende Menschenrechte respektieren.",
@@ -1338,20 +1346,20 @@ const deTranslations: Translations = {
     "Ja, wenn Sie die Grenzen kennen: Jeder mit Link und ggf. Passwort kann das Geheimnis lesen und kopieren oder fotografieren.",
   documentMetaPrivacyToolsTitle: "Datenschutz-Tools & Ressourcen",
   documentMetaPrivacyToolsDescription:
-    "Ausgewählte Leitfäden, Tools und Ressourcen für mehr digitale Privatsphäre und Sicherheit.",
+    "Entdecken Sie ausgewählte Datenschutzleitfäden, Sicherheitstools und Ressourcen zum Schutz von Nachrichten, Passwörtern, Identität und persönlichen Daten.",
   documentMetaContactTitle: "Kontakt",
   documentMetaContactDescription:
-    "Fragen, Feedback oder Support zu PrivateNote.ai.",
+    "Kontaktieren Sie PrivateNote.ai für Support, Feedback, Produktfragen, Sicherheitsmeldungen oder Hilfe beim sicheren Teilen verschlüsselter Einmal-Notizen.",
   documentMetaPrivacyPolicyDescription:
-    "Wie PrivateNote.ai personenbezogene Daten verarbeitet, speichert und welche Rechte Sie haben.",
+    "Lesen Sie, wie PrivateNote.ai personenbezogene Daten, verschlüsselte Notizen, Cookies, Analysen, Sicherheitsprotokolle und Datenschutzrechte behandelt.",
   documentMetaTermsDescription:
-    "Nutzungsbedingungen, zulässige Nutzung, Haftungsausschlüsse und rechtliche Hinweise für PrivateNote.ai.",
+    "Prüfen Sie die Nutzungsbedingungen von PrivateNote.ai, Regeln zur zulässigen Nutzung, Servicegrenzen, Haftungsausschlüsse und rechtliche Verantwortlichkeiten.",
   documentMetaNotFoundTitle: "Seite nicht gefunden",
   documentMetaNotFoundDescription: "Diese URL existiert nicht auf PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Öffnen Sie eine einmalige verschlüsselte Notiz im Browser. Der Entschlüsselungsschlüssel bleibt im URL-Fragment.",
   documentMetaBlogLoadingDescription:
-    "Aktuelle Einblicke und Tipps zu Privatsphäre, Sicherheit und Verschlüsselung.",
+    "Lesen Sie PrivateNote.ai-Artikel über Verschlüsselung, private Kommunikation, Passwortsicherheit, sicheres Teilen und alltagstaugliche digitale Sicherheit.",
   documentMetaRecoveryTitle: "Kontowiederherstellung",
   documentMetaRecoveryDescription:
     "Melden Sie sich mit einem Wiederherstellungscode an, wenn Sie Zugang zu Passkeys oder E-Mail verloren haben.",
@@ -1808,7 +1816,8 @@ const frTranslations: Translations = {
     "En général non. C’est le rôle d’un gestionnaire de mots de passe. L’exception est votre mot de passe maître.",
   howHeroPrefix: "Sécurité par",
   howHeroAccent: "conception",
-  howHeroSubtitle: "Choisissez la confidentialité absolue avec le mode Standard, ou activez AI Assist pour une productivité optionnelle.",
+  howHeroSubtitle:
+    "Découvrez comment PrivateNote.ai protège les messages sensibles avec chiffrement navigateur, notes éphémères, révélation manuelle et IA optionnelle maîtrisée.",
   howEncryptStepDetail:
     "Votre appareil chiffre la note avant qu’elle quitte votre écran et arrive chiffrée sur notre serveur.",
   howInfrastructureTitle: "Infrastructure",
@@ -1841,7 +1850,8 @@ const frTranslations: Translations = {
   passwordGenerator: "Générateur de mots de passe",
   contact: "Contact",
   footerTagline: "Notes chiffrées de bout en bout",
-  blogSubtitle: "Dernières analyses et conseils sur la confidentialité, la sécurité et le chiffrement",
+  blogSubtitle:
+    "Lisez des guides pratiques sur les notes privées, le chiffrement, les mots de passe, le partage sécurisé et les habitudes de communication plus sûres.",
   blogFeatured: "À la une",
   blogReadMore: "Lire la suite",
   homeBlogEyebrow: "À lire aussi",
@@ -1935,7 +1945,8 @@ const frTranslations: Translations = {
   recommendQuick4: "Soyez prudent avec les informations partagées en ligne",
   recommendQuick5: "Utilisez des services chiffrés pour les communications sensibles",
   blogGoodEnoughTitle: "Le mythe d'une sécurité \"suffisante\"",
-  blogGoodEnoughExcerpt: "Pourquoi les menaces modernes exigent une sécurité architecturale, pas seulement de meilleures habitudes.",
+  blogGoodEnoughExcerpt:
+    "Pourquoi les menaces modernes exigent une sécurité architecturale, des données sensibles éphémères, des réglages sûrs et plus que de bonnes habitudes.",
   blogPasswordTitle: "Comment nous générons des mots de passe sécurisés",
   blogPasswordExcerpt: "Découvrez comment nous utilisons l'aléatoire cryptographique, une sélection sans biais et une analyse intelligente de robustesse pour créer des mots de passe sûrs.",
   blogWorkplaceTextsTitle: "Messages professionnels, communication des preuves et intérêt des notes éphémères",
@@ -1948,7 +1959,8 @@ const frTranslations: Translations = {
   blogTagCryptography: "cryptographie",
   blogTagWorkplace: "travail",
   aboutPageTitle: "À propos",
-  aboutPageSubtitle: "La mission, les valeurs et les personnes derrière privateNote.ai.",
+  aboutPageSubtitle:
+    "Découvrez pourquoi PrivateNote.ai existe, les valeurs de confidentialité qui guident le produit et comment des outils chiffrés simples sécurisent les échanges.",
   aboutRole: "Cryptographie et protocoles de sécurité",
   aboutBio1:
     "Je suis passionné par la liberté individuelle, le droit à la vie privée et l'idée de rendre le monde un peu meilleur chaque jour avec un sourire et des liens humains chaleureux. Avec une formation en cryptographie avancée, j'ai consacré ma carrière à protéger la confidentialité numérique et à développer des outils de communication sécurisés qui respectent les droits fondamentaux.",
@@ -2023,20 +2035,20 @@ const frTranslations: Translations = {
     "Oui, si vous comprenez les limites : toute personne ayant le lien et le mot de passe éventuel peut lire le secret et le copier ou le capturer.",
   documentMetaPrivacyToolsTitle: "Outils et ressources confidentialité",
   documentMetaPrivacyToolsDescription:
-    "Guides, outils et ressources sélectionnés pour renforcer votre vie privée et votre sécurité numériques.",
+    "Explorez des guides de confidentialité, outils de sécurité et ressources pratiques pour protéger messages, mots de passe, identité et données personnelles.",
   documentMetaContactTitle: "Contact",
   documentMetaContactDescription:
-    "Questions, retours ou assistance concernant PrivateNote.ai.",
+    "Contactez PrivateNote.ai pour obtenir de l’aide, partager un retour, poser une question produit, signaler un souci de sécurité ou utiliser les notes chiffrées.",
   documentMetaPrivacyPolicyDescription:
-    "Comment PrivateNote.ai traite les données personnelles, la conservation, les cookies et vos droits.",
+    "Lisez comment PrivateNote.ai traite les données personnelles, les notes chiffrées, les cookies, les journaux de sécurité et vos droits de confidentialité.",
   documentMetaTermsDescription:
-    "Conditions d’utilisation, usage acceptable, clauses légales pour PrivateNote.ai.",
+    "Consultez les conditions d’utilisation de PrivateNote.ai, les règles d’usage acceptable, les limites du service, les mentions légales et responsabilités.",
   documentMetaNotFoundTitle: "Page introuvable",
   documentMetaNotFoundDescription: "Cette URL n’existe pas sur PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Ouvrez une note chiffrée à usage unique dans votre navigateur. La clé de déchiffrement reste dans le fragment d’URL.",
   documentMetaBlogLoadingDescription:
-    "Dernières analyses et conseils sur la confidentialité, la sécurité et le chiffrement.",
+    "Parcourez les articles PrivateNote.ai sur le chiffrement, la communication privée, les mots de passe, le partage sécurisé et la sécurité numérique.",
   documentMetaRecoveryTitle: "Récupération du compte",
   documentMetaRecoveryDescription:
     "Connectez-vous avec un code de récupération si vous avez perdu l’accès aux passkeys ou à l’e-mail.",
@@ -2494,7 +2506,8 @@ const esTranslations: Translations = {
     "Generalmente no. Para eso sirve un gestor de contraseñas. La excepción es tu contraseña maestra.",
   howHeroPrefix: "Seguridad por",
   howHeroAccent: "diseño",
-  howHeroSubtitle: "Elige privacidad absoluta con el modo estándar o activa AI Assist para productividad opcional.",
+  howHeroSubtitle:
+    "Descubre cómo PrivateNote.ai protege mensajes sensibles con cifrado en el navegador, notas efímeras, revelado manual y asistencia de IA opcional.",
   howEncryptStepDetail:
     "Tu dispositivo cifra la nota antes de que salga de tu pantalla y llega cifrada a nuestro servidor.",
   howInfrastructureTitle: "Infraestructura",
@@ -2527,7 +2540,8 @@ const esTranslations: Translations = {
   passwordGenerator: "Generador de contraseñas",
   contact: "Contacto",
   footerTagline: "Notas cifradas de extremo a extremo",
-  blogSubtitle: "Últimas ideas y consejos sobre privacidad, seguridad y cifrado",
+  blogSubtitle:
+    "Lee guías prácticas sobre notas privadas, cifrado, higiene de contraseñas, uso compartido seguro y hábitos de comunicación más seguros.",
   blogFeatured: "Destacado",
   blogReadMore: "Leer más",
   homeBlogEyebrow: "Más lectura",
@@ -2621,7 +2635,8 @@ const esTranslations: Translations = {
   recommendQuick4: "Ten cuidado con la información que compartes en línea",
   recommendQuick5: "Usa servicios cifrados para comunicaciones sensibles",
   blogGoodEnoughTitle: "El mito de la seguridad \"suficientemente buena\"",
-  blogGoodEnoughExcerpt: "Por qué las amenazas modernas exigen seguridad arquitectónica, no solo mejores hábitos.",
+  blogGoodEnoughExcerpt:
+    "Por qué las amenazas modernas exigen seguridad arquitectónica, datos sensibles efímeros, valores seguros por defecto y más que mejores hábitos.",
   blogPasswordTitle: "Cómo generamos contraseñas seguras",
   blogPasswordExcerpt: "Aprende cómo usamos aleatoriedad criptográfica, selección sin sesgo y análisis inteligente de fortaleza para crear contraseñas seguras.",
   blogWorkplaceTextsTitle: "Mensajes de trabajo, prueba documental y notas efímeras",
@@ -2634,7 +2649,8 @@ const esTranslations: Translations = {
   blogTagCryptography: "criptografía",
   blogTagWorkplace: "trabajo",
   aboutPageTitle: "Acerca de mí",
-  aboutPageSubtitle: "La misión, los valores y las personas detrás de privateNote.ai.",
+  aboutPageSubtitle:
+    "Conoce por qué existe PrivateNote.ai, los valores de privacidad detrás del producto y cómo las herramientas cifradas simples hacen la comunicación más segura.",
   aboutRole: "Criptografía y protocolos de seguridad",
   aboutBio1:
     "Me apasionan la libertad personal, el derecho a la privacidad y hacer que el mundo sea un poco mejor cada día con una sonrisa y conexiones humanas cálidas. Con formación en criptografía avanzada, he dedicado mi carrera a proteger la privacidad digital y a desarrollar herramientas de comunicación segura que respetan los derechos humanos fundamentales.",
@@ -2709,20 +2725,20 @@ const esTranslations: Translations = {
     "Sí, si entiendes los límites: cualquiera con el enlace y la contraseña, si existe, puede leer el secreto y copiarlo o capturarlo.",
   documentMetaPrivacyToolsTitle: "Herramientas y recursos de privacidad",
   documentMetaPrivacyToolsDescription:
-    "Guías, herramientas y recursos seleccionados para mejorar tu privacidad y seguridad digital.",
+    "Explora guías de privacidad, herramientas de seguridad y recursos prácticos para proteger mensajes, contraseñas, identidad y datos personales.",
   documentMetaContactTitle: "Contacto",
   documentMetaContactDescription:
-    "Preguntas, comentarios o soporte sobre PrivateNote.ai.",
+    "Contacta con PrivateNote.ai para soporte, comentarios, preguntas del producto, avisos de seguridad o ayuda al usar notas cifradas de un solo uso.",
   documentMetaPrivacyPolicyDescription:
-    "Cómo PrivateNote.ai trata los datos personales, la retención, las cookies y tus derechos.",
+    "Lee cómo PrivateNote.ai trata datos personales, notas cifradas, cookies, analítica, registros de seguridad y tus derechos de privacidad.",
   documentMetaTermsDescription:
-    "Términos del servicio, uso aceptable, descargos de responsabilidad e información legal de PrivateNote.ai.",
+    "Revisa los términos de uso de PrivateNote.ai, reglas de uso aceptable, límites del servicio, avisos legales y responsabilidades al usar el sitio.",
   documentMetaNotFoundTitle: "Página no encontrada",
   documentMetaNotFoundDescription: "Esta URL no existe en PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Abre una nota cifrada de un solo uso en tu navegador. La clave de descifrado permanece en el fragmento de la URL.",
   documentMetaBlogLoadingDescription:
-    "Últimas ideas y consejos sobre privacidad, seguridad y cifrado.",
+    "Explora artículos de PrivateNote.ai sobre cifrado, comunicación privada, seguridad de contraseñas, uso compartido seguro y protección digital.",
   documentMetaRecoveryTitle: "Recuperación de cuenta",
   documentMetaRecoveryDescription:
     "Inicia sesión con un código de recuperación si perdiste el acceso a tus passkeys o al correo.",
