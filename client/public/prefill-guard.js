@@ -1,8 +1,8 @@
 /**
  * prefill-guard.js
  *
- * Loaded as a synchronous (no async/defer) script in <head> — runs BEFORE
- * Turnstile, the Vite bundle, and any other third-party code.
+ * Loaded with defer (runs before type=module, in document order) — still before
+ * the Vite bundle executes. Pair with pn-critical CSS for first-paint colors.
  *
  * Goal: move the #text= secret out of window.location.hash and into
  * sessionStorage before anything else on the page can read it, then
@@ -16,8 +16,9 @@
     var stored = localStorage.getItem("privatenote-theme");
     var prefersDark =
       window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    var dark = stored === "dark" || (stored !== "light" && prefersDark);
-    if (dark) document.documentElement.classList.add("dark");
+    var root = document.documentElement;
+    if (stored === "light") root.classList.add("light");
+    else if (stored === "dark" || prefersDark) root.classList.add("dark");
   } catch (_) {}
 
   try {

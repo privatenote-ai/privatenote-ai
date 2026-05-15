@@ -9,7 +9,7 @@ import {
 } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
+import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
 import Home from "@/pages/Home";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
@@ -255,7 +255,7 @@ function App() {
         <AuthProvider>
           <ThemePreferenceRoot />
           <Router />
-          <Toaster />
+          <DeferredToaster />
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>

@@ -1,9 +1,11 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { CreateNoteHomeSkeleton } from '@/components/note/CreateNoteHomeSkeleton';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
+import { useMountWhenInView } from '@/hooks/useMountWhenInView';
+import { scheduleAfterLcp } from '@/utils/scheduleAfterLcp';
 
 const CreateNote = lazy(() =>
   import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
@@ -14,6 +16,8 @@ const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
+  const [createNoteReady, setCreateNoteReady] = useState(false);
+  const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '320px' });
   const { t, language } = useLanguage();
   const blogPath = localizedPath('/blog', language);
   const blogPosts = useMemo(
@@ -66,8 +70,24 @@ const Home: React.FC = () => {
     ],
   );
 
+  useEffect(() => {
+    if (createNoteReady) return;
+
+    const activate = () => setCreateNoteReady(true);
+    const cancelLcp = scheduleAfterLcp(activate);
+
+    const interactionOpts = { capture: true, passive: true, once: true } as const;
+    window.addEventListener('pointerdown', activate, interactionOpts);
+    window.addEventListener('keydown', activate, interactionOpts);
+
+    return () => {
+      cancelLcp();
+    };
+  }, [createNoteReady]);
+
   const handleCreateNew = () => {
     setShowCreateNote(true);
+    setCreateNoteReady(true);
   };
 
   return (
@@ -81,7 +101,7 @@ const Home: React.FC = () => {
             <div className="absolute left-1/2 top-0 h-64 w-[min(700px,120vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl dark:bg-primary/[0.07]" />
           </div>
           <div className="text-center">
-            <h1 className="page-title text-gray-900 dark:text-white">
+            <h1 className="page-title text-gray-900 dark:text-white" data-lcp-element>
               <span className="block">{t.homeHeroLine1}</span>
               <span className="block mt-1 text-primary">{t.homeHeroLine2}</span>
             </h1>
@@ -95,18 +115,28 @@ const Home: React.FC = () => {
       <div className={`${isCreateSuccessView ? "mt-0" : "mt-8"} mb-8 min-w-0 px-4 py-4 sm:px-6 lg:px-8`}>
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
-            <Suspense fallback={<CreateNoteHomeSkeleton />}>
-              <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-            </Suspense>
+            createNoteReady ? (
+              <Suspense fallback={<CreateNoteHomeSkeleton />}>
+                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+              </Suspense>
+            ) : (
+              <CreateNoteHomeSkeleton />
+            )
           ) : (
             <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
           )}
         </div>
       </div>
 
-      <Suspense fallback={<HomeBelowFoldSkeleton />}>
-        <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
-      </Suspense>
+      <div ref={belowFoldRef} className="min-h-[1px]">
+        {belowFoldMounted ? (
+          <Suspense fallback={<HomeBelowFoldSkeleton />}>
+            <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
+          </Suspense>
+        ) : (
+          <HomeBelowFoldSkeleton />
+        )}
+      </div>
     </div>
   );
 };

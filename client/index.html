@@ -31,17 +31,20 @@
   
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
 
-  <!-- Minimal critical CSS: page background + hero title size (avoids font-family swap jump). -->
+  <!-- Critical CSS: first paint before async Tailwind bundle (see load-stylesheet.js). -->
   <style id="pn-critical">
     body{margin:0;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
+    @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
     html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
+    html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
     @media (min-width:640px){.page-title{font-size:3rem}}
     @media (min-width:768px){.page-title{font-size:3.75rem}}
   </style>
-  
-  <!-- Prefill guard: sync external script (CSP allows 'self'; inline scripts are blocked). -->
-  <script src="/prefill-guard.js"></script>
+
+  <!-- Non-blocking: defer + external activator (CSP blocks inline onload on link). -->
+  <script defer src="/load-stylesheet.js"></script>
+  <script defer src="/prefill-guard.js"></script>
 </head>
 <body>
   <div id="root"></div>
