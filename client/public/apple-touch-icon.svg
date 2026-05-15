@@ -1,0 +1,14 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PrivateNote.ai">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="53" x2="0" y2="141" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="#0000FF"/>
+  <g transform="translate(0 -12.7)">
+    <path d="M39.4 65L90 112.5L140.6 65V141.4H39.4V65Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="2.5"/>
+    <path d="M39.4 65L90 112.5L140.6 65Z" fill="url(#paper)" fill-opacity=".97"/>
+    <path d="M39.4 65L90 112.5L140.6 65" stroke="#0000FF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

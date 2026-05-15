@@ -72,12 +72,12 @@ function BlogCarouselStatic({
 }) {
   return (
     <div
-      className="flex snap-x snap-mandatory gap-0 overflow-x-auto overscroll-x-contain px-0 [-ms-overflow-style:none] [scrollbar-width:none] md:overflow-hidden md:px-10 [&::-webkit-scrollbar]:hidden"
+      className="flex snap-x snap-mandatory gap-0 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:overflow-hidden [&::-webkit-scrollbar]:hidden"
     >
       {blogPosts.map((post) => (
         <div
           key={post.slug}
-          className="min-w-0 shrink-0 grow-0 basis-[88%] snap-start pl-4 sm:basis-1/2 lg:basis-1/3"
+          className="min-w-0 shrink-0 grow-0 basis-[88%] snap-start pr-3 sm:basis-1/2 sm:pr-4 lg:basis-1/2"
         >
           <BlogPostLink post={post} blogPath={blogPath} readLabel={readLabel} />
         </div>
@@ -96,21 +96,21 @@ export function HomeBlogCarousel({ t, blogPath, blogPosts }: HomeBlogCarouselPro
   return (
     <div ref={sectionRef}>
       {carouselReady ? (
-        <Carousel opts={{ align: "start" }} className="px-0 md:px-10">
-          <CarouselContent>
+        <Carousel opts={{ align: "start" }} className="relative w-full">
+          <CarouselContent className="-ml-3 sm:-ml-4">
             {blogPosts.map((post) => (
-              <CarouselItem key={post.slug} className="basis-[88%] sm:basis-1/2 lg:basis-1/3">
+              <CarouselItem key={post.slug} className="basis-[88%] pl-3 sm:basis-1/2 sm:pl-4 lg:basis-1/2">
                 <BlogPostLink post={post} blogPath={blogPath} readLabel={t.homeBlogReadArticle} />
               </CarouselItem>
             ))}
           </CarouselContent>
           <CarouselPrevious
             aria-label={t.homeBlogCarouselPrev}
-            className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
+            className="left-1 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
           />
           <CarouselNext
             aria-label={t.homeBlogCarouselNext}
-            className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
+            className="right-1 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
           />
         </Carousel>
       ) : (

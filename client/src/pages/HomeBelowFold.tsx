@@ -108,12 +108,12 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
       </section>
 
       <section
-        className="relative isolate overflow-hidden border-y border-gray-200/70 bg-gray-50/80 px-4 py-14 dark:border-gray-800/80 dark:bg-gray-950/55 sm:px-6 lg:px-8"
+        className="relative isolate overflow-x-clip border-y border-gray-200/70 bg-gray-50/80 dark:border-gray-800/80 dark:bg-gray-950/55"
         aria-labelledby="latest-blog-heading"
       >
         <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.08] [background-image:linear-gradient(to_right,#00000014_1px,transparent_1px),linear-gradient(to_bottom,#00000014_1px,transparent_1px)] [background-size:48px_48px] dark:opacity-[0.12]" />
 
-        <div className="mx-auto max-w-6xl min-w-0">
+        <div className="relative mx-auto min-w-0 max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
