@@ -1,8 +1,13 @@
 import React from 'react';
 import { Lock, Timer, Shield, DollarSign, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useLanguage } from '@/context/LanguageContext';
 
-export const SecurityFeatures: React.FC = () => {
+type SecurityFeaturesProps = {
+  className?: string;
+};
+
+export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className }) => {
   const { t } = useLanguage();
   const features = [
     {
@@ -38,7 +43,7 @@ export const SecurityFeatures: React.FC = () => {
   ];
 
   return (
-    <section className="relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+    <section className={cn('relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8', className)}>
       <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8 sm:mb-12">
         <h2 id="key-features-heading" className="text-3xl font-bold text-gray-900 dark:text-white">

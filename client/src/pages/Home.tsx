@@ -3,6 +3,7 @@ import { NoteResult } from '@/components/note/NoteResult';
 import { CreateNoteHomeSkeleton } from '@/components/note/CreateNoteHomeSkeleton';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
+import { HomeKeyFeaturesPeek } from '@/components/home/HomeKeyFeaturesPeek';
 import { useMountWhenInView } from '@/hooks/useMountWhenInView';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
@@ -98,7 +99,9 @@ const Home: React.FC = () => {
         </section>
       )}
 
-      <div className={`${isCreateSuccessView ? 'mt-0' : 'mt-8'} min-w-0 px-4 py-4 sm:px-6 lg:px-8`}>
+      <div
+        className={`${isCreateSuccessView ? 'mt-0' : 'mt-8'} min-w-0 px-4 py-4 pb-10 sm:px-6 sm:pb-14 lg:px-8`}
+      >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
             <Suspense fallback={<CreateNoteHomeSkeleton />}>
@@ -112,14 +115,22 @@ const Home: React.FC = () => {
 
       <section
         ref={keyFeaturesRef}
-        className="relative isolate mt-12 overflow-x-clip border-y border-gray-200/70 bg-gray-50/80 dark:border-gray-800/80 dark:bg-gray-950/55 sm:mt-16"
+        className="relative isolate mt-4 overflow-x-clip sm:mt-6"
         aria-labelledby="key-features-heading"
       >
-        {keyFeaturesMounted ? (
-          <Suspense fallback={<HomeKeyFeaturesSkeleton />}>
-            <SecurityFeatures />
-          </Suspense>
-        ) : null}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-28 bg-gradient-to-b from-background via-background/95 to-gray-50/70 sm:h-36 dark:via-background/92 dark:to-gray-950/50"
+        />
+        <div className="relative z-10 border-b border-gray-200/45 bg-gradient-to-b from-gray-50/25 via-gray-50/70 to-gray-50/90 dark:border-gray-800/45 dark:from-gray-950/15 dark:via-gray-950/45 dark:to-gray-950/65">
+          {keyFeaturesMounted ? (
+            <Suspense fallback={<HomeKeyFeaturesSkeleton />}>
+              <SecurityFeatures className="pt-5 pb-10 sm:pt-6 sm:pb-12" />
+            </Suspense>
+          ) : (
+            <HomeKeyFeaturesPeek title={t.keyFeatures} />
+          )}
+        </div>
       </section>
 
       <Suspense fallback={<HomeBelowFoldSkeleton />}>
