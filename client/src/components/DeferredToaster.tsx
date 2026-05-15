@@ -1,15 +1,18 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { scheduleAfterLcp } from "@/utils/scheduleAfterLcp";
+import { useToast } from "@/hooks/use-toast";
 
 const Toaster = lazy(() =>
   import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })),
 );
 
-/** Toast UI (Radix + close icon) is not needed for LCP; load after paint. */
+/** Toast UI (Radix + close icon) is only needed after a toast is actually queued. */
 export function DeferredToaster() {
+  const { toasts } = useToast();
   const [ready, setReady] = useState(false);
 
-  useEffect(() => scheduleAfterLcp(() => setReady(true)), []);
+  useEffect(() => {
+    if (toasts.length > 0) setReady(true);
+  }, [toasts.length]);
 
   if (!ready) return null;
 

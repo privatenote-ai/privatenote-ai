@@ -23,6 +23,7 @@ const Home: React.FC = () => {
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const { t, language } = useLanguage();
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '240px' });
+  const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '520px' });
   const blogPath = localizedPath('/blog', language);
   const blogPosts = useMemo(
     () => [
@@ -140,9 +141,15 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <Suspense fallback={<HomeBelowFoldSkeleton />}>
-        <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
-      </Suspense>
+      <div ref={belowFoldRef}>
+        {belowFoldMounted ? (
+          <Suspense fallback={<HomeBelowFoldSkeleton />}>
+            <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
+          </Suspense>
+        ) : (
+          <HomeBelowFoldSkeleton />
+        )}
+      </div>
     </div>
   );
 };
