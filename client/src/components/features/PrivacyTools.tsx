@@ -31,7 +31,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'Learn how encryption protects your data and communications',
     icon: <Lock className="h-8 w-8" />,
     color: 'bg-orange-500',
-    link: '/privacy/encryption'
+    link: '#encryption'
   },
   {
     id: 'privacy-browsing',
@@ -39,7 +39,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'Tools and techniques for maintaining privacy online',
     icon: <Eye className="h-8 w-8" />,
     color: 'bg-blue-500',
-    link: '/privacy/browsing'
+    link: '#privacy-browsing'
   },
   {
     id: 'password-security',
@@ -47,7 +47,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'Best practices for creating and managing secure passwords',
     icon: <Key className="h-8 w-8" />,
     color: 'bg-green-500',
-    link: '/privacy/passwords'
+    link: '#password-security'
   },
   {
     id: 'security-glossary',
@@ -55,7 +55,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'Common terms and concepts in digital privacy and security',
     icon: <BookOpen className="h-8 w-8" />,
     color: 'bg-purple-500',
-    link: '/privacy/glossary'
+    link: '#security-glossary'
   },
   {
     id: 'data-protection',
@@ -63,7 +63,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'How to protect your personal information from breaches',
     icon: <Shield className="h-8 w-8" />,
     color: 'bg-red-500',
-    link: '/privacy/data-protection'
+    link: '#data-protection'
   },
   {
     id: 'privacy-guides',
@@ -71,7 +71,7 @@ const privacyCategories: PrivacyCategory[] = [
     description: 'Step-by-step guides for enhancing your digital privacy',
     icon: <FileText className="h-8 w-8" />,
     color: 'bg-teal-500',
-    link: '/privacy/guides'
+    link: '#privacy-guides'
   }
 ];
 
@@ -82,56 +82,56 @@ const privacyResources: PrivacyResource[] = [
     title: 'How End-to-End Encryption Works',
     description: 'A visual guide to understanding how E2EE protects your messages',
     category: 'encryption',
-    link: '/privacy/encryption/e2ee'
+    link: '#encryption'
   },
   {
     id: 'encryption-2',
     title: 'Symmetric vs. Asymmetric Encryption',
     description: 'Understanding the two main types of encryption algorithms',
     category: 'encryption',
-    link: '/privacy/encryption/types'
+    link: '#encryption'
   },
   {
     id: 'privacy-browsing-1',
     title: 'VPN vs. Proxy: Which to Choose',
     description: 'Compare different tools for anonymous browsing',
     category: 'privacy-browsing',
-    link: '/privacy/browsing/vpn-proxy'
+    link: '#privacy-browsing'
   },
   {
     id: 'privacy-browsing-2',
     title: 'Browser Fingerprinting Protection',
     description: 'How to prevent websites from uniquely identifying your browser',
     category: 'privacy-browsing',
-    link: '/privacy/browsing/fingerprinting'
+    link: '#privacy-browsing'
   },
   {
     id: 'password-security-1',
     title: 'Password Managers Explained',
     description: 'How password managers work and why you should use one',
     category: 'password-security',
-    link: '/privacy/passwords/managers'
+    link: '#password-security'
   },
   {
     id: 'password-security-2',
     title: 'Creating Strong Memorable Passwords',
     description: 'Techniques for creating passwords that are both secure and memorable',
     category: 'password-security',
-    link: '/privacy/passwords/creation'
+    link: '#password-security'
   },
   {
     id: 'data-protection-1',
     title: 'Data Breach Response Plan',
     description: 'Steps to take if your personal information is compromised',
     category: 'data-protection',
-    link: '/privacy/data-protection/breach-response'
+    link: '#data-protection'
   },
   {
     id: 'data-protection-2',
     title: 'Secure Deletion of Data',
     description: 'Ensuring your deleted files stay deleted',
     category: 'data-protection',
-    link: '/privacy/data-protection/secure-deletion'
+    link: '#data-protection'
   },
 ];
 
@@ -230,7 +230,8 @@ export const PrivacyTools: React.FC = () => {
           {privacyCategories.map(category => (
             <div 
               key={category.id} 
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+              id={category.id}
+              className="scroll-mt-24 bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
             >
               <div className="flex p-6">
                 <div className={`${category.color} rounded-full p-3 mr-4 text-white flex-shrink-0`}>
@@ -239,12 +240,12 @@ export const PrivacyTools: React.FC = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{category.title}</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">{category.description}</p>
-                  <Link 
+                  <a
                     href={category.link} 
                     className="inline-flex items-center text-primary font-medium hover:underline"
                   >
                     Learn more <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
+                  </a>
                 </div>
               </div>
             </div>
@@ -253,12 +254,12 @@ export const PrivacyTools: React.FC = () => {
       </div>
 
       {/* Featured resources section */}
-      <div className="mb-12">
+      <div id="resources" className="scroll-mt-24 mb-12">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Featured Resources</h2>
-          <Link href={localizedPath("/privacy/resources", language)} className="text-primary hover:underline font-medium flex items-center">
+          <a href="#resources" className="text-primary hover:underline font-medium flex items-center">
             View all resources <ArrowRight className="ml-1 h-4 w-4" />
-          </Link>
+          </a>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -275,12 +276,12 @@ export const PrivacyTools: React.FC = () => {
                 <p className="text-gray-600 dark:text-gray-300 text-sm">{resource.description}</p>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                <Link 
+                <a
                   href={resource.link} 
                   className="inline-flex items-center text-primary font-medium hover:underline text-sm"
                 >
-                  Read article <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
+                  View topic <ArrowRight className="ml-1 h-3 w-3" />
+                </a>
               </div>
             </div>
           ))}
@@ -291,9 +292,9 @@ export const PrivacyTools: React.FC = () => {
       <div id="tools" className="mb-12">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Free Privacy Tools</h2>
-          <Link href={localizedPath("/privacy/tools", language)} className="text-primary hover:underline font-medium flex items-center">
+          <a href="#tools" className="text-primary hover:underline font-medium flex items-center">
             View all tools <ArrowRight className="ml-1 h-4 w-4" />
-          </Link>
+          </a>
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">

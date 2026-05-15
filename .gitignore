@@ -7,6 +7,7 @@ dist
 *.log
 .DS_Store
 .wrangler
+.codex-history/
 prerender
 
 # Large model files - downloaded from HuggingFace at runtime

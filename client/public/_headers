@@ -15,6 +15,9 @@
 /admin/*
   X-Robots-Tag: noindex, nofollow
 
+/auth
+  X-Robots-Tag: noindex, nofollow
+
 /auth/*
   X-Robots-Tag: noindex, nofollow
 

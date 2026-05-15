@@ -1,4 +1,5 @@
 /note/*    /index.html   200
+/auth      /index.html   200
 /auth/*    /index.html   200
 /magic     /index.html   200
 /account   /index.html   200
