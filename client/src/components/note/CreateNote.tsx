@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,20 +26,12 @@ import {
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
-import {
-  enhanceNoteClientSide,
-  initializeClientLLM,
-  isEngineLoaded,
-  isLocalAiSupported,
-  getLocalAiSupportHint,
-  getRecommendedLocalModelId,
-  MODEL_GEMMA_2_2B,
-  MODEL_QWEN_0_6,
-  resetLocalAiLoadState,
-  clearEngine,
-  isWebLlmGpuOrDisposeFailure,
-  type ModelLoadProgress,
-} from "@/utils/clientLLM";
+import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
+import { loadClientLLM } from "@/utils/loadClientLLM";
+import { MODEL_GEMMA_2_2B, MODEL_QWEN_0_6 } from "@/utils/localAiModelIds";
+import { isWebLlmGpuOrDisposeFailure } from "@/utils/webLlmGpuErrors";
+import type { ModelLoadProgress } from "@/utils/clientLLM";
+import { ensureTurnstileScript } from "@/lib/turnstileScript";
 import {
   localAiAnalyzingPromptLabel,
   localAiAnalyzingDetailHint,
@@ -56,7 +48,6 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import { getLoadedModelIdWebLLM } from "@/utils/webllm-engine";
 import { getLocalAiPreloadNetworkPolicy } from "@/utils/localAiNetworkDownloadPolicy";
 import {
   AlertDialog,
@@ -85,8 +76,11 @@ import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import { NoteSettingsPanel } from "./NoteSettingsPanel";
-import { AiComposer } from "./AiComposer";
 import type { AiPostGenTransform } from "./AiComposer";
+
+const AiComposer = lazy(() =>
+  import("./AiComposer").then((m) => ({ default: m.AiComposer })),
+);
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
@@ -292,17 +286,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             "On-device AI isn't available right now. If a previous attempt failed, try resetting and starting again."
         );
       }
-      const modelId = await getRecommendedLocalModelId();
+      const llm = await loadClientLLM();
+      const modelId = await llm.getRecommendedLocalModelId();
       if (!modelId) {
         throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
       }
       try {
-        await initializeClientLLM(onProgress, modelId);
+        await llm.initializeClientLLM(onProgress, modelId);
       } catch (error) {
         if (modelId === MODEL_GEMMA_2_2B) {
           console.warn("[AI] Gemma 2 failed; falling back to compact local model:", error);
-          clearEngine();
-          await initializeClientLLM(onProgress, MODEL_QWEN_0_6);
+          llm.clearEngine();
+          await llm.initializeClientLLM(onProgress, MODEL_QWEN_0_6);
           return;
         }
         throw error;
@@ -312,7 +307,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   );
 
   const startFreeModelDownload = useCallback(async () => {
-    if (isEngineLoaded() || isAiModelLoading) return;
+    const llm = await loadClientLLM();
+    if (llm.isEngineLoaded() || isAiModelLoading) return;
     setIsAiModelLoading(true);
     setAiModelProgress({ progress: 0, text: "Preparing private AI…" });
     try {
@@ -334,7 +330,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       // failure flag would otherwise make getRecommendedLocalModelId() return null
       // and block the reset entirely. resetLocalAiLoadState() handles undefined
       // modelId by collecting known IDs internally and clears session flags first.
-      await resetLocalAiLoadState(undefined);
+      const llm = await loadClientLLM();
+      await llm.resetLocalAiLoadState(undefined);
       toast({
         title: "On-device AI reset",
         description: "The incomplete download was cleared. You can try downloading it again.",
@@ -365,12 +362,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const enterAiMode = useCallback(() => {
     setIsAiMode(true);
     if (!isLocalAiSupported()) return;
-    if (isEngineLoaded()) return;
-    if (getLocalAiPreloadNetworkPolicy() === "confirm") {
-      setCellularPreloadConfirmOpen(true);
-      return;
-    }
-    void startFreeModelDownload();
+    void (async () => {
+      const llm = await loadClientLLM();
+      if (llm.isEngineLoaded()) return;
+      if (getLocalAiPreloadNetworkPolicy() === "confirm") {
+        setCellularPreloadConfirmOpen(true);
+        return;
+      }
+      void startFreeModelDownload();
+    })();
   }, [startFreeModelDownload]);
 
   const runFreeLocalEnhancement = async (
@@ -397,7 +397,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const baseOpts = selectedTemplate
         ? { templateName: selectedTemplate.name, templateDescription: selectedTemplate.description }
         : undefined;
-      const modelId = getLoadedModelIdWebLLM() ?? (await getRecommendedLocalModelId());
+      const llm = await loadClientLLM();
+      const { getLoadedModelIdWebLLM } = await import("@/utils/webllm-engine");
+      const modelId = getLoadedModelIdWebLLM() ?? (await llm.getRecommendedLocalModelId());
       if (!modelId) {
         throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
       }
@@ -411,7 +413,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               language,
             )
           : undefined;
-      return await enhanceNoteClientSide(content, enhancementTypeForModel, (p) => setAiProgress(p), {
+      return await llm.enhanceNoteClientSide(content, enhancementTypeForModel, (p) => setAiProgress(p), {
         ...baseOpts,
         ...(finalUserMessage ? { finalUserMessage } : {}),
         templateId: selectedTemplateId ?? undefined,
@@ -419,7 +421,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       });
     } catch (error) {
       if (isWebLlmGpuOrDisposeFailure(error)) {
-        clearEngine();
+        (await loadClientLLM()).clearEngine();
       }
       console.warn("[AI] Local AI failed:", error);
       offerTemplateFallback();
@@ -506,7 +508,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return;
     }
 
-    let intervalId: number | null = null;
+    let cancelled = false;
     const siteKey = turnstileSiteKey!;
 
     const initTurnstile = () => {
@@ -541,19 +543,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       aiTurnstileWidgetIdRef.current = widgetId;
     };
 
-    if (!window.turnstile) {
-      intervalId = window.setInterval(() => {
-        if (window.turnstile) {
-          if (intervalId !== null) window.clearInterval(intervalId);
-          initTurnstile();
+    void ensureTurnstileScript()
+      .then(() => {
+        if (!cancelled) initTurnstile();
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiTurnstileError("Human verification failed to load. Please try again.");
         }
-      }, 200);
-    } else {
-      initTurnstile();
-    }
+      });
 
     return () => {
-      if (intervalId !== null) window.clearInterval(intervalId);
+      cancelled = true;
       if (aiTurnstileWidgetIdRef.current !== null && window.turnstile) {
         try {
           window.turnstile.reset(aiTurnstileWidgetIdRef.current);
@@ -1220,7 +1221,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
           {isAiMode ? (
             <div ref={aiComposerAnchorRef} className="scroll-mt-20 md:scroll-mt-24">
-              <AiComposer
+              <Suspense
+                fallback={
+                  <div
+                    aria-hidden
+                    className="min-h-[240px] animate-pulse rounded-xl border border-gray-200 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800/50"
+                  />
+                }
+              >
+                <AiComposer
                 language={language}
                 noteContent={noteContent}
                 applyNoteContentInput={applyNoteContentInput}
@@ -1256,7 +1265,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
                 onUseFallbackTemplate={handleUseFallbackTemplate}
-              />
+                />
+              </Suspense>
             </div>
           ) : null}
 

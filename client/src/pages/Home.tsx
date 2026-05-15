@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 import { Shield, Check, ArrowRight } from 'lucide-react';
-import { CreateNote } from '@/components/note/CreateNote';
+
+const CreateNote = lazy(() =>
+  import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
+);
 import { NoteResult } from '@/components/note/NoteResult';
 import { SecurityFeatures } from '@/components/features/SecurityFeatures';
 import { FAQSection } from '@/components/features/FAQSection';
@@ -103,7 +106,16 @@ const Home: React.FC = () => {
       <div className={`${isCreateSuccessView ? "mt-0" : "mt-8"} mb-8 min-w-0 px-4 py-4 sm:px-6 lg:px-8`}>
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
-            <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+            <Suspense
+              fallback={
+                <div
+                  aria-hidden
+                  className="mx-auto min-h-[280px] max-w-4xl animate-pulse rounded-2xl border border-gray-200 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800/50"
+                />
+              }
+            >
+              <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+            </Suspense>
           ) : (
             <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
           )}

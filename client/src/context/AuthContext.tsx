@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
+import { scheduleDeferred } from "@/utils/scheduleDeferred";
 
 type AuthUser = {
   email: string | null;
@@ -26,7 +27,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { language } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async (): Promise<AuthUser | null> => {
     try {
@@ -78,7 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   useEffect(() => {
-    refresh();
+    return scheduleDeferred(() => {
+      void refresh();
+    });
   }, [refresh]);
 
   // Self-heal: re-fetch session when the tab regains visibility or focus.

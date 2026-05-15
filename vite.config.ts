@@ -132,6 +132,22 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("@mlc-ai/web-llm")) return "vendor-web-llm";
+          if (id.includes("@huggingface/transformers")) return "vendor-transformers";
+          if (
+            id.includes("/react-dom/") ||
+            id.includes("/react/") ||
+            id.includes("/scheduler/")
+          ) {
+            return "vendor-react";
+          }
+        },
+      },
+    },
   },
   server: {
     /**

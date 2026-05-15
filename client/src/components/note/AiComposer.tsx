@@ -32,7 +32,7 @@ import {
   listUnresolvedGuidedPlaceholderLabelsInNote,
   noteHasUnresolvedGuidedPlaceholders,
 } from "@/components/note/localFallbackTemplates";
-import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/clientLLM";
+import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
 import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";

@@ -31,9 +31,9 @@ import {
   sessionGemma22WebLlmFailed,
   sessionQwen06Failed,
 } from "./localLlmSessionSignals";
+import { MODEL_QWEN_0_6, MODEL_GEMMA_2_2B } from "./localAiModelIds";
 
-export const MODEL_QWEN_0_6 = "Qwen3-0.6B-q4f16_1-MLC";
-export const MODEL_GEMMA_2_2B = "gemma-2-2b-it-q4f16_1-MLC";
+export { MODEL_QWEN_0_6, MODEL_GEMMA_2_2B };
 /** Transformers.js Hub id — experimental boost on “newest” tier only. */
 export const MODEL_GEMMA_4_TRANSFORMER = "onnx-community/gemma-4-E2B-it-ONNX";
 

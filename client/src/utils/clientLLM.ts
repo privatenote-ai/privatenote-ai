@@ -34,10 +34,23 @@ import {
   getCachedMaxStorageBufferBindingSize,
   savedMobileModelOverGpuBindingCap,
   isLocalLlmPremium,
-  MODEL_QWEN_0_6,
-  MODEL_GEMMA_2_2B,
   MODEL_GEMMA_4_TRANSFORMER,
 } from "./recommendedLocalModel";
+import { MODEL_QWEN_0_6, MODEL_GEMMA_2_2B } from "./localAiModelIds";
+import {
+  getWebLLMBrowserSupportLevel,
+  getWebLLMSupportHint,
+  getLocalAiSupportHint as getLocalAiSupportHintBase,
+  isWebLLMSupported,
+  type WebLLMBrowserSupportLevel,
+} from "./localAiCapability";
+
+export {
+  getWebLLMBrowserSupportLevel,
+  isWebLLMSupported,
+  getWebLLMSupportHint,
+  type WebLLMBrowserSupportLevel,
+} from "./localAiCapability";
 import {
   extractUserFacingAnswer,
   diagnoseThinkingStrip,
@@ -421,65 +434,14 @@ function getActiveModelId(): string {
   return getLoadedModelIdWebLLM() || findSuitableModel();
 }
 
-/**
- * On-device WebLLM in this app uses the WebGPU path (WASM runtime + GPU inference).
- * Sync checks approximate capability; {@link initializeClientLLM} also probes for a real adapter.
- */
-export type WebLLMBrowserSupportLevel = "unsupported" | "missing-webgpu" | "supported";
-
-function isLocalhostOrSecureContext(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.isSecureContext) return true;
-  const h = window.location.hostname;
-  return h === "localhost" || h === "127.0.0.1";
-}
-
-/**
- * Sync capability tier for UI and routing. Does not guarantee `requestAdapter()` succeeds—see init probe.
- */
-export function getWebLLMBrowserSupportLevel(): WebLLMBrowserSupportLevel {
-  if (typeof window === "undefined") return "unsupported";
-  if (!isLocalhostOrSecureContext()) return "unsupported";
-  if (!("crypto" in window) || !("indexedDB" in window)) return "unsupported";
-  if (typeof WebAssembly === "undefined") return "unsupported";
-  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
-    return "missing-webgpu";
-  }
-  return "supported";
-}
-
-/** User-facing explanation when {@link isWebLLMSupported} is false; null when supported. */
-export function getWebLLMSupportHint(): string | null {
-  const level = getWebLLMBrowserSupportLevel();
-  if (level === "supported") return null;
-  if (typeof window !== "undefined" && !window.isSecureContext) {
-    const h = window.location.hostname;
-    if (h !== "localhost" && h !== "127.0.0.1") {
-      return "On-device AI needs a secure context. Open this site over HTTPS (localhost is OK).";
-    }
-  }
-  if (level === "missing-webgpu") {
-    return "On-device AI needs WebGPU. Use a recent Chrome, Edge, or Safari version, or another device with WebGPU enabled.";
-  }
-  return "On-device AI needs a modern browser with WebAssembly, IndexedDB, and Web Crypto.";
-}
-
-/**
- * User-facing explanation when {@link isLocalAiSupported} is false, including the mobile Transformers path and iOS.
- */
+/** User-facing explanation when {@link isLocalAiSupported} is false (includes GPU binding policy). */
 export function getLocalAiSupportHint(): string | null {
-  if (typeof window === "undefined") return null;
-  if (shouldUseTransformersJsLocalPath() && isIOSWebKit()) {
-    return `${TRANSFORMERS_MOBILE_IOS_DISABLED_REASON} Use cloud AI or a desktop browser.`;
+  const base = getLocalAiSupportHintBase();
+  if (base) return base;
+  if (isLocalModelGpuLimitPrimed() && !getLocalAiOffer().enabled) {
+    return "On-device AI is not available on this device (GPU memory limit).";
   }
-  if (shouldUseTransformersJsLocalPath() && !isTransformersMobileLikelySupported()) {
-    return "On-device AI is not supported in this browser.";
-  }
-  return getWebLLMSupportHint();
-}
-
-export function isWebLLMSupported(): boolean {
-  return getWebLLMBrowserSupportLevel() === "supported";
+  return null;
 }
 
 export function isLocalAiSupported(): boolean {

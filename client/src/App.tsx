@@ -1,5 +1,13 @@
 import { Switch, Route, useLocation } from "wouter";
-import { Fragment, useEffect, useLayoutEffect, type ComponentType } from "react";
+import {
+  Fragment,
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,12 +24,8 @@ import Contact from "@/pages/Contact";
 import HowItWorks from "@/pages/HowItWorks";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
-import BlogAdmin from "@/pages/BlogAdmin";
-import Analytics from "@/pages/Analytics";
-import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 import SecurityGuideDetail from "./pages/SecurityGuideDetail";
-import TestClientLLM from "@/pages/TestClientLLM";
 import Auth from "@/pages/Auth";
 import AuthMagic from "@/pages/AuthMagic";
 import AuthRecovery from "@/pages/AuthRecovery";
@@ -34,13 +38,22 @@ import AccountOverview from "@/pages/account/AccountOverview";
 import AccountActivity from "@/pages/account/AccountActivity";
 import AccountPreferences from "@/pages/account/AccountPreferences";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
-import LlmUi from "@/pages/LlmUi";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
+
+const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
+const TestClientLLM = lazy(() => import("@/pages/TestClientLLM"));
+const LlmUi = lazy(() => import("@/pages/LlmUi"));
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={null}>{children}</Suspense>;
+}
 
 const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
   { hrefLang: "en", path: "/" },
@@ -192,11 +205,46 @@ function Router() {
           <Route path="/contact" component={Contact} />
           <Route path="/blog" component={Blog} />
           <Route path="/blog/:slug" component={BlogPost} />
-          <Route path="/admin/blog" component={BlogAdmin} />
-          <Route path="/admin/analytics" component={Analytics} />
-          <Route path="/admin/audit-logs" component={AuditLogs} />
-          <Route path="/test-llm" component={TestClientLLM} />
-          <Route path="/llm-ui" component={LlmUi} />
+          <Route
+            path="/admin/blog"
+            component={() => (
+              <LazyPage>
+                <BlogAdmin />
+              </LazyPage>
+            )}
+          />
+          <Route
+            path="/admin/analytics"
+            component={() => (
+              <LazyPage>
+                <Analytics />
+              </LazyPage>
+            )}
+          />
+          <Route
+            path="/admin/audit-logs"
+            component={() => (
+              <LazyPage>
+                <AuditLogs />
+              </LazyPage>
+            )}
+          />
+          <Route
+            path="/test-llm"
+            component={() => (
+              <LazyPage>
+                <TestClientLLM />
+              </LazyPage>
+            )}
+          />
+          <Route
+            path="/llm-ui"
+            component={() => (
+              <LazyPage>
+                <LlmUi />
+              </LazyPage>
+            )}
+          />
           <Route path="/auth" component={() => <Auth />} />
           <Route path="/auth/sign-in" component={AuthSignIn} />
           <Route path="/auth/sign-up" component={AuthSignUp} />

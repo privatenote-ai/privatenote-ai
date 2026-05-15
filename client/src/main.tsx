@@ -2,22 +2,26 @@ import "./fontPreloads";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { getLoadedLocalModelId, getModelInfo } from "./utils/clientLLM";
 import { isWebLlmGpuOrDisposeFailure } from "./utils/webLlmGpuErrors";
 // LFM-style `<think>…</think>` stripping: `@shared/parseThinkingOutput` (used by client LLM / API).
+
+if (import.meta.env.DEV) {
+  void import("./utils/clientLLM").then((llm) => {
+    window.__PRIVATE_NOTE_LLM_DEBUG = {
+      getLoadedLocalModelId: llm.getLoadedLocalModelId,
+      getModelInfo: llm.getModelInfo,
+    };
+  });
+}
 
 declare global {
   interface Window {
     /** Dev-only: Safari console → `__PRIVATE_NOTE_LLM_DEBUG.getLoadedLocalModelId()` */
     __PRIVATE_NOTE_LLM_DEBUG?: {
-      getLoadedLocalModelId: typeof getLoadedLocalModelId;
-      getModelInfo: typeof getModelInfo;
+      getLoadedLocalModelId: () => string | null;
+      getModelInfo: () => unknown;
     };
   }
-}
-
-if (import.meta.env.DEV) {
-  window.__PRIVATE_NOTE_LLM_DEBUG = { getLoadedLocalModelId, getModelInfo };
 }
 
 /** MLC/WebGPU often emits many async rejections after device loss; avoid drowning the console. */

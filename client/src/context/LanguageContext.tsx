@@ -7,6 +7,7 @@ import {
   type SupportedLanguage,
   type Translations,
 } from "@/utils/translation";
+import { scheduleDeferred } from "@/utils/scheduleDeferred";
 
 type LanguageContextValue = {
   language: SupportedLanguage;
@@ -67,7 +68,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     };
 
-    void syncPreferredLanguage();
+    return scheduleDeferred(() => {
+      void syncPreferredLanguage();
+    });
   }, []);
 
   const value = useMemo<LanguageContextValue>(
