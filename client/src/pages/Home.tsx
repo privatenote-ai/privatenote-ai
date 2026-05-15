@@ -1,8 +1,9 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
+import { CreateNoteHomeSkeleton } from '@/components/note/CreateNoteHomeSkeleton';
+import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
-import { scheduleDeferred, scheduleOnFirstInteraction } from '@/utils/scheduleDeferred';
 
 const CreateNote = lazy(() =>
   import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
@@ -11,8 +12,6 @@ const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
-  const [loadCreateNote, setLoadCreateNote] = useState(false);
-  const [loadBelowFold, setLoadBelowFold] = useState(false);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const { t, language } = useLanguage();
@@ -67,23 +66,8 @@ const Home: React.FC = () => {
     ],
   );
 
-  useEffect(() => {
-    const cancelNote = scheduleDeferred(() => setLoadCreateNote(true), { timeoutMs: 1200 });
-    const cancelBelow = scheduleDeferred(() => setLoadBelowFold(true), { timeoutMs: 2000 });
-    const cancelInteract = scheduleOnFirstInteraction(() => {
-      setLoadCreateNote(true);
-      setLoadBelowFold(true);
-    });
-    return () => {
-      cancelNote();
-      cancelBelow();
-      cancelInteract();
-    };
-  }, []);
-
   const handleCreateNew = () => {
     setShowCreateNote(true);
-    setLoadCreateNote(true);
   };
 
   return (
@@ -111,34 +95,18 @@ const Home: React.FC = () => {
       <div className={`${isCreateSuccessView ? "mt-0" : "mt-8"} mb-8 min-w-0 px-4 py-4 sm:px-6 lg:px-8`}>
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
-            loadCreateNote ? (
-              <Suspense
-                fallback={
-                  <div
-                    aria-hidden
-                    className="mx-auto min-h-[280px] max-w-4xl animate-pulse rounded-2xl border border-gray-200 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800/50"
-                  />
-                }
-              >
-                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-              </Suspense>
-            ) : (
-              <div
-                aria-hidden
-                className="mx-auto min-h-[280px] max-w-4xl animate-pulse rounded-2xl border border-gray-200 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800/50"
-              />
-            )
+            <Suspense fallback={<CreateNoteHomeSkeleton />}>
+              <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+            </Suspense>
           ) : (
             <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
           )}
         </div>
       </div>
 
-      {loadBelowFold ? (
-        <Suspense fallback={null}>
-          <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
-        </Suspense>
-      ) : null}
+      <Suspense fallback={<HomeBelowFoldSkeleton />}>
+        <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
+      </Suspense>
     </div>
   );
 };

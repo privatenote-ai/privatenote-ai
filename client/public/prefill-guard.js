@@ -13,6 +13,14 @@
  */
 (function () {
   try {
+    var stored = localStorage.getItem("privatenote-theme");
+    var prefersDark =
+      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var dark = stored === "dark" || (stored !== "light" && prefersDark);
+    if (dark) document.documentElement.classList.add("dark");
+  } catch (_) {}
+
+  try {
     var h = window.location.hash;
     if (h && h.indexOf("#text=") === 0) {
       // Persist the raw fragment so React can parse it after mounting.

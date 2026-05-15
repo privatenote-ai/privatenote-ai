@@ -171,7 +171,7 @@ export const Navbar: React.FC = () => {
       : 'bg-transparent border-b border-transparent shadow-none backdrop-blur-0',
   ].join(' ');
 
-  const authCluster = !authLoading && (user?.email || !isAuthRoute) ? (
+  const authCluster = user?.email || !isAuthRoute ? (
     user?.email ? (
       <div className="relative">
         <button
@@ -286,8 +286,8 @@ export const Navbar: React.FC = () => {
       {/* Mobile / tablet / smaller laptop < xl */}
       <div className="xl:hidden">
         <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
-          <div className="flex min-w-10 items-center justify-start">
-            {!authLoading && user?.email ? (
+          <div className="flex h-9 min-h-9 min-w-9 items-center justify-start">
+            {user?.email ? (
               <button
                 type="button"
                 onClick={toggleMobileAccount}
