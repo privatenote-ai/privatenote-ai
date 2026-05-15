@@ -7,8 +7,6 @@ import {
   type SupportedLanguage,
   type Translations,
 } from "@/utils/translation";
-import { scheduleDeferred } from "@/utils/scheduleDeferred";
-
 type LanguageContextValue = {
   language: SupportedLanguage;
   setLanguage: (language: SupportedLanguage) => void;
@@ -43,35 +41,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const pathLanguage = getPathLanguage();
-    if (pathLanguage) return;
-
-    const syncPreferredLanguage = async () => {
-      try {
-        const response = await fetch("/api/auth/account/summary", {
-          method: "GET",
-          credentials: "include",
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) return;
-        const data = (await response.json()) as { ok?: boolean; preferredLanguage?: string | null };
-        if (!data.ok || typeof data.preferredLanguage !== "string") return;
-        const preferredLanguage = normalizeLanguageCode(data.preferredLanguage);
-        if (!SUPPORTED_LANGUAGES.includes(preferredLanguage)) return;
-        setLanguageState(preferredLanguage);
-        window.localStorage.setItem(STORAGE_KEY, preferredLanguage);
-      } catch {
-        // no-op: non-authenticated users won't have account summary
-      }
-    };
-
-    return scheduleDeferred(() => {
-      void syncPreferredLanguage();
-    });
-  }, []);
 
   const value = useMemo<LanguageContextValue>(
     () => ({

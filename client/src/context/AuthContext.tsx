@@ -2,7 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
-import { scheduleDeferred } from "@/utils/scheduleDeferred";
+import { fetchAndApplyAccountPreferredLanguage } from "@/utils/accountPreferredLanguage";
+import { shouldEagerPrefetchAuth } from "@/utils/authPrefetch";
+import { scheduleDeferred, scheduleOnFirstInteraction } from "@/utils/scheduleDeferred";
 
 type AuthUser = {
   email: string | null;
@@ -25,7 +27,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data?.authenticated && data.user) {
         const next: AuthUser = { email: data.user.email ?? null };
         setUser(next);
+        void fetchAndApplyAccountPreferredLanguage(setLanguage);
         return next;
       }
       setUser(null);
@@ -48,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLanguage]);
 
   const refreshUntilAuthenticated = useCallback(
     async ({ maxAttempts = 5 }: { maxAttempts?: number } = {}): Promise<AuthUser | null> => {
@@ -79,9 +82,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   useEffect(() => {
-    return scheduleDeferred(() => {
+    if (typeof window === "undefined") return;
+    if (shouldEagerPrefetchAuth(window.location.pathname)) {
+      void refresh();
+      return;
+    }
+    const cancelIdle = scheduleDeferred(() => {
+      void refresh();
+    }, { timeoutMs: 8000 });
+    const cancelInteract = scheduleOnFirstInteraction(() => {
       void refresh();
     });
+    return () => {
+      cancelIdle();
+      cancelInteract();
+    };
   }, [refresh]);
 
   // Self-heal: re-fetch session when the tab regains visibility or focus.

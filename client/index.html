@@ -28,6 +28,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none';" />
   
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
+
+  <!-- Critical above-the-fold styles (system font) so LCP hero text is not blocked by the CSS bundle. -->
+  <style id="pn-critical">
+    html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    body{margin:0;background-color:hsl(210 50% 98%);color:hsl(222 84% 5%)}
+    .page-title{font-family:inherit;font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+    @media (min-width:640px){.page-title{font-size:3rem}}
+    @media (min-width:768px){.page-title{font-size:3.75rem}}
+  </style>
   
   <!-- Prefill guard: inline sync script (no extra network round-trip). -->
   <script>

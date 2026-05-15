@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
 import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
+import { shouldEagerPrefetchAuth } from '@/utils/authPrefetch';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -96,7 +97,9 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMobileSheet("closed");
     setIsProfileOpen(false);
-    void refreshAuth();
+    if (shouldEagerPrefetchAuth(location)) {
+      void refreshAuth();
+    }
   }, [location, refreshAuth]);
 
   // Mobile sheet: reduce background scroll while open (avoid `position:fixed` on body — breaks nested `fixed` nav).
