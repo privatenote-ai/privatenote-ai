@@ -659,6 +659,17 @@ const defaultTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Can I use this for passwords, recovery codes, or private keys?",
   homeFaq_sensitiveSecrets_answer:
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
+  documentMetaHomeDescription:
+    "End-to-end encrypted notes that self-destruct after reading. Client-side encryption keeps your messages private.",
+  documentMetaHowItWorksDescription:
+    "Browser encryption, short-lived notes, and optional on-device AI—keys stay under your control.",
+  documentMetaAboutDescription:
+    "Why PrivateNote.ai exists, the privacy values behind it, and how encrypted tools make sensitive communication safer.",
+  blogPasswordMetaDescription:
+    "Cryptographic randomness, unbiased selection, and strength analysis for secure passwords.",
+  blogWorkplaceMetaTitle: "Workplace texts and ephemeral notes",
+  blogWorkplaceMetaDescription:
+    "What the OpenAI text controversy teaches about written records, workplace hygiene, and ephemeral notes.",
   documentMetaPrivacyToolsTitle: "Privacy tools & resources",
   documentMetaPrivacyToolsDescription:
     "Explore curated privacy guides, security tools, and practical resources for protecting messages, passwords, browsing, identity, and personal data online.",
@@ -1344,6 +1355,17 @@ const deTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Kann ich Passwörter, Wiederherstellungscodes oder private Schlüssel teilen?",
   homeFaq_sensitiveSecrets_answer:
     "Ja, wenn Sie die Grenzen kennen: Jeder mit Link und ggf. Passwort kann das Geheimnis lesen und kopieren oder fotografieren.",
+  documentMetaHomeDescription:
+    "Verschlüsselte Notizen, die sich nach dem Lesen löschen. Clientseitige Verschlüsselung hält Ihre Nachrichten privat.",
+  documentMetaHowItWorksDescription:
+    "Browser-Verschlüsselung, kurzlebige Notizen und optionale KI-Hilfe—Schlüssel bleiben unter Ihrer Kontrolle.",
+  documentMetaAboutDescription:
+    "Warum PrivateNote.ai existiert, welche Werte dahinterstehen und wie Verschlüsselung Kommunikation sicherer macht.",
+  blogPasswordMetaDescription:
+    "Kryptografische Zufälligkeit, unverzerrte Auswahl und Stärkeanalyse für sichere Passwörter.",
+  blogWorkplaceMetaTitle: "Arbeitsplatznachrichten und kurzlebige Notizen",
+  blogWorkplaceMetaDescription:
+    "Was die OpenAI-Debatte über schriftliche Spuren, Kommunikationshygiene und kurzlebige Notizen zeigt.",
   documentMetaPrivacyToolsTitle: "Datenschutz-Tools & Ressourcen",
   documentMetaPrivacyToolsDescription:
     "Entdecken Sie ausgewählte Datenschutzleitfäden, Sicherheitstools und Ressourcen zum Schutz von Nachrichten, Passwörtern, Identität und persönlichen Daten.",
@@ -2033,6 +2055,17 @@ const frTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "Puis-je l’utiliser pour des mots de passe, codes de récupération ou clés privées ?",
   homeFaq_sensitiveSecrets_answer:
     "Oui, si vous comprenez les limites : toute personne ayant le lien et le mot de passe éventuel peut lire le secret et le copier ou le capturer.",
+  documentMetaHomeDescription:
+    "Notes chiffrées qui s’autodétruisent après lecture. Le chiffrement côté client garde vos messages privés.",
+  documentMetaHowItWorksDescription:
+    "Chiffrement navigateur, notes éphémères et IA optionnelle—vous gardez le contrôle des clés.",
+  documentMetaAboutDescription:
+    "Pourquoi PrivateNote.ai existe, les valeurs de confidentialité et comment le chiffrement sécurise les échanges sensibles.",
+  blogPasswordMetaDescription:
+    "Aléa cryptographique, sélection sans biais et analyse de robustesse pour des mots de passe sûrs.",
+  blogWorkplaceMetaTitle: "Messages au travail et notes éphémères",
+  blogWorkplaceMetaDescription:
+    "Messages OpenAI au travail : traces écrites, hygiène numérique et notes éphémères avec PrivateNote.",
   documentMetaPrivacyToolsTitle: "Outils et ressources confidentialité",
   documentMetaPrivacyToolsDescription:
     "Explorez des guides de confidentialité, outils de sécurité et ressources pratiques pour protéger messages, mots de passe, identité et données personnelles.",
@@ -2723,6 +2756,17 @@ const esTranslations: Translations = {
   homeFaq_sensitiveSecrets_question: "¿Puedo usarlo para contraseñas, códigos de recuperación o claves privadas?",
   homeFaq_sensitiveSecrets_answer:
     "Sí, si entiendes los límites: cualquiera con el enlace y la contraseña, si existe, puede leer el secreto y copiarlo o capturarlo.",
+  documentMetaHomeDescription:
+    "Notas cifradas que se autodestruyen al leerse. Cifrado en el cliente para mantener privados tus mensajes.",
+  documentMetaHowItWorksDescription:
+    "Cifrado en el navegador, notas efímeras e IA opcional en el dispositivo—tú controlas las claves.",
+  documentMetaAboutDescription:
+    "Por qué existe PrivateNote.ai, sus valores de privacidad y cómo el cifrado hace más segura la comunicación.",
+  blogPasswordMetaDescription:
+    "Aleatoriedad criptográfica, selección sin sesgo y análisis de fortaleza para contraseñas seguras.",
+  blogWorkplaceMetaTitle: "Mensajes laborales y notas efímeras",
+  blogWorkplaceMetaDescription:
+    "Qué enseña la polémica de textos de OpenAI sobre registros, higiene laboral y notas efímeras.",
   documentMetaPrivacyToolsTitle: "Herramientas y recursos de privacidad",
   documentMetaPrivacyToolsDescription:
     "Explora guías de privacidad, herramientas de seguridad y recursos prácticos para proteger mensajes, contraseñas, identidad y datos personales.",

@@ -13,7 +13,7 @@ function homeDocumentMeta(t: Translations): { title: string; description: string
   const titlePart = `${t.homeHeroLine1.replace(/\s*,\s*$/, "")} — ${t.homeHeroLine2}`;
   return {
     title: buildDocumentTitle(titlePart),
-    description: t.homeHeroSubtitle,
+    description: t.documentMetaHomeDescription,
   };
 }
 
@@ -34,9 +34,15 @@ function blogSlugStaticMeta(
     case "myth-good-enough-security":
       return { title: buildDocumentTitle(t.blogGoodEnoughTitle), description: t.blogGoodEnoughExcerpt };
     case "how-we-generate-passwords":
-      return { title: buildDocumentTitle(t.blogPasswordTitle), description: t.blogPasswordExcerpt };
+      return {
+        title: buildDocumentTitle(t.blogPasswordTitle),
+        description: t.blogPasswordMetaDescription,
+      };
     case "workplace-texts-private-note":
-      return { title: buildDocumentTitle(t.blogWorkplaceTextsTitle), description: t.blogWorkplaceTextsExcerpt };
+      return {
+        title: buildDocumentTitle(t.blogWorkplaceMetaTitle),
+        description: t.blogWorkplaceMetaDescription,
+      };
     default:
       return null;
   }
@@ -62,12 +68,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
     case "how-it-works":
       return {
         title: buildDocumentTitle(`${t.howHeroPrefix} ${t.howHeroAccent}`),
-        description: t.howHeroSubtitle,
+        description: t.documentMetaHowItWorksDescription,
       };
     case "about":
       return {
         title: buildDocumentTitle(t.aboutPageTitle),
-        description: t.aboutPageSubtitle,
+        description: t.documentMetaAboutDescription,
       };
     case "contact":
       return {
