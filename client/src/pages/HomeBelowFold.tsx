@@ -4,7 +4,6 @@ import { Check, ArrowRight, Shield } from "lucide-react";
 import { SecurityFeatures } from "@/components/features/SecurityFeatures";
 import { FAQSection } from "@/components/features/FAQSection";
 import { HomeBlogCarousel } from "@/components/home/HomeBlogCarousel";
-import { useMountWhenInView } from "@/hooks/useMountWhenInView";
 import type { Translations } from "@/utils/translation";
 
 type BlogPostCard = {
@@ -23,8 +22,6 @@ type HomeBelowFoldProps = {
 
 /** Below-the-fold homepage sections — lazy-loaded to shrink the initial JS bundle. */
 export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldProps) {
-  const [faqRef, faqReady] = useMountWhenInView({ rootMargin: "320px" });
-
   return (
     <>
       <SecurityFeatures />
@@ -141,13 +138,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
         </div>
       </section>
 
-      <div ref={faqRef}>
-        {faqReady ? (
-          <FAQSection />
-        ) : (
-          <div className="mt-20 min-h-[520px] border-t border-gray-200/70 dark:border-gray-800/70" aria-hidden />
-        )}
-      </div>
+      <FAQSection />
     </>
   );
 }

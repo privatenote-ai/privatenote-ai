@@ -11,7 +11,7 @@ export function scheduleAfterLcp(
     return () => {};
   }
 
-  const fallbackMs = options?.fallbackMs ?? 12_000;
+  const fallbackMs = options?.fallbackMs ?? 4_000;
   let cancelled = false;
   let started = false;
 
@@ -25,21 +25,34 @@ export function scheduleAfterLcp(
 
   const fallbackTimer = globalThis.setTimeout(start, fallbackMs);
   let observer: PerformanceObserver | undefined;
+  let loadTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+
+  const scheduleLoadFallback = () => {
+    loadTimer = globalThis.setTimeout(start, 2_500);
+  };
+  if (document.readyState === "complete") {
+    scheduleLoadFallback();
+  } else {
+    window.addEventListener("load", scheduleLoadFallback, { once: true });
+  }
 
   try {
     observer = new PerformanceObserver(() => {
       observer?.disconnect();
       globalThis.clearTimeout(fallbackTimer);
+      if (loadTimer !== undefined) globalThis.clearTimeout(loadTimer);
       start();
     });
     observer.observe({ type: "largest-contentful-paint", buffered: true });
   } catch {
-    // PerformanceObserver unsupported — rely on fallback timer only.
+    // PerformanceObserver unsupported — rely on fallback timers only.
   }
 
   return () => {
     cancelled = true;
     globalThis.clearTimeout(fallbackTimer);
+    if (loadTimer !== undefined) globalThis.clearTimeout(loadTimer);
+    window.removeEventListener("load", scheduleLoadFallback);
     observer?.disconnect();
   };
 }

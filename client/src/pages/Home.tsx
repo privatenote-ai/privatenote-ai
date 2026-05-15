@@ -1,5 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { scheduleAfterLcp } from '@/utils/scheduleAfterLcp';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { CreateNoteHomeSkeleton } from '@/components/note/CreateNoteHomeSkeleton';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
@@ -13,11 +12,8 @@ const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
-  const [showBelowFold, setShowBelowFold] = useState(false);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-
-  useEffect(() => scheduleAfterLcp(() => setShowBelowFold(true)), []);
   const { t, language } = useLanguage();
   const blogPath = localizedPath('/blog', language);
   const blogPosts = useMemo(
@@ -108,13 +104,9 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {showBelowFold ? (
-        <Suspense fallback={<HomeBelowFoldSkeleton />}>
-          <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
-        </Suspense>
-      ) : (
-        <HomeBelowFoldSkeleton />
-      )}
+      <Suspense fallback={<HomeBelowFoldSkeleton />}>
+        <HomeBelowFold t={t} blogPath={blogPath} blogPosts={blogPosts} />
+      </Suspense>
     </div>
   );
 };
