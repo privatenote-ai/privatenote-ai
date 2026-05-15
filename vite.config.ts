@@ -81,25 +81,6 @@ function devServerHost(): string | boolean | undefined {
   return process.platform === "win32" ? true : "::";
 }
 
-/** Load built CSS without blocking first paint (preload → stylesheet on load). */
-function nonBlockingCssPlugin(): Plugin {
-  return {
-    name: "non-blocking-css",
-    apply: "build",
-    transformIndexHtml: {
-      order: "post",
-      handler(html) {
-        return html.replace(
-          /<link rel="stylesheet"([^>]*?)href="([^"]+\.css)"([^>]*)>/g,
-          (_match, before, href, after) =>
-            `<link rel="preload" as="style" href="${href}"${before}${after} onload="this.onload=null;this.rel='stylesheet'">` +
-            `<noscript><link rel="stylesheet" href="${href}"></noscript>`,
-        );
-      },
-    },
-  };
-}
-
 function devHttpsHintsPlugin(): Plugin {
   return {
     name: "dev-https-hints",
@@ -129,7 +110,6 @@ export default defineConfig({
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
       : []),
     devHttpsHintsPlugin(),
-    nonBlockingCssPlugin(),
     react(),
     runtimeErrorOverlay(),
     themePlugin(),
