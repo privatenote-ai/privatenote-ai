@@ -38,18 +38,8 @@
     @media (min-width:768px){.page-title{font-size:3.75rem}}
   </style>
   
-  <!-- Prefill guard: inline sync script (no extra network round-trip). -->
-  <script>
-    (function () {
-      try {
-        var h = window.location.hash;
-        if (h && h.indexOf("#text=") === 0) {
-          sessionStorage.setItem("__pn_prefill_v1", h);
-          history.replaceState(null, "", location.pathname + location.search);
-        }
-      } catch (_) {}
-    })();
-  </script>
+  <!-- Prefill guard: sync external script (CSP allows 'self'; inline scripts are blocked). -->
+  <script src="/prefill-guard.js"></script>
 </head>
 <body>
   <div id="root"></div>
