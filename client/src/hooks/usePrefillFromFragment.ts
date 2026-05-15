@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect } from "react";
+import { useState, useEffect } from "react";
 
 /** Maximum characters accepted from a URL fragment prefill. */
 const PREFILL_MAX_CHARS = 10_000;
@@ -160,8 +160,8 @@ export function usePrefillFromFragment(): PrefillState {
   const [showBanner, setShowBanner] = useState<boolean>(() => prefillText !== null);
 
   // Fallback URL cleanup: if the guard script didn't run and the fragment is
-  // still in the address bar, clear it before the first paint.
-  useLayoutEffect(() => {
+  // still in the address bar, clear it after mount.
+  useEffect(() => {
     if (prefillText !== null && window.location.hash) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }

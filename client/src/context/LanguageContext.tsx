@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { en, loadTranslations } from "@/utils/translation";
 import {
   SUPPORTED_LANGUAGES,
-  getTranslations,
   getUserLanguage,
   normalizeLanguageCode,
   type SupportedLanguage,
   type Translations,
-} from "@/utils/translation";
+} from "@/utils/translations/types";
+
 type LanguageContextValue = {
   language: SupportedLanguage;
   setLanguage: (language: SupportedLanguage) => void;
@@ -32,6 +33,7 @@ function getInitialLanguage(): SupportedLanguage {
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<SupportedLanguage>(() => getInitialLanguage());
+  const [t, setT] = useState<Translations>(en);
 
   const setLanguage = (nextLanguage: SupportedLanguage) => {
     setLanguageState(nextLanguage);
@@ -42,13 +44,23 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     document.documentElement.lang = language;
   }, [language]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadTranslations(language).then((next) => {
+      if (!cancelled) setT(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
   const value = useMemo<LanguageContextValue>(
     () => ({
       language,
       setLanguage,
-      t: getTranslations(language),
+      t,
     }),
-    [language],
+    [language, t],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

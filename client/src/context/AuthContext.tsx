@@ -4,7 +4,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { fetchAndApplyAccountPreferredLanguage } from "@/utils/accountPreferredLanguage";
 import { shouldEagerPrefetchAuth } from "@/utils/authPrefetch";
-import { scheduleDeferred, scheduleOnFirstInteraction } from "@/utils/scheduleDeferred";
+import { scheduleAuthSessionCheck } from "@/utils/scheduleDeferred";
 
 type AuthUser = {
   email: string | null;
@@ -87,16 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void refresh();
       return;
     }
-    const cancelIdle = scheduleDeferred(() => {
+    let fetched = false;
+    const runOnce = () => {
+      if (fetched) return;
+      fetched = true;
       void refresh();
-    }, { timeoutMs: 8000 });
-    const cancelInteract = scheduleOnFirstInteraction(() => {
-      void refresh();
-    });
-    return () => {
-      cancelIdle();
-      cancelInteract();
     };
+    return scheduleAuthSessionCheck(runOnce);
   }, [refresh]);
 
   // Self-heal: re-fetch session when the tab regains visibility or focus.

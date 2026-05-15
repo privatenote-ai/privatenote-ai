@@ -18,7 +18,8 @@ import {
   type PromptTemplate,
   type AiSentenceLengthId,
 } from "@/components/note/promptTemplates";
-import { getTranslations, type SupportedLanguage } from "@/utils/translation";
+import { useLanguage } from "@/context/LanguageContext";
+import type { SupportedLanguage } from "@/utils/translation";
 import type {
   GuidedWritingAudience,
   GuidedWritingSensitivity,
@@ -175,7 +176,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const [fallbackSensitivity, setFallbackSensitivity] = useState("");
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
-  const t = useMemo(() => getTranslations(language), [language]);
+  const { t } = useLanguage();
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;

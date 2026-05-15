@@ -33,6 +33,50 @@ export function scheduleDeferred(work: () => void, options?: { timeoutMs?: numbe
   };
 }
 
+/**
+ * Defer auth session fetch until after initial load settles (and on first interaction).
+ * LCP-based scheduling still runs too early for Lighthouse's critical-request chain.
+ */
+export function scheduleAuthSessionCheck(
+  work: () => void,
+  options?: { delayAfterLoadMs?: number },
+): () => void {
+  if (typeof window === "undefined") {
+    work();
+    return () => {};
+  }
+
+  const delayAfterLoadMs = options?.delayAfterLoadMs ?? 5_000;
+  let cancelled = false;
+  let done = false;
+  const run = () => {
+    if (cancelled || done) return;
+    done = true;
+    work();
+  };
+
+  const cancelInteract = scheduleOnFirstInteraction(run);
+
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+  const startTimer = () => {
+    if (cancelled || done) return;
+    timeoutId = globalThis.setTimeout(run, delayAfterLoadMs);
+  };
+
+  if (document.readyState === "complete") {
+    startTimer();
+  } else {
+    window.addEventListener("load", startTimer, { once: true });
+  }
+
+  return () => {
+    cancelled = true;
+    cancelInteract();
+    if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+    window.removeEventListener("load", startTimer);
+  };
+}
+
 /** Run once on first user interaction (pointer or keyboard). */
 export function scheduleOnFirstInteraction(work: () => void): () => void {
   if (typeof window === "undefined") {

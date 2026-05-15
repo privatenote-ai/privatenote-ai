@@ -4,7 +4,6 @@ import {
   Suspense,
   lazy,
   useEffect,
-  useLayoutEffect,
   type ComponentType,
   type ReactNode,
 } from "react";
@@ -13,30 +12,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext";
 import Home from "@/pages/Home";
-import ViewNote from "@/pages/ViewNote";
-import PasswordGenerator from "@/pages/PasswordGenerator";
-import SecurityResources from "@/pages/SecurityResources";
-import PrivacyTools from "@/pages/PrivacyTools";
-import Privacy from "@/pages/Privacy";
-import Terms from "@/pages/Terms";
-import About from "@/pages/About";
-import Contact from "@/pages/Contact";
-import HowItWorks from "@/pages/HowItWorks";
-import Blog from "@/pages/Blog";
-import BlogPost from "@/pages/BlogPost";
-import NotFound from "@/pages/not-found";
-import SecurityGuideDetail from "./pages/SecurityGuideDetail";
-import Auth from "@/pages/Auth";
-import AuthMagic from "@/pages/AuthMagic";
-import AuthRecovery from "@/pages/AuthRecovery";
-import AuthSignIn from "@/pages/AuthSignIn";
-import AuthSignUp from "@/pages/AuthSignUp";
-import AuthEmailChange from "@/pages/AuthEmailChange";
-import AuthTotp from "@/pages/AuthTotp";
-import SecuritySettings from "@/pages/SecuritySettings";
-import AccountOverview from "@/pages/account/AccountOverview";
-import AccountActivity from "@/pages/account/AccountActivity";
-import AccountPreferences from "@/pages/account/AccountPreferences";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -45,6 +20,30 @@ import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 
+const ViewNote = lazy(() => import("@/pages/ViewNote"));
+const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
+const SecurityResources = lazy(() => import("@/pages/SecurityResources"));
+const PrivacyTools = lazy(() => import("@/pages/PrivacyTools"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const About = lazy(() => import("@/pages/About"));
+const Contact = lazy(() => import("@/pages/Contact"));
+const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const BlogPost = lazy(() => import("@/pages/BlogPost"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const SecurityGuideDetail = lazy(() => import("./pages/SecurityGuideDetail"));
+const Auth = lazy(() => import("@/pages/Auth"));
+const AuthMagic = lazy(() => import("@/pages/AuthMagic"));
+const AuthRecovery = lazy(() => import("@/pages/AuthRecovery"));
+const AuthSignIn = lazy(() => import("@/pages/AuthSignIn"));
+const AuthSignUp = lazy(() => import("@/pages/AuthSignUp"));
+const AuthEmailChange = lazy(() => import("@/pages/AuthEmailChange"));
+const AuthTotp = lazy(() => import("@/pages/AuthTotp"));
+const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
+const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
+const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
+const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
@@ -53,6 +52,14 @@ const LlmUi = lazy(() => import("@/pages/LlmUi"));
 
 function LazyPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
+}
+
+function LazyRoute({ component: Component }: { component: ComponentType }) {
+  return (
+    <LazyPage>
+      <Component />
+    </LazyPage>
+  );
 }
 
 const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
@@ -134,14 +141,24 @@ function LocalizedRoute({
     }
   }, [activeLanguage, language, setLanguage]);
 
-  return <Component />;
+  return (
+    <LazyPage>
+      <Component />
+    </LazyPage>
+  );
 }
 
 function Router() {
   const [location] = useLocation();
   const { t } = useLanguage();
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    const path = pathWithoutQueryOrHash(location);
+    const meta = resolveDocumentMeta(path, t);
+    setDocumentMeta(meta.title, meta.description);
+  }, [location, t]);
+
+  useEffect(() => {
     /** Hreflang + canonical for locale homes only; paths must match CDN 200s (e.g. …/de/, not …/de). */
     const path = pathWithoutQueryOrHash(location);
     const homeLang = homeSeoLanguageForPath(path);
@@ -150,15 +167,16 @@ function Router() {
     } else {
       setHomeSeoLinks(homeLang);
     }
+  }, [location]);
 
-    const meta = resolveDocumentMeta(path, t);
-    setDocumentMeta(meta.title, meta.description);
-
-    /** Wouter navigations preserve scroll — reset so CTAs to home/read content start from the top. */
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [location, t]);
+  useEffect(() => {
+    /** Wouter navigations preserve scroll — reset after paint when not already at top. */
+    if (window.scrollY === 0) return;
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
   const showNavbar =
     !isAuthRoute ||
@@ -193,72 +211,36 @@ function Router() {
               <Route path={`/${language}/terms`} component={() => <LocalizedRoute language={language} component={Terms} />} />
             </Fragment>
           ))}
-          <Route path="/note/:id" component={ViewNote} />
-          <Route path="/password-generator" component={PasswordGenerator} />
-          <Route path="/privacy-tools" component={PrivacyTools} />
-          <Route path="/security-resources" component={SecurityResources} />
-          <Route path="/security-guides/:topicId" component={SecurityGuideDetail} />
-          <Route path="/privacy" component={Privacy} />
-          <Route path="/terms" component={Terms} />
-          <Route path="/how-it-works" component={HowItWorks} />
-          <Route path="/about" component={About} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/blog" component={Blog} />
-          <Route path="/blog/:slug" component={BlogPost} />
-          <Route
-            path="/admin/blog"
-            component={() => (
-              <LazyPage>
-                <BlogAdmin />
-              </LazyPage>
-            )}
-          />
-          <Route
-            path="/admin/analytics"
-            component={() => (
-              <LazyPage>
-                <Analytics />
-              </LazyPage>
-            )}
-          />
-          <Route
-            path="/admin/audit-logs"
-            component={() => (
-              <LazyPage>
-                <AuditLogs />
-              </LazyPage>
-            )}
-          />
-          <Route
-            path="/test-llm"
-            component={() => (
-              <LazyPage>
-                <TestClientLLM />
-              </LazyPage>
-            )}
-          />
-          <Route
-            path="/llm-ui"
-            component={() => (
-              <LazyPage>
-                <LlmUi />
-              </LazyPage>
-            )}
-          />
-          <Route path="/auth" component={() => <Auth />} />
-          <Route path="/auth/sign-in" component={AuthSignIn} />
-          <Route path="/auth/sign-up" component={AuthSignUp} />
-          <Route path="/auth/magic" component={AuthMagic} />
-          <Route path="/magic" component={AuthMagic} />
-          <Route path="/auth/recovery" component={AuthRecovery} />
-          <Route path="/auth/email-change" component={AuthEmailChange} />
-          <Route path="/auth/totp" component={AuthTotp} />
-          <Route path="/account/security" component={SecuritySettings} />
-          <Route path="/account/activity" component={AccountActivity} />
-          <Route path="/account/preferences" component={AccountPreferences} />
-          <Route path="/account" component={AccountOverview} />
-          {/* Fallback to 404 */}
-          <Route component={NotFound} />
+          <Route path="/note/:id" component={() => <LazyRoute component={ViewNote} />} />
+          <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
+          <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
+          <Route path="/security-resources" component={() => <LazyRoute component={SecurityResources} />} />
+          <Route path="/security-guides/:topicId" component={() => <LazyRoute component={SecurityGuideDetail} />} />
+          <Route path="/privacy" component={() => <LazyRoute component={Privacy} />} />
+          <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
+          <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
+          <Route path="/about" component={() => <LazyRoute component={About} />} />
+          <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
+          <Route path="/blog" component={() => <LazyRoute component={Blog} />} />
+          <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
+          <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
+          <Route path="/admin/analytics" component={() => <LazyRoute component={Analytics} />} />
+          <Route path="/admin/audit-logs" component={() => <LazyRoute component={AuditLogs} />} />
+          <Route path="/test-llm" component={() => <LazyRoute component={TestClientLLM} />} />
+          <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
+          <Route path="/auth" component={() => <LazyRoute component={Auth} />} />
+          <Route path="/auth/sign-in" component={() => <LazyRoute component={AuthSignIn} />} />
+          <Route path="/auth/sign-up" component={() => <LazyRoute component={AuthSignUp} />} />
+          <Route path="/auth/magic" component={() => <LazyRoute component={AuthMagic} />} />
+          <Route path="/magic" component={() => <LazyRoute component={AuthMagic} />} />
+          <Route path="/auth/recovery" component={() => <LazyRoute component={AuthRecovery} />} />
+          <Route path="/auth/email-change" component={() => <LazyRoute component={AuthEmailChange} />} />
+          <Route path="/auth/totp" component={() => <LazyRoute component={AuthTotp} />} />
+          <Route path="/account/security" component={() => <LazyRoute component={SecuritySettings} />} />
+          <Route path="/account/activity" component={() => <LazyRoute component={AccountActivity} />} />
+          <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
+          <Route path="/account" component={() => <LazyRoute component={AccountOverview} />} />
+          <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>
       </main>
       {!isAuthRoute && <Footer />}

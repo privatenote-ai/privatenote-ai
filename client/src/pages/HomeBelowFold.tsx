@@ -3,13 +3,8 @@ import { Link } from "wouter";
 import { Check, ArrowRight, Shield } from "lucide-react";
 import { SecurityFeatures } from "@/components/features/SecurityFeatures";
 import { FAQSection } from "@/components/features/FAQSection";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import { HomeBlogCarousel } from "@/components/home/HomeBlogCarousel";
+import { useMountWhenInView } from "@/hooks/useMountWhenInView";
 import type { Translations } from "@/utils/translation";
 
 type BlogPostCard = {
@@ -28,6 +23,8 @@ type HomeBelowFoldProps = {
 
 /** Below-the-fold homepage sections — lazy-loaded to shrink the initial JS bundle. */
 export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldProps) {
+  const [faqRef, faqReady] = useMountWhenInView({ rootMargin: "320px" });
+
   return (
     <>
       <SecurityFeatures />
@@ -140,43 +137,17 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
             </Link>
           </div>
 
-          <Carousel opts={{ align: "start" }} className="px-0 md:px-10">
-            <CarouselContent>
-              {blogPosts.map((post) => (
-                <CarouselItem key={post.slug} className="basis-[88%] sm:basis-1/2 lg:basis-1/3">
-                  <Link
-                    href={`${blogPath}/${post.slug}`}
-                    className="group flex h-full min-h-[270px] flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
-                  >
-                    <div className="mb-4 flex items-center justify-between gap-3 text-xs font-medium">
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">{post.category}</span>
-                      <span className="whitespace-nowrap text-gray-500 dark:text-gray-400">{post.readTime}</span>
-                    </div>
-                    <h4 className="text-xl font-semibold leading-snug text-gray-950 transition-colors group-hover:text-primary dark:text-white">
-                      {post.title}
-                    </h4>
-                    <p className="mt-4 flex-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{post.excerpt}</p>
-                    <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-950 dark:text-gray-100">
-                      {t.homeBlogReadArticle}
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                    </span>
-                  </Link>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious
-              aria-label={t.homeBlogCarouselPrev}
-              className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
-            />
-            <CarouselNext
-              aria-label={t.homeBlogCarouselNext}
-              className="hidden border-gray-300 bg-white text-gray-950 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 md:inline-flex"
-            />
-          </Carousel>
+          <HomeBlogCarousel t={t} blogPath={blogPath} blogPosts={blogPosts} />
         </div>
       </section>
 
-      <FAQSection />
+      <div ref={faqRef}>
+        {faqReady ? (
+          <FAQSection />
+        ) : (
+          <div className="mt-20 min-h-[520px] border-t border-gray-200/70 dark:border-gray-800/70" aria-hidden />
+        )}
+      </div>
     </>
   );
 }

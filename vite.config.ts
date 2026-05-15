@@ -138,6 +138,9 @@ export default defineConfig({
           if (!id.includes("node_modules")) return;
           if (id.includes("@mlc-ai/web-llm")) return "vendor-web-llm";
           if (id.includes("@huggingface/transformers")) return "vendor-transformers";
+          if (id.includes("@tanstack/react-query")) return "vendor-query";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("lucide-react")) return "vendor-icons";
           if (
             id.includes("/react-dom/") ||
             id.includes("/react/") ||
