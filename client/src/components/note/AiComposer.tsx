@@ -249,6 +249,31 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
           </p>
         </div>
+        {localAiSupported && isAiModelLoading && aiModelProgress ? (
+          <div className="mb-4 space-y-3">
+            <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {aiModelProgress.text}
+                </span>
+                <span className="text-xs text-blue-700 dark:text-blue-300">
+                  {Math.round(aiModelProgress.progress)}%
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-blue-200 dark:bg-blue-800">
+                <div
+                  className="h-2 rounded-full bg-blue-600 transition-all duration-300 dark:bg-blue-400"
+                  style={{ width: `${aiModelProgress.progress}%` }}
+                />
+              </div>
+              {aiModelProgress.detail ? (
+                <p className="break-words text-xs text-blue-800/95 dark:text-blue-200/90">
+                  {aiModelProgress.detail}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         {showPrompt ? (
           <>
             {/* Step 1 — templates (only while composing the prompt) */}
@@ -618,32 +643,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
                 {getLocalAiSupportHint()}
               </p>
-            )}
-
-            {localAiSupported && isAiModelLoading && aiModelProgress && (
-              <div className="space-y-3">
-                <div className="flex flex-col gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      {aiModelProgress.text}
-                    </span>
-                    <span className="text-xs text-blue-700 dark:text-blue-300">
-                      {Math.round(aiModelProgress.progress)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${aiModelProgress.progress}%` }}
-                    />
-                  </div>
-                  {aiModelProgress.detail ? (
-                    <p className="text-xs text-blue-800/95 dark:text-blue-200/90 break-words">
-                      {aiModelProgress.detail}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
             )}
 
           </div>

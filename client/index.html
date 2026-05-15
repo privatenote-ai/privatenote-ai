@@ -42,9 +42,8 @@
     @media (min-width:768px){.page-title{font-size:3.75rem}}
   </style>
 
-  <!-- Non-blocking: defer + external activator (CSP blocks inline onload on link). -->
-  <script defer src="/load-stylesheet.js"></script>
-  <script defer src="/prefill-guard.js"></script>
+  <!-- Prefill guard: sync in head so theme + #text= run before the bundle (CSP: external script only). -->
+  <script src="/prefill-guard.js"></script>
 </head>
 <body>
   <div id="root"></div>

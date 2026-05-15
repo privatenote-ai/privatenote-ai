@@ -96,21 +96,21 @@ export function HomeBlogCarousel({ t, blogPath, blogPosts }: HomeBlogCarouselPro
   return (
     <div ref={sectionRef}>
       {carouselReady ? (
-        <Carousel opts={{ align: "start" }} className="relative w-full">
-          <CarouselContent className="-ml-3 sm:-ml-4">
+        <Carousel opts={{ align: "start" }} className="relative w-full px-9 sm:px-10">
+          <CarouselContent className="ml-0 gap-3 sm:gap-4">
             {blogPosts.map((post) => (
-              <CarouselItem key={post.slug} className="basis-[88%] pl-3 sm:basis-1/2 sm:pl-4 lg:basis-1/2">
+              <CarouselItem key={post.slug} className="basis-[88%] pl-0 sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(50%-0.5rem)]">
                 <BlogPostLink post={post} blogPath={blogPath} readLabel={t.homeBlogReadArticle} />
               </CarouselItem>
             ))}
           </CarouselContent>
           <CarouselPrevious
             aria-label={t.homeBlogCarouselPrev}
-            className="left-1 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
+            className="!left-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
           />
           <CarouselNext
             aria-label={t.homeBlogCarouselNext}
-            className="right-1 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
+            className="!right-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 border-gray-300 bg-white/95 text-gray-950 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-100 dark:hover:bg-gray-800 sm:inline-flex"
           />
         </Carousel>
       ) : (

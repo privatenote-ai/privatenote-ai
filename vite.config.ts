@@ -81,48 +81,6 @@ function devServerHost(): string | boolean | undefined {
   return process.platform === "win32" ? true : "::";
 }
 
-/** Preload built CSS; /load-stylesheet.js promotes it (no inline onload — CSP-safe). */
-function nonBlockingCssPlugin(): Plugin {
-  return {
-    name: "non-blocking-css",
-    apply: "build",
-    transformIndexHtml: {
-      order: "post",
-      handler(html) {
-        return html.replace(
-          /<link rel="stylesheet"([^>]*?)href="([^"]+\.css)"([^>]*)>/g,
-          (_match, before, href, after) =>
-            `<link rel="preload" as="style" href="${href}"${before}${after}>` +
-            `<noscript><link rel="stylesheet" href="${href}"></noscript>`,
-        );
-      },
-    },
-  };
-}
-
-/** Module entry at end of body so head scripts/styles do not block parsing. */
-function moveModuleScriptsToBodyPlugin(): Plugin {
-  return {
-    name: "move-module-scripts-to-body",
-    apply: "build",
-    transformIndexHtml: {
-      order: "post",
-      handler(html) {
-        const scripts: string[] = [];
-        const stripped = html.replace(
-          /<script type="module"[^>]*><\/script>\s*/g,
-          (tag) => {
-            scripts.push(tag);
-            return "";
-          },
-        );
-        if (scripts.length === 0) return html;
-        return stripped.replace("</body>", `  ${scripts.join("\n  ")}\n</body>`);
-      },
-    },
-  };
-}
-
 function devHttpsHintsPlugin(): Plugin {
   return {
     name: "dev-https-hints",
@@ -152,8 +110,6 @@ export default defineConfig({
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
       : []),
     devHttpsHintsPlugin(),
-    nonBlockingCssPlugin(),
-    moveModuleScriptsToBodyPlugin(),
     react(),
     runtimeErrorOverlay(),
     themePlugin(),

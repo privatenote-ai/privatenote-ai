@@ -38,10 +38,12 @@ export const SecurityFeatures: React.FC = () => {
   ];
 
   return (
-    <section className="relative py-12 px-4 sm:px-6 lg:px-8">
+    <section className="relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8 sm:mb-12">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.keyFeatures}</h2>
+        <h2 id="key-features-heading" className="text-3xl font-bold text-gray-900 dark:text-white">
+          {t.keyFeatures}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           {t.keyFeaturesSubtitle}
         </p>

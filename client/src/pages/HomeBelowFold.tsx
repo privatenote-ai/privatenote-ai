@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
 import { Check, ArrowRight, Shield } from "lucide-react";
-import { SecurityFeatures } from "@/components/features/SecurityFeatures";
 import { FAQSection } from "@/components/features/FAQSection";
 import { HomeBlogCarousel } from "@/components/home/HomeBlogCarousel";
 import type { Translations } from "@/utils/translation";
@@ -24,8 +23,6 @@ type HomeBelowFoldProps = {
 export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldProps) {
   return (
     <>
-      <SecurityFeatures />
-
       <section className="relative isolate overflow-x-clip">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-0 h-[520px] w-[min(900px,130vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
@@ -33,30 +30,26 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
         </div>
 
         <div className="relative z-10 mx-auto min-w-0 max-w-4xl px-4 pb-20 pt-14 sm:px-6 lg:px-8">
-          <div className="grid min-w-0 gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-            <div>
-              <div className="inline-flex items-center rounded-full border border-gray-200/70 bg-white/80 px-3 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:border-gray-700/70 dark:bg-gray-900/60 dark:text-gray-300">
-                {t.whyPrivateNote}
-              </div>
-
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                {t.shareSensitiveHeading}
-              </h2>
-
-              <p className="mt-3 max-w-xl text-base text-gray-600 dark:text-gray-300">{t.shareSensitiveBody}</p>
-
-              <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                {[t.clientSideEncryption, t.readOnceExposure, t.noTrackingAds].map((line) => (
-                  <li key={line} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-                      <Check className="h-4 w-4" />
-                    </span>
-                    <span className="leading-relaxed">{line}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="inline-flex items-center rounded-full border border-gray-200/70 bg-white/80 px-3 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:border-gray-700/70 dark:bg-gray-900/60 dark:text-gray-300">
+              {t.whyPrivateNote}
             </div>
-          </div>
+
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+              {t.shareSensitiveHeading}
+            </h2>
+
+            <p className="mt-3 max-w-xl text-base text-gray-600 dark:text-gray-300">{t.shareSensitiveBody}</p>
+
+            <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              {[t.clientSideEncryption, t.readOnceExposure, t.noTrackingAds].map((line) => (
+                <li key={line} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
+                    <Check className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 leading-relaxed">{line}</span>
+                </li>
+              ))}
+            </ul>
         </div>
 
         <div className="relative z-0 mx-auto mt-10 min-w-0 max-w-4xl px-4 pb-20 pt-8 sm:mt-16 sm:px-6 lg:px-8">
