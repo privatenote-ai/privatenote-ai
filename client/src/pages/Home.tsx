@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
-import { CreateNoteHomeSkeleton } from '@/components/note/CreateNoteHomeSkeleton';
+import { CreateNote } from '@/components/note/CreateNote';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
 import { HomeKeyFeaturesPeek } from '@/components/home/HomeKeyFeaturesPeek';
@@ -9,9 +9,6 @@ import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { cn } from '@/lib/utils';
 
-const CreateNote = lazy(() =>
-  import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
-);
 const SecurityFeatures = lazy(() =>
   import('@/components/features/SecurityFeatures').then((m) => ({ default: m.SecurityFeatures })),
 );
@@ -107,9 +104,7 @@ const Home: React.FC = () => {
       >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
-            <Suspense fallback={<CreateNoteHomeSkeleton />}>
-              <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-            </Suspense>
+            <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
           ) : (
             <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
           )}
