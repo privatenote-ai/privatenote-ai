@@ -71,19 +71,22 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[15px] sm:leading-7">
                 {t.blogSubtitle}
               </p>
-              <p className="mt-3 text-base leading-7 text-gray-600 dark:text-gray-300">{t.homeBlogCarouselHint}</p>
             </div>
 
             <Link
               href={blogPath}
-              className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-gray-950 transition-colors hover:text-primary dark:text-gray-100 dark:hover:text-primary"
+              className="inline-flex shrink-0 items-center gap-2 self-start pt-1 text-sm font-semibold text-gray-950 transition-colors hover:text-primary dark:text-gray-100 dark:hover:text-primary md:self-end md:pt-0"
             >
               {t.homeBlogViewAll}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
           <HomeBlogCarousel t={t} blogPath={blogPath} blogPosts={blogPosts} />
+
+          <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:mt-10 sm:text-[15px] sm:leading-7">
+            {t.homeBlogCarouselHint}
+          </p>
         </div>
       </section>
 
