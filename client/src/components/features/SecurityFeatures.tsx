@@ -43,10 +43,10 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
   ];
 
   return (
-    <section className={cn('relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8', className)}>
+    <div className={cn('relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8', className)}>
       <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8 sm:mb-12">
-        <h2 id="key-features-heading" className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
           {t.keyFeatures}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -96,6 +96,6 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
         {t.featuresFooter}
       </div>
       </div>
-    </section>
+    </div>
   );
 };

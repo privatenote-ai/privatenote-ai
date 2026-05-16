@@ -111,10 +111,11 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      <section
+      <div
         ref={keyFeaturesRef}
+        role="region"
+        aria-label={t.keyFeatures}
         className="relative isolate mt-4 overflow-x-clip sm:mt-6"
-        aria-labelledby="key-features-heading"
       >
         <div
           aria-hidden
@@ -135,7 +136,7 @@ const Home: React.FC = () => {
             <HomeKeyFeaturesPeek title={t.keyFeatures} />
           )}
         </div>
-      </section>
+      </div>
 
       <div ref={belowFoldRef}>
         {belowFoldMounted ? (
