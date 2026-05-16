@@ -22,8 +22,9 @@ const Home: React.FC = () => {
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const { t, language } = useLanguage();
-  const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '240px' });
-  const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '520px' });
+  /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
+  const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
+  const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
   const blogPath = localizedPath('/blog', language);
   const blogPosts = useMemo(
     () => [

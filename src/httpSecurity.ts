@@ -1,6 +1,6 @@
 /**
  * Security headers for Worker responses. CSP here applies to API JSON responses;
- * the browser enforces CSP for documents from HTML (see client/index.html / edge).
+ * the browser enforces CSP for HTML documents from `client/public/_headers` on Pages.
  *
  * Note: Nonce-based `strict-dynamic` script CSP needs per-response HTML rewriting; not used yet.
  */

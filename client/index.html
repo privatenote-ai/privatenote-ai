@@ -23,15 +23,9 @@
   <meta name="twitter:description" content="PrivateNote.ai - Create end-to-end encrypted notes that self-destruct after reading. Secure messaging with client-side encryption." />
   <meta name="twitter:image" content="https://privatenote.ai/og-image.png" />
   
-  <!-- Content Security Policy -->
-  <!-- Note: CSP is also set via HTTP headers in Worker for API responses -->
-  <!-- frame-ancestors only works in HTTP headers, not meta tags -->
-  <!-- upgrade-insecure-requests removed for local development (causes SSL errors with Vite) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none';" />
-  
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
 
-  <!-- Critical CSS: first paint before async Tailwind bundle (see load-stylesheet.js). -->
+  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading. -->
   <style id="pn-critical">
     body{margin:0;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
@@ -42,8 +36,11 @@
     @media (min-width:768px){.page-title{font-size:3.75rem}}
   </style>
 
-  <!-- Prefill guard: sync in head so theme + #text= run before the bundle (CSP: external script only). -->
-  <script src="/prefill-guard.js"></script>
+  <!-- Prefill guard: defer so it does not block HTML parsing; still runs before the
+       type=module bundle (document order). Moves #text= to sessionStorage and sets
+       html.light / html.dark from stored theme. Sync was slightly earlier for hash
+       stripping but cost ~render-blocking in Lighthouse. -->
+  <script defer src="/prefill-guard.js"></script>
 </head>
 <body>
   <div id="root"></div>

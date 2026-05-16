@@ -1,13 +1,6 @@
-import React, { Suspense, lazy, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState, useCallback } from "react";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
-import {
-  encryptNote,
-  generateContentKey,
-  arrayBufferToBase64,
-  encryptWithPassword,
-  serializeEncryptedPayload,
-} from "@/utils/encryption";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
   truncateUtf8StringToMaxBytes,
@@ -31,15 +24,7 @@ import {
   LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS,
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
-import {
-  getPromptTemplatesForLanguage,
-  buildPromptFromTemplate,
-  formatSentenceLengthUserSuffix,
-  applySentenceLengthToUserPrompt,
-  DEFAULT_AI_SENTENCE_LENGTH,
-  type PromptTemplate,
-  type AiSentenceLengthId,
-} from "@/components/note/promptTemplates";
+import type { PromptTemplate, AiSentenceLengthId } from "@/components/note/promptTemplates";
 import { getLocalAiPreloadNetworkPolicy } from "@/utils/localAiNetworkDownloadPolicy";
 import {
   Shield,
@@ -56,7 +41,6 @@ import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
-import { NoteSettingsPanel } from "./NoteSettingsPanel";
 import type { AiPostGenTransform } from "./AiComposer";
 
 const AiComposer = lazy(() =>
@@ -64,6 +48,9 @@ const AiComposer = lazy(() =>
 );
 const CreateNoteDeferredDialogs = lazy(() =>
   import("./CreateNoteDeferredDialogs").then((m) => ({ default: m.CreateNoteDeferredDialogs })),
+);
+const NoteSettingsPanel = lazy(() =>
+  import("./NoteSettingsPanel").then((m) => ({ default: m.NoteSettingsPanel })),
 );
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
@@ -75,20 +62,22 @@ import {
   parseHostedCloudAiError,
 } from "@/utils/hostedCloudAi";
 
+type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
+let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
+
+function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
+  if (!promptTemplatesModulePromise) {
+    promptTemplatesModulePromise = import("@/components/note/promptTemplates");
+  }
+  return promptTemplatesModulePromise;
+}
+
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
   if (!t) return "Working…";
   // After load, WebLLM reports "ready"; keep "analyzing" until streaming updates the headline.
   if (t === "Ready to generate") return localAiAnalyzingPromptLabel();
   return t;
-}
-
-function askAnythingScaffoldPrompt(sentenceLength: AiSentenceLengthId, language: SupportedLanguage): string {
-  const templates = getPromptTemplatesForLanguage(language);
-  const tmpl = templates.find((x) => x.id === "ask-anything");
-  const base = tmpl?.userTemplate ?? "";
-  const suffix = formatSentenceLengthUserSuffix(sentenceLength, language);
-  return suffix ? `${base}\n${suffix}` : base;
 }
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
@@ -110,7 +99,6 @@ interface CreateNoteProps {
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
   const { t, language } = useLanguage();
-  const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
 
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
@@ -133,15 +121,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const aiComposerAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // ── AI state ──────────────────────────────────────────────────────────────
-  const [aiPrompt, setAiPrompt] = useState(() => askAnythingScaffoldPrompt(DEFAULT_AI_SENTENCE_LENGTH, language));
+  const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [aiEnhancementType, setAiEnhancementType] = useState<
     "improve" | "summarize" | "secure" | "ask"
-  >(
-    () =>
-      getPromptTemplatesForLanguage(language).find((x) => x.id === "ask-anything")
-        ?.enhancementType ?? "improve",
-  );
+  >("ask");
   const [aiProgress, setAiProgress] = useState<ModelLoadProgress | null>(null);
   const [isAiModelLoading, setIsAiModelLoading] = useState(false);
   const [aiModelProgress, setAiModelProgress] = useState<{
@@ -152,7 +136,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
-  const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>(DEFAULT_AI_SENTENCE_LENGTH);
+  const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("auto");
   const [showPrompt, setShowPrompt] = useState<boolean>(true);
   const [originalPrompt, setOriginalPrompt] = useState<string>("");
   const [userPromptHistory, setUserPromptHistory] = useState<string[]>([]);
@@ -330,11 +314,40 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   }, [toast]);
 
   useEffect(() => {
-    if (selectedTemplateId !== "ask-anything") return;
-    setAiPrompt(askAnythingScaffoldPrompt(aiSentenceLength, language));
-    // Only refresh scaffold when UI language changes (not when the user edits the prompt).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!isAiMode || selectedTemplateId !== "ask-anything") return;
+    let cancelled = false;
+    void loadPromptTemplatesModule().then((m) => {
+      if (cancelled) return;
+      const templates = m.getPromptTemplatesForLanguage(language);
+      const tmpl = templates.find((x) => x.id === "ask-anything");
+      const base = tmpl?.userTemplate ?? "";
+      const suffix = m.formatSentenceLengthUserSuffix(aiSentenceLength, language);
+      setAiPrompt(suffix ? `${base}\n${suffix}` : base);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- language-only resets scaffold (prior behavior)
   }, [language]);
+
+  useEffect(() => {
+    if (!isAiMode || selectedTemplateId !== "ask-anything") return;
+    let cancelled = false;
+    void loadPromptTemplatesModule().then((m) => {
+      if (cancelled) return;
+      setAiPrompt((prev) => {
+        if (prev.trim() !== "") return prev;
+        const templates = m.getPromptTemplatesForLanguage(language);
+        const tmpl = templates.find((x) => x.id === "ask-anything");
+        const base = tmpl?.userTemplate ?? "";
+        const suffix = m.formatSentenceLengthUserSuffix(aiSentenceLength, language);
+        return suffix ? `${base}\n${suffix}` : base;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAiMode, language, selectedTemplateId, aiSentenceLength]);
 
   const retryFreeModelDownloadAfterReset = useCallback(async () => {
     await resetFreeModelDownloadState();
@@ -363,6 +376,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
       await ensureFreeLocalModel((progress) => setAiProgress(progress));
+      const m = await loadPromptTemplatesModule();
+      const promptTemplates = m.getPromptTemplatesForLanguage(language);
       const selectedTemplate = promptTemplates.find((t) => t.id === selectedTemplateId);
       const useBuild = Boolean(options?.useBuiltTemplatePrompt && selectedTemplate);
       const enhancementTypeForModel =
@@ -387,7 +402,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       }
       const finalUserMessage =
         useBuild && selectedTemplate
-          ? buildPromptFromTemplate(
+          ? m.buildPromptFromTemplate(
               selectedTemplate,
               content.trim(),
               modelId,
@@ -617,6 +632,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setIsLoading(true);
 
     try {
+      const {
+        encryptNote,
+        generateContentKey,
+        arrayBufferToBase64,
+        encryptWithPassword,
+        serializeEncryptedPayload,
+      } = await import("@/utils/encryption");
       let encryptedBase64,
         ivBase64,
         exportedKey,
@@ -781,7 +803,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setCreatedNote(null);
     setNoteContent("");
     resetPrefill();
-    setAiPrompt(askAnythingScaffoldPrompt(DEFAULT_AI_SENTENCE_LENGTH, language));
     setOriginalPrompt("");
     setUserPromptHistory([]);
     setTransformHistory([]);
@@ -789,11 +810,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowPrompt(true);
     setAiDraftAccepted(false);
     setSelectedTemplateId("ask-anything");
-    setAiSentenceLength(DEFAULT_AI_SENTENCE_LENGTH);
-    setAiEnhancementType(
-      getPromptTemplatesForLanguage(language).find((x) => x.id === "ask-anything")
-        ?.enhancementType ?? "improve",
-    );
+    setAiSentenceLength("auto");
+    setAiEnhancementType("ask");
+    void loadPromptTemplatesModule().then((m) => {
+      const templates = m.getPromptTemplatesForLanguage(language);
+      const tmpl = templates.find((x) => x.id === "ask-anything");
+      const base = tmpl?.userTemplate ?? "";
+      const suffix = m.formatSentenceLengthUserSuffix("auto", language);
+      setAiPrompt(suffix ? `${base}\n${suffix}` : base);
+      if (tmpl?.enhancementType) setAiEnhancementType(tmpl.enhancementType);
+    });
     setPassword("");
     setShowPassword(false);
     setPasswordSource(null);
@@ -807,18 +833,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAiPrompt("");
       return;
     }
-    setAiPrompt(
-      template.userTemplate + formatSentenceLengthUserSuffix(aiSentenceLength, language),
-    );
-    setAiEnhancementType(template.enhancementType);
-    setSelectedTemplateId(template.id);
+    void loadPromptTemplatesModule().then((m) => {
+      setAiPrompt(
+        template.userTemplate + m.formatSentenceLengthUserSuffix(aiSentenceLength, language),
+      );
+      setAiEnhancementType(template.enhancementType);
+      setSelectedTemplateId(template.id);
+    });
   };
 
   const handleSentenceLengthChange = useCallback(
     (id: AiSentenceLengthId) => {
-      setAiSentenceLength(id);
-      if (selectedTemplateId === null) return;
-      setAiPrompt((p) => applySentenceLengthToUserPrompt(p, id, language));
+      void loadPromptTemplatesModule().then((m) => {
+        setAiSentenceLength(id);
+        if (selectedTemplateId === null) return;
+        setAiPrompt((p) => m.applySentenceLengthToUserPrompt(p, id, language));
+      });
     },
     [selectedTemplateId, language],
   );
@@ -1316,20 +1346,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           <div className="mt-[-0.5rem]" />
 
           {(!isAiMode || aiDraftAccepted) && (
-            <NoteSettingsPanel
-              showAdvancedOptions={showAdvancedOptions}
-              password={password}
-              setPassword={setPassword}
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              passwordSource={passwordSource}
-              setPasswordSource={setPasswordSource}
-              passwordStrength={passwordStrength}
-              breachState={breachState}
-              breachCount={breachCount}
-              expiryValue={expiryValue}
-              setExpiryValue={setExpiryValue}
-            />
+            <Suspense
+              fallback={
+                <div
+                  className="min-h-[120px] rounded-lg border border-gray-200/60 bg-muted/30 animate-pulse dark:border-gray-700/60"
+                  aria-hidden
+                />
+              }
+            >
+              <NoteSettingsPanel
+                showAdvancedOptions={showAdvancedOptions}
+                password={password}
+                setPassword={setPassword}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                passwordSource={passwordSource}
+                setPasswordSource={setPasswordSource}
+                passwordStrength={passwordStrength}
+                breachState={breachState}
+                breachCount={breachCount}
+                expiryValue={expiryValue}
+                setExpiryValue={setExpiryValue}
+              />
+            </Suspense>
           )}
 
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}

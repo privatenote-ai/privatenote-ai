@@ -11,6 +11,15 @@
   #   • Falls back gracefully in older browsers (no isolation, local AI uses its own error path).
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
+  # CSP via HTTP header (meta cannot set frame-ancestors). Host allowlists in script-src are a known
+  # trade-off for Turnstile, Cloudflare Insights, jsDelivr, and local AI CDNs; tightening further needs
+  # nonce/hash + strict-dynamic from an edge HTML rewriter, not static builds alone.
+  # Trusted Types (require-trusted-types-for) is omitted — it breaks typical React/Vite without policies.
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none';
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=6307200; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
 
 /admin/*
   X-Robots-Tag: noindex, nofollow
