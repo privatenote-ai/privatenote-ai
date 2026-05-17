@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_URL || "").trim();
@@ -9,18 +10,9 @@ const isLocalHost = (() => {
 })();
 const hasSameOriginApiProxy = (() => {
   if (typeof window === "undefined") return false;
-  const host = window.location.hostname;
-  // Cloudflare Pages deploys functions/api/[[path]].ts as a same-origin API proxy.
-  // Prefer it on deployed app hosts so auth cookies are first-party to the app
-  // instead of being set by a cross-site workers.dev API response.
-  return (
-    host === "privatenote.ai" ||
-    host === "www.privatenote.ai" ||
-    host === "app.privatenote.ai" ||
-    host === "premium.privatenote.ai" ||
-    host === "privatenote-ai.pages.dev" ||
-    host.endsWith(".privatenote-ai.pages.dev")
-  );
+  // Cloudflare Pages: functions/api/[[path]].ts proxies to the Worker so session cookies stay first-party.
+  // Includes premium / develop staging branches (see shared/pagesAppHosts.ts).
+  return hasPagesSameOriginApiProxy(window.location.hostname);
 })();
 const isLocalApiTarget =
   RAW_API_BASE_URL.includes("localhost") || RAW_API_BASE_URL.includes("127.0.0.1");

@@ -10,7 +10,8 @@ import {
 describe("isTrustedBrowserOrigin", () => {
   it("allows explicit allowlist entries", () => {
     assert.equal(isTrustedBrowserOrigin("https://privatenote-ai.pages.dev"), true);
-    assert.equal(isTrustedBrowserOrigin("https://client-llm.privatenote-ai.pages.dev"), true);
+    assert.equal(isTrustedBrowserOrigin("https://premium.privatenote-ai.pages.dev"), true);
+    assert.equal(isTrustedBrowserOrigin("https://develop.privatenote-ai.pages.dev"), true);
     assert.equal(isTrustedBrowserOrigin("https://privatenote.ai"), true);
     assert.equal(isTrustedBrowserOrigin("http://localhost:5173"), true);
   });
@@ -59,7 +60,8 @@ describe("isTrustedBrowserOrigin", () => {
 describe("isWebAuthnRpAllowedOrigin", () => {
   it("allows production Pages hosts and canonical app origins", () => {
     assert.equal(isWebAuthnRpAllowedOrigin("https://privatenote-ai.pages.dev"), true);
-    assert.equal(isWebAuthnRpAllowedOrigin("https://client-llm.privatenote-ai.pages.dev"), true);
+    assert.equal(isWebAuthnRpAllowedOrigin("https://premium.privatenote-ai.pages.dev"), true);
+    assert.equal(isWebAuthnRpAllowedOrigin("https://develop.privatenote-ai.pages.dev"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://privatenote.ai"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://app.privatenote.ai"), true);
     assert.equal(isWebAuthnRpAllowedOrigin("https://premium.privatenote.ai"), true);
@@ -82,7 +84,8 @@ describe("isPagesPreviewBrowserOrigin", () => {
 
   it("treats production Pages web hosts as non-preview", () => {
     assert.equal(isPagesPreviewBrowserOrigin("https://privatenote-ai.pages.dev"), false);
-    assert.equal(isPagesPreviewBrowserOrigin("https://client-llm.privatenote-ai.pages.dev"), false);
+    assert.equal(isPagesPreviewBrowserOrigin("https://premium.privatenote-ai.pages.dev"), false);
+    assert.equal(isPagesPreviewBrowserOrigin("https://develop.privatenote-ai.pages.dev"), false);
   });
 
   it("rejects non-Pages and non-project hosts", () => {
@@ -104,6 +107,18 @@ describe("getSessionCookieKindForRequest", () => {
       headers: { Origin: "https://privatenote-ai.pages.dev" },
     });
     assert.equal(getSessionCookieKindForRequest(req), "prod");
+  });
+
+  it("uses prod cookie kind for premium and develop staging branch hosts", () => {
+    for (const host of [
+      "https://premium.privatenote-ai.pages.dev",
+      "https://develop.privatenote-ai.pages.dev",
+    ]) {
+      const req = new Request("https://api.example.test/api/x", {
+        headers: { Origin: host },
+      });
+      assert.equal(getSessionCookieKindForRequest(req), "prod");
+    }
   });
 
   it("uses prod cookie kind for privatenote.ai", () => {

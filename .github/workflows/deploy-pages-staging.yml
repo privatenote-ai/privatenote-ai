@@ -1,0 +1,44 @@
+name: Deploy Pages (Staging branches)
+
+# Pre-main QA: push to `premium` or `develop` → branch URL on Cloudflare Pages.
+# URLs: https://premium.privatenote-ai.pages.dev , https://develop.privatenote-ai.pages.dev
+# Trusted like production for API/auth (see shared/pagesAppHosts.ts, src/trustedOrigins.ts).
+
+on:
+  push:
+    branches:
+      - premium
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and prerender
+        run: npm run build:prerender
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy prerender --project-name "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch "${{ github.ref_name }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

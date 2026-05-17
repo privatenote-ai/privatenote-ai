@@ -19,6 +19,7 @@ import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
+import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
@@ -185,6 +186,8 @@ function Router() {
     location.startsWith("/auth/email-change") ||
     location.startsWith("/auth/totp");
 
+  const showInternalRoutes = canAccessInternalAppRoutes();
+
   return (
     <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
       {showNavbar && <Navbar />}
@@ -223,11 +226,15 @@ function Router() {
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
           <Route path="/blog" component={() => <LazyRoute component={Blog} />} />
           <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
-          <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
-          <Route path="/admin/analytics" component={() => <LazyRoute component={Analytics} />} />
-          <Route path="/admin/audit-logs" component={() => <LazyRoute component={AuditLogs} />} />
-          <Route path="/test-llm" component={() => <LazyRoute component={TestClientLLM} />} />
-          <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
+          {showInternalRoutes ? (
+            <>
+              <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
+              <Route path="/admin/analytics" component={() => <LazyRoute component={Analytics} />} />
+              <Route path="/admin/audit-logs" component={() => <LazyRoute component={AuditLogs} />} />
+              <Route path="/test-llm" component={() => <LazyRoute component={TestClientLLM} />} />
+              <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
+            </>
+          ) : null}
           <Route path="/auth" component={() => <LazyRoute component={Auth} />} />
           <Route path="/auth/sign-in" component={() => <LazyRoute component={AuthSignIn} />} />
           <Route path="/auth/sign-up" component={() => <LazyRoute component={AuthSignUp} />} />

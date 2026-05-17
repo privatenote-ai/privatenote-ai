@@ -3,9 +3,17 @@
  * Avoid substring / global TLD matching (e.g. any *.pages.dev).
  */
 
+import {
+  PAGES_APEX_HOST,
+  PAGES_PROJECT_LABEL,
+  PAGES_STAGING_BRANCH_HOSTS,
+} from "@shared/pagesAppHosts";
+
+export { PAGES_STAGING_BRANCH_HOSTS } from "@shared/pagesAppHosts";
+
 export const ALLOWED_ORIGINS = [
-  "https://privatenote-ai.pages.dev",
-  "https://client-llm.privatenote-ai.pages.dev",
+  `https://${PAGES_APEX_HOST}`,
+  ...PAGES_STAGING_BRANCH_HOSTS.map((host) => `https://${host}`),
   "https://privatenote.ai",
   "http://localhost:5000",
   "http://localhost:5173",
@@ -25,17 +33,14 @@ const ALLOWED_ORIGIN_SET = new Set(
   ALLOWED_ORIGINS.map((o) => o.replace(/\/$/, "")),
 );
 
-/** Cloudflare Pages production hostname for this project (see label-based check below). */
-const PAGES_PROJECT_LABEL = "privatenote-ai";
-
 /**
- * Pages hosts that share the production session cookie with privatenote.ai (not branch previews).
- * Branch previews use a separate cookie so untrusted preview JS cannot use production sessions.
+ * Pages hosts that share the production session cookie with privatenote.ai (not ephemeral PR previews).
+ * {@link PAGES_STAGING_BRANCH_HOSTS} are included so `premium` / `develop` deploys behave like prod for auth.
+ * Arbitrary `*.privatenote-ai.pages.dev` PR previews still use {@link SESSION_COOKIE_PREVIEW_NAME}.
  */
-/** Production Pages surfaces that share prod session cookies; exported for WebAuthn rpID derivation. */
-export const PAGES_PRODUCTION_WEB_HOSTS = new Set([
-  "privatenote-ai.pages.dev",
-  "client-llm.privatenote-ai.pages.dev",
+export const PAGES_PRODUCTION_WEB_HOSTS: ReadonlySet<string> = new Set([
+  PAGES_APEX_HOST,
+  ...PAGES_STAGING_BRANCH_HOSTS,
 ]);
 
 /**

@@ -2,7 +2,10 @@
   "rules": [
     {
       "allowed": {
-        "origins": ["https://premium.privatenote-ai.pages.dev"],
+        "origins": [
+          "https://premium.privatenote-ai.pages.dev",
+          "https://develop.privatenote-ai.pages.dev"
+        ],
         "methods": ["GET", "HEAD"],
         "headers": ["*"]
       },
