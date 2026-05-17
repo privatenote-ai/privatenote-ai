@@ -12,6 +12,65 @@
  * location.hash, and deletes the entry immediately after the first read.
  */
 (function () {
+  var HOME_HERO = {
+    en: {
+      l1: "Your Messages,",
+      l2: "Your Privacy",
+      sub: "End-to-end encrypted notes that self-destruct after reading. More secure than alternatives, with client-side encryption ensuring your messages stay private.",
+    },
+    de: {
+      l1: "Ihre Nachrichten,",
+      l2: "Ihre Privatsphäre",
+      sub: "Ende-zu-Ende-verschlüsselte Notizen, die sich nach dem Lesen selbst löschen. Sicherer als Alternativen, mit clientseitiger Verschlüsselung, damit Ihre Nachrichten privat bleiben.",
+    },
+    fr: {
+      l1: "Vos messages,",
+      l2: "votre vie privée",
+      sub: "Des notes chiffrées de bout en bout qui s’autodétruisent après lecture. Plus sûr que les alternatives, avec un chiffrement côté client qui garde vos messages privés.",
+    },
+    es: {
+      l1: "Tus mensajes,",
+      l2: "tu privacidad",
+      sub: "Notas cifradas de extremo a extremo que se autodestruyen después de leerse. Más seguras que las alternativas, con cifrado del lado del cliente para mantener privados tus mensajes.",
+    },
+  };
+
+  function pathHomeLocale() {
+    var seg = (location.pathname || "/").split("/").filter(Boolean)[0];
+    if (seg === "de" || seg === "fr" || seg === "es") return seg;
+    return "en";
+  }
+
+  function isHomePath() {
+    var p = location.pathname || "/";
+    return (
+      p === "/" ||
+      p === "/de" ||
+      p === "/de/" ||
+      p === "/fr" ||
+      p === "/fr/" ||
+      p === "/es" ||
+      p === "/es/"
+    );
+  }
+
+  function applyHomeHeroPrerender() {
+    var shell = document.getElementById("pn-home-prerender");
+    if (!shell) return;
+    if (!isHomePath()) {
+      shell.remove();
+      return;
+    }
+    var copy = HOME_HERO[pathHomeLocale()] || HOME_HERO.en;
+    var l1 = document.getElementById("pn-hero-l1");
+    var l2 = document.getElementById("pn-hero-l2");
+    var sub = document.getElementById("pn-hero-sub");
+    if (l1) l1.textContent = copy.l1;
+    if (l2) l2.textContent = copy.l2;
+    if (sub) sub.textContent = copy.sub;
+    shell.removeAttribute("hidden");
+  }
+
   try {
     var stored = localStorage.getItem("privatenote-theme");
     var prefersDark =
@@ -35,4 +94,8 @@
     // location.hash directly via useLayoutEffect, which is less secure but
     // still functionally correct. Silent fail — do not log.
   }
+
+  try {
+    applyHomeHeroPrerender();
+  } catch (_) {}
 })();

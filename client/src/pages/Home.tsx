@@ -1,6 +1,5 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
-import { CreateNote } from '@/components/note/CreateNote';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
 import { HomeKeyFeaturesPeek } from '@/components/home/HomeKeyFeaturesPeek';
@@ -9,16 +8,46 @@ import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { cn } from '@/lib/utils';
 
+const CreateNote = lazy(() =>
+  import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
+);
 const SecurityFeatures = lazy(() =>
   import('@/components/features/SecurityFeatures').then((m) => ({ default: m.SecurityFeatures })),
 );
 const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
+/** Reserve editor layout without a skeleton flash while the CreateNote chunk loads. */
+function CreateNoteMountPlaceholder() {
+  return <div className="min-h-[28rem] w-full" aria-hidden />;
+}
+
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
+  const [mountCreateNote, setMountCreateNote] = useState(false);
   const { t, language } = useLanguage();
+
+  useEffect(() => {
+    let cancelled = false;
+    const mount = () => {
+      if (!cancelled) setMountCreateNote(true);
+    };
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(mount, { timeout: 800 });
+      return () => {
+        cancelled = true;
+        cancelIdleCallback(id);
+      };
+    }
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(mount);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  }, []);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -104,7 +133,13 @@ const Home: React.FC = () => {
       >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
-            <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+            mountCreateNote ? (
+              <Suspense fallback={<CreateNoteMountPlaceholder />}>
+                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+              </Suspense>
+            ) : (
+              <CreateNoteMountPlaceholder />
+            )
           ) : (
             <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
           )}

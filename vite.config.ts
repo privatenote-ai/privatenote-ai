@@ -9,6 +9,40 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+/** After production build, point the index.html font preload at the hashed asset URL from CSS. */
+function htmlFontPreloadPlugin(): Plugin {
+  return {
+    name: "html-font-preload",
+    apply: "build",
+    closeBundle() {
+      const distDir = path.resolve(__dirname, "dist");
+      const indexPath = path.join(distDir, "index.html");
+      if (!fs.existsSync(indexPath)) return;
+
+      let fontHref: string | null = null;
+      for (const name of fs.readdirSync(distDir)) {
+        if (!name.endsWith(".css")) continue;
+        const css = fs.readFileSync(path.join(distDir, name), "utf8");
+        const match = css.match(
+          /url\((["']?)([^"')]*Inter-VariableFont_opsz,wght[^"')]*)\1\)/,
+        );
+        if (match?.[2]) {
+          fontHref = match[2].startsWith("/") ? match[2] : `/${match[2]}`;
+          break;
+        }
+      }
+      if (!fontHref) return;
+
+      const html = fs.readFileSync(indexPath, "utf8");
+      const prodTag = `<link rel="preload" href="${fontHref}" as="font" type="font/ttf" crossorigin />`;
+      const next = html.replace(
+        /<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/,
+        prodTag,
+      );
+      if (next !== html) fs.writeFileSync(indexPath, next);
+    },
+  };
+}
 const configuredApiUrl = (process.env.VITE_API_URL || "").trim();
 const isLocalApiUrl =
   configuredApiUrl.includes("localhost") || configuredApiUrl.includes("127.0.0.1");
@@ -109,6 +143,7 @@ const pageContentSecurityPolicy =
 
 export default defineConfig({
   plugins: [
+    htmlFontPreloadPlugin(),
     argon2BrowserWasmPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]

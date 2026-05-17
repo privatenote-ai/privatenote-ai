@@ -25,15 +25,30 @@
   
   <title>PrivateNote.ai - Secure Encrypted Notes</title>
 
+  <link rel="preload" href="/src/assets/fonts/Inter-VariableFont_opsz,wght.ttf" as="font" type="font/ttf" crossorigin />
+
   <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading. -->
   <style id="pn-critical">
-    body{margin:0;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
     html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
     html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
     @media (min-width:640px){.page-title{font-size:3rem}}
     @media (min-width:768px){.page-title{font-size:3.75rem}}
+  </style>
+  <style id="pn-home-hero-critical">
+    #pn-home-prerender[hidden]{display:none!important}
+    .pn-home-prerender{padding-top:6rem;padding-bottom:0}
+    .pn-hero-wrap{position:relative;max-width:56rem;margin:0 auto;padding:0 1rem}
+    .pn-hero-title{text-align:center}
+    .pn-hero-l1,.pn-hero-l2{display:block}
+    .pn-hero-l2{margin-top:.25rem;color:hsl(240 100% 50%)}
+    .pn-hero-sub{margin:.75rem auto 0;max-width:56rem;text-align:center;font-size:1rem;line-height:1.5rem;color:hsl(220 9% 46%)}
+    @media (min-width:768px){.pn-hero-sub{margin-top:1.25rem;font-size:1.25rem;line-height:1.75rem;max-width:64rem}}
+    @media (prefers-color-scheme:dark){html:not(.light) .pn-hero-l1{color:hsl(210 40% 98%)}html:not(.light) .pn-hero-sub{color:hsl(220 9% 65%)}}
+    html.dark .pn-hero-l1{color:hsl(210 40% 98%)}
+    html.dark .pn-hero-sub{color:hsl(220 9% 65%)}
   </style>
 
   <!-- Prefill guard: defer so it does not block HTML parsing; still runs before the
@@ -43,7 +58,19 @@
   <script defer src="/prefill-guard.js"></script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div id="pn-home-prerender" class="pn-home-prerender" hidden>
+      <section class="pn-hero-wrap" aria-label="PrivateNote">
+        <div class="pn-hero-title">
+          <h1 class="page-title">
+            <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
+            <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
+          </h1>
+          <p class="pn-hero-sub" id="pn-hero-sub">End-to-end encrypted notes that self-destruct after reading. More secure than alternatives, with client-side encryption ensuring your messages stay private.</p>
+        </div>
+      </section>
+    </div>
+  </div>
   <noscript>
     <nav aria-label="Primary site links">
       <a href="/">Home</a>
