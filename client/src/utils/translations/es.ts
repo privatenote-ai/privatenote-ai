@@ -641,14 +641,14 @@ export const es: Translations = {
   documentMetaHomeDescription:
     "Notas cifradas que se autodestruyen al leerse. Cifrado en el cliente para mantener privados tus mensajes.",
   documentMetaHowItWorksDescription:
-    "Cifrado en el navegador, notas efímeras e IA opcional en el dispositivo—tú controlas las claves.",
+    "Descubre cómo PrivateNote.ai usa cifrado en el navegador, notas efímeras e IA opcional en el dispositivo sin perder control de tus claves.",
   documentMetaAboutDescription:
     "Por qué existe PrivateNote.ai, sus valores de privacidad y cómo el cifrado hace más segura la comunicación.",
   blogPasswordMetaDescription:
-    "Aleatoriedad criptográfica, selección sin sesgo y análisis de fortaleza para contraseñas seguras.",
+    "Descubre cómo PrivateNote.ai genera contraseñas seguras con aleatoriedad criptográfica, selección sin sesgo y análisis práctico de fortaleza.",
   blogWorkplaceMetaTitle: "Mensajes laborales y notas efímeras",
   blogWorkplaceMetaDescription:
-    "Qué enseña la polémica de textos de OpenAI sobre registros, higiene laboral y notas efímeras.",
+    "Qué enseña la polémica de mensajes de OpenAI sobre registros escritos, higiene laboral y el uso de notas efímeras para datos sensibles.",
   documentMetaPrivacyToolsTitle: "Herramientas y recursos de privacidad",
   documentMetaPrivacyToolsDescription:
     "Explora guías de privacidad, herramientas de seguridad y recursos prácticos para proteger mensajes, contraseñas, identidad y datos personales.",

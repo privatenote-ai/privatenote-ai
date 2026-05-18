@@ -640,10 +640,10 @@ export const de: Translations = {
   documentMetaAboutDescription:
     "Warum PrivateNote.ai existiert, welche Werte dahinterstehen und wie Verschlüsselung Kommunikation sicherer macht.",
   blogPasswordMetaDescription:
-    "Kryptografische Zufälligkeit, unverzerrte Auswahl und Stärkeanalyse für sichere Passwörter.",
+    "Erfahren Sie, wie PrivateNote.ai sichere Passwörter mit kryptografischer Zufälligkeit, unverzerrter Auswahl und Stärkeanalyse erzeugt.",
   blogWorkplaceMetaTitle: "Arbeitsplatznachrichten und kurzlebige Notizen",
   blogWorkplaceMetaDescription:
-    "Was die OpenAI-Debatte über schriftliche Spuren, Kommunikationshygiene und kurzlebige Notizen zeigt.",
+    "Was die OpenAI-Debatte über schriftliche Spuren, Kommunikationshygiene am Arbeitsplatz und kurzlebige Notizen für sensible Übergaben zeigt.",
   documentMetaPrivacyToolsTitle: "Datenschutz-Tools & Ressourcen",
   documentMetaPrivacyToolsDescription:
     "Entdecken Sie ausgewählte Datenschutzleitfäden, Sicherheitstools und Ressourcen zum Schutz von Nachrichten, Passwörtern, Identität und persönlichen Daten.",

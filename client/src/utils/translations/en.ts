@@ -645,14 +645,14 @@ export const en: Translations = {
   documentMetaHomeDescription:
     "End-to-end encrypted notes that self-destruct after reading. Client-side encryption keeps your messages private.",
   documentMetaHowItWorksDescription:
-    "Browser encryption, short-lived notes, and optional on-device AI—keys stay under your control.",
+    "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
   documentMetaAboutDescription:
     "Why PrivateNote.ai exists, the privacy values behind it, and how encrypted tools make sensitive communication safer.",
   blogPasswordMetaDescription:
-    "Cryptographic randomness, unbiased selection, and strength analysis for secure passwords.",
+    "See how PrivateNote.ai generates secure passwords with cryptographic randomness, unbiased character selection, and practical strength analysis.",
   blogWorkplaceMetaTitle: "Workplace texts and ephemeral notes",
   blogWorkplaceMetaDescription:
-    "What the OpenAI text controversy teaches about written records, workplace hygiene, and ephemeral notes.",
+    "What the OpenAI text-message controversy teaches about written records, workplace hygiene, and using ephemeral notes for sensitive handoffs.",
   documentMetaPrivacyToolsTitle: "Privacy tools & resources",
   documentMetaPrivacyToolsDescription:
     "Explore curated privacy guides, security tools, and practical resources for protecting messages, passwords, browsing, identity, and personal data online.",

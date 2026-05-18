@@ -640,14 +640,14 @@ export const fr: Translations = {
   documentMetaHomeDescription:
     "Notes chiffrées qui s’autodétruisent après lecture. Le chiffrement côté client garde vos messages privés.",
   documentMetaHowItWorksDescription:
-    "Chiffrement navigateur, notes éphémères et IA optionnelle—vous gardez le contrôle des clés.",
+    "Découvrez comment PrivateNote.ai utilise le chiffrement navigateur, les notes éphémères et l’IA optionnelle tout en gardant vos clés sous contrôle.",
   documentMetaAboutDescription:
     "Pourquoi PrivateNote.ai existe, les valeurs de confidentialité et comment le chiffrement sécurise les échanges sensibles.",
   blogPasswordMetaDescription:
-    "Aléa cryptographique, sélection sans biais et analyse de robustesse pour des mots de passe sûrs.",
+    "Découvrez comment PrivateNote.ai génère des mots de passe sûrs avec aléa cryptographique, sélection sans biais et analyse de robustesse.",
   blogWorkplaceMetaTitle: "Messages au travail et notes éphémères",
   blogWorkplaceMetaDescription:
-    "Messages OpenAI au travail : traces écrites, hygiène numérique et notes éphémères avec PrivateNote.",
+    "Ce que la controverse des messages OpenAI enseigne sur les traces écrites, l’hygiène numérique au travail et les notes éphémères.",
   documentMetaPrivacyToolsTitle: "Outils et ressources confidentialité",
   documentMetaPrivacyToolsDescription:
     "Explorez des guides de confidentialité, outils de sécurité et ressources pratiques pour protéger messages, mots de passe, identité et données personnelles.",
