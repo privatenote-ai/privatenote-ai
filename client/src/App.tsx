@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import {
   Fragment,
   Suspense,
@@ -34,7 +34,6 @@ const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SecurityGuideDetail = lazy(() => import("./pages/SecurityGuideDetail"));
-const Auth = lazy(() => import("@/pages/Auth"));
 const AuthMagic = lazy(() => import("@/pages/AuthMagic"));
 const AuthRecovery = lazy(() => import("@/pages/AuthRecovery"));
 const AuthSignIn = lazy(() => import("@/pages/AuthSignIn"));
@@ -235,7 +234,9 @@ function Router() {
               <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
             </>
           ) : null}
-          <Route path="/auth" component={() => <LazyRoute component={Auth} />} />
+          <Route path="/auth">
+            <Redirect to="/auth/sign-in" />
+          </Route>
           <Route path="/auth/sign-in" component={() => <LazyRoute component={AuthSignIn} />} />
           <Route path="/auth/sign-up" component={() => <LazyRoute component={AuthSignUp} />} />
           <Route path="/auth/magic" component={() => <LazyRoute component={AuthMagic} />} />
