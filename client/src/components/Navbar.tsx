@@ -220,7 +220,7 @@ export const Navbar: React.FC = () => {
       </div>
     ) : (
       <NavLink
-        href="/auth"
+        href="/auth/sign-in"
         closeMenu={closeMenu}
         className={authButtonLink}
       >
@@ -410,7 +410,7 @@ export const Navbar: React.FC = () => {
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
-                <NavLink href="/auth" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
                   <Mail className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                   <span>{t.signIn}</span>
                 </NavLink>
