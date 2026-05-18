@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "prerender": "node scripts/prerender.js",
     "check:locale-home-hrefs": "node scripts/check-locale-home-hrefs.js prerender",
-    "build:prerender": "npm run build && node scripts/prerender.js && npm run check:locale-home-hrefs",
+    "build:prerender": "npm run build && node scripts/prerender.js && npm run check:locale-home-hrefs && node scripts/verify-prerender-output.js prerender",
     "build:workers": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "check": "tsc",

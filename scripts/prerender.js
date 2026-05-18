@@ -236,10 +236,32 @@ function postProcessHTML(html) {
   return out;
 }
 
+/**
+ * Write prerendered HTML so both URL shapes work on Cloudflare Pages:
+ * - `about.html` → GET /about returns 200 (crawlers, navbar links)
+ * - `about/index.html` → GET /about/ returns 200
+ * Locale homes stay directory-only (`de/index.html` → /de/).
+ */
 async function saveHTML(route, html) {
-  const outDir = routeOutDir(route);
-  await fs.mkdir(outDir, { recursive: true });
   const cleaned = postProcessHTML(html);
+  const trimmed = route.replace(/\/+$/, "");
+  const rel = trimmed.replace(/^\//, "");
+
+  if (!rel) {
+    await fs.writeFile(path.join(DIST_DIR, "index.html"), cleaned, "utf8");
+    return;
+  }
+
+  const isLocaleHome = /^(de|fr|es)$/.test(rel);
+
+  if (!isLocaleHome) {
+    const flatFile = path.join(DIST_DIR, `${rel}.html`);
+    await fs.mkdir(path.dirname(flatFile), { recursive: true });
+    await fs.writeFile(flatFile, cleaned, "utf8");
+  }
+
+  const outDir = routeOutDir(trimmed === "" ? "/" : `/${rel}`);
+  await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, "index.html"), cleaned, "utf8");
 }
 
