@@ -607,7 +607,10 @@ const PasswordGenerator: React.FC = () => {
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
                 <span>{t.poweredBy}</span>
                 <span className="inline-flex items-center gap-0.5">
-                  <img src="/favicon_passwords.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden />
+                  <span
+                    className="h-4 w-4 shrink-0 bg-[url('/favicon_passwords.svg')] bg-contain bg-center bg-no-repeat"
+                    aria-hidden="true"
+                  />
                   <a
                     href="https://passwords.lu"
                     target="_blank"
@@ -820,7 +823,10 @@ const PasswordGenerator: React.FC = () => {
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-right">
                 <span>{t.poweredBy}</span>
                 <span className="inline-flex items-center gap-0.5">
-                  <img src="/favicon_passwords.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden />
+                  <span
+                    className="h-4 w-4 shrink-0 bg-[url('/favicon_passwords.svg')] bg-contain bg-center bg-no-repeat"
+                    aria-hidden="true"
+                  />
                   <a
                     href="https://passwords.lu"
                     target="_blank"
