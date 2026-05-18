@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/LanguageContext';
-import { localizedPath } from '@/utils/localizedPath';
+import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
 
 export default function Blog() {
   const { language, t } = useLanguage();
@@ -170,7 +170,7 @@ function BlogPostCard({ post, blogPath }: { post: BlogPost; blogPath: string }) 
           )}
         </div>
         <CardTitle className="text-xl font-bold leading-tight">
-          <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
+          <Link href={joinPublicPath("blog", post.slug)} className="hover:text-primary transition-colors">
             <span className="line-clamp-2">{post.title}</span>
           </Link>
         </CardTitle>
@@ -184,7 +184,7 @@ function BlogPostCard({ post, blogPath }: { post: BlogPost; blogPath: string }) 
           <span>{t.blogByAuthor} {post.author}</span>
         </div>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`${blogPath}/${post.slug}`} className="flex items-center">
+          <Link href={joinPublicPath("blog", post.slug)} className="flex items-center">
             {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -208,7 +208,7 @@ function FeaturedPostCard({ post, blogPath }: { post: { title: string; excerpt: 
           </div>
         </div>
         <CardTitle className="text-xl font-bold leading-tight">
-          <Link href={`${blogPath}/${post.slug}`} className="hover:text-primary transition-colors">
+          <Link href={joinPublicPath("blog", post.slug)} className="hover:text-primary transition-colors">
             <span className="line-clamp-2">{post.title}</span>
           </Link>
         </CardTitle>
@@ -222,7 +222,7 @@ function FeaturedPostCard({ post, blogPath }: { post: { title: string; excerpt: 
           <span>{t.blogByAuthor} {post.author}</span>
         </div>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`${blogPath}/${post.slug}`} className="flex items-center">
+          <Link href={joinPublicPath("blog", post.slug)} className="flex items-center">
             {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

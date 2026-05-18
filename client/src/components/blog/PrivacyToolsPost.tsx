@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { SecurityEducation } from '@/components/features/SecurityEducation';
 import { useLanguage } from '@/context/LanguageContext';
-import { localizedPath } from '@/utils/localizedPath';
+import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
 
 export const PrivacyToolsPost: React.FC = () => {
   const { language, t } = useLanguage();
@@ -75,7 +75,7 @@ export const PrivacyToolsPost: React.FC = () => {
             {t.blogBackToHome}
           </Link>
           <Link
-            href={`${blogPath}/myth-good-enough-security`}
+            href={joinPublicPath(...blogPath.split("/").filter(Boolean), "myth-good-enough-security")}
             className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
           >
             {t.blogNextArticle}: {t.blogGoodEnoughTitle}

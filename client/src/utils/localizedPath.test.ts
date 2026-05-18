@@ -1,0 +1,31 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { joinPublicPath, localizedPath, publicSitePath } from "./localizedPath.ts";
+
+describe("publicSitePath", () => {
+  it("keeps locale home as slash only", () => {
+    assert.equal(publicSitePath("/"), "/");
+    assert.equal(publicSitePath("/de/"), "/de/");
+  });
+
+  it("adds trailing slash for marketing pages", () => {
+    assert.equal(publicSitePath("/about"), "/about/");
+    assert.equal(publicSitePath("/blog/myth-good-enough-security"), "/blog/myth-good-enough-security/");
+  });
+
+  it("does not slash app routes", () => {
+    assert.equal(publicSitePath("/auth/sign-in"), "/auth/sign-in");
+    assert.equal(publicSitePath("/note/abc"), "/note/abc");
+  });
+});
+
+describe("localizedPath", () => {
+  it("localizes with trailing slash", () => {
+    assert.equal(localizedPath("/about", "en"), "/about/");
+    assert.equal(localizedPath("/about", "de"), "/de/about/");
+  });
+
+  it("joins blog paths", () => {
+    assert.equal(joinPublicPath("blog", "privacy-tools"), "/blog/privacy-tools/");
+  });
+});
