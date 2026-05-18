@@ -19,6 +19,7 @@ import {
   getAllowedOriginFromRequest,
   getSessionCookieKindForRequest,
   isTrustedBrowserOrigin,
+  isPagesPreviewBrowserOrigin,
   isWebAuthnRpAllowedOrigin,
   normalizeOrigin,
   PAGES_PRODUCTION_WEB_HOSTS,
@@ -28,6 +29,7 @@ import {
   sessionCookieNameForKind,
 } from "../trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "../httpSecurity";
+import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -233,7 +235,14 @@ function getCorsHeaders(request: Request): Record<string, string> {
 function getMagicLinkOrigin(env: Env, request: Request): string {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
-  if (allowedOrigin) return normalizeOrigin(allowedOrigin);
+  if (allowedOrigin) {
+    return canonicalizeMagicLinkOrigin(allowedOrigin, {
+      configuredPublicOrigin: env.PUBLIC_WEB_APP_ORIGIN,
+      isPreviewOrigin: isPagesPreviewBrowserOrigin,
+      isTrustedOrigin: isTrustedBrowserOrigin,
+      normalizeOrigin,
+    });
+  }
 
   const configured = typeof env.PUBLIC_WEB_APP_ORIGIN === "string" ? env.PUBLIC_WEB_APP_ORIGIN.trim() : "";
   if (configured) {

@@ -3,6 +3,9 @@
 # Backstop for old nav links and crawler queues. The current auth entrypoint is explicit.
 /auth    /auth/sign-in   301
 
+# Explicit SPA shells (wrangler pages deploy may ignore splat redirects — see functions/magic.ts).
+/magic   /index.html   200
+
 # SPA fallback for client routes (/note/:id, /auth/*, /account/*, …).
 # Splat lines like /note/* are unreliable with `wrangler pages deploy` (workers-sdk#2671);
 # /note/:id is handled by functions/note/[[id]].ts. This catch-all covers the rest.
