@@ -11,17 +11,24 @@ export async function onRequest(context: {
   env: MiddlewareEnv;
   next: () => Promise<Response>;
 }): Promise<Response> {
+  const { request } = context;
+  const url = new URL(request.url);
+  const normalizedPath = url.pathname.replace(/\/{2,}/g, "/");
+  if (normalizedPath !== url.pathname) {
+    url.pathname = normalizedPath;
+    return Response.redirect(url.toString(), 301);
+  }
+
   const response = await context.next();
   if (response.status !== 404) {
     return response;
   }
 
-  const { request, env } = context;
+  const { env } = context;
   if (request.method !== "GET" && request.method !== "HEAD") {
     return response;
   }
 
-  const url = new URL(request.url);
   const pathname = url.pathname;
 
   if (

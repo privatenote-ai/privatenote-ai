@@ -844,7 +844,7 @@ const PasswordGenerator: React.FC = () => {
 
       <div className="mt-6 flex justify-center px-4 sm:px-6 lg:px-8">
         <Link
-          href={`${localizedPath('/blog', language)}/how-we-generate-passwords`}
+          href={localizedPath("/blog/how-we-generate-passwords", language)}
           className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
         >
           {t.learnHowWeGeneratePasswords}

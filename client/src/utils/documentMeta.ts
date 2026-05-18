@@ -18,6 +18,8 @@ export type DocumentMetaOptions = {
   image?: string | null;
   /** Override canonical URL path (defaults to `location.pathname`, no hash/query). */
   canonicalPath?: string;
+  /** Locale home pages set canonical via {@link setHomeSeoLinks} in App.tsx. */
+  skipCanonical?: boolean;
   ogType?: "website" | "article";
   articlePublishedTime?: string;
   articleModifiedTime?: string;
@@ -94,6 +96,26 @@ function ogLocaleFromDocument(): string {
   return OG_LOCALE_BY_LANG[raw] ?? OG_LOCALE_BY_LANG.en;
 }
 
+/** Paths that must not be indexed (also covered by `client/public/_headers` X-Robots-Tag). */
+const NOINDEX_PATH_PATTERNS = [
+  /^\/auth(?:\/|$)/,
+  /^\/magic$/,
+  /^\/account(?:\/|$)/,
+  /^\/admin(?:\/|$)/,
+  /^\/note\//,
+  /^\/test-llm$/,
+  /^\/llm-ui$/,
+];
+
+export function isNoindexPath(pathname: string): boolean {
+  const path = (pathname.split(/[?#]/)[0] || "/").replace(/\/+$/, "") || "/";
+  return NOINDEX_PATH_PATTERNS.some((re) => re.test(path));
+}
+
+function currentPathname(): string {
+  return typeof window !== "undefined" ? window.location.pathname : "/";
+}
+
 /**
  * Updates `<title>`, description, Open Graph, and Twitter Card tags.
  */
@@ -113,7 +135,13 @@ export function setDocumentMeta(title: string, description: string, options?: Do
   const imageUrl = absoluteUrlFromHref(imageHref);
   const ogType = options?.ogType ?? "website";
 
-  upsertCanonical(pageUrl);
+  if (!options?.skipCanonical) {
+    upsertCanonical(pageUrl);
+  }
+  upsertMetaName(
+    "robots",
+    isNoindexPath(options?.canonicalPath ?? currentPathname()) ? "noindex, nofollow" : "index, follow",
+  );
   upsertMetaProperty("og:title", title);
   upsertMetaProperty("og:description", description);
   upsertMetaProperty("og:url", pageUrl);

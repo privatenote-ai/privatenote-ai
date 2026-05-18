@@ -17,6 +17,13 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import {
+  absolutePublicUrl,
+  canonicalPathForHomeLanguage,
+  HOME_HREFLANG_ALTERNATES,
+  homeLanguageFromRoute,
+  isLocaleHomeRoute,
+} from "@shared/homeSeoLinks";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
@@ -62,26 +69,8 @@ function LazyRoute({ component: Component }: { component: ComponentType }) {
   );
 }
 
-const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
-  { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de/" },
-  { hrefLang: "fr", path: "/fr/" },
-  { hrefLang: "es", path: "/es/" },
-  { hrefLang: "x-default", path: "/" },
-];
-
 function pathWithoutQueryOrHash(loc: string): string {
   return loc.split(/[?#]/)[0] ?? "";
-}
-
-/** Language for hreflang/canonical when the URL is a locale home route (/, /de/, /de, …). */
-function homeSeoLanguageForPath(pathname: string): SupportedLanguage | null {
-  const p = pathname || "/";
-  if (p === "/") return "en";
-  const parts = p.split("/").filter(Boolean);
-  if (parts.length !== 1) return null;
-  const code = parts[0] as SupportedLanguage;
-  return SUPPORTED_LANGUAGES.includes(code) && code !== "en" ? code : null;
 }
 
 function removeHomeLocaleSeoLinks() {
@@ -91,24 +80,22 @@ function removeHomeLocaleSeoLinks() {
 }
 
 function setHomeSeoLinks(language: SupportedLanguage) {
-  const origin = window.location.origin;
-  const canonicalPath = language === "en" ? "/" : `/${language}/`;
-  const existing = document.head.querySelectorAll<HTMLLinkElement>(
-    'link[data-privatenote-home-locale="true"]',
-  );
-  existing.forEach((link) => link.remove());
+  removeHomeLocaleSeoLinks();
+  document.head
+    .querySelectorAll<HTMLLinkElement>('link[rel="canonical"]')
+    .forEach((link) => link.remove());
 
   const canonical = document.createElement("link");
   canonical.rel = "canonical";
-  canonical.href = `${origin}${canonicalPath}`;
+  canonical.href = absolutePublicUrl(canonicalPathForHomeLanguage(language));
   canonical.dataset.privatenoteHomeLocale = "true";
   document.head.appendChild(canonical);
 
-  HOME_ALTERNATES.forEach((alternate) => {
+  HOME_HREFLANG_ALTERNATES.forEach((alternate) => {
     const link = document.createElement("link");
     link.rel = "alternate";
     link.hreflang = alternate.hrefLang;
-    link.href = `${origin}${alternate.path}`;
+    link.href = absolutePublicUrl(alternate.path);
     link.dataset.privatenoteHomeLocale = "true";
     document.head.appendChild(link);
   });
@@ -155,19 +142,14 @@ function Router() {
   useEffect(() => {
     const path = pathWithoutQueryOrHash(location);
     const meta = resolveDocumentMeta(path, t);
-    setDocumentMeta(meta.title, meta.description);
-  }, [location, t]);
-
-  useEffect(() => {
-    /** Hreflang + canonical for locale homes only; paths must match CDN 200s (e.g. …/de/, not …/de). */
-    const path = pathWithoutQueryOrHash(location);
-    const homeLang = homeSeoLanguageForPath(path);
-    if (homeLang === null) {
-      removeHomeLocaleSeoLinks();
+    const onLocaleHome = isLocaleHomeRoute(path);
+    setDocumentMeta(meta.title, meta.description, { skipCanonical: onLocaleHome });
+    if (onLocaleHome) {
+      setHomeSeoLinks(homeLanguageFromRoute(path) as SupportedLanguage);
     } else {
-      setHomeSeoLinks(homeLang);
+      removeHomeLocaleSeoLinks();
     }
-  }, [location]);
+  }, [location, t]);
 
   useEffect(() => {
     /** Wouter navigations preserve scroll — reset after paint when not already at top. */

@@ -27,5 +27,9 @@ describe("localizedPath", () => {
 
   it("joins blog paths", () => {
     assert.equal(joinPublicPath("blog", "privacy-tools"), "/blog/privacy-tools/");
+    assert.equal(
+      localizedPath("/blog/how-we-generate-passwords", "de"),
+      "/de/blog/how-we-generate-passwords/",
+    );
   });
 });
