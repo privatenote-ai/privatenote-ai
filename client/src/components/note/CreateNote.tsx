@@ -103,6 +103,14 @@ interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
 }
 
+type AccountType = "free" | "personal_premium" | "business_premium";
+
+function normalizeAccountType(value: unknown): AccountType {
+  if (value === "personal_premium" || value === "pro" || value === "premium") return "personal_premium";
+  if (value === "business_premium" || value === "business") return "business_premium";
+  return "free";
+}
+
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -178,8 +186,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   );
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
+  const [notifyOnOpen, setNotifyOnOpen] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType>("free");
+  const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
+  const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const readCount = 1;
   const isPasswordProtected = password.trim().length > 0;
+  const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
+  const canNotifyOnOpen = isPremiumUser && accountEmailNotifications;
 
   const { toast } = useToast();
 
@@ -211,6 +225,50 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setNoteContent(text);
     }
   }, [prefillText]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setAccountType("free");
+      setAccountEmailNotifications(false);
+      setNotifyOnOpen(false);
+      setPremiumStatusLoading(false);
+      return;
+    }
+
+    setPremiumStatusLoading(true);
+    void (async () => {
+      try {
+        const summary = await apiRequest<{
+          ok?: boolean;
+          accountType?: unknown;
+          plan?: unknown;
+          emailNotifications?: boolean;
+        }>("/api/auth/account/summary", "GET");
+        if (cancelled) return;
+        setAccountType(normalizeAccountType(summary.accountType ?? summary.plan));
+        setAccountEmailNotifications(summary.emailNotifications === true);
+      } catch {
+        if (!cancelled) {
+          setAccountType("free");
+          setAccountEmailNotifications(false);
+          setNotifyOnOpen(false);
+        }
+      } finally {
+        if (!cancelled) setPremiumStatusLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!canNotifyOnOpen && notifyOnOpen) {
+      setNotifyOnOpen(false);
+    }
+  }, [canNotifyOnOpen, notifyOnOpen]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
@@ -701,6 +759,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         iv: ivBase64,
         expirySeconds,
         maxReads: readCount,
+        notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
         aiMode: isAiMode,
         isPasswordProtected,
         aad,
@@ -816,6 +875,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setUserPromptHistory([]);
     setTransformHistory([]);
     setShowAdvancedOptions(false);
+    setNotifyOnOpen(false);
     setShowPrompt(true);
     setAiDraftAccepted(false);
     setSelectedTemplateId("ask-anything");
@@ -1437,6 +1497,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 breachCount={breachCount}
                 expiryValue={expiryValue}
                 setExpiryValue={setExpiryValue}
+                notifyOnOpen={notifyOnOpen}
+                setNotifyOnOpen={setNotifyOnOpen}
+                canNotifyOnOpen={canNotifyOnOpen}
+                isPremiumUser={isPremiumUser}
+                premiumStatusLoading={premiumStatusLoading}
               />
             </Suspense>
           )}

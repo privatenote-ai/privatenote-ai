@@ -1,5 +1,5 @@
 import React from "react";
-import { Lock, User, Shield } from "lucide-react";
+import { Crown, Lock, MailCheck, Shield, User } from "lucide-react";
 import {
   NOTE_EXPIRY_PRESETS,
   isNoteExpiryPresetId,
@@ -94,6 +94,11 @@ export type NoteSettingsPanelProps = {
   breachCount: number | null;
   expiryValue: NoteExpiryPresetId;
   setExpiryValue: (v: NoteExpiryPresetId) => void;
+  notifyOnOpen: boolean;
+  setNotifyOnOpen: (v: boolean) => void;
+  canNotifyOnOpen: boolean;
+  isPremiumUser: boolean;
+  premiumStatusLoading: boolean;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
@@ -109,6 +114,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   breachCount,
   expiryValue,
   setExpiryValue,
+  notifyOnOpen,
+  setNotifyOnOpen,
+  canNotifyOnOpen,
+  isPremiumUser,
+  premiumStatusLoading,
 }) => {
   const { t } = useLanguage();
 
@@ -354,6 +364,54 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {t.viewLimitDescription}
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 items-start py-2 px-1 transition-colors sm:grid-cols-3">
+            <div className="sm:col-span-1">
+              <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
+                  <MailCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </span>
+                Open alert
+              </div>
+            </div>
+            <div className="min-w-0 sm:col-span-2">
+              <label
+                className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition ${
+                  canNotifyOnOpen
+                    ? "cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
+                    : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-500"
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
+                    Email me when this note is opened
+                    {!isPremiumUser && !premiumStatusLoading ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Crown className="h-3 w-3" aria-hidden />
+                        Premium
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {canNotifyOnOpen
+                      ? "PrivateNote sends a single email after the secure link is accessed. Message content is never included."
+                      : premiumStatusLoading
+                        ? "Checking your plan..."
+                        : isPremiumUser
+                          ? "Turn on account email notifications in Preferences to use note-open alerts."
+                          : "Upgrade to Premium to enable note-open email alerts."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+                  checked={notifyOnOpen && canNotifyOnOpen}
+                  disabled={!canNotifyOnOpen}
+                  onChange={(event) => setNotifyOnOpen(event.target.checked)}
+                />
+              </label>
             </div>
           </div>
         </div>

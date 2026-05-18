@@ -724,7 +724,13 @@ function noteReadNotificationDeviceLabel(request: Request): string {
   return "unknown device";
 }
 
-async function registerPremiumNoteReadNotification(env: Env, request: Request, noteId: string): Promise<void> {
+async function registerPremiumNoteReadNotification(
+  env: Env,
+  request: Request,
+  noteId: string,
+  requested: boolean,
+): Promise<void> {
+  if (!requested) return;
   if (!env.AUTH_DB) return;
 
   try {
@@ -7275,7 +7281,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (doResponse.ok) {
-      await registerPremiumNoteReadNotification(env, request, id);
+      await registerPremiumNoteReadNotification(env, request, id, requestBody?.notifyOnOpen === true);
     }
 
     if (doResponse.ok && requestedId) {
