@@ -704,6 +704,154 @@ async function sendEmail(
   return { ok: true };
 }
 
+function isPremiumAccountType(accountType: unknown, plan: unknown): boolean {
+  return (
+    accountType === "personal_premium" ||
+    accountType === "business_premium" ||
+    plan === "personal_premium" ||
+    plan === "business_premium" ||
+    plan === "premium"
+  );
+}
+
+function noteReadNotificationDeviceLabel(request: Request): string {
+  const userAgent = request.headers.get("User-Agent") || "";
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return "iOS device";
+  if (/Android/i.test(userAgent)) return "Android device";
+  if (/Macintosh|Mac OS X/i.test(userAgent)) return "Mac";
+  if (/Windows/i.test(userAgent)) return "Windows device";
+  if (/Linux/i.test(userAgent)) return "Linux device";
+  return "unknown device";
+}
+
+async function registerPremiumNoteReadNotification(env: Env, request: Request, noteId: string): Promise<void> {
+  if (!env.AUTH_DB) return;
+
+  try {
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) return;
+
+    const user = await env.AUTH_DB.prepare(
+      `SELECT id, email, account_type, plan, email_notifications
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{
+        id: string;
+        email: string | null;
+        account_type: string | null;
+        plan: string | null;
+        email_notifications: number | null;
+      }>();
+
+    if (!user?.id) return;
+    if (!isPremiumAccountType(user.account_type, user.plan)) return;
+    if (user.email_notifications !== 1) return;
+    if (!user.email || !isPlausibleEmailFormat(user.email)) return;
+
+    await env.AUTH_DB.prepare(
+      `INSERT OR REPLACE INTO note_read_notifications (note_id, user_id, enabled, created_at, opened_at, notified_at)
+       VALUES (?, ?, 1, datetime('now'), NULL, NULL)`,
+    )
+      .bind(noteId, user.id)
+      .run();
+  } catch (error) {
+    console.warn("[NOTE_READ_NOTIFICATION] Failed to register note-open notification:", error);
+  }
+}
+
+async function sendPremiumNoteReadNotification(env: Env, request: Request, noteId: string): Promise<void> {
+  if (!env.AUTH_DB) return;
+
+  try {
+    const row = await env.AUTH_DB.prepare(
+      `SELECT
+         note_read_notifications.note_id as note_id,
+         note_read_notifications.enabled as enabled,
+         note_read_notifications.notified_at as notified_at,
+         users.email as email,
+         users.email_notifications as email_notifications,
+         users.account_type as account_type,
+         users.plan as plan
+       FROM note_read_notifications
+       INNER JOIN users ON users.id = note_read_notifications.user_id
+       WHERE note_read_notifications.note_id = ?
+       LIMIT 1`,
+    )
+      .bind(noteId)
+      .first<{
+        note_id: string;
+        enabled: number | null;
+        notified_at: string | null;
+        email: string | null;
+        email_notifications: number | null;
+        account_type: string | null;
+        plan: string | null;
+      }>();
+
+    if (!row || row.enabled !== 1 || row.notified_at) return;
+    if (row.email_notifications !== 1) return;
+    if (!isPremiumAccountType(row.account_type, row.plan)) return;
+    if (!row.email || !isPlausibleEmailFormat(row.email)) return;
+
+    const openedAt = new Date().toISOString();
+    const claimResult = await env.AUTH_DB.prepare(
+      `UPDATE note_read_notifications
+       SET opened_at = COALESCE(opened_at, ?), notified_at = ?
+       WHERE note_id = ? AND enabled = 1 AND notified_at IS NULL`,
+    )
+      .bind(openedAt, openedAt, noteId)
+      .run();
+
+    const rowsChanged = (claimResult?.meta as { changes?: number } | undefined)?.changes ?? 0;
+    if (rowsChanged < 1) return;
+
+    const country = request.headers.get("CF-IPCountry") || "";
+    const locationText = country && country !== "XX" ? ` from ${country}` : "";
+    const device = noteReadNotificationDeviceLabel(request);
+    const noteLabel = `${noteId.slice(0, 8)}...`;
+    const subject = "Your PrivateNote was opened";
+    const text = [
+      "Your PrivateNote secure link was opened.",
+      "",
+      `Note: ${noteLabel}`,
+      `Time: ${openedAt}`,
+      `Device: ${device}${locationText}`,
+      "",
+      "This confirms the secure note link was accessed. PrivateNote cannot see the decrypted message content.",
+      "",
+      "You can switch off these emails in Account > Preferences.",
+    ].join("\n");
+    const html = `
+      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; line-height: 1.5;">
+        <h1 style="font-size: 20px; margin: 0 0 12px;">Your PrivateNote was opened</h1>
+        <p>Your PrivateNote secure link was opened.</p>
+        <p><strong>Note:</strong> ${escapeHtml(noteLabel)}<br>
+        <strong>Time:</strong> ${escapeHtml(openedAt)}<br>
+        <strong>Device:</strong> ${escapeHtml(`${device}${locationText}`)}</p>
+        <p style="color: #4b5563;">This confirms the secure note link was accessed. PrivateNote cannot see the decrypted message content.</p>
+        <p style="color: #6b7280; font-size: 13px;">You can switch off these emails in Account &gt; Preferences.</p>
+      </div>
+    `;
+
+    const emailResult = await sendEmail(env, { to: row.email, subject, text, html });
+    if (!emailResult.ok) {
+      console.warn("[NOTE_READ_NOTIFICATION] Failed to send note-open email:", emailResult.error);
+      await env.AUTH_DB.prepare(
+        `UPDATE note_read_notifications
+         SET notified_at = NULL
+         WHERE note_id = ? AND notified_at = ?`,
+      )
+        .bind(noteId, openedAt)
+        .run();
+    }
+  } catch (error) {
+    console.warn("[NOTE_READ_NOTIFICATION] Failed to process note-open notification:", error);
+  }
+}
+
 // Helper to create JSON response with CORS headers
 function jsonResponse(data: any, status: number = 200, request?: Request): Response {
   const headers: Record<string, string> = {
@@ -3048,6 +3196,124 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
   if (!pathname.startsWith("/api/auth/")) {
     return null;
+  }
+
+  if (pathname === "/api/auth/account/summary" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const user = await env.AUTH_DB.prepare(
+      `SELECT id, email, account_type, plan, email_notifications, preferred_language
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{
+        id: string;
+        email: string | null;
+        account_type: string | null;
+        plan: string | null;
+        email_notifications: number | null;
+        preferred_language: string | null;
+      }>();
+
+    if (!user) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    let allowHostedAi = false;
+    try {
+      const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+      const hasAllowHostedAiColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+      if (hasAllowHostedAiColumn) {
+        const hostedAiPref = await env.AUTH_DB.prepare(
+          "SELECT allow_hosted_ai FROM users WHERE id = ? LIMIT 1",
+        )
+          .bind(session.id)
+          .first<{ allow_hosted_ai: number | null }>();
+        allowHostedAi = hostedAiPref?.allow_hosted_ai === 1;
+      }
+    } catch (error) {
+      console.warn("[AUTH] Failed to load hosted AI preference:", error);
+    }
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        email: user.email,
+        accountType: user.account_type ?? "free",
+        plan: user.plan ?? "free",
+        emailNotifications: user.email_notifications !== 0,
+        preferredLanguage: user.preferred_language ?? null,
+        allowHostedAi,
+      }),
+      { status: 200, headers },
+    );
+  }
+
+  if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    let body: {
+      emailNotifications?: unknown;
+      preferredLanguage?: unknown;
+      allowHostedAi?: unknown;
+    };
+    try {
+      body = await readJsonBody(request) as typeof body;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+
+    const updates: string[] = [];
+    const bindings: unknown[] = [];
+    if (typeof body.emailNotifications === "boolean") {
+      updates.push("email_notifications = ?");
+      bindings.push(body.emailNotifications ? 1 : 0);
+    }
+    if (typeof body.preferredLanguage === "string") {
+      const preferredLanguage = body.preferredLanguage.trim().toLowerCase();
+      if (!["en", "de", "fr", "es"].includes(preferredLanguage)) {
+        return jsonResponse({ message: "Unsupported language" }, 400, request);
+      }
+      updates.push("preferred_language = ?");
+      bindings.push(preferredLanguage);
+    }
+    if (typeof body.allowHostedAi === "boolean") {
+      const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+      const hasAllowHostedAiColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+      if (!hasAllowHostedAiColumn) {
+        return jsonResponse({ message: "Hosted AI preference migration is required" }, 503, request);
+      }
+      updates.push("allow_hosted_ai = ?");
+      bindings.push(body.allowHostedAi ? 1 : 0);
+    }
+    if (updates.length === 0) {
+      return jsonResponse({ message: "At least one preference is required" }, 400, request);
+    }
+
+    updates.push("updated_at = ?");
+    bindings.push(new Date().toISOString(), session.id);
+    await env.AUTH_DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`)
+      .bind(...bindings)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
@@ -6365,15 +6631,44 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     return jsonResponse({ error: "invalid_json", message: "Invalid JSON" }, 400, request);
   }
 
-  if (body?.consentToHostedAi !== true) {
+  if (body?.consentToHostedAi !== true || body?.acknowledgeNonPrivateAi !== true) {
     return jsonResponse(
       {
         error: "hosted_ai_consent_required",
-        message: "Hosted AI requires consent because the prompt is sent to Cloudflare Workers AI.",
+        message:
+          "Non-private hosted AI requires explicit acknowledgment that your prompt is sent to Cloudflare Workers AI.",
       },
       400,
       request,
     );
+  }
+
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (session?.id && env.AUTH_DB) {
+    try {
+      const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+      const hasAllowColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+      if (hasAllowColumn) {
+        const userRow = await env.AUTH_DB.prepare(
+          "SELECT allow_hosted_ai FROM users WHERE id = ? LIMIT 1",
+        )
+          .bind(session.id)
+          .first<{ allow_hosted_ai?: number | null }>();
+        if ((userRow?.allow_hosted_ai ?? 0) !== 1) {
+          return jsonResponse(
+            {
+              error: "hosted_ai_not_enabled",
+              message:
+                "Non-private hosted AI is disabled for your account. Enable it in Account → Preferences.",
+            },
+            403,
+            request,
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("[HOSTED_AI] allow_hosted_ai check failed:", e);
+    }
   }
 
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
@@ -6412,7 +6707,7 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     {
       role: "system",
       content: [
-        "You are PrivateNote cloud assist.",
+        "You are a hosted (non-private) writing assistant for PrivateNote.",
         "Output only the final note/message the user can send.",
         "Do not explain your choices, do not add placeholders, and do not mention AI, Cloudflare, or PrivateNote.",
         `Write in ${language}.`,
@@ -6979,6 +7274,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
     }
 
+    if (doResponse.ok) {
+      await registerPremiumNoteReadNotification(env, request, id);
+    }
+
     if (doResponse.ok && requestedId) {
       await clearReservation(env, requestedId);
     }
@@ -7059,6 +7358,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } catch (error) {
         console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
+
+      await sendPremiumNoteReadNotification(env, request, id);
     }
 
     return applyCorsHeaders(doResponse as unknown as Response, request);

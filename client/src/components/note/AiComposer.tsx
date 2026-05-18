@@ -34,6 +34,7 @@ import {
   noteHasUnresolvedGuidedPlaceholders,
 } from "@/components/note/localFallbackTemplates";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
+import { NonPrivateAiPanel } from "@/components/note/NonPrivateAiPanel";
 import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
@@ -118,6 +119,11 @@ export type AiComposerProps = {
   }) => void;
   hostedCloudAiRemaining: number | null;
   hostedCloudAiLimit: number;
+  allowHostedAi: boolean;
+  onAllowHostedAiChange: (allowed: boolean) => void;
+  nonPrivateSessionAcknowledged: boolean;
+  onNonPrivateSessionAcknowledgedChange: (ack: boolean) => void;
+  preferencesHref?: string;
   onImprove: () => void;
   onSummarize: () => void;
   onSimplify: () => void;
@@ -155,6 +161,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onHostedCloudGenerate,
   hostedCloudAiRemaining,
   hostedCloudAiLimit,
+  allowHostedAi,
+  onAllowHostedAiChange,
+  nonPrivateSessionAcknowledged,
+  onNonPrivateSessionAcknowledgedChange,
+  preferencesHref = "/account/preferences",
   onImprove,
   onSummarize,
   onSimplify,
@@ -177,6 +188,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
   const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;
@@ -355,9 +367,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             {localAiSupported ? (
               <div>
                 <StepRow step={3} label={t.aiComposerWriteWithAi} />
-                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
                   {t.aiComposerWhatDoYouWantToSay}
                 </h3>
+                <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  {tx("aiComposerPrivateAiBadge", "Private AI — runs on this device")}
+                </p>
 
                 <div className="relative min-w-0">
                   <div
@@ -465,60 +480,22 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900/60 dark:bg-blue-950/25">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {t.aiComposerCloudAssistTitle}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-                        {t.aiComposerCloudAssistBody}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
-                      {hostedCloudAiRemaining === null
-                        ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
-                        : t.aiComposerCloudAssistRemaining
-                            .replace("{remaining}", String(hostedCloudAiRemaining))
-                            .replace("{limit}", String(hostedCloudAiLimit))}
-                    </span>
-                  </div>
-                  <label className="mt-3 block text-xs font-medium text-gray-700 dark:text-gray-300" htmlFor="hosted-ai-prompt">
-                    {t.aiComposerCloudAssistPromptLabel}
-                  </label>
-                  <div className="relative mt-1">
-                    <textarea
-                      id="hosted-ai-prompt"
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      rows={4}
-                      className="min-h-[8rem] w-full resize-y rounded-lg border border-blue-200 bg-white px-3 py-2.5 pr-14 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-blue-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-                      placeholder={t.aiComposerCloudAssistPlaceholder}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onHostedCloudGenerate()}
-                      disabled={isGeneratingContent || !hasPromptText || hostedCloudAiRemaining === 0}
-                      title={t.aiComposerCloudAssistButton}
-                      aria-label={t.aiComposerCloudAssistButton}
-                      className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-2 ring-white/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:ring-gray-950/90 dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-40"
-                    >
-                      {isGeneratingContent ? (
-                        <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
-                      ) : (
-                        <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
-                      )}
-                    </button>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <Sparkles className="h-4 w-4 shrink-0 text-blue-500" aria-hidden />
-                    <span>
-                      {hostedCloudAiRemaining === 0
-                        ? t.aiComposerCloudAssistNoFree
-                        : t.aiComposerCloudAssistTemplatesAlternative}
-                    </span>
-                  </div>
-                </div>
+                <NonPrivateAiPanel
+                  t={t}
+                  tx={tx}
+                  aiPrompt={aiPrompt}
+                  setAiPrompt={setAiPrompt}
+                  allowHostedAi={allowHostedAi}
+                  onAllowHostedAiChange={onAllowHostedAiChange}
+                  sessionAcknowledged={nonPrivateSessionAcknowledged}
+                  onSessionAcknowledgedChange={onNonPrivateSessionAcknowledgedChange}
+                  isGeneratingContent={isGeneratingContent}
+                  hasPromptText={hasPromptText}
+                  hostedCloudAiRemaining={hostedCloudAiRemaining}
+                  hostedCloudAiLimit={hostedCloudAiLimit}
+                  preferencesHref={preferencesHref}
+                  onGenerate={() => onHostedCloudGenerate()}
+                />
 
                 <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">

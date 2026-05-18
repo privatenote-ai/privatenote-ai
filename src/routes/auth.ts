@@ -451,6 +451,7 @@ type UsersTableColumns = {
   business_display_name: boolean;
   email_notifications: boolean;
   preferred_language: boolean;
+  allow_hosted_ai: boolean;
 };
 
 async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
@@ -460,6 +461,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     business_display_name: false,
     email_notifications: false,
     preferred_language: false,
+    allow_hosted_ai: false,
   };
   if (!env.AUTH_DB) return defaults;
   try {
@@ -471,6 +473,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       business_display_name: names.has("business_display_name"),
       email_notifications: names.has("email_notifications"),
       preferred_language: names.has("preferred_language"),
+      allow_hosted_ai: names.has("allow_hosted_ai"),
     };
   } catch {
     return defaults;
@@ -484,6 +487,7 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.business_display_name) columns.push("business_display_name");
   if (optionalColumns.email_notifications) columns.push("email_notifications");
   if (optionalColumns.preferred_language) columns.push("preferred_language");
+  if (optionalColumns.allow_hosted_ai) columns.push("allow_hosted_ai");
   return columns.join(", ");
 }
 
@@ -3777,6 +3781,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_display_name?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
+        allow_hosted_ai?: number | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
@@ -3799,6 +3804,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
+        allowHostedAi: (user?.allow_hosted_ai ?? 0) === 1,
       }),
       { status: 200, headers }
     );
@@ -3827,6 +3833,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_display_name?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
+        allow_hosted_ai?: number | null;
       }>();
 
     const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
@@ -3868,6 +3875,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
+        allowHostedAi: (user?.allow_hosted_ai ?? 0) === 1,
         limits: {
           notesPerDay: limits.notesPerDay,
           aiUsesPerDay: limits.aiUsesPerDay,
@@ -3961,17 +3969,29 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    let body: { emailNotifications?: boolean; preferredLanguage?: string | null };
+    let body: {
+      emailNotifications?: boolean;
+      preferredLanguage?: string | null;
+      allowHostedAi?: boolean;
+    };
     try {
-      body = (await readJsonBody(request)) as { emailNotifications?: boolean; preferredLanguage?: string | null };
+      body = (await readJsonBody(request)) as {
+        emailNotifications?: boolean;
+        preferredLanguage?: string | null;
+        allowHostedAi?: boolean;
+      };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
     }
     const hasEmailNotifications = typeof body.emailNotifications === "boolean";
     const hasPreferredLanguage = Object.prototype.hasOwnProperty.call(body, "preferredLanguage");
-    if (!hasEmailNotifications && !hasPreferredLanguage) {
+    const hasAllowHostedAi = typeof body.allowHostedAi === "boolean";
+    if (!hasEmailNotifications && !hasPreferredLanguage && !hasAllowHostedAi) {
       return jsonResponse(
-        { message: "At least one of emailNotifications or preferredLanguage is required" },
+        {
+          message:
+            "At least one of emailNotifications, preferredLanguage, or allowHostedAi is required",
+        },
         400,
         request
       );
@@ -3982,6 +4002,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     if (hasPreferredLanguage && !userColumns.preferred_language) {
       return jsonResponse({ message: "Language preferences are not available until auth migrations are applied" }, 501, request);
+    }
+    if (hasAllowHostedAi && !userColumns.allow_hosted_ai) {
+      return jsonResponse(
+        { message: "Hosted AI preference is not available until auth migrations are applied" },
+        501,
+        request,
+      );
     }
 
     let normalizedPreferredLanguage: string | null | undefined = undefined;
@@ -4003,6 +4030,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       updates.push("preferred_language = ?");
       bindings.push(normalizedPreferredLanguage ?? null);
     }
+    if (hasAllowHostedAi) {
+      updates.push("allow_hosted_ai = ?");
+      bindings.push(body.allowHostedAi ? 1 : 0);
+    }
     updates.push("updated_at = datetime('now')");
     bindings.push(session.id);
 
@@ -4018,6 +4049,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         ok: true,
         emailNotifications: hasEmailNotifications ? body.emailNotifications : undefined,
         preferredLanguage: hasPreferredLanguage ? (normalizedPreferredLanguage ?? null) : undefined,
+        allowHostedAi: hasAllowHostedAi ? body.allowHostedAi : undefined,
       }),
       { status: 200, headers }
     );

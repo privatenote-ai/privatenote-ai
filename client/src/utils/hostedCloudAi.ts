@@ -22,6 +22,8 @@ export type HostedCloudAiErrorCode =
   | "hosted_ai_quota_exhausted"
   | "hosted_ai_unavailable"
   | "hosted_ai_generation_failed"
+  | "hosted_ai_not_enabled"
+  | "hosted_ai_consent_required"
   | "prompt_required"
   | "prompt_too_long"
   | "unknown";
@@ -32,6 +34,7 @@ export async function generateHostedCloudDraft(
   return apiRequest<HostedCloudAiDraftResponse>("/api/ai/cloud-draft", "POST", {
     ...params,
     consentToHostedAi: true,
+    acknowledgeNonPrivateAi: true,
   });
 }
 

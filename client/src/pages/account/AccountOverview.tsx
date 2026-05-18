@@ -475,6 +475,12 @@ export default function AccountOverview() {
               {tx("authCurrentPlan", "Current plan")}
             </p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
+            <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
+              {tx(
+                "authPlanHostedAiNote",
+                "Premium unlocks higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
+              )}
+            </p>
           </div>
 
           {accountType === "free" && (

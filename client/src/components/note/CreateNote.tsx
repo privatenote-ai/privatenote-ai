@@ -61,6 +61,12 @@ import {
   generateHostedCloudDraft,
   parseHostedCloudAiError,
 } from "@/utils/hostedCloudAi";
+import {
+  readLocalHostedAiAllowed,
+  writeLocalHostedAiAllowed,
+} from "@/utils/hostedAiPreference";
+import { useAuth } from "@/context/AuthContext";
+import { localizedPath } from "@/utils/localizedPath";
 
 type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
 let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
@@ -99,6 +105,7 @@ interface CreateNoteProps {
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
 
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
@@ -145,6 +152,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [hostedCloudAiRemaining, setHostedCloudAiRemaining] = useState<number | null>(null);
   const [hostedCloudAiLimit, setHostedCloudAiLimit] = useState(3);
   const [hostedCloudAiStatusText, setHostedCloudAiStatusText] = useState<string | null>(null);
+  const [allowHostedAi, setAllowHostedAi] = useState(() => readLocalHostedAiAllowed());
+  const [nonPrivateSessionAcknowledged, setNonPrivateSessionAcknowledged] = useState(false);
 
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
@@ -860,6 +869,51 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setAiDraftAccepted(false);
   }, [setNoteContentFromAiOutput]);
 
+  const handleAllowHostedAiChange = useCallback(
+    async (allowed: boolean) => {
+      setAllowHostedAi(allowed);
+      writeLocalHostedAiAllowed(allowed);
+      if (!allowed) {
+        setNonPrivateSessionAcknowledged(false);
+      }
+      if (!user) return;
+      try {
+        await apiRequest("/api/auth/account/preferences", "PATCH", { allowHostedAi: allowed });
+      } catch {
+        setAllowHostedAi(!allowed);
+        writeLocalHostedAiAllowed(!allowed);
+        toast({
+          title: "Could not save hosted AI preference",
+          description: "Try again from Account → Preferences.",
+          variant: "destructive",
+        });
+      }
+    },
+    [user, toast],
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiRequest<{ ok: boolean; allowHostedAi?: boolean }>(
+          "/api/auth/account/summary",
+          "GET",
+        );
+        if (!cancelled && data.ok && typeof data.allowHostedAi === "boolean") {
+          setAllowHostedAi(data.allowHostedAi);
+          writeLocalHostedAiAllowed(data.allowHostedAi);
+        }
+      } catch {
+        /* non-critical */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleHostedCloudGenerate = async (override?: {
     prompt?: string;
     enhancementType?: "improve" | "summarize" | "secure" | "ask";
@@ -911,6 +965,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         toast({
           title: "Prompt is too long",
           description: parsed.message ?? "Shorten the prompt and try again.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "hosted_ai_not_enabled" || parsed.code === "hosted_ai_consent_required") {
+        setAllowHostedAi(false);
+        setNonPrivateSessionAcknowledged(false);
+        writeLocalHostedAiAllowed(false);
+        toast({
+          title: "Non-private hosted AI is off",
+          description:
+            parsed.message ??
+            "Enable it in Account → Preferences and confirm you understand prompts leave this device.",
           variant: "destructive",
         });
       } else {
@@ -1275,6 +1340,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onHostedCloudGenerate={(override) => void handleHostedCloudGenerate(override)}
                 hostedCloudAiRemaining={hostedCloudAiRemaining}
                 hostedCloudAiLimit={hostedCloudAiLimit}
+                allowHostedAi={allowHostedAi}
+                onAllowHostedAiChange={handleAllowHostedAiChange}
+                nonPrivateSessionAcknowledged={nonPrivateSessionAcknowledged}
+                onNonPrivateSessionAcknowledgedChange={setNonPrivateSessionAcknowledged}
+                preferencesHref={localizedPath("/account/preferences", language)}
                 onImprove={() => void handleImprove()}
                 onSummarize={() => void handleSummarize()}
                 onSimplify={() => void handleSimplify()}

@@ -7,7 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
-import { Sun, Moon, Monitor, Bell } from "lucide-react";
+import { Sun, Moon, Monitor, Bell, Cloud, ShieldOff } from "lucide-react";
+import {
+  readLocalHostedAiAllowed,
+  writeLocalHostedAiAllowed,
+} from "@/utils/hostedAiPreference";
 import { useLanguage } from "@/context/LanguageContext";
 import { normalizeLanguageCode, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 
@@ -82,16 +86,24 @@ export default function AccountPreferences() {
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingEmailPref, setSavingEmailPref] = useState(false);
   const [savingLanguagePref, setSavingLanguagePref] = useState(false);
+  const [allowHostedAi, setAllowHostedAi] = useState(() => readLocalHostedAiAllowed());
+  const [savingHostedAiPref, setSavingHostedAiPref] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
-      const data = await apiRequest<{ ok: boolean; emailNotifications?: boolean; preferredLanguage?: SupportedLanguage | null }>(
-        "/api/auth/account/summary",
-        "GET",
-      );
+      const data = await apiRequest<{
+        ok: boolean;
+        emailNotifications?: boolean;
+        preferredLanguage?: SupportedLanguage | null;
+        allowHostedAi?: boolean;
+      }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
+      }
+      if (data.ok && typeof data.allowHostedAi === "boolean") {
+        setAllowHostedAi(data.allowHostedAi);
+        writeLocalHostedAiAllowed(data.allowHostedAi);
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
         setPreferredLanguage(data.preferredLanguage);
@@ -126,6 +138,28 @@ export default function AccountPreferences() {
       setEmailNotifications(!checked);
     } finally {
       setSavingEmailPref(false);
+    }
+  };
+
+  const onAllowHostedAiChange = async (checked: boolean) => {
+    if (!user) return;
+    setSavingHostedAiPref(true);
+    setAllowHostedAi(checked);
+    writeLocalHostedAiAllowed(checked);
+    try {
+      await apiRequest("/api/auth/account/preferences", "PATCH", { allowHostedAi: checked });
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 2000);
+    } catch (e) {
+      setAllowHostedAi(!checked);
+      writeLocalHostedAiAllowed(!checked);
+      toast({
+        title: "Could not save hosted AI preference",
+        description: describeApiPreferenceError(e),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingHostedAiPref(false);
     }
   };
 
@@ -262,6 +296,41 @@ export default function AccountPreferences() {
           </div>
         </section>
 
+        {/* ── Non-private hosted AI ─────────────────────────────────────── */}
+        <section className="rounded-xl border-2 border-amber-500/70 dark:border-amber-600/60 overflow-hidden">
+          <div className="px-5 py-4 border-b border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <ShieldOff className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400 mt-0.5" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Non-private hosted AI</p>
+                <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-200/85 max-w-xl">
+                  Optional Cloudflare Workers AI when Private AI is unavailable. Premium does not make this private —
+                  prompts still leave your device. Each note session still requires a separate confirmation.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="px-5 py-4 bg-white dark:bg-gray-950">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-0.5 max-w-md">
+                <div className="flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-gray-400" aria-hidden />
+                  <Label htmlFor="allow-hosted-ai-pref" className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                    Allow non-private hosted AI
+                  </Label>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">Off by default. Not the same as Private AI on your device.</p>
+              </div>
+              <Switch
+                id="allow-hosted-ai-pref"
+                checked={allowHostedAi}
+                disabled={savingHostedAiPref}
+                onCheckedChange={(c) => void onAllowHostedAiChange(c)}
+              />
+            </div>
+          </div>
+        </section>
+
         {/* ── Email notifications ────────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
@@ -283,7 +352,7 @@ export default function AccountPreferences() {
                   </Label>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-                  Product updates and security alerts from PrivateNote. Critical security emails may still be sent.
+                  Premium note-open alerts, product updates, and security messages. Critical account emails may still be sent.
                 </p>
               </div>
               <Switch

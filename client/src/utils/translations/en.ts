@@ -172,6 +172,34 @@ export const en: Translations = {
   aiComposerCloudAssistNoFree: "Free hosted drafts are used for today. Offline templates are still available below.",
   aiComposerCloudAssistTemplatesAlternative:
     "Prefer not to send text to cloud AI? Use the offline templates below instead.",
+  aiComposerPrivateAiBadge: "Private AI — runs on this device",
+  aiComposerNonPrivateTitle: "Non-private AI (hosted) — not Private AI",
+  aiComposerNonPrivateLead:
+    "This path does not run on your device. It is not the same as “Write with Private AI”.",
+  aiComposerNonPrivateBullet1:
+    "Your prompt is sent to Cloudflare Workers AI (Meta Llama) to generate a draft.",
+  aiComposerNonPrivateBullet2:
+    "PrivateNote cannot encrypt or control that text while it is processed in the cloud.",
+  aiComposerNonPrivateBullet3:
+    "Use Private AI on supported devices when you need writing that never leaves your browser.",
+  aiComposerAllowHostedAi: "Allow non-private hosted AI",
+  aiComposerAllowHostedAiHint: "Off by default. Manage in",
+  aiComposerNonPrivateAck:
+    "I understand this draft uses non-private hosted AI and my prompt will be sent to Cloudflare Workers AI for processing.",
+  aiComposerNonPrivatePromptLabel: "Prompt for hosted AI (leaves this device)",
+  aiComposerNonPrivateGenerate: "Generate with non-private hosted AI",
+  aiComposerNonPrivateNotPrivateBadge: "Not private",
+  aiComposerNonPrivateDisabled:
+    "Turn on the switch above (or in Preferences) to use hosted AI. Offline templates remain available below.",
+  aiComposerNonPrivateNeedAck: "Confirm the checkbox before generating.",
+  authHostedAiTitle: "Non-private hosted AI",
+  authHostedAiDescription:
+    "Optional Cloudflare Workers AI drafts when Private AI is unavailable. Premium plans do not make this private — prompts still leave your device.",
+  authHostedAiSwitch: "Allow non-private hosted AI",
+  authHostedAiSwitchHint:
+    "Off by default. Each session still requires an explicit confirmation before generating.",
+  authPlanHostedAiNote:
+    "Premium unlocks higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
   aiComposerSignatureStarters: "Signature message starters",
   aiComposerSignatureStartersHint:
     "Choose a starter, replace every bracketed hint (for example [Recipient name]) with your own words, then tap Accept note.",
