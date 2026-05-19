@@ -1,10 +1,15 @@
 import React from "react";
 import { Crown, Lock, MailCheck, Shield, User } from "lucide-react";
 import {
-  NOTE_EXPIRY_PRESETS,
   isNoteExpiryPresetId,
+  noteExpiryPresetsForAccount,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
+import {
+  NOTE_READ_LIMIT_OPTIONS,
+  isPremiumNoteReadLimit,
+  type NoteReadLimit,
+} from "@shared/noteReadLimits";
 import {
   DEFAULT_STRONG_PASSWORD_LENGTH,
   TRANSPORT_SAFE_STRONG_PASSWORD_CHARSET,
@@ -26,7 +31,16 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "1d") return t.expiry1d;
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
+  if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
+}
+
+function translatedReadLimitLabel(limit: NoteReadLimit, t: Record<string, string>): string {
+  if (limit === 1) return t.viewLimitOnce ?? "Once (read-once)";
+  if (limit === 2) return t.viewLimitTwice ?? "2 views";
+  if (limit === 3) return t.viewLimitThree ?? "3 views";
+  return t.viewLimitFive ?? "5 views";
 }
 
 function translatedStrengthLabel(
@@ -99,6 +113,8 @@ export type NoteSettingsPanelProps = {
   canNotifyOnOpen: boolean;
   isPremiumUser: boolean;
   premiumStatusLoading: boolean;
+  readCount: NoteReadLimit;
+  setReadCount: (value: NoteReadLimit) => void;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
@@ -119,6 +135,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   canNotifyOnOpen,
   isPremiumUser,
   premiumStatusLoading,
+  readCount,
+  setReadCount,
 }) => {
   const { t } = useLanguage();
 
@@ -330,7 +348,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   backgroundSize: "0.75em",
                 }}
               >
-                {NOTE_EXPIRY_PRESETS.map((p) => (
+                {noteExpiryPresetsForAccount(isPremiumUser).map((p) => (
                   <option key={p.id} value={p.id}>
                     {translatedExpiryLabel(p.id, t)}
                   </option>
@@ -339,31 +357,74 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 items-start py-2 px-1 transition-colors sm:grid-cols-3">
             <div className="sm:col-span-1">
-              <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-purple-500 dark:text-purple-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path
-                      fillRule="evenodd"
-                      d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="inline-flex items-center">
+                  <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-purple-500 dark:text-purple-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path
+                        fillRule="evenodd"
+                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                  {t.viewLimit}
                 </span>
-                {t.viewLimit}
+                {!isPremiumUser && !premiumStatusLoading ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    <Crown className="h-3 w-3" aria-hidden />
+                    Premium
+                  </span>
+                ) : null}
               </div>
             </div>
-            <div className="min-w-0 sm:col-span-2">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {t.viewLimitDescription}
-              </div>
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+              <select
+                id="note-read-limit"
+                value={readCount}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) {
+                    setReadCount(next as NoteReadLimit);
+                  }
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 0.75rem center",
+                  backgroundSize: "0.75em",
+                }}
+              >
+                {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
+                  const premiumOnly = isPremiumNoteReadLimit(limit);
+                  const locked = premiumOnly && !isPremiumUser;
+                  return (
+                    <option key={limit} value={limit} disabled={locked}>
+                      {translatedReadLimitLabel(limit, t)}
+                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                {isPremiumUser
+                  ? (t.viewLimitPremiumHint ??
+                    "More views mean the link stays valid longer — use only when needed.")
+                  : (t.viewLimitFreeDescription ??
+                    "Free accounts use read-once. Upgrade to Premium for 2, 3, or 5 views.")}
+              </p>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import { CompositeStorage } from "./storage";
 import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { KVNamespace } from "@cloudflare/workers-types";
@@ -712,6 +713,22 @@ function isPremiumAccountType(accountType: unknown, plan: unknown): boolean {
     plan === "business_premium" ||
     plan === "premium"
   );
+}
+
+async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id || !env.AUTH_DB) return false;
+  try {
+    const user = await env.AUTH_DB.prepare(
+      "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ account_type: string | null; plan: string | null }>();
+    if (!user) return false;
+    return isPremiumAccountType(user.account_type, user.plan);
+  } catch {
+    return false;
+  }
 }
 
 function noteReadNotificationDeviceLabel(request: Request): string {
@@ -7170,6 +7187,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
     let noteForAnalytics: Note | null = null;
+    const noteCreationIsPremium = await noteCreationAllowsPremiumExpiry(env, request);
     try {
       requestBody = await request.clone().json();
 
@@ -7180,16 +7198,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         // Silently return a fake 200 so bots don't know they were blocked
         return jsonResponse({ id: crypto.randomUUID() }, 200, request);
       }
-      const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds);
-      const maxReads = Number(requestBody?.maxReads ?? 1);
-      if (requestBody?.content && requestBody?.iv && expiryParsed.ok) {
+      const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
+        isPremium: noteCreationIsPremium,
+      });
+      const maxReadsParsed = parseMaxReadsFromBody(requestBody?.maxReads, {
+        isPremium: noteCreationIsPremium,
+      });
+      if (requestBody?.content && requestBody?.iv && expiryParsed.ok && maxReadsParsed.ok) {
         noteForAnalytics = {
           id: "pending",
           content: requestBody.content,
           iv: requestBody.iv,
           aad: requestBody?.aad ?? null,
           expiresAt: new Date(Date.now() + expiryParsed.seconds * 1000),
-          maxReads,
+          maxReads: maxReadsParsed.maxReads,
           currentReads: 0,
           createdAt: new Date(),
           isPasswordProtected: !!requestBody?.isPasswordProtected,
@@ -7248,6 +7270,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       if (!reserved) {
         return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
       }
+    }
+
+    const expiryForCreate = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
+      isPremium: noteCreationIsPremium,
+    });
+    if (!expiryForCreate.ok) {
+      return jsonResponse({ error: expiryForCreate.message }, 400, request);
+    }
+
+    const maxReadsForCreate = parseMaxReadsFromBody(requestBody?.maxReads, {
+      isPremium: noteCreationIsPremium,
+    });
+    if (!maxReadsForCreate.ok) {
+      return jsonResponse({ error: maxReadsForCreate.message }, 400, request);
     }
 
     const id = requestedId || crypto.randomUUID();

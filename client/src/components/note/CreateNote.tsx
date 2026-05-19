@@ -8,9 +8,15 @@ import {
 } from "@shared/noteSizeLimits";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
+  clampNoteExpiryPresetForAccount,
   noteExpiryPresetIdToSeconds,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
+import {
+  NOTE_READ_LIMIT_DEFAULT,
+  clampNoteReadLimitForAccount,
+  type NoteReadLimit,
+} from "@shared/noteReadLimits";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
 import { loadClientLLM } from "@/utils/loadClientLLM";
@@ -96,6 +102,8 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "1d") return t.expiry1d;
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
+  if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
 }
 
@@ -190,7 +198,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [accountType, setAccountType] = useState<AccountType>("free");
   const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
   const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
-  const readCount = 1;
+  const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications;
@@ -263,6 +271,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (premiumStatusLoading) return;
+    setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, isPremiumUser));
+    setReadCount((current) => clampNoteReadLimitForAccount(current, isPremiumUser));
+  }, [isPremiumUser, premiumStatusLoading]);
 
   useEffect(() => {
     if (!canNotifyOnOpen && notifyOnOpen) {
@@ -1502,6 +1516,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 canNotifyOnOpen={canNotifyOnOpen}
                 isPremiumUser={isPremiumUser}
                 premiumStatusLoading={premiumStatusLoading}
+                readCount={readCount}
+                setReadCount={setReadCount}
               />
             </Suspense>
           )}

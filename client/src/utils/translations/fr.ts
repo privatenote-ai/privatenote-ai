@@ -204,6 +204,15 @@ export const fr: Translations = {
   viewLimit: "Limite de vues",
   viewLimitDescription:
     "Les notes ne peuvent être consultées qu’une seule fois pour une sécurité maximale",
+  viewLimitOnce: "Une fois (lecture unique)",
+  viewLimitTwice: "2 vues",
+  viewLimitThree: "3 vues",
+  viewLimitFive: "5 vues",
+  viewLimitFreeDescription:
+    "Comptes gratuits : lecture unique. Avec Premium : 2, 3 ou 5 vues.",
+  viewLimitPremiumHint:
+    "Plus de vues signifient que le lien reste valide plus longtemps — à utiliser avec parcimonie.",
+  premium: "Premium",
   viewDetails: "Voir les détails",
   passwordBreachCheckLabel: "Vérification de fuite :",
   passwordBreachCheckProvider: "via HIBP",
@@ -308,6 +317,8 @@ export const fr: Translations = {
   expiry1d: "1 jour",
   expiry3d: "3 jours",
   expiry7d: "7 jours",
+  expiry14d: "14 jours",
+  expiry30d: "30 jours",
   expiry5m: "5 minutes",
   expiry10m: "10 minutes",
   expiry30m: "30 minutes",
