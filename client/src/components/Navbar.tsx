@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -266,6 +266,9 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/blog")} closeMenu={closeMenu} className={desktopLink}>
               {t.blog}
             </NavLink>
+            <NavLink href="/developers" closeMenu={closeMenu} className={desktopLink}>
+              {t.developers}
+            </NavLink>
             <NavLink href={lp("/about")} closeMenu={closeMenu} className={desktopLink}>
               {t.about}
             </NavLink>
@@ -399,6 +402,10 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/blog")} closeMenu={closeMenu} className={mobileItemClass}>
               <FileText className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.blog}</span>
+            </NavLink>
+            <NavLink href="/developers" closeMenu={closeMenu} className={mobileItemClass}>
+              <Code2 className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.developers}</span>
             </NavLink>
 
             <NavLink href={lp("/about")} closeMenu={closeMenu} className={mobileItemClass}>
