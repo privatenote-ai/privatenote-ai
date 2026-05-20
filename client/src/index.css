@@ -224,6 +224,22 @@
                 0 0px 0px 1px rgba(210, 230, 250, 0.4) inset;
   }
   
+  /* Note reveal: one box = one selection area (no global rounded shadow bleed) */
+  .note-read-panel {
+    @apply rounded-md border border-gray-200 bg-gray-50 px-4 py-4 sm:px-5 sm:py-5 dark:border-gray-700 dark:bg-gray-900;
+    box-shadow: none !important;
+    background-image: none !important;
+  }
+
+  .note-read-content {
+    @apply m-0 block max-w-full;
+  }
+
+  .note-read-content::selection {
+    background-color: hsl(var(--primary) / 0.28);
+    color: inherit;
+  }
+
   /* Pill styles */
   .rounded-full, .rounded-lg, .rounded-md {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 
