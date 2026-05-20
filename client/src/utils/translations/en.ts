@@ -651,6 +651,9 @@ export const en: Translations = {
     "End-to-end encrypted notes that self-destruct after reading. Client-side encryption keeps your messages private.",
   documentMetaHowItWorksDescription:
     "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
+  documentMetaDevelopersTitle: "Developer integrations",
+  documentMetaDevelopersDescription:
+    "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and zero-knowledge.",
   documentMetaAboutDescription:
     "Why PrivateNote.ai exists, the privacy values behind it, and how encrypted tools make sensitive communication safer.",
   blogPasswordMetaDescription:

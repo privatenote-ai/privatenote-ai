@@ -266,7 +266,7 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/blog")} closeMenu={closeMenu} className={desktopLink}>
               {t.blog}
             </NavLink>
-            <NavLink href="/developers" closeMenu={closeMenu} className={desktopLink}>
+            <NavLink href={lp("/developers")} closeMenu={closeMenu} className={desktopLink}>
               {t.developers}
             </NavLink>
             <NavLink href={lp("/about")} closeMenu={closeMenu} className={desktopLink}>
@@ -403,7 +403,7 @@ export const Navbar: React.FC = () => {
               <FileText className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.blog}</span>
             </NavLink>
-            <NavLink href="/developers" closeMenu={closeMenu} className={mobileItemClass}>
+            <NavLink href={lp("/developers")} closeMenu={closeMenu} className={mobileItemClass}>
               <Code2 className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.developers}</span>
             </NavLink>

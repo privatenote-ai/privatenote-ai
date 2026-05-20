@@ -642,6 +642,9 @@ export const de: Translations = {
     "Verschlüsselte Notizen, die sich nach dem Lesen löschen. Clientseitige Verschlüsselung hält Ihre Nachrichten privat.",
   documentMetaHowItWorksDescription:
     "Browser-Verschlüsselung, kurzlebige Notizen und optionale KI-Hilfe—Schlüssel bleiben unter Ihrer Kontrolle.",
+  documentMetaDevelopersTitle: "Entwickler-Integrationen",
+  documentMetaDevelopersDescription:
+    "Nutzen Sie PrivateNote.ai aus VS Code, Cursor, KI-Agenten und MCP-Clients, während die Verschlüsselung lokal und Zero-Knowledge bleibt.",
   documentMetaAboutDescription:
     "Warum PrivateNote.ai existiert, welche Werte dahinterstehen und wie Verschlüsselung Kommunikation sicherer macht.",
   blogPasswordMetaDescription:

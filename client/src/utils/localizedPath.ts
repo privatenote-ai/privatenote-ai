@@ -8,6 +8,7 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",
+  "/developers",
   "/about",
   "/contact",
   "/blog",

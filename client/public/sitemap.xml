@@ -35,6 +35,7 @@
   <url><loc>https://privatenote.ai/de/privacy-tools/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/security-resources/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/how-it-works/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/de/developers/</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/about/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/de/contact/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/de/blog/</loc><lastmod>2026-05-07</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -48,6 +49,7 @@
   <url><loc>https://privatenote.ai/fr/privacy-tools/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/security-resources/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/how-it-works/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/fr/developers/</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/about/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/fr/contact/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/</loc><lastmod>2026-05-07</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -61,6 +63,7 @@
   <url><loc>https://privatenote.ai/es/privacy-tools/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/security-resources/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/how-it-works/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/es/developers/</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/about/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/es/contact/</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://privatenote.ai/es/blog/</loc><lastmod>2026-05-07</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
@@ -85,6 +88,12 @@
   <url>
     <loc>https://privatenote.ai/how-it-works/</loc>
     <lastmod>2026-04-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://privatenote.ai/developers/</loc>
+    <lastmod>2026-05-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

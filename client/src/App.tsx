@@ -188,6 +188,7 @@ function Router() {
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
+              <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
               <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
               <Route path={`/${language}/blog/:slug`} component={() => <LocalizedRoute language={language} component={BlogPost} />} />

@@ -647,6 +647,9 @@ export const es: Translations = {
     "Notas cifradas que se autodestruyen al leerse. Cifrado en el cliente para mantener privados tus mensajes.",
   documentMetaHowItWorksDescription:
     "Descubre cómo PrivateNote.ai usa cifrado en el navegador, notas efímeras e IA opcional en el dispositivo sin perder control de tus claves.",
+  documentMetaDevelopersTitle: "Integraciones para desarrolladores",
+  documentMetaDevelopersDescription:
+    "Usa PrivateNote.ai desde VS Code, Cursor, agentes de IA y clientes MCP manteniendo el cifrado local y zero-knowledge.",
   documentMetaAboutDescription:
     "Por qué existe PrivateNote.ai, sus valores de privacidad y cómo el cifrado hace más segura la comunicación.",
   blogPasswordMetaDescription:

@@ -70,6 +70,11 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(`${t.howHeroPrefix} ${t.howHeroAccent}`),
         description: t.documentMetaHowItWorksDescription,
       };
+    case "developers":
+      return {
+        title: buildDocumentTitle(t.documentMetaDevelopersTitle),
+        description: t.documentMetaDevelopersDescription,
+      };
     case "about":
       return {
         title: buildDocumentTitle(t.aboutPageTitle),

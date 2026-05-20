@@ -646,6 +646,9 @@ export const fr: Translations = {
     "Notes chiffrées qui s’autodétruisent après lecture. Le chiffrement côté client garde vos messages privés.",
   documentMetaHowItWorksDescription:
     "Découvrez comment PrivateNote.ai utilise le chiffrement navigateur, les notes éphémères et l’IA optionnelle tout en gardant vos clés sous contrôle.",
+  documentMetaDevelopersTitle: "Intégrations développeurs",
+  documentMetaDevelopersDescription:
+    "Utilisez PrivateNote.ai depuis VS Code, Cursor, des agents IA et des clients MCP tout en gardant le chiffrement local et zero-knowledge.",
   documentMetaAboutDescription:
     "Pourquoi PrivateNote.ai existe, les valeurs de confidentialité et comment le chiffrement sécurise les échanges sensibles.",
   blogPasswordMetaDescription:
