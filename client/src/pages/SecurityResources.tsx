@@ -147,36 +147,57 @@ const SecurityOverview: React.FC = () => {
 
 
           {/* 3. Operational Security Section */}
-          <section className="relative flex flex-col gap-12 py-10">
+          <section className="relative flex flex-col gap-14 py-10 lg:-mx-20 xl:-mx-32">
             {/* Ambient accents for this section */}
             <div className="pointer-events-none absolute -left-10 top-8 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-6 bottom-6 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl" />
 
-            <div className="relative overflow-hidden w-full lg:w-1/2 lg:self-start border border-blue-200 dark:border-blue-800 rounded-[2rem]">
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-[calc(52%+2rem)] top-8 z-0 hidden lg:block xl:left-[calc(50%+5rem)]"
+              initial={{ opacity: 0, x: 18, y: 14, rotate: -3 }}
+              whileInView={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            >
               <motion.div
-                aria-hidden="true"
-                className="pointer-events-none absolute right-6 top-6 hidden md:block"
-                initial={{ opacity: 0.35, y: 0 }}
-                animate={{ opacity: [0.35, 0.55, 0.35], y: [0, -4, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                animate={{
+                  y: [0, -14, 0],
+                  rotate: [0, 2, 0],
+                  scale: [1, 1.025, 1],
+                }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
               >
-                <svg className="h-24 w-24" viewBox="0 0 120 120" fill="none">
-                  <rect x="22" y="28" width="30" height="64" rx="6" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
-                  <rect x="34" y="40" width="10" height="4" rx="2" className="fill-primary/60" />
-                  <rect x="34" y="50" width="10" height="4" rx="2" className="fill-primary/45" />
-                  <circle cx="31" cy="74" r="3" className="fill-primary/55" />
-                  <circle cx="41" cy="74" r="3" className="fill-primary/35" />
+                <div className="absolute inset-6 rounded-full bg-primary/10 blur-3xl" />
+                <svg className="relative h-56 w-56 xl:h-64 xl:w-64 drop-shadow-[0_24px_40px_rgba(37,99,235,0.12)]" viewBox="0 0 120 120" fill="none">
+                  <rect x="18" y="28" width="32" height="64" rx="7" className="fill-white/90 stroke-primary/25 dark:fill-gray-950/70" strokeWidth="2" />
+                  <rect x="30" y="40" width="12" height="4" rx="2" className="fill-primary/60" />
+                  <rect x="30" y="50" width="12" height="4" rx="2" className="fill-primary/45" />
+                  <circle cx="28" cy="74" r="3" className="fill-primary/55" />
+                  <circle cx="40" cy="74" r="3" className="fill-primary/35" />
 
-                  <rect x="66" y="18" width="30" height="74" rx="6" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
-                  <rect x="78" y="30" width="10" height="4" rx="2" className="fill-primary/60" />
-                  <rect x="78" y="40" width="10" height="4" rx="2" className="fill-primary/45" />
-                  <rect x="78" y="50" width="10" height="4" rx="2" className="fill-primary/35" />
+                  <rect x="64" y="18" width="34" height="74" rx="7" className="fill-white/90 stroke-primary/25 dark:fill-gray-950/70" strokeWidth="2" />
+                  <rect x="77" y="30" width="12" height="4" rx="2" className="fill-primary/60" />
+                  <rect x="77" y="40" width="12" height="4" rx="2" className="fill-primary/45" />
+                  <rect x="77" y="50" width="12" height="4" rx="2" className="fill-primary/35" />
                   <circle cx="75" cy="74" r="3" className="fill-primary/55" />
-                  <circle cx="85" cy="74" r="3" className="fill-primary/35" />
+                  <circle cx="87" cy="74" r="3" className="fill-primary/35" />
+                  <motion.path
+                    d="M50 52C58 45 64 43 72 40"
+                    className="stroke-primary/40"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 6"
+                    animate={{ pathLength: [0.25, 1, 0.25], opacity: [0.35, 0.8, 0.35] }}
+                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
                 </svg>
               </motion.div>
+            </motion.div>
 
-              <div className="px-6 sm:px-8 lg:px-10 py-12 md:py-12">
+            <div className="relative z-10 w-full rounded-[2rem] border border-blue-200 bg-white/70 shadow-sm dark:border-blue-800 dark:bg-gray-950/30 lg:w-[52%] lg:self-start">
+              <div className="px-6 py-12 sm:px-8 md:py-12 lg:px-10">
                 <motion.h2
                   className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
                   initial={{ opacity: 0, y: 14 }}
@@ -203,16 +224,50 @@ const SecurityOverview: React.FC = () => {
               </div>
             </div>
 
-            <div className="relative overflow-hidden w-full lg:w-[52%] lg:self-end border border-blue-200 dark:border-blue-800 rounded-[2rem] p-6 sm:p-8 lg:pl-24">
-              <div className="hidden lg:flex pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 items-center justify-center">
-                <svg className="h-28 w-28" viewBox="0 0 220 220" fill="none" aria-hidden="true">
-                  <circle cx="110" cy="110" r="64" className="fill-primary/5 stroke-primary/20" strokeWidth="2" />
-                  <circle cx="110" cy="110" r="36" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute right-[calc(53%+2rem)] top-[56%] z-0 hidden -translate-y-1/2 lg:block xl:right-[calc(51%+5rem)]"
+              initial={{ opacity: 0, x: -18, y: 14, rotate: 3 }}
+              whileInView={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            >
+              <motion.div
+                animate={{
+                  y: [0, 12, 0],
+                  rotate: [0, -2, 0],
+                  scale: [1, 1.03, 1],
+                }}
+                transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
+              >
+                <div className="absolute inset-8 rounded-full bg-blue-500/10 blur-3xl" />
+                <svg className="relative h-60 w-60 xl:h-72 xl:w-72 drop-shadow-[0_24px_40px_rgba(37,99,235,0.12)]" viewBox="0 0 220 220" fill="none">
+                  <circle cx="110" cy="110" r="72" className="fill-white/90 stroke-primary/20 dark:fill-gray-950/70" strokeWidth="2" />
+                  <motion.circle
+                    cx="110"
+                    cy="110"
+                    r="46"
+                    className="fill-primary/10 stroke-primary/30"
+                    strokeWidth="2"
+                    animate={{ r: [42, 50, 42], opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  />
                   <path
                     d="M42 110H90M130 110H178M110 42V90M110 130V178"
                     className="stroke-primary/40"
                     strokeWidth="2.5"
                     strokeLinecap="round"
+                  />
+                  <motion.circle
+                    cx="110"
+                    cy="110"
+                    r="84"
+                    className="stroke-primary/15"
+                    strokeWidth="2"
+                    animate={{ scale: [0.92, 1.04, 0.92], opacity: [0.25, 0.55, 0.25] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ transformOrigin: "110px 110px" }}
                   />
                   <circle cx="110" cy="110" r="8" className="fill-primary/70" />
                   <circle cx="42" cy="110" r="4" className="fill-primary/50" />
@@ -220,7 +275,10 @@ const SecurityOverview: React.FC = () => {
                   <circle cx="110" cy="42" r="4" className="fill-primary/50" />
                   <circle cx="110" cy="178" r="4" className="fill-primary/50" />
                 </svg>
-              </div>
+              </motion.div>
+            </motion.div>
+
+            <div className="relative z-10 w-full rounded-[2rem] border border-blue-200 bg-white/70 p-6 shadow-sm dark:border-blue-800 dark:bg-gray-950/30 sm:p-8 lg:w-[52%] lg:self-end">
               <motion.h2
                 className="text-3xl font-bold text-gray-900 dark:text-white mb-6"
                 initial={{ opacity: 0, y: 14 }}
