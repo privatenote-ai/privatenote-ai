@@ -1,0 +1,15 @@
+.git
+.wrangler
+dist
+node_modules
+prerender
+*.log
+.DS_Store
+.env
+.env.*
+!.env.self-host.example
+client/node_modules
+client/dist
+coverage
+playwright-report
+test-results

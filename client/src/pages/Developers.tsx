@@ -76,7 +76,7 @@ export default function Developers() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-24 pb-20 sm:px-6 lg:px-8">
-      <section className="mb-14 grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-center">
+      <section className="mb-16 grid gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-16">
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
             <Code2 className="h-3.5 w-3.5" />
@@ -109,15 +109,15 @@ export default function Developers() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white/70 p-5 shadow-sm dark:border-gray-800 dark:bg-white/5">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <div className="lg:pl-4">
+          <p className="mb-6 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             What can create a PrivateNote?
           </p>
-          <div className="space-y-3">
+          <div className="space-y-8">
             {creationPaths.map((path) => {
               const Icon = path.icon;
               return (
-                <div key={path.title} className="flex gap-3 rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                <div key={path.title} className="flex gap-4">
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </div>
@@ -126,7 +126,7 @@ export default function Developers() {
                       <h2 className="text-sm font-bold text-gray-950 dark:text-white">{path.title}</h2>
                       <span className="text-xs font-medium text-primary">{path.label}</span>
                     </div>
-                    <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{path.text}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{path.text}</p>
                   </div>
                 </div>
               );
@@ -155,7 +155,7 @@ export default function Developers() {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="mt-4 grid gap-8 lg:grid-cols-2">
         <section className="rounded-2xl border border-primary/30 bg-primary/5 p-7">
           <div className="mb-5 flex items-start gap-3">
             <div className="rounded-xl bg-primary/15 p-2.5">
@@ -246,23 +246,24 @@ export default function Developers() {
         </section>
       </div>
 
-      <section className="mt-6 rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <h2 className="mb-3 text-2xl font-bold text-gray-950 dark:text-white">Trust model</h2>
-            <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+      <section className="mt-16 border-t border-gray-200 py-16 dark:border-gray-800">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20 lg:items-start">
+          <div className="max-w-xl">
+            <p className="mb-2 text-sm font-semibold text-primary">Trust model</p>
+            <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Same contract on every path</h2>
+            <p className="mt-6 text-base leading-relaxed text-gray-700 dark:text-gray-300">
               All integration paths should preserve the same basic contract: create ciphertext locally, upload only what
               the server needs to store and enforce, then share a link that carries the decryption key outside the request.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <ul className="space-y-6 lg:pt-1">
             {trustModel.map((item) => (
-              <div key={item} className="flex gap-3 rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/60">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{item}</p>
-              </div>
+              <li key={item} className="flex gap-4">
+                <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                <p className="text-base leading-relaxed text-gray-700 dark:text-gray-300">{item}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
