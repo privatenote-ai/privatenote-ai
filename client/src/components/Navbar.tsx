@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2 } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -46,10 +46,12 @@ type MobileSheet = "closed" | "nav" | "account";
 export const Navbar: React.FC = () => {
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>("closed");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
   const { language, t } = useLanguage();
   const profileRef = useRef<HTMLDivElement>(null);
+  const resourcesRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
   // Solid translucent bg only after the user scrolls; transparent on hero
@@ -63,6 +65,7 @@ export const Navbar: React.FC = () => {
   const closeMobileSheetsAndProfile = useCallback(() => {
     setMobileSheet("closed");
     setIsProfileOpen(false);
+    setIsResourcesOpen(false);
   }, []);
 
   /** Mobile nav drawer + desktop profile dropdown: close overlays when navigating */
@@ -79,11 +82,14 @@ export const Navbar: React.FC = () => {
     setMobileSheet((s) => (s === "account" ? "closed" : "account"));
   }, []);
 
-  // Handle clicks outside of desktop profile menu.
+  // Handle clicks outside of desktop dropdown menus.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+      }
+      if (resourcesRef.current && !resourcesRef.current.contains(event.target as Node)) {
+        setIsResourcesOpen(false);
       }
     };
 
@@ -132,6 +138,18 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [mobileSheet, closeMenu]);
 
+  useEffect(() => {
+    if (!isResourcesOpen && !isProfileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsResourcesOpen(false);
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isProfileOpen, isResourcesOpen]);
+
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
 
@@ -162,6 +180,9 @@ export const Navbar: React.FC = () => {
 
   const mobileItemClass =
     "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60";
+
+  const desktopDropdownItem =
+    "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
 
   const navShellClass = [
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
@@ -229,6 +250,39 @@ export const Navbar: React.FC = () => {
     )
   ) : null;
 
+  const resourceLinks = [
+    {
+      href: lp("/how-it-works"),
+      label: t.howItWorks,
+      description: t.navHowItWorksDesc,
+      icon: Shield,
+    },
+    {
+      href: lp("/security-resources"),
+      label: t.security,
+      description: t.navSecurityDesc,
+      icon: Sparkles,
+    },
+    {
+      href: lp("/developers"),
+      label: t.developers,
+      description: t.navDevelopersDesc,
+      icon: Code2,
+    },
+    {
+      href: lp("/blog"),
+      label: t.blog,
+      description: t.navBlogDesc,
+      icon: FileText,
+    },
+    {
+      href: lp("/about"),
+      label: t.about,
+      description: t.navAboutDesc,
+      icon: Info,
+    },
+  ];
+
   return (
     <>
     <nav className={navShellClass}>
@@ -257,21 +311,49 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
             </NavLink>
-            <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={desktopLink}>
-              {t.howItWorks}
-            </NavLink>
-            <NavLink href={lp("/security-resources")} closeMenu={closeMenu} className={desktopLink}>
-              {t.security}
-            </NavLink>
-            <NavLink href={lp("/blog")} closeMenu={closeMenu} className={desktopLink}>
-              {t.blog}
-            </NavLink>
-            <NavLink href={lp("/developers")} closeMenu={closeMenu} className={desktopLink}>
-              {t.developers}
-            </NavLink>
-            <NavLink href={lp("/about")} closeMenu={closeMenu} className={desktopLink}>
-              {t.about}
-            </NavLink>
+            <div className="relative" ref={resourcesRef}>
+              <button
+                type="button"
+                onClick={() => setIsResourcesOpen((open) => !open)}
+                className={`${desktopLink} inline-flex items-center gap-1.5`}
+                aria-haspopup="menu"
+                aria-expanded={isResourcesOpen}
+                aria-controls="desktop-resources-menu"
+              >
+                {t.resources}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${isResourcesOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              {isResourcesOpen && (
+                <div
+                  id="desktop-resources-menu"
+                  className="absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900"
+                  role="menu"
+                >
+                  {resourceLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.href}
+                        href={item.href}
+                        closeMenu={closeMenu}
+                        className={desktopDropdownItem}
+                      >
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
+                        <span>
+                          <span className="block font-semibold">{item.label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                            {item.description}
+                          </span>
+                        </span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Auth — sits just outside the right edge of the editor column */}
