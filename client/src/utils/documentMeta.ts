@@ -45,9 +45,9 @@ function canonicalPageUrl(canonicalPath?: string): string {
   const path = canonicalPath ?? (typeof window !== "undefined" ? window.location.pathname : "/");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const canonicalPathname =
-    normalizedPath === "/" || normalizedPath.includes(".") || normalizedPath.endsWith("/")
+    normalizedPath === "/" || normalizedPath.includes(".")
       ? normalizedPath
-      : `${normalizedPath}/`;
+      : normalizedPath.replace(/\/+$/, "") || "/";
   return `${origin}${canonicalPathname}`;
 }
 

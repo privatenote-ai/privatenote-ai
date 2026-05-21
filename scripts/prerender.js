@@ -29,9 +29,9 @@ const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 // -------------------------------
 const FALLBACK_ROUTES = [
   "/",
-  "/de/",
-  "/fr/",
-  "/es/",
+  "/de",
+  "/fr",
+  "/es",
   "/de/password-generator",
   "/de/privacy-tools",
   "/de/security-resources",

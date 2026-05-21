@@ -30,17 +30,17 @@ const NO_TRAILING_SLASH_PREFIXES = [
 ] as const;
 
 /**
- * Canonical public URL shape on Cloudflare Pages (matches `documentMeta` + sitemap):
- * marketing pages use a trailing slash (`/about/`), locale homes use `/de/`.
+ * Canonical public URL shape (matches `documentMeta`, sitemap, and Pages static routes):
+ * no trailing slash except the site root (`/`).
  */
 export function publicSitePath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   if (normalized === "/") return "/";
   if (normalized.includes(".")) return normalized;
   if (NO_TRAILING_SLASH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
-    return normalized;
+    return normalized.replace(/\/+$/, "") || "/";
   }
-  return normalized.endsWith("/") ? normalized : `${normalized}/`;
+  return normalized.replace(/\/+$/, "") || "/";
 }
 
 /** Join path segments and apply {@link publicSitePath} (e.g. blog + slug → `/blog/foo/`). */
@@ -78,7 +78,7 @@ export function localizedPath(path: string, language: SupportedLanguage): string
     return publicSitePath(pathWithoutLanguage);
   }
   if (pathWithoutLanguage === "/") {
-    return `/${language}/`;
+    return `/${language}`;
   }
   return publicSitePath(`/${language}${pathWithoutLanguage}`);
 }

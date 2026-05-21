@@ -13,9 +13,20 @@ export async function onRequest(context: {
 }): Promise<Response> {
   const { request } = context;
   const url = new URL(request.url);
-  const normalizedPath = url.pathname.replace(/\/{2,}/g, "/");
+  let normalizedPath = url.pathname.replace(/\/{2,}/g, "/");
   if (normalizedPath !== url.pathname) {
     url.pathname = normalizedPath;
+    return Response.redirect(url.toString(), 301);
+  }
+
+  // Trailing-slash URLs 404 on static Pages when only `path.html` exists (not `path/index.html`).
+  // Canonicals and sitemap use slashless paths; redirect legacy/crawler URLs to the 200 shape.
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    normalizedPath.length > 1 &&
+    normalizedPath.endsWith("/")
+  ) {
+    url.pathname = normalizedPath.replace(/\/+$/, "") || "/";
     return Response.redirect(url.toString(), 301);
   }
 

@@ -3,9 +3,9 @@ export const PUBLIC_SITE_ORIGIN = "https://privatenote.ai";
 
 export const HOME_HREFLANG_ALTERNATES = [
   { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de/" },
-  { hrefLang: "fr", path: "/fr/" },
-  { hrefLang: "es", path: "/es/" },
+  { hrefLang: "de", path: "/de" },
+  { hrefLang: "fr", path: "/fr" },
+  { hrefLang: "es", path: "/es" },
   { hrefLang: "x-default", path: "/" },
 ] as const;
 
@@ -33,7 +33,7 @@ export function homeLanguageFromRoute(route: string): "en" | "de" | "fr" | "es" 
 }
 
 export function canonicalPathForHomeLanguage(language: "en" | "de" | "fr" | "es"): string {
-  return language === "en" ? "/" : `/${language}/`;
+  return language === "en" ? "/" : `/${language}`;
 }
 
 /** Static `<link>` block for prerendered locale home pages (absolute URLs for crawlers). */
