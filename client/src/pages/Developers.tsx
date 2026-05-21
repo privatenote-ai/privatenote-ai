@@ -32,7 +32,13 @@ const creationPaths = [
     icon: Code2,
     title: "Editor extension",
     label: "Best daily developer flow",
-    text: "Create notes from VS Code or Cursor without switching context. Use the sidebar, a selected-text command, or the title-bar action.",
+    text: "Create notes from VS Code, Cursor, or Codex IDE without switching context. Use the sidebar, a selected-text command, or the title-bar action.",
+  },
+  {
+    icon: Terminal,
+    title: "Codex plugin",
+    label: "Best in OpenAI Codex",
+    text: "Install the bundled plugin for MCP plus skills, or add privatenote-mcp to ~/.codex/config.toml. Use the same VS Code extension in the Codex IDE for secrets the agent never sees.",
   },
   {
     icon: Bot,
@@ -155,14 +161,14 @@ export default function Developers() {
         </div>
       </section>
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-2">
+      <div className="mt-4 grid gap-8 lg:grid-cols-2 xl:grid-cols-2">
         <section className="rounded-2xl border border-primary/30 bg-primary/5 p-7">
           <div className="mb-5 flex items-start gap-3">
             <div className="rounded-xl bg-primary/15 p-2.5">
               <Shield className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">VS Code & Cursor extension</h2>
+              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">VS Code, Cursor & Codex IDE</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">Recommended for most developers.</p>
             </div>
           </div>
@@ -189,7 +195,7 @@ export default function Developers() {
           <div className="mb-6 rounded-xl bg-gray-950 p-4 font-mono text-sm text-green-400">
             <span className="text-gray-500"># Search Extensions for PrivateNote, or install from CLI</span>
             <br />
-            <span>cursor --install-extension PrivateNote.privatenote-vscode</span>
+            <span>code --install-extension PrivateNote.privatenote-vscode</span>
           </div>
           <a
             href="https://marketplace.visualstudio.com/items?itemName=PrivateNote.privatenote-vscode"
@@ -205,6 +211,46 @@ export default function Developers() {
         <section className="rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5">
           <div className="mb-5 flex items-start gap-3">
             <div className="rounded-xl bg-gray-100 p-2.5 dark:bg-gray-800">
+              <Terminal className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-950 dark:text-white">OpenAI Codex plugin</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                MCP + skills for Codex CLI and IDE — same repo as this site.
+              </p>
+            </div>
+          </div>
+          <p className="mb-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+            Codex plugins bundle an MCP server and reusable skills. Install from the repo marketplace
+            (`.agents/plugins/marketplace.json`) or wire{" "}
+            <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
+              privatenote-mcp
+            </code>{" "}
+            into <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">~/.codex/config.toml</code>.
+            For secrets the agent must not see, use the VS Code extension in the Codex IDE instead of pasting into chat.
+          </p>
+          <div className="mb-5 rounded-xl bg-gray-950 p-4 font-mono text-sm text-gray-300">
+            <span className="text-gray-500"># ~/.codex/config.toml</span>
+            <pre className="mt-2 whitespace-pre-wrap text-green-400">{`[mcp_servers.privatenote]
+command = "npx"
+args = ["-y", "privatenote-mcp"]
+enabled = true`}</pre>
+          </div>
+          <p className="mb-5 text-sm text-gray-600 dark:text-gray-400">
+            CLI:{" "}
+            <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
+              codex mcp add privatenote -- npx -y privatenote-mcp
+            </code>
+            . Plugin source:{" "}
+            <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
+              packages/privatenote-codex-plugin
+            </code>
+          </p>
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5 lg:col-span-2">
+          <div className="mb-5 flex items-start gap-3">
+            <div className="rounded-xl bg-gray-100 p-2.5 dark:bg-gray-800">
               <Cpu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
             </div>
             <div>
@@ -213,7 +259,7 @@ export default function Developers() {
             </div>
           </div>
           <p className="mb-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-            Add the MCP server to Cursor, Claude Desktop, Continue.dev, Zed, or any MCP client. The agent receives a
+            Add the MCP server to Codex, Cursor, Claude Desktop, Continue.dev, Zed, or any MCP client. The agent receives a
             <code className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
               create_private_note
             </code>

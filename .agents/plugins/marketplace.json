@@ -1,0 +1,20 @@
+{
+  "name": "privatenote-local",
+  "interface": {
+    "displayName": "PrivateNote"
+  },
+  "plugins": [
+    {
+      "name": "privatenote",
+      "source": {
+        "source": "local",
+        "path": "./packages/privatenote-codex-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

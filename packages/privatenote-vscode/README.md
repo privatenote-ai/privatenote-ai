@@ -1,6 +1,8 @@
-# PrivateNote for VS Code & Cursor
+# PrivateNote for VS Code, Cursor & Codex
 
 Send selected text as an **end-to-end encrypted [PrivateNote](https://privatenote.ai) link** — without your AI assistant ever seeing the secret.
+
+Works in VS Code, [Cursor](https://cursor.com), and the [Codex IDE extension](https://developers.openai.com/codex/ide) (VS Code–compatible). For Codex agent workflows, also install the [PrivateNote Codex plugin](../privatenote-codex-plugin/) (MCP + skills).
 
 Encryption happens entirely inside the editor on your local machine using `AES-256-GCM`. Only ciphertext reaches the PrivateNote API. The decryption key lives only in the link's URL fragment.
 
@@ -32,6 +34,8 @@ If you ask an AI agent "send this secret as a PrivateNote", the AI provider's cl
 Or open the composer:
 
 - `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows/Linux) → **PrivateNote: Compose New Note…**
+
+**Codex IDE:** install this extension from the Marketplace, then install the [Codex plugin](../privatenote-codex-plugin/) for agent MCP + skills (`codex mcp add privatenote -- npx -y privatenote-mcp`).
 
 ## How it works
 

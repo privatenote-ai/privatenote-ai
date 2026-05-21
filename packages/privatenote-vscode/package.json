@@ -1,7 +1,7 @@
 {
   "name": "privatenote-vscode",
   "displayName": "PrivateNote - Encrypted Note Sharing",
-  "description": "Send selected text as an end-to-end encrypted PrivateNote link. Encryption happens locally on your machine; no AI involved.",
+  "description": "Send selected text as an end-to-end encrypted PrivateNote link. Works in VS Code, Cursor, and Codex IDE. Encryption happens locally; no AI involved.",
   "version": "0.1.1",
   "private": true,
   "publisher": "PrivateNote",
@@ -24,7 +24,10 @@
     "privacy",
     "secrets",
     "secure-sharing",
-    "end-to-end"
+    "end-to-end",
+    "codex",
+    "cursor",
+    "openai"
   ],
   "engines": {
     "vscode": "^1.80.0"

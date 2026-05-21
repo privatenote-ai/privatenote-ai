@@ -14,9 +14,9 @@ That's PrivateNote. Here's every way to use it — starting with the one that ta
 
 ---
 
-## The easiest path: VS Code / Cursor extension
+## The easiest path: VS Code / Cursor / Codex IDE extension
 
-If you work in VS Code or Cursor, this is the cleanest integration. Install once, use it without ever leaving your editor.
+If you work in VS Code, Cursor, or the Codex IDE extension, this is the cleanest integration. Install once, use it without ever leaving your editor.
 
 ### Install
 
@@ -62,9 +62,25 @@ Everything happens locally. No secret crosses the network in plaintext. The link
 
 ---
 
+## For OpenAI Codex: plugin + MCP
+
+Codex (CLI and IDE) uses `~/.codex/config.toml` for MCP servers and supports **plugins** that bundle MCP + skills.
+
+**Quick MCP setup:**
+
+```bash
+codex mcp add privatenote -- npx -y privatenote-mcp
+```
+
+**Full plugin** (this repo): install from `.agents/plugins/marketplace.json` → plugin `privatenote` at `packages/privatenote-codex-plugin`. Restart Codex, open **Plugins**, install **PrivateNote**, and use `@share-privatenote` or the default prompts.
+
+Pair the plugin with the **VS Code extension** in the Codex IDE when the secret must not appear in the agent chat.
+
+---
+
 ## For AI workflows: the MCP server
 
-If you use Cursor, Claude Desktop, or any MCP-compatible AI client, you can let the AI agent create PrivateNotes on your behalf.
+If you use Codex, Cursor, Claude Desktop, or any MCP-compatible AI client, you can let the AI agent create PrivateNotes on your behalf.
 
 ### Install in Cursor
 
