@@ -1,11 +1,12 @@
 /** Production origin for canonical / hreflang (must match sitemap and deploy host). */
 export const PUBLIC_SITE_ORIGIN = "https://privatenote.ai";
 
+// Locale home directories are served from de/index.html → canonical URL shape is /de/
 export const HOME_HREFLANG_ALTERNATES = [
   { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de" },
-  { hrefLang: "fr", path: "/fr" },
-  { hrefLang: "es", path: "/es" },
+  { hrefLang: "de", path: "/de/" },
+  { hrefLang: "fr", path: "/fr/" },
+  { hrefLang: "es", path: "/es/" },
   { hrefLang: "x-default", path: "/" },
 ] as const;
 
@@ -13,8 +14,11 @@ const LOCALE_HOME_CODES = ["de", "fr", "es"] as const;
 
 export function absolutePublicUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  const pathname =
-    normalized === "/" ? "/" : normalized.replace(/\/+$/, "") || "/";
+  // Preserve trailing slash (locale home directories: /de/, /fr/, /es/)
+  if (normalized === "/" || normalized.endsWith("/")) {
+    return `${PUBLIC_SITE_ORIGIN}${normalized}`;
+  }
+  const pathname = normalized.replace(/\/+$/, "") || "/";
   return `${PUBLIC_SITE_ORIGIN}${pathname}`;
 }
 
@@ -42,7 +46,7 @@ export function homeLanguageFromRoute(route: string): "en" | "de" | "fr" | "es" 
 }
 
 export function canonicalPathForHomeLanguage(language: "en" | "de" | "fr" | "es"): string {
-  return language === "en" ? "/" : `/${language}`;
+  return language === "en" ? "/" : `/${language}/`;
 }
 
 /** Static `<link>` block for prerendered locale home pages (absolute URLs for crawlers). */

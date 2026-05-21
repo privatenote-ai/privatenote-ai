@@ -2,6 +2,7 @@
 <!--
   Canonical URL shape (match documentMeta, Navbar/Footer, middleware):
   - English home: https://privatenote.ai/
+  - Locale homes: https://privatenote.ai/de/ (trailing slash — served from de/index.html)
   - All other public routes: no trailing slash (e.g. /terms, /de/about). /terms/ → 301 → /terms.
   Bump <lastmod> when that page’s content meaningfully changes.
 -->
@@ -13,19 +14,19 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://privatenote.ai/de</loc>
+    <loc>https://privatenote.ai/de/</loc>
     <lastmod>2026-05-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://privatenote.ai/fr</loc>
+    <loc>https://privatenote.ai/fr/</loc>
     <lastmod>2026-05-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://privatenote.ai/es</loc>
+    <loc>https://privatenote.ai/es/</loc>
     <lastmod>2026-05-07</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>

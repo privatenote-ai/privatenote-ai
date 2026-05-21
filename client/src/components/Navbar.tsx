@@ -326,33 +326,34 @@ export const Navbar: React.FC = () => {
                   aria-hidden
                 />
               </button>
-              {isResourcesOpen && (
-                <div
-                  id="desktop-resources-menu"
-                  className="absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900"
-                  role="menu"
-                >
-                  {resourceLinks.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.href}
-                        href={item.href}
-                        closeMenu={closeMenu}
-                        className={desktopDropdownItem}
-                      >
-                        <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
-                        <span>
-                          <span className="block font-semibold">{item.label}</span>
-                          <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                            {item.description}
-                          </span>
+              <div
+                id="desktop-resources-menu"
+                className={`absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 transition-opacity ${
+                  isResourcesOpen ? "opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
+                }`}
+                role="menu"
+                aria-hidden={!isResourcesOpen}
+              >
+                {resourceLinks.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.href}
+                      href={item.href}
+                      closeMenu={closeMenu}
+                      className={desktopDropdownItem}
+                    >
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
+                      <span>
+                        <span className="block font-semibold">{item.label}</span>
+                        <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {item.description}
                         </span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              )}
+                      </span>
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
           </nav>
 

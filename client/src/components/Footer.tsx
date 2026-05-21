@@ -74,6 +74,18 @@ export const Footer: React.FC = () => {
               {t.blog}
             </Link>
             <Link 
+              href={lp("/developers")} 
+              className="hover:text-white transition-colors"
+            >
+              {t.developers}
+            </Link>
+            <Link 
+              href={lp("/security-resources")} 
+              className="hover:text-white transition-colors"
+            >
+              {t.security}
+            </Link>
+            <Link 
               href={lp("/contact")} 
               className="hover:text-white transition-colors"
             >
