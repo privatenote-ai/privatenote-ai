@@ -37,6 +37,7 @@ type CreateNoteDeferredDialogsProps = {
   onStartFreeModelDownload: () => void;
   onUseTemplates: () => void;
   onUseCloudAssist: () => void;
+  onWriteWithoutAi: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
   setShowTemplateOfferPrompt: Dispatch<SetStateAction<boolean>>;
   showTemplateOfferPrompt: boolean;
@@ -50,6 +51,7 @@ export function CreateNoteDeferredDialogs({
   onStartFreeModelDownload,
   onUseTemplates,
   onUseCloudAssist,
+  onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
@@ -132,11 +134,10 @@ export function CreateNoteDeferredDialogs({
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Continue with built-in templates</AlertDialogTitle>
+            <AlertDialogTitle>Local AI not supported on this device</AlertDialogTitle>
             <AlertDialogDescription>
-              On-device private AI is not running on this device right now. You can use cloud assist
-              (free daily drafts), keep writing with curated starters, or clear any partial model
-              download and try loading private AI again.
+              On-device private AI couldn't start. You can use cloud assist (free daily drafts —
+              not fully private, your prompt is sent to Cloudflare AI), or write without AI.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
@@ -151,11 +152,19 @@ export function CreateNoteDeferredDialogs({
             >
               Clear download and retry
             </Button>
-            <Button type="button" className="w-full sm:w-auto" onClick={onUseCloudAssist}>
-              Use cloud assist
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setShowTemplateOfferPrompt(false);
+                onWriteWithoutAi();
+              }}
+            >
+              Write without AI
             </Button>
-            <AlertDialogAction className="w-full sm:w-auto" onClick={onUseTemplates}>
-              Use templates
+            <AlertDialogAction className="w-full sm:w-auto" onClick={onUseCloudAssist}>
+              Use cloud assist
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1297,8 +1297,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onSentenceLengthChange={handleSentenceLengthChange}
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
-                onUseFallbackTemplate={handleUseFallbackTemplate}
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
+                onWriteWithoutAi={() => setIsAiMode(false)}
                 />
               </Suspense>
             </div>
@@ -1461,6 +1461,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             }}
             onUseTemplates={handleUseTemplates}
             onUseCloudAssist={handleUseCloudAssist}
+            onWriteWithoutAi={() => setIsAiMode(false)}
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}

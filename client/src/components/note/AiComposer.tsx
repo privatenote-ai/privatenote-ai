@@ -20,15 +20,7 @@ import {
 } from "@/components/note/promptTemplates";
 import { useLanguage } from "@/context/LanguageContext";
 import type { SupportedLanguage } from "@/utils/translation";
-import type {
-  GuidedWritingAudience,
-  GuidedWritingSensitivity,
-  GuidedWritingStyle,
-  GuidedWritingTone,
-} from "@/components/note/localFallbackShared";
 import {
-  filterGuidedWritingTemplateOptions,
-  getLocalFallbackTemplateOptions,
   isLocalFallbackTemplateId,
   listUnresolvedGuidedPlaceholderLabelsInNote,
   noteHasUnresolvedGuidedPlaceholders,
@@ -46,23 +38,6 @@ function templateChipClass(active: boolean): string {
       ? "font-semibold bg-primary/18 dark:bg-primary/28 text-primary border-2 border-primary shadow-md shadow-primary/15 ring-1 ring-primary/20"
       : "font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700/80"
   }`;
-}
-
-const FALLBACK_TONE_FILTERS: GuidedWritingTone[] = ["warm", "formal", "casual", "professional", "gentle", "romantic"];
-const FALLBACK_AUDIENCE_FILTERS: GuidedWritingAudience[] = [
-  "general",
-  "friend",
-  "partner",
-  "coworker",
-  "team",
-  "family",
-  "client",
-];
-const FALLBACK_STYLE_FILTERS: GuidedWritingStyle[] = ["direct", "thoughtful", "balanced", "supportive", "celebratory", "gentle"];
-const FALLBACK_SENSITIVITY_FILTERS: GuidedWritingSensitivity[] = ["standard", "sensitive"];
-
-function prettyFilterEnum(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function StepRow({ step, label }: { step: number; label: string }) {
@@ -134,9 +109,10 @@ export type AiComposerProps = {
   /** After generation, user must accept before Share / Customize appear. */
   aiDraftAccepted: boolean;
   onAcceptDraft: () => void;
-  onUseFallbackTemplate: (text: string) => void;
   /** After a failed on-device load/generate, show hosted cloud UI even when WebGPU is present. */
   preferHostedCloudAfterLocalFailure?: boolean;
+  /** Exit AI mode entirely and return to plain note writing. */
+  onWriteWithoutAi: () => void;
 };
 
 export const AiComposer: React.FC<AiComposerProps> = ({
@@ -168,15 +144,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onSentenceLengthChange,
   aiDraftAccepted,
   onAcceptDraft,
-  onUseFallbackTemplate,
   preferHostedCloudAfterLocalFailure = false,
+  onWriteWithoutAi,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
-  const [fallbackTone, setFallbackTone] = useState("");
-  const [fallbackAudience, setFallbackAudience] = useState("");
-  const [fallbackStyle, setFallbackStyle] = useState("");
-  const [fallbackSensitivity, setFallbackSensitivity] = useState("");
+
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
   const showLocalOnDeviceUi = localAiSupported && !preferHostedCloudAfterLocalFailure;
@@ -192,37 +165,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const displayedTemplates = showHostedCloudUi
     ? promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id))
     : promptTemplates;
-  const fallbackOptionsAll = useMemo(
-    () => getLocalFallbackTemplateOptions(selectedTemplateId, selectedSentenceLength, language),
-    [selectedTemplateId, selectedSentenceLength, language],
-  );
-  const starterFiltersActive = Boolean(
-    fallbackTone || fallbackAudience || fallbackStyle || fallbackSensitivity,
-  );
-  const fallbackOptionsFiltered = useMemo(() => {
-    const filters: {
-      tone?: GuidedWritingTone;
-      audience?: GuidedWritingAudience;
-      style?: GuidedWritingStyle;
-      sensitivity?: GuidedWritingSensitivity;
-    } = {};
-    if (fallbackTone) filters.tone = fallbackTone as GuidedWritingTone;
-    if (fallbackAudience) filters.audience = fallbackAudience as GuidedWritingAudience;
-    if (fallbackStyle) filters.style = fallbackStyle as GuidedWritingStyle;
-    if (fallbackSensitivity) filters.sensitivity = fallbackSensitivity as GuidedWritingSensitivity;
-    return filterGuidedWritingTemplateOptions(fallbackOptionsAll, filters);
-  }, [fallbackOptionsAll, fallbackTone, fallbackAudience, fallbackStyle, fallbackSensitivity]);
-  const fallbackFilterNoMatch = starterFiltersActive && fallbackOptionsFiltered.length === 0;
-  const fallbackOptions =
-    fallbackOptionsFiltered.length > 0 ? fallbackOptionsFiltered : fallbackOptionsAll;
-
-  useEffect(() => {
-    setFallbackTone("");
-    setFallbackAudience("");
-    setFallbackStyle("");
-    setFallbackSensitivity("");
-  }, [selectedTemplateId, selectedSentenceLength]);
-
   const noteHasPlaceholderBrackets = useMemo(
     () => noteHasUnresolvedGuidedPlaceholders(noteContent, language),
     [noteContent, language],
@@ -255,10 +197,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
             </p>
           </div>
-        ) : preferHostedCloudAfterLocalFailure ? (
+        ) : showHostedCloudUi ? (
           <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/40">
-            <p className="text-sm leading-relaxed text-amber-950 dark:text-amber-50">
-              <strong>{t.aiComposerLocalAiUnavailableTitle}</strong> {t.aiComposerLocalAiUnavailableBody1}
+            <p className="text-sm font-semibold text-amber-950 dark:text-amber-50 mb-1">
+              {t.aiComposerLocalAiUnavailableTitle}
+            </p>
+            <p className="text-sm leading-relaxed text-amber-900 dark:text-amber-100/90">
+              {t.aiComposerNoLocalAiOptions}
             </p>
           </div>
         ) : null}
@@ -287,9 +232,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             </div>
           </div>
         ) : null}
-        {showPrompt ? (
+        {showPrompt && showLocalOnDeviceUi ? (
           <>
-            {/* Step 1 — templates (only while composing the prompt) */}
+            {/* Step 1 — templates */}
             <StepRow step={1} label={t.aiComposerChooseTemplate} />
             <div className="mb-1">
               <div className="flex flex-wrap gap-2">
@@ -465,27 +410,15 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <StepRow step={3} label={t.aiComposerCuratedWriting} />
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-                    {t.aiComposerLocalAiUnavailableTitle}
-                  </h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-200">
-                    {t.aiComposerLocalAiUnavailableBody1}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    {t.aiComposerLocalAiUnavailableBody2}
-                  </p>
-                </div>
-
+                {/* Cloud assist card */}
                 <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900/60 dark:bg-blue-950/25">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {t.aiComposerCloudAssistTitle}
                       </p>
-                      <p className="mt-1 text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-                        {t.aiComposerCloudAssistBody}
+                      <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
+                        {t.aiComposerCloudAssistNotFullyPrivate}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
@@ -523,109 +456,22 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       )}
                     </button>
                   </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <Sparkles className="h-4 w-4 shrink-0 text-blue-500" aria-hidden />
-                    <span>
-                      {hostedCloudAiRemaining === 0
-                        ? t.aiComposerCloudAssistNoFree
-                        : t.aiComposerCloudAssistTemplatesAlternative}
-                    </span>
-                  </div>
+                  {hostedCloudAiRemaining === 0 && (
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {t.aiComposerCloudAssistNoFree}
+                    </p>
+                  )}
                 </div>
 
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {t.aiComposerSignatureStarters}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    {t.aiComposerSignatureStartersHint}
-                  </p>
-                  <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
-                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{t.aiComposerStarterFineTune}</p>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <label className="flex flex-col gap-0.5 text-[11px] text-gray-600 dark:text-gray-400">
-                        <span>{t.aiComposerFilterTone}</span>
-                        <select
-                          value={fallbackTone}
-                          onChange={(e) => setFallbackTone(e.target.value)}
-                          className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                        >
-                          <option value="">{t.aiComposerFilterAny}</option>
-                          {FALLBACK_TONE_FILTERS.map((v) => (
-                            <option key={v} value={v}>
-                              {prettyFilterEnum(v)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-0.5 text-[11px] text-gray-600 dark:text-gray-400">
-                        <span>{t.aiComposerFilterAudience}</span>
-                        <select
-                          value={fallbackAudience}
-                          onChange={(e) => setFallbackAudience(e.target.value)}
-                          className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                        >
-                          <option value="">{t.aiComposerFilterAny}</option>
-                          {FALLBACK_AUDIENCE_FILTERS.map((v) => (
-                            <option key={v} value={v}>
-                              {prettyFilterEnum(v)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-0.5 text-[11px] text-gray-600 dark:text-gray-400">
-                        <span>{t.aiComposerFilterStyle}</span>
-                        <select
-                          value={fallbackStyle}
-                          onChange={(e) => setFallbackStyle(e.target.value)}
-                          className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                        >
-                          <option value="">{t.aiComposerFilterAny}</option>
-                          {FALLBACK_STYLE_FILTERS.map((v) => (
-                            <option key={v} value={v}>
-                              {prettyFilterEnum(v)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-0.5 text-[11px] text-gray-600 dark:text-gray-400">
-                        <span>{t.aiComposerFilterSensitivity}</span>
-                        <select
-                          value={fallbackSensitivity}
-                          onChange={(e) => setFallbackSensitivity(e.target.value)}
-                          className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                        >
-                          <option value="">{t.aiComposerFilterAny}</option>
-                          {FALLBACK_SENSITIVITY_FILTERS.map((v) => (
-                            <option key={v} value={v}>
-                              {prettyFilterEnum(v)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-                  {fallbackFilterNoMatch ? (
-                    <p className="mt-2 text-xs text-amber-800 dark:text-amber-100/90">{t.aiComposerStarterFiltersNoMatch}</p>
-                  ) : null}
-                  <div className="mt-4 space-y-3">
-                    {fallbackOptions.map((option, index) => (
-                      <button
-                        key={`${option.label}-${index}`}
-                        type="button"
-                        onClick={() => onUseFallbackTemplate(option.text)}
-                        className="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-950/40 px-4 py-3 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/80"
-                      >
-                        <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                          {option.label}
-                        </span>
-                        <span className="mt-1 block text-sm leading-relaxed text-gray-800 dark:text-gray-100">
-                          {option.text}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Write without AI */}
+                <button
+                  type="button"
+                  onClick={onWriteWithoutAi}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  {t.aiComposerWriteWithoutAi}
+                </button>
               </div>
             )}
 

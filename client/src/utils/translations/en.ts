@@ -164,21 +164,26 @@ export const en: Translations = {
   aiComposerTapOrShortcut: "Tap the button or press ⌘/Ctrl+Enter",
   aiComposerStartTypingPrivate: "Start typing — your note stays on this device",
   aiComposerCuratedWriting: "Curated Writing",
-  aiComposerLocalAiUnavailableTitle: "Local AI is not available on this device yet.",
+  aiComposerLocalAiUnavailableTitle: "Local AI is not supported on this device.",
   aiComposerLocalAiUnavailableBody1:
     "You still have access to a refined writing experience here, with curated message starters shaped to the template and length you choose.",
   aiComposerLocalAiUnavailableBody2: "We're building a native app to bring local AI to more devices.",
-  aiComposerCloudAssistTitle: "Cloud assist with Llama 3.2 3B",
+  aiComposerNoLocalAiOptions:
+    "Use cloud assist (free daily drafts, not fully private — your prompt is sent to Cloudflare AI) or go back to writing without AI.",
+  aiComposerCloudAssistTitle: "Cloud assist — Llama 3.2 3B",
   aiComposerCloudAssistBody:
     "Use up to 3 hosted drafts when private local AI is unavailable. Your prompt is sent to Cloudflare Workers AI for this draft only.",
+  aiComposerCloudAssistNotFullyPrivate:
+    "Not fully private — your prompt is sent to Cloudflare Workers AI.",
   aiComposerCloudAssistIncluded: "{count} free drafts",
   aiComposerCloudAssistRemaining: "{remaining} of {limit} left",
   aiComposerCloudAssistPromptLabel: "Describe the message",
   aiComposerCloudAssistPlaceholder: "Write a birthday note for my wife that feels warm, personal, and not too formal...",
   aiComposerCloudAssistButton: "Generate hosted draft",
-  aiComposerCloudAssistNoFree: "Free hosted drafts are used for today. Offline templates are still available below.",
+  aiComposerCloudAssistNoFree: "Free hosted drafts are used for today.",
   aiComposerCloudAssistTemplatesAlternative:
     "Prefer not to send text to cloud AI? Use the offline templates below instead.",
+  aiComposerWriteWithoutAi: "Write without AI",
   aiComposerSignatureStarters: "Signature message starters",
   aiComposerSignatureStartersHint:
     "Choose a starter, replace every bracketed hint (for example [Recipient name]) with your own words, then tap Accept note.",
