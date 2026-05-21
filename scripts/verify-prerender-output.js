@@ -30,6 +30,16 @@ const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*
 /** Canonical must not end with slash except https://privatenote.ai/ */
 const BAD_CANONICAL_TRAILING_SLASH_RE =
   /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/[^"']+\/["']/i;
+const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
+
+/** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
+const UNIQUE_TITLE_CHECKS = [
+  { file: "developers.html", mustContain: "Developer integrations" },
+  { file: "contact.html", mustContain: "Contact" },
+  { file: "fr/contact.html", mustContain: "Contact" },
+  { file: "de/developers.html", mustContain: "Entwickler" },
+  { file: "blog/how-we-generate-passwords.html", mustContain: "password" },
+];
 
 function exists(p) {
   try {
@@ -126,6 +136,28 @@ function main() {
     console.error(
       "Prerender canonical uses trailing-slash URLs (301 targets):\n\n" +
         badCanonical.map((r) => `  - ${r}`).join("\n"),
+    );
+    process.exit(1);
+  }
+
+  const badTitles = [];
+  for (const { file, mustContain } of UNIQUE_TITLE_CHECKS) {
+    const htmlPath = path.join(dir, file);
+    if (!exists(htmlPath)) {
+      badTitles.push(`${file} (missing file)`);
+      continue;
+    }
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+    const title = titleMatch?.[1] ?? "";
+    if (title === DEFAULT_SHELL_TITLE || !title.toLowerCase().includes(mustContain.toLowerCase())) {
+      badTitles.push(`${file} (title: ${title || "(empty)"})`);
+    }
+  }
+  if (badTitles.length) {
+    console.error(
+      "Prerender HTML still uses generic shell <title> or wrong page title:\n\n" +
+        badTitles.map((r) => `  - ${r}`).join("\n"),
     );
     process.exit(1);
   }

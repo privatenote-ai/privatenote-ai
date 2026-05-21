@@ -15,6 +15,7 @@ import {
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
+import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
 import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
@@ -165,7 +166,7 @@ function routeOutDir(route) {
 }
 
 function postProcessHTML(html, route) {
-  let out = html;
+  let out = injectPrerenderDocumentMeta(html, route);
 
   // Rewrite preview absolute URLs -> root-relative (except locale-home SEO links; fixed below).
   out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
@@ -389,13 +390,18 @@ async function main() {
 
     const waitForStableAboveTheFold = async () => {
       try {
-        // you already render an LCP marker; wait for it if present
         await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
       } catch {
-        // not found; small settle time so helmet/meta can commit
         await page.waitForTimeout(200);
       }
-      // one last tiny tick for microtasks
+      try {
+        await page.waitForFunction(
+          () => document.title !== "PrivateNote.ai - Secure Encrypted Notes",
+          { timeout: 4000 },
+        );
+      } catch {
+        /* postProcessHTML injects route meta if React did not update title in time */
+      }
       await page.waitForTimeout(100);
     };
 
