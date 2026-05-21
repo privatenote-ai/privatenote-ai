@@ -412,7 +412,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
                     {t.aiComposerCloudAssistTitle}
                   </h3>
-                  <span className="rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-900 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
+                  <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                     {t.aiComposerCloudAssistNotFullyPrivate}
                   </span>
                 </div>

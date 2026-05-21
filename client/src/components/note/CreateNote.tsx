@@ -246,6 +246,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowPrompt(true);
   }, []);
 
+  const clearLocalAiDownloadStateSilently = useCallback(async () => {
+    try {
+      const llm = await loadClientLLM();
+      await llm.resetLocalAiLoadState(undefined);
+    } catch (error) {
+      console.warn("[AI] Failed to clear local AI download state after failure:", error);
+    }
+  }, []);
+
   const ensureFreeLocalModel = useCallback(
     async (onProgress?: (progress: { progress: number; text: string }) => void) => {
       if (!isLocalAiSupported()) {
@@ -285,36 +294,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setPreferHostedCloudAfterLocalFailure(false);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
+      await clearLocalAiDownloadStateSilently();
       setAiModelProgress(null);
       offerTemplateFallback();
     } finally {
       setIsAiModelLoading(false);
     }
-  }, [ensureFreeLocalModel, isAiModelLoading, toast, offerTemplateFallback]);
-
-  const resetFreeModelDownloadState = useCallback(async () => {
-    setShowTemplateOfferPrompt(false);
-    try {
-      // Always clear caches even when no modelId is resolvable — a stuck session
-      // failure flag would otherwise make getRecommendedLocalModelId() return null
-      // and block the reset entirely. resetLocalAiLoadState() handles undefined
-      // modelId by collecting known IDs internally and clears session flags first.
-      const llm = await loadClientLLM();
-      await llm.resetLocalAiLoadState(undefined);
-      toast({
-        title: "On-device AI reset",
-        description: "The incomplete download was cleared. You can try downloading it again.",
-      });
-    } catch (error) {
-      console.warn("[AI] Failed to reset local model state before retry:", error);
-      toast({
-        title: "Reset failed",
-        description: "We couldn't clear the local AI download on this device.",
-        variant: "destructive",
-      });
-      return;
-    }
-  }, [toast]);
+  }, [ensureFreeLocalModel, isAiModelLoading, offerTemplateFallback, clearLocalAiDownloadStateSilently]);
 
   useEffect(() => {
     if (!isAiMode || selectedTemplateId !== "ask-anything") return;
@@ -351,11 +337,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       cancelled = true;
     };
   }, [isAiMode, language, selectedTemplateId, aiSentenceLength]);
-
-  const retryFreeModelDownloadAfterReset = useCallback(async () => {
-    await resetFreeModelDownloadState();
-    void startFreeModelDownload();
-  }, [resetFreeModelDownloadState, startFreeModelDownload]);
 
   const enterAiMode = useCallback(() => {
     setIsAiMode(true);
@@ -953,9 +934,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     } catch (error) {
       console.warn("[AI] Failed to generate content:", error);
       if (isLocalAiSupported()) {
+        await clearLocalAiDownloadStateSilently();
+        offerTemplateFallback();
         toast({
-          title: "Private AI paused",
-          description: "On-device generation did not finish. You can edit the prompt, try again, or use the templates below.",
+          title: "Private AI is not available on this device",
+          description: "Use Cloud Assist (not fully private) or write without AI.",
         });
       }
     } finally {
@@ -1153,13 +1136,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const shouldRenderDeferredDialogs =
     isGeneratingContent || cellularPreloadConfirmOpen || showTemplateOfferPrompt;
-
-  const handleUseTemplates = useCallback(() => {
-    setShowTemplateOfferPrompt(false);
-    setIsAiMode(true);
-    setShowPrompt(true);
-    aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
@@ -1453,13 +1429,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             aiProgress={aiProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
             isGeneratingContent={isGeneratingContent}
-            onRetryFreeModelDownloadAfterReset={() => {
-              void retryFreeModelDownloadAfterReset();
-            }}
             onStartFreeModelDownload={() => {
               void startFreeModelDownload();
             }}
-            onUseTemplates={handleUseTemplates}
             onUseCloudAssist={handleUseCloudAssist}
             onWriteWithoutAi={() => setIsAiMode(false)}
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}

@@ -33,9 +33,7 @@ type CreateNoteDeferredDialogsProps = {
   aiProgress: ModelLoadProgress | null;
   cellularPreloadConfirmOpen: boolean;
   isGeneratingContent: boolean;
-  onRetryFreeModelDownloadAfterReset: () => void;
   onStartFreeModelDownload: () => void;
-  onUseTemplates: () => void;
   onUseCloudAssist: () => void;
   onWriteWithoutAi: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
@@ -47,9 +45,7 @@ export function CreateNoteDeferredDialogs({
   aiProgress,
   cellularPreloadConfirmOpen,
   isGeneratingContent,
-  onRetryFreeModelDownloadAfterReset,
   onStartFreeModelDownload,
-  onUseTemplates,
   onUseCloudAssist,
   onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
@@ -136,22 +132,13 @@ export function CreateNoteDeferredDialogs({
           <AlertDialogHeader>
             <AlertDialogTitle>Local AI not supported on this device</AlertDialogTitle>
             <AlertDialogDescription>
-              On-device private AI couldn't start. You can use cloud assist (free daily drafts —
-              not fully private, your prompt is sent to Cloudflare AI), or write without AI.
+              On-device private AI couldn't start, so the incomplete local download was cleared
+              automatically. You can write without AI, or use Cloud Assist. Cloud Assist is{" "}
+              <span className="font-semibold text-red-600 dark:text-red-400">not fully private</span>
+              {" "}because your prompt is sent to Cloudflare Workers AI.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setShowTemplateOfferPrompt(false);
-                onRetryFreeModelDownloadAfterReset();
-              }}
-            >
-              Clear download and retry
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -163,8 +150,11 @@ export function CreateNoteDeferredDialogs({
             >
               Write without AI
             </Button>
-            <AlertDialogAction className="w-full sm:w-auto" onClick={onUseCloudAssist}>
-              Use cloud assist
+            <AlertDialogAction
+              className="w-full bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 sm:w-auto"
+              onClick={onUseCloudAssist}
+            >
+              Use Cloud Assist (not fully private)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
