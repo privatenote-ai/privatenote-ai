@@ -48,6 +48,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogDevelopersTitle),
         description: t.blogDevelopersExcerpt,
       };
+    case "privatenote-codex":
+      return {
+        title: buildDocumentTitle(t.blogCodexTitle),
+        description: t.blogCodexExcerpt,
+      };
     default:
       return null;
   }

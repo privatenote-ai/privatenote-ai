@@ -19,6 +19,8 @@ export const PUBLIC_MARKETING_PATHS = [
   "/de/blog/myth-good-enough-security",
   "/de/blog/how-we-generate-passwords",
   "/de/blog/workplace-texts-private-note",
+  "/de/blog/privatenote-for-developers",
+  "/de/blog/privatenote-codex",
   "/de/privacy",
   "/de/terms",
   "/fr/password-generator",
@@ -33,6 +35,8 @@ export const PUBLIC_MARKETING_PATHS = [
   "/fr/blog/myth-good-enough-security",
   "/fr/blog/how-we-generate-passwords",
   "/fr/blog/workplace-texts-private-note",
+  "/fr/blog/privatenote-for-developers",
+  "/fr/blog/privatenote-codex",
   "/fr/privacy",
   "/fr/terms",
   "/es/password-generator",
@@ -47,6 +51,8 @@ export const PUBLIC_MARKETING_PATHS = [
   "/es/blog/myth-good-enough-security",
   "/es/blog/how-we-generate-passwords",
   "/es/blog/workplace-texts-private-note",
+  "/es/blog/privatenote-for-developers",
+  "/es/blog/privatenote-codex",
   "/es/privacy",
   "/es/terms",
   "/privacy",
@@ -68,6 +74,8 @@ export const PUBLIC_MARKETING_PATHS = [
   "/blog/myth-good-enough-security",
   "/blog/how-we-generate-passwords",
   "/blog/workplace-texts-private-note",
+  "/blog/privatenote-for-developers",
+  "/blog/privatenote-codex",
 ] as const;
 
 const PUBLIC_MARKETING_PATH_SET = new Set<string>(PUBLIC_MARKETING_PATHS);

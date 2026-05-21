@@ -21,7 +21,6 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import type { SupportedLanguage } from "@/utils/translation";
 import {
-  isLocalFallbackTemplateId,
   listUnresolvedGuidedPlaceholderLabelsInNote,
   noteHasUnresolvedGuidedPlaceholders,
 } from "@/components/note/localFallbackTemplates";
@@ -162,9 +161,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     ? aiGenerationStatusText?.trim() || t.aiComposerGenerating
     : "";
   const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
-  const displayedTemplates = showHostedCloudUi
-    ? promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id))
-    : promptTemplates;
+  const displayedTemplates = promptTemplates;
   const noteHasPlaceholderBrackets = useMemo(
     () => noteHasUnresolvedGuidedPlaceholders(noteContent, language),
     [noteContent, language],
@@ -200,7 +197,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
         ) : showHostedCloudUi ? (
           <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/40">
             <p className="text-sm font-semibold text-amber-950 dark:text-amber-50 mb-1">
-              {t.aiComposerLocalAiUnavailableTitle}
+              {t.aiComposerCloudAssistTitle}
             </p>
             <p className="text-sm leading-relaxed text-amber-900 dark:text-amber-100/90">
               {t.aiComposerNoLocalAiOptions}
@@ -232,7 +229,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             </div>
           </div>
         ) : null}
-        {showPrompt && showLocalOnDeviceUi ? (
+        {showPrompt ? (
           <>
             {/* Step 1 — templates */}
             <StepRow step={1} label={t.aiComposerChooseTemplate} />
@@ -409,65 +406,115 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Cloud assist card */}
-                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900/60 dark:bg-blue-950/25">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {t.aiComposerCloudAssistTitle}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
-                        {t.aiComposerCloudAssistNotFullyPrivate}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
-                      {hostedCloudAiRemaining === null
-                        ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
-                        : t.aiComposerCloudAssistRemaining
-                            .replace("{remaining}", String(hostedCloudAiRemaining))
-                            .replace("{limit}", String(hostedCloudAiLimit))}
-                    </span>
-                  </div>
-                  <label className="mt-3 block text-xs font-medium text-gray-700 dark:text-gray-300" htmlFor="hosted-ai-prompt">
-                    {t.aiComposerCloudAssistPromptLabel}
-                  </label>
-                  <div className="relative mt-1">
+              <div>
+                <StepRow step={3} label={t.aiComposerWriteWithAi} />
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+                    {t.aiComposerCloudAssistTitle}
+                  </h3>
+                  <span className="rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-900 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-100">
+                    {t.aiComposerCloudAssistNotFullyPrivate}
+                  </span>
+                </div>
+
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 dark:border-blue-900/60 dark:bg-blue-950/25">
+                  <p className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+                    {t.aiComposerCloudAssistBody}
+                  </p>
+                  <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
+                    {hostedCloudAiRemaining === null
+                      ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
+                      : t.aiComposerCloudAssistRemaining
+                          .replace("{remaining}", String(hostedCloudAiRemaining))
+                          .replace("{limit}", String(hostedCloudAiLimit))}
+                  </span>
+                </div>
+
+                <div className="relative min-w-0">
+                  <div
+                    className={[
+                      "min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50",
+                      heroTypingGlow ? "ai-prompt-hero--typing" : "",
+                      hasPromptText
+                        ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
+                        : "",
+                    ].join(" ")}
+                  >
                     <textarea
                       id="hosted-ai-prompt"
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
-                      rows={4}
-                      className="min-h-[8rem] w-full resize-y rounded-lg border border-blue-200 bg-white px-3 py-2.5 pr-14 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-blue-900 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-                      placeholder={t.aiComposerCloudAssistPlaceholder}
+                      onKeyDown={(e) => {
+                        if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (isGeneratingContent || !aiPrompt.trim() || hostedCloudAiRemaining === 0) return;
+                        onHostedCloudGenerate();
+                      }}
+                      rows={6}
+                      className="min-h-[11rem] w-full resize-y bg-transparent py-4 pl-5 pr-20 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
+                      placeholder={
+                        activePromptTemplate?.promptPlaceholder ??
+                        (aiEnhancementType === "summarize"
+                          ? t.aiComposerPlaceholderSummarize
+                          : aiEnhancementType === "secure"
+                            ? t.aiComposerPlaceholderSecure
+                            : t.aiComposerCloudAssistPlaceholder)
+                      }
                     />
-                    <button
-                      type="button"
-                      onClick={() => onHostedCloudGenerate()}
-                      disabled={isGeneratingContent || !hasPromptText || hostedCloudAiRemaining === 0}
-                      title={t.aiComposerCloudAssistButton}
-                      aria-label={t.aiComposerCloudAssistButton}
-                      className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-2 ring-white/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:ring-gray-950/90 dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-40"
-                    >
-                      {isGeneratingContent ? (
-                        <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
-                      ) : (
-                        <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
-                      )}
-                    </button>
                   </div>
-                  {hostedCloudAiRemaining === 0 && (
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      {t.aiComposerCloudAssistNoFree}
-                    </p>
-                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onHostedCloudGenerate()}
+                    disabled={isGeneratingContent || !hasPromptText || hostedCloudAiRemaining === 0}
+                    title={t.aiComposerCloudAssistButton}
+                    aria-label={t.aiComposerCloudAssistButton}
+                    className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
+                  >
+                    {isGeneratingContent ? (
+                      <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
+                    ) : (
+                      <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
+                    )}
+                  </button>
                 </div>
 
-                {/* Write without AI */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[1.25rem]">
+                  {isGeneratingContent ? (
+                    <WritingPencilIcon sizeClassName="h-9 w-9" className="text-primary" />
+                  ) : (
+                    <Sparkles
+                      className={[
+                        "h-4 w-4 shrink-0 text-primary",
+                        hasPromptText ? "animate-pulse" : "opacity-40",
+                      ].join(" ")}
+                      aria-hidden
+                    />
+                  )}
+                  <span
+                    className={
+                      isGeneratingContent
+                        ? "text-[13px] font-medium leading-snug text-foreground/90 dark:text-gray-100 sm:text-sm"
+                        : [
+                            "text-xs font-medium",
+                            hasPromptText ? "text-primary dark:text-blue-300" : "text-gray-500 dark:text-gray-400",
+                          ].join(" ")
+                    }
+                  >
+                    {isGeneratingContent
+                      ? aiGenerationStatusText?.trim() || t.aiComposerCloudAssistButton
+                      : hostedCloudAiRemaining === 0
+                        ? t.aiComposerCloudAssistNoFree
+                        : hasPromptText
+                          ? t.aiComposerTapOrShortcut
+                          : t.aiComposerCloudAssistPlaceholder}
+                  </span>
+                </div>
+
                 <button
                   type="button"
                   onClick={onWriteWithoutAi}
-                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors flex items-center justify-center gap-2"
+                  className="mt-4 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
                   {t.aiComposerWriteWithoutAi}
@@ -475,7 +522,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               </div>
             )}
 
-            {showLocalOnDeviceUi &&
+            {(showLocalOnDeviceUi || showHostedCloudUi) &&
               activePromptTemplate?.starterExamples &&
               activePromptTemplate.starterExamples.length > 0 && (
                 <div>

@@ -168,6 +168,22 @@ export const es: Translations = {
     "Aun así tienes acceso aquí a una experiencia de escritura refinada, con inicios de mensaje adaptados a la plantilla y longitud que elijas.",
   aiComposerLocalAiUnavailableBody2:
     "Estamos creando una app nativa para llevar la IA local a más dispositivos.",
+  aiComposerNoLocalAiOptions:
+    "Cloud Assist usa Llama 3.2 3B cuando la IA local privada no está disponible. No es totalmente privado: tu prompt se envía a Cloudflare Workers AI.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+  aiComposerCloudAssistBody:
+    "Usa hasta 3 borradores alojados cuando la IA local privada no esté disponible. La plantilla y la longitud elegidas arriba se envían a Cloudflare Workers AI.",
+  aiComposerCloudAssistNotFullyPrivate: "No totalmente privado",
+  aiComposerCloudAssistIncluded: "{count} borradores gratis",
+  aiComposerCloudAssistRemaining: "{remaining} de {limit} restantes",
+  aiComposerCloudAssistPromptLabel: "Describe el mensaje",
+  aiComposerCloudAssistPlaceholder:
+    "Escribe una nota de cumpleaños cálida y personal que no suene demasiado formal...",
+  aiComposerCloudAssistButton: "Generar borrador alojado",
+  aiComposerCloudAssistNoFree: "Los borradores alojados gratuitos se agotaron por hoy.",
+  aiComposerCloudAssistTemplatesAlternative:
+    "Si prefieres no enviar texto a la IA en la nube, usa las plantillas sin conexión.",
+  aiComposerWriteWithoutAi: "Escribir sin IA",
   aiComposerSignatureStarters: "Inicios de mensaje distintivos",
   aiComposerSignatureStartersHint:
     "Elige un inicio, sustituye cada indicio entre corchetes (p. ej. [Nombre del destinatario]) por tus palabras y pulsa Aceptar nota.",

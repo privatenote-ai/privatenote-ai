@@ -168,6 +168,22 @@ export const fr: Translations = {
     "Vous avez tout de même accès ici à une expérience d’écriture affinée, avec des amorces adaptées au modèle et à la longueur choisis.",
   aiComposerLocalAiUnavailableBody2:
     "Nous développons une application native pour apporter l’IA locale à davantage d’appareils.",
+  aiComposerNoLocalAiOptions:
+    "Cloud Assist utilise Llama 3.2 3B lorsque l’IA locale privée n’est pas disponible. Pas entièrement privé : votre prompt est envoyé à Cloudflare Workers AI.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+  aiComposerCloudAssistBody:
+    "Utilisez jusqu’à 3 brouillons hébergés lorsque l’IA locale privée n’est pas disponible. Le modèle et la longueur choisis ci-dessus sont envoyés à Cloudflare Workers AI.",
+  aiComposerCloudAssistNotFullyPrivate: "Pas entièrement privé",
+  aiComposerCloudAssistIncluded: "{count} brouillons gratuits",
+  aiComposerCloudAssistRemaining: "{remaining} sur {limit} restants",
+  aiComposerCloudAssistPromptLabel: "Décrire le message",
+  aiComposerCloudAssistPlaceholder:
+    "Écrivez un mot d’anniversaire chaleureux et personnel, sans être trop formel...",
+  aiComposerCloudAssistButton: "Générer un brouillon hébergé",
+  aiComposerCloudAssistNoFree: "Les brouillons hébergés gratuits sont épuisés pour aujourd’hui.",
+  aiComposerCloudAssistTemplatesAlternative:
+    "Si vous préférez ne pas envoyer de texte à l’IA cloud, utilisez les modèles hors ligne.",
+  aiComposerWriteWithoutAi: "Écrire sans IA",
   aiComposerSignatureStarters: "Amorces de message signature",
   aiComposerSignatureStartersHint:
     "Choisissez une amorce, remplacez chaque indice entre crochets (par ex. [Nom du destinataire]) par vos mots, puis touchez Accepter la note.",

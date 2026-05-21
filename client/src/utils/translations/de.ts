@@ -167,6 +167,22 @@ export const de: Translations = {
     "Sie haben hier weiterhin Zugriff auf ein verfeinertes Schreiberlebnis mit kuratierten Textstartern, passend zu Vorlage und Länge.",
   aiComposerLocalAiUnavailableBody2:
     "Wir entwickeln eine native App, um lokale KI auf mehr Geräte zu bringen.",
+  aiComposerNoLocalAiOptions:
+    "Cloud Assist verwendet Llama 3.2 3B, wenn private lokale KI nicht verfügbar ist. Nicht vollständig privat: Ihr Prompt wird an Cloudflare Workers AI gesendet.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+  aiComposerCloudAssistBody:
+    "Verwenden Sie bis zu 3 gehostete Entwürfe, wenn private lokale KI nicht verfügbar ist. Vorlage und Länge oben werden an Cloudflare Workers AI gesendet.",
+  aiComposerCloudAssistNotFullyPrivate: "Nicht vollständig privat",
+  aiComposerCloudAssistIncluded: "{count} kostenlose Entwürfe",
+  aiComposerCloudAssistRemaining: "{remaining} von {limit} übrig",
+  aiComposerCloudAssistPromptLabel: "Nachricht beschreiben",
+  aiComposerCloudAssistPlaceholder:
+    "Schreiben Sie eine warme, persönliche Geburtstagsnotiz, die nicht zu formell klingt...",
+  aiComposerCloudAssistButton: "Gehosteten Entwurf erstellen",
+  aiComposerCloudAssistNoFree: "Die kostenlosen gehosteten Entwürfe sind für heute aufgebraucht.",
+  aiComposerCloudAssistTemplatesAlternative:
+    "Wenn Sie keinen Text an Cloud-KI senden möchten, verwenden Sie die Offline-Vorlagen.",
+  aiComposerWriteWithoutAi: "Ohne KI schreiben",
   aiComposerSignatureStarters: "Signatur-Textstarter",
   aiComposerSignatureStartersHint:
     "Wählen Sie einen Starter, ersetzen Sie jede eckige Platzhalterangabe (z. B. [Empfängername]) durch Ihren Text und tippen Sie dann auf Notiz übernehmen.",

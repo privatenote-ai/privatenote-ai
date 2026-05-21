@@ -169,12 +169,12 @@ export const en: Translations = {
     "You still have access to a refined writing experience here, with curated message starters shaped to the template and length you choose.",
   aiComposerLocalAiUnavailableBody2: "We're building a native app to bring local AI to more devices.",
   aiComposerNoLocalAiOptions:
-    "Use cloud assist (free daily drafts, not fully private — your prompt is sent to Cloudflare AI) or go back to writing without AI.",
-  aiComposerCloudAssistTitle: "Cloud assist — Llama 3.2 3B",
+    "Cloud Assist uses Llama 3.2 3B when private local AI is unavailable. Not fully private: your prompt is sent to Cloudflare Workers AI.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
   aiComposerCloudAssistBody:
-    "Use up to 3 hosted drafts when private local AI is unavailable. Your prompt is sent to Cloudflare Workers AI for this draft only.",
+    "Use up to 3 hosted drafts when private local AI is unavailable. The template and length you choose above are sent to Cloudflare Workers AI.",
   aiComposerCloudAssistNotFullyPrivate:
-    "Not fully private — your prompt is sent to Cloudflare Workers AI.",
+    "Not fully private",
   aiComposerCloudAssistIncluded: "{count} free drafts",
   aiComposerCloudAssistRemaining: "{remaining} of {limit} left",
   aiComposerCloudAssistPromptLabel: "Describe the message",
@@ -574,7 +574,10 @@ export const en: Translations = {
   blogWorkplaceTextsExcerpt: "What the OpenAI text-message controversy teaches about written records, workplace hygiene, and using PrivateNote for sensitive one-time communication.",
   blogDevelopersTitle: "Stop Pasting Passwords into Slack. Use PrivateNote Instead.",
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
+  blogCodexTitle: "Using PrivateNote with OpenAI Codex",
+  blogCodexExcerpt: "One command wires the PrivateNote MCP server into every Codex session. Here's exactly how to set it up, what Codex can do with it, and how to keep secrets out of the agent prompt entirely.",
   blogTagDeveloper: "developer",
+  blogTagMcp: "mcp",
   blogTagIntegration: "integration",
   blogTagPrivacy: "privacy",
   blogTagTools: "tools",
