@@ -13,7 +13,16 @@ const LOCALE_HOME_CODES = ["de", "fr", "es"] as const;
 
 export function absolutePublicUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${PUBLIC_SITE_ORIGIN}${normalized}`;
+  const pathname =
+    normalized === "/" ? "/" : normalized.replace(/\/+$/, "") || "/";
+  return `${PUBLIC_SITE_ORIGIN}${pathname}`;
+}
+
+/** Absolute canonical URL for a prerender route (no trailing slash except site root). */
+export function canonicalAbsoluteUrlForRoute(route: string): string {
+  const r = route.replace(/\/+$/, "") || "/";
+  if (r === "/") return `${PUBLIC_SITE_ORIGIN}/`;
+  return `${PUBLIC_SITE_ORIGIN}${r.startsWith("/") ? r : `/${r}`}`;
 }
 
 /** True for `/`, `/de`, `/de/`, etc. — locale marketing homes only. */

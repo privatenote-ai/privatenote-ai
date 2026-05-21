@@ -3,11 +3,19 @@ import test from "node:test";
 import {
   absolutePublicUrl,
   buildHomeSeoHeadMarkup,
+  canonicalAbsoluteUrlForRoute,
   isLocaleHomeRoute,
 } from "./homeSeoLinks.ts";
 
 test("absolutePublicUrl uses production origin", () => {
   assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr");
+  assert.equal(absolutePublicUrl("/fr/"), "https://privatenote.ai/fr");
+});
+
+test("canonicalAbsoluteUrlForRoute has no trailing slash except root", () => {
+  assert.equal(canonicalAbsoluteUrlForRoute("/"), "https://privatenote.ai/");
+  assert.equal(canonicalAbsoluteUrlForRoute("/terms"), "https://privatenote.ai/terms");
+  assert.equal(canonicalAbsoluteUrlForRoute("/terms/"), "https://privatenote.ai/terms");
 });
 
 test("buildHomeSeoHeadMarkup includes reciprocal hreflang set", () => {

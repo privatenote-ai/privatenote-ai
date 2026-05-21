@@ -10,6 +10,7 @@ import https from "node:https";
 import { chromium } from "playwright";
 import {
   buildHomeSeoHeadMarkup,
+  canonicalAbsoluteUrlForRoute,
   homeLanguageFromRoute,
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
@@ -174,27 +175,6 @@ function postProcessHTML(html, route) {
     /(<meta\s+(?:property="og:image"|name="twitter:image")\s+content=")\/([^"]+)"/gi,
     `$1${PUBLIC_SITE_ORIGIN}/$2"`,
   );
-  out = out.replace(
-    /(<link\s+rel="canonical"\s+href=")\/([^"]+)"/gi,
-    `$1${PUBLIC_SITE_ORIGIN}/$2"`,
-  );
-
-  if (isLocaleHomeRoute(route)) {
-    out = out.replace(
-      /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
-      "",
-    );
-    out = out.replace(
-      /<link\b[^>]*\brel=["']canonical["'][^>]*>/gi,
-      "",
-    );
-    const seoBlock = buildHomeSeoHeadMarkup(homeLanguageFromRoute(route));
-    out = out.replace("</head>", `${seoBlock}\n</head>`);
-  }
-
-  // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
-  out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");
-
   const isPublicSitemapRoute =
     route === "/" ||
     /^\/(de|fr|es)(\/|$)/.test(route) ||
@@ -203,6 +183,28 @@ function postProcessHTML(html, route) {
     ) ||
     /^\/blog\//.test(route) ||
     /^\/security-guides\//.test(route);
+
+  // React may snapshot canonical/og:url with a trailing slash; crawlers need the 200 URL shape.
+  out = out.replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/gi, "");
+  out = out.replace(/<meta\s+property=["']og:url["'][^>]*>/gi, "");
+
+  if (isLocaleHomeRoute(route)) {
+    out = out.replace(
+      /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
+      "",
+    );
+    const seoBlock = buildHomeSeoHeadMarkup(homeLanguageFromRoute(route));
+    out = out.replace("</head>", `${seoBlock}\n</head>`);
+  } else if (isPublicSitemapRoute) {
+    const pageUrl = canonicalAbsoluteUrlForRoute(route);
+    out = out.replace(
+      "</head>",
+      `<link rel="canonical" href="${pageUrl}" />\n<meta property="og:url" content="${pageUrl}" />\n</head>`,
+    );
+  }
+
+  // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
+  out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");
 
   if (isPublicSitemapRoute && !/<meta\s+name=["']robots["']/i.test(out)) {
     out = out.replace("</head>", '<meta name="robots" content="index, follow" /></head>');

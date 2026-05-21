@@ -26,6 +26,7 @@ import {
 } from "@shared/homeSeoLinks";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
+import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
 import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
@@ -144,7 +145,10 @@ function Router() {
     const path = pathWithoutQueryOrHash(location);
     const meta = resolveDocumentMeta(path, t);
     const onLocaleHome = isLocaleHomeRoute(path);
-    setDocumentMeta(meta.title, meta.description, { skipCanonical: onLocaleHome });
+    setDocumentMeta(meta.title, meta.description, {
+      skipCanonical: onLocaleHome,
+      canonicalPath: onLocaleHome ? undefined : normalizeMarketingPathname(path),
+    });
     if (onLocaleHome) {
       setHomeSeoLinks(homeLanguageFromRoute(path) as SupportedLanguage);
     } else {

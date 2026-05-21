@@ -27,6 +27,9 @@ const REQUIRED_FLAT_HTML = [
 ];
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
+/** Canonical must not end with slash except https://privatenote.ai/ */
+const BAD_CANONICAL_TRAILING_SLASH_RE =
+  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/[^"']+\/["']/i;
 
 function exists(p) {
   try {
@@ -84,6 +87,7 @@ function main() {
 
   const sitemapPath = path.join(dir, "sitemap.xml");
   const noindexInSitemap = [];
+  const badCanonical = [];
   if (exists(sitemapPath)) {
     for (const route of parseSitemapRoutes(sitemapPath)) {
       const candidates = htmlFilesForRoute(route, dir);
@@ -95,6 +99,9 @@ function main() {
       const html = fs.readFileSync(htmlPath, "utf8");
       if (NOINDEX_META_RE.test(html)) {
         noindexInSitemap.push(route || "/");
+      }
+      if (BAD_CANONICAL_TRAILING_SLASH_RE.test(html)) {
+        badCanonical.push(route || "/");
       }
     }
   }
@@ -111,6 +118,14 @@ function main() {
     console.error(
       "Prerender output contains noindex on sitemap URLs (remove from sitemap or fix prerender):\n\n" +
         noindexInSitemap.map((r) => `  - ${r}`).join("\n"),
+    );
+    process.exit(1);
+  }
+
+  if (badCanonical.length) {
+    console.error(
+      "Prerender canonical uses trailing-slash URLs (301 targets):\n\n" +
+        badCanonical.map((r) => `  - ${r}`).join("\n"),
     );
     process.exit(1);
   }
