@@ -183,7 +183,7 @@ export const en: Translations = {
   aiComposerCloudAssistNoFree: "Free hosted drafts are used for today.",
   aiComposerCloudAssistTemplatesAlternative:
     "Prefer not to send text to cloud AI? Use the offline templates below instead.",
-  aiComposerWriteWithoutAi: "Write without AI",
+  aiComposerWriteWithoutAi: "Write without AI (fully private)",
   aiComposerSignatureStarters: "Signature message starters",
   aiComposerSignatureStartersHint:
     "Choose a starter, replace every bracketed hint (for example [Recipient name]) with your own words, then tap Accept note.",

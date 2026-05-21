@@ -148,7 +148,7 @@ export function CreateNoteDeferredDialogs({
                 onWriteWithoutAi();
               }}
             >
-              Write without AI
+              Write without AI (fully private)
             </Button>
             <AlertDialogAction
               className="w-full bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 sm:w-auto"

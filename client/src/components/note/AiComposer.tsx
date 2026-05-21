@@ -4,9 +4,11 @@ import {
   ChevronUp,
   ArrowLeft,
   ArrowUp,
+  X,
   Zap,
   ZoomIn,
   FileText,
+  Info,
   Sparkles,
   RefreshCw,
 } from "lucide-react";
@@ -30,6 +32,7 @@ import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 function templateChipClass(active: boolean): string {
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
@@ -148,6 +151,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
+  const [showHostedCloudNotice, setShowHostedCloudNotice] = useState(true);
 
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
@@ -194,14 +198,26 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
             </p>
           </div>
-        ) : showHostedCloudUi ? (
-          <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/40">
-            <p className="text-sm font-semibold text-amber-950 dark:text-amber-50 mb-1">
-              {t.aiComposerCloudAssistTitle}
-            </p>
-            <p className="text-sm leading-relaxed text-amber-900 dark:text-amber-100/90">
-              {t.aiComposerNoLocalAiOptions}
-            </p>
+        ) : showHostedCloudUi && showHostedCloudNotice ? (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 dark:border-red-900/70 dark:bg-red-950/35">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
+                  {t.aiComposerLocalAiUnavailableTitle}
+                </p>
+                <p className="text-sm leading-relaxed text-red-800 dark:text-red-100/90">
+                  {t.aiComposerNoLocalAiOptions}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHostedCloudNotice(false)}
+                aria-label="Dismiss Cloud Assist privacy notice"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-700 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-200 dark:hover:bg-red-900/50"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
           </div>
         ) : null}
         {showLocalOnDeviceUi && isAiModelLoading && aiModelProgress ? (
@@ -415,12 +431,23 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
                     {t.aiComposerCloudAssistNotFullyPrivate}
                   </span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Why Cloud Assist is not fully private"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:bg-gray-950 dark:text-red-300 dark:hover:bg-red-950/40"
+                      >
+                        <Info className="h-4 w-4" aria-hidden />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-72 text-xs leading-relaxed text-gray-700 dark:text-gray-200">
+                      {t.aiComposerCloudAssistBody}
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 dark:border-blue-900/60 dark:bg-blue-950/25">
-                  <p className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-                    {t.aiComposerCloudAssistBody}
-                  </p>
+                <div className="mb-3 flex items-center justify-end gap-3">
                   <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
                     {hostedCloudAiRemaining === null
                       ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
