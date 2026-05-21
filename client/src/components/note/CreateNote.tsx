@@ -134,6 +134,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     detail?: string;
   } | null>(null);
   const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
+  const [preferHostedCloudAfterLocalFailure, setPreferHostedCloudAfterLocalFailure] = useState(false);
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
   const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("auto");
@@ -238,6 +239,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   // ── Local AI helpers ──────────────────────────────────────────────────────
   const offerTemplateFallback = useCallback(() => {
+    setPreferHostedCloudAfterLocalFailure(true);
     setShowTemplateOfferPrompt(true);
     setIsAiMode(true);
     setSelectedTemplateId((prev) => prev ?? "ask-anything");
@@ -280,6 +282,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     try {
       await ensureFreeLocalModel((progress) => setAiModelProgress(progress));
       setAiModelProgress(null);
+      setPreferHostedCloudAfterLocalFailure(false);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
       setAiModelProgress(null);
@@ -1158,6 +1161,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  const handleUseCloudAssist = useCallback(() => {
+    setShowTemplateOfferPrompt(false);
+    setPreferHostedCloudAfterLocalFailure(true);
+    setIsAiMode(true);
+    setShowPrompt(true);
+    aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // ── Success page ──────────────────────────────────────────────────────────
   if (createdNote) {
     return (
@@ -1287,6 +1298,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
                 onUseFallbackTemplate={handleUseFallbackTemplate}
+                preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
                 />
               </Suspense>
             </div>
@@ -1448,6 +1460,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               void startFreeModelDownload();
             }}
             onUseTemplates={handleUseTemplates}
+            onUseCloudAssist={handleUseCloudAssist}
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}

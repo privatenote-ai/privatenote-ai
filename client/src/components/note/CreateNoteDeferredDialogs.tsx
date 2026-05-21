@@ -36,6 +36,7 @@ type CreateNoteDeferredDialogsProps = {
   onRetryFreeModelDownloadAfterReset: () => void;
   onStartFreeModelDownload: () => void;
   onUseTemplates: () => void;
+  onUseCloudAssist: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
   setShowTemplateOfferPrompt: Dispatch<SetStateAction<boolean>>;
   showTemplateOfferPrompt: boolean;
@@ -48,6 +49,7 @@ export function CreateNoteDeferredDialogs({
   onRetryFreeModelDownloadAfterReset,
   onStartFreeModelDownload,
   onUseTemplates,
+  onUseCloudAssist,
   setCellularPreloadConfirmOpen,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
@@ -132,9 +134,9 @@ export function CreateNoteDeferredDialogs({
           <AlertDialogHeader>
             <AlertDialogTitle>Continue with built-in templates</AlertDialogTitle>
             <AlertDialogDescription>
-              On-device private AI is not running on this device right now. You can keep writing
-              using the curated starters, or clear any partial model download and try loading private
-              AI again.
+              On-device private AI is not running on this device right now. You can use cloud assist
+              (free daily drafts), keep writing with curated starters, or clear any partial model
+              download and try loading private AI again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
@@ -148,6 +150,9 @@ export function CreateNoteDeferredDialogs({
               }}
             >
               Clear download and retry
+            </Button>
+            <Button type="button" className="w-full sm:w-auto" onClick={onUseCloudAssist}>
+              Use cloud assist
             </Button>
             <AlertDialogAction className="w-full sm:w-auto" onClick={onUseTemplates}>
               Use templates

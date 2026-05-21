@@ -135,6 +135,8 @@ export type AiComposerProps = {
   aiDraftAccepted: boolean;
   onAcceptDraft: () => void;
   onUseFallbackTemplate: (text: string) => void;
+  /** After a failed on-device load/generate, show hosted cloud UI even when WebGPU is present. */
+  preferHostedCloudAfterLocalFailure?: boolean;
 };
 
 export const AiComposer: React.FC<AiComposerProps> = ({
@@ -167,6 +169,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   aiDraftAccepted,
   onAcceptDraft,
   onUseFallbackTemplate,
+  preferHostedCloudAfterLocalFailure = false,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
@@ -176,6 +179,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   const [fallbackSensitivity, setFallbackSensitivity] = useState("");
   const skipPromptGlowRef = useRef(true);
   const localAiSupported = isLocalAiSupported();
+  const showLocalOnDeviceUi = localAiSupported && !preferHostedCloudAfterLocalFailure;
+  const showHostedCloudUi = !localAiSupported || preferHostedCloudAfterLocalFailure;
   const { t } = useLanguage();
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
@@ -184,9 +189,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     ? aiGenerationStatusText?.trim() || t.aiComposerGenerating
     : "";
   const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
-  const displayedTemplates = localAiSupported
-    ? promptTemplates
-    : promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id));
+  const displayedTemplates = showHostedCloudUi
+    ? promptTemplates.filter((template) => isLocalFallbackTemplateId(template.id))
+    : promptTemplates;
   const fallbackOptionsAll = useMemo(
     () => getLocalFallbackTemplateOptions(selectedTemplateId, selectedSentenceLength, language),
     [selectedTemplateId, selectedSentenceLength, language],
@@ -244,12 +249,20 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   return (
     <div className="space-y-8 mb-4">
       <div>
-        <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
-          <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-            <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
-          </p>
-        </div>
-        {localAiSupported && isAiModelLoading && aiModelProgress ? (
+        {showLocalOnDeviceUi ? (
+          <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
+            </p>
+          </div>
+        ) : preferHostedCloudAfterLocalFailure ? (
+          <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/40">
+            <p className="text-sm leading-relaxed text-amber-950 dark:text-amber-50">
+              <strong>{t.aiComposerLocalAiUnavailableTitle}</strong> {t.aiComposerLocalAiUnavailableBody1}
+            </p>
+          </div>
+        ) : null}
+        {showLocalOnDeviceUi && isAiModelLoading && aiModelProgress ? (
           <div className="mb-4 space-y-3">
             <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
               <div className="flex items-center justify-between">
@@ -352,7 +365,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
         {showPrompt ? (
           <div className="space-y-4 pt-2">
-            {localAiSupported ? (
+            {showLocalOnDeviceUi ? (
               <div>
                 <StepRow step={3} label={t.aiComposerWriteWithAi} />
                 <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
@@ -616,7 +629,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               </div>
             )}
 
-            {localAiSupported &&
+            {showLocalOnDeviceUi &&
               activePromptTemplate?.starterExamples &&
               activePromptTemplate.starterExamples.length > 0 && (
                 <div>
@@ -639,7 +652,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 </div>
               )}
 
-            {!localAiSupported && getLocalAiSupportHint() && (
+            {showHostedCloudUi && !preferHostedCloudAfterLocalFailure && getLocalAiSupportHint() && (
               <p className="text-xs text-amber-900 dark:text-amber-100/95 rounded-lg border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/90 dark:bg-amber-950/40 px-3 py-2">
                 {getLocalAiSupportHint()}
               </p>
@@ -759,7 +772,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
             {!aiDraftAccepted ? (
               <div className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                {localAiSupported ? (
+                {showLocalOnDeviceUi ? (
                   <div className="flex flex-wrap items-center justify-start gap-2">
                     <button
                       type="button"
