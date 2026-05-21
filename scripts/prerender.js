@@ -12,7 +12,9 @@ import {
   buildHomeSeoHeadMarkup,
   homeLanguageFromRoute,
   isLocaleHomeRoute,
+  PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
+import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const BUILD_DIR = path.resolve("dist");
@@ -25,71 +27,9 @@ const PREVIEW_HOST = PREVIEW_ORIGIN.hostname;
 const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 
 // -------------------------------
-// Fallback routes (public-only)
+// Fallback routes (public-only; keep in sync with shared/publicMarketingPaths.ts)
 // -------------------------------
-const FALLBACK_ROUTES = [
-  "/",
-  "/de",
-  "/fr",
-  "/es",
-  "/de/password-generator",
-  "/de/privacy-tools",
-  "/de/security-resources",
-  "/de/how-it-works",
-  "/de/about",
-  "/de/contact",
-  "/de/blog",
-  "/de/blog/privacy-tools",
-  "/de/blog/myth-good-enough-security",
-  "/de/blog/how-we-generate-passwords",
-  "/de/blog/workplace-texts-private-note",
-  "/de/privacy",
-  "/de/terms",
-  "/fr/password-generator",
-  "/fr/privacy-tools",
-  "/fr/security-resources",
-  "/fr/how-it-works",
-  "/fr/about",
-  "/fr/contact",
-  "/fr/blog",
-  "/fr/blog/privacy-tools",
-  "/fr/blog/myth-good-enough-security",
-  "/fr/blog/how-we-generate-passwords",
-  "/fr/blog/workplace-texts-private-note",
-  "/fr/privacy",
-  "/fr/terms",
-  "/es/password-generator",
-  "/es/privacy-tools",
-  "/es/security-resources",
-  "/es/how-it-works",
-  "/es/about",
-  "/es/contact",
-  "/es/blog",
-  "/es/blog/privacy-tools",
-  "/es/blog/myth-good-enough-security",
-  "/es/blog/how-we-generate-passwords",
-  "/es/blog/workplace-texts-private-note",
-  "/es/privacy",
-  "/es/terms",
-  "/privacy",
-  "/terms",
-  "/how-it-works",
-  "/about",
-  "/contact",
-  "/password-generator",
-  "/privacy-tools",
-  "/security-resources",
-  "/security-guides/vpn",
-  "/security-guides/password",
-  "/security-guides/messenger",
-  "/security-guides/email",
-  "/security-guides/browser",
-  "/blog",
-  "/blog/privacy-tools",
-  "/blog/myth-good-enough-security",
-  "/blog/how-we-generate-passwords",
-  "/blog/workplace-texts-private-note",
-];
+const FALLBACK_ROUTES = [...PUBLIC_MARKETING_PATHS];
 
 // -------------------------------
 // Preview server helpers
@@ -229,6 +169,16 @@ function postProcessHTML(html, route) {
   // Rewrite preview absolute URLs -> root-relative (except locale-home SEO links; fixed below).
   out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
 
+  // Crawlers (X, LinkedIn) require absolute HTTPS image URLs in prerendered HTML.
+  out = out.replace(
+    /(<meta\s+(?:property="og:image"|name="twitter:image")\s+content=")\/([^"]+)"/gi,
+    `$1${PUBLIC_SITE_ORIGIN}/$2"`,
+  );
+  out = out.replace(
+    /(<link\s+rel="canonical"\s+href=")\/([^"]+)"/gi,
+    `$1${PUBLIC_SITE_ORIGIN}/$2"`,
+  );
+
   if (isLocaleHomeRoute(route)) {
     out = out.replace(
       /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
@@ -248,7 +198,7 @@ function postProcessHTML(html, route) {
   const isPublicSitemapRoute =
     route === "/" ||
     /^\/(de|fr|es)(\/|$)/.test(route) ||
-    /^\/(about|blog|contact|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
+    /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
       route,
     ) ||
     /^\/blog\//.test(route) ||

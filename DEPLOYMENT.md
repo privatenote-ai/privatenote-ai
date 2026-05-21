@@ -63,8 +63,8 @@ After deployment, note your Workers URL (e.g., `https://privatenote-api.your-sub
 3. **Configure Build Settings**
    - **Project name**: `privatenote-frontend` (or your preferred name)
    - **Production branch**: `main` (or `master`)
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
+   - **Build command**: `npm run build:prerender` (not `npm run build` alone — marketing URLs need prerendered HTML)
+   - **Build output directory**: `prerender`
    - **Root directory**: `/` (leave empty or set to root)
 
 4. **Environment Variables** (Required if Pages and Workers are on different domains)

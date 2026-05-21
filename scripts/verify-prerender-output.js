@@ -10,6 +10,7 @@ const REQUIRED_FLAT_HTML = [
   "blog.html",
   "contact.html",
   "how-it-works.html",
+  "developers.html",
   "password-generator.html",
   "privacy.html",
   "privacy-tools.html",

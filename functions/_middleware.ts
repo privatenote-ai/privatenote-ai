@@ -1,10 +1,11 @@
 /**
- * When static hosting misses a prerender path, try flat `.html` or `path/index.html`
- * before returning 404.html (fixes crawler 404s if only directory indexes were deployed).
+ * When static hosting misses a prerender path, try flat `.html` or `path/index.html`,
+ * then the SPA shell for known marketing routes, before returning 404.html.
  */
-type MiddlewareEnv = {
-  ASSETS: { fetch: (request: Request | string) => Promise<Response> };
-};
+import { isPublicMarketingPath } from "../shared/publicMarketingPaths";
+import { serveSpaShell, type SpaShellEnv } from "./_shared/serveSpaShell";
+
+type MiddlewareEnv = SpaShellEnv;
 
 export async function onRequest(context: {
   request: Request;
@@ -67,6 +68,13 @@ export async function onRequest(context: {
     );
     if (assetResponse.status === 200) {
       return assetResponse;
+    }
+  }
+
+  if (isPublicMarketingPath(pathname)) {
+    const shell = await serveSpaShell({ request, env, next: context.next });
+    if (shell.status === 200) {
+      return shell;
     }
   }
 
