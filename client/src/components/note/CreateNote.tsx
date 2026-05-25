@@ -713,7 +713,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         );
         console.error("[CreateNote] Full error:", error);
       } else {
-        console.error("[CreateNote] Failed to create note");
+        console.error(
+          "[CreateNote] Failed to create note",
+          error instanceof Error ? error.message : String(error),
+        );
       }
 
       if (error instanceof ApiRequestError && error.status === 403) {

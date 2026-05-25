@@ -52,41 +52,6 @@ const proxyTarget =
     ? configuredApiUrl
     : `http://localhost:${localApiPort}`;
 
-/**
- * argon2-browser uses `require("../dist/argon2.wasm")` when `require` exists. Vite's CommonJS
- * resolver then tries to load .wasm as ESM WebAssembly (unsupported). The library expects a
- * base64 string and runs `decodeWasmBinary` → atob. We satisfy that with a virtual module.
- */
-function argon2BrowserWasmPlugin(): Plugin {
-  const virtualId = "\0argon2-browser:wasm-base64";
-  const wasmAbs = path.resolve(
-    __dirname,
-    "node_modules/argon2-browser/dist/argon2.wasm",
-  );
-
-  return {
-    name: "argon2-browser-wasm-base64",
-    enforce: "pre",
-    resolveId(id, importer) {
-      if (id === virtualId) return virtualId;
-      const normId = id.replace(/\\/g, "/");
-      const normImporter = importer?.replace(/\\/g, "/") ?? "";
-      if (
-        normId.endsWith("argon2.wasm") &&
-        (normId.includes("argon2-browser") ||
-          normImporter.includes("argon2-browser/lib/argon2"))
-      ) {
-        return virtualId;
-      }
-      return null;
-    },
-    load(id) {
-      if (id !== virtualId) return null;
-      const buf = fs.readFileSync(wasmAbs);
-      return `export default ${JSON.stringify(buf.toString("base64"))};`;
-    },
-  };
-}
 
 /** Set VITE_DEV_HTTP=1 to use plain http:// (e.g. quick debugging). Default: HTTPS for Turnstile / secure contexts. */
 const useDevHttps = process.env.VITE_DEV_HTTP !== "1";
@@ -144,7 +109,6 @@ const pageContentSecurityPolicy =
 export default defineConfig({
   plugins: [
     htmlFontPreloadPlugin(),
-    argon2BrowserWasmPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
       : []),
