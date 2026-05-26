@@ -595,7 +595,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               {t.noPasswordCannotDecrypt}
             </p>
 
-            <div className="mt-8 sm:mt-10 max-w-2xl mx-auto">
+            <div className="mt-8 sm:mt-10 max-w-2xl mx-auto text-left">
               <SecurityRecommendations type="compact" context="general" />
             </div>
           </div>

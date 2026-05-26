@@ -18,13 +18,13 @@ const PREFILL_HASH_PREFIX = "#text=";
 /**
  * Module-level cache of the raw hash string.
  *
- * React StrictMode double-invokes component functions and useState initializers.
- * Without a cache, the first invocation deletes the sessionStorage entry, and
- * the second invocation sees nothing — returning null and losing the prefill.
+ * React can invoke component functions and useState initializers for renders
+ * that do not commit (StrictMode, Suspense/lazy loading). Without a cache, an
+ * early render can consume the sessionStorage entry and a later committed
+ * render sees nothing — returning null and losing the prefill.
  *
- * The cache stores the raw hash string from the first read. A setTimeout(0)
- * clears it after the synchronous render cycle so subsequent mounts (e.g. the
- * user navigates away and back to /) start fresh without stale data.
+ * The cache stores the raw hash string from the first read. It is cleared only
+ * after the hook commits, so interrupted renders do not lose the prefill.
  *
  * `undefined`  = not yet read this page load
  * `""`         = read and found nothing (or already expired after first mount)
@@ -32,7 +32,7 @@ const PREFILL_HASH_PREFIX = "#text=";
  */
 let _prefillHashCache: string | undefined = undefined;
 
-function getAndClearPrefillHash(): string {
+function getPrefillHash(): string {
   // Cache hit — StrictMode second invocation (or any re-render) returns same value.
   if (_prefillHashCache !== undefined) {
     return _prefillHashCache;
@@ -44,7 +44,6 @@ function getAndClearPrefillHash(): string {
   try {
     const saved = sessionStorage.getItem(PREFILL_SS_KEY);
     if (saved) {
-      sessionStorage.removeItem(PREFILL_SS_KEY);
       hash = saved;
     }
   } catch (_) {
@@ -59,14 +58,16 @@ function getAndClearPrefillHash(): string {
 
   _prefillHashCache = hash;
 
-  // Clear the cache after the current synchronous tick so that:
-  // - StrictMode's second synchronous invocation still gets the cached value.
-  // - A later remount (user navigates away and back) starts fresh.
-  setTimeout(() => {
-    _prefillHashCache = "";
-  }, 0);
-
   return hash;
+}
+
+function clearPrefillHashAfterCommit() {
+  try {
+    sessionStorage.removeItem(PREFILL_SS_KEY);
+  } catch (_) {
+    // sessionStorage unavailable — nothing to clear.
+  }
+  _prefillHashCache = "";
 }
 
 /**
@@ -96,14 +97,15 @@ export interface PrefillState {
 
 /**
  * Reads the `#text=<secret>&from=<name>` prefill written by prefill-guard.js
- * into sessionStorage, clears it immediately, and returns structured prefill
+ * into sessionStorage, clears it after the hook commits, and returns structured prefill
  * state.
  *
  * Security properties:
  * - prefill-guard.js (a synchronous <head> script) moves the fragment to
  *   sessionStorage and wipes the URL BEFORE Turnstile or any other third-party
  *   script executes.
- * - sessionStorage is deleted on the very first read here.
+ * - sessionStorage is deleted after the committed mount, avoiding loss during
+ *   interrupted renders.
  * - The `referrer` value is sanitized to safe display characters only.
  * - We never log the decoded secret value.
  * - The caller must not forward prefillText to analytics or any API until the
@@ -118,7 +120,7 @@ export function usePrefillFromFragment(): PrefillState {
       return { prefillText: null, referrer: null };
     }
 
-    const hash = getAndClearPrefillHash();
+    const hash = getPrefillHash();
 
     if (!hash.startsWith(PREFILL_HASH_PREFIX)) {
       return { prefillText: null, referrer: null };
@@ -162,8 +164,11 @@ export function usePrefillFromFragment(): PrefillState {
   // Fallback URL cleanup: if the guard script didn't run and the fragment is
   // still in the address bar, clear it after mount.
   useEffect(() => {
-    if (prefillText !== null && window.location.hash) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (prefillText !== null) {
+      clearPrefillHashAfterCommit();
+      if (window.location.hash) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
     }
   }, [prefillText]);
 
