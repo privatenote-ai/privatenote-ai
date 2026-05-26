@@ -183,6 +183,30 @@ const PasswordGenerator: React.FC = () => {
     }
   };
 
+  const copyTextToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch {
+        // Fall through to the textarea fallback for mobile browsers that reject Clipboard API writes.
+      }
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "0";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    if (!copied) throw new Error("Clipboard copy failed");
+  };
+
   // Share password as private note
   const sharePasswordAsNote = async () => {
     if (!password) {
@@ -286,13 +310,22 @@ const PasswordGenerator: React.FC = () => {
     });
   }, [showSuccessQr]);
 
-  const copySuccessLink = () => {
+  const copySuccessLink = async () => {
     if (!sharedNoteUrl) return;
-    navigator.clipboard.writeText(sharedNoteUrl);
-    setSuccessLinkCopied(true);
-    setCopied(true);
-    toast({ title: t.copied, description: t.secretLinkCopied });
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await copyTextToClipboard(sharedNoteUrl);
+      setSuccessLinkCopied(true);
+      setCopied(true);
+      toast({ title: t.copied, description: t.secretLinkCopied });
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying shared password link:", error);
+      toast({
+        title: t.error,
+        description: t.copyFailed,
+        variant: "destructive",
+      });
+    }
   };
 
   const shareLink = async () => {
@@ -305,7 +338,7 @@ const PasswordGenerator: React.FC = () => {
         if (err instanceof DOMException && err.name === "AbortError") return;
       }
     }
-    copySuccessLink();
+    await copySuccessLink();
   };
 
   const shareQrCode = async () => {
@@ -492,21 +525,21 @@ const PasswordGenerator: React.FC = () => {
                     </div>
 
                     <div className="mt-8 sm:mt-10 pt-2 pb-5">
-                      <div className="grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-2 sm:gap-3">
+                      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[auto,minmax(0,1fr),auto] sm:gap-3">
                         <button
                           type="button"
                           onClick={() => setShowSuccessQr((open) => !open)}
                           aria-expanded={showSuccessQr}
                           aria-label={showSuccessQr ? t.hideQrCode : t.shareViaQrCode}
-                          className="inline-flex shrink-0 items-center justify-center whitespace-nowrap py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
+                          className="order-2 inline-flex w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:order-none sm:w-auto sm:px-6"
                         >
                           <QrCode className="h-4 w-4 mr-1.5 shrink-0 text-primary" aria-hidden />
                           {t.shareViaQrCode}
                         </button>
                         <button
                           type="button"
-                          onClick={copySuccessLink}
-                          className={`inline-flex w-full items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${successLinkCopied
+                          onClick={() => void copySuccessLink()}
+                          className={`order-1 col-span-2 inline-flex w-full min-w-0 items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:order-none sm:col-span-1 ${successLinkCopied
                             ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
                             : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
                             }`}
@@ -531,7 +564,7 @@ const PasswordGenerator: React.FC = () => {
                             setSharedNoteUrl(null);
                             generatePassword();
                           }}
-                          className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
+                          className="order-3 inline-flex w-full min-w-0 items-center justify-center whitespace-nowrap rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:order-none sm:w-auto sm:px-6"
                         >
                           <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
                           {t.newPassword}
@@ -767,7 +800,7 @@ const PasswordGenerator: React.FC = () => {
                       aria-label={showPassword ? t.hidePassword : t.showPassword}
                       title={showPassword ? t.hidePassword : t.showPassword}
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </button>
                     <p
                       className={`flex-1 min-w-0 text-center font-mono text-[0.8125rem] leading-tight text-gray-900 dark:text-white break-all select-all py-0.5 ${showPassword ? 'tracking-[0.1em]' : 'tracking-normal'}`}

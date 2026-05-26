@@ -419,7 +419,7 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "nav" && (
       <div
         id="mobile-nav-sheet"
-        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen max-w-full touch-pan-y flex-col overflow-x-hidden bg-background xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.toggleNavigation}
@@ -463,7 +463,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label="Mobile">
+        <nav className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]" aria-label="Mobile">
           <div className="py-2">
             <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
               <Lock className="h-4 w-4 shrink-0 opacity-80" />
@@ -528,7 +528,7 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "account" && user?.email ? (
       <div
         id="mobile-account-sheet"
-        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen max-w-full touch-pan-y flex-col overflow-x-hidden bg-background xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.account}
@@ -567,7 +567,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label={t.account}>
+        <nav className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]" aria-label={t.account}>
           <div className="py-2">
             <div className="border-b border-gray-100 px-5 pb-4 pt-1 dark:border-gray-800">
               <p className="text-xs text-gray-500 dark:text-gray-400">{t.signedInAs}</p>

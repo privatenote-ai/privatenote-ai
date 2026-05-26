@@ -630,7 +630,7 @@ export const en: Translations = {
     "The check uses Have I Been Pwned with k-anonymity. Your browser sends only a hash prefix, never the full password.",
   homeFaq_encryptionKey_question: "Is the encryption key stored on your server?",
   homeFaq_encryptionKey_answer:
-    "No. The decryption key lives after the # fragment in the link. Browsers never send that fragment to servers.",
+    "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key lives after the # fragment in the link, and browsers do not send that fragment to servers.",
   homeFaq_metadata_question: "What metadata do you store?",
   homeFaq_metadata_answer:
     "We store only what is needed to run the service securely: encrypted note payloads, expiration settings, and limited operational logs for reliability and abuse prevention.",

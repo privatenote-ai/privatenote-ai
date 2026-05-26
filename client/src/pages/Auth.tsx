@@ -25,6 +25,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
+import { ensureTurnstileScript } from "@/lib/turnstileScript";
 
 const PASSKEY_FAIL_GENERIC =
   "Sign-in could not be completed. Try again or use a different sign-in method.";
@@ -281,8 +282,6 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
 
     setTurnstileMounted(false);
 
-    let intervalId: number | null = null;
-
     const initTurnstile = () => {
       if (!window.turnstile) {
         return;
@@ -316,24 +315,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       turnstileWidgetIdRef.current = widgetId;
     };
 
-    if (!window.turnstile) {
-      intervalId = window.setInterval(() => {
-        if (window.turnstile) {
-          if (intervalId !== null) {
-            window.clearInterval(intervalId);
-          }
-          initTurnstile();
-        }
-      }, 200);
-    } else {
-      initTurnstile();
-    }
+    void ensureTurnstileScript()
+      .then(() => {
+        initTurnstile();
+      })
+      .catch(() => {
+        setTurnstileError("Human verification failed to load. Please try again.");
+        setTurnstileMounted(false);
+      });
 
     return () => {
       setTurnstileMounted(false);
-      if (intervalId !== null) {
-        window.clearInterval(intervalId);
-      }
       if (turnstileWidgetIdRef.current !== null) {
         const id = turnstileWidgetIdRef.current;
         turnstileWidgetIdRef.current = null;

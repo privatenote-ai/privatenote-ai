@@ -37,6 +37,12 @@ export const Footer: React.FC = () => {
       <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-white/80">
+            <Link
+              href={lp("/")}
+              className="hover:text-white transition-colors"
+            >
+              {t.writeNote}
+            </Link>
             <Link 
               href={lp("/how-it-works")} 
               className="hover:text-white transition-colors"
