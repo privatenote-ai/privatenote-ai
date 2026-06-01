@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
 import { getSessionDevice } from "./getSessionDevice";
 import type { SessionInfo } from "./types";
 
@@ -20,15 +21,16 @@ export function DevicesSection({
   onRevokeAll,
   onRevokeSession,
 }: Props) {
+  const { t } = useLanguage();
   const currentSessionCount = sessions.filter((session) => session.current).length;
 
   return (
     <section className="mb-12 mt-14">
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Sessions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t.authSecSessionsTitle || "Sessions"}</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {currentSessionCount > 0 ? "You are signed in on this device." : "Review your active sessions."}
+            {currentSessionCount > 0 ? (t.authSecSignedInOnDevice || "You are signed in on this device.") : (t.authSecReviewSessions || "Review your active sessions.")}
           </p>
         </div>
         <Button
@@ -40,10 +42,10 @@ export function DevicesSection({
           {revokingAllSessions ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Logging out…
+              {t.authSecLoggingOut || "Logging out…"}
             </>
           ) : (
-            "Log out of all other devices"
+            t.authSecLogOutAllDevices || "Log out of all other devices"
           )}
         </Button>
       </div>
@@ -53,16 +55,16 @@ export function DevicesSection({
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
               <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Session</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Last active</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">Action</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{t.authSecSessionColumn || "Session"}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{t.authSecLastActiveColumn || "Last active"}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">{t.authSecActionColumn || "Action"}</th>
               </tr>
             </thead>
             <tbody>
               {sessions.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-8 px-4 text-center text-sm text-gray-600 dark:text-gray-400">
-                    No active sessions found.
+                    {t.authSecNoActiveSessions || "No active sessions found."}
                   </td>
                 </tr>
               ) : (
@@ -83,13 +85,13 @@ export function DevicesSection({
                           <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                           <span className="text-sm text-gray-900 dark:text-white">{device.label}</span>
                           {isCurrent && (
-                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">This Device</span>
+                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{t.authSecThisDevice || "This Device"}</span>
                           )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {lastActive ? (isCurrent ? "Now" : dateFormatter.format(new Date(lastActive))) : "Unknown"}
+                          {lastActive ? (isCurrent ? (t.authSecNow || "Now") : dateFormatter.format(new Date(lastActive))) : (t.authSecUnknown || "Unknown")}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -103,10 +105,10 @@ export function DevicesSection({
                             {rowBusy ? (
                               <>
                                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                Logging out
+                                {t.authSecLoggingOutRow || "Logging out"}
                               </>
                             ) : (
-                              "Log out"
+                              t.authSecLogOut || "Log out"
                             )}
                           </Button>
                         )}

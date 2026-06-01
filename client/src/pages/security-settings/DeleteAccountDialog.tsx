@@ -1,4 +1,5 @@
 import { Copy } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ export function DeleteAccountDialog({
   onClose,
   onConfirmDelete,
 }: Props) {
+  const { t } = useLanguage();
   const handleOpenChange = (next: boolean) => {
     if (deletingAccount) return;
     if (!next) onClose();
@@ -86,17 +88,17 @@ export function DeleteAccountDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete account</DialogTitle>
+          <DialogTitle>{t.authSecDeleteTitle || "Delete account"}</DialogTitle>
           <DialogDescription>
-            Verify it&apos;s you to continue. Type your email address as a final confirmation.
+            {t.authSecDeleteDesc || "Verify it's you to continue. Type your email address as a final confirmation."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           {optionsLoading && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">Loading verification options…</p>
+<p className="text-sm text-gray-600 dark:text-gray-400">{t.authSecLoadingVerificationOptions || "Loading verification options…"}</p>
           )}
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your email</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{t.authSecYourEmail || "Your email"}</p>
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-mono text-gray-700 dark:text-gray-300">{email}</p>
@@ -112,28 +114,27 @@ export function DeleteAccountDialog({
             </div>
             <Input
               type="email"
-              placeholder="Enter your email"
+              placeholder={t.authSecEnterYourEmail || "Enter your email"}
               value={deleteEmailInput}
               onChange={(e) => onDeleteEmailInputChange(e.target.value)}
               disabled={deletingAccount}
             />
             {hasPasskey && hasTotp && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Preferred: passkey on this device. You can enter your 6-digit authenticator code instead.
+  {t.authSecPasskeyAndTotpHint || "Preferred: passkey on this device. You can enter your 6-digit authenticator code instead."}
               </p>
             )}
             {hasPasskey && !hasTotp && (
               <>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Preferred: verify with a passkey on this device. Passkey verification deletes your account
-                  immediately.
+    {t.authSecPasskeyOnlyHint || "Preferred: verify with a passkey on this device. Passkey verification deletes your account immediately."}
                 </p>
                 <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-2 mt-2">
-                  If you can&apos;t use a passkey on this device, try{" "}
+                  {t.authSecCantUsePasskeyHint || "If you can't use a passkey on this device, try"}{" "}
                   <a href="/auth/recovery" className="underline font-medium">
-                    Recovery sign-in
+                    {t.authSecRecoverySignIn || "Recovery sign-in"}
                   </a>{" "}
-                  and then come back here.
+                  {t.authSecAndThenReturn || "and then come back here."}
                 </p>
                 {hasFallbackUnlockAction && (
                   <Button
@@ -143,7 +144,7 @@ export function DeleteAccountDialog({
                     onClick={onUnlockFallback}
                     disabled={deletingAccount || unlockingFallback || optionsLoading}
                   >
-                    {unlockingFallback ? "Checking…" : "I don't have access to this device"}
+                    {unlockingFallback ? (t.authSecChecking || "Checking…") : (t.authSecNoDeviceAccess || "I don't have access to this device")}
                   </Button>
                 )}
               </>
@@ -152,14 +153,14 @@ export function DeleteAccountDialog({
               <div className="mt-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   {hasPasskey
-                    ? "6-digit authenticator code (optional if you use a passkey)"
-                    : "6-digit authenticator code"}
+                    ? (t.authSecTotpOptionalLabel || "6-digit authenticator code (optional if you use a passkey)")
+                    : (t.authSecTotpRequiredLabel || "6-digit authenticator code")}
                 </p>
                 <Input
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  placeholder="6-digit authenticator code"
+                  placeholder={t.authSecTotpCodePlaceholder || "6-digit authenticator code"}
                   value={totpCode}
                   onChange={(e) => onTotpCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   disabled={deletingAccount}
@@ -170,8 +171,8 @@ export function DeleteAccountDialog({
               <div className="mt-3 space-y-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {emailIsFallback
-                    ? "If you can't complete passkey verification, use email as a backup method. This will schedule deletion after 48 hours (not immediate)."
-                    : "We'll send a single-use confirmation code to your account email. Enter it below to prove you can read that inbox."}
+                    ? (t.authSecEmailFallbackHint || "If you can't complete passkey verification, use email as a backup method. This will schedule deletion after 48 hours (not immediate).")
+                    : (t.authSecEmailOnlyDeleteHint || "We'll send a single-use confirmation code to your account email. Enter it below to prove you can read that inbox.")}
                 </p>
                 <Button
                   type="button"
@@ -180,18 +181,18 @@ export function DeleteAccountDialog({
                   onClick={onSendDeleteEmailCode}
                   disabled={deletingAccount || sendingDeleteEmailCode || optionsLoading}
                 >
-                  {sendingDeleteEmailCode ? "Sending…" : "Send confirmation code to my email"}
+                  {sendingDeleteEmailCode ? (t.authSecSending || "Sending…") : (t.authSecSendConfirmationCode || "Send confirmation code to my email")}
                 </Button>
                 {deleteEmailCodeSent && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Check your inbox for the code.</p>
+<p className="text-xs text-gray-500 dark:text-gray-400">{t.authSecCheckInboxForCode || "Check your inbox for the code."}</p>
                 )}
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">6-digit email code</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{t.authSecSixDigitEmailCode || "6-digit email code"}</p>
                   <Input
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     maxLength={6}
-                    placeholder="Code from email"
+                    placeholder={t.authSecCodeFromEmail || "Code from email"}
                     value={deleteEmailVerificationCode}
                     onChange={(e) =>
                       onDeleteEmailVerificationCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))
@@ -203,18 +204,17 @@ export function DeleteAccountDialog({
             )}
             {noVerifiedChannel && (
               <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:text-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md p-3 mt-3">
-                Account deletion isn&apos;t available until you verify your email, add a passkey, or enable
-                2-step verification in Security settings.
+                {t.authSecNoVerifiedChannel || "Account deletion isn't available until you verify your email, add a passkey, or enable 2-step verification in Security settings."}
               </p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={deletingAccount}>
-            Cancel
+            {t.authSecCancel || "Cancel"}
           </Button>
           <Button variant="destructive" onClick={onConfirmDelete} disabled={confirmDisabled}>
-            {deletingAccount ? "Deleting…" : "Delete account"}
+            {deletingAccount ? (t.authSecDeleting || "Deleting…") : (t.authSecDeleteAccountBtn || "Delete account")}
           </Button>
         </DialogFooter>
       </DialogContent>

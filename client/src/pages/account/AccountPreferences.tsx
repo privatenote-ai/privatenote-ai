@@ -27,10 +27,10 @@ function describeApiPreferenceError(error: unknown): string {
 
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
-const THEMES: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
+const THEMES: { value: ThemePreference; labelKey: string; icon: typeof Sun }[] = [
+  { value: "light", labelKey: "authThemeLight", icon: Sun },
+  { value: "dark", labelKey: "authThemeDark", icon: Moon },
+  { value: "system", labelKey: "authThemeSystem", icon: Monitor },
 ];
 
 function ThemePicker({
@@ -40,9 +40,15 @@ function ThemePicker({
   value: ThemePreference;
   onChange: (v: ThemePreference) => void;
 }) {
+  const { t } = useLanguage();
+  const themeLabels: Record<string, string> = {
+    authThemeLight: t.authThemeLight || "Light",
+    authThemeDark: t.authThemeDark || "Dark",
+    authThemeSystem: t.authThemeSystem || "System",
+  };
   return (
-    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" role="group" aria-label="Choose theme">
-      {THEMES.map(({ value: v, label, icon: Icon }) => (
+    <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" role="group" aria-label={t.authTheme || "Choose theme"}>
+      {THEMES.map(({ value: v, labelKey, icon: Icon }) => (
         <button
           key={v}
           type="button"
@@ -57,7 +63,7 @@ function ThemePicker({
             border-r border-gray-200 dark:border-gray-700 last:border-0`}
         >
           <Icon className="h-4 w-4 shrink-0" aria-hidden />
-          {label}
+          {themeLabels[labelKey]}
         </button>
       ))}
     </div>
@@ -69,7 +75,7 @@ function ThemePicker({
 export default function AccountPreferences() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   /** Avoid stale closure inside loadSummary — must NOT refetch whenever `language` changes or we race the PATCH GET/overwrite UX. */
   const languageRef = useRef(language);
   useEffect(() => {
@@ -148,7 +154,7 @@ export default function AccountPreferences() {
       setPreferredLanguage(previousLanguage);
       setLanguage(previousLanguage);
       toast({
-        title: "Could not save language",
+        title: t.authPrefsCouldNotSaveLanguage || "Could not save language",
         description: describeApiPreferenceError(e),
         variant: "destructive",
       });
@@ -176,16 +182,16 @@ export default function AccountPreferences() {
       <AccountSettingsShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Preferences</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t.authNavPreferences || "Preferences"}</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Theme preference is stored on this device. Sign in to sync email settings.
+              {t.authPrefsGuestSubtitle || "Theme preference is stored on this device. Sign in to sync email settings."}
             </p>
           </div>
 
           <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Appearance</p>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Stored on this browser only.</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.authPrefsAppearance || "Appearance"}</p>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{t.authPrefsAppearanceHintGuest || "Stored on this browser only."}</p>
             </div>
             <div className="px-5 py-4">
               <ThemePicker value={themePref} onChange={setThemePref} />
@@ -193,9 +199,9 @@ export default function AccountPreferences() {
           </section>
 
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-5 py-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Sign in to manage email notification settings.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.authPrefsSignInForEmail || "Sign in to manage email notification settings."}</p>
             <Button asChild size="sm">
-              <a href="/auth/sign-in">Sign in</a>
+              <a href="/auth/sign-in">{t.signIn || "Sign in"}</a>
             </Button>
           </div>
         </div>
@@ -209,22 +215,22 @@ export default function AccountPreferences() {
       <div className="space-y-6">
         {/* Page header */}
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Preferences</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t.authNavPreferences || "Preferences"}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Appearance and notification controls.
+            {t.authPrefsSubtitle || "Appearance and notification controls."}
           </p>
         </div>
 
         {/* ── Appearance ─────────────────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">Appearance</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.authPrefsAppearance || "Appearance"}</p>
             <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Stored on this browser only — not synced across devices.
+              {t.authPrefsAppearanceHint || "Stored on this browser only — not synced across devices."}
             </p>
           </div>
           <div className="px-5 py-5">
-            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-3 block">Theme</Label>
+            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-3 block">{t.authTheme || "Theme"}</Label>
             <ThemePicker value={themePref} onChange={setThemePref} />
           </div>
         </section>
@@ -233,19 +239,19 @@ export default function AccountPreferences() {
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Language</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.authPrefsLanguageSectionTitle || "Language"}</p>
                 <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  Choose your interface language. This syncs to your account.
+                  {t.authPrefsLanguageHint || "Choose your interface language. This syncs to your account."}
                 </p>
               </div>
               {savedLanguageIndicator && (
-                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">Saved</span>
+                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">{t.authPrefsSaved || "Saved"}</span>
               )}
             </div>
           </div>
           <div className="px-5 py-5">
             <Label htmlFor="preferred-language" className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">
-              Preferred language
+              {t.authPrefsPreferredLanguage || "Preferred language"}
             </Label>
             <select
               id="preferred-language"
@@ -267,9 +273,9 @@ export default function AccountPreferences() {
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Email</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.authPrefsEmailSectionTitle || "Email"}</p>
               {savedEmailIndicator && (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Saved</span>
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{t.authPrefsSaved || "Saved"}</span>
               )}
             </div>
           </div>
@@ -280,11 +286,11 @@ export default function AccountPreferences() {
                 <div className="flex items-center gap-2">
                   <Bell className="h-4 w-4 text-gray-400" aria-hidden />
                   <Label htmlFor="email-notify" className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-                    Email notifications
+                    {t.authEmailNotifications || "Email notifications"}
                   </Label>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-                  Product updates and security alerts from PrivateNote. Critical security emails may still be sent.
+                  {t.authPrefsEmailNotificationsHint || "Product updates and security alerts from PrivateNote. Critical security emails may still be sent."}
                 </p>
               </div>
               <Switch
@@ -299,10 +305,10 @@ export default function AccountPreferences() {
 
         {/* ── Coming later ────────────────────────────────────────────────── */}
         <section className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-5 py-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Coming later</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">{t.authPrefsComingLater || "Coming later"}</p>
           <ul className="space-y-2 text-sm text-gray-400 dark:text-gray-600">
-            <li>Notification digest frequency</li>
-            <li>Note defaults (expiry, AI, etc.)</li>
+            <li>{t.authPrefsComingDigest || "Notification digest frequency"}</li>
+            <li>{t.authPrefsComingNoteDefaults || "Note defaults (expiry, AI, etc.)"}</li>
           </ul>
         </section>
       </div>

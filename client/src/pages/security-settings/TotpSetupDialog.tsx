@@ -1,4 +1,5 @@
 import { Copy, Loader2, ShieldCheck } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 import QRCode from "react-qr-code";
 import {
   Dialog,
@@ -44,6 +45,7 @@ export function TotpSetupDialog({
   onCompleteClose,
 }: Props) {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleOpenChange = (next: boolean) => {
     if (totpVerifying) return;
@@ -55,13 +57,13 @@ export function TotpSetupDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {totpSetupStep === "done" ? "2-step verification enabled" : "Set up 2-step verification"}
+            {totpSetupStep === "done" ? (t.authSecTotpSetupDoneTitle || "2-step verification enabled") : (t.authSecTotpSetupDialogTitle || "Set up 2-step verification")}
           </DialogTitle>
           <DialogDescription>
             {totpSetupStep === "qr" &&
-              "Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc)."}
-            {totpSetupStep === "verify" && "Enter the 6-digit code from your authenticator app to confirm setup."}
-            {totpSetupStep === "done" && "Your account is now protected with 2-step verification."}
+              (t.authSecTotpScanQr || "Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc).")}
+            {totpSetupStep === "verify" && (t.authSecTotpEnterSixDigit || "Enter the 6-digit code from your authenticator app to confirm setup.")}
+            {totpSetupStep === "done" && (t.authSecTotpDoneDesc || "Your account is now protected with 2-step verification.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +76,7 @@ export function TotpSetupDialog({
             </div>
             {totpSecret && (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Or enter this code manually:</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">{t.authSecTotpOrEnterManually || "Or enter this code manually:"}</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono text-center break-all select-all">
                     {totpSecret}
@@ -84,13 +86,13 @@ export function TotpSetupDialog({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(totpSecret);
-                        toast({ title: "Copied", description: "Secret key copied to clipboard." });
+                        toast({ title: t.authSecCopied || "Copied", description: t.authSecSecretCopied || "Secret key copied to clipboard." });
                       } catch {
-                        toast({ title: "Copy failed", variant: "destructive" });
+                        toast({ title: t.authCopyFailedTitle || "Copy failed", variant: "destructive" });
                       }
                     }}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                    title="Copy secret"
+                    title={t.authSecTotpCopySecret || "Copy secret"}
                   >
                     <Copy className="h-4 w-4 text-gray-500" />
                   </button>
@@ -132,9 +134,9 @@ export function TotpSetupDialog({
             <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
               <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
               <div>
-                <p className="text-sm font-medium text-green-800 dark:text-green-200">Authenticator app verified</p>
+                <p className="text-sm font-medium text-green-800 dark:text-green-200">{t.authSecAuthenticatorVerified || "Authenticator app verified"}</p>
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  A code will be required after magic link sign-in.
+                  {t.authSecCodeRequiredAfterSignIn || "A code will be required after magic link sign-in."}
                 </p>
               </div>
             </div>
@@ -145,29 +147,29 @@ export function TotpSetupDialog({
           {totpSetupStep === "qr" && (
             <>
               <Button variant="outline" onClick={onClose}>
-                Cancel
+                {t.authSecCancel || "Cancel"}
               </Button>
-              <Button onClick={onNextToVerify}>Next</Button>
+              <Button onClick={onNextToVerify}>{t.authSecContinue || "Next"}</Button>
             </>
           )}
           {totpSetupStep === "verify" && (
             <>
               <Button variant="outline" onClick={onBackToQr} disabled={totpVerifying}>
-                Back
+                {t.authSecBack || "Back"}
               </Button>
               <Button onClick={() => onVerify(totpCode)} disabled={totpVerifying || totpCode.length !== 6}>
                 {totpVerifying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
+                    {t.authSecVerifying || "Verifying..."}
                   </>
                 ) : (
-                  "Verify"
+                  t.authSecVerify || "Verify"
                 )}
               </Button>
             </>
           )}
-          {totpSetupStep === "done" && <Button onClick={onCompleteClose}>Done</Button>}
+          {totpSetupStep === "done" && <Button onClick={onCompleteClose}>{t.authSecDone || "Done"}</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
