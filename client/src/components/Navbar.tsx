@@ -108,19 +108,15 @@ export const Navbar: React.FC = () => {
     }
   }, [location, refreshAuth]);
 
-  // Mobile sheet: reduce background scroll while open (avoid `position:fixed` on body — breaks nested `fixed` nav).
+  // Mobile sheet: lock background scroll only on body (not html) so pinch-zoom + pan still work inside the sheet.
   useEffect(() => {
     if (mobileSheet === "closed") return;
-    const html = document.documentElement;
     const body = document.body;
-    const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
     const prevOverscroll = body.style.overscrollBehavior;
-    html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     body.style.overscrollBehavior = "none";
     return () => {
-      html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
       body.style.overscrollBehavior = prevOverscroll;
     };
@@ -179,7 +175,7 @@ export const Navbar: React.FC = () => {
     "inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 outline-none focus:outline-none focus:ring-0";
 
   const mobileItemClass =
-    "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60";
+    "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary dark:text-blue-300 transition-colors hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   const desktopDropdownItem =
     "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
@@ -419,12 +415,12 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "nav" && (
       <div
         id="mobile-nav-sheet"
-        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen max-w-full touch-pan-y flex-col overflow-x-hidden bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.toggleNavigation}
       >
-        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-background dark:border-gray-800">
           <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
             <div className="flex min-w-10 items-center justify-start">
               {!authLoading && user?.email ? (
@@ -463,7 +459,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]" aria-label="Mobile">
+        <nav className="min-h-0 flex-1" aria-label="Mobile">
           <div className="py-2">
             <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
               <Lock className="h-4 w-4 shrink-0 opacity-80" />
@@ -528,12 +524,12 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "account" && user?.email ? (
       <div
         id="mobile-account-sheet"
-        className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen max-w-full touch-pan-y flex-col overflow-x-hidden bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.account}
       >
-        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-background dark:border-gray-800">
           <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
             <div className="flex min-w-10 items-center justify-start">
               <button
@@ -567,7 +563,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]" aria-label={t.account}>
+        <nav className="min-h-0 flex-1" aria-label={t.account}>
           <div className="py-2">
             <div className="border-b border-gray-100 px-5 pb-4 pt-1 dark:border-gray-800">
               <p className="text-xs text-gray-500 dark:text-gray-400">{t.signedInAs}</p>

@@ -160,7 +160,12 @@ export default function AccountActivity() {
         </div>
 
         {error && (
-          <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">{error}</p>
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+            <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
         )}
 
         {/* ── Event timeline ─────────────────────────────────────────────── */}

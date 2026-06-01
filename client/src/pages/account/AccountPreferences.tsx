@@ -82,7 +82,8 @@ export default function AccountPreferences() {
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingEmailPref, setSavingEmailPref] = useState(false);
   const [savingLanguagePref, setSavingLanguagePref] = useState(false);
-  const [savedIndicator, setSavedIndicator] = useState(false);
+  const [savedEmailIndicator, setSavedEmailIndicator] = useState(false);
+  const [savedLanguageIndicator, setSavedLanguageIndicator] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -120,8 +121,8 @@ export default function AccountPreferences() {
     setEmailNotifications(checked);
     try {
       await apiRequest("/api/auth/account/preferences", "PATCH", { emailNotifications: checked });
-      setSavedIndicator(true);
-      setTimeout(() => setSavedIndicator(false), 2000);
+      setSavedEmailIndicator(true);
+      setTimeout(() => setSavedEmailIndicator(false), 2000);
     } catch {
       setEmailNotifications(!checked);
     } finally {
@@ -141,8 +142,8 @@ export default function AccountPreferences() {
     setLanguage(canonical);
     try {
       await apiRequest("/api/auth/account/preferences", "PATCH", { preferredLanguage: canonical });
-      setSavedIndicator(true);
-      setTimeout(() => setSavedIndicator(false), 2000);
+      setSavedLanguageIndicator(true);
+      setTimeout(() => setSavedLanguageIndicator(false), 2000);
     } catch (e) {
       setPreferredLanguage(previousLanguage);
       setLanguage(previousLanguage);
@@ -237,7 +238,7 @@ export default function AccountPreferences() {
                   Choose your interface language. This syncs to your account.
                 </p>
               </div>
-              {savedIndicator && (
+              {savedLanguageIndicator && (
                 <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">Saved</span>
               )}
             </div>
@@ -248,7 +249,7 @@ export default function AccountPreferences() {
             </Label>
             <select
               id="preferred-language"
-              className="w-full max-w-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+              className="w-full max-w-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm"
               value={preferredLanguage}
               disabled={savingLanguagePref}
               onChange={(event) => void onPreferredLanguageChange(event.target.value as SupportedLanguage)}
@@ -267,7 +268,7 @@ export default function AccountPreferences() {
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">Email</p>
-              {savedIndicator && (
+              {savedEmailIndicator && (
                 <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Saved</span>
               )}
             </div>

@@ -1,0 +1,40 @@
+<svg width="4200" height="700" viewBox="0 0 4200 700" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai LinkedIn banner</title>
+  <desc id="desc">PrivateNote.ai branded LinkedIn banner for encrypted notes that disappear after reading.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8FBFF"/>
+      <stop offset="0.72" stop-color="#EEF6FF"/>
+      <stop offset="1" stop-color="#FFFDF8"/>
+    </linearGradient>
+    <pattern id="dotGrid" width="68" height="68" patternUnits="userSpaceOnUse">
+      <circle cx="6" cy="6" r="3.5" fill="#D7E2F0"/>
+    </pattern>
+  </defs>
+  <rect width="4200" height="700" fill="url(#band)"/>
+  <rect x="0" y="0" width="4200" height="700" fill="url(#dotGrid)" opacity="0.46"/>
+  <path d="M2860 0H4200V700H2370C2648 564 2814 336 2860 0Z" fill="#0000FF"/>
+  <path d="M3220 0H4200V700H2790C3004 548 3158 314 3220 0Z" fill="#111827" opacity="0.18"/>
+  <g transform="translate(308 202)">
+    <rect width="296" height="296" rx="72" fill="#0000FF"/>
+    <g transform="translate(0 -28)">
+      <path d="M66 126L148 200L230 126V250H66V126Z" fill="url(#paper)" stroke="white" stroke-opacity="0.45" stroke-width="5"/>
+      <path d="M66 126L148 200L230 126Z" fill="url(#paper)" fill-opacity="0.98"/>
+      <path d="M66 126L148 200L230 126" stroke="#0000FF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="680" y="326" font-family="Inter, Arial, sans-serif" font-size="138" font-weight="850" fill="#0000FF">privateNote</text>
+  <text x="1460" y="251" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850" fill="#0000FF">.ai</text>
+  <text x="684" y="436" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="750" fill="#0F172A">Encrypted notes that disappear after reading.</text>
+  <text x="686" y="525" font-family="Inter, Arial, sans-serif" font-size="39" font-weight="560" fill="#475569">No accounts. No tracking. No plaintext on the server.</text>
+  <g transform="translate(3070 214)">
+    <rect x="0" y="0" width="760" height="332" rx="34" fill="#FFFDF8" opacity="0.96"/>
+    <path d="M86 76H674V256H86V76Z" fill="#EDE6D8" stroke="#D7E2F0" stroke-width="8"/>
+    <path d="M86 76L380 218L674 76" stroke="#0000FF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M86 256L288 156M674 256L472 156" stroke="#475569" stroke-width="10" stroke-linecap="round" opacity="0.35"/>
+  </g>
+</svg>

@@ -89,8 +89,8 @@ export default function Developers() {
   const lp = (path: string) => localizedPath(path, language);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-24 pb-20 sm:px-6 lg:px-8">
-      <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-14">
+    <div className="mx-auto max-w-7xl px-4 pt-24 pb-28 sm:px-6 lg:px-8">
+      <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-16">
 
         {/* ── Sticky quick-links sidebar ── */}
         <aside className="hidden lg:block">
@@ -143,7 +143,7 @@ export default function Developers() {
         <div className="min-w-0">
 
           {/* Hero */}
-          <section className="mb-16 grid gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)] lg:items-start lg:gap-14">
+          <section className="mb-20 grid gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)] lg:items-start lg:gap-16">
             <div>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
                 <Code2 className="h-3.5 w-3.5" />
@@ -203,8 +203,8 @@ export default function Developers() {
           </section>
 
           {/* Where it fits */}
-          <section className="mb-14 border-y border-gray-200 py-10 dark:border-gray-800">
-            <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+          <section className="mb-16 border-y border-gray-200 py-14 dark:border-gray-800">
+            <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
               <div>
                 <p className="mb-2 text-sm font-semibold text-primary">Where it fits</p>
                 <h2 className="text-3xl font-bold text-gray-950 dark:text-white">A small tool for high-friction moments</h2>
@@ -224,11 +224,11 @@ export default function Developers() {
           </section>
 
           {/* Integration cards */}
-          <div className="mt-4 grid gap-8 lg:grid-cols-2">
+          <div className="mt-4 grid gap-10 lg:grid-cols-2">
 
             {/* VS Code / Cursor */}
-            <section id="vscode" className="scroll-mt-28 rounded-2xl border border-primary/30 bg-primary/5 p-7">
-              <div className="mb-5 flex items-start gap-3">
+            <section id="vscode" className="scroll-mt-28 rounded-2xl border border-primary/30 bg-primary/5 p-8 sm:p-9">
+              <div className="mb-6 flex items-start gap-4">
                 <div className="rounded-xl bg-primary/15 p-2.5">
                   <Shield className="h-6 w-6 text-primary" />
                 </div>
@@ -237,11 +237,11 @@ export default function Developers() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">Recommended for most developers.</p>
                 </div>
               </div>
-              <p className="mb-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              <p className="mb-7 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                 The extension is the primary developer entry point because it does not ask people to leave their editor.
                 It supports a sidebar flow for deliberate notes and a selected-text flow for quick one-off handoffs.
               </p>
-              <div className="mb-6 grid gap-3 sm:grid-cols-3">
+              <div className="mb-7 grid gap-4 sm:grid-cols-3">
                 {[
                   { icon: Lock,     label: "Sidebar",   detail: "Compose and configure" },
                   { icon: Zap,      label: "Selection", detail: "Share highlighted text" },
@@ -249,15 +249,15 @@ export default function Developers() {
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div key={item.label} className="rounded-xl border border-primary/15 bg-white/70 p-3 dark:bg-white/5">
-                      <Icon className="mb-2 h-4 w-4 text-primary" />
+                    <div key={item.label} className="rounded-xl border border-primary/15 bg-white/70 p-4 dark:bg-white/5">
+                      <Icon className="mb-2.5 h-4 w-4 text-primary" />
                       <p className="text-sm font-semibold text-gray-950 dark:text-white">{item.label}</p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">{item.detail}</p>
                     </div>
                   );
                 })}
               </div>
-              <div className="mb-6 rounded-xl bg-gray-950 p-4 font-mono text-sm text-green-400">
+              <div className="mb-8 rounded-xl bg-gray-950 p-5 font-mono text-sm text-green-400">
                 <span className="text-gray-500"># Search Extensions for PrivateNote, or install from CLI</span>
                 <br />
                 <span>code --install-extension PrivateNote.privatenote-vscode</span>
@@ -274,8 +274,8 @@ export default function Developers() {
             </section>
 
             {/* Codex plugin */}
-            <section id="codex" className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5">
-              <div className="mb-5 flex items-start gap-3">
+            <section id="codex" className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white/60 p-8 sm:p-9 dark:border-gray-800 dark:bg-white/5">
+              <div className="mb-6 flex items-start gap-4">
                 <div className="rounded-xl bg-gray-100 p-2.5 dark:bg-gray-800">
                   <Terminal className="h-6 w-6 text-gray-700 dark:text-gray-300" />
                 </div>
@@ -286,7 +286,7 @@ export default function Developers() {
                   </p>
                 </div>
               </div>
-              <p className="mb-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              <p className="mb-7 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                 Codex plugins bundle an MCP server and reusable skills. Install from the repo marketplace
                 (`.agents/plugins/marketplace.json`) or wire{" "}
                 <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
@@ -295,7 +295,7 @@ export default function Developers() {
                 into <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">~/.codex/config.toml</code>.
                 For secrets the agent must not see, use the VS Code extension in the Codex IDE instead of pasting into chat.
               </p>
-              <div className="mb-5 rounded-xl bg-gray-950 p-4 font-mono text-sm text-gray-300">
+              <div className="mb-8 rounded-xl bg-gray-950 p-5 font-mono text-sm text-gray-300">
                 <span className="text-gray-500"># ~/.codex/config.toml — one-liner</span>
                 <pre className="mt-2 whitespace-pre-wrap text-green-400">{`codex mcp add privatenote -- npx -y privatenote-mcp`}</pre>
                 <span className="mt-3 block text-gray-500"># or edit the file directly</span>
@@ -314,8 +314,8 @@ enabled = true`}</pre>
             </section>
 
             {/* MCP server — full width */}
-            <section id="mcp" className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5 lg:col-span-2">
-              <div className="mb-5 flex items-start gap-3">
+            <section id="mcp" className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white/60 p-8 sm:p-9 dark:border-gray-800 dark:bg-white/5 lg:col-span-2">
+              <div className="mb-6 flex items-start gap-4">
                 <div className="rounded-xl bg-gray-100 p-2.5 dark:bg-gray-800">
                   <Cpu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
                 </div>
@@ -324,17 +324,17 @@ enabled = true`}</pre>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Use when an agent needs a secure handoff tool.</p>
                 </div>
               </div>
-              <p className="mb-5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              <p className="mb-7 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
                 Add the MCP server to Codex, Cursor, Claude Desktop, Continue.dev, Zed, or any MCP client. The agent receives a
                 <code className="mx-1 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">
                   create_private_note
                 </code>
                 tool, and the local MCP process creates the encrypted link.
               </p>
-              <div className="mb-5 grid gap-4 lg:grid-cols-2">
+              <div className="mb-7 grid gap-5 lg:grid-cols-2">
                 <div>
                   <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Cursor / Claude Desktop</p>
-                  <div className="rounded-xl bg-gray-950 p-4 font-mono text-sm text-gray-300">
+                    <div className="rounded-xl bg-gray-950 p-5 font-mono text-sm text-gray-300">
                     <span className="text-gray-500">// ~/.cursor/mcp.json or claude_desktop_config.json</span>
                     <pre className="mt-2 whitespace-pre-wrap text-green-400">{`{
   "mcpServers": {
@@ -348,7 +348,7 @@ enabled = true`}</pre>
                 </div>
                 <div>
                   <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Self-hosted instance</p>
-                  <div className="rounded-xl bg-gray-950 p-4 font-mono text-sm text-gray-300">
+                  <div className="rounded-xl bg-gray-950 p-5 font-mono text-sm text-gray-300">
                     <span className="text-gray-500">// add env block to any MCP config</span>
                     <pre className="mt-2 whitespace-pre-wrap text-green-400">{`"env": {
   "PRIVATENOTE_API_BASE_URL":
@@ -357,7 +357,7 @@ enabled = true`}</pre>
                   </div>
                 </div>
               </div>
-              <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              <div className="mb-7 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
                 <strong>Privacy boundary:</strong> if a secret is typed into a cloud AI prompt, the model provider can see it
                 before the MCP tool runs. For the strongest privacy posture, use the MCP flow with a local model.
               </div>
@@ -374,8 +374,8 @@ enabled = true`}</pre>
           </div>
 
           {/* Trust model */}
-          <section id="trust" className="scroll-mt-28 mt-16 border-t border-gray-200 py-16 dark:border-gray-800">
-            <div className="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20 lg:items-start">
+          <section id="trust" className="scroll-mt-28 mt-20 border-t border-gray-200 py-20 dark:border-gray-800">
+            <div className="grid gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-24 lg:items-start">
               <div className="max-w-xl">
                 <p className="mb-2 text-sm font-semibold text-primary">Trust model</p>
                 <h2 className="text-3xl font-bold text-gray-950 dark:text-white">Same contract on every path</h2>
@@ -384,7 +384,7 @@ enabled = true`}</pre>
                   the server needs to store and enforce, then share a link that carries the decryption key outside the request.
                 </p>
               </div>
-              <ul className="space-y-6 lg:pt-1">
+              <ul className="space-y-8 lg:pt-1">
                 {trustModel.map((item) => (
                   <li key={item} className="flex gap-4">
                     <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-primary" />
@@ -396,8 +396,8 @@ enabled = true`}</pre>
           </section>
 
           {/* Premium */}
-          <section className="mt-6 rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5">
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="mt-10 rounded-2xl border border-gray-200 bg-white/60 p-8 sm:p-9 dark:border-gray-800 dark:bg-white/5">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -409,10 +409,10 @@ enabled = true`}</pre>
                   while premium adds capacity, governance, and support for people who rely on PrivateNote operationally.
                 </p>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {premiumItems.map((item) => (
-                  <div key={item.title} className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-950/60">
-                    <div className="mb-1 flex items-center gap-2">
+                  <div key={item.title} className="rounded-xl border border-gray-100 bg-white p-5 dark:border-gray-800 dark:bg-gray-950/60">
+                    <div className="mb-2 flex items-center gap-2">
                       <Users className="h-4 w-4 text-primary" />
                       <h3 className="text-sm font-bold text-gray-950 dark:text-white">{item.title}</h3>
                     </div>
@@ -424,8 +424,8 @@ enabled = true`}</pre>
           </section>
 
           {/* Self-hosting */}
-          <section id="selfhost" className="scroll-mt-28 mt-6 rounded-2xl border border-gray-200 bg-white/60 p-7 dark:border-gray-800 dark:bg-white/5">
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <section id="selfhost" className="scroll-mt-28 mt-10 rounded-2xl border border-gray-200 bg-white/60 p-8 sm:p-9 dark:border-gray-800 dark:bg-white/5">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
                 <h2 className="mb-3 text-2xl font-bold text-gray-950 dark:text-white">Self-hosting shape</h2>
                 <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
@@ -433,7 +433,7 @@ enabled = true`}</pre>
                   MCP server only need to know which PrivateNote API base URL to use.
                 </p>
               </div>
-              <div className="rounded-xl bg-gray-950 p-4 font-mono text-sm text-gray-300">
+              <div className="rounded-xl bg-gray-950 p-5 font-mono text-sm text-gray-300">
                 <span className="text-gray-500">// VS Code settings.json</span>
                 <pre className="mt-2 whitespace-pre-wrap text-green-400">{`"privatenote.apiBaseUrl": "https://notes.your-domain.com"`}</pre>
                 <br />
@@ -444,7 +444,7 @@ enabled = true`}</pre>
           </section>
 
           {/* CTA */}
-          <section className="mt-6 rounded-2xl bg-primary px-7 py-10 text-white">
+          <section className="mt-10 rounded-2xl bg-primary px-8 py-12 text-white sm:px-10 sm:py-14">
             <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <h2 className="mb-3 text-3xl font-bold">Start with the integration closest to the secret</h2>
@@ -474,7 +474,7 @@ enabled = true`}</pre>
             </div>
           </section>
 
-          <div className="mt-8 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-12 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <GitBranch className="h-3.5 w-3.5" />
             <span>Extension, MCP, web app, and self-hosting all use the same encryption boundary.</span>
             <Database className="ml-2 h-3.5 w-3.5" />
