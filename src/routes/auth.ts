@@ -579,7 +579,7 @@ async function sendMagicLinkEmail(
     "Securely create, share, and destroy private notes — only the recipient can read them.",
   ].join("\n");
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     "  <div style=\"font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;\">Continue to PrivateNote</div>",
     "  <p style=\"margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;\">Click the secure link below to continue:</p>",
     "  <a href=\"" +

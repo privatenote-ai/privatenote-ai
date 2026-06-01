@@ -133,17 +133,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </span>
                 <span className="block">{t.password}</span>
               </label>
-              <div className="mt-1 text-[10px] text-gray-400">
-                {t.poweredBy}{" "}
-                <a
-                  href="https://passwords.lu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2 hover:opacity-90"
-                >
-                  passwords.lu
-                </a>
-              </div>
             </div>
           </div>
           <div className="min-w-0 sm:col-span-2">
@@ -233,6 +222,20 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {t.passwordRecipientsNeedToDecrypt}
+              </div>
+              <div className="mt-1 text-[10px] text-gray-400">
+                {t.poweredBy}{" "}
+                <a
+                  href="https://passwords.lu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline underline-offset-2 hover:opacity-90"
+                >
+                  passwords.lu
+                </a>
+              </div>
               <div className="mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
                 <p>
                   <span className="font-medium text-gray-600 dark:text-gray-300">
@@ -271,9 +274,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
               )}
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t.passwordRecipientsNeedToDecrypt}
-              </div>
             </div>
           </div>
         </div>

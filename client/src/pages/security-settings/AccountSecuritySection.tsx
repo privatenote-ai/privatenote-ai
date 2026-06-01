@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp, Copy, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Copy, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PasskeyInfo } from "./types";
 
@@ -255,14 +256,27 @@ export function AccountSecuritySection({
                 <p className="text-base font-medium text-gray-900 dark:text-white">Recovery codes</p>
               </div>
               <div className="min-w-0 w-full lg:self-center">
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {hasRecoveryCodes
-                    ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
-                    : "No recovery codes available"}
-                </p>
-                {recoveryGeneratedLabel && (
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Last generated {recoveryGeneratedLabel}</p>
-                )}
+                <div className="mt-1 flex items-center gap-1.5">
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {hasRecoveryCodes
+                      ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
+                      : "No recovery codes available"}
+                  </p>
+                  {recoveryGeneratedLabel && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none" aria-label="Last generated date">
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          Last generated {recoveryGeneratedLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               <div className="lg:self-center">
                 <Button

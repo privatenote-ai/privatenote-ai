@@ -30,6 +30,7 @@ import {
 } from "./trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -615,7 +616,7 @@ async function sendMagicLinkEmail(
           ? "Pour votre securite, terminez la connexion dans le <strong>meme navigateur et sur le meme appareil</strong> que lors de l ouverture du lien."
           : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${copy.title}</div>`,
     `  <p style="margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;">${copy.intro}</p>`,
     "  <a href=\"" +
@@ -6841,7 +6842,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
 
   console.log(`[ROUTES] Calling handleAuthRoutes...`);
-  const authResponse = await handleAuthRoutes(request, env);
+  const authResponse = await handleAuthRoutesComplete(request, env);
   console.log(`[ROUTES] handleAuthRoutes returned: ${authResponse ? authResponse.status : 'null'}`);
   if (authResponse) {
     return authResponse;
