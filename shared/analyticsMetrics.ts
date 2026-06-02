@@ -32,6 +32,16 @@ export function createEmptyDailyMetrics(): DailyMetrics {
       medium: 0,
       long: 0,
     },
+    notesFailedToView: 0,
+    notesDestroyedOnView: 0,
+    wrongPasswordAttempts: 0,
+    accountSignups: 0,
+    accountLogins: 0,
+    qrSharesGenerated: 0,
+    localAiUsed: 0,
+    cloudAiUsed: 0,
+    countryDistribution: {},
+    languageDistribution: {},
   };
 }
 
@@ -45,6 +55,8 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     ...metrics,
     blogViews: metrics.blogViews || {},
     referrerCounts: metrics.referrerCounts || {},
+    countryDistribution: metrics.countryDistribution || {},
+    languageDistribution: metrics.languageDistribution || {},
     expiryRangeDistribution: {
       ...base.expiryRangeDistribution,
       ...(metrics.expiryRangeDistribution || {}),
@@ -76,6 +88,16 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
     averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
     blogViews: { ...base.blogViews },
     referrerCounts: { ...(base.referrerCounts || {}) },
+    countryDistribution: { ...(base.countryDistribution || {}) },
+    languageDistribution: { ...(base.languageDistribution || {}) },
+    notesFailedToView: base.notesFailedToView + add.notesFailedToView,
+    notesDestroyedOnView: base.notesDestroyedOnView + add.notesDestroyedOnView,
+    wrongPasswordAttempts: base.wrongPasswordAttempts + add.wrongPasswordAttempts,
+    accountSignups: base.accountSignups + add.accountSignups,
+    accountLogins: base.accountLogins + add.accountLogins,
+    qrSharesGenerated: base.qrSharesGenerated + add.qrSharesGenerated,
+    localAiUsed: base.localAiUsed + add.localAiUsed,
+    cloudAiUsed: base.cloudAiUsed + add.cloudAiUsed,
     expiryRangeDistribution: {
       oneHourOrLess: base.expiryRangeDistribution.oneHourOrLess + add.expiryRangeDistribution.oneHourOrLess,
       oneDayOrLess: base.expiryRangeDistribution.oneDayOrLess + add.expiryRangeDistribution.oneDayOrLess,
@@ -99,9 +121,14 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
   for (const [slug, views] of Object.entries(add.blogViews)) {
     merged.blogViews[slug] = (merged.blogViews[slug] || 0) + views;
   }
-
   for (const [ref, count] of Object.entries(add.referrerCounts || {})) {
     merged.referrerCounts[ref] = (merged.referrerCounts[ref] || 0) + count;
+  }
+  for (const [country, count] of Object.entries(add.countryDistribution || {})) {
+    merged.countryDistribution[country] = (merged.countryDistribution[country] || 0) + count;
+  }
+  for (const [lang, count] of Object.entries(add.languageDistribution || {})) {
+    merged.languageDistribution[lang] = (merged.languageDistribution[lang] || 0) + count;
   }
 
   return merged;

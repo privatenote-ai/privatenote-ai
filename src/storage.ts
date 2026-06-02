@@ -22,7 +22,10 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 
 interface AnalyticsContext {
   aiEnhanced?: boolean;
+  aiMode?: 'local' | 'cloud' | null;
   referrer?: string | null;
+  country?: string | null;
+  language?: string | null;
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
@@ -62,8 +65,12 @@ export interface IStorage {
   getMonthlyMetrics(date: Date): Promise<AnalyticsData | undefined>;
   saveMetrics(metrics: InsertAnalytics): Promise<AnalyticsData>;
   trackNoteCreation(note: Note, context?: AnalyticsContext): Promise<void>;
-  trackNoteView(note: Note): Promise<void>;
+  trackNoteView(note: Note, destroyed?: boolean): Promise<void>;
+  trackNoteRevealFailed(): Promise<void>;
   trackBlogView(slug: string): Promise<void>;
+  trackAccountSignup(): Promise<void>;
+  trackAccountLogin(): Promise<void>;
+  trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
   getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult>;
 }
@@ -355,32 +362,26 @@ class MemStorage {
     }
   }
 
-  async trackNoteView(_note: Note): Promise<void> {
+  async trackNoteView(_note: Note, _destroyed = false): Promise<void> {
     const today = new Date();
     const metrics = this.getOrCreateDailyMetrics(today);
-    
-    // Increment note view count
     metrics.notesViewed++;
-    
-    // Save daily metrics to analytics storage
     await this.saveDailyMetrics(today);
   }
+
+  async trackNoteRevealFailed(): Promise<void> { /* MemStorage no-op */ }
 
   async trackBlogView(slug: string): Promise<void> {
     const today = new Date();
     const metrics = this.getOrCreateDailyMetrics(today);
-    
-    // Initialize blog view count if not exists
-    if (!metrics.blogViews[slug]) {
-      metrics.blogViews[slug] = 0;
-    }
-    
-    // Increment blog view count
+    if (!metrics.blogViews[slug]) { metrics.blogViews[slug] = 0; }
     metrics.blogViews[slug]++;
-    
-    // Save daily metrics to analytics storage
     await this.saveDailyMetrics(today);
   }
+
+  async trackAccountSignup(): Promise<void> { /* MemStorage no-op */ }
+  async trackAccountLogin(): Promise<void> { /* MemStorage no-op */ }
+  async trackClientEvent(_event: 'wrong_password' | 'qr_share'): Promise<void> { /* MemStorage no-op */ }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     return Array.from(this.analytics.values()).filter(data => {
@@ -511,6 +512,24 @@ class KVAnalyticsStorage {
         (metrics.referrerCounts[context.referrer] ?? 0) + 1;
     }
 
+    if (context?.country) {
+      if (!metrics.countryDistribution) metrics.countryDistribution = {};
+      metrics.countryDistribution[context.country] =
+        (metrics.countryDistribution[context.country] ?? 0) + 1;
+    }
+
+    if (context?.language) {
+      if (!metrics.languageDistribution) metrics.languageDistribution = {};
+      metrics.languageDistribution[context.language] =
+        (metrics.languageDistribution[context.language] ?? 0) + 1;
+    }
+
+    if (context?.aiMode === 'local') {
+      metrics.localAiUsed = (metrics.localAiUsed ?? 0) + 1;
+    } else if (context?.aiMode === 'cloud') {
+      metrics.cloudAiUsed = (metrics.cloudAiUsed ?? 0) + 1;
+    }
+
     const expirationDate = new Date(note.expiresAt);
     const expirationDays = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const totalExpirationDays = metrics.averageExpirationDays * (metrics.notesCreated - 1) + expirationDays;
@@ -554,10 +573,20 @@ class KVAnalyticsStorage {
     await this.saveDailyMetrics(today, metrics);
   }
 
-  async trackNoteView(_note: Note): Promise<void> {
+  async trackNoteView(_note: Note, destroyed = false): Promise<void> {
     const today = new Date();
     const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
     metrics.notesViewed++;
+    if (destroyed) {
+      metrics.notesDestroyedOnView = (metrics.notesDestroyedOnView ?? 0) + 1;
+    }
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackNoteRevealFailed(): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    metrics.notesFailedToView = (metrics.notesFailedToView ?? 0) + 1;
     await this.saveDailyMetrics(today, metrics);
   }
 
@@ -565,6 +594,31 @@ class KVAnalyticsStorage {
     const today = new Date();
     const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
     metrics.blogViews[slug] = (metrics.blogViews[slug] || 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackAccountSignup(): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    metrics.accountSignups = (metrics.accountSignups ?? 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackAccountLogin(): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    metrics.accountLogins = (metrics.accountLogins ?? 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    if (event === 'wrong_password') {
+      metrics.wrongPasswordAttempts = (metrics.wrongPasswordAttempts ?? 0) + 1;
+    } else if (event === 'qr_share') {
+      metrics.qrSharesGenerated = (metrics.qrSharesGenerated ?? 0) + 1;
+    }
     await this.saveDailyMetrics(today, metrics);
   }
 
@@ -707,12 +761,28 @@ export class CompositeStorage implements IStorage {
     return this.analyticsStorage.trackNoteCreation(note, context);
   }
 
-  async trackNoteView(note: Note): Promise<void> {
-    return this.analyticsStorage.trackNoteView(note);
+  async trackNoteView(note: Note, destroyed = false): Promise<void> {
+    return this.analyticsStorage.trackNoteView(note, destroyed);
+  }
+
+  async trackNoteRevealFailed(): Promise<void> {
+    return this.analyticsStorage.trackNoteRevealFailed();
   }
 
   async trackBlogView(slug: string): Promise<void> {
     return this.analyticsStorage.trackBlogView(slug);
+  }
+
+  async trackAccountSignup(): Promise<void> {
+    return this.analyticsStorage.trackAccountSignup();
+  }
+
+  async trackAccountLogin(): Promise<void> {
+    return this.analyticsStorage.trackAccountLogin();
+  }
+
+  async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
+    return this.analyticsStorage.trackClientEvent(event);
   }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {

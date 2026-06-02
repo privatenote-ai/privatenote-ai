@@ -472,6 +472,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setPasswordDecryptError(
         "That password didn\u2019t unlock this note. Check for typos or ask the sender.",
       );
+      import("@/utils/analyticsEvent").then(({ fireAnalyticsEvent }) => fireAnalyticsEvent("wrong_password")).catch(() => {});
     } finally {
       setIsDecrypting(false);
     }

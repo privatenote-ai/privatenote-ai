@@ -6845,6 +6845,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const authResponse = await handleAuthRoutesComplete(request, env);
   console.log(`[ROUTES] handleAuthRoutes returned: ${authResponse ? authResponse.status : 'null'}`);
   if (authResponse) {
+    // Fire-and-forget analytics for successful auth events (no await — never block the response).
+    if (authResponse.status === 200) {
+      const _analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
+      const _authStorage = new CompositeStorage(env.NOTES_KV, _analyticsKv);
+      if (
+        (pathname === "/api/auth/magic/consume" && method === "POST") ||
+        (pathname === "/api/auth/webauthn/login/verify" && method === "POST") ||
+        (pathname === "/api/auth/recovery/consume" && method === "POST")
+      ) {
+        _authStorage.trackAccountLogin().catch(() => {});
+      } else if (pathname === "/api/auth/webauthn/register/verify" && method === "POST") {
+        // Passkey registration is the closest server-side proxy for a new account signup
+        _authStorage.trackAccountSignup().catch(() => {});
+      }
+    }
     return authResponse;
   }
 
@@ -6979,9 +6994,22 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const sanitizedReferrer = rawReferrer
         ? rawReferrer.replace(/[^a-zA-Z0-9.\-_ ]/g, "").slice(0, 60).trim() || null
         : null;
+      const { country } = getRequestGeo(request);
+      const rawLang = typeof requestBody?.uiLanguage === "string" ? requestBody.uiLanguage : null;
+      const sanitizedLang = rawLang ? rawLang.replace(/[^a-z-]/g, "").slice(0, 10) || null : null;
+      // Accept 'local'/'cloud' strings (new) or boolean true (legacy → defaults to 'cloud')
+      const rawAiMode = requestBody?.aiMode;
+      const sanitizedAiMode: 'local' | 'cloud' | null = rawAiMode === "local"
+        ? "local"
+        : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
+        ? "cloud"
+        : null;
       await storage.trackNoteCreation(noteForAnalytics, {
         aiEnhanced: aiMode,
+        aiMode: sanitizedAiMode,
         referrer: sanitizedReferrer,
+        country: country ?? null,
+        language: sanitizedLang,
       });
     }
 
@@ -7048,14 +7076,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           encryptedKeyIv?: string | null;
         };
         const data = (await doResponse.clone().json()) as RevealJson;
+        // Note is "destroyed" when it has been read the maximum number of times
+        const maxReads = data.maxReads ?? 0;
+        const readCount = data.readCount ?? 0;
+        const destroyed = maxReads > 0 && readCount >= maxReads;
         const noteForAnalytics: Note = {
           id,
           content: data.content ?? "",
           iv: data.iv ?? "",
           aad: data.aad ?? null,
           expiresAt: new Date(data.expiresAt ?? Date.now()),
-          maxReads: data.maxReads ?? 0,
-          currentReads: data.readCount ?? 0,
+          maxReads,
+          currentReads: readCount,
           createdAt: new Date(),
           isPasswordProtected: !!data.isPasswordProtected,
           salt: data.salt ?? null,
@@ -7065,10 +7097,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           kdfIterations: null,
           kdfPolicyTag: null,
         };
-        await storage.trackNoteView(noteForAnalytics);
+        await storage.trackNoteView(noteForAnalytics, destroyed);
       } catch (error) {
         console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
+    } else if (doResponse.status === 404) {
+      // Note not found — expired, exhausted, or never existed
+      storage.trackNoteRevealFailed().catch(() => {});
     }
 
     return applyCorsHeaders(doResponse as unknown as Response, request);
@@ -7124,6 +7159,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // ============================================================================
   // ADMIN: AUTH (HttpOnly cookie exchange)
   // ============================================================================
+
+  // Lightweight endpoint for client-side analytics events that can't be tracked server-side.
+  // No auth required — only accepts a fixed allow-list of event types.
+  if (pathname === "/api/analytics/event" && method === "POST") {
+    try {
+      const body = await request.json().catch(() => ({})) as { event?: unknown };
+      const allowed = ["wrong_password", "qr_share"] as const;
+      type AllowedEvent = typeof allowed[number];
+      const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
+        ? (body.event as AllowedEvent)
+        : null;
+      if (!event) {
+        return jsonResponse({ message: "Invalid event type" }, 400, request);
+      }
+      storage.trackClientEvent(event).catch(() => {});
+      return jsonResponse({ ok: true }, 200, request);
+    } catch {
+      return jsonResponse({ message: "Bad request" }, 400, request);
+    }
+  }
 
   // Returns whether TOTP is required, so the login form can show the extra field.
   if (pathname === "/api/admin/auth/config" && method === "GET") {

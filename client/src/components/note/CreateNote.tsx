@@ -677,6 +677,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         expirySeconds,
         maxReads: readCount,
         aiMode: isAiMode,
+        uiLanguage: language,
         isPasswordProtected,
         aad,
         _hp: honeypotValue,

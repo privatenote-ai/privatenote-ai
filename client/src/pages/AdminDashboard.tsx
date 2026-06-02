@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import {
   Lock, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight,
   FileText, Eye, Shield, Sparkles, Activity, CheckCircle, XCircle, AlertTriangle,
+  UserPlus, LogIn, QrCode, Cpu, Cloud, Globe, Languages, Trash2, KeyRound,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,10 @@ const EMPTY_METRICS: DailyMetrics = {
   expiryRangeDistribution: { oneHourOrLess: 0, oneDayOrLess: 0, oneWeekOrLess: 0, moreThanWeek: 0 },
   viewLimitsDistribution: { once: 0, twice: 0, threeToFive: 0, moreThanFive: 0, unlimited: 0 },
   contentLengthDistribution: { short: 0, medium: 0, long: 0 },
+  notesFailedToView: 0, notesDestroyedOnView: 0, wrongPasswordAttempts: 0,
+  accountSignups: 0, accountLogins: 0,
+  qrSharesGenerated: 0, localAiUsed: 0, cloudAiUsed: 0,
+  countryDistribution: {}, languageDistribution: {},
 };
 
 function normalizeMetrics(m?: DailyMetrics | null): DailyMetrics {
@@ -53,6 +58,8 @@ function normalizeMetrics(m?: DailyMetrics | null): DailyMetrics {
     ...EMPTY_METRICS, ...m,
     blogViews: m.blogViews || {},
     referrerCounts: m.referrerCounts || {},
+    countryDistribution: m.countryDistribution || {},
+    languageDistribution: m.languageDistribution || {},
     expiryRangeDistribution: { ...EMPTY_METRICS.expiryRangeDistribution, ...(m.expiryRangeDistribution || {}) },
     viewLimitsDistribution: { ...EMPTY_METRICS.viewLimitsDistribution, ...(m.viewLimitsDistribution || {}) },
     contentLengthDistribution: { ...EMPTY_METRICS.contentLengthDistribution, ...(m.contentLengthDistribution || {}) },
@@ -97,7 +104,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   React.useEffect(() => {
     fetch(apiUrl('/api/admin/auth/config'))
       .then((r) => r.json())
-      .then((d: { totpRequired?: boolean }) => setTotpRequired(Boolean(d.totpRequired)))
+      .then((d) => { const r = d as { totpRequired?: boolean }; setTotpRequired(Boolean(r.totpRequired)); })
       .catch(() => setTotpRequired(false));
   }, []);
 
@@ -232,8 +239,16 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
   const statCards = [
     { label: 'Notes Created', value: metrics.notesCreated, icon: FileText, color: 'text-blue-600 dark:text-blue-400' },
     { label: 'Notes Viewed', value: metrics.notesViewed, icon: Eye, color: 'text-green-600 dark:text-green-400' },
+    { label: 'Failed to View', value: metrics.notesFailedToView ?? 0, icon: XCircle, color: 'text-red-500 dark:text-red-400' },
+    { label: 'Destroyed on View', value: metrics.notesDestroyedOnView ?? 0, icon: Trash2, color: 'text-orange-600 dark:text-orange-400' },
+    { label: 'Wrong Passwords', value: metrics.wrongPasswordAttempts ?? 0, icon: KeyRound, color: 'text-rose-600 dark:text-rose-400' },
     { label: 'Password Protected', value: metrics.passwordProtectedNotes, icon: Shield, color: 'text-amber-600 dark:text-amber-400' },
     { label: 'AI Enhanced', value: metrics.aiEnhancedNotes, icon: Sparkles, color: 'text-violet-600 dark:text-violet-400' },
+    { label: 'Account Signups', value: metrics.accountSignups ?? 0, icon: UserPlus, color: 'text-teal-600 dark:text-teal-400' },
+    { label: 'Account Logins', value: metrics.accountLogins ?? 0, icon: LogIn, color: 'text-cyan-600 dark:text-cyan-400' },
+    { label: 'QR Shares', value: metrics.qrSharesGenerated ?? 0, icon: QrCode, color: 'text-indigo-600 dark:text-indigo-400' },
+    { label: 'Local AI Used', value: metrics.localAiUsed ?? 0, icon: Cpu, color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Cloud AI Used', value: metrics.cloudAiUsed ?? 0, icon: Cloud, color: 'text-sky-600 dark:text-sky-400' },
   ];
 
   return (
@@ -297,7 +312,7 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
       ) : (
         <>
           {/* Stat cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {statCards.map(({ label, value, icon: Icon, color }) => (
               <Card key={label}>
                 <CardContent className="pt-5">
@@ -319,7 +334,14 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
                 <CardContent>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ name: 'Created', value: metrics.notesCreated }, { name: 'Viewed', value: metrics.notesViewed }, { name: 'Password', value: metrics.passwordProtectedNotes }, { name: 'AI', value: metrics.aiEnhancedNotes }]}>
+                      <BarChart data={[
+                        { name: 'Created', value: metrics.notesCreated },
+                        { name: 'Viewed', value: metrics.notesViewed },
+                        { name: 'Destroyed', value: metrics.notesDestroyedOnView ?? 0 },
+                        { name: 'Failed', value: metrics.notesFailedToView ?? 0 },
+                        { name: 'Password', value: metrics.passwordProtectedNotes },
+                        { name: 'AI', value: metrics.aiEnhancedNotes },
+                      ]}>
                         <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="value" fill="#6366f1" name="Count" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -402,6 +424,98 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
                   </CardContent>
                 </Card>
               )}
+
+              {/* AI usage breakdown */}
+              {((metrics.localAiUsed ?? 0) + (metrics.cloudAiUsed ?? 0)) > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-violet-500" /> AI Usage
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Local (on-device)', value: metrics.localAiUsed ?? 0 },
+                              { name: 'Cloud (hosted)', value: metrics.cloudAiUsed ?? 0 },
+                            ]}
+                            cx="50%" cy="50%" outerRadius={65} dataKey="value"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {['#10b981', '#6366f1'].map((c, i) => <Cell key={i} fill={c} />)}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Country distribution */}
+              {Object.keys(metrics.countryDistribution ?? {}).length > 0 && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Globe className="h-4 w-4 text-blue-500" /> Top Countries
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart layout="vertical"
+                          data={Object.entries(metrics.countryDistribution ?? {})
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 10)
+                            .map(([country, count]) => ({ name: country, count }))
+                          }
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={35} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#3b82f6" name="Notes" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Language distribution */}
+              {Object.keys(metrics.languageDistribution ?? {}).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Languages className="h-4 w-4 text-purple-500" /> UI Languages
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={Object.entries(metrics.languageDistribution ?? {})
+                              .sort(([, a], [, b]) => b - a)
+                              .slice(0, 8)
+                              .map(([lang, count]) => ({ name: lang, value: count }))
+                            }
+                            cx="50%" cy="50%" outerRadius={65} dataKey="value"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {CHART_COLORS.map((c, i) => <Cell key={i} fill={c} />)}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
           </div>
         </>
       )}

@@ -112,6 +112,34 @@ export interface DailyMetrics {
     medium: number; // 100-1000 chars
     long: number;   // > 1000 chars
   };
+
+  // --- Engagement & funnel ---
+  /** Reveal attempts that returned 404 (note expired, exhausted, or never existed). */
+  notesFailedToView: number;
+  /** Notes consumed on their final allowed read (max-reads reached or view-once). */
+  notesDestroyedOnView: number;
+  /** Wrong-password decryption failures reported by the client. */
+  wrongPasswordAttempts: number;
+
+  // --- Accounts ---
+  /** New account registrations (magic-link first-consume or passkey register). */
+  accountSignups: number;
+  /** Successful logins (all auth methods combined). */
+  accountLogins: number;
+
+  // --- Feature adoption ---
+  /** QR code share events reported by the client. */
+  qrSharesGenerated: number;
+  /** Notes enhanced with the local (on-device) AI. */
+  localAiUsed: number;
+  /** Notes enhanced with the hosted cloud AI. */
+  cloudAiUsed: number;
+
+  // --- Geo & language ---
+  /** ISO 3166-1 alpha-2 country code → note-creation count (from CF-IPCountry). */
+  countryDistribution: Record<string, number>;
+  /** UI language active at note-creation time → count. */
+  languageDistribution: Record<string, number>;
 }
 
 export const insertAnalyticsSchema = createInsertSchema(analyticsData).omit({
