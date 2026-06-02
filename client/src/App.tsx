@@ -215,9 +215,10 @@ function Router() {
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
           <Route path="/blog" component={() => <LazyRoute component={Blog} />} />
           <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
+          {/* /admin is protected by Cloudflare Access in production; the ADMIN_TOKEN login is a second factor */}
+          <Route path="/admin" component={() => <LazyRoute component={AdminDashboard} />} />
           {showInternalRoutes ? (
             <>
-              <Route path="/admin" component={() => <LazyRoute component={AdminDashboard} />} />
               <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
               <Route path="/admin/analytics" component={() => <LazyRoute component={Analytics} />} />
               <Route path="/admin/audit-logs" component={() => <LazyRoute component={AuditLogs} />} />
