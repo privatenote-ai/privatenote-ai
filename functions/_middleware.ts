@@ -71,7 +71,7 @@ export async function onRequest(context: {
     }
   }
 
-  if (isPublicMarketingPath(pathname)) {
+  if (isPublicMarketingPath(pathname) || pathname === "/admin") {
     const shell = await serveSpaShell({ request, env, next: context.next });
     if (shell.status === 200) {
       return shell;
