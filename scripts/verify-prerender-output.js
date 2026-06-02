@@ -27,9 +27,9 @@ const REQUIRED_FLAT_HTML = [
 ];
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
-/** Canonical must not end with slash except https://privatenote.ai/ */
+/** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/) */
 const BAD_CANONICAL_TRAILING_SLASH_RE =
-  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/[^"']+\/["']/i;
+  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/(?!(de|fr|es)\/["'])[^"']+\/["']/i;
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */

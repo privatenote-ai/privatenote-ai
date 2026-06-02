@@ -9,7 +9,7 @@ import {
 
 test("absolutePublicUrl uses production origin", () => {
   assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr");
-  assert.equal(absolutePublicUrl("/fr/"), "https://privatenote.ai/fr");
+  assert.equal(absolutePublicUrl("/fr/"), "https://privatenote.ai/fr/");
 });
 
 test("canonicalAbsoluteUrlForRoute has no trailing slash except root", () => {
@@ -21,7 +21,7 @@ test("canonicalAbsoluteUrlForRoute has no trailing slash except root", () => {
 test("buildHomeSeoHeadMarkup includes reciprocal hreflang set", () => {
   const html = buildHomeSeoHeadMarkup("fr");
   assert.match(html, /hreflang="en" href="https:\/\/privatenote\.ai\/"/);
-  assert.match(html, /hreflang="fr" href="https:\/\/privatenote\.ai\/fr"/);
+  assert.match(html, /hreflang="fr" href="https:\/\/privatenote\.ai\/fr\/"/);
   assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/"/);
   assert.doesNotMatch(html, /href="\/fr\/"/);
 });
