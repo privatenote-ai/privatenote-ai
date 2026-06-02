@@ -128,7 +128,10 @@ export default defineConfig({
       : []),
     devHttpsHintsPlugin(),
     react(),
-    runtimeErrorOverlay(),
+    // Replit-only plugins — only active when running inside a Repl (REPL_ID is set).
+    // Outside Replit the runtime-error overlay causes "Importing a module script failed"
+    // CSP errors because it injects blob: module scripts that our strict dev CSP blocks.
+    ...(process.env.REPL_ID !== undefined ? [runtimeErrorOverlay()] : []),
     themePlugin(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
