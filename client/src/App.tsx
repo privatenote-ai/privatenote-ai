@@ -54,6 +54,7 @@ const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
 const TestClientLLM = lazy(() => import("@/pages/TestClientLLM"));
@@ -216,6 +217,7 @@ function Router() {
           <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
           {showInternalRoutes ? (
             <>
+              <Route path="/admin" component={() => <LazyRoute component={AdminDashboard} />} />
               <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
               <Route path="/admin/analytics" component={() => <LazyRoute component={Analytics} />} />
               <Route path="/admin/audit-logs" component={() => <LazyRoute component={AuditLogs} />} />
