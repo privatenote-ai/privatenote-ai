@@ -165,6 +165,29 @@ function routeOutDir(route) {
   return rel ? path.join(DIST_DIR, rel) : DIST_DIR;
 }
 
+/**
+ * Remove <link rel="modulepreload"> tags for feature chunks that were injected
+ * by Vite's module-preload polyfill at render time.  These chunks (CreateNote,
+ * NoteSettingsPanel, analyticsEvent, qr-code, …) are only needed on the
+ * interactive home/note pages, so preloading them on static marketing pages
+ * (blog posts, pricing, about…) wastes bandwidth and triggers browser warnings:
+ * "preloaded using link preload but not used within a few seconds".
+ *
+ * We keep:
+ *  • the Vite entry script (<script type="module" src="/assets/index-*.js">)
+ *  • stylesheet <link rel="stylesheet"> tags
+ *  • vendor-react and vendor-query shared chunks (nearly always needed)
+ *  • font preloads
+ *
+ * Everything else (<link rel="modulepreload"> for feature chunks) is removed.
+ */
+function stripStaleModulePreloads(html) {
+  return html.replace(
+    /<link\s+rel="modulepreload"[^>]*href="\/assets\/(?!vendor-react-|vendor-query-|index-)[^"]*\.js"[^>]*\/?>/gi,
+    "",
+  );
+}
+
 function postProcessHTML(html, route) {
   let out = injectPrerenderDocumentMeta(html, route);
 
@@ -203,6 +226,10 @@ function postProcessHTML(html, route) {
       `<link rel="canonical" href="${pageUrl}" />\n<meta property="og:url" content="${pageUrl}" />\n</head>`,
     );
   }
+
+  // Strip feature-chunk modulepreload hints baked in by Vite's polyfill at render time.
+  // Keeps vendor-react, vendor-query, and the entry chunk; removes everything else.
+  out = stripStaleModulePreloads(out);
 
   // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
   out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");
