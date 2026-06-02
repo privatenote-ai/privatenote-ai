@@ -154,7 +154,8 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 // ─── Analytics tab ────────────────────────────────────────────────────────────
 
 function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
-  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
+  // Default to last 30 days so historical data is visible immediately
+  const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('custom');
   const [customStart, setCustomStart] = useState(() => addUtcDays(utcYmd(), -30));
   const [customEnd, setCustomEnd] = useState(() => utcYmd());
 
@@ -206,7 +207,7 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
         <div>
           <Label className="mb-1.5 block text-xs text-gray-500">Time range</Label>
           <Select value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -242,6 +243,21 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
         <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
       ) : currentQ.error ? (
         <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>Failed to load analytics data.</AlertDescription></Alert>
+      ) : !parsedMetrics ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center px-6">
+          <AlertCircle className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No data for this period</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            {timeRange === 'daily'
+              ? 'No notes were created or viewed today (UTC). Try "Last 7 days" or a custom date range.'
+              : 'No analytics data found for the selected range. Try widening the date range or click "All time".'}
+          </p>
+          {timeRange === 'daily' && (
+            <Button variant="outline" size="sm" onClick={() => { setTimeRange('custom'); setCustomStart(addUtcDays(utcYmd(), -30)); setCustomEnd(utcYmd()); }}>
+              Show last 30 days
+            </Button>
+          )}
+        </div>
       ) : (
         <>
           {/* Stat cards */}
@@ -261,10 +277,7 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
             ))}
           </div>
 
-          {!parsedMetrics ? (
-            <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>No data</AlertTitle><AlertDescription>No analytics available for this period.</AlertDescription></Alert>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader><CardTitle className="text-sm font-medium">Note Activity</CardTitle></CardHeader>
                 <CardContent>
@@ -353,8 +366,7 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          )}
+          </div>
         </>
       )}
     </div>
