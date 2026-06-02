@@ -88,36 +88,51 @@ const STATUS_COLOR: Record<string, string> = {
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [token, setToken] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [totpRequired, setTotpRequired] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Find out whether TOTP is configured so we can show the field upfront.
+  React.useEffect(() => {
+    fetch(apiUrl('/api/admin/auth/config'))
+      .then((r) => r.json())
+      .then((d: { totpRequired?: boolean }) => setTotpRequired(Boolean(d.totpRequired)))
+      .catch(() => setTotpRequired(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token.trim()) return;
+    if (totpRequired && !totpCode.trim()) return;
     setLoading(true);
     try {
       const res = await fetch(apiUrl('/api/admin/auth'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ token: token.trim() }),
+        body: JSON.stringify({ token: token.trim(), totpCode: totpCode.replace(/\s/g, '') }),
       });
       if (res.ok) {
         setToken('');
+        setTotpCode('');
         onLogin();
         toast({ title: 'Authenticated', description: 'Welcome to the admin dashboard.' });
       } else {
-        const body = await res.json().catch(() => ({})) as { message?: string };
+        const body = await res.json().catch(() => ({})) as { message?: string; totpRequired?: boolean };
+        if (body.totpRequired) setTotpRequired(true);
         toast({
           variant: 'destructive',
           title: 'Authentication failed',
-          description: body.message || 'Invalid token.',
+          description: body.message || 'Invalid credentials.',
         });
       }
     } finally {
       setLoading(false);
     }
   };
+
+  const canSubmit = token.trim() && (totpRequired === false || (totpRequired && totpCode.replace(/\s/g, '').length === 6));
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
@@ -127,7 +142,9 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             <Lock className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Enter your admin token to continue</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {totpRequired ? 'Token + authenticator code required' : 'Enter your admin token to continue'}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -142,7 +159,26 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               disabled={loading}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading || !token.trim()}>
+          {totpRequired && (
+            <div className="space-y-1.5">
+              <Label htmlFor="totp-code">Authenticator code</Label>
+              <Input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9 ]*"
+                maxLength={7}
+                placeholder="000 000"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                autoComplete="one-time-code"
+                disabled={loading}
+                className="tracking-widest text-center text-lg font-mono"
+              />
+              <p className="text-xs text-gray-400">6-digit code from Google Authenticator or Authy</p>
+            </div>
+          )}
+          <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</> : 'Sign in'}
           </Button>
         </form>

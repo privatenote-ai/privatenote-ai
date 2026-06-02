@@ -7125,6 +7125,29 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // ADMIN: AUTH (HttpOnly cookie exchange)
   // ============================================================================
 
+  // Returns whether TOTP is required, so the login form can show the extra field.
+  if (pathname === "/api/admin/auth/config" && method === "GET") {
+    return jsonResponse({
+      totpRequired: Boolean(env.ADMIN_TOTP_SECRET),
+    }, 200, request);
+  }
+
+  // Returns an otpauth:// URI for initial authenticator app setup.
+  // Requires the raw ADMIN_TOKEN via X-Admin-Token header (no cookie yet).
+  if (pathname === "/api/admin/auth/totp-setup" && method === "GET") {
+    const expected = env.ADMIN_TOKEN;
+    const headerToken = request.headers.get("x-admin-token");
+    if (!expected || !headerToken || !constantTimeEquals(headerToken, expected)) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const secret = env.ADMIN_TOTP_SECRET;
+    if (!secret) {
+      return jsonResponse({ message: "ADMIN_TOTP_SECRET is not configured" }, 404, request);
+    }
+    const totp = createTotpInstance(secret, "admin");
+    return jsonResponse({ uri: totp.toString() }, 200, request);
+  }
+
   if (pathname === "/api/admin/auth" && method === "POST") {
     let body: any;
     try { body = await request.json(); } catch { body = {}; }
@@ -7136,6 +7159,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (!provided || !constantTimeEquals(provided, expected)) {
       return jsonResponse({ message: "Invalid admin token" }, 401, request);
     }
+
+    // Second factor: verify TOTP code when ADMIN_TOTP_SECRET is configured.
+    if (env.ADMIN_TOTP_SECRET) {
+      const totpCode = typeof body?.totpCode === "string" ? body.totpCode.replace(/\s/g, "") : "";
+      if (!totpCode) {
+        return jsonResponse({ message: "TOTP code required", totpRequired: true }, 401, request);
+      }
+      const valid = verifyTotpCode(env.ADMIN_TOTP_SECRET, totpCode, "admin");
+      if (!valid) {
+        return jsonResponse({ message: "Invalid TOTP code", totpRequired: true }, 401, request);
+      }
+    }
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", adminSessionCookie(expected));
