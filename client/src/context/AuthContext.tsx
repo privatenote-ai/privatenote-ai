@@ -29,7 +29,12 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { language, setLanguage } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Start as true on pages that check auth eagerly so components don't briefly
+  // flash the "sign in" state before the first session API call resolves.
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return shouldEagerPrefetchAuth(window.location.pathname);
+  });
   // Track whether we've already synced the DB language preference for this
   // session. We only do it once (on first successful auth check) so that a
   // footer language switch is not overridden every time the user changes tabs.
