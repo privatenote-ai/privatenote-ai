@@ -448,11 +448,16 @@ export const en: Translations = {
   securityHeroPrefix: "Security",
   securityHeroAccent: "Architecture",
   securityHeroSubtitle: "Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.",
-  securityE2eeTitle: "E2EE Model",
-  securityE2eeBody:
-    "We use an end-to-end encrypted (E2EE) model where the server is an untrusted storage medium. Plaintext note content is never stored on our servers. Optional Cloud Assist sends draft text to Cloudflare for inference only when you enable it; stored notes remain ciphertext.",
-  securityAiBody:
-    "Optional AI when drafting: Private AI runs in your browser (WebLLM) and does not send your prompt to PrivateNote.ai for inference. Cloud Assist uses Cloudflare Workers AI when local AI is unavailable—you confirm in the UI because draft plaintext leaves your device for inference.",
+  securityE2eeTitle: "End-to-end encryption model",
+  securityE2eeBulletServer: "The server is untrusted storage—we only receive ciphertext.",
+  securityE2eeBulletPlaintext: "Plaintext note content is never stored on our servers.",
+  securityE2eeBulletKeys:
+    "The encryption key is generated in your browser. PrivateNote.ai does not receive or observe it (it stays in the URL fragment, not in the request path), assuming your device is not compromised.",
+  securityAiBoxTitle: "Optional AI when drafting",
+  securityAiPrivateLine:
+    "Private AI (WebLLM): runs on your device; prompts are not sent to PrivateNote.ai for inference.",
+  securityAiCloudLine:
+    "Cloud Assist: uses Cloudflare Workers AI when local AI is unavailable—you confirm in the UI because draft plaintext leaves your device. Stored notes remain ciphertext.",
   securityClientEncryptionTitle: "Client-Side Encryption",
   securityClientEncryptionBody:
     "Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.",
@@ -461,7 +466,7 @@ export const en: Translations = {
     "Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.",
   securityKeyHandlingTitle: "Key Handling",
   securityKeyHandlingBody:
-    "Decryption keys are generated locally in your browser using the Web Crypto API's cryptographically secure random source. Standard notes encode the raw AES-256 key as Base64url in the URL fragment (#...), which is not sent to our servers in the request path or query.",
+    "Standard notes encode the raw AES-256 key as Base64url in the URL fragment (#...). Password-protected notes wrap the content key with Argon2id-derived keys.",
   securityCryptoTitle: "Cryptographic Primitives",
   securitySymmetricTitle: "Symmetric Encryption",
   securityAesTitle: "AES-256-GCM",

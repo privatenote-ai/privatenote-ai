@@ -455,11 +455,16 @@ export const es: Translations = {
   securityHeroPrefix: "Arquitectura de",
   securityHeroAccent: "seguridad",
   securityHeroSubtitle: "Especificaciones técnicas de nuestros protocolos de cifrado del lado del cliente (CSE) y nuestra infraestructura de almacenamiento sin confianza.",
-  securityE2eeTitle: "Modelo E2EE",
-  securityE2eeBody:
-    "Usamos un modelo cifrado de extremo a extremo (E2EE) en el que el servidor es un medio de almacenamiento no confiable. El contenido en claro de las notas no se almacena en nuestros servidores. Cloud Assist opcional envía borradores a Cloudflare para inferencia solo si lo activas; las notas guardadas siguen siendo texto cifrado.",
-  securityAiBody:
-    "IA opcional al redactar: Private AI se ejecuta en tu navegador (WebLLM) y no envía tu prompt a PrivateNote.ai para inferencia. Cloud Assist usa Cloudflare Workers AI cuando la IA local no está disponible: confirmas en la interfaz porque el borrador en claro sale de tu dispositivo para la inferencia.",
+  securityE2eeTitle: "Modelo de cifrado de extremo a extremo",
+  securityE2eeBulletServer: "El servidor es solo almacenamiento no confiable: solo recibimos texto cifrado.",
+  securityE2eeBulletPlaintext: "El contenido en claro de las notas no se almacena en nuestros servidores.",
+  securityE2eeBulletKeys:
+    "La clave de cifrado se genera en tu navegador. PrivateNote.ai no la recibe ni la observa (permanece en el fragmento de URL, no en la ruta de la petición), salvo que tu dispositivo esté comprometido.",
+  securityAiBoxTitle: "IA opcional al redactar",
+  securityAiPrivateLine:
+    "Private AI (WebLLM): se ejecuta en tu dispositivo; los prompts no se envían a PrivateNote.ai para inferencia.",
+  securityAiCloudLine:
+    "Cloud Assist: usa Cloudflare Workers AI cuando la IA local no está disponible; confirmas en la interfaz porque el borrador en claro sale de tu dispositivo. Las notas guardadas siguen cifradas.",
   securityClientEncryptionTitle: "Cifrado del lado del cliente",
   securityClientEncryptionBody:
     "El cifrado ocurre en la memoria de tu navegador usando la Web Crypto API. El servidor solo ve el blob cifrado resultante.",
@@ -468,7 +473,7 @@ export const es: Translations = {
     "Cloudflare Durable Objects proporciona consistencia atómica para la lógica de una sola lectura, evitando condiciones de carrera y doble consumo.",
   securityKeyHandlingTitle: "Gestión de claves",
   securityKeyHandlingBody:
-    "Las claves de descifrado se generan localmente en tu navegador con la fuente aleatoria criptográficamente segura de la Web Crypto API. Las notas estándar codifican la clave AES-256 en bruto como Base64url en el fragmento de URL (#...), que no se envía a nuestros servidores en la ruta ni en la consulta.",
+    "Las notas estándar codifican la clave AES-256 en bruto como Base64url en el fragmento de URL (#...). Las notas con contraseña envuelven la clave de contenido con claves derivadas por Argon2id.",
   securityCryptoTitle: "Primitivas criptográficas",
   securitySymmetricTitle: "Cifrado simétrico",
   securityAesTitle: "AES-256-GCM",

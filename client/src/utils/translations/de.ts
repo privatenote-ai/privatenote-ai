@@ -450,11 +450,16 @@ export const de: Translations = {
   securityHeroPrefix: "Sicherheits",
   securityHeroAccent: "Architektur",
   securityHeroSubtitle: "Technische Spezifikationen unserer clientseitigen Verschlüsselung (CSE) und vertrauenslosen Speicherinfrastruktur.",
-  securityE2eeTitle: "E2EE-Modell",
-  securityE2eeBody:
-    "Wir verwenden ein Ende-zu-Ende-verschlüsseltes (E2EE) Modell, bei dem der Server als nicht vertrauenswürdiges Speichermedium gilt. Klartext von Notizen wird bei uns nicht gespeichert. Optionaler Cloud Assist sendet Entwurfstext nur bei Aktivierung zur Inferenz an Cloudflare; gespeicherte Notizen bleiben Chiffretext.",
-  securityAiBody:
-    "Optionale KI beim Entwurf: Private AI läuft in Ihrem Browser (WebLLM) und sendet Ihren Prompt nicht zur Inferenz an PrivateNote.ai. Cloud Assist nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie bestätigen in der Oberfläche, weil Entwurfs-Klartext Ihr Gerät für die Inferenz verlässt.",
+  securityE2eeTitle: "Ende-zu-Ende-Verschlüsselungsmodell",
+  securityE2eeBulletServer: "Der Server ist nur nicht vertrauenswürdiger Speicher—wir erhalten nur Chiffretext.",
+  securityE2eeBulletPlaintext: "Klartext von Notizen wird bei uns nicht gespeichert.",
+  securityE2eeBulletKeys:
+    "Der Verschlüsselungsschlüssel wird in Ihrem Browser erzeugt. PrivateNote.ai erhält oder sieht ihn nicht (er bleibt im URL-Fragment, nicht im Request-Pfad), sofern Ihr Gerät nicht kompromittiert ist.",
+  securityAiBoxTitle: "Optionale KI beim Entwurf",
+  securityAiPrivateLine:
+    "Private AI (WebLLM): läuft auf Ihrem Gerät; Prompts werden nicht zur Inferenz an PrivateNote.ai gesendet.",
+  securityAiCloudLine:
+    "Cloud Assist: nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie bestätigen in der Oberfläche, weil Entwurfs-Klartext Ihr Gerät verlässt. Gespeicherte Notizen bleiben Chiffretext.",
   securityClientEncryptionTitle: "Clientseitige Verschlüsselung",
   securityClientEncryptionBody:
     "Die Verschlüsselung erfolgt im Arbeitsspeicher Ihres Browsers mit der Web Crypto API. Der Server sieht nur den daraus entstehenden Chiffretext.",
@@ -463,7 +468,7 @@ export const de: Translations = {
     "Cloudflare Durable Objects sorgen für atomare Konsistenz bei der Einmal-Lese-Logik und verhindern Race Conditions sowie doppelte Nutzung.",
   securityKeyHandlingTitle: "Schlüsselverwaltung",
   securityKeyHandlingBody:
-    "Entschlüsselungsschlüssel werden lokal in Ihrem Browser mit der kryptografisch sicheren Zufallsquelle der Web Crypto API erzeugt. Standardnotizen kodieren den rohen AES-256-Schlüssel als Base64url im URL-Fragment (#...), das nicht im Pfad oder in der Query an unsere Server gesendet wird.",
+    "Standardnotizen kodieren den rohen AES-256-Schlüssel als Base64url im URL-Fragment (#...). Passwortgeschützte Notizen verpacken den Inhaltsschlüssel mit Argon2id-abgeleiteten Schlüsseln.",
   securityCryptoTitle: "Kryptografische Bausteine",
   securitySymmetricTitle: "Symmetrische Verschlüsselung",
   securityAesTitle: "AES-256-GCM",

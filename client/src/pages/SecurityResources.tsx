@@ -7,12 +7,19 @@ import {
   Key,
   Binary,
   Layers,
+  Cpu,
+  Cloud,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
 const SecurityOverview: React.FC = () => {
   const { language, t } = useLanguage();
+  const e2eeBullets = [
+    t.securityE2eeBulletServer,
+    t.securityE2eeBulletPlaintext,
+    t.securityE2eeBulletKeys,
+  ];
   const infrastructureItems = [
     {
       title: t.securityEuStorageTitle,
@@ -63,16 +70,39 @@ const SecurityOverview: React.FC = () => {
             </div>
 
             <div className="relative z-10 space-y-24">
-              <div className="text-center max-w-3xl mx-auto">
-                <div className="flex items-center justify-center gap-4 mb-4">
+              <div className="mx-auto max-w-2xl space-y-8">
+                <div className="text-center">
                   <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.securityE2eeTitle}</h2>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {t.securityE2eeBody}
-                </p>
-                <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {t.securityAiBody}
-                </p>
+
+                <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                  {e2eeBullets.map((line) => (
+                    <li key={line} className="flex items-start gap-3 leading-relaxed">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="rounded-2xl border border-gray-200/80 bg-gray-50/90 p-5 shadow-sm dark:border-gray-700/80 dark:bg-gray-900/50 sm:p-6">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white sm:text-lg">
+                    {t.securityAiBoxTitle}
+                  </h3>
+                  <ul className="mt-4 space-y-4">
+                    <li className="flex items-start gap-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[0.9375rem]">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                        <Cpu className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span>{t.securityAiPrivateLine}</span>
+                    </li>
+                    <li className="flex items-start gap-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[0.9375rem]">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700 ring-1 ring-red-200/80 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-800/60">
+                        <Cloud className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span>{t.securityAiCloudLine}</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <div className="grid gap-8 md:grid-cols-3">

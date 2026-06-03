@@ -454,11 +454,16 @@ export const fr: Translations = {
   securityHeroPrefix: "Architecture de",
   securityHeroAccent: "sécurité",
   securityHeroSubtitle: "Spécifications techniques de nos protocoles de chiffrement côté client (CSE) et de notre infrastructure de stockage sans confiance.",
-  securityE2eeTitle: "Modèle E2EE",
-  securityE2eeBody:
-    "Nous utilisons un modèle chiffré de bout en bout (E2EE) où le serveur est un support de stockage non fiable. Le contenu en clair des notes n’est pas stocké chez nous. Cloud Assist optionnel envoie le brouillon à Cloudflare pour l’inférence uniquement si vous l’activez ; les notes stockées restent du chiffré.",
-  securityAiBody:
-    "IA optionnelle à la rédaction : Private AI s’exécute dans votre navigateur (WebLLM) et n’envoie pas votre prompt à PrivateNote.ai pour l’inférence. Cloud Assist utilise Cloudflare Workers AI lorsque l’IA locale n’est pas disponible — vous confirmez dans l’interface car le brouillon en clair quitte votre appareil pour l’inférence.",
+  securityE2eeTitle: "Modèle de chiffrement de bout en bout",
+  securityE2eeBulletServer: "Le serveur n’est qu’un stockage non fiable : nous ne recevons que du chiffré.",
+  securityE2eeBulletPlaintext: "Le contenu en clair des notes n’est jamais stocké chez nous.",
+  securityE2eeBulletKeys:
+    "La clé de chiffrement est générée dans votre navigateur. PrivateNote.ai ne la reçoit ni ne l’observe (elle reste dans le fragment d’URL, pas dans le chemin de requête), tant que votre appareil n’est pas compromis.",
+  securityAiBoxTitle: "IA optionnelle à la rédaction",
+  securityAiPrivateLine:
+    "Private AI (WebLLM) : s’exécute sur votre appareil ; les prompts ne sont pas envoyés à PrivateNote.ai pour l’inférence.",
+  securityAiCloudLine:
+    "Cloud Assist : utilise Cloudflare Workers AI si l’IA locale n’est pas disponible — vous confirmez dans l’interface car le brouillon en clair quitte votre appareil. Les notes stockées restent chiffrées.",
   securityClientEncryptionTitle: "Chiffrement côté client",
   securityClientEncryptionBody:
     "Le chiffrement a lieu dans la mémoire de votre navigateur avec la Web Crypto API. Le serveur ne voit que le blob chiffré obtenu.",
@@ -467,7 +472,7 @@ export const fr: Translations = {
     "Cloudflare Durable Objects fournit une cohérence atomique pour la logique de lecture unique, empêchant les conditions de concurrence et la double consommation.",
   securityKeyHandlingTitle: "Gestion des clés",
   securityKeyHandlingBody:
-    "Les clés de déchiffrement sont générées localement dans votre navigateur avec la source aléatoire cryptographiquement sûre de la Web Crypto API. Les notes standard encodent la clé AES-256 brute en Base64url dans le fragment d’URL (#...), qui n’est pas envoyé à nos serveurs dans le chemin ni la requête.",
+    "Les notes standard encodent la clé AES-256 brute en Base64url dans le fragment d’URL (#...). Les notes protégées par mot de passe enveloppent la clé de contenu avec des clés dérivées via Argon2id.",
   securityCryptoTitle: "Primitives cryptographiques",
   securitySymmetricTitle: "Chiffrement symétrique",
   securityAesTitle: "AES-256-GCM",
