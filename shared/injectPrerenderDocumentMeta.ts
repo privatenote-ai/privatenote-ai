@@ -42,15 +42,17 @@ function escapeHtmlAttr(value: string): string {
 
 function replaceMetaContent(html: string, attr: "name" | "property", key: string, content: string): string {
   const escaped = escapeHtmlAttr(content);
-  const re = new RegExp(
-    `<meta\\s+${attr}=["']${key}["']\\s+content=["'][^"']*["']\\s*/?>`,
-    "i",
-  );
-  if (re.test(html)) {
-    return html.replace(
-      re,
-      `<meta ${attr}="${key}" content="${escaped}" />`,
-    );
+  // Use separate patterns for double-quoted and single-quoted content values.
+  // The combined ["'][^"']*["'] pattern incorrectly treats apostrophes inside
+  // double-quoted values (e.g. "Here's how") as the closing delimiter, causing
+  // the match to fail and a duplicate tag to be appended instead.
+  const reDQ = new RegExp(`<meta\\s+${attr}=["']${key}["']\\s+content="[^"]*"\\s*/?>`, "i");
+  const reSQ = new RegExp(`<meta\\s+${attr}=["']${key}["']\\s+content='[^']*'\\s*/?>`, "i");
+  if (reDQ.test(html)) {
+    return html.replace(reDQ, `<meta ${attr}="${key}" content="${escaped}" />`);
+  }
+  if (reSQ.test(html)) {
+    return html.replace(reSQ, `<meta ${attr}="${key}" content="${escaped}" />`);
   }
   return html.replace("</head>", `<meta ${attr}="${key}" content="${escaped}" /></head>`);
 }
