@@ -450,12 +450,13 @@ export const de: Translations = {
   securityHeroPrefix: "Sicherheits",
   securityHeroAccent: "Architektur",
   securityHeroSubtitle: "Technische Spezifikationen unserer clientseitigen Verschlüsselung (CSE) und vertrauenslosen Speicherinfrastruktur.",
-  securityE2eeTitle: "Ende-zu-Ende-Verschlüsselungsmodell",
+  securityE2eeTitle: "Sicherheitsmodell",
   securityE2eeBulletServer: "Der Server ist nur nicht vertrauenswürdiger Speicher—wir erhalten nur Chiffretext.",
   securityE2eeBulletPlaintext: "Klartext von Notizen wird bei uns nicht gespeichert.",
   securityE2eeBulletKeys:
     "Der Verschlüsselungsschlüssel wird in Ihrem Browser erzeugt. PrivateNote.ai erhält oder sieht ihn nicht (er bleibt im URL-Fragment, nicht im Request-Pfad), sofern Ihr Gerät nicht kompromittiert ist.",
-  securityAiBoxTitle: "Optionale KI beim Entwurf",
+  securityAiSectionTitle: "KI-Datenverarbeitung",
+  securityAiBoxTitle: "Optional beim Entwurf einer Notiz",
   securityAiPrivateLine:
     "Private AI (WebLLM): läuft auf Ihrem Gerät; Prompts werden nicht zur Inferenz an PrivateNote.ai gesendet.",
   securityAiCloudLine:
@@ -469,7 +470,7 @@ export const de: Translations = {
   securityKeyHandlingTitle: "Schlüsselverwaltung",
   securityKeyHandlingBody:
     "Standard-Privatnotizen kodieren den rohen 256-Bit-Schlüssel als Base64url im URL-Fragment (#...). Passwortgeschützte Notizen verpacken den Inhaltsschlüssel mit Argon2id-abgeleiteten Schlüsseln.",
-  securityCryptoTitle: "Kryptografische Bausteine",
+  securityCryptoTitle: "Kryptografie",
   securitySymmetricTitle: "Symmetrische Verschlüsselung",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
@@ -482,7 +483,7 @@ export const de: Translations = {
     "Passwortgeschützte Notizen verwenden Argon2id mit speicherharten Parametern (time=3, memory=64 MiB, parallelism=1), um Brute-Force-Angriffe, besonders auf GPU/ASIC, zu verteuern.",
   securitySaltTitle: "16-Byte-kryptografisches Salt",
   securitySaltBody: "Ein eindeutiges Salt pro Notiz schützt vor Rainbow-Table-Angriffen.",
-  securityInfrastructureTitle: "Infrastruktur",
+  securityInfrastructureTitle: "Infrastruktur & Betriebssicherheit",
   securityEuStorageTitle: "Speicherung in EU-Rechtsraum",
   securityEuStorageBody:
     "Authentifizierungsdaten, verschlüsselte Notizen und operative Datensätze werden in einer Infrastruktur unter EU-Rechtsordnung gespeichert.",
@@ -492,7 +493,26 @@ export const de: Translations = {
   securityNoTrackingBody: "Zustandslose API. Es werden nie Werbe- oder Tracking-Pixel geladen.",
   securityTurnstileTitle: "Turnstile-Verifizierung",
   securityTurnstileBody: "Verifizierung menschlicher Anfragen verhindert Brute-Force-Aufzählung von Notizen.",
-  securityThreatModelTitle: "Bedrohungsmodell",
+  securitySupplyChainTitle: "Lieferkette & Integrität",
+  securitySupplyChainIntro:
+    "Weil die Kryptografie clientseitig ausgeführt wird, ist die Integrität des ausgelieferten Anwendungscodes Teil des Vertrauensmodells.",
+  securitySupplyChainBulletImmutable: "Unveränderliche Produktions-Deployments",
+  securitySupplyChainBulletCsp: "Strenge Content Security Policy (CSP)",
+  securitySupplyChainBulletDeps: "Abhängigkeits-Audits und festgepinnte Lockfiles",
+  securitySupplyChainBulletTls: "HTTPS/TLS-Erzwingung",
+  securitySupplyChainBulletSri: "Subresource Integrity, wo anwendbar",
+  securitySupplyChainBulletMinimalJs: "Minimaler Einsatz von Drittanbieter-JavaScript",
+  securityLinkModelTitle: "Link-Sicherheitsmodell",
+  securityLinkModelBody:
+    "Wer die vollständige Notiz-URL besitzt, kann auf den Inhalt zugreifen. Behandeln Sie den Link selbst als Geheimnis.",
+  securityForwardSecrecyTitle: "Einschränkungen bei Forward Secrecy",
+  securityForwardSecrecyIntro:
+    "Notiz-Links bieten kein Forward Secrecy. Wer später folgendes Material erhält, kann die Notiz entschlüsseln (bis sie verbraucht ist oder abläuft):",
+  securityForwardSecrecyBulletUrl: "Die vollständige URL (einschließlich des #Fragment-Schlüssels)",
+  securityForwardSecrecyBulletHistory: "Browser-Verlauf oder synchronisierte Surf-Daten",
+  securityForwardSecrecyBulletClipboard: "Zwischenablage-Kopien des Links",
+  securityForwardSecrecyBulletChat: "Geteilte Chat-Protokolle, E-Mail-Threads oder Screenshots",
+  securityThreatModelTitle: "Bedrohungsmodell & Grenzen",
   securityThreatModelIntro:
     "Kein System ist unknackbar. Unsere Architektur adressiert serverseitige Bedrohungen, doch clientseitige Risiken bleiben:",
   securityDeviceCompromiseTitle: "Kompromittiertes Gerät",

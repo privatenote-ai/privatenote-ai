@@ -448,12 +448,13 @@ export const en: Translations = {
   securityHeroPrefix: "Security",
   securityHeroAccent: "Architecture",
   securityHeroSubtitle: "Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.",
-  securityE2eeTitle: "End-to-end encryption model",
+  securityE2eeTitle: "Security Model",
   securityE2eeBulletServer: "The server is untrusted storage—we only receive ciphertext.",
   securityE2eeBulletPlaintext: "Plaintext note content is never stored on our servers.",
   securityE2eeBulletKeys:
     "The encryption key is generated in your browser. PrivateNote.ai does not receive or observe it (it stays in the URL fragment, not in the request path), assuming your device is not compromised.",
-  securityAiBoxTitle: "Optional AI when drafting",
+  securityAiSectionTitle: "AI Data Handling",
+  securityAiBoxTitle: "Optional when drafting a note",
   securityAiPrivateLine:
     "Private AI (WebLLM): runs on your device; prompts are not sent to PrivateNote.ai for inference.",
   securityAiCloudLine:
@@ -467,7 +468,7 @@ export const en: Translations = {
   securityKeyHandlingTitle: "Key Handling",
   securityKeyHandlingBody:
     "Standard private notes encode the raw 256-bit key as Base64url in the URL fragment (#...). Password-protected notes wrap the content key with Argon2id-derived keys.",
-  securityCryptoTitle: "Cryptographic Primitives",
+  securityCryptoTitle: "Cryptography",
   securitySymmetricTitle: "Symmetric Encryption",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
@@ -480,7 +481,7 @@ export const en: Translations = {
     "Password-protected notes use Argon2id with memory-hard parameters (time=3, memory=64 MiB, parallelism=1) to increase brute-force cost, especially on GPU/ASIC attackers.",
   securitySaltTitle: "16-Byte Cryptographic Salt",
   securitySaltBody: "Unique salt per note ensures protection against rainbow table attacks.",
-  securityInfrastructureTitle: "Infrastructure",
+  securityInfrastructureTitle: "Infrastructure & Operational Security",
   securityEuStorageTitle: "EU-jurisdiction storage",
   securityEuStorageBody:
     "Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure.",
@@ -490,7 +491,26 @@ export const en: Translations = {
   securityNoTrackingBody: "Stateless API. No advertising or tracking pixels ever loaded.",
   securityTurnstileTitle: "Turnstile Verification",
   securityTurnstileBody: "Human-only request verification prevents brute-force note enumeration.",
-  securityThreatModelTitle: "Threat Model",
+  securitySupplyChainTitle: "Supply Chain & Integrity",
+  securitySupplyChainIntro:
+    "Because cryptography executes client-side, integrity of delivered application code is part of the trust model.",
+  securitySupplyChainBulletImmutable: "Immutable production deployments",
+  securitySupplyChainBulletCsp: "Strict Content Security Policy (CSP)",
+  securitySupplyChainBulletDeps: "Dependency auditing and lockfile pinning",
+  securitySupplyChainBulletTls: "HTTPS/TLS enforcement",
+  securitySupplyChainBulletSri: "Subresource Integrity where applicable",
+  securitySupplyChainBulletMinimalJs: "Minimal third-party JavaScript usage",
+  securityLinkModelTitle: "Link Security Model",
+  securityLinkModelBody:
+    "Possession of the full note URL grants access to the note contents. Users should treat the link itself as a secret.",
+  securityForwardSecrecyTitle: "Forward secrecy limitations",
+  securityForwardSecrecyIntro:
+    "Note links do not provide forward secrecy. Anyone who later obtains the key material below can decrypt the note (until it is consumed or expires):",
+  securityForwardSecrecyBulletUrl: "The full URL (including the #fragment key)",
+  securityForwardSecrecyBulletHistory: "Browser history or synced browsing data",
+  securityForwardSecrecyBulletClipboard: "Clipboard copies of the link",
+  securityForwardSecrecyBulletChat: "Shared chat logs, email threads, or screenshots",
+  securityThreatModelTitle: "Threat Model & Limitations",
   securityThreatModelIntro:
     "No system is unbreakable. Our architecture addresses server-side threats, but client-side risks remain:",
   securityDeviceCompromiseTitle: "Device Compromise",

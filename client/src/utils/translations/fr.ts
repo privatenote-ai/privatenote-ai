@@ -454,12 +454,13 @@ export const fr: Translations = {
   securityHeroPrefix: "Architecture de",
   securityHeroAccent: "sécurité",
   securityHeroSubtitle: "Spécifications techniques de nos protocoles de chiffrement côté client (CSE) et de notre infrastructure de stockage sans confiance.",
-  securityE2eeTitle: "Modèle de chiffrement de bout en bout",
+  securityE2eeTitle: "Modèle de sécurité",
   securityE2eeBulletServer: "Le serveur n’est qu’un stockage non fiable : nous ne recevons que du chiffré.",
   securityE2eeBulletPlaintext: "Le contenu en clair des notes n’est jamais stocké chez nous.",
   securityE2eeBulletKeys:
     "La clé de chiffrement est générée dans votre navigateur. PrivateNote.ai ne la reçoit ni ne l’observe (elle reste dans le fragment d’URL, pas dans le chemin de requête), tant que votre appareil n’est pas compromis.",
-  securityAiBoxTitle: "IA optionnelle à la rédaction",
+  securityAiSectionTitle: "Traitement des données IA",
+  securityAiBoxTitle: "Optionnel lors de la rédaction d’une note",
   securityAiPrivateLine:
     "Private AI (WebLLM) : s’exécute sur votre appareil ; les prompts ne sont pas envoyés à PrivateNote.ai pour l’inférence.",
   securityAiCloudLine:
@@ -473,7 +474,7 @@ export const fr: Translations = {
   securityKeyHandlingTitle: "Gestion des clés",
   securityKeyHandlingBody:
     "Les notes privées standard encodent la clé brute de 256 bits en Base64url dans le fragment d’URL (#...). Les notes protégées par mot de passe enveloppent la clé de contenu avec des clés dérivées via Argon2id.",
-  securityCryptoTitle: "Primitives cryptographiques",
+  securityCryptoTitle: "Cryptographie",
   securitySymmetricTitle: "Chiffrement symétrique",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
@@ -486,7 +487,7 @@ export const fr: Translations = {
     "Les notes protégées par mot de passe utilisent Argon2id avec des paramètres résistants en mémoire (time=3, memory=64 MiB, parallelism=1) pour augmenter le coût des attaques par force brute, notamment sur GPU/ASIC.",
   securitySaltTitle: "Sel cryptographique de 16 octets",
   securitySaltBody: "Un sel unique par note protège contre les attaques par tables arc-en-ciel.",
-  securityInfrastructureTitle: "Infrastructure",
+  securityInfrastructureTitle: "Infrastructure et sécurité opérationnelle",
   securityEuStorageTitle: "Stockage sous juridiction de l’UE",
   securityEuStorageBody:
     "Les données d’authentification, les notes chiffrées et les enregistrements opérationnels sont stockés dans une infrastructure sous juridiction de l’UE.",
@@ -496,7 +497,26 @@ export const fr: Translations = {
   securityNoTrackingBody: "API sans état. Aucun pixel publicitaire ou de suivi n'est jamais chargé.",
   securityTurnstileTitle: "Vérification Turnstile",
   securityTurnstileBody: "La vérification des requêtes humaines empêche l'énumération des notes par force brute.",
-  securityThreatModelTitle: "Modèle de menace",
+  securitySupplyChainTitle: "Chaîne d’approvisionnement et intégrité",
+  securitySupplyChainIntro:
+    "Comme la cryptographie s’exécute côté client, l’intégrité du code applicatif livré fait partie du modèle de confiance.",
+  securitySupplyChainBulletImmutable: "Déploiements de production immuables",
+  securitySupplyChainBulletCsp: "Politique de sécurité du contenu (CSP) stricte",
+  securitySupplyChainBulletDeps: "Audit des dépendances et verrouillage du lockfile",
+  securitySupplyChainBulletTls: "Application HTTPS/TLS",
+  securitySupplyChainBulletSri: "Subresource Integrity lorsque applicable",
+  securitySupplyChainBulletMinimalJs: "Usage minimal de JavaScript tiers",
+  securityLinkModelTitle: "Modèle de sécurité des liens",
+  securityLinkModelBody:
+    "La possession de l’URL complète de la note donne accès au contenu. Traitez le lien lui-même comme un secret.",
+  securityForwardSecrecyTitle: "Limites de forward secrecy",
+  securityForwardSecrecyIntro:
+    "Les liens de note n’offrent pas de forward secrecy. Toute personne qui obtient ensuite les éléments suivants peut déchiffrer la note (jusqu’à consommation ou expiration) :",
+  securityForwardSecrecyBulletUrl: "L’URL complète (y compris la clé dans le fragment #)",
+  securityForwardSecrecyBulletHistory: "Historique du navigateur ou données de navigation synchronisées",
+  securityForwardSecrecyBulletClipboard: "Copies du lien dans le presse-papiers",
+  securityForwardSecrecyBulletChat: "Journaux de chat partagés, fils e-mail ou captures d’écran",
+  securityThreatModelTitle: "Modèle de menace et limites",
   securityThreatModelIntro:
     "Aucun système n'est incassable. Notre architecture traite les menaces côté serveur, mais des risques côté client demeurent :",
   securityDeviceCompromiseTitle: "Appareil compromis",
