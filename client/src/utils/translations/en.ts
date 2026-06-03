@@ -460,7 +460,7 @@ export const en: Translations = {
     "Cloud Assist: uses Cloudflare Workers AI when local AI is unavailable—you must explicitly opt in because draft plaintext is sent to Cloudflare Workers AI for inference. Stored notes remain ciphertext.",
   securityClientEncryptionTitle: "Client-Side Encryption",
   securityClientEncryptionBody:
-    "Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.",
+    "Notes are encrypted locally in browser memory before transmission using the Web Crypto API. The server only sees the resulting ciphertext blob.",
   securityAtomicTitle: "Atomic State Management",
   securityAtomicBody:
     "Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.",

@@ -462,7 +462,7 @@ export const de: Translations = {
     "Cloud Assist: nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie müssen ausdrücklich zustimmen, weil Entwurfs-Klartext zur Inferenz an Cloudflare Workers AI gesendet wird. Gespeicherte Notizen bleiben Chiffretext.",
   securityClientEncryptionTitle: "Clientseitige Verschlüsselung",
   securityClientEncryptionBody:
-    "Die Verschlüsselung erfolgt im Arbeitsspeicher Ihres Browsers mit der Web Crypto API. Der Server sieht nur den daraus entstehenden Chiffretext.",
+    "Notizen werden lokal im Browserspeicher vor der Übertragung mit der Web Crypto API verschlüsselt. Der Server sieht nur den daraus entstehenden Chiffretext.",
   securityAtomicTitle: "Atomare Zustandsverwaltung",
   securityAtomicBody:
     "Cloudflare Durable Objects sorgen für atomare Konsistenz bei der Einmal-Lese-Logik und verhindern Race Conditions sowie doppelte Nutzung.",

@@ -467,7 +467,7 @@ export const es: Translations = {
     "Cloud Assist: usa Cloudflare Workers AI cuando la IA local no está disponible; debes activarlo explícitamente porque el borrador en claro se envía a Cloudflare Workers AI para inferencia. Las notas guardadas siguen cifradas.",
   securityClientEncryptionTitle: "Cifrado del lado del cliente",
   securityClientEncryptionBody:
-    "El cifrado ocurre en la memoria de tu navegador usando la Web Crypto API. El servidor solo ve el blob cifrado resultante.",
+    "Las notas se cifran localmente en la memoria del navegador antes de la transmisión con la Web Crypto API. El servidor solo ve el blob cifrado resultante.",
   securityAtomicTitle: "Gestión de estado atómica",
   securityAtomicBody:
     "Cloudflare Durable Objects proporciona consistencia atómica para la lógica de una sola lectura, evitando condiciones de carrera y doble consumo.",

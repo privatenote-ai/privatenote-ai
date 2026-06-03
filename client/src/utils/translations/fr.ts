@@ -466,7 +466,7 @@ export const fr: Translations = {
     "Cloud Assist : utilise Cloudflare Workers AI si l’IA locale n’est pas disponible — vous devez l’activer explicitement car le brouillon en clair est envoyé à Cloudflare Workers AI pour l’inférence. Les notes stockées restent chiffrées.",
   securityClientEncryptionTitle: "Chiffrement côté client",
   securityClientEncryptionBody:
-    "Le chiffrement a lieu dans la mémoire de votre navigateur avec la Web Crypto API. Le serveur ne voit que le blob chiffré obtenu.",
+    "Les notes sont chiffrées localement en mémoire du navigateur avant la transmission avec la Web Crypto API. Le serveur ne voit que le blob chiffré obtenu.",
   securityAtomicTitle: "Gestion d'état atomique",
   securityAtomicBody:
     "Cloudflare Durable Objects fournit une cohérence atomique pour la logique de lecture unique, empêchant les conditions de concurrence et la double consommation.",
