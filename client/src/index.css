@@ -315,6 +315,9 @@
   }
 
   @keyframes how-visual-dash {
+    from {
+      stroke-dashoffset: 0;
+    }
     to {
       stroke-dashoffset: -28;
     }
@@ -332,11 +335,21 @@
     animation: how-visual-dash 1.8s linear infinite;
   }
 
-  @media (max-width: 639px) {
-    .how-visual-float,
-    .how-visual-pulse,
-    .how-visual-dash {
-      animation: none;
+  .how-visual-fade-right {
+    -webkit-mask-image: linear-gradient(to right, black 68%, transparent 100%);
+    mask-image: linear-gradient(to right, black 68%, transparent 100%);
+  }
+
+  .how-visual-fade-left {
+    -webkit-mask-image: linear-gradient(to left, black 68%, transparent 100%);
+    mask-image: linear-gradient(to left, black 68%, transparent 100%);
+  }
+
+  @media (max-width: 1023px) {
+    .how-visual-fade-right,
+    .how-visual-fade-left {
+      -webkit-mask-image: none;
+      mask-image: none;
     }
   }
 

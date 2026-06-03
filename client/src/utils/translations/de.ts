@@ -291,7 +291,8 @@ export const de: Translations = {
   clientSideEncryption: "Clientseitige Verschlüsselung bedeutet, dass der Server Ihren Klartext nie sieht.",
   readOnceExposure: "Einmaliges Lesen und ablaufende Notizen reduzieren die Sichtbarkeit über die Zeit.",
   noTrackingAds: "Keine Tracking-Cookies, keine Werbung und keine Drittanbieter-Analyse auf Notizen.",
-  postQuantumByDesign: "Post-Quantum durch Design mit AES-GCM im Browser.",
+  aesQuantumSafe:
+    "AES-256-GCM im Browser—256-Bit-Schlüssel bleiben auch bei quantenbasierter Schlüsselsuche stark; aus dem Chiffretext allein lässt sich Ihre Notiz nicht ableiten.",
   simplePrivacyFlow: "Ein einfacher Datenschutzprozess, dem Sie vertrauen können.",
   clearSteps: "Klare Schritte, keine versteckte Datenerfassung.",
   privacyFirst: "Datenschutz zuerst",
@@ -442,8 +443,8 @@ export const de: Translations = {
     "Private Nachrichten sollten kein Abonnement erfordern. Zentrale Sicherheitsfunktionen sind für alle kostenlos.",
   featureZeroTrackingTitle: "Keine Werbung. Kein Profiling.",
   featureZeroTrackingDescription: "PrivateNote verwendet keine Werbetracker und verkauft keine Nutzerdaten.",
-  featurePostQuantumTitle: "EU-gebundene Speicherung",
-  featurePostQuantumDescription:
+  featureEuStorageTitle: "EU-gebundene Speicherung",
+  featureEuStorageDescription:
     "Authentifizierungsdaten, verschlüsselte Notizen und Betriebsdaten bleiben in Infrastruktur unter EU-Gerichtsbarkeit.",
   featuresFooter: "Gebaut für datenschutzfreundliches Teilen — kein Tracking, keine Werbung, kein Weiterverkauf von Daten.",
   securityHeroPrefix: "Sicherheits",
@@ -451,9 +452,9 @@ export const de: Translations = {
   securityHeroSubtitle: "Technische Spezifikationen unserer clientseitigen Verschlüsselung (CSE) und vertrauenslosen Speicherinfrastruktur.",
   securityE2eeTitle: "E2EE-Modell",
   securityE2eeBody:
-    "Wir verwenden ein Ende-zu-Ende-verschlüsseltes (E2EE) Modell, bei dem der Server als nicht vertrauenswürdiges Speichermedium behandelt wird. Klartextinhalte von Notizen werden nie zur Speicherung oder Verarbeitung an unsere Server gesendet.",
-  securityAiLocalBody:
-    "Der optionale KI-Assistent läuft nach Aktivierung mit einem lokalen Modell in Ihrem Browser. Wir senden Ihre Notiztexte nicht an PrivateNote.ai oder Cloud-APIs von Drittanbietern zur KI-Inferenz.",
+    "Wir verwenden ein Ende-zu-Ende-verschlüsseltes (E2EE) Modell, bei dem der Server als nicht vertrauenswürdiges Speichermedium gilt. Klartext von Notizen wird bei uns nicht gespeichert. Optionaler Cloud Assist sendet Entwurfstext nur bei Aktivierung zur Inferenz an Cloudflare; gespeicherte Notizen bleiben Chiffretext.",
+  securityAiBody:
+    "Optionale KI beim Entwurf: Private AI läuft in Ihrem Browser (WebLLM) und sendet Ihren Prompt nicht zur Inferenz an PrivateNote.ai. Cloud Assist nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie bestätigen in der Oberfläche, weil Entwurfs-Klartext Ihr Gerät für die Inferenz verlässt.",
   securityClientEncryptionTitle: "Clientseitige Verschlüsselung",
   securityClientEncryptionBody:
     "Die Verschlüsselung erfolgt im Arbeitsspeicher Ihres Browsers mit der Web Crypto API. Der Server sieht nur den daraus entstehenden Chiffretext.",
@@ -462,12 +463,12 @@ export const de: Translations = {
     "Cloudflare Durable Objects sorgen für atomare Konsistenz bei der Einmal-Lese-Logik und verhindern Race Conditions sowie doppelte Nutzung.",
   securityKeyHandlingTitle: "Schlüsselverwaltung",
   securityKeyHandlingBody:
-    "Entschlüsselungsschlüssel werden lokal in Ihrem Browser mit der kryptografisch sicheren Zufallsquelle der Web Crypto API erzeugt und für sichere Übertragung in Base58 codiert.",
+    "Entschlüsselungsschlüssel werden lokal in Ihrem Browser mit der kryptografisch sicheren Zufallsquelle der Web Crypto API erzeugt. Standardnotizen kodieren den rohen AES-256-Schlüssel als Base64url im URL-Fragment (#...), das nicht im Pfad oder in der Query an unsere Server gesendet wird.",
   securityCryptoTitle: "Kryptografische Bausteine",
   securitySymmetricTitle: "Symmetrische Verschlüsselung",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
-    "Authentifizierte Verschlüsselung mit 128-Bit-Authentifizierungstags. Das verhindert Manipulationen am Chiffretext durch Server oder Mittelsleute.",
+    "Authentifizierte Verschlüsselung mit 128-Bit-Authentifizierungstags und zusätzlichen authentifizierten Daten (AAD), die Notiz-ID, Ablauf und Leselimits binden. 256-Bit-Schlüssel bleiben auch bei Grover-artiger quantenbasierter Schlüsselsuche praktisch unangreifbar.",
   securityIvTitle: "12-Byte-kryptografischer IV",
   securityIvBody: "Eindeutige Initialisierungsvektoren verhindern Mustererkennung über mehrere Notizen hinweg.",
   securityKdfTitle: "Schlüsselableitung (KDF)",
@@ -477,6 +478,9 @@ export const de: Translations = {
   securitySaltTitle: "16-Byte-kryptografisches Salt",
   securitySaltBody: "Ein eindeutiges Salt pro Notiz schützt vor Rainbow-Table-Angriffen.",
   securityInfrastructureTitle: "Infrastruktur",
+  securityEuStorageTitle: "Speicherung in EU-Rechtsraum",
+  securityEuStorageBody:
+    "Authentifizierungsdaten, verschlüsselte Notizen und operative Datensätze werden in einer Infrastruktur unter EU-Rechtsordnung gespeichert.",
   securityCspTitle: "Strenge CSP-Richtlinie",
   securityCspBody: "Die Content Security Policy blockiert Drittanbieter-Skripte und Cross-Site-Injections.",
   securityNoTrackingTitle: "Keine Tracking-Cookies",
@@ -647,7 +651,7 @@ export const de: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Klartext verlässt Ihr Gerät",
   howCloudAssistBody:
-    "Cloud Assist nutzt Cloudflare Workers AI (Llama 3.2 3B), wenn Private AI auf Ihrem Gerät nicht verfügbar ist oder Sie gehostete Entwürfe verwenden. Sie bestätigen in der Oberfläche, weil Ihr Prompt zur Inferenz an Cloudflare gesendet wird. Das überschreitet die Zero-Knowledge-Grenze: Cloudflare verarbeitet den Text, auch wenn wir ihn nicht speichern.",
+    "Cloud Assist nutzt Cloudflare Workers AI (Llama 3.2 3B), wenn Private AI auf Ihrem Gerät nicht verfügbar ist oder Sie gehostete Entwürfe verwenden. Sie bestätigen in der Oberfläche, weil Ihr Prompt zur Inferenz an Cloudflare gesendet wird. Das verlässt unsere Grenze des vollständigen Datenschutzes: Cloudflare verarbeitet den Text, auch wenn wir ihn nicht speichern.",
   howAiCaution:
     "Private AI erhöht Speicher- und Download-Angriffsfläche auf dem Gerät. Cloud Assist sendet Entwurfs-Klartext zusätzlich an einen Drittanbieter für Inferenz. Nutzen Sie beides nur, wenn dieser Kompromiss akzeptabel ist.",
   howCtaTitle: "Bereit, Ihre Daten zu schützen?",
@@ -855,7 +859,7 @@ export const de: Translations = {
     "Browser-Verschlüsselung, kurzlebige Notizen und optionale KI-Hilfe—Schlüssel bleiben unter Ihrer Kontrolle.",
   documentMetaDevelopersTitle: "Entwickler-Integrationen",
   documentMetaDevelopersDescription:
-    "Nutzen Sie PrivateNote.ai aus VS Code, Cursor, KI-Agenten und MCP-Clients, während die Verschlüsselung lokal und Zero-Knowledge bleibt.",
+    "Nutzen Sie PrivateNote.ai aus VS Code, Cursor, KI-Agenten und MCP-Clients, während die Verschlüsselung lokal und vollständig privat bleibt.",
   documentMetaAboutDescription:
     "Warum PrivateNote.ai existiert, welche Werte dahinterstehen und wie Verschlüsselung Kommunikation sicherer macht.",
   blogPasswordMetaDescription:

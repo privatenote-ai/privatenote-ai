@@ -87,7 +87,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
             </motion.p>
 
             <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-              {[t.clientSideEncryption, t.readOnceExposure, t.noTrackingAds, t.postQuantumByDesign].map((line, idx) => (
+              {[t.clientSideEncryption, t.readOnceExposure, t.noTrackingAds, t.aesQuantumSafe].map((line, idx) => (
                 <motion.li
                   key={line}
                   className="flex items-start gap-3 rounded-xl border border-gray-200/60 bg-white/70 px-4 py-3 shadow-sm dark:border-gray-700/50 dark:bg-gray-900/50"

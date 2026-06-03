@@ -291,7 +291,8 @@ export const fr: Translations = {
   clientSideEncryption: "Le chiffrement côté client signifie que le serveur ne voit jamais votre texte en clair.",
   readOnceExposure: "Les notes lisibles une seule fois et expirables réduisent l’exposition dans le temps.",
   noTrackingAds: "Pas de cookies de suivi, pas de publicité et pas d’analyse tierce sur les notes.",
-  postQuantumByDesign: "Conçu pour le post-quantique avec AES-GCM dans le navigateur.",
+  aesQuantumSafe:
+    "AES-256-GCM dans le navigateur : des clés 256 bits restent solides face à une recherche quantique de clé ; le seul texte chiffré ne révèle pas votre note.",
   simplePrivacyFlow: "Un parcours de confidentialité simple et digne de confiance.",
   clearSteps: "Des étapes claires, aucune collecte de données cachée.",
   privacyFirst: "Confidentialité dès la conception",
@@ -446,8 +447,8 @@ export const fr: Translations = {
     "La messagerie privée ne devrait pas nécessiter d’abonnement. Les fonctions de sécurité essentielles sont gratuites pour tout le monde.",
   featureZeroTrackingTitle: "Pas de publicité. Pas de profilage.",
   featureZeroTrackingDescription: "PrivateNote n’utilise pas de traceurs publicitaires et ne vend pas les données utilisateur.",
-  featurePostQuantumTitle: "Stockage limité à l’UE",
-  featurePostQuantumDescription:
+  featureEuStorageTitle: "Stockage limité à l’UE",
+  featureEuStorageDescription:
     "Les données d’authentification, les notes chiffrées et les enregistrements opérationnels restent dans une infrastructure sous juridiction de l’UE.",
   featuresFooter: "Conçu pour un partage axé sur la confidentialité — pas de suivi, pas de publicité, pas de revente de données.",
   securityHeroPrefix: "Architecture de",
@@ -455,9 +456,9 @@ export const fr: Translations = {
   securityHeroSubtitle: "Spécifications techniques de nos protocoles de chiffrement côté client (CSE) et de notre infrastructure de stockage sans confiance.",
   securityE2eeTitle: "Modèle E2EE",
   securityE2eeBody:
-    "Nous utilisons un modèle chiffré de bout en bout (E2EE) où le serveur est traité comme un support de stockage non fiable. Le contenu en clair des notes n'est jamais envoyé à nos serveurs pour stockage ou traitement.",
-  securityAiLocalBody:
-    "L'assistant IA optionnel s'exécute dans votre navigateur avec un modèle local lorsque vous l'activez. Nous n'envoyons pas le texte de vos notes à PrivateNote.ai ni à des API cloud tierces pour l'inférence IA.",
+    "Nous utilisons un modèle chiffré de bout en bout (E2EE) où le serveur est un support de stockage non fiable. Le contenu en clair des notes n’est pas stocké chez nous. Cloud Assist optionnel envoie le brouillon à Cloudflare pour l’inférence uniquement si vous l’activez ; les notes stockées restent du chiffré.",
+  securityAiBody:
+    "IA optionnelle à la rédaction : Private AI s’exécute dans votre navigateur (WebLLM) et n’envoie pas votre prompt à PrivateNote.ai pour l’inférence. Cloud Assist utilise Cloudflare Workers AI lorsque l’IA locale n’est pas disponible — vous confirmez dans l’interface car le brouillon en clair quitte votre appareil pour l’inférence.",
   securityClientEncryptionTitle: "Chiffrement côté client",
   securityClientEncryptionBody:
     "Le chiffrement a lieu dans la mémoire de votre navigateur avec la Web Crypto API. Le serveur ne voit que le blob chiffré obtenu.",
@@ -466,12 +467,12 @@ export const fr: Translations = {
     "Cloudflare Durable Objects fournit une cohérence atomique pour la logique de lecture unique, empêchant les conditions de concurrence et la double consommation.",
   securityKeyHandlingTitle: "Gestion des clés",
   securityKeyHandlingBody:
-    "Les clés de déchiffrement sont générées localement dans votre navigateur avec la source aléatoire cryptographiquement sûre de la Web Crypto API, puis encodées en Base58 pour une transmission sûre.",
+    "Les clés de déchiffrement sont générées localement dans votre navigateur avec la source aléatoire cryptographiquement sûre de la Web Crypto API. Les notes standard encodent la clé AES-256 brute en Base64url dans le fragment d’URL (#...), qui n’est pas envoyé à nos serveurs dans le chemin ni la requête.",
   securityCryptoTitle: "Primitives cryptographiques",
   securitySymmetricTitle: "Chiffrement symétrique",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
-    "Chiffrement authentifié avec tags d'authentification 128 bits. Cela empêche la manipulation du texte chiffré par le serveur ou des intermédiaires.",
+    "Chiffrement authentifié avec tags 128 bits et données authentifiées supplémentaires (AAD) liant l’id de note, l’expiration et les limites de lecture. Des clés 256 bits restent une barrière pratique même face à une recherche quantique de clé de type Grover.",
   securityIvTitle: "IV cryptographique de 12 octets",
   securityIvBody: "Des vecteurs d'initialisation uniques empêchent la reconnaissance de motifs entre plusieurs notes.",
   securityKdfTitle: "Dérivation de clé (KDF)",
@@ -481,6 +482,9 @@ export const fr: Translations = {
   securitySaltTitle: "Sel cryptographique de 16 octets",
   securitySaltBody: "Un sel unique par note protège contre les attaques par tables arc-en-ciel.",
   securityInfrastructureTitle: "Infrastructure",
+  securityEuStorageTitle: "Stockage sous juridiction de l’UE",
+  securityEuStorageBody:
+    "Les données d’authentification, les notes chiffrées et les enregistrements opérationnels sont stockés dans une infrastructure sous juridiction de l’UE.",
   securityCspTitle: "Politique CSP stricte",
   securityCspBody: "La Content Security Policy bloque les scripts tiers et les injections cross-site.",
   securityNoTrackingTitle: "Aucun cookie de suivi",
@@ -651,7 +655,7 @@ export const fr: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Le texte en clair quitte l’appareil",
   howCloudAssistBody:
-    "Cloud Assist utilise Cloudflare Workers AI (Llama 3.2 3B) lorsque Private AI n’est pas disponible sur votre appareil ou si vous utilisez des brouillons hébergés. Vous confirmez dans l’interface car votre prompt est envoyé à Cloudflare pour l’inférence. Cela dépasse notre frontière zéro-connaissance : Cloudflare traite le texte même si nous ne le stockons pas.",
+    "Cloud Assist utilise Cloudflare Workers AI (Llama 3.2 3B) lorsque Private AI n’est pas disponible sur votre appareil ou si vous utilisez des brouillons hébergés. Vous confirmez dans l’interface car votre prompt est envoyé à Cloudflare pour l’inférence. Cela dépasse notre frontière de confidentialité totale : Cloudflare traite le texte même si nous ne le stockons pas.",
   howAiCaution:
     "Private AI ajoute une surface de risque liée à la mémoire et aux téléchargements sur l’appareil. Cloud Assist envoie en plus le brouillon en clair à un prestataire tiers d’inférence. N’utilisez l’un ou l’autre que si ce compromis est acceptable.",
   howCtaTitle: "Prêt à sécuriser vos données ?",
@@ -859,7 +863,7 @@ export const fr: Translations = {
     "Découvrez comment PrivateNote.ai utilise le chiffrement navigateur, les notes éphémères et l’IA optionnelle tout en gardant vos clés sous contrôle.",
   documentMetaDevelopersTitle: "Intégrations développeurs",
   documentMetaDevelopersDescription:
-    "Utilisez PrivateNote.ai depuis VS Code, Cursor, des agents IA et des clients MCP tout en gardant le chiffrement local et zero-knowledge.",
+    "Utilisez PrivateNote.ai depuis VS Code, Cursor, des agents IA et des clients MCP tout en gardant le chiffrement local et entièrement privé.",
   documentMetaAboutDescription:
     "Pourquoi PrivateNote.ai existe, les valeurs de confidentialité et comment le chiffrement sécurise les échanges sensibles.",
   blogPasswordMetaDescription:

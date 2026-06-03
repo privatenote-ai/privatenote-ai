@@ -15,6 +15,10 @@ const SecurityOverview: React.FC = () => {
   const { language, t } = useLanguage();
   const infrastructureItems = [
     {
+      title: t.securityEuStorageTitle,
+      body: t.securityEuStorageBody,
+    },
+    {
       title: t.securityCspTitle,
       body: t.securityCspBody,
     },
@@ -67,7 +71,7 @@ const SecurityOverview: React.FC = () => {
                   {t.securityE2eeBody}
                 </p>
                 <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {t.securityAiLocalBody}
+                  {t.securityAiBody}
                 </p>
               </div>
 

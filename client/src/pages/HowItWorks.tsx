@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
+import { motion, MotionConfig } from "framer-motion";
 import {
   Check,
   Cloud,
@@ -38,7 +39,8 @@ export default function HowItWorks() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl overflow-hidden px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
+    <MotionConfig reducedMotion="user">
+    <div className="mx-auto max-w-5xl overflow-x-clip px-4 sm:px-6 lg:px-8 pt-24 pb-20 mb-20 relative">
       {/* Reduced background glows (less noise) */}
       <div className="absolute top-[-80px] right-1/4 w-80 h-80 bg-primary/10 blur-[130px] -z-10" />
       <div className="absolute bottom-[120px] left-1/4 w-56 h-56 bg-blue-500/10 blur-[120px] -z-10" />
@@ -88,8 +90,17 @@ export default function HowItWorks() {
         </section>
 
         {/* Infrastructure & Manual Reveal */}
-        <section className="space-y-20 pt-10 lg:space-y-24">
-          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:gap-12">
+        <section className="relative isolate space-y-20 pt-10 lg:space-y-28">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-8 bottom-8 -z-10 opacity-40 dark:opacity-25"
+            aria-hidden
+          >
+            <div className="absolute left-1/2 top-[18%] h-[420px] w-[min(920px,130vw)] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute left-1/2 bottom-[12%] h-[360px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-blue-500/8 blur-3xl" />
+            <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,#00000010_1px,transparent_1px),linear-gradient(to_bottom,#00000010_1px,transparent_1px)] [background-size:48px_48px] dark:opacity-[0.08]" />
+          </div>
+
+          <div className="grid min-w-0 items-center gap-10 lg:grid-cols-2 lg:gap-14">
             <div className="max-w-2xl">
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
                 {t.howInfrastructureTitle}
@@ -113,9 +124,16 @@ export default function HowItWorks() {
               </div>
             </div>
 
-            <div className="flex min-w-0 justify-center lg:justify-end lg:-mr-10">
-              <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-xl">
-                <div className="pointer-events-none absolute inset-6 rounded-full bg-primary/10 blur-3xl" />
+            <div className="flex min-w-0 justify-center overflow-visible">
+              <motion.div
+                className="how-visual-fade-right w-full max-w-sm overflow-visible sm:max-w-md lg:max-w-lg xl:max-w-xl"
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.35 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+              <div className="relative w-full overflow-visible">
+                <div className="pointer-events-none absolute inset-0 rounded-full bg-primary/10 blur-3xl" />
                 <svg
                   className="how-visual-float relative block h-auto w-full drop-shadow-[0_18px_32px_rgba(37,99,235,0.14)] lg:drop-shadow-[0_24px_45px_rgba(37,99,235,0.18)]"
                   viewBox="0 0 360 200"
@@ -124,12 +142,13 @@ export default function HowItWorks() {
                   aria-label={t.howInfrastructureIllustration}
                 >
                   <defs>
-                    <linearGradient id="infraGlow" x1="80" y1="40" x2="280" y2="165" gradientUnits="userSpaceOnUse">
+                    <radialGradient id="infraGlow" cx="180" cy="100" r="150" gradientUnits="userSpaceOnUse">
                       <stop stopColor="hsl(var(--primary))" stopOpacity="0.16" />
-                      <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0.02" />
-                    </linearGradient>
+                      <stop offset="0.55" stopColor="hsl(var(--primary))" stopOpacity="0.05" />
+                      <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" />
+                    </radialGradient>
                   </defs>
-                  <rect x="50" y="24" width="260" height="150" rx="28" fill="url(#infraGlow)" />
+                  <rect x="0" y="0" width="360" height="200" fill="url(#infraGlow)" />
                   <path
                     className="how-visual-dash"
                     d="M78 118 C116 70 144 146 180 92 C218 38 244 128 286 78"
@@ -197,13 +216,21 @@ export default function HowItWorks() {
                   </g>
                 </svg>
               </div>
+              </motion.div>
             </div>
           </div>
 
-          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(420px,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
-            <div className="flex min-w-0 justify-center lg:-ml-10 lg:justify-start">
-              <div className="relative w-full max-w-sm sm:max-w-md lg:max-w-xl">
-                <div className="pointer-events-none absolute inset-4 rounded-full bg-red-500/10 blur-3xl" />
+          <div className="grid min-w-0 items-center gap-10 lg:grid-cols-2 lg:gap-14">
+            <div className="flex min-w-0 justify-center overflow-visible">
+              <motion.div
+                className="how-visual-fade-left w-full max-w-sm overflow-visible sm:max-w-md lg:max-w-lg xl:max-w-xl"
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.35 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+              <div className="relative w-full overflow-visible">
+                <div className="pointer-events-none absolute inset-0 rounded-full bg-red-500/10 blur-3xl" />
                 <svg
                   className="how-visual-float relative block h-auto w-full drop-shadow-[0_18px_32px_rgba(220,38,38,0.1)] lg:drop-shadow-[0_24px_45px_rgba(220,38,38,0.13)]"
                   viewBox="0 0 360 200"
@@ -212,12 +239,13 @@ export default function HowItWorks() {
                   aria-label={t.howManualRevealIllustration}
                 >
                 <defs>
-                  <radialGradient id="threatGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(165 105) rotate(37) scale(155 82)">
-                    <stop stopColor="hsl(var(--primary))" stopOpacity="0.13" />
+                  <radialGradient id="threatGlow" cx="180" cy="100" r="150" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="hsl(var(--primary))" stopOpacity="0.12" />
+                    <stop offset="0.55" stopColor="hsl(var(--primary))" stopOpacity="0.04" />
                     <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" />
                   </radialGradient>
                 </defs>
-                <rect x="40" y="22" width="280" height="156" rx="30" fill="url(#threatGlow)" />
+                <rect x="0" y="0" width="360" height="200" fill="url(#threatGlow)" />
                 <g id="note">
                   <rect
                     x="130"
@@ -294,6 +322,7 @@ export default function HowItWorks() {
                 </g>
                 </svg>
               </div>
+              </motion.div>
             </div>
 
             <div className="max-w-2xl">
@@ -309,19 +338,19 @@ export default function HowItWorks() {
             </div>
           </div>
 
-          <div className="max-w-3xl space-y-8">
+          <div className="max-w-4xl space-y-10 pt-4 lg:space-y-12 lg:pt-8">
             <div>
-              <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+              <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
                 {t.howAiSectionTitle}
               </h2>
-              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl">
                 {t.howAiIntro}
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-6 shadow-sm dark:border-primary/20 dark:bg-primary/10">
-                <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="grid gap-8 md:grid-cols-2 md:gap-10">
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-7 shadow-sm dark:border-primary/20 dark:bg-primary/10 sm:p-8">
+                <div className="mb-5 flex flex-wrap items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/20">
                     <Cpu className="h-5 w-5" aria-hidden />
                   </span>
@@ -332,13 +361,13 @@ export default function HowItWorks() {
                     {t.howPrivateAiBadge}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base sm:leading-7">
                   {t.howPrivateAiBody}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-red-200/80 bg-red-50/60 p-6 shadow-sm dark:border-red-900/50 dark:bg-red-950/25">
-                <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-red-200/80 bg-red-50/60 p-7 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-8">
+                <div className="mb-5 flex flex-wrap items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-red-200/80 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-800/60">
                     <Cloud className="h-5 w-5" aria-hidden />
                   </span>
@@ -349,24 +378,24 @@ export default function HowItWorks() {
                     {t.howCloudAssistBadge}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base sm:leading-7">
                   {t.howCloudAssistBody}
                 </p>
               </div>
             </div>
 
-            <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed border-l-2 border-primary/30 pl-4">
+            <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed border-l-2 border-primary/30 pl-5 pt-1">
               {t.howAiCaution}
             </p>
           </div>
         </section>
 
-        {/* Call to Action (slightly tighter, less tall) */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8 p-10 rounded-[2.5rem] bg-primary text-white relative overflow-hidden group">
+        {/* Call to Action */}
+        <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-10 rounded-[2.5rem] bg-primary p-10 text-white relative overflow-hidden group sm:p-12 lg:mt-16 lg:gap-12 lg:p-14">
           <Sparkles className="absolute -right-10 -top-10 h-56 w-56 text-white/10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
-          <div className="relative z-10">
-            <h3 className="text-3xl font-bold mb-2">{t.howCtaTitle}</h3>
-            <p className="text-primary-foreground/80 font-medium">
+          <div className="relative z-10 space-y-3">
+            <h3 className="text-3xl font-bold leading-tight sm:text-[2rem]">{t.howCtaTitle}</h3>
+            <p className="max-w-md text-base font-medium leading-relaxed text-primary-foreground/85 sm:text-lg">
               {t.howCtaSubtitle}
             </p>
           </div>
@@ -381,5 +410,6 @@ export default function HowItWorks() {
         </div>
       </div>
     </div>
+    </MotionConfig>
   );
 }

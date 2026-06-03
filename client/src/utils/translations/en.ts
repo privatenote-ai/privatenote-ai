@@ -295,7 +295,8 @@ export const en: Translations = {
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
   readOnceExposure: "Read-once and expiring notes reduce exposure over time.",
   noTrackingAds: "No ads, no ad-tracking pixels, and no third-party analytics.",
-  postQuantumByDesign: "Post-quantum by design with AES-GCM in the browser.",
+  aesQuantumSafe:
+    "AES-256-GCM in the browser—256-bit keys stay strong against quantum key-search attacks; ciphertext alone does not reveal your note.",
   simplePrivacyFlow: "A simple privacy flow you can trust.",
   clearSteps: "Clear steps, no hidden data collection.",
   privacyFirst: "Privacy-first by design",
@@ -440,8 +441,8 @@ export const en: Translations = {
     "Private messaging shouldn’t require a subscription. Core security features are free for everyone.",
   featureZeroTrackingTitle: "No Ads. No Profiling.",
   featureZeroTrackingDescription: "PrivateNote doesn’t use advertising trackers or sell user data.",
-  featurePostQuantumTitle: "EU-Bound Storage",
-  featurePostQuantumDescription:
+  featureEuStorageTitle: "EU-Bound Storage",
+  featureEuStorageDescription:
     "Authentication data, encrypted notes, and operational records stay within EU-jurisdiction infrastructure.",
   featuresFooter: "Built for privacy-first sharing — no tracking, no ads, no data resale.",
   securityHeroPrefix: "Security",
@@ -449,9 +450,9 @@ export const en: Translations = {
   securityHeroSubtitle: "Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.",
   securityE2eeTitle: "E2EE Model",
   securityE2eeBody:
-    "We utilize an End-to-End Encrypted (E2EE) model where the server is treated as an untrusted storage medium. Plaintext note content is never sent to our servers for storage or processing.",
-  securityAiLocalBody:
-    "Optional AI assist runs in your browser with a local model when you enable it. We do not send your note text to PrivateNote.ai or third-party cloud APIs for AI inference.",
+    "We use an end-to-end encrypted (E2EE) model where the server is an untrusted storage medium. Plaintext note content is never stored on our servers. Optional Cloud Assist sends draft text to Cloudflare for inference only when you enable it; stored notes remain ciphertext.",
+  securityAiBody:
+    "Optional AI when drafting: Private AI runs in your browser (WebLLM) and does not send your prompt to PrivateNote.ai for inference. Cloud Assist uses Cloudflare Workers AI when local AI is unavailable—you confirm in the UI because draft plaintext leaves your device for inference.",
   securityClientEncryptionTitle: "Client-Side Encryption",
   securityClientEncryptionBody:
     "Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.",
@@ -460,12 +461,12 @@ export const en: Translations = {
     "Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.",
   securityKeyHandlingTitle: "Key Handling",
   securityKeyHandlingBody:
-    "Decryption keys are generated locally in your browser using the Web Crypto API's cryptographically secure random source and encoded in Base58 for safe transmission.",
+    "Decryption keys are generated locally in your browser using the Web Crypto API's cryptographically secure random source. Standard notes encode the raw AES-256 key as Base64url in the URL fragment (#...), which is not sent to our servers in the request path or query.",
   securityCryptoTitle: "Cryptographic Primitives",
   securitySymmetricTitle: "Symmetric Encryption",
   securityAesTitle: "AES-256-GCM",
   securityAesBody:
-    "Authenticated encryption with 128-bit auth tags. This prevents ciphertext manipulation by the server or middle-men.",
+    "Authenticated encryption with 128-bit auth tags and additional authenticated data (AAD) binding note id, expiry, and read limits. 256-bit keys remain a practical barrier even against Grover-style quantum key search.",
   securityIvTitle: "12-Byte Cryptographic IV",
   securityIvBody: "Unique Initialization Vectors prevent pattern recognition across multiple notes.",
   securityKdfTitle: "Key Derivation (KDF)",
@@ -475,6 +476,9 @@ export const en: Translations = {
   securitySaltTitle: "16-Byte Cryptographic Salt",
   securitySaltBody: "Unique salt per note ensures protection against rainbow table attacks.",
   securityInfrastructureTitle: "Infrastructure",
+  securityEuStorageTitle: "EU-jurisdiction storage",
+  securityEuStorageBody:
+    "Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure.",
   securityCspTitle: "Strict CSP Policy",
   securityCspBody: "Content Security Policy blocks third-party scripts and cross-site injections.",
   securityNoTrackingTitle: "No Tracking Cookies",
@@ -645,7 +649,7 @@ export const en: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Plaintext leaves your device",
   howCloudAssistBody:
-    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You confirm in the UI because your prompt is sent to Cloudflare for inference. That steps outside our zero-knowledge boundary: Cloudflare processes the text even though we do not store it.",
+    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You confirm in the UI because your prompt is sent to Cloudflare for inference. That steps outside our full-privacy boundary: Cloudflare processes the text even though we do not store it.",
   howAiCaution:
     "Private AI adds on-device memory and download surface. Cloud Assist additionally sends draft plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
   howCtaTitle: "Ready to secure your data?",
@@ -856,7 +860,7 @@ export const en: Translations = {
     "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
   documentMetaDevelopersTitle: "Developer integrations",
   documentMetaDevelopersDescription:
-    "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and zero-knowledge.",
+    "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and fully private.",
   documentMetaAboutDescription:
     "Why PrivateNote.ai exists, the privacy values behind it, and how encrypted tools make sensitive communication safer.",
   blogPasswordMetaDescription:

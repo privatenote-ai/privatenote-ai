@@ -36,8 +36,8 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       icon: <Zap className="h-6 w-6 text-primary" />
     },
     {
-      title: t.featurePostQuantumTitle,
-      description: t.featurePostQuantumDescription,
+      title: t.featureEuStorageTitle,
+      description: t.featureEuStorageDescription,
       icon: <Shield className="h-6 w-6 text-primary" />
     }
   ];
