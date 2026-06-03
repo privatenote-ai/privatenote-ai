@@ -4,7 +4,7 @@ import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
-import type { KVNamespace } from "@cloudflare/workers-types";
+import type { DurableObjectNamespace, DurableObjectStub, KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 import {
   generateAuthenticationOptions,
@@ -31,6 +31,7 @@ import {
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
+import { withEuStoredDataEnv } from "./euD1Kv";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -748,6 +749,16 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     headers,
   });
 }
+
+const getEuSecureNotesNamespace = (env: Env): DurableObjectNamespace =>
+  env.SECURE_NOTES.jurisdiction("eu");
+
+// EU storage migration fallback: keep legacy global namespace reads until 2026-07-03
+// so pre-migration notes with the maximum 30-day expiry can still be opened.
+const getSecureNoteStub = (env: Env, id: string, useEuNamespace: boolean): DurableObjectStub => {
+  const namespace = useEuNamespace ? getEuSecureNotesNamespace(env) : env.SECURE_NOTES;
+  return namespace.get(namespace.idFromName(id));
+};
 
 /** Rate limit bucket for TOTP checks on account takeover actions (aligned with magic-link TOTP verify). */
 const SENSITIVE_ACTION_TOTP_RL = {
@@ -6744,6 +6755,7 @@ function parseAnalyticsUtcDayParam(value: string): Date | null {
 }
 
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+  env = withEuStoredDataEnv(env);
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
@@ -6975,8 +6987,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const id = requestedId || crypto.randomUUID();
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
+    const stub = getSecureNoteStub(env, id, true);
     const doUrl = new URL(request.url);
     doUrl.pathname = `/api/notes/${id}`;
 
@@ -7041,9 +7052,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }, 429, request);
     }
 
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request as any);
+    const stub = getSecureNoteStub(env, id, true);
+    let doResponse = await stub.fetch(request as any);
+
+    if (doResponse.status === 404) {
+      const legacyStub = getSecureNoteStub(env, id, false);
+      doResponse = await legacyStub.fetch(request as any);
+    }
 
     if (!doResponse.ok) {
       let errorBodyPreview = "";
@@ -7112,9 +7127,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
   if (noteParams && (method === "GET" || method === "DELETE")) {
     const { id } = noteParams;
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request as any);
+    const stub = getSecureNoteStub(env, id, true);
+    let doResponse = await stub.fetch(request as any);
+
+    if (doResponse.status === 404) {
+      const legacyStub = getSecureNoteStub(env, id, false);
+      doResponse = await legacyStub.fetch(request as any);
+    }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 

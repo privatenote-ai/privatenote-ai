@@ -283,7 +283,7 @@ export const fr: Translations = {
   homeHeroLine1: "Vos messages,",
   homeHeroLine2: "votre vie privée",
   homeHeroSubtitle:
-    "Des notes chiffrées de bout en bout qui s’autodétruisent après lecture. Plus sûr que les alternatives, avec un chiffrement côté client qui garde vos messages privés.",
+    "Partagez des notes chiffrées qui s’autodétruisent après lecture. Pas de publicité, pas de profilage, pas de collecte de données inutile — juste des messages privés et éphémères.",
   whyPrivateNote: "Pourquoi PrivateNote",
   shareSensitiveHeading: "Partagez des notes sensibles en toute confiance.",
   shareSensitiveBody:
@@ -433,16 +433,18 @@ export const fr: Translations = {
   saveNoteSecurely: "Veillez à conserver cette note en lieu sûr.",
   keyFeatures: "Fonctionnalités clés",
   keyFeaturesSubtitle: "Une sécurité pratique, expliquée simplement.",
-  featurePrivateAiTitle: "Traitement IA privé",
-  featurePrivateAiDescription: "S’exécute directement dans votre navigateur. Vos prompts ne quittent jamais votre appareil.",
+  featurePrivateAiTitle: "Privé par défaut",
+  featurePrivateAiDescription: "Votre message est chiffré dans votre navigateur avant l’envoi.",
   featureSelfDestructTitle: "Notes autodestructrices",
-  featureSelfDestructDescription: "Lisibles une seule fois par défaut, avec une expiration que vous contrôlez : minutes, heures ou jours.",
+  featureSelfDestructDescription:
+    "Les notes sont supprimées après lecture, avec des délais d’expiration que vous contrôlez : minutes, heures ou jours.",
   featureOneLinkTitle: "Un lien, aucun compte",
-  featureOneLinkDescription: "Créez une note, partagez le lien, c’est tout. Pas d’inscription, pas de friction.",
+  featureOneLinkDescription: "Créez une note, partagez le lien, c’est tout. Aucun compte, aucune friction.",
   featurePrivacyNotPaywallsTitle: "Confidentialité, pas de paywall",
-  featurePrivacyNotPaywallsDescription: "La sécurité essentielle est gratuite. Aucun abonnement nécessaire pour protéger vos notes.",
-  featureZeroTrackingTitle: "Zéro suivi",
-  featureZeroTrackingDescription: "Pas d’analytique, pas de publicité, pas de revente de données.",
+  featurePrivacyNotPaywallsDescription:
+    "La messagerie privée ne devrait pas nécessiter d’abonnement. Les fonctions de sécurité essentielles sont gratuites pour tout le monde.",
+  featureZeroTrackingTitle: "Pas de publicité. Pas de profilage.",
+  featureZeroTrackingDescription: "PrivateNote n’utilise pas de traceurs publicitaires et ne vend pas les données utilisateur.",
   featurePostQuantumTitle: "Conçu pour le post-quantique",
   featurePostQuantumDescription: "AES-GCM dans le navigateur. Le serveur ne voit jamais la clé de chiffrement ni le texte en clair.",
   featuresFooter: "Conçu pour un partage axé sur la confidentialité — pas de suivi, pas de publicité, pas de revente de données.",
@@ -632,13 +634,15 @@ export const fr: Translations = {
     "Les robots de prévisualisation de liens dans des apps comme Slack ou iMessage peuvent « lire » accidentellement une note à usage unique avant votre destinataire.",
   howManualRevealQuote:
     "Notre étape de révélation manuelle impose une interaction humaine, afin que seul le destinataire prévu consomme la note.",
-  howAiAssistTitle: "AI Assist (sur votre appareil)",
+  howAiAssistTitle: "Private AI et Cloud Assist",
   howAiAssistBody1:
-    "Si vous activez AI Assist, la note est déchiffrée uniquement dans votre navigateur afin qu’un modèle local (WebLLM) exécute l’action choisie. Le texte en clair reste sur votre appareil ; notre Worker ne reçoit jamais le contenu de votre note pour le traitement IA.",
+    "Private AI exécute un modèle entièrement dans votre navigateur via WebLLM. Votre note est déchiffrée localement, le modèle choisi s’exécute sur votre appareil, et le texte en clair ne quitte jamais votre machine. Notre Worker ne reçoit que le résultat rechiffré.",
   howAiAssistBody2:
-    "Le modèle et ses poids peuvent être téléchargés depuis des CDN publics ou des dépôts configurés pour WebLLM, séparément de votre note chiffrée. Les résultats sont intégrés localement à votre brouillon avant tout nouveau chiffrement pour l’envoi.",
+    "Cloud Assist utilise Cloudflare Workers AI lorsque Private AI n’est pas disponible ou que vous choisissez des brouillons hébergés. Votre prompt est déchiffré dans le navigateur, puis le texte en clair est envoyé à l’infrastructure d’inférence de Cloudflare. Cela dépasse la frontière zéro-connaissance : Cloudflare traite votre texte, même si nous ne le stockons pas.",
+  howAiAssistBody3:
+    "Pour Private AI, les poids du modèle peuvent être téléchargés depuis des CDN publics configurés pour WebLLM, séparément de votre note chiffrée. Les résultats sont intégrés localement au brouillon avant tout rechiffrement pour l’envoi.",
   howAiAssistCaution:
-    "AI Assist augmente tout de même l’exposition par rapport au mode Standard pendant l’exécution du modèle (mémoire, téléchargements et environnement du navigateur). Utilisez-le seulement si ce compromis est acceptable.",
+    "Les deux options augmentent l’exposition par rapport à l’écriture sans IA. Private AI garde le texte en clair sur l’appareil, mais ajoute une surface de risque liée à la mémoire et aux téléchargements. Cloud Assist envoie en plus le texte en clair à un prestataire tiers. N’utilisez l’un ou l’autre que si ce compromis est acceptable.",
   howAiAssistIllustration: "Illustration du traitement IA avec puce sécurisée",
   howCtaTitle: "Prêt à sécuriser vos données ?",
   howCtaSubtitle: "Rapide, éphémère et conforme.",

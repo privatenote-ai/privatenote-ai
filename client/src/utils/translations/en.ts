@@ -287,14 +287,14 @@ export const en: Translations = {
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
   homeHeroSubtitle:
-    "End-to-end encrypted notes that self-destruct after reading. More secure than alternatives, with client-side encryption ensuring your messages stay private.",
+    "Share encrypted notes that self-destruct after reading. No ads, no profiling, no unnecessary data collection — just private, one-time messages.",
   whyPrivateNote: "Why PrivateNote",
   shareSensitiveHeading: "Share sensitive notes with confidence.",
   shareSensitiveBody:
     "PrivateNote keeps your messages private by encrypting in the browser and letting the note disappear after it’s read. No accounts, no friction, and no ads following you around.",
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
   readOnceExposure: "Read-once and expiring notes reduce exposure over time.",
-  noTrackingAds: "No tracking cookies, no ads, and no third-party analytics on notes.",
+  noTrackingAds: "No ads, no ad-tracking pixels, and no third-party analytics.",
   simplePrivacyFlow: "A simple privacy flow you can trust.",
   clearSteps: "Clear steps, no hidden data collection.",
   privacyFirst: "Privacy-first by design",
@@ -427,16 +427,18 @@ export const en: Translations = {
   saveNoteSecurely: "Make sure to save this note securely.",
   keyFeatures: "Key Features",
   keyFeaturesSubtitle: "Practical security, explained plainly.",
-  featurePrivateAiTitle: "Private AI Processing",
-  featurePrivateAiDescription: "Runs directly in your browser. Your prompts never leave your device.",
+  featurePrivateAiTitle: "Private by Default",
+  featurePrivateAiDescription: "Your message is encrypted in your browser before upload.",
   featureSelfDestructTitle: "Self-Destructing Notes",
-  featureSelfDestructDescription: "Read-once by default, with expiry you control: minutes, hours, or days.",
+  featureSelfDestructDescription:
+    "Notes are deleted after they’re read, with expiration times you control — minutes, hours, or days.",
   featureOneLinkTitle: "One Link, No Accounts",
-  featureOneLinkDescription: "Create a note, share the link, done. No sign-ups, no friction.",
+  featureOneLinkDescription: "Create a note, share the link, done. No accounts, no friction.",
   featurePrivacyNotPaywallsTitle: "Privacy, Not Paywalls",
-  featurePrivacyNotPaywallsDescription: "Core security is free. No subscriptions needed to keep notes protected.",
-  featureZeroTrackingTitle: "Zero Tracking",
-  featureZeroTrackingDescription: "No analytics, no ads, no data resale.",
+  featurePrivacyNotPaywallsDescription:
+    "Private messaging shouldn’t require a subscription. Core security features are free for everyone.",
+  featureZeroTrackingTitle: "No Ads. No Profiling.",
+  featureZeroTrackingDescription: "PrivateNote doesn’t use advertising trackers or sell user data.",
   featurePostQuantumTitle: "Post-Quantum by Design",
   featurePostQuantumDescription: "AES-GCM in the browser. The server never sees the encryption key or plaintext.",
   featuresFooter: "Built for privacy-first sharing — no tracking, no ads, no data resale.",
@@ -493,7 +495,7 @@ export const en: Translations = {
   orOneRead: "or 1 read",
   passwordProtected: "Password protected",
   endToEndEncrypted: "End-to-end encrypted",
-  noTracking: "No tracking",
+  noTracking: "No ad tracking",
   expiry1d: "1 day",
   expiry3d: "3 days",
   expiry7d: "7 days",
@@ -610,7 +612,7 @@ export const en: Translations = {
   howHeroPrefix: "Security by",
   howHeroAccent: "Design",
   howHeroSubtitle:
-    "See how PrivateNote.ai protects sensitive messages with browser encryption, short-lived notes, manual reveal, and optional AI Assist that stays under your control.",
+    "See how PrivateNote.ai protects sensitive messages with browser encryption, short-lived notes, manual reveal, and optional Private AI or Cloud Assist when you draft a note.",
   howEncryptStepDetail:
     "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
   howInfrastructureTitle: "Infrastructure",
@@ -626,13 +628,15 @@ export const en: Translations = {
     "Link preview bots in apps like Slack or iMessage can accidentally “read” a one-time note before your recipient sees it.",
   howManualRevealQuote:
     "Our manual reveal step forces human interaction, ensuring only the intended recipient consumes the note.",
-  howAiAssistTitle: "AI Assist (on your device)",
+  howAiAssistTitle: "Private AI and Cloud Assist",
   howAiAssistBody1:
-    "If you turn on AI Assist, the note is decrypted only in your browser so a local model (WebLLM) can run the action you chose. Plaintext for that step stays on your device; our Worker never receives your note content for AI processing.",
+    "Private AI runs a model entirely inside your browser using WebLLM. Your note is decrypted locally, the template you chose runs on-device, and plaintext never leaves your machine. Our Worker receives only the re-encrypted result.",
   howAiAssistBody2:
-    "The model and weights may download from public CDNs or repos configured for WebLLM—separate from your encrypted note payload. Results are merged into your draft locally before anything is encrypted again for upload.",
+    "Cloud Assist uses Cloudflare Workers AI when Private AI is unavailable or you choose hosted drafts. Your prompt is decrypted in the browser, then plaintext is sent to Cloudflare's inference infrastructure. This steps outside the zero-knowledge boundary — Cloudflare processes your text, even though we do not store it.",
+  howAiAssistBody3:
+    "For Private AI, model weights may download from public CDNs configured for WebLLM — separate from your encrypted note payload. Results are merged into your draft locally before anything is re-encrypted for upload.",
   howAiAssistCaution:
-    "AI Assist still increases exposure versus Standard mode while the model runs (memory, downloads, and browser environment). Use it only when that trade-off is acceptable.",
+    "Both options increase exposure versus writing without AI. Private AI keeps plaintext on-device but adds memory and download surface. Cloud Assist additionally sends plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
   howAiAssistIllustration: "AI processing illustration with secure chip",
   howCtaTitle: "Ready to secure your data?",
   howCtaSubtitle: "Fast, ephemeral, and legally compliant.",

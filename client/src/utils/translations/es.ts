@@ -283,7 +283,7 @@ export const es: Translations = {
   homeHeroLine1: "Tus mensajes,",
   homeHeroLine2: "tu privacidad",
   homeHeroSubtitle:
-    "Notas cifradas de extremo a extremo que se autodestruyen después de leerse. Más seguras que las alternativas, con cifrado del lado del cliente para mantener privados tus mensajes.",
+    "Comparte notas cifradas que se autodestruyen tras leerse. Sin anuncios, sin perfilado, sin recopilación de datos innecesaria — solo mensajes privados de un solo uso.",
   whyPrivateNote: "Por qué PrivateNote",
   shareSensitiveHeading: "Comparte notas sensibles con confianza.",
   shareSensitiveBody:
@@ -434,16 +434,18 @@ export const es: Translations = {
   saveNoteSecurely: "Asegúrate de guardar esta nota de forma segura.",
   keyFeatures: "Funciones clave",
   keyFeaturesSubtitle: "Seguridad práctica, explicada con claridad.",
-  featurePrivateAiTitle: "Procesamiento de IA privado",
-  featurePrivateAiDescription: "Se ejecuta directamente en tu navegador. Tus prompts nunca salen de tu dispositivo.",
+  featurePrivateAiTitle: "Privado por defecto",
+  featurePrivateAiDescription: "Tu mensaje se cifra en tu navegador antes de subirse.",
   featureSelfDestructTitle: "Notas autodestructivas",
-  featureSelfDestructDescription: "De una sola lectura por defecto, con caducidad controlada por ti: minutos, horas o días.",
+  featureSelfDestructDescription:
+    "Las notas se eliminan después de leerse, con tiempos de caducidad que tú controlas: minutos, horas o días.",
   featureOneLinkTitle: "Un enlace, sin cuentas",
-  featureOneLinkDescription: "Crea una nota, comparte el enlace y listo. Sin registros, sin fricción.",
+  featureOneLinkDescription: "Crea una nota, comparte el enlace y listo. Sin cuentas, sin fricción.",
   featurePrivacyNotPaywallsTitle: "Privacidad, no muros de pago",
-  featurePrivacyNotPaywallsDescription: "La seguridad principal es gratuita. No necesitas suscripciones para proteger las notas.",
-  featureZeroTrackingTitle: "Cero seguimiento",
-  featureZeroTrackingDescription: "Sin analíticas, sin anuncios, sin reventa de datos.",
+  featurePrivacyNotPaywallsDescription:
+    "La mensajería privada no debería requerir una suscripción. Las funciones de seguridad principales son gratis para todos.",
+  featureZeroTrackingTitle: "Sin anuncios. Sin perfiles.",
+  featureZeroTrackingDescription: "PrivateNote no usa rastreadores publicitarios ni vende datos de usuarios.",
   featurePostQuantumTitle: "Diseñado para la era poscuántica",
   featurePostQuantumDescription: "AES-GCM en el navegador. El servidor nunca ve la clave de cifrado ni el texto sin cifrar.",
   featuresFooter: "Creado para compartir con privacidad primero: sin seguimiento, sin anuncios, sin reventa de datos.",
@@ -633,13 +635,15 @@ export const es: Translations = {
     "Los bots de vista previa de enlaces en apps como Slack o iMessage pueden “leer” accidentalmente una nota de un solo uso antes que el destinatario.",
   howManualRevealQuote:
     "Nuestro paso de revelado manual exige interacción humana, para que solo el destinatario previsto consuma la nota.",
-  howAiAssistTitle: "AI Assist (en tu dispositivo)",
+  howAiAssistTitle: "Private AI y Cloud Assist",
   howAiAssistBody1:
-    "Si activas AI Assist, la nota se descifra solo en tu navegador para que un modelo local (WebLLM) ejecute la acción elegida. El texto sin cifrar permanece en tu dispositivo; nuestro Worker nunca recibe el contenido de tu nota para procesamiento de IA.",
+    "Private AI ejecuta un modelo completamente dentro de tu navegador usando WebLLM. Tu nota se descifra localmente, la plantilla elegida se ejecuta en tu dispositivo, y el texto sin cifrar nunca abandona tu máquina. Nuestro Worker solo recibe el resultado ya re-cifrado.",
   howAiAssistBody2:
-    "El modelo y sus pesos pueden descargarse desde CDN públicos o repos configurados para WebLLM, separados de tu nota cifrada. Los resultados se fusionan localmente en tu borrador antes de volver a cifrarse para subirlos.",
+    "Cloud Assist usa Cloudflare Workers AI cuando Private AI no está disponible o eliges borradores alojados. Tu prompt se descifra en el navegador y el texto sin cifrar se envía a la infraestructura de inferencia de Cloudflare. Esto supera el límite de conocimiento cero: Cloudflare procesa tu texto, aunque nosotros no lo almacenemos.",
+  howAiAssistBody3:
+    "Con Private AI, los pesos del modelo pueden descargarse desde CDN públicos configurados para WebLLM, separados de tu nota cifrada. Los resultados se fusionan localmente en tu borrador antes de volver a cifrarse para subirlos.",
   howAiAssistCaution:
-    "AI Assist aumenta la exposición frente al modo estándar mientras se ejecuta el modelo (memoria, descargas y entorno del navegador). Úsalo solo si ese compromiso es aceptable.",
+    "Ambas opciones aumentan la exposición frente a escribir sin IA. Private AI mantiene el texto en claro en el dispositivo, pero añade superficie de riesgo por memoria y descargas. Cloud Assist además envía el texto en claro a un proveedor externo. Úsalas solo si ese compromiso es aceptable.",
   howAiAssistIllustration: "Ilustración de procesamiento de IA con chip seguro",
   howCtaTitle: "¿Listo para proteger tus datos?",
   howCtaSubtitle: "Rápido, efímero y conforme a la ley.",

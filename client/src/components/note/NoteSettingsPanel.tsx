@@ -119,10 +119,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       }`}
     >
       <div className="overflow-hidden">
-        <div className="mx-auto w-full min-w-0 max-w-2xl">
+        <div className="w-full min-w-0">
         {/* Password protection */}
-        <div className="mt-2 grid grid-cols-1 gap-2 items-start py-2 px-1 mb-3 transition-colors sm:grid-cols-3">
-          <div className="sm:col-span-1">
+        <div className="mt-2 grid grid-cols-1 items-start gap-2 px-1 py-2 mb-3 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
+          <div>
             <div className="flex flex-col">
               <label
                 htmlFor="note-password"
@@ -135,9 +135,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </label>
             </div>
           </div>
-          <div className="min-w-0 sm:col-span-2">
+          <div className="min-w-0">
             <div className="relative min-w-0">
-              <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
+              <div className="flex min-w-0 max-w-xl flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
                 <div className="flex min-w-0 flex-1">
                 <input
                   id="note-password"
@@ -222,35 +222,28 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t.passwordRecipientsNeedToDecrypt}
-              </div>
-              <div className="mt-1 text-[10px] text-gray-400">
-                {t.poweredBy}{" "}
-                <a
-                  href="https://passwords.lu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2 hover:opacity-90"
-                >
-                  passwords.lu
-                </a>
-              </div>
-              <div className="mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                <p>
-                  <span className="font-medium text-gray-600 dark:text-gray-300">
-                    {t.passwordBreachCheckLabel}
-                  </span>
-                  {" "}
+              <div className="mt-1 flex max-w-xl flex-col gap-1 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <span>{t.passwordRecipientsNeedToDecrypt}</span>
+                <span className="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-gray-400">
+                  {t.poweredBy}{" "}
+                  <a
+                    href="https://passwords.lu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2 hover:opacity-90"
+                  >
+                    passwords.lu
+                  </a>
+                  <span aria-hidden="true">&amp;</span>
                   <a
                     href="https://haveibeenpwned.com/Passwords"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary underline underline-offset-2 hover:opacity-90"
                   >
-                    {t.passwordBreachCheckProvider}
+                    HIBP
                   </a>
-                </p>
+                </span>
               </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -280,8 +273,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
         {/* Expiry and view limit */}
         <div className="mt-3 flex flex-col space-y-2">
-          <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
-            <div className="sm:col-span-1">
+          <div className="grid grid-cols-1 items-center gap-2 px-1 py-2 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
+            <div>
               <label
                 htmlFor="expiry-value"
                 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -303,7 +296,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 {t.expiration}
               </label>
             </div>
-            <div className="min-w-0 sm:col-span-2">
+            <div className="min-w-0">
               <select
                 id="expiry-value"
                 value={expiryValue}
@@ -311,7 +304,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   const v = e.target.value;
                   if (isNoteExpiryPresetId(v)) setExpiryValue(v);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer sm:max-w-[220px]"
                 style={{
                   backgroundImage:
                     "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
@@ -329,8 +322,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
-            <div className="sm:col-span-1">
+          <div className="grid grid-cols-1 items-center gap-2 px-1 py-2 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
+            <div>
               <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                 <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
                   <svg
@@ -350,8 +343,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 {t.viewLimit}
               </div>
             </div>
-            <div className="min-w-0 sm:col-span-2">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="min-w-0">
+              <div className="max-w-md text-sm text-gray-600 dark:text-gray-400">
                 {t.viewLimitDescription}
               </div>
             </div>
