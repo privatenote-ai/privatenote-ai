@@ -468,7 +468,7 @@ export const de: Translations = {
     "Cloudflare Durable Objects sorgen für atomare Konsistenz bei der Einmal-Lese-Logik und verhindern Race Conditions sowie doppelte Nutzung.",
   securityKeyHandlingTitle: "Schlüsselverwaltung",
   securityKeyHandlingBody:
-    "Standardnotizen kodieren den rohen AES-256-Schlüssel als Base64url im URL-Fragment (#...). Passwortgeschützte Notizen verpacken den Inhaltsschlüssel mit Argon2id-abgeleiteten Schlüsseln.",
+    "Standard-Privatnotizen kodieren den rohen 256-Bit-Schlüssel als Base64url im URL-Fragment (#...). Passwortgeschützte Notizen verpacken den Inhaltsschlüssel mit Argon2id-abgeleiteten Schlüsseln.",
   securityCryptoTitle: "Kryptografische Bausteine",
   securitySymmetricTitle: "Symmetrische Verschlüsselung",
   securityAesTitle: "AES-256-GCM",

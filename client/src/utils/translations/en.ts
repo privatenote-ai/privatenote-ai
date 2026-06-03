@@ -466,7 +466,7 @@ export const en: Translations = {
     "Cloudflare Durable Objects provide atomic consistency for read-once logic, preventing race conditions and double-consumption.",
   securityKeyHandlingTitle: "Key Handling",
   securityKeyHandlingBody:
-    "Standard notes encode the raw AES-256 key as Base64url in the URL fragment (#...). Password-protected notes wrap the content key with Argon2id-derived keys.",
+    "Standard private notes encode the raw 256-bit key as Base64url in the URL fragment (#...). Password-protected notes wrap the content key with Argon2id-derived keys.",
   securityCryptoTitle: "Cryptographic Primitives",
   securitySymmetricTitle: "Symmetric Encryption",
   securityAesTitle: "AES-256-GCM",

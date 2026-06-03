@@ -473,7 +473,7 @@ export const es: Translations = {
     "Cloudflare Durable Objects proporciona consistencia atómica para la lógica de una sola lectura, evitando condiciones de carrera y doble consumo.",
   securityKeyHandlingTitle: "Gestión de claves",
   securityKeyHandlingBody:
-    "Las notas estándar codifican la clave AES-256 en bruto como Base64url en el fragmento de URL (#...). Las notas con contraseña envuelven la clave de contenido con claves derivadas por Argon2id.",
+    "Las notas privadas estándar codifican la clave de 256 bits en bruto como Base64url en el fragmento de URL (#...). Las notas protegidas con contraseña envuelven la clave de contenido con claves derivadas por Argon2id.",
   securityCryptoTitle: "Primitivas criptográficas",
   securitySymmetricTitle: "Cifrado simétrico",
   securityAesTitle: "AES-256-GCM",

@@ -472,7 +472,7 @@ export const fr: Translations = {
     "Cloudflare Durable Objects fournit une cohérence atomique pour la logique de lecture unique, empêchant les conditions de concurrence et la double consommation.",
   securityKeyHandlingTitle: "Gestion des clés",
   securityKeyHandlingBody:
-    "Les notes standard encodent la clé AES-256 brute en Base64url dans le fragment d’URL (#...). Les notes protégées par mot de passe enveloppent la clé de contenu avec des clés dérivées via Argon2id.",
+    "Les notes privées standard encodent la clé brute de 256 bits en Base64url dans le fragment d’URL (#...). Les notes protégées par mot de passe enveloppent la clé de contenu avec des clés dérivées via Argon2id.",
   securityCryptoTitle: "Primitives cryptographiques",
   securitySymmetricTitle: "Chiffrement symétrique",
   securityAesTitle: "AES-256-GCM",
