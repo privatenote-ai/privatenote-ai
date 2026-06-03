@@ -295,6 +295,7 @@ export const en: Translations = {
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
   readOnceExposure: "Read-once and expiring notes reduce exposure over time.",
   noTrackingAds: "No ads, no ad-tracking pixels, and no third-party analytics.",
+  postQuantumByDesign: "Post-quantum by design with AES-GCM in the browser.",
   simplePrivacyFlow: "A simple privacy flow you can trust.",
   clearSteps: "Clear steps, no hidden data collection.",
   privacyFirst: "Privacy-first by design",
@@ -307,7 +308,7 @@ export const en: Translations = {
   noTrackingCookies: "No tracking cookies on note pages.",
   noThirdPartyAnalytics: "No third-party analytics scripts on notes.",
   keysStayInLink: "Encryption keys stay in the link, not on our servers.",
-  minimalMetadata: "Minimal metadata stored only to enforce expiration.",
+  minimalMetadata: "Minimal note metadata plus aggregated first-party stats—never your note text or third-party trackers.",
   writeWithPrivateAi: "Write with Private AI",
   privateAiShort: "Private AI",
   typeHere: "Type your confidential message here...",
@@ -439,8 +440,9 @@ export const en: Translations = {
     "Private messaging shouldn’t require a subscription. Core security features are free for everyone.",
   featureZeroTrackingTitle: "No Ads. No Profiling.",
   featureZeroTrackingDescription: "PrivateNote doesn’t use advertising trackers or sell user data.",
-  featurePostQuantumTitle: "Post-Quantum by Design",
-  featurePostQuantumDescription: "AES-GCM in the browser. The server never sees the encryption key or plaintext.",
+  featurePostQuantumTitle: "EU-Bound Storage",
+  featurePostQuantumDescription:
+    "Authentication data, encrypted notes, and operational records stay within EU-jurisdiction infrastructure.",
   featuresFooter: "Built for privacy-first sharing — no tracking, no ads, no data resale.",
   securityHeroPrefix: "Security",
   securityHeroAccent: "Architecture",
@@ -607,8 +609,13 @@ export const en: Translations = {
   passwordFaq_entropy_answer:
     "The score estimates entropy — how many guesses an attacker would need to crack your password by brute force. Longer mixed passwords have vastly more possible combinations.",
   passwordFaq_memorable_question: "Should I memorise generated passwords?",
-  passwordFaq_memorable_answer:
-    "Generally no. That defeats the purpose of using a password manager. The exception is your password manager master password, which you should memorise or store on paper in a physically secure place.",
+  passwordFaq_memorable_answerLead:
+    "Generally no. That defeats the purpose of using a password manager.",
+  passwordFaq_memorable_answerMaster:
+    "The exception is your password manager master password (or master secret): memorise it or store it on paper in a physically secure place.",
+  passwordFaq_memorable_generatorLink: "Use the password generator above",
+  passwordFaq_memorable_answerGeneratorTail:
+    " to create a long, passphrase-style password (20+ characters with mixed types) for that one secret—not for everyday account passwords.",
   howHeroPrefix: "Security by",
   howHeroAccent: "Design",
   howHeroSubtitle:
@@ -617,10 +624,10 @@ export const en: Translations = {
     "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
   howInfrastructureTitle: "Infrastructure",
   howInfrastructureBody:
-    "Utilizing Cloudflare's edge (Workers, KV, Durable Objects) to reduce latency and improve availability.",
+    "Cloudflare Workers deliver the app at the edge. Encrypted notes and operational data are stored in EU-jurisdiction infrastructure.",
   howInfrastructureItemCiphertext: "Notes stored as encrypted ciphertext",
   howInfrastructureItemMinimizedData: "Minimized data collection & short retention",
-  howInfrastructureItemEuStorage: "Future: EU-only storage (Premium feature)",
+  howInfrastructureItemEuStorage: "EU-jurisdiction storage for encrypted notes and operational data",
   howInfrastructureIllustration: "Robust infrastructure illustration",
   howManualRevealIllustration: "Manual reveal protection from link preview bots",
   howManualRevealTitle: "Manual Reveal",
@@ -628,16 +635,19 @@ export const en: Translations = {
     "Link preview bots in apps like Slack or iMessage can accidentally “read” a one-time note before your recipient sees it.",
   howManualRevealQuote:
     "Our manual reveal step forces human interaction, ensuring only the intended recipient consumes the note.",
-  howAiAssistTitle: "Private AI and Cloud Assist",
-  howAiAssistBody1:
-    "Private AI runs a model entirely inside your browser using WebLLM. Your note is decrypted locally, the template you chose runs on-device, and plaintext never leaves your machine. Our Worker receives only the re-encrypted result.",
-  howAiAssistBody2:
-    "Cloud Assist uses Cloudflare Workers AI when Private AI is unavailable or you choose hosted drafts. Your prompt is decrypted in the browser, then plaintext is sent to Cloudflare's inference infrastructure. This steps outside the zero-knowledge boundary — Cloudflare processes your text, even though we do not store it.",
-  howAiAssistBody3:
-    "For Private AI, model weights may download from public CDNs configured for WebLLM — separate from your encrypted note payload. Results are merged into your draft locally before anything is re-encrypted for upload.",
-  howAiAssistCaution:
-    "Both options increase exposure versus writing without AI. Private AI keeps plaintext on-device but adds memory and download surface. Cloud Assist additionally sends plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
-  howAiAssistIllustration: "AI processing illustration with secure chip",
+  howAiSectionTitle: "Optional AI when drafting a note",
+  howAiIntro:
+    "AI is optional—you can always write without it. When your browser supports it, we offer Private AI first. If local AI is unavailable or you choose hosted drafts, you may use Cloud Assist.",
+  howPrivateAiTitle: "Private AI",
+  howPrivateAiBadge: "Stays on your device",
+  howPrivateAiBody:
+    "Private AI runs in your browser (WebLLM). Your prompt is processed on your device; plaintext does not go to PrivateNote.ai for inference. Only the encrypted note is uploaded afterward. Model files may download from public CDNs configured for WebLLM—separate from your encrypted note.",
+  howCloudAssistTitle: "Cloud Assist",
+  howCloudAssistBadge: "Plaintext leaves your device",
+  howCloudAssistBody:
+    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You confirm in the UI because your prompt is sent to Cloudflare for inference. That steps outside our zero-knowledge boundary: Cloudflare processes the text even though we do not store it.",
+  howAiCaution:
+    "Private AI adds on-device memory and download surface. Cloud Assist additionally sends draft plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
   howCtaTitle: "Ready to secure your data?",
   howCtaSubtitle: "Fast, ephemeral, and legally compliant.",
   howCtaButton: "Start Writing",
@@ -788,7 +798,7 @@ export const en: Translations = {
   homeFaqTryTestNote: "or start by writing a test note and opening it yourself; you can see the full flow in seconds.",
   homeFaq_howItWorks_question: "How does PrivateNote.ai work?",
   homeFaq_howItWorks_answer:
-    "You write a note directly in your browser. Your device encrypts the note locally, and only the encrypted content is sent to our server. You share a unique link with the recipient, and the note can disappear after it is opened or after a chosen expiration time.",
+    "You write a note directly in your browser. Your device encrypts it locally, and only the encrypted content is uploaded. You share a unique link with the recipient; by default, the note is deleted after it is opened once. If it is never opened, it is deleted when the chosen expiration time passes.",
   homeFaq_seeContent_question: "Can PrivateNote.ai see my note content?",
   homeFaq_seeContent_answer:
     "No. Notes are encrypted in your browser before they are uploaded. We only store the encrypted payload, so we cannot read your plaintext message.",
@@ -797,19 +807,22 @@ export const en: Translations = {
     "Notes are read-once for maximum privacy. After someone opens the link, the note is destroyed and cannot be viewed again. If it is never opened, it is deleted when the expiration time passes.",
   homeFaq_linkLength_question: "Why is the link longer than other note-sharing services?",
   homeFaq_linkLength_answer:
-    "The link carries cryptographic material client-side instead of relying on server-stored secrets. The decryption key is in the URL fragment, which browsers do not send to our servers.",
+    "The link is longer because the decryption key travels in the link itself, not on our servers. The key sits after the `#` in the URL. When someone opens the link, the browser only sends the part before `#` to websites—the rest stays on the device—so that key never reaches PrivateNote.ai.",
   homeFaq_password_question: "Can I protect a note with a password?",
   homeFaq_password_answer:
-    "Yes. You can add an optional password for extra protection. Share the password separately from the link, for example in a different channel.",
+    "Yes. You can add an optional password for extra protection. Share the link and password separately—for example, link in email and password via text, phone, or encrypted chat—so someone with only the link cannot open the note.",
   homeFaq_breachCheck_question: "How does password breach checking work?",
   homeFaq_breachCheck_answer:
     "The check uses Have I Been Pwned with k-anonymity. Your browser sends only a hash prefix, never the full password.",
   homeFaq_encryptionKey_question: "Is the encryption key stored on your server?",
   homeFaq_encryptionKey_answer:
-    "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key lives after the # fragment in the link, and browsers do not send that fragment to servers.",
+    "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key is in the part of the link after `#`. Browsers keep everything after `#` on the device when loading a page—they do not send it to our servers—so we never receive your decryption key.",
   homeFaq_metadata_question: "What metadata do you store?",
   homeFaq_metadata_answer:
-    "We store only what is needed to run the service securely: encrypted note payloads, expiration settings, and limited operational logs for reliability and abuse prevention.",
+    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, and similar operational totals. Those statistics never include note content and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
+  homeFaq_euStorage_question: "Is PrivateNote.ai data stored in the EU?",
+  homeFaq_euStorage_answer:
+    "Yes. Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure. Some network traffic may still pass through security and delivery systems before reaching storage.",
   homeFaq_recover_question: "Can I recover a note after it is destroyed or expired?",
   homeFaq_recover_answer:
     "No. Once a note is deleted because it was read or expired, it cannot be recovered.",

@@ -291,6 +291,7 @@ export const de: Translations = {
   clientSideEncryption: "Clientseitige Verschlüsselung bedeutet, dass der Server Ihren Klartext nie sieht.",
   readOnceExposure: "Einmaliges Lesen und ablaufende Notizen reduzieren die Sichtbarkeit über die Zeit.",
   noTrackingAds: "Keine Tracking-Cookies, keine Werbung und keine Drittanbieter-Analyse auf Notizen.",
+  postQuantumByDesign: "Post-Quantum durch Design mit AES-GCM im Browser.",
   simplePrivacyFlow: "Ein einfacher Datenschutzprozess, dem Sie vertrauen können.",
   clearSteps: "Klare Schritte, keine versteckte Datenerfassung.",
   privacyFirst: "Datenschutz zuerst",
@@ -303,7 +304,7 @@ export const de: Translations = {
   noTrackingCookies: "Keine Tracking-Cookies auf Notizseiten.",
   noThirdPartyAnalytics: "Keine Analyse-Skripte von Drittanbietern auf Notizen.",
   keysStayInLink: "Verschlüsselungsschlüssel bleiben im Link, nicht auf unseren Servern.",
-  minimalMetadata: "Minimale Metadaten werden nur gespeichert, um den Ablauf durchzusetzen.",
+  minimalMetadata: "Minimale Notiz-Metadaten plus aggregierte First-Party-Statistiken—nie Ihr Notiztext und keine Drittanbieter-Tracker.",
   writeWithPrivateAi: "Mit Private AI schreiben",
   privateAiShort: "Private AI",
   typeHere: "Geben Sie hier Ihre vertrauliche Nachricht ein...",
@@ -441,8 +442,9 @@ export const de: Translations = {
     "Private Nachrichten sollten kein Abonnement erfordern. Zentrale Sicherheitsfunktionen sind für alle kostenlos.",
   featureZeroTrackingTitle: "Keine Werbung. Kein Profiling.",
   featureZeroTrackingDescription: "PrivateNote verwendet keine Werbetracker und verkauft keine Nutzerdaten.",
-  featurePostQuantumTitle: "Post-Quantum durch Design",
-  featurePostQuantumDescription: "AES-GCM im Browser. Der Server sieht weder den Schlüssel noch den Klartext.",
+  featurePostQuantumTitle: "EU-gebundene Speicherung",
+  featurePostQuantumDescription:
+    "Authentifizierungsdaten, verschlüsselte Notizen und Betriebsdaten bleiben in Infrastruktur unter EU-Gerichtsbarkeit.",
   featuresFooter: "Gebaut für datenschutzfreundliches Teilen — kein Tracking, keine Werbung, kein Weiterverkauf von Daten.",
   securityHeroPrefix: "Sicherheits",
   securityHeroAccent: "Architektur",
@@ -609,8 +611,13 @@ export const de: Translations = {
   passwordFaq_entropy_answer:
     "Die Anzeige schätzt die Entropie, also wie viele Versuche ein Angreifer beim Brute-Force-Knacken benötigen würde.",
   passwordFaq_memorable_question: "Sollte ich generierte Passwörter auswendig lernen?",
-  passwordFaq_memorable_answer:
-    "Normalerweise nein. Dafür ist ein Passwortmanager da. Die Ausnahme ist Ihr Master-Passwort, das Sie sich merken sollten.",
+  passwordFaq_memorable_answerLead:
+    "Normalerweise nein. Dafür ist ein Passwortmanager da.",
+  passwordFaq_memorable_answerMaster:
+    "Die Ausnahme ist Ihr Master-Passwort (oder Master-Geheimnis) des Passwortmanagers: Merken Sie es sich oder bewahren Sie es physisch sicher auf Papier auf.",
+  passwordFaq_memorable_generatorLink: "Nutzen Sie den Passwortgenerator oben",
+  passwordFaq_memorable_answerGeneratorTail:
+    ", um ein langes, passphrase-ähnliches Passwort (20+ Zeichen, gemischte Zeichentypen) nur für dieses eine Geheimnis zu erzeugen—nicht für alle Kontopasswörter.",
   howHeroPrefix: "Sicherheit durch",
   howHeroAccent: "Design",
   howHeroSubtitle:
@@ -619,10 +626,10 @@ export const de: Translations = {
     "Ihr Gerät verschlüsselt die Notiz, bevor sie Ihren Bildschirm verlässt und verschlüsselt auf unserem Server landet.",
   howInfrastructureTitle: "Infrastruktur",
   howInfrastructureBody:
-    "Wir nutzen Cloudflares Edge (Workers, KV, Durable Objects), um Latenz zu reduzieren und Verfügbarkeit zu verbessern.",
+    "Cloudflare Workers liefern die App am Edge. Verschlüsselte Notizen und Betriebsdaten werden in EU-rechtlicher Infrastruktur gespeichert.",
   howInfrastructureItemCiphertext: "Notizen werden als verschlüsselter Ciphertext gespeichert",
   howInfrastructureItemMinimizedData: "Minimierte Datenerfassung und kurze Aufbewahrung",
-  howInfrastructureItemEuStorage: "Zukünftig: Nur-EU-Speicherung (Premium-Funktion)",
+  howInfrastructureItemEuStorage: "EU-rechtliche Speicherung für verschlüsselte Notizen und Betriebsdaten",
   howInfrastructureIllustration: "Illustration einer robusten Infrastruktur",
   howManualRevealIllustration: "Manuelle Anzeige schützt vor Link-Vorschau-Bots",
   howManualRevealTitle: "Manuelle Anzeige",
@@ -630,16 +637,19 @@ export const de: Translations = {
     "Link-Vorschau-Bots in Apps wie Slack oder iMessage können eine einmalige Notiz versehentlich „lesen“, bevor der Empfänger sie sieht.",
   howManualRevealQuote:
     "Unser manueller Anzeigeschritt erzwingt menschliche Interaktion, damit nur der vorgesehene Empfänger die Notiz verbraucht.",
-  howAiAssistTitle: "Private AI und Cloud Assist",
-  howAiAssistBody1:
-    "Private AI führt ein Modell vollständig in Ihrem Browser über WebLLM aus. Ihre Notiz wird lokal entschlüsselt, die gewählte Vorlage läuft auf Ihrem Gerät, und Klartext verlässt Ihr Gerät nie. Unser Worker erhält nur das neu verschlüsselte Ergebnis.",
-  howAiAssistBody2:
-    "Cloud Assist nutzt Cloudflare Workers AI, wenn Private AI nicht verfügbar ist oder Sie gehostete Entwürfe wählen. Ihr Prompt wird im Browser entschlüsselt, dann wird der Klartext an die Inferenz-Infrastruktur von Cloudflare gesendet. Dies überschreitet die Zero-Knowledge-Grenze — Cloudflare verarbeitet Ihren Text, auch wenn wir ihn nicht speichern.",
-  howAiAssistBody3:
-    "Bei Private AI können Modellgewichte von öffentlichen CDNs für WebLLM geladen werden, getrennt von Ihrer verschlüsselten Notiz. Ergebnisse werden lokal in Ihren Entwurf übernommen, bevor erneut verschlüsselt hochgeladen wird.",
-  howAiAssistCaution:
-    "Beide Optionen erhöhen die Exposition gegenüber dem Schreiben ohne KI. Private AI behält Klartext auf dem Gerät, fügt jedoch Speicher- und Download-Angriffsfläche hinzu. Cloud Assist sendet Klartext zusätzlich an einen Drittanbieter für Inferenz. Nutzen Sie beides nur, wenn dieser Kompromiss akzeptabel ist.",
-  howAiAssistIllustration: "Illustration der KI-Verarbeitung mit sicherem Chip",
+  howAiSectionTitle: "Optionale KI beim Entwurf einer Notiz",
+  howAiIntro:
+    "KI ist optional—Sie können immer ohne KI schreiben. Wenn Ihr Browser es unterstützt, bieten wir zuerst Private AI an. Ist lokale KI nicht verfügbar oder wählen Sie gehostete Entwürfe, können Sie Cloud Assist nutzen.",
+  howPrivateAiTitle: "Private AI",
+  howPrivateAiBadge: "Bleibt auf Ihrem Gerät",
+  howPrivateAiBody:
+    "Private AI läuft in Ihrem Browser (WebLLM). Ihr Prompt wird auf dem Gerät verarbeitet; Klartext geht nicht zur KI-Inferenz an PrivateNote.ai. Nur die verschlüsselte Notiz wird hochgeladen. Modelldateien können von öffentlichen CDNs für WebLLM geladen werden—getrennt von Ihrer verschlüsselten Notiz.",
+  howCloudAssistTitle: "Cloud Assist",
+  howCloudAssistBadge: "Klartext verlässt Ihr Gerät",
+  howCloudAssistBody:
+    "Cloud Assist nutzt Cloudflare Workers AI (Llama 3.2 3B), wenn Private AI auf Ihrem Gerät nicht verfügbar ist oder Sie gehostete Entwürfe verwenden. Sie bestätigen in der Oberfläche, weil Ihr Prompt zur Inferenz an Cloudflare gesendet wird. Das überschreitet die Zero-Knowledge-Grenze: Cloudflare verarbeitet den Text, auch wenn wir ihn nicht speichern.",
+  howAiCaution:
+    "Private AI erhöht Speicher- und Download-Angriffsfläche auf dem Gerät. Cloud Assist sendet Entwurfs-Klartext zusätzlich an einen Drittanbieter für Inferenz. Nutzen Sie beides nur, wenn dieser Kompromiss akzeptabel ist.",
   howCtaTitle: "Bereit, Ihre Daten zu schützen?",
   howCtaSubtitle: "Schnell, kurzlebig und rechtlich konform.",
   howCtaButton: "Mit dem Schreiben beginnen",
@@ -787,7 +797,7 @@ export const de: Translations = {
   homeFaqTryTestNote: "oder schreiben Sie eine Testnotiz und öffnen Sie sie selbst; der gesamte Ablauf dauert nur Sekunden.",
   homeFaq_howItWorks_question: "Wie funktioniert PrivateNote.ai?",
   homeFaq_howItWorks_answer:
-    "Sie schreiben eine Notiz direkt im Browser. Ihr Gerät verschlüsselt sie lokal, und nur der verschlüsselte Inhalt wird an unseren Server gesendet. Sie teilen einen eindeutigen Link; die Notiz kann nach dem Öffnen oder nach einer Ablaufzeit verschwinden.",
+    "Sie schreiben eine Notiz direkt im Browser. Ihr Gerät verschlüsselt sie lokal, und nur der verschlüsselte Inhalt wird hochgeladen. Sie teilen einen eindeutigen Link; standardmäßig wird die Notiz nach einmaligem Öffnen gelöscht. Wird sie nie geöffnet, wird sie nach der gewählten Ablaufzeit gelöscht.",
   homeFaq_seeContent_question: "Kann PrivateNote.ai meinen Notizinhalt sehen?",
   homeFaq_seeContent_answer:
     "Nein. Notizen werden vor dem Hochladen im Browser verschlüsselt. Wir speichern nur die verschlüsselte Nutzlast und können Ihren Klartext nicht lesen.",
@@ -796,19 +806,22 @@ export const de: Translations = {
     "Notizen sind aus Datenschutzgründen einmalig lesbar. Nach dem Öffnen wird die Notiz zerstört. Wird sie nie geöffnet, wird sie nach Ablauf gelöscht.",
   homeFaq_linkLength_question: "Warum ist der Link länger als bei anderen Diensten?",
   homeFaq_linkLength_answer:
-    "Der Link enthält kryptografisches Material clientseitig, statt serverseitige Geheimnisse zu nutzen. Der Schlüssel liegt im URL-Fragment und wird nicht an Server gesendet.",
+    "Der Link ist länger, weil der Entschlüsselungsschlüssel im Link selbst steckt, nicht auf unseren Servern. Der Schlüssel steht nach dem `#` in der URL. Beim Öffnen sendet der Browser Websites nur den Teil vor `#`—der Rest bleibt auf dem Gerät—, sodass der Schlüssel PrivateNote.ai nie erreicht.",
   homeFaq_password_question: "Kann ich eine Notiz mit einem Passwort schützen?",
   homeFaq_password_answer:
-    "Ja. Sie können optional ein Passwort hinzufügen. Teilen Sie das Passwort getrennt vom Link, zum Beispiel über einen anderen Kanal.",
+    "Ja. Sie können optional ein Passwort für zusätzlichen Schutz hinzufügen. Teilen Sie Link und Passwort getrennt—z. B. Link per E-Mail, Passwort per SMS, Anruf oder verschlüsseltem Chat—damit jemand mit nur dem Link die Notiz nicht öffnen kann.",
   homeFaq_breachCheck_question: "Wie funktioniert die Leak-Prüfung für Passwörter?",
   homeFaq_breachCheck_answer:
     "Die Prüfung nutzt Have I Been Pwned mit k-Anonymität. Ihr Browser sendet nur ein Hash-Präfix, niemals das vollständige Passwort.",
   homeFaq_encryptionKey_question: "Wird der Verschlüsselungsschlüssel auf Ihrem Server gespeichert?",
   homeFaq_encryptionKey_answer:
-    "Nein. Der Schlüssel befindet sich nach dem #-Fragment im Link. Browser senden dieses Fragment nicht an Server.",
+    "Nein. Bei Standardnotizen speichern wir die verschlüsselte Notiz und Metadaten, nicht den nutzbaren Entschlüsselungsschlüssel. Der Schlüssel steht im Linkteil nach `#`. Browser behalten alles nach `#` beim Laden auf dem Gerät—sie senden es nicht an unsere Server—, sodass wir Ihren Schlüssel nie erhalten.",
   homeFaq_metadata_question: "Welche Metadaten speichern Sie?",
   homeFaq_metadata_answer:
-    "Wir speichern nur, was für den sicheren Betrieb nötig ist: verschlüsselte Notizdaten, Ablauf-Einstellungen und begrenzte Betriebslogs.",
+    "Wir speichern verschlüsselte Notizdaten und die Einstellungen für Ablauf und Leselimits—nicht Ihren Klartext. Zusätzlich führen wir aggregierte First-Party-Service-Statistiken: tägliche Zähler wie erstellte oder gelesene Notizen, Passwortschutz- und KI-Modus-Nutzung, grobe Landes- und UI-Sprachangaben sowie ähnliche Betriebskennzahlen. Diese Statistiken enthalten nie Notizinhalte und werden nicht an Werbe- oder Drittanbieter-Analytics weitergegeben. Begrenzte Sicherheits- und Missbrauchsschutz-Logs (z. B. IP-Metadaten und Rate Limiting) werden kurzzeitig aufbewahrt, wie in unserer Datenschutzerklärung beschrieben.",
+  homeFaq_euStorage_question: "Werden PrivateNote.ai-Daten in der EU gespeichert?",
+  homeFaq_euStorage_answer:
+    "Ja. Authentifizierungsdaten, verschlüsselte Notizen und Betriebsdaten werden in Infrastruktur unter EU-Gerichtsbarkeit gespeichert. Ein Teil des Netzwerkverkehrs kann weiterhin Sicherheits- und Auslieferungssysteme durchlaufen, bevor er den Speicher erreicht.",
   homeFaq_recover_question: "Kann ich eine zerstörte oder abgelaufene Notiz wiederherstellen?",
   homeFaq_recover_answer:
     "Nein. Sobald eine Notiz gelesen wurde oder abgelaufen ist, kann sie nicht wiederhergestellt werden.",

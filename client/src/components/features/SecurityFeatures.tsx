@@ -59,9 +59,12 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
         {features.map((feature, index) => (
           <div
             key={index}
-            className="group relative flex h-full min-h-[204px] flex-col overflow-hidden rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm transition-[border-color,box-shadow] duration-200 ease-out hover:border-primary/30 hover:shadow-md dark:border-gray-700/70 dark:bg-gray-900"
+            className="group relative isolate flex h-full min-h-[204px] transform-gpu flex-col overflow-hidden rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm transition-[transform,border-color,background-color] duration-200 ease-out hover:translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.015] dark:border-gray-700/70 dark:bg-gray-900 dark:hover:bg-primary/[0.04]"
           >
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-transform duration-200 ease-out group-hover:scale-[1.03]">
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
+              <div className="absolute inset-x-0 top-0 h-px bg-primary/25" />
+            </div>
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               {feature.icon}
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>

@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "wouter";
 import {
   Check,
+  Cloud,
+  Cpu,
   Lock,
   PenLine,
   Share2,
@@ -307,68 +309,55 @@ export default function HowItWorks() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl md:w-1/2">
+          <div className="max-w-3xl space-y-8">
+            <div>
               <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">
-                {t.howAiAssistTitle}
+                {t.howAiSectionTitle}
               </h2>
-              <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                {t.howAiAssistBody1}
-              </p>
-              <p className="text-base text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                {t.howAiAssistBody2}
-              </p>
-              <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                {t.howAiAssistCaution}
+              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                {t.howAiIntro}
               </p>
             </div>
 
-            <div className="flex justify-center md:justify-end md:w-1/2">
-              <svg
-                className="h-auto w-full max-w-sm md:max-w-md"
-                viewBox="0 0 360 200"
-                fill="none"
-                role="img"
-                aria-label={t.howAiAssistIllustration}
-              >
-                <g id="chip">
-                  <rect
-                    x="130"
-                    y="55"
-                    width="100"
-                    height="90"
-                    rx="12"
-                    fill="hsl(var(--secondary))"
-                    stroke="hsl(var(--border))"
-                    strokeWidth="2"
-                  />
-                  <rect x="150" y="75" width="60" height="6" rx="3" fill="hsl(var(--primary))" />
-                  <rect x="150" y="88" width="60" height="6" rx="3" fill="hsl(var(--primary))" opacity="0.7" />
-                  <rect x="150" y="101" width="60" height="6" rx="3" fill="hsl(var(--primary))" opacity="0.5" />
-                  <circle cx="160" cy="122" r="4" fill="hsl(var(--primary))" />
-                  <circle cx="178" cy="122" r="4" fill="hsl(var(--primary))" opacity="0.7" />
-                  <circle cx="196" cy="122" r="4" fill="hsl(var(--primary))" opacity="0.5" />
-                </g>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-6 shadow-sm dark:border-primary/20 dark:bg-primary/10">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/20">
+                    <Cpu className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {t.howPrivateAiTitle}
+                  </h3>
+                  <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary ring-1 ring-primary/20">
+                    {t.howPrivateAiBadge}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base">
+                  {t.howPrivateAiBody}
+                </p>
+              </div>
 
-                <g id="pins" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" opacity="0.6">
-                  <line x1="120" y1="70" x2="110" y2="70" />
-                  <line x1="120" y1="90" x2="108" y2="90" />
-                  <line x1="120" y1="110" x2="110" y2="110" />
-                  <line x1="240" y1="70" x2="250" y2="70" />
-                  <line x1="240" y1="90" x2="252" y2="90" />
-                  <line x1="240" y1="110" x2="250" y2="110" />
-                </g>
-
-                <g id="spark">
-                  <circle cx="265" cy="55" r="10" fill="hsl(var(--primary))" opacity="0.12" />
-                  <path
-                    d="M265 44 L268 53 L277 56 L268 59 L265 68 L262 59 L253 56 L262 53 Z"
-                    fill="hsl(var(--primary))"
-                    opacity="0.6"
-                  />
-                </g>
-              </svg>
+              <div className="rounded-2xl border border-red-200/80 bg-red-50/60 p-6 shadow-sm dark:border-red-900/50 dark:bg-red-950/25">
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-red-200/80 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-800/60">
+                    <Cloud className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {t.howCloudAssistTitle}
+                  </h3>
+                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 ring-1 ring-red-200/80 dark:bg-red-900/50 dark:text-red-100 dark:ring-red-800/60">
+                    {t.howCloudAssistBadge}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed sm:text-base">
+                  {t.howCloudAssistBody}
+                </p>
+              </div>
             </div>
+
+            <p className="text-base text-gray-600 dark:text-gray-400 italic leading-relaxed border-l-2 border-primary/30 pl-4">
+              {t.howAiCaution}
+            </p>
           </div>
         </section>
 

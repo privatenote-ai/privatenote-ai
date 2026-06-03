@@ -692,7 +692,7 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </section>
 
-      <div className="mt-8 mb-8 py-4 px-4 sm:px-6 lg:px-8">
+      <div id="password-generator-tool" className="mt-8 mb-8 py-4 px-4 sm:px-6 lg:px-8 scroll-mt-28">
         <div className="max-w-4xl mx-auto">
           <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col">
             <div className="mb-4">
@@ -966,7 +966,21 @@ const PasswordGenerator: React.FC = () => {
                   </AccordionTrigger>
                   <AccordionContent className="text-base text-gray-600 dark:text-gray-300 px-6 pb-6 pt-6 leading-relaxed">
                     <div className="pl-12 border-l-2 border-primary/25 ml-4">
-                      {t[`passwordFaq_${item.id}_answer`]}
+                      {item.id === "memorable" ? (
+                        <p>
+                          {t.passwordFaq_memorable_answerLead}{" "}
+                          {t.passwordFaq_memorable_answerMaster}{" "}
+                          <a
+                            href="#password-generator-tool"
+                            className="font-medium text-primary hover:text-primary/80 underline underline-offset-2"
+                          >
+                            {t.passwordFaq_memorable_generatorLink}
+                          </a>
+                          {t.passwordFaq_memorable_answerGeneratorTail}
+                        </p>
+                      ) : (
+                        t[`passwordFaq_${item.id}_answer`]
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>

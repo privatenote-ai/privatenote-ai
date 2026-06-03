@@ -154,7 +154,7 @@ const SecurityOverview: React.FC = () => {
 
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute left-[calc(52%+2rem)] top-8 z-0 hidden lg:block xl:left-[calc(50%+5rem)]"
+              className="pointer-events-none absolute left-[calc(52%+2rem)] top-[calc(2rem+2cm)] z-0 hidden lg:block xl:left-[calc(50%+5rem)]"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, amount: 0.35 }}
@@ -245,7 +245,7 @@ const SecurityOverview: React.FC = () => {
 
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute right-[calc(53%+2rem)] top-[56%] z-0 hidden -translate-y-1/2 lg:block xl:right-[calc(51%+5rem)]"
+              className="pointer-events-none absolute right-[calc(53%+2rem)] top-[calc(56%+3cm)] z-0 hidden -translate-y-1/2 lg:block xl:right-[calc(51%+5rem)]"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true, amount: 0.35 }}

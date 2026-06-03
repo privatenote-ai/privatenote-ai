@@ -121,7 +121,7 @@ const Home: React.FC = () => {
               <span className="block">{t.homeHeroLine1}</span>
               <span className="block mt-1 text-primary">{t.homeHeroLine2}</span>
             </h1>
-            <p className="mt-3 max-w-4xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-5xl">
+            <p className="mt-3 max-w-4xl mx-auto text-lg text-gray-500 dark:text-gray-400 sm:text-xl md:mt-5 md:text-[1.375rem] md:max-w-5xl">
               {t.homeHeroSubtitle}
             </p>
           </div>

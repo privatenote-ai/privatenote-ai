@@ -291,6 +291,7 @@ export const es: Translations = {
   clientSideEncryption: "El cifrado del lado del cliente significa que el servidor nunca ve tu texto sin cifrar.",
   readOnceExposure: "Las notas de una sola lectura y con caducidad reducen la exposición con el tiempo.",
   noTrackingAds: "Sin cookies de seguimiento, sin anuncios y sin analíticas de terceros en las notas.",
+  postQuantumByDesign: "Diseñado para la era poscuántica con AES-GCM en el navegador.",
   simplePrivacyFlow: "Un flujo de privacidad sencillo en el que puedes confiar.",
   clearSteps: "Pasos claros, sin recopilación de datos oculta.",
   privacyFirst: "Privacidad desde el diseño",
@@ -303,7 +304,7 @@ export const es: Translations = {
   noTrackingCookies: "Sin cookies de seguimiento en las páginas de notas.",
   noThirdPartyAnalytics: "Sin scripts de analítica de terceros en las notas.",
   keysStayInLink: "Las claves de cifrado permanecen en el enlace, no en nuestros servidores.",
-  minimalMetadata: "Solo se almacenan metadatos mínimos para aplicar la caducidad.",
+  minimalMetadata: "Metadatos mínimos de la nota y estadísticas agregadas propias—nunca el texto de la nota ni rastreadores de terceros.",
   writeWithPrivateAi: "Escribir con Private AI",
   privateAiShort: "Private AI",
   typeHere: "Escribe aquí tu mensaje confidencial...",
@@ -446,8 +447,9 @@ export const es: Translations = {
     "La mensajería privada no debería requerir una suscripción. Las funciones de seguridad principales son gratis para todos.",
   featureZeroTrackingTitle: "Sin anuncios. Sin perfiles.",
   featureZeroTrackingDescription: "PrivateNote no usa rastreadores publicitarios ni vende datos de usuarios.",
-  featurePostQuantumTitle: "Diseñado para la era poscuántica",
-  featurePostQuantumDescription: "AES-GCM en el navegador. El servidor nunca ve la clave de cifrado ni el texto sin cifrar.",
+  featurePostQuantumTitle: "Almacenamiento vinculado a la UE",
+  featurePostQuantumDescription:
+    "Los datos de autenticación, las notas cifradas y los registros operativos permanecen en infraestructura bajo jurisdicción de la UE.",
   featuresFooter: "Creado para compartir con privacidad primero: sin seguimiento, sin anuncios, sin reventa de datos.",
   securityHeroPrefix: "Arquitectura de",
   securityHeroAccent: "seguridad",
@@ -614,8 +616,13 @@ export const es: Translations = {
   passwordFaq_entropy_answer:
     "Estima la entropía: cuántos intentos necesitaría un atacante para romper la contraseña por fuerza bruta.",
   passwordFaq_memorable_question: "¿Debo memorizar las contraseñas generadas?",
-  passwordFaq_memorable_answer:
-    "Generalmente no. Para eso sirve un gestor de contraseñas. La excepción es tu contraseña maestra.",
+  passwordFaq_memorable_answerLead:
+    "En general, no. Para eso sirve un gestor de contraseñas.",
+  passwordFaq_memorable_answerMaster:
+    "La excepción es la contraseña maestra (o secreto maestro) del gestor: memorízala o guárdala en papel en un lugar físicamente seguro.",
+  passwordFaq_memorable_generatorLink: "Usa el generador de contraseñas de arriba",
+  passwordFaq_memorable_answerGeneratorTail:
+    " para crear una contraseña larga, estilo frase de contraseña (20+ caracteres con tipos mixtos) solo para ese secreto, no para todas las cuentas.",
   howHeroPrefix: "Seguridad por",
   howHeroAccent: "diseño",
   howHeroSubtitle:
@@ -624,10 +631,10 @@ export const es: Translations = {
     "Tu dispositivo cifra la nota antes de que salga de tu pantalla y llega cifrada a nuestro servidor.",
   howInfrastructureTitle: "Infraestructura",
   howInfrastructureBody:
-    "Usamos el edge de Cloudflare (Workers, KV, Durable Objects) para reducir la latencia y mejorar la disponibilidad.",
+    "Cloudflare Workers entregan la app en el edge. Las notas cifradas y los datos operativos se almacenan en infraestructura con jurisdicción en la UE.",
   howInfrastructureItemCiphertext: "Notas almacenadas como texto cifrado",
   howInfrastructureItemMinimizedData: "Recopilación de datos minimizada y retención breve",
-  howInfrastructureItemEuStorage: "Próximamente: almacenamiento solo en la UE (función Premium)",
+  howInfrastructureItemEuStorage: "Almacenamiento en la UE para notas cifradas y datos operativos",
   howInfrastructureIllustration: "Ilustración de infraestructura robusta",
   howManualRevealIllustration: "Protección de revelado manual contra bots de vista previa",
   howManualRevealTitle: "Revelado manual",
@@ -635,16 +642,19 @@ export const es: Translations = {
     "Los bots de vista previa de enlaces en apps como Slack o iMessage pueden “leer” accidentalmente una nota de un solo uso antes que el destinatario.",
   howManualRevealQuote:
     "Nuestro paso de revelado manual exige interacción humana, para que solo el destinatario previsto consuma la nota.",
-  howAiAssistTitle: "Private AI y Cloud Assist",
-  howAiAssistBody1:
-    "Private AI ejecuta un modelo completamente dentro de tu navegador usando WebLLM. Tu nota se descifra localmente, la plantilla elegida se ejecuta en tu dispositivo, y el texto sin cifrar nunca abandona tu máquina. Nuestro Worker solo recibe el resultado ya re-cifrado.",
-  howAiAssistBody2:
-    "Cloud Assist usa Cloudflare Workers AI cuando Private AI no está disponible o eliges borradores alojados. Tu prompt se descifra en el navegador y el texto sin cifrar se envía a la infraestructura de inferencia de Cloudflare. Esto supera el límite de conocimiento cero: Cloudflare procesa tu texto, aunque nosotros no lo almacenemos.",
-  howAiAssistBody3:
-    "Con Private AI, los pesos del modelo pueden descargarse desde CDN públicos configurados para WebLLM, separados de tu nota cifrada. Los resultados se fusionan localmente en tu borrador antes de volver a cifrarse para subirlos.",
-  howAiAssistCaution:
-    "Ambas opciones aumentan la exposición frente a escribir sin IA. Private AI mantiene el texto en claro en el dispositivo, pero añade superficie de riesgo por memoria y descargas. Cloud Assist además envía el texto en claro a un proveedor externo. Úsalas solo si ese compromiso es aceptable.",
-  howAiAssistIllustration: "Ilustración de procesamiento de IA con chip seguro",
+  howAiSectionTitle: "IA opcional al redactar una nota",
+  howAiIntro:
+    "La IA es opcional: siempre puedes escribir sin ella. Si tu navegador lo admite, ofrecemos Private AI primero. Si la IA local no está disponible o eliges borradores alojados, puedes usar Cloud Assist.",
+  howPrivateAiTitle: "Private AI",
+  howPrivateAiBadge: "Permanece en tu dispositivo",
+  howPrivateAiBody:
+    "Private AI se ejecuta en tu navegador (WebLLM). Tu prompt se procesa en el dispositivo; el texto en claro no va a PrivateNote.ai para inferencia. Solo se sube la nota cifrada después. Los archivos del modelo pueden descargarse desde CDN públicos configurados para WebLLM, separados de tu nota cifrada.",
+  howCloudAssistTitle: "Cloud Assist",
+  howCloudAssistBadge: "El texto en claro sale del dispositivo",
+  howCloudAssistBody:
+    "Cloud Assist usa Cloudflare Workers AI (Llama 3.2 3B) cuando Private AI no está disponible en tu dispositivo o usas borradores alojados. Confirmas en la interfaz porque tu prompt se envía a Cloudflare para inferencia. Eso supera el límite de conocimiento cero: Cloudflare procesa el texto aunque nosotros no lo almacenemos.",
+  howAiCaution:
+    "Private AI añade superficie de riesgo por memoria y descargas en el dispositivo. Cloud Assist además envía el borrador en claro a un proveedor externo de inferencia. Úsalos solo si ese compromiso es aceptable.",
   howCtaTitle: "¿Listo para proteger tus datos?",
   howCtaSubtitle: "Rápido, efímero y conforme a la ley.",
   howCtaButton: "Empezar a escribir",
@@ -792,7 +802,7 @@ export const es: Translations = {
   homeFaqTryTestNote: "o escribe una nota de prueba y ábrela tú mismo; verás todo el flujo en segundos.",
   homeFaq_howItWorks_question: "¿Cómo funciona PrivateNote.ai?",
   homeFaq_howItWorks_answer:
-    "Escribes una nota directamente en tu navegador. Tu dispositivo la cifra localmente y solo el contenido cifrado se envía a nuestro servidor. Compartes un enlace único; la nota puede desaparecer al abrirse o al caducar.",
+    "Escribes una nota directamente en tu navegador. Tu dispositivo la cifra localmente y solo se sube el contenido cifrado. Compartes un enlace único con el destinatario; por defecto, la nota se elimina después de abrirse una vez. Si nunca se abre, se elimina cuando pasa el tiempo de caducidad elegido.",
   homeFaq_seeContent_question: "¿PrivateNote.ai puede ver el contenido de mi nota?",
   homeFaq_seeContent_answer:
     "No. Las notas se cifran en tu navegador antes de subirse. Solo almacenamos la carga cifrada, por lo que no podemos leer tu texto sin cifrar.",
@@ -801,19 +811,22 @@ export const es: Translations = {
     "Las notas son de una sola lectura para máxima privacidad. Después de abrir el enlace, la nota se destruye. Si nunca se abre, se elimina al caducar.",
   homeFaq_linkLength_question: "¿Por qué el enlace es más largo que en otros servicios?",
   homeFaq_linkLength_answer:
-    "El enlace lleva material criptográfico del lado del cliente en lugar de depender de secretos guardados en el servidor. La clave está en el fragmento de URL, que los navegadores no envían a los servidores.",
+    "El enlace es más largo porque la clave de descifrado va en el propio enlace, no en nuestros servidores. La clave está después del `#` en la URL. Al abrirlo, el navegador solo envía a los sitios la parte anterior al `#`; el resto permanece en el dispositivo, así que esa clave nunca llega a PrivateNote.ai.",
   homeFaq_password_question: "¿Puedo proteger una nota con contraseña?",
   homeFaq_password_answer:
-    "Sí. Puedes añadir una contraseña opcional. Compártela por separado del enlace, por ejemplo en otro canal.",
+    "Sí. Puedes añadir una contraseña opcional para más protección. Comparte el enlace y la contraseña por separado—por ejemplo, enlace por correo y contraseña por SMS, llamada o chat cifrado—así quien solo tenga el enlace no podrá abrir la nota.",
   homeFaq_breachCheck_question: "¿Cómo funciona la comprobación de filtraciones de contraseña?",
   homeFaq_breachCheck_answer:
     "La comprobación usa Have I Been Pwned con k-anonimato. Tu navegador solo envía un prefijo del hash, nunca la contraseña completa.",
   homeFaq_encryptionKey_question: "¿La clave de cifrado se guarda en su servidor?",
   homeFaq_encryptionKey_answer:
-    "No. La clave vive después del fragmento # del enlace. Los navegadores nunca envían ese fragmento a los servidores.",
+    "No. En notas estándar guardamos la nota cifrada y metadatos, no la clave de descifrado utilizable. La clave está en la parte del enlace después de `#`. Los navegadores mantienen todo lo que va después de `#` en el dispositivo al cargar la página—no lo envían a nuestros servidores—, así que nunca recibimos tu clave.",
   homeFaq_metadata_question: "¿Qué metadatos almacenan?",
   homeFaq_metadata_answer:
-    "Solo almacenamos lo necesario para operar de forma segura: notas cifradas, ajustes de caducidad y registros operativos limitados.",
+    "Almacenamos cargas útiles cifradas y los ajustes necesarios para la caducidad y los límites de lectura—no tu texto en claro. También conservamos estadísticas agregadas de servicio de primera parte: contadores diarios como notas creadas o vistas, uso de protección por contraseña y modo de IA, país aproximado e idioma de la interfaz, y totales operativos similares. Esas estadísticas nunca incluyen el contenido de la nota y no se comparten con proveedores de publicidad ni analítica de terceros. Los registros limitados de seguridad y prevención de abuso (por ejemplo metadatos de IP y limitación de tasa) se conservan durante un período breve, según se describe en nuestra Política de privacidad.",
+  homeFaq_euStorage_question: "¿Los datos de PrivateNote.ai se almacenan en la UE?",
+  homeFaq_euStorage_answer:
+    "Sí. Los datos de autenticación, las notas cifradas y los registros operativos se almacenan en infraestructura bajo jurisdicción de la UE. Parte del tráfico de red aún puede pasar por sistemas de seguridad y entrega antes de llegar al almacenamiento.",
   homeFaq_recover_question: "¿Puedo recuperar una nota destruida o caducada?",
   homeFaq_recover_answer:
     "No. Cuando una nota se lee o caduca y se elimina, no se puede recuperar.",

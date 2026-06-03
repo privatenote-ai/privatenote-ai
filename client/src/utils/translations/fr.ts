@@ -291,6 +291,7 @@ export const fr: Translations = {
   clientSideEncryption: "Le chiffrement côté client signifie que le serveur ne voit jamais votre texte en clair.",
   readOnceExposure: "Les notes lisibles une seule fois et expirables réduisent l’exposition dans le temps.",
   noTrackingAds: "Pas de cookies de suivi, pas de publicité et pas d’analyse tierce sur les notes.",
+  postQuantumByDesign: "Conçu pour le post-quantique avec AES-GCM dans le navigateur.",
   simplePrivacyFlow: "Un parcours de confidentialité simple et digne de confiance.",
   clearSteps: "Des étapes claires, aucune collecte de données cachée.",
   privacyFirst: "Confidentialité dès la conception",
@@ -303,7 +304,7 @@ export const fr: Translations = {
   noTrackingCookies: "Pas de cookies de suivi sur les pages de notes.",
   noThirdPartyAnalytics: "Pas de scripts d’analyse tiers sur les notes.",
   keysStayInLink: "Les clés de chiffrement restent dans le lien, pas sur nos serveurs.",
-  minimalMetadata: "Métadonnées minimales stockées uniquement pour appliquer l’expiration.",
+  minimalMetadata: "Métadonnées minimales de note et statistiques agrégées first-party—jamais le texte de la note ni traceurs tiers.",
   writeWithPrivateAi: "Écrire avec Private AI",
   privateAiShort: "Private AI",
   typeHere: "Tapez votre message confidentiel ici...",
@@ -445,8 +446,9 @@ export const fr: Translations = {
     "La messagerie privée ne devrait pas nécessiter d’abonnement. Les fonctions de sécurité essentielles sont gratuites pour tout le monde.",
   featureZeroTrackingTitle: "Pas de publicité. Pas de profilage.",
   featureZeroTrackingDescription: "PrivateNote n’utilise pas de traceurs publicitaires et ne vend pas les données utilisateur.",
-  featurePostQuantumTitle: "Conçu pour le post-quantique",
-  featurePostQuantumDescription: "AES-GCM dans le navigateur. Le serveur ne voit jamais la clé de chiffrement ni le texte en clair.",
+  featurePostQuantumTitle: "Stockage limité à l’UE",
+  featurePostQuantumDescription:
+    "Les données d’authentification, les notes chiffrées et les enregistrements opérationnels restent dans une infrastructure sous juridiction de l’UE.",
   featuresFooter: "Conçu pour un partage axé sur la confidentialité — pas de suivi, pas de publicité, pas de revente de données.",
   securityHeroPrefix: "Architecture de",
   securityHeroAccent: "sécurité",
@@ -613,8 +615,13 @@ export const fr: Translations = {
   passwordFaq_entropy_answer:
     "Il estime l’entropie, c’est-à-dire le nombre d’essais nécessaires pour casser le mot de passe par force brute.",
   passwordFaq_memorable_question: "Dois-je mémoriser les mots de passe générés ?",
-  passwordFaq_memorable_answer:
-    "En général non. C’est le rôle d’un gestionnaire de mots de passe. L’exception est votre mot de passe maître.",
+  passwordFaq_memorable_answerLead:
+    "En général, non. C’est le rôle d’un gestionnaire de mots de passe.",
+  passwordFaq_memorable_answerMaster:
+    "L’exception est le mot de passe maître (ou secret maître) du gestionnaire : mémorisez-le ou conservez-le sur papier dans un endroit physiquement sûr.",
+  passwordFaq_memorable_generatorLink: "Utilisez le générateur de mots de passe ci-dessus",
+  passwordFaq_memorable_answerGeneratorTail:
+    " pour créer un long mot de passe de type passphrase (20+ caractères, types mixtes) pour ce seul secret—pas pour tous vos comptes.",
   howHeroPrefix: "Sécurité par",
   howHeroAccent: "conception",
   howHeroSubtitle:
@@ -623,10 +630,10 @@ export const fr: Translations = {
     "Votre appareil chiffre la note avant qu’elle quitte votre écran et arrive chiffrée sur notre serveur.",
   howInfrastructureTitle: "Infrastructure",
   howInfrastructureBody:
-    "Utilisation de l’edge Cloudflare (Workers, KV, Durable Objects) pour réduire la latence et améliorer la disponibilité.",
+    "Cloudflare Workers délivrent l’application à la périphérie. Les notes chiffrées et les données opérationnelles sont stockées dans une infrastructure de juridiction UE.",
   howInfrastructureItemCiphertext: "Notes stockées sous forme de texte chiffré",
   howInfrastructureItemMinimizedData: "Collecte de données minimisée et conservation courte",
-  howInfrastructureItemEuStorage: "À venir : stockage uniquement dans l’UE (fonction Premium)",
+  howInfrastructureItemEuStorage: "Stockage en juridiction UE pour notes chiffrées et données opérationnelles",
   howInfrastructureIllustration: "Illustration d’une infrastructure robuste",
   howManualRevealIllustration: "Protection par révélation manuelle contre les robots de prévisualisation",
   howManualRevealTitle: "Révélation manuelle",
@@ -634,16 +641,19 @@ export const fr: Translations = {
     "Les robots de prévisualisation de liens dans des apps comme Slack ou iMessage peuvent « lire » accidentellement une note à usage unique avant votre destinataire.",
   howManualRevealQuote:
     "Notre étape de révélation manuelle impose une interaction humaine, afin que seul le destinataire prévu consomme la note.",
-  howAiAssistTitle: "Private AI et Cloud Assist",
-  howAiAssistBody1:
-    "Private AI exécute un modèle entièrement dans votre navigateur via WebLLM. Votre note est déchiffrée localement, le modèle choisi s’exécute sur votre appareil, et le texte en clair ne quitte jamais votre machine. Notre Worker ne reçoit que le résultat rechiffré.",
-  howAiAssistBody2:
-    "Cloud Assist utilise Cloudflare Workers AI lorsque Private AI n’est pas disponible ou que vous choisissez des brouillons hébergés. Votre prompt est déchiffré dans le navigateur, puis le texte en clair est envoyé à l’infrastructure d’inférence de Cloudflare. Cela dépasse la frontière zéro-connaissance : Cloudflare traite votre texte, même si nous ne le stockons pas.",
-  howAiAssistBody3:
-    "Pour Private AI, les poids du modèle peuvent être téléchargés depuis des CDN publics configurés pour WebLLM, séparément de votre note chiffrée. Les résultats sont intégrés localement au brouillon avant tout rechiffrement pour l’envoi.",
-  howAiAssistCaution:
-    "Les deux options augmentent l’exposition par rapport à l’écriture sans IA. Private AI garde le texte en clair sur l’appareil, mais ajoute une surface de risque liée à la mémoire et aux téléchargements. Cloud Assist envoie en plus le texte en clair à un prestataire tiers. N’utilisez l’un ou l’autre que si ce compromis est acceptable.",
-  howAiAssistIllustration: "Illustration du traitement IA avec puce sécurisée",
+  howAiSectionTitle: "IA optionnelle lors de la rédaction d’une note",
+  howAiIntro:
+    "L’IA est optionnelle—vous pouvez toujours écrire sans elle. Si votre navigateur le permet, nous proposons d’abord Private AI. Si l’IA locale n’est pas disponible ou si vous choisissez des brouillons hébergés, vous pouvez utiliser Cloud Assist.",
+  howPrivateAiTitle: "Private AI",
+  howPrivateAiBadge: "Reste sur votre appareil",
+  howPrivateAiBody:
+    "Private AI s’exécute dans votre navigateur (WebLLM). Votre prompt est traité sur l’appareil ; le texte en clair n’est pas envoyé à PrivateNote.ai pour l’inférence. Seule la note chiffrée est téléversée ensuite. Les fichiers de modèle peuvent être téléchargés depuis des CDN publics configurés pour WebLLM, séparément de votre note chiffrée.",
+  howCloudAssistTitle: "Cloud Assist",
+  howCloudAssistBadge: "Le texte en clair quitte l’appareil",
+  howCloudAssistBody:
+    "Cloud Assist utilise Cloudflare Workers AI (Llama 3.2 3B) lorsque Private AI n’est pas disponible sur votre appareil ou si vous utilisez des brouillons hébergés. Vous confirmez dans l’interface car votre prompt est envoyé à Cloudflare pour l’inférence. Cela dépasse notre frontière zéro-connaissance : Cloudflare traite le texte même si nous ne le stockons pas.",
+  howAiCaution:
+    "Private AI ajoute une surface de risque liée à la mémoire et aux téléchargements sur l’appareil. Cloud Assist envoie en plus le brouillon en clair à un prestataire tiers d’inférence. N’utilisez l’un ou l’autre que si ce compromis est acceptable.",
   howCtaTitle: "Prêt à sécuriser vos données ?",
   howCtaSubtitle: "Rapide, éphémère et conforme.",
   howCtaButton: "Commencer à écrire",
@@ -791,7 +801,7 @@ export const fr: Translations = {
   homeFaqTryTestNote: "ou écrivez une note de test et ouvrez-la vous-même ; le parcours complet prend quelques secondes.",
   homeFaq_howItWorks_question: "Comment fonctionne PrivateNote.ai ?",
   homeFaq_howItWorks_answer:
-    "Vous écrivez une note directement dans votre navigateur. Votre appareil la chiffre localement, et seul le contenu chiffré est envoyé à notre serveur. Vous partagez un lien unique ; la note peut disparaître après ouverture ou après une expiration choisie.",
+    "Vous écrivez une note directement dans votre navigateur. Votre appareil la chiffre localement, et seul le contenu chiffré est téléversé. Vous partagez un lien unique ; par défaut, la note est supprimée après une seule ouverture. Si elle n’est jamais ouverte, elle est supprimée lorsque l’expiration choisie est atteinte.",
   homeFaq_seeContent_question: "PrivateNote.ai peut-il voir le contenu de ma note ?",
   homeFaq_seeContent_answer:
     "Non. Les notes sont chiffrées dans votre navigateur avant l’envoi. Nous stockons uniquement la charge chiffrée et ne pouvons pas lire votre texte en clair.",
@@ -800,19 +810,22 @@ export const fr: Translations = {
     "Les notes sont lisibles une seule fois pour une confidentialité maximale. Après ouverture, la note est détruite. Si elle n’est jamais ouverte, elle est supprimée à l’expiration.",
   homeFaq_linkLength_question: "Pourquoi le lien est-il plus long que sur d’autres services ?",
   homeFaq_linkLength_answer:
-    "Le lien contient du matériel cryptographique côté client au lieu de secrets stockés côté serveur. La clé est dans le fragment d’URL, que les navigateurs n’envoient pas aux serveurs.",
+    "Le lien est plus long parce que la clé de déchiffrement est dans le lien lui-même, pas sur nos serveurs. Elle se trouve après le  dans l’URL. À l’ouverture, le navigateur n’envoie aux sites que la partie avant —le reste reste sur l’appareil—, donc cette clé n’atteint jamais PrivateNote.ai.",
   homeFaq_password_question: "Puis-je protéger une note avec un mot de passe ?",
   homeFaq_password_answer:
-    "Oui. Vous pouvez ajouter un mot de passe optionnel. Partagez-le séparément du lien, par exemple via un autre canal.",
+    "Oui. Vous pouvez ajouter un mot de passe optionnel pour une protection supplémentaire. Partagez le lien et le mot de passe séparément—par exemple lien par e-mail, mot de passe par SMS, appel ou messagerie chiffrée—afin que quelqu’un avec le lien seul ne puisse pas ouvrir la note.",
   homeFaq_breachCheck_question: "Comment fonctionne la vérification des fuites de mot de passe ?",
   homeFaq_breachCheck_answer:
     "La vérification utilise Have I Been Pwned avec le principe de k-anonymat. Votre navigateur envoie uniquement un préfixe de hash, jamais le mot de passe complet.",
   homeFaq_encryptionKey_question: "La clé de chiffrement est-elle stockée sur votre serveur ?",
   homeFaq_encryptionKey_answer:
-    "Non. La clé vit après le fragment # du lien. Les navigateurs n’envoient jamais ce fragment aux serveurs.",
+    "Non. Pour les notes standard, nous stockons la note chiffrée et des métadonnées, pas la clé de déchiffrement utilisable. La clé se trouve dans la partie du lien après `#`. Les navigateurs gardent tout ce qui suit `#` sur l’appareil au chargement—ils ne l’envoient pas à nos serveurs—, donc nous ne recevons jamais votre clé.",
   homeFaq_metadata_question: "Quelles métadonnées stockez-vous ?",
   homeFaq_metadata_answer:
-    "Nous stockons uniquement ce qui est nécessaire au fonctionnement sécurisé : notes chiffrées, paramètres d’expiration et journaux opérationnels limités.",
+    "Nous stockons les charges utiles chiffrées et les paramètres nécessaires à l’expiration et aux limites de lecture—pas votre texte en clair. Nous conservons aussi des statistiques de service agrégées first-party : compteurs quotidiens (notes créées ou consultées, usage du mot de passe et du mode IA, pays approximatif et langue d’interface, et totaux opérationnels similaires). Ces statistiques n’incluent jamais le contenu des notes et ne sont pas partagées avec des fournisseurs publicitaires ou d’analytique tiers. Des journaux limités de sécurité et de prévention des abus (par ex. métadonnées IP et limitation de débit) sont conservés brièvement, comme indiqué dans notre politique de confidentialité.",
+  homeFaq_euStorage_question: "Les données de PrivateNote.ai sont-elles stockées dans l’UE ?",
+  homeFaq_euStorage_answer:
+    "Oui. Les données d’authentification, les notes chiffrées et les enregistrements opérationnels sont stockés dans une infrastructure sous juridiction de l’UE. Une partie du trafic réseau peut encore passer par des systèmes de sécurité et de livraison avant d’atteindre le stockage.",
   homeFaq_recover_question: "Puis-je récupérer une note détruite ou expirée ?",
   homeFaq_recover_answer:
     "Non. Une fois lue ou expirée, une note supprimée ne peut pas être récupérée.",

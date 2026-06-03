@@ -18,6 +18,7 @@ const FAQ_ITEM_IDS = [
   'breachCheck',
   'encryptionKey',
   'metadata',
+  'euStorage',
   'recover',
   'shareLink',
   'forwarding',
