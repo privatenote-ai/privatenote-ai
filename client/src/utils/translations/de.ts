@@ -459,7 +459,7 @@ export const de: Translations = {
   securityAiPrivateLine:
     "Private AI (WebLLM): läuft auf Ihrem Gerät; Prompts werden nicht zur Inferenz an PrivateNote.ai gesendet.",
   securityAiCloudLine:
-    "Cloud Assist: nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie bestätigen in der Oberfläche, weil Entwurfs-Klartext Ihr Gerät verlässt. Gespeicherte Notizen bleiben Chiffretext.",
+    "Cloud Assist: nutzt Cloudflare Workers AI, wenn lokale KI nicht verfügbar ist—Sie müssen ausdrücklich zustimmen, weil Entwurfs-Klartext zur Inferenz an Cloudflare Workers AI gesendet wird. Gespeicherte Notizen bleiben Chiffretext.",
   securityClientEncryptionTitle: "Clientseitige Verschlüsselung",
   securityClientEncryptionBody:
     "Die Verschlüsselung erfolgt im Arbeitsspeicher Ihres Browsers mit der Web Crypto API. Der Server sieht nur den daraus entstehenden Chiffretext.",
@@ -656,7 +656,7 @@ export const de: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Klartext verlässt Ihr Gerät",
   howCloudAssistBody:
-    "Cloud Assist nutzt Cloudflare Workers AI (Llama 3.2 3B), wenn Private AI auf Ihrem Gerät nicht verfügbar ist oder Sie gehostete Entwürfe verwenden. Sie bestätigen in der Oberfläche, weil Ihr Prompt zur Inferenz an Cloudflare gesendet wird. Das verlässt unsere Grenze des vollständigen Datenschutzes: Cloudflare verarbeitet den Text, auch wenn wir ihn nicht speichern.",
+    "Cloud Assist nutzt Cloudflare Workers AI (Llama 3.2 3B), wenn Private AI auf Ihrem Gerät nicht verfügbar ist oder Sie gehostete Entwürfe verwenden. Sie müssen ausdrücklich zustimmen, weil Entwurfs-Klartext zur Inferenz an Cloudflare Workers AI gesendet wird. Das verlässt unsere Grenze des vollständigen Datenschutzes: Cloudflare verarbeitet den Text, auch wenn wir ihn nicht speichern.",
   howAiCaution:
     "Private AI erhöht Speicher- und Download-Angriffsfläche auf dem Gerät. Cloud Assist sendet Entwurfs-Klartext zusätzlich an einen Drittanbieter für Inferenz. Nutzen Sie beides nur, wenn dieser Kompromiss akzeptabel ist.",
   howCtaTitle: "Bereit, Ihre Daten zu schützen?",

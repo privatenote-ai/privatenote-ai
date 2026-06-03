@@ -464,7 +464,7 @@ export const es: Translations = {
   securityAiPrivateLine:
     "Private AI (WebLLM): se ejecuta en tu dispositivo; los prompts no se envían a PrivateNote.ai para inferencia.",
   securityAiCloudLine:
-    "Cloud Assist: usa Cloudflare Workers AI cuando la IA local no está disponible; confirmas en la interfaz porque el borrador en claro sale de tu dispositivo. Las notas guardadas siguen cifradas.",
+    "Cloud Assist: usa Cloudflare Workers AI cuando la IA local no está disponible; debes activarlo explícitamente porque el borrador en claro se envía a Cloudflare Workers AI para inferencia. Las notas guardadas siguen cifradas.",
   securityClientEncryptionTitle: "Cifrado del lado del cliente",
   securityClientEncryptionBody:
     "El cifrado ocurre en la memoria de tu navegador usando la Web Crypto API. El servidor solo ve el blob cifrado resultante.",
@@ -661,7 +661,7 @@ export const es: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "El texto en claro sale del dispositivo",
   howCloudAssistBody:
-    "Cloud Assist usa Cloudflare Workers AI (Llama 3.2 3B) cuando Private AI no está disponible en tu dispositivo o usas borradores alojados. Confirmas en la interfaz porque tu prompt se envía a Cloudflare para inferencia. Eso sale de nuestro límite de privacidad plena: Cloudflare procesa el texto aunque nosotros no lo almacenemos.",
+    "Cloud Assist usa Cloudflare Workers AI (Llama 3.2 3B) cuando Private AI no está disponible en tu dispositivo o usas borradores alojados. Debes activarlo explícitamente porque el borrador en claro se envía a Cloudflare Workers AI para inferencia. Eso sale de nuestro límite de privacidad plena: Cloudflare procesa el texto aunque nosotros no lo almacenemos.",
   howAiCaution:
     "Private AI añade superficie de riesgo por memoria y descargas en el dispositivo. Cloud Assist además envía el borrador en claro a un proveedor externo de inferencia. Úsalos solo si ese compromiso es aceptable.",
   howCtaTitle: "¿Listo para proteger tus datos?",

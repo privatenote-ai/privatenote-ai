@@ -463,7 +463,7 @@ export const fr: Translations = {
   securityAiPrivateLine:
     "Private AI (WebLLM) : s’exécute sur votre appareil ; les prompts ne sont pas envoyés à PrivateNote.ai pour l’inférence.",
   securityAiCloudLine:
-    "Cloud Assist : utilise Cloudflare Workers AI si l’IA locale n’est pas disponible — vous confirmez dans l’interface car le brouillon en clair quitte votre appareil. Les notes stockées restent chiffrées.",
+    "Cloud Assist : utilise Cloudflare Workers AI si l’IA locale n’est pas disponible — vous devez l’activer explicitement car le brouillon en clair est envoyé à Cloudflare Workers AI pour l’inférence. Les notes stockées restent chiffrées.",
   securityClientEncryptionTitle: "Chiffrement côté client",
   securityClientEncryptionBody:
     "Le chiffrement a lieu dans la mémoire de votre navigateur avec la Web Crypto API. Le serveur ne voit que le blob chiffré obtenu.",
@@ -660,7 +660,7 @@ export const fr: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Le texte en clair quitte l’appareil",
   howCloudAssistBody:
-    "Cloud Assist utilise Cloudflare Workers AI (Llama 3.2 3B) lorsque Private AI n’est pas disponible sur votre appareil ou si vous utilisez des brouillons hébergés. Vous confirmez dans l’interface car votre prompt est envoyé à Cloudflare pour l’inférence. Cela dépasse notre frontière de confidentialité totale : Cloudflare traite le texte même si nous ne le stockons pas.",
+    "Cloud Assist utilise Cloudflare Workers AI (Llama 3.2 3B) lorsque Private AI n’est pas disponible sur votre appareil ou si vous utilisez des brouillons hébergés. Vous devez l’activer explicitement car le brouillon en clair est envoyé à Cloudflare Workers AI pour l’inférence. Cela dépasse notre frontière de confidentialité totale : Cloudflare traite le texte même si nous ne le stockons pas.",
   howAiCaution:
     "Private AI ajoute une surface de risque liée à la mémoire et aux téléchargements sur l’appareil. Cloud Assist envoie en plus le brouillon en clair à un prestataire tiers d’inférence. N’utilisez l’un ou l’autre que si ce compromis est acceptable.",
   howCtaTitle: "Prêt à sécuriser vos données ?",

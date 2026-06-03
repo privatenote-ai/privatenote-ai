@@ -457,7 +457,7 @@ export const en: Translations = {
   securityAiPrivateLine:
     "Private AI (WebLLM): runs on your device; prompts are not sent to PrivateNote.ai for inference.",
   securityAiCloudLine:
-    "Cloud Assist: uses Cloudflare Workers AI when local AI is unavailable—you confirm in the UI because draft plaintext leaves your device. Stored notes remain ciphertext.",
+    "Cloud Assist: uses Cloudflare Workers AI when local AI is unavailable—you must explicitly opt in because draft plaintext is sent to Cloudflare Workers AI for inference. Stored notes remain ciphertext.",
   securityClientEncryptionTitle: "Client-Side Encryption",
   securityClientEncryptionBody:
     "Encryption occurs in your browser's memory using the Web Crypto API. The server only sees the resulting ciphertext blob.",
@@ -654,7 +654,7 @@ export const en: Translations = {
   howCloudAssistTitle: "Cloud Assist",
   howCloudAssistBadge: "Plaintext leaves your device",
   howCloudAssistBody:
-    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You confirm in the UI because your prompt is sent to Cloudflare for inference. That steps outside our full-privacy boundary: Cloudflare processes the text even though we do not store it.",
+    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You must explicitly opt in because draft plaintext is sent to Cloudflare Workers AI for inference. That steps outside our full-privacy boundary: Cloudflare processes the text even though we do not store it.",
   howAiCaution:
     "Private AI adds on-device memory and download surface. Cloud Assist additionally sends draft plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
   howCtaTitle: "Ready to secure your data?",
