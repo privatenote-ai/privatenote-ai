@@ -12,6 +12,11 @@ id = "f19b8957a39b422486311962ca759563"
 binding = "ANALYTICS_KV"
 id = "af52edc654a844ae999cc4fc35ba5a38"
 
+# Encrypted note attachments. Create/bind this R2 bucket before enabling file sharing in production.
+# [[r2_buckets]]
+# binding = "NOTE_FILES_R2"
+# bucket_name = "privatenote-files-eu"
+
 # Durable Objects binding
 [[durable_objects.bindings]]
 name = "SECURE_NOTES"

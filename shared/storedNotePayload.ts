@@ -9,6 +9,16 @@ import {
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
 
+export interface StoredNoteAttachment {
+  v: 1;
+  name: string;
+  type: string;
+  size: number;
+  encryptedSize: number;
+  iv: string;
+  aad: string;
+}
+
 export interface ParsedStoredNoteCiphertext {
   v: number;
   content: string;
@@ -21,6 +31,36 @@ export interface ParsedStoredNoteCiphertext {
   encryptedKey: string | null;
   encryptedKeyIv: string | null;
   kdfParams?: KdfParamsV2;
+  attachment?: StoredNoteAttachment;
+}
+
+function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
+  if (raw == null) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (o.v !== 1) return null;
+  if (typeof o.name !== "string" || !o.name.trim() || o.name.length > 255) return null;
+  if (typeof o.type !== "string" || o.type.length > 255) return null;
+  if (typeof o.size !== "number" || !Number.isInteger(o.size) || o.size < 0) return null;
+  if (
+    typeof o.encryptedSize !== "number" ||
+    !Number.isInteger(o.encryptedSize) ||
+    o.encryptedSize <= 0
+  ) {
+    return null;
+  }
+  const ivCheck = validateNoteAesGcmIvWire(o.iv, "attachment.iv");
+  if (!ivCheck.ok) return null;
+  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  return {
+    v: 1,
+    name: o.name.trim(),
+    type: o.type.trim(),
+    size: o.size,
+    encryptedSize: o.encryptedSize,
+    iv: (o.iv as string).trim(),
+    aad: o.aad.trim(),
+  };
 }
 
 /**
@@ -101,6 +141,11 @@ export function parseStoredNoteCiphertextForReveal(raw: string): ParsedStoredNot
   };
   if (kdfParams) {
     ciphertext.kdfParams = kdfParams;
+  }
+  const attachment = parseStoredNoteAttachment(o.attachment);
+  if (o.attachment != null && !attachment) return null;
+  if (attachment) {
+    ciphertext.attachment = attachment;
   }
   return ciphertext;
 }

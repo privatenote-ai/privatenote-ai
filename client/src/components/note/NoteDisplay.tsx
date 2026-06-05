@@ -9,16 +9,21 @@ import {
   ShieldCheck,
   Trash2,
   UserX,
+  Download,
+  Paperclip,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiBlobRequest, apiRequest } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
   importAesGcmKeyFromUrlFragment,
-  decryptWithPassword,
+  decryptFileBytes,
   base64ToArrayBuffer,
+  base64ToUint8Array,
   deserializeEncryptedPayload,
+  unwrapContentKeyWithPassword,
 } from '@/utils/encryption';
+import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -57,6 +62,17 @@ interface NoteData {
   kdfVersion?: number; // Key Derivation Function version
   kdfIterations?: number; // KDF iteration count
   kdfPolicyTag?: string; // KDF policy/profile tag (e.g. argon2id-m65536-p1)
+  attachment?: NoteAttachment;
+}
+
+interface NoteAttachment {
+  v: 1;
+  name: string;
+  type: string;
+  size: number;
+  encryptedSize: number;
+  iv: string;
+  aad: string;
 }
 
 interface RevealHeroProps {
@@ -267,6 +283,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [hasRevealed, setHasRevealed] = useState(false);
   const [isRevealButtonReady, setIsRevealButtonReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
+  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const { toast } = useToast();
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
@@ -320,6 +338,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
       console.log("Importing key:", key);
       const cryptoKey = await importAesGcmKeyFromUrlFragment(key);
+      setContentKey(cryptoKey);
 
       // Decrypt the note with AAD for context validation
       // Fixed: Added AAD support
@@ -441,11 +460,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const encryptedKeyIv = base64ToArrayBuffer(noteData.encryptedKeyIv!);
       const salt = base64ToArrayBuffer(noteData.salt!);
 
-      // Decrypt using password with AAD and KDF parameter validation
-      // Fixed: Added AAD and KDF parameter support
-      const decryptedContent = await decryptWithPassword(
-        payloadBytes.encryptedData,
-        payloadBytes.iv,
+      const unwrappedKey = await unwrapContentKeyWithPassword(
         encryptedKey,
         new Uint8Array(encryptedKeyIv),
         new Uint8Array(salt),
@@ -457,7 +472,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         noteData.kdfPolicyTag,
       );
 
+      const decryptedContent = await decryptNote(
+        payloadBytes.encryptedData,
+        unwrappedKey,
+        payloadBytes.iv,
+        payloadBytes.aadBytes,
+      );
+
       setNoteContent(decryptedContent);
+      setContentKey(unwrappedKey);
       reportNoteOpenedIfSignedIn(id);
 
       // Hide password input after successful decryption
@@ -486,6 +509,41 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       title: "Copied!",
       description: "Note content copied to clipboard",
     });
+  };
+
+  const handleDownloadAttachment = async () => {
+    if (!noteData?.attachment || !contentKey) return;
+    setIsDownloadingFile(true);
+    try {
+      const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET");
+      const encryptedBytes = new Uint8Array(await encryptedBlob.arrayBuffer());
+      const decryptedBytes = await decryptFileBytes(
+        encryptedBytes,
+        contentKey,
+        base64ToUint8Array(noteData.attachment.iv),
+        base64ToUint8Array(noteData.attachment.aad),
+      );
+      const blob = new Blob([decryptedBytes], {
+        type: noteData.attachment.type || "application/octet-stream",
+      });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = noteData.attachment.name || "privatenote-file";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      console.error("Attachment download/decrypt failed:", error);
+      toast({
+        title: "File download failed",
+        description: "The encrypted file could not be downloaded or decrypted.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingFile(false);
+    }
   };
 
   const handleCreateNew = () => {
@@ -647,6 +705,33 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             {noteContent.trimEnd()}
           </div>
         </div>
+
+        {noteData?.attachment ? (
+          <div className="mx-auto mt-4 max-w-2xl rounded-lg border border-gray-200 bg-white p-4 text-left dark:border-gray-800 dark:bg-gray-950">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <Paperclip className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {noteData.attachment.name}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Encrypted attachment · {formatNoteFileSize(noteData.attachment.size)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleDownloadAttachment()}
+                disabled={isDownloadingFile || !contentKey}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download className="mr-2 h-4 w-4" aria-hidden />
+                {isDownloadingFile ? "Decrypting..." : "Download file"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <button

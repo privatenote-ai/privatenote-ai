@@ -3,6 +3,10 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_AES_GCM_TAG_BYTES,
+  noteFileLimitBytesForAccount,
+} from "@shared/noteFileLimits";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { DurableObjectNamespace, DurableObjectStub, KVNamespace } from "@cloudflare/workers-types";
@@ -184,7 +188,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Headers": "Content-Type, x-admin-token, x-file-plaintext-size",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -6802,6 +6806,10 @@ function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
 
+function noteFileObjectKey(id: string): string {
+  return `note-files/${id}`;
+}
+
 async function reserveNoteId(env: Env, clientId: string): Promise<string> {
   const id = crypto.randomUUID();
   const kv = env.NOTES_KV;
@@ -7220,6 +7228,86 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
+  const noteFileParams = parsePathParams(pathname, "/api/notes/:id/file");
+  if (noteFileParams && method === "PUT") {
+    const { id } = noteFileParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    if (!(await hasReservation(env, id))) {
+      return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
+    }
+
+    const isPremium = await noteCreationAllowsPremiumExpiry(env, request);
+    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);
+    if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
+      return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
+    }
+    if (plaintextSize > plaintextLimit) {
+      return jsonResponse(
+        {
+          error: "file_too_large",
+          message: `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+        },
+        413,
+        request,
+      );
+    }
+
+    const encryptedLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES;
+    const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
+    if (Number.isFinite(contentLength) && contentLength > encryptedLimit) {
+      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
+    }
+
+    const encryptedBytes = await request.arrayBuffer();
+    if (encryptedBytes.byteLength > encryptedLimit) {
+      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
+    }
+
+    await env.NOTE_FILES_R2.put(noteFileObjectKey(id), encryptedBytes, {
+      httpMetadata: { contentType: "application/octet-stream" },
+      customMetadata: {
+        plaintextSize: String(plaintextSize),
+        encryptedSize: String(encryptedBytes.byteLength),
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
+  }
+
+  if (noteFileParams && method === "GET") {
+    const { id } = noteFileParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    const object = await env.NOTE_FILES_R2.get(noteFileObjectKey(id));
+    if (!object) {
+      return jsonResponse({ error: "File not found" }, 404, request);
+    }
+    const headers = new Headers({
+      "Content-Type": "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+    return applyCorsHeaders(new Response(object.body as unknown as BodyInit, { status: 200, headers }), request);
+  }
+
   // Notes API routes (Durable Object authority)
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
@@ -7324,6 +7412,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const id = requestedId || crypto.randomUUID();
+
+    if (requestBody?.attachment != null) {
+      if (!env.NOTE_FILES_R2) {
+        return jsonResponse(
+          { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+          503,
+          request,
+        );
+      }
+      const uploaded = await env.NOTE_FILES_R2.head(noteFileObjectKey(id));
+      if (!uploaded) {
+        return jsonResponse({ error: "Attachment upload missing" }, 400, request);
+      }
+    }
+
     const stub = getSecureNoteStub(env, id, true);
     const doUrl = new URL(request.url);
     doUrl.pathname = `/api/notes/${id}`;

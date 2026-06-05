@@ -1,11 +1,15 @@
 import React, { Suspense, lazy, useEffect, useRef, useState, useCallback } from "react";
-import { apiRequest, ApiRequestError } from "@/lib/queryClient";
+import { apiBinaryRequest, apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
   truncateUtf8StringToMaxBytes,
   utf8ByteLength,
 } from "@shared/noteSizeLimits";
+import {
+  formatNoteFileSize,
+  noteFileLimitBytesForAccount,
+} from "@shared/noteFileLimits";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
   clampNoteExpiryPresetForAccount,
@@ -41,6 +45,8 @@ import {
   Settings,
   Sparkles,
   Loader2,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
 import { useQrShare } from "@/hooks/useQrShare";
@@ -200,9 +206,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
   const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications;
+  const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
 
   const { toast } = useToast();
 
@@ -643,10 +651,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!noteContent.trim()) {
+    if (!noteContent.trim() && !selectedFile) {
       toast({
         title: "Error",
-        description: "Note content cannot be empty",
+        description: "Add note content or attach a file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedFile && selectedFile.size > fileLimitBytes) {
+      toast({
+        title: "File too large",
+        description: `File sharing is limited to ${formatNoteFileSize(fileLimitBytes)} for your account.`,
         variant: "destructive",
       });
       return;
@@ -701,8 +718,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         encryptNote,
         generateContentKey,
         arrayBufferToBase64,
-        encryptWithPassword,
+        currentKdfParamsV2,
+        deriveAesKeyFromPassword,
+        encryptFileBytes,
         serializeEncryptedPayload,
+        generateSalt,
+        ARGON2ID_PARAM_TAG_V2,
+        ARGON2ID_TIME_COST_V2,
       } = await import("@/utils/encryption");
       let encryptedBase64,
         ivBase64,
@@ -722,19 +744,51 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
       let aad: string;
       let kdfParams: unknown;
+      let attachment: {
+        v: 1;
+        name: string;
+        type: string;
+        size: number;
+        encryptedSize: number;
+        iv: string;
+        aad: string;
+      } | null = null;
 
       const aadBinding = {
         noteId: reservedId,
         expirySeconds,
         maxReads: readCount,
       };
+      const contentToEncrypt = noteContent.trim() || "Encrypted file attached.";
+      let contentKey: CryptoKey;
 
       if (isPasswordProtected) {
-        const encryptionResult = await encryptWithPassword(noteContent, password, aadBinding);
-        const { encryptedData, iv, salt, encryptedKey, encryptedKeyIv, aadBytes } = encryptionResult;
+        const salt = generateSalt();
+        const passwordKey = await deriveAesKeyFromPassword(
+          password,
+          salt,
+          ARGON2ID_TIME_COST_V2,
+          ARGON2ID_PARAM_TAG_V2,
+        );
+        const { key, keyBytes } = await generateContentKey();
+        contentKey = key;
+        const encryptionResult = await encryptNote(contentToEncrypt, key, aadBinding);
+        const { encryptedData, iv, aadBytes } = encryptionResult;
         const wirePayload = serializeEncryptedPayload({ encryptedData, iv, aadBytes });
+        const encryptedKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encryptedKey = await window.crypto.subtle.encrypt(
+          {
+            name: "AES-GCM",
+            iv: encryptedKeyIv as unknown as BufferSource,
+            additionalData: aadBytes as unknown as BufferSource,
+            tagLength: 128,
+          },
+          passwordKey,
+          keyBytes as unknown as BufferSource,
+        );
+        keyBytes.fill(0);
         aad = wirePayload.aad;
-        kdfParams = encryptionResult.kdfParams;
+        kdfParams = currentKdfParamsV2();
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
         saltBase64 = encodeBase64(salt);
@@ -742,13 +796,45 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         encryptedKeyIvBase64 = encodeBase64(encryptedKeyIv);
       } else {
         const { key, exportedKey: generatedKey } = await generateContentKey();
+        contentKey = key;
         exportedKey = generatedKey;
-        const encryptionResult = await encryptNote(noteContent, key, aadBinding);
+        const encryptionResult = await encryptNote(contentToEncrypt, key, aadBinding);
         const { encryptedData, iv, aadBytes } = encryptionResult;
         const wirePayload = serializeEncryptedPayload({ encryptedData, iv, aadBytes });
         aad = wirePayload.aad;
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
+      }
+
+      if (selectedFile) {
+        const fileAadPlaintext = JSON.stringify({
+          v: 1,
+          noteId: reservedId,
+          name: selectedFile.name,
+          type: selectedFile.type || "application/octet-stream",
+          size: selectedFile.size,
+        });
+        const fileAadBytes = new TextEncoder().encode(fileAadPlaintext);
+        const encryptedFile = await encryptFileBytes(selectedFile, contentKey!, fileAadBytes);
+        const encryptedFileBytes = new Uint8Array(encryptedFile.encryptedData);
+        const uploadResponse = await apiBinaryRequest<{ encryptedSize: number }>(
+          `/api/notes/${reservedId}/file`,
+          "PUT",
+          encryptedFileBytes.buffer,
+          {
+            "Content-Type": "application/octet-stream",
+            "x-file-plaintext-size": String(selectedFile.size),
+          },
+        );
+        attachment = {
+          v: 1,
+          name: selectedFile.name,
+          type: selectedFile.type || "application/octet-stream",
+          size: selectedFile.size,
+          encryptedSize: uploadResponse.encryptedSize ?? encryptedFileBytes.byteLength,
+          iv: encodeBase64(encryptedFile.iv),
+          aad: encodeBase64(fileAadBytes),
+        };
       }
 
       const { id } = await apiRequest("/api/notes", "POST", {
@@ -762,6 +848,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         uiLanguage: language,
         isPasswordProtected,
         aad,
+        ...(attachment ? { attachment } : {}),
         _hp: honeypotValue,
         ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
@@ -895,6 +982,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setShowPassword(false);
     setPasswordSource(null);
     setExpiryValue(NOTE_EXPIRY_DEFAULT_PRESET_ID);
+    setSelectedFile(null);
   };
 
   // ── AI actions ────────────────────────────────────────────────────────────
@@ -1471,8 +1559,62 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 rows={6}
                 className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder={t.typeHere}
-                required
+                required={!selectedFile}
               />
+              <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      <Paperclip className="h-4 w-4 text-primary" aria-hidden />
+                      File sharing
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      AES-GCM-256 encrypted in your browser. Limit: {formatNoteFileSize(fileLimitBytes)}.
+                    </p>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900">
+                    Choose file
+                    <input
+                      type="file"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        event.target.value = "";
+                        if (!file) return;
+                        if (file.size > fileLimitBytes) {
+                          toast({
+                            title: "File too large",
+                            description: `File sharing is limited to ${formatNoteFileSize(fileLimitBytes)} for your account.`,
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setSelectedFile(file);
+                      }}
+                    />
+                  </label>
+                </div>
+                {selectedFile ? (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950">
+                    <div className="min-w-0 text-sm">
+                      <p className="truncate font-medium text-gray-900 dark:text-gray-100">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatNoteFileSize(selectedFile.size)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      aria-label="Remove selected file"
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
                 {privacyBannerItems}
               </div>

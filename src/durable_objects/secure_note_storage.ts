@@ -15,6 +15,7 @@ import {
   parseStoredNoteCiphertextForReveal,
   STORED_NOTE_CIPHER_ALG,
   STORED_NOTE_PAYLOAD_VERSION,
+  type StoredNoteAttachment,
   type ParsedStoredNoteCiphertext,
 } from "@shared/storedNotePayload";
 
@@ -22,6 +23,35 @@ type StoredCiphertext = ParsedStoredNoteCiphertext;
 
 const MIN_EXPIRY_SECONDS = 60;
 const MAX_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
+
+function parseAttachmentForCreate(raw: unknown): StoredNoteAttachment | null {
+  if (raw == null) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (o.v !== 1) return null;
+  if (typeof o.name !== "string" || !o.name.trim() || o.name.length > 255) return null;
+  if (typeof o.type !== "string" || o.type.length > 255) return null;
+  if (typeof o.size !== "number" || !Number.isInteger(o.size) || o.size < 0) return null;
+  if (
+    typeof o.encryptedSize !== "number" ||
+    !Number.isInteger(o.encryptedSize) ||
+    o.encryptedSize <= 0
+  ) {
+    return null;
+  }
+  const ivCheck = validateNoteAesGcmIvWire(o.iv, "attachment.iv");
+  if (!ivCheck.ok) return null;
+  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  return {
+    v: 1,
+    name: o.name.trim(),
+    type: o.type.trim(),
+    size: o.size,
+    encryptedSize: o.encryptedSize,
+    iv: (o.iv as string).trim(),
+    aad: o.aad.trim(),
+  };
+}
 
 function isUniqueConstraintError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -198,6 +228,7 @@ export class SecureNoteStorageSql {
       encryptedKeyIv = null,
       aad: aadRaw = undefined,
       kdfParams = undefined,
+      attachment: attachmentRaw = undefined,
     } = body || {};
 
     const ippField = body?.isPasswordProtected;
@@ -355,6 +386,13 @@ export class SecureNoteStorageSql {
 
     const contentTrimmed = content.trim();
     const ivTrimmed = iv.trim();
+    const attachment = parseAttachmentForCreate(attachmentRaw);
+    if (attachmentRaw != null && !attachment) {
+      return new Response(JSON.stringify({ error: "Invalid attachment metadata" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const ciphertext: StoredCiphertext = {
       v: STORED_NOTE_PAYLOAD_VERSION,
@@ -366,6 +404,7 @@ export class SecureNoteStorageSql {
       salt: null,
       encryptedKey: null,
       encryptedKeyIv: null,
+      ...(attachment ? { attachment } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
     };
 
@@ -495,6 +534,7 @@ export class SecureNoteStorageSql {
           isPasswordProtected: ciphertext.isPasswordProtected,
           ...(typeof ciphertext.aad === "string" && ciphertext.aad ? { aad: ciphertext.aad } : {}),
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
+          ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
           ...(ciphertext.isPasswordProtected && {
             salt: ciphertext.salt,
             ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),

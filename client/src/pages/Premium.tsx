@@ -62,7 +62,7 @@ const planCopy: Record<PlanId, {
       "Notifications",
       "Recipient verification",
       "Branding",
-      "Future file sharing",
+      "100 MB encrypted file sharing",
     ],
   },
 };
@@ -98,8 +98,8 @@ const featureCards = [
   },
   {
     icon: Sparkles,
-    title: "Future file sharing",
-    text: "Premium will include secure file-sharing controls as they arrive.",
+    title: "Encrypted file sharing",
+    text: "Attach browser-encrypted files up to 100 MB on Premium.",
   },
 ];
 
@@ -119,7 +119,7 @@ const comparisonSections = [
       ["Open and destroy notifications", "No", "Included"],
       ["Recipient verification", "No", "Included"],
       ["Custom branding", "No", "Included"],
-      ["Future file sharing", "No", "Included"],
+      ["Encrypted file sharing", "Up to 10 MB", "Up to 100 MB"],
     ],
   },
 ];
@@ -131,7 +131,7 @@ const faqs = [
   },
   {
     q: "What is included in Premium?",
-    a: "Premium includes notifications, recipient verification, branding, and future file sharing as those controls are connected.",
+    a: "Premium includes notifications, recipient verification, branding, and encrypted file sharing up to 100 MB.",
   },
   {
     q: "Can I pay online today?",
@@ -146,8 +146,8 @@ const faqs = [
     a: "Use it when the link alone is not enough assurance, such as client credentials, vendor onboarding, or any note that should only be revealed by a specific recipient.",
   },
   {
-    q: "Is future file sharing available now?",
-    a: "It is listed as a Premium direction so users can see where the plan is going. The current focus is note delivery, notifications, verification, and branding.",
+    q: "How are files encrypted?",
+    a: "Files are encrypted in the browser with the Web Crypto API using AES-GCM-256 before upload. PrivateNote stores only encrypted file bytes.",
   },
 ];
 
@@ -264,7 +264,7 @@ export default function Premium() {
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
           Free gives you Core PrivateNote. Premium adds delivery controls for notifications,
-          recipient verification, branding, and future file sharing.
+          recipient verification, branding, and 100 MB encrypted file sharing.
         </p>
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           {(["monthly", "yearly"] as BillingMode[]).map((mode) => (

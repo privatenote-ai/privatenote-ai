@@ -61,7 +61,7 @@ export interface EncryptWithPasswordResult {
   kdfParams: KdfParamsV2;
 }
 
-function currentKdfParamsV2(): KdfParamsV2 {
+export function currentKdfParamsV2(): KdfParamsV2 {
   return {
     version: KDF_VERSION_2,
     algorithm: "argon2id",
@@ -247,6 +247,47 @@ export async function decryptNote(
   }
 }
 
+export async function encryptFileBytes(file: File, key: CryptoKey, additionalData: Uint8Array) {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const fileBytes = await file.arrayBuffer();
+  const encryptedData = await window.crypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv: asBufferSource(iv),
+      additionalData: asBufferSource(additionalData),
+      tagLength: 128,
+    },
+    key,
+    fileBytes,
+  );
+  return { encryptedData, iv };
+}
+
+export async function decryptFileBytes(
+  encryptedData: Uint8Array,
+  key: CryptoKey,
+  iv: Uint8Array,
+  additionalData: Uint8Array,
+) {
+  try {
+    return await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: asBufferSource(iv),
+        additionalData: asBufferSource(additionalData),
+        tagLength: 128,
+      },
+      key,
+      asBufferSource(encryptedData),
+    );
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error("Error decrypting file:", error);
+    }
+    throw new Error("Failed to decrypt file. The key may be incorrect or the file may have been tampered with.");
+  }
+}
+
 export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   const chunkSize = 0x8000;
@@ -414,33 +455,17 @@ export async function decryptWithPassword(
   kdfPolicyTag?: unknown,
 ) {
   try {
-    const { timeCost, paramTag } = resolveKdfParamsForDecrypt(
+    const key = await unwrapContentKeyWithPassword(
+      encryptedKey,
+      encryptedKeyIv,
+      salt,
+      password,
+      aad,
       kdfParams,
       kdfVersion,
       kdfIterations,
       kdfPolicyTag,
     );
-    const passwordKey = await deriveAesKeyFromPassword(password, salt, timeCost, paramTag);
-
-    const decryptedKeyBuffer = await window.crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: asBufferSource(encryptedKeyIv),
-        additionalData: asBufferSource(aad),
-        tagLength: 128,
-      },
-      passwordKey,
-      asBufferSource(encryptedKey),
-    );
-
-    const decryptedKeyBytes = new Uint8Array(decryptedKeyBuffer);
-    let key: CryptoKey;
-    try {
-      key = await importAesGcmKeyFromRawBytes(decryptedKeyBytes);
-    } finally {
-      // Best-effort cleanup for unwrapped raw content-key bytes.
-      decryptedKeyBytes.fill(0);
-    }
 
     return await decryptNote(encryptedData, key, iv, aad);
   } catch (error) {
@@ -465,5 +490,44 @@ export async function decryptWithPassword(
     }
 
     throw new Error(PASSWORD_DECRYPTION_FAILURE_MESSAGE);
+  }
+}
+
+export async function unwrapContentKeyWithPassword(
+  encryptedKey: Uint8Array | ArrayBuffer,
+  encryptedKeyIv: Uint8Array,
+  salt: Uint8Array,
+  password: string,
+  aad: Uint8Array,
+  kdfParams?: unknown,
+  kdfVersion?: unknown,
+  kdfIterations?: unknown,
+  kdfPolicyTag?: unknown,
+) {
+  const { timeCost, paramTag } = resolveKdfParamsForDecrypt(
+    kdfParams,
+    kdfVersion,
+    kdfIterations,
+    kdfPolicyTag,
+  );
+  const passwordKey = await deriveAesKeyFromPassword(password, salt, timeCost, paramTag);
+
+  const decryptedKeyBuffer = await window.crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: asBufferSource(encryptedKeyIv),
+      additionalData: asBufferSource(aad),
+      tagLength: 128,
+    },
+    passwordKey,
+    asBufferSource(encryptedKey),
+  );
+
+  const decryptedKeyBytes = new Uint8Array(decryptedKeyBuffer);
+  try {
+    return await importAesGcmKeyFromRawBytes(decryptedKeyBytes);
+  } finally {
+    // Best-effort cleanup for unwrapped raw content-key bytes.
+    decryptedKeyBytes.fill(0);
   }
 }

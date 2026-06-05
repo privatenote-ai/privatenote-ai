@@ -155,6 +155,37 @@ export async function apiRequest<T = any>(
   }
 }
 
+export async function apiBinaryRequest<T = any>(
+  url: string,
+  method: string,
+  body: BodyInit,
+  headers: Record<string, string> = {},
+): Promise<T> {
+  const res = await fetch(getApiUrl(url), {
+    method,
+    headers,
+    body,
+    credentials: "include",
+  });
+  const responseText = await res.text();
+  const responseClone = new Response(responseText, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+  });
+  await throwIfResNotOk(responseClone);
+  return JSON.parse(responseText) as T;
+}
+
+export async function apiBlobRequest(url: string, method: string = "GET"): Promise<Blob> {
+  const res = await fetch(getApiUrl(url), {
+    method,
+    credentials: "include",
+  });
+  await throwIfResNotOk(res);
+  return await res.blob();
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 
 export function getQueryFn<T>(options: {
