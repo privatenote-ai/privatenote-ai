@@ -19,15 +19,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
 
-const STATIC_BLOG_SLUGS = [
-  'privacy-tools',
-  'myth-good-enough-security',
-  'how-we-generate-passwords',
-  'workplace-texts-private-note',
-  'privatenote-for-developers',
-  'privatenote-codex',
-  'securing-ai-agents-like-employees',
-] as const;
+import { STATIC_BLOG_SLUGS } from '@/utils/staticBlogPosts';
 
 export default function BlogPostPage() {
   const { language, t } = useLanguage();
