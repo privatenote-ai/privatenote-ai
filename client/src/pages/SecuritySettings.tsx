@@ -28,6 +28,7 @@ import {
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { isServerStepUpFresh } from "@/pages/security-settings/isServerStepUpFresh";
 import { AccountSettingsShell } from "@/pages/account/AccountSettingsShell";
+import { useLanguage } from "@/context/LanguageContext";
 
 type TotpSetupResponse = { setupId: string; secret: string; otpauthUri: string };
 
@@ -35,6 +36,7 @@ export default function SecuritySettings() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { user, loading: authLoading, signOut } = useAuth();
+  const { t } = useLanguage();
   const stepUpForRetry = useStepUpAuth();
 
   const {
@@ -173,7 +175,7 @@ export default function SecuritySettings() {
     } catch {
       setDeleteVerificationOptions(null);
       toast({
-        title: "Couldn't load delete verification",
+        title: t.authSecCouldNotLoadSettings || "Couldn't load delete verification",
         description: "Close and try again, or refresh the page.",
         variant: "destructive",
       });
@@ -194,10 +196,10 @@ export default function SecuritySettings() {
     if (!email) return;
     try {
       await navigator.clipboard.writeText(email);
-      toast({ title: "Email copied", description: "Email address copied to clipboard." });
+      toast({ title: t.authSecCopyEmail || "Email copied", description: "Email address copied to clipboard." });
     } catch {
       toast({
-        title: "Copy failed",
+        title: t.authCopyFailedTitle || "Copy failed",
         description: "Failed to copy email to clipboard.",
         variant: "destructive",
       });
@@ -207,8 +209,8 @@ export default function SecuritySettings() {
   const handleAddPasskey = useCallback(async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
       toast({
-        title: "Passkeys not supported",
-        description: "This browser does not support passkeys.",
+        title: t.authPasskeysNotSupportedTitle || "Passkeys not supported",
+        description: t.authPasskeysNotSupportedDesc || "This browser does not support passkeys.",
       });
       return;
     }
@@ -224,7 +226,7 @@ export default function SecuritySettings() {
       }
       await registerPasskeyWithRetry();
       toast({
-        title: "Passkey added",
+        title: t.authSecAddPasskey || "Passkey added",
         description: "You can use it to sign in on this device.",
       });
       await refreshAll();
@@ -245,7 +247,7 @@ export default function SecuritySettings() {
       try {
         await apiRequest(`/api/auth/passkeys/${passkeyId}`, "PATCH", { displayName });
         toast({
-          title: "Passkey updated",
+          title: t.authSecSave || "Passkey updated",
           description: displayName.trim() ? "Passkey name saved." : "Passkey name cleared.",
         });
         await refreshAll();
@@ -260,17 +262,17 @@ export default function SecuritySettings() {
         setRenamingPasskeyId(null);
       }
     },
-    [refreshAll, toast],
+    [refreshAll, t, toast],
   );
 
   const handleDeletePasskey = useCallback(
     async (passkeyId: string, label: string) => {
-      const confirmed = window.confirm(`Delete ${label}? You may need to verify with a passkey first.`);
+      const confirmed = window.confirm(`${t.authSecDeletePasskey || "Delete"} ${label}? You may need to verify with a passkey first.`);
       if (!confirmed) return;
       setDeletingPasskeyId(passkeyId);
       try {
         await withOptionalStepUp(() => apiRequest(`/api/auth/passkeys/${passkeyId}`, "DELETE"), stepUpForRetry);
-        toast({ title: "Passkey deleted", description: "The selected passkey was removed." });
+        toast({ title: t.authSecDeletePasskey || "Passkey deleted", description: "The selected passkey was removed." });
         await refreshAll();
       } catch (error) {
         toast({
@@ -282,16 +284,16 @@ export default function SecuritySettings() {
         setDeletingPasskeyId(null);
       }
     },
-    [refreshAll, stepUpForRetry, toast],
+    [refreshAll, stepUpForRetry, t, toast],
   );
 
   const handleRevokeAllSessions = useCallback(async () => {
-    const confirmed = window.confirm("Sign out every session except this one?");
+    const confirmed = window.confirm(t.authSecLogOutAllDevices || "Sign out every session except this one?");
     if (!confirmed) return;
     setRevokingAllSessions(true);
     try {
       await apiRequest("/api/auth/sessions/revoke-all", "POST");
-      toast({ title: "All devices logged out", description: "All other sessions have been revoked." });
+      toast({ title: t.authSecLogOutAllDevices || "All devices logged out", description: "All other sessions have been revoked." });
       await refreshAll();
     } catch (error) {
       toast({
@@ -320,7 +322,7 @@ export default function SecuritySettings() {
         setRecoveryCodes(response.codes);
         setRecoveryTotpCode("");
         setRecoveryAuthenticatorFallbackOpen(false);
-        toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
         return;
       }
 
@@ -332,7 +334,7 @@ export default function SecuritySettings() {
         setRecoveryCodes(response.codes);
         setRecoveryTotpCode("");
         setRecoveryAuthenticatorFallbackOpen(false);
-        toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
         return;
       } catch (firstError) {
         if (!isForbiddenApiError(firstError)) throw firstError;
@@ -345,7 +347,7 @@ export default function SecuritySettings() {
           setRecoveryCodes(response.codes);
           setRecoveryTotpCode("");
           setRecoveryAuthenticatorFallbackOpen(false);
-          toast({ title: "Recovery codes generated", description: "Store them in a safe place." });
+          toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
           return;
         }
         if (totpEnabled) {
@@ -375,14 +377,14 @@ export default function SecuritySettings() {
       setRevokingSessionId(sessionId);
       try {
         await apiRequest("/api/auth/sessions/revoke", "POST", { sessionId });
-        toast({ title: "Session revoked", description: "That session has been signed out." });
-        await refreshAll();
-      } catch (error) {
-        toast({
-          title: "Revoke failed",
-          description: error instanceof Error ? error.message : "Try again.",
-          variant: "destructive",
-        });
+      toast({ title: t.authSecLogOut || "Session revoked", description: "That session has been signed out." });
+      await refreshAll();
+    } catch (error) {
+      toast({
+        title: "Revoke failed",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
       } finally {
         setRevokingSessionId(null);
       }
@@ -392,7 +394,7 @@ export default function SecuritySettings() {
 
   const handleResetPasskeys = useCallback(() => {
     if (passkeys.length === 0) {
-      toast({ title: "No passkeys", description: "There are no passkeys to remove." });
+      toast({ title: t.authSecNoPasskeys || "No passkeys", description: "There are no passkeys to remove." });
       return;
     }
     setPasskeyResetTotpCode("");
@@ -404,7 +406,7 @@ export default function SecuritySettings() {
     setResettingPasskeys(true);
     try {
       await apiRequest("/api/auth/passkeys/reset", "POST", { totpCode: passkeyResetTotpCode.trim() });
-      toast({ title: "Passkeys removed", description: "All passkeys have been removed from your account." });
+      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: "All passkeys have been removed from your account." });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
@@ -417,7 +419,7 @@ export default function SecuritySettings() {
     } finally {
       setResettingPasskeys(false);
     }
-  }, [closePasskeyResetDialog, passkeyResetTotpCode, refreshAll, setPasskeys, toast]);
+  }, [closePasskeyResetDialog, passkeyResetTotpCode, refreshAll, setPasskeys, t, toast]);
 
   const handlePasskeyResetWithPasskey = useCallback(async () => {
     setResettingPasskeys(true);
@@ -425,7 +427,7 @@ export default function SecuritySettings() {
       const stepped = await stepUpForRetry();
       if (!stepped) return;
       await apiRequest("/api/auth/passkeys/reset", "POST");
-      toast({ title: "Passkeys removed", description: "All passkeys have been removed from your account." });
+      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: "All passkeys have been removed from your account." });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
@@ -438,7 +440,7 @@ export default function SecuritySettings() {
     } finally {
       setResettingPasskeys(false);
     }
-  }, [closePasskeyResetDialog, refreshAll, setPasskeys, stepUpForRetry, toast]);
+  }, [closePasskeyResetDialog, refreshAll, setPasskeys, stepUpForRetry, t, toast]);
 
   const handleSendDeleteEmailCode = useCallback(async () => {
     setSendingDeleteEmailCode(true);
@@ -692,7 +694,7 @@ export default function SecuritySettings() {
       setEmailChangeSent(true);
       setEmailChangeTotpCode("");
       toast({
-        title: "Confirmation link sent",
+        title: t.authSecChangeEmailTitle || "Confirmation link sent",
         description:
           "We emailed a link to your new address. Your current email stays active until you open it and confirm.",
       });
@@ -756,7 +758,7 @@ export default function SecuritySettings() {
         });
         setTotpSetupStep("done");
         setTotpEnabled(true);
-        toast({ title: "2-step verification enabled", description: "Your account is now more secure." });
+        toast({ title: t.authSecTotpSetupDoneTitle || "2-step verification enabled", description: t.authSecTotpDoneDesc || "Your account is now more secure." });
         await refreshAll();
       } catch (error) {
         toast({
@@ -773,13 +775,13 @@ export default function SecuritySettings() {
   );
 
   const handleTotpDisable = useCallback(async () => {
-    const confirmed = window.confirm("Disable 2-step verification? This will make your account less secure.");
+    const confirmed = window.confirm(`${t.authSecTotpDisable || "Disable"} 2-step verification? This will make your account less secure.`);
     if (!confirmed) return;
     setTotpDisabling(true);
     try {
       await withOptionalStepUp(() => apiRequest("/api/auth/totp/disable", "POST"), stepUpForRetry);
       setTotpEnabled(false);
-      toast({ title: "2-step verification disabled" });
+      toast({ title: t.authSecTotpDisable || "2-step verification disabled" });
       await refreshAll();
     } catch (error) {
       toast({
@@ -797,7 +799,7 @@ export default function SecuritySettings() {
       <AccountSettingsShell>
         <Card>
           <CardContent className="py-8">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Loading security settings…</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t.authSecLoadingSettings || "Loading security settings…"}</p>
           </CardContent>
         </Card>
       </AccountSettingsShell>
@@ -810,12 +812,12 @@ export default function SecuritySettings() {
       <AccountSettingsShell>
         <Card>
           <CardHeader>
-            <CardTitle>Security Settings</CardTitle>
-            <CardDescription>Sign in to manage your security settings.</CardDescription>
+            <CardTitle>{t.security || "Security Settings"}</CardTitle>
+            <CardDescription>{t.authSecSettingsSignIn || "Sign in to manage your security settings."}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <a href="/auth/sign-in">Sign in</a>
+              <a href="/auth/sign-in">{t.signIn || "Sign in"}</a>
             </Button>
           </CardContent>
         </Card>
@@ -830,12 +832,12 @@ export default function SecuritySettings() {
       <AccountSettingsShell>
         <Card>
           <CardHeader>
-            <CardTitle>Could not load security settings</CardTitle>
-            <CardDescription>There was a problem fetching your security data.</CardDescription>
+            <CardTitle>{t.authSecCouldNotLoadSettings || "Could not load security settings"}</CardTitle>
+            <CardDescription>{t.authSecCouldNotLoadSettingsDesc || "There was a problem fetching your security data."}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => void refreshAll()} variant="outline">
-              Try again
+              {t.authSecTryAgain || "Try again"}
             </Button>
           </CardContent>
         </Card>
@@ -846,9 +848,9 @@ export default function SecuritySettings() {
   return (
     <AccountSettingsShell>
       <>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">Security</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-1">{t.authSecPageTitle || "Security"}</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
-          Passkeys, 2-step verification, devices, and account recovery.
+          {t.authSecPageSubtitle || "Passkeys, 2-step verification, devices, and account recovery."}
         </p>
       <AccountSecuritySection
         email={email}
@@ -885,9 +887,9 @@ export default function SecuritySettings() {
       />
 
       <div className="mt-10 pt-2">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Danger zone</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t.authSecDangerZone || "Danger zone"}</h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          These actions are permanent or harder to reverse, so review them carefully.
+          {t.authSecDangerZoneDesc || "These actions are permanent or harder to reverse, so review them carefully."}
         </p>
 
         <div className="space-y-0 rounded-lg border border-red-200 dark:border-red-900/60 overflow-hidden">
@@ -897,9 +899,9 @@ export default function SecuritySettings() {
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
           >
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">Schedule account deletion</p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-0.5">{t.authSecScheduleDeleteTitle || "Schedule account deletion"}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                You&apos;ll have 48 hours to cancel before it becomes permanent.
+                {t.authSecScheduleDeleteDesc || "You'll have 48 hours to cancel before it becomes permanent."}
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />

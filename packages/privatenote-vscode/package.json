@@ -1,0 +1,146 @@
+{
+  "name": "privatenote-vscode",
+  "displayName": "PrivateNote - Encrypted Note Sharing",
+  "description": "Send selected text as an end-to-end encrypted PrivateNote link. Works in VS Code, Cursor, and Codex IDE. Encryption happens locally; no AI involved.",
+  "version": "0.1.1",
+  "private": true,
+  "publisher": "PrivateNote",
+  "license": "MIT",
+  "homepage": "https://privatenote.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/privatenote-ai/privatenote.git",
+    "directory": "packages/privatenote-vscode"
+  },
+  "icon": "icons/icon.png",
+  "categories": ["Other"],
+  "galleryBanner": {
+    "color": "#1e293b",
+    "theme": "dark"
+  },
+  "keywords": [
+    "privatenote",
+    "encryption",
+    "privacy",
+    "secrets",
+    "secure-sharing",
+    "end-to-end",
+    "codex",
+    "cursor",
+    "openai"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "privatenote-sidebar",
+          "title": "PrivateNote",
+          "icon": "icons/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "privatenote-sidebar": [
+        {
+          "type": "webview",
+          "id": "privatenote.composerView",
+          "name": "Compose Note"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "privatenote.sendSelection",
+        "title": "Share as PrivateNote",
+        "shortTitle": "Share PrivateNote",
+        "category": "PrivateNote",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "privatenote.composeNote",
+        "title": "PrivateNote: Compose New Note...",
+        "category": "PrivateNote",
+        "icon": "$(shield)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "privatenote.sendSelection",
+          "when": "editorHasSelection",
+          "group": "9_cutcopypaste"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "privatenote.composeNote",
+          "when": "view == privatenote.composerView",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "privatenote.sendSelection",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        },
+        {
+          "command": "privatenote.composeNote",
+          "when": "editorIsOpen",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "privatenote.sendSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "privatenote.composeNote"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "PrivateNote",
+      "properties": {
+        "privatenote.apiBaseUrl": {
+          "type": "string",
+          "default": "https://privatenote.ai",
+          "description": "Base URL of the PrivateNote API. Change this only if you self-host PrivateNote."
+        },
+        "privatenote.webOrigin": {
+          "type": "string",
+          "default": "https://privatenote.ai",
+          "description": "Origin used to build the shareable link (defaults to the API base URL)."
+        },
+        "privatenote.defaultExpiresIn": {
+          "type": "string",
+          "enum": ["15m", "1h", "24h", "7d"],
+          "default": "24h",
+          "description": "Default expiry for newly created notes."
+        },
+        "privatenote.defaultBurnAfterReading": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether new notes self-destruct after the first view by default."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "5.6.3"
+  }
+}

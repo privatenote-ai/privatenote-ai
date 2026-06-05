@@ -36,8 +36,8 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       icon: <Zap className="h-6 w-6 text-primary" />
     },
     {
-      title: t.featurePostQuantumTitle,
-      description: t.featurePostQuantumDescription,
+      title: t.featureEuStorageTitle,
+      description: t.featureEuStorageDescription,
       icon: <Shield className="h-6 w-6 text-primary" />
     }
   ];
@@ -45,7 +45,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
   return (
     <div className={cn('relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8', className)}>
       <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8 sm:mb-12">
+      <div className="text-center mb-10 sm:mb-14 lg:mb-16">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
           {t.keyFeatures}
         </h2>
@@ -55,17 +55,20 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       </div>
       
       {/* Card grid for medium+ screens, hidden on extra small screens */}
-      <div className="hidden sm:grid grid-cols-2 gap-5 md:grid-cols-3 xl:gap-6">
+      <div className="hidden sm:grid grid-cols-2 items-stretch gap-6 md:grid-cols-3 md:gap-7 xl:gap-8">
         {features.map((feature, index) => (
           <div
             key={index}
-            className="group relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-xl shadow-md p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
+            className="group relative isolate flex h-full min-h-[204px] transform-gpu flex-col overflow-hidden rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm transition-[transform,border-color,background-color] duration-200 ease-out hover:translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.015] dark:border-gray-700/70 dark:bg-gray-900 dark:hover:bg-primary/[0.04]"
           >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 transition-transform duration-200 group-hover:scale-105">
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
+              <div className="absolute inset-x-0 top-0 h-px bg-primary/25" />
+            </div>
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               {feature.icon}
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
               {feature.description}
             </p>
           </div>
@@ -73,11 +76,11 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       </div>
       
       {/* List view for extra small screens only */}
-      <div className="sm:hidden space-y-4">
+      <div className="sm:hidden space-y-5">
         {features.map((feature, index) => (
           <div
             key={index}
-            className="group relative overflow-hidden flex items-start p-4 bg-white dark:bg-gray-900 border border-gray-200/70 dark:border-gray-700/70 rounded-lg shadow-sm transition-transform duration-200 active:scale-[0.99]"
+            className="group relative flex min-h-[112px] items-start overflow-hidden rounded-lg border border-gray-200/70 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 ease-out active:shadow-md dark:border-gray-700/70 dark:bg-gray-900"
           >
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 flex-shrink-0">
               {feature.icon}
@@ -92,7 +95,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
         ))}
       </div>
 
-      <div className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-14 text-center text-xs text-gray-500 dark:text-gray-400 sm:mt-16">
         {t.featuresFooter}
       </div>
       </div>

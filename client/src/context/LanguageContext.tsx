@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { en, loadTranslations } from "@/utils/translation";
+import { en, getTranslations, loadTranslations } from "@/utils/translation";
 import {
   SUPPORTED_LANGUAGES,
   getUserLanguage,
@@ -38,6 +38,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setLanguage = (nextLanguage: SupportedLanguage) => {
     setLanguageState(nextLanguage);
     window.localStorage.setItem(STORAGE_KEY, nextLanguage);
+    // Synchronously apply cached translations so language and t update in the
+    // same render cycle, preventing a "flash of untranslated content" glitch.
+    setT(getTranslations(nextLanguage));
   };
 
   useEffect(() => {

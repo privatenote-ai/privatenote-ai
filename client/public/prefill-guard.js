@@ -9,7 +9,7 @@
  * immediately wipe the fragment from the browser address bar.
  *
  * React's usePrefillFromFragment hook reads from sessionStorage instead of
- * location.hash, and deletes the entry immediately after the first read.
+ * location.hash, and deletes the entry after the editor mount commits.
  */
 (function () {
   var HOME_HERO = {

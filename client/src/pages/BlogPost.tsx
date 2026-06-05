@@ -12,6 +12,8 @@ import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
 import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
 import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
 import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
+import { PrivateNoteForDevelopersPost } from '@/components/blog/PrivateNoteForDevelopersPost';
+import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -21,6 +23,8 @@ const STATIC_BLOG_SLUGS = [
   'myth-good-enough-security',
   'how-we-generate-passwords',
   'workplace-texts-private-note',
+  'privatenote-for-developers',
+  'privatenote-codex',
 ] as const;
 
 export default function BlogPostPage() {
@@ -76,6 +80,12 @@ export default function BlogPostPage() {
   }
   if (slug === 'workplace-texts-private-note') {
     return <WorkplaceTextsPost />;
+  }
+  if (slug === 'privatenote-for-developers') {
+    return <PrivateNoteForDevelopersPost />;
+  }
+  if (slug === 'privatenote-codex') {
+    return <PrivateNoteCodexPost />;
   }
 
   if (error) {

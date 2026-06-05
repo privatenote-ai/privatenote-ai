@@ -34,7 +34,17 @@ const EMPTY_DAILY_METRICS: DailyMetrics = {
     short: 0,
     medium: 0,
     long: 0
-  }
+  },
+  notesFailedToView: 0,
+  notesDestroyedOnView: 0,
+  wrongPasswordAttempts: 0,
+  accountSignups: 0,
+  accountLogins: 0,
+  qrSharesGenerated: 0,
+  localAiUsed: 0,
+  cloudAiUsed: 0,
+  countryDistribution: {},
+  languageDistribution: {},
 };
 
 const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {

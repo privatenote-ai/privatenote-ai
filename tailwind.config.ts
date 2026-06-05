@@ -87,17 +87,21 @@ export default {
         "accordion-down": {
           from: {
             height: "0",
+            opacity: "0",
           },
           to: {
             height: "var(--radix-accordion-content-height)",
+            opacity: "1",
           },
         },
         "accordion-up": {
           from: {
             height: "var(--radix-accordion-content-height)",
+            opacity: "1",
           },
           to: {
             height: "0",
+            opacity: "0",
           },
         },
         /** Synapse-style pulse for on-device AI “thinking” affordance */
@@ -121,8 +125,8 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.14s ease-out",
-        "accordion-up": "accordion-up 0.08s linear",
+        "accordion-down": "accordion-down 0.22s cubic-bezier(0.16,1,0.3,1)",
+        "accordion-up": "accordion-up 0.18s cubic-bezier(0.16,1,0.3,1)",
         "neuron-pulse": "neuron-pulse 2.8s ease-in-out infinite",
         "brain-think": "brain-think 2.8s ease-in-out infinite",
         "pencil-write": "pencil-write 1.15s ease-in-out infinite",

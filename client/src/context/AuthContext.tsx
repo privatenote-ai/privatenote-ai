@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
@@ -29,7 +29,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { language, setLanguage } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Start as true on pages that check auth eagerly so components don't briefly
+  // flash the "sign in" state before the first session API call resolves.
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return shouldEagerPrefetchAuth(window.location.pathname);
+  });
+  // Track whether we've already synced the DB language preference for this
+  // session. We only do it once (on first successful auth check) so that a
+  // footer language switch is not overridden every time the user changes tabs.
+  const appliedDbLangRef = useRef(false);
 
   const refresh = useCallback(async (): Promise<AuthUser | null> => {
     try {
@@ -40,10 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data?.authenticated && data.user) {
         const next: AuthUser = { email: data.user.email ?? null };
         setUser(next);
-        void fetchAndApplyAccountPreferredLanguage(setLanguage);
+        if (!appliedDbLangRef.current) {
+          appliedDbLangRef.current = true;
+          void fetchAndApplyAccountPreferredLanguage(setLanguage);
+        }
         return next;
       }
       setUser(null);
+      // Reset so the next sign-in re-applies the DB language preference.
+      appliedDbLangRef.current = false;
       return null;
     } catch {
       setUser(null);

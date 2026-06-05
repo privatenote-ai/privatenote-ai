@@ -8,6 +8,7 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",
+  "/developers",
   "/about",
   "/contact",
   "/blog",
@@ -18,6 +19,37 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/privacy",
   "/terms",
 ]);
+
+/** App routes that must not get a trailing slash (SPA / dynamic). */
+const NO_TRAILING_SLASH_PREFIXES = [
+  "/note/",
+  "/auth",
+  "/account",
+  "/magic",
+  "/admin",
+] as const;
+
+/**
+ * Canonical public URL shape (matches `documentMeta`, sitemap, and Pages static routes):
+ * no trailing slash except the site root (`/`).
+ */
+export function publicSitePath(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  if (normalized === "/") return "/";
+  if (normalized.includes(".")) return normalized;
+  if (NO_TRAILING_SLASH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+    return normalized.replace(/\/+$/, "") || "/";
+  }
+  return normalized.replace(/\/+$/, "") || "/";
+}
+
+/** Join path segments and apply {@link publicSitePath} (e.g. blog + slug → `/blog/foo/`). */
+export function joinPublicPath(...segments: string[]): string {
+  const parts = segments
+    .map((s) => s.replace(/^\/+|\/+$/g, ""))
+    .filter(Boolean);
+  return publicSitePath(parts.length ? `/${parts.join("/")}` : "/");
+}
 
 function splitLanguagePrefix(pathname: string): {
   language: SupportedLanguage | null;
@@ -39,10 +71,16 @@ function splitLanguagePrefix(pathname: string): {
 
 export function localizedPath(path: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(path);
-  if (!LOCALIZED_PUBLIC_PATHS.has(pathWithoutLanguage)) return pathWithoutLanguage;
-  if (language === "en") return pathWithoutLanguage;
-  // Locale site home is a directory on the CDN (…/de/ returns 200; …/de redirects).
-  return pathWithoutLanguage === "/" ? `/${language}/` : `/${language}${pathWithoutLanguage}`;
+  if (!LOCALIZED_PUBLIC_PATHS.has(pathWithoutLanguage)) {
+    return publicSitePath(pathWithoutLanguage);
+  }
+  if (language === "en") {
+    return publicSitePath(pathWithoutLanguage);
+  }
+  if (pathWithoutLanguage === "/") {
+    return `/${language}`;
+  }
+  return publicSitePath(`/${language}${pathWithoutLanguage}`);
 }
 
 /** True for paths that are the localized site home (/, /de/, /de, etc.). Used for nav full-reload behavior. */

@@ -56,8 +56,14 @@ npx wrangler r2 bucket cors put <bucket> --file scripts/r2-cors-transformers-bro
 
 1. Open the branch URL (e.g. https://develop.privatenote-ai.pages.dev).
 2. Create a note → should succeed (Turnstile + API).
-3. `/auth` → magic link or passkey (passkey uses rpID `develop.privatenote-ai.pages.dev` or `premium…`).
+3. `/auth/sign-in` → magic link or passkey (passkey uses rpID `develop.privatenote-ai.pages.dev` or `premium…`).
 4. DevTools → Network: `/api/*` should be **same origin**, not `workers.dev`.
+
+### Magic links
+
+- Request sign-in from the **stable branch URL** (`https://develop.privatenote-ai.pages.dev`), not a one-off deployment hash like `https://958aa19e.privatenote-ai.pages.dev` from the Cloudflare dashboard.
+- Set Worker `PUBLIC_WEB_APP_ORIGIN` to that branch URL (e.g. `https://develop.privatenote-ai.pages.dev`) so emailed links stay on the branch host even if you briefly used a preview URL.
+- If a link 404s with “Did you forget to add the page to the router?”, redeploy `develop` after pulling the Pages Functions for `/magic` (`functions/magic.ts`).
 
 ## Workflow
 

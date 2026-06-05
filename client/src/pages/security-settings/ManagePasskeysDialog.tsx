@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 import { MoreHorizontal, Shield, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,11 +20,11 @@ type Props = {
   onDeletePasskey: (id: string, label: string) => Promise<void>;
 };
 
-function passkeySubtitle(passkey: PasskeyInfo, dateFormatter: Intl.DateTimeFormat): string {
+function passkeySubtitle(passkey: PasskeyInfo, dateFormatter: Intl.DateTimeFormat, lastUsedLabel: string, addedLabel: string): string {
   if (passkey.lastUsedAt) {
-    return `Last used ${dateFormatter.format(new Date(passkey.lastUsedAt))}`;
+    return `${lastUsedLabel} ${dateFormatter.format(new Date(passkey.lastUsedAt))}`;
   }
-  return `Added ${dateFormatter.format(new Date(passkey.createdAt))}`;
+  return `${addedLabel} ${dateFormatter.format(new Date(passkey.createdAt))}`;
 }
 
 export function ManagePasskeysDialog({
@@ -38,6 +39,7 @@ export function ManagePasskeysDialog({
   onRenamePasskey,
   onDeletePasskey,
 }: Props) {
+  const { t } = useLanguage();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
 
@@ -57,19 +59,19 @@ export function ManagePasskeysDialog({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-300">
             <Shield className="h-6 w-6" />
           </div>
-          <DialogTitle className="text-3xl font-semibold tracking-tight">Manage passkeys</DialogTitle>
+          <DialogTitle className="text-3xl font-semibold tracking-tight">{t.authSecManagePasskeysTitle || "Manage passkeys"}</DialogTitle>
           <DialogDescription className="max-w-md text-base leading-7">
-            Use your device&apos;s built-in security features to sign in without remembering passwords.
+            {t.authSecManagePasskeysDesc || "Use your device's built-in security features to sign in without remembering passwords."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Active passkeys</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{t.authSecActivePasskeys || "Active passkeys"}</h3>
             <div className="mt-3 space-y-3">
               {activePasskeys.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-400">
-                  No passkeys added yet.
+                  {t.authSecNoPasskeysYet || "No passkeys added yet."}
                 </div>
               ) : (
                 activePasskeys.map((passkey) => {
@@ -113,7 +115,7 @@ export function ManagePasskeysDialog({
                                     }}
                                     disabled={isRenaming}
                                   >
-                                    {isRenaming ? "Saving..." : "Save"}
+                                    {isRenaming ? (t.authSecSaving || "Saving...") : (t.authSecSave || "Save")}
                                   </Button>
                                   <Button
                                     size="sm"
@@ -124,7 +126,7 @@ export function ManagePasskeysDialog({
                                     }}
                                     disabled={isRenaming}
                                   >
-                                    Cancel
+                                    {t.authSecCancel || "Cancel"}
                                   </Button>
                                 </div>
                               </div>
@@ -134,7 +136,7 @@ export function ManagePasskeysDialog({
                                   {passkey.label}
                                 </p>
                                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                  {passkeySubtitle(passkey, dateFormatter)}
+                                  {passkeySubtitle(passkey, dateFormatter, t.authSecPasskeyLastUsed || "Last used", t.authSecPasskeyAddedOn || "Added")}
                                 </p>
                               </>
                             )}
@@ -146,7 +148,7 @@ export function ManagePasskeysDialog({
                               <button
                                 type="button"
                                 className="rounded p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                                aria-label={`Manage ${passkey.label}`}
+                                aria-label={`${t.authManage || "Manage"} ${passkey.label}`}
                                 disabled={isDeleting}
                               >
                                 {isDeleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MoreHorizontal className="h-5 w-5" />}
@@ -159,13 +161,13 @@ export function ManagePasskeysDialog({
                                   setDraftName(passkey.customLabel ?? "");
                                 }}
                               >
-                                Rename passkey
+                                {t.authSecRenamePasskey || "Rename passkey"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => void onDeletePasskey(passkey.id, passkey.label)}
                                 className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
                               >
-                                Delete passkey
+                                {t.authSecDeletePasskey || "Delete passkey"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -180,10 +182,10 @@ export function ManagePasskeysDialog({
 
           <div className="space-y-3 pt-2">
             <Button className="w-full" onClick={onAddPasskey} disabled={registeringPasskey}>
-              {registeringPasskey ? "Adding..." : "Add new passkey"}
+              {registeringPasskey ? (t.authSecAddingPasskey || "Adding...") : (t.authSecAddNewPasskey || "Add new passkey")}
             </Button>
             <Button variant="outline" className="w-full" onClick={onClose}>
-              Cancel
+              {t.authSecCancel || "Cancel"}
             </Button>
           </div>
         </div>

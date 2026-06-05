@@ -13,7 +13,7 @@ import {
   parseKdfParamsV2,
   type KdfParamsV2,
 } from "@shared/kdfParamsV2";
-import argon2, { ArgonType } from "argon2-browser";
+import { argon2idAsync } from "@noble/hashes/argon2.js";
 
 export type { NoteAadBinding };
 import { normalizeUrlFragmentKey, tryDecodeRawAesKeyUrlFragment } from "@shared/urlFragmentKey";
@@ -326,18 +326,12 @@ export async function deriveAesKeyFromPassword(
     throw new Error("Invalid KDF parameters: unsupported Argon2 profile");
   }
 
-  const { hash } = await argon2.hash({
-    pass: password,
-    salt,
-    time: timeCost,
-    mem: ARGON2ID_MEMORY_KIB_V2,
-    parallelism: ARGON2ID_PARALLELISM_V2,
-    hashLen: ARGON2ID_HASH_LEN,
-    type: ArgonType.Argon2id,
+  const hashBytes = await argon2idAsync(password, salt, {
+    t: timeCost,
+    m: ARGON2ID_MEMORY_KIB_V2,
+    p: ARGON2ID_PARALLELISM_V2,
+    dkLen: ARGON2ID_HASH_LEN,
   });
-
-  // argon2-browser returns raw derived bytes here, which we import directly as AES-256 key material.
-  const hashBytes = new Uint8Array(hash);
   if (hashBytes.byteLength !== ARGON2ID_HASH_LEN) {
     throw new Error("Invalid Argon2 output length");
   }

@@ -1,0 +1,33 @@
+{
+  "name": "privatenote",
+  "version": "0.1.0",
+  "description": "End-to-end encrypted note sharing for Codex — bundled MCP server and skills.",
+  "author": {
+    "name": "PrivateNote",
+    "url": "https://privatenote.ai"
+  },
+  "homepage": "https://privatenote.ai/developers",
+  "repository": "https://github.com/marjanskrobot/privatenote.ai",
+  "license": "MIT",
+  "keywords": ["encryption", "secrets", "privacy", "mcp", "vscode"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "PrivateNote",
+    "shortDescription": "Share secrets as encrypted, self-destructing links",
+    "longDescription": "Create PrivateNote links with local AES-256-GCM encryption before upload. Bundles the privatenote-mcp server for Codex agents and documents when to use the VS Code extension instead (no AI sees the plaintext).",
+    "developerName": "PrivateNote",
+    "category": "Productivity",
+    "capabilities": ["Write"],
+    "websiteURL": "https://privatenote.ai",
+    "privacyPolicyURL": "https://privatenote.ai/privacy",
+    "termsOfServiceURL": "https://privatenote.ai/terms",
+    "defaultPrompt": [
+      "Create a burn-after-reading PrivateNote for this credential, expiring in 24 hours.",
+      "Share this secret as a PrivateNote link — do not repeat the plaintext in chat."
+    ],
+    "brandColor": "#0000FF",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  }
+}

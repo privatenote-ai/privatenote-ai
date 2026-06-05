@@ -5,7 +5,7 @@ import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
-import type { KVNamespace } from "@cloudflare/workers-types";
+import type { DurableObjectNamespace, DurableObjectStub, KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 import {
   generateAuthenticationOptions,
@@ -20,6 +20,7 @@ import {
   getAllowedOriginFromRequest,
   getSessionCookieKindForRequest,
   isTrustedBrowserOrigin,
+  isPagesPreviewBrowserOrigin,
   isWebAuthnRpAllowedOrigin,
   normalizeOrigin,
   PAGES_PRODUCTION_WEB_HOSTS,
@@ -29,6 +30,9 @@ import {
   sessionCookieNameForKind,
 } from "./trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
+import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
+import { withEuStoredDataEnv } from "./euD1Kv";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -202,7 +206,14 @@ function getCorsHeaders(request: Request): Record<string, string> {
 function getMagicLinkOrigin(env: Env, request: Request): string {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
-  if (allowedOrigin) return normalizeOrigin(allowedOrigin);
+  if (allowedOrigin) {
+    return canonicalizeMagicLinkOrigin(allowedOrigin, {
+      configuredPublicOrigin: env.PUBLIC_WEB_APP_ORIGIN,
+      isPreviewOrigin: isPagesPreviewBrowserOrigin,
+      isTrustedOrigin: isTrustedBrowserOrigin,
+      normalizeOrigin,
+    });
+  }
 
   const configured = typeof env.PUBLIC_WEB_APP_ORIGIN === "string" ? env.PUBLIC_WEB_APP_ORIGIN.trim() : "";
   if (configured) {
@@ -607,7 +618,7 @@ async function sendMagicLinkEmail(
           ? "Pour votre securite, terminez la connexion dans le <strong>meme navigateur et sur le meme appareil</strong> que lors de l ouverture du lien."
           : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${copy.title}</div>`,
     `  <p style="margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;">${copy.intro}</p>`,
     "  <a href=\"" +
@@ -909,6 +920,16 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
     headers,
   });
 }
+
+const getEuSecureNotesNamespace = (env: Env): DurableObjectNamespace =>
+  env.SECURE_NOTES.jurisdiction("eu");
+
+// EU storage migration fallback: keep legacy global namespace reads until 2026-07-03
+// so pre-migration notes with the maximum 30-day expiry can still be opened.
+const getSecureNoteStub = (env: Env, id: string, useEuNamespace: boolean): DurableObjectStub => {
+  const namespace = useEuNamespace ? getEuSecureNotesNamespace(env) : env.SECURE_NOTES;
+  return namespace.get(namespace.idFromName(id));
+};
 
 /** Rate limit bucket for TOTP checks on account takeover actions (aligned with magic-link TOTP verify). */
 const SENSITIVE_ACTION_TOTP_RL = {
@@ -7052,6 +7073,7 @@ function parseAnalyticsUtcDayParam(value: string): Date | null {
 }
 
 export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+  env = withEuStoredDataEnv(env);
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method;
@@ -7150,9 +7172,24 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   console.log(`[ROUTES] Pathname: ${pathname}, Method: ${method}`);
 
   console.log(`[ROUTES] Calling handleAuthRoutes...`);
-  const authResponse = await handleAuthRoutes(request, env);
+  const authResponse = await handleAuthRoutesComplete(request, env);
   console.log(`[ROUTES] handleAuthRoutes returned: ${authResponse ? authResponse.status : 'null'}`);
   if (authResponse) {
+    // Fire-and-forget analytics for successful auth events (no await — never block the response).
+    if (authResponse.status === 200) {
+      const _analyticsKv = env.ANALYTICS_KV || env.NOTES_KV;
+      const _authStorage = new CompositeStorage(env.NOTES_KV, _analyticsKv);
+      if (
+        (pathname === "/api/auth/magic/consume" && method === "POST") ||
+        (pathname === "/api/auth/webauthn/login/verify" && method === "POST") ||
+        (pathname === "/api/auth/recovery/consume" && method === "POST")
+      ) {
+        _authStorage.trackAccountLogin().catch(() => {});
+      } else if (pathname === "/api/auth/webauthn/register/verify" && method === "POST") {
+        // Passkey registration is the closest server-side proxy for a new account signup
+        _authStorage.trackAccountSignup().catch(() => {});
+      }
+    }
     return authResponse;
   }
 
@@ -7287,8 +7324,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const id = requestedId || crypto.randomUUID();
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
+    const stub = getSecureNoteStub(env, id, true);
     const doUrl = new URL(request.url);
     doUrl.pathname = `/api/notes/${id}`;
 
@@ -7306,9 +7342,22 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const sanitizedReferrer = rawReferrer
         ? rawReferrer.replace(/[^a-zA-Z0-9.\-_ ]/g, "").slice(0, 60).trim() || null
         : null;
+      const { country } = getRequestGeo(request);
+      const rawLang = typeof requestBody?.uiLanguage === "string" ? requestBody.uiLanguage : null;
+      const sanitizedLang = rawLang ? rawLang.replace(/[^a-z-]/g, "").slice(0, 10) || null : null;
+      // Accept 'local'/'cloud' strings (new) or boolean true (legacy → defaults to 'cloud')
+      const rawAiMode = requestBody?.aiMode;
+      const sanitizedAiMode: 'local' | 'cloud' | null = rawAiMode === "local"
+        ? "local"
+        : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
+        ? "cloud"
+        : null;
       await storage.trackNoteCreation(noteForAnalytics, {
         aiEnhanced: aiMode,
+        aiMode: sanitizedAiMode,
         referrer: sanitizedReferrer,
+        country: country ?? null,
+        language: sanitizedLang,
       });
     }
 
@@ -7344,9 +7393,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }, 429, request);
     }
 
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request as any);
+    const stub = getSecureNoteStub(env, id, true);
+    let doResponse = await stub.fetch(request as any);
+
+    if (doResponse.status === 404) {
+      const legacyStub = getSecureNoteStub(env, id, false);
+      doResponse = await legacyStub.fetch(request as any);
+    }
 
     if (!doResponse.ok) {
       let errorBodyPreview = "";
@@ -7379,14 +7432,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           encryptedKeyIv?: string | null;
         };
         const data = (await doResponse.clone().json()) as RevealJson;
+        // Note is "destroyed" when it has been read the maximum number of times
+        const maxReads = data.maxReads ?? 0;
+        const readCount = data.readCount ?? 0;
+        const destroyed = maxReads > 0 && readCount >= maxReads;
         const noteForAnalytics: Note = {
           id,
           content: data.content ?? "",
           iv: data.iv ?? "",
           aad: data.aad ?? null,
           expiresAt: new Date(data.expiresAt ?? Date.now()),
-          maxReads: data.maxReads ?? 0,
-          currentReads: data.readCount ?? 0,
+          maxReads,
+          currentReads: readCount,
           createdAt: new Date(),
           isPasswordProtected: !!data.isPasswordProtected,
           salt: data.salt ?? null,
@@ -7396,12 +7453,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           kdfIterations: null,
           kdfPolicyTag: null,
         };
-        await storage.trackNoteView(noteForAnalytics);
+        await storage.trackNoteView(noteForAnalytics, destroyed);
       } catch (error) {
         console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
-
       await sendPremiumNoteReadNotification(env, request, id);
+    } else if (doResponse.status === 404) {
+      // Note not found — expired, exhausted, or never existed
+      storage.trackNoteRevealFailed().catch(() => {});
     }
 
     return applyCorsHeaders(doResponse as unknown as Response, request);
@@ -7410,9 +7469,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
   if (noteParams && (method === "GET" || method === "DELETE")) {
     const { id } = noteParams;
-    const doId = env.SECURE_NOTES.idFromName(id);
-    const stub = env.SECURE_NOTES.get(doId);
-    const doResponse = await stub.fetch(request as any);
+    const stub = getSecureNoteStub(env, id, true);
+    let doResponse = await stub.fetch(request as any);
+
+    if (doResponse.status === 404) {
+      const legacyStub = getSecureNoteStub(env, id, false);
+      doResponse = await legacyStub.fetch(request as any);
+    }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 
@@ -7458,6 +7521,49 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // ADMIN: AUTH (HttpOnly cookie exchange)
   // ============================================================================
 
+  // Lightweight endpoint for client-side analytics events that can't be tracked server-side.
+  // No auth required — only accepts a fixed allow-list of event types.
+  if (pathname === "/api/analytics/event" && method === "POST") {
+    try {
+      const body = await request.json().catch(() => ({})) as { event?: unknown };
+      const allowed = ["wrong_password", "qr_share"] as const;
+      type AllowedEvent = typeof allowed[number];
+      const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
+        ? (body.event as AllowedEvent)
+        : null;
+      if (!event) {
+        return jsonResponse({ message: "Invalid event type" }, 400, request);
+      }
+      storage.trackClientEvent(event).catch(() => {});
+      return jsonResponse({ ok: true }, 200, request);
+    } catch {
+      return jsonResponse({ message: "Bad request" }, 400, request);
+    }
+  }
+
+  // Returns whether TOTP is required, so the login form can show the extra field.
+  if (pathname === "/api/admin/auth/config" && method === "GET") {
+    return jsonResponse({
+      totpRequired: Boolean(env.ADMIN_TOTP_SECRET),
+    }, 200, request);
+  }
+
+  // Returns an otpauth:// URI for initial authenticator app setup.
+  // Requires the raw ADMIN_TOKEN via X-Admin-Token header (no cookie yet).
+  if (pathname === "/api/admin/auth/totp-setup" && method === "GET") {
+    const expected = env.ADMIN_TOKEN;
+    const headerToken = request.headers.get("x-admin-token");
+    if (!expected || !headerToken || !constantTimeEquals(headerToken, expected)) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const secret = env.ADMIN_TOTP_SECRET;
+    if (!secret) {
+      return jsonResponse({ message: "ADMIN_TOTP_SECRET is not configured" }, 404, request);
+    }
+    const totp = createTotpInstance(secret, "admin");
+    return jsonResponse({ uri: totp.toString() }, 200, request);
+  }
+
   if (pathname === "/api/admin/auth" && method === "POST") {
     let body: any;
     try { body = await request.json(); } catch { body = {}; }
@@ -7469,6 +7575,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (!provided || !constantTimeEquals(provided, expected)) {
       return jsonResponse({ message: "Invalid admin token" }, 401, request);
     }
+
+    // Second factor: verify TOTP code when ADMIN_TOTP_SECRET is configured.
+    if (env.ADMIN_TOTP_SECRET) {
+      const totpCode = typeof body?.totpCode === "string" ? body.totpCode.replace(/\s/g, "") : "";
+      if (!totpCode) {
+        return jsonResponse({ message: "TOTP code required", totpRequired: true }, 401, request);
+      }
+      const valid = verifyTotpCode(env.ADMIN_TOTP_SECRET, totpCode, "admin");
+      if (!valid) {
+        return jsonResponse({ message: "Invalid TOTP code", totpRequired: true }, 401, request);
+      }
+    }
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", adminSessionCookie(expected));

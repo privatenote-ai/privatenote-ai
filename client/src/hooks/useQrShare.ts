@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import type { RefObject } from "react";
 import { createQrPngFileFromSvgData, getQrSvgDataFromDom } from "@/utils/qrPngFile";
 import { useToast } from "@/hooks/use-toast";
+import { fireAnalyticsEvent } from "@/utils/analyticsEvent";
 
 interface UseQrShareOptions {
   noteUrl: string | null;
@@ -62,6 +63,8 @@ export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQ
       document.body.removeChild(downloadLink);
       setTimeout(() => DOMURL.revokeObjectURL(url), 100);
 
+      fireAnalyticsEvent("qr_share");
+
       toast({
         title: "QR Code Downloaded",
         description: "Attach the file manually in your email.",
@@ -92,6 +95,7 @@ export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQ
     if (pngFile && typeof navigator.share === "function") {
       try {
         await navigator.share({ files: [pngFile] });
+        fireAnalyticsEvent("qr_share");
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;

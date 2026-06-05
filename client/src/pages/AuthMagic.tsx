@@ -403,7 +403,7 @@ export default function AuthMagic() {
                   <a href="/auth/sign-in">Get a new link</a>
                 </Button>
                 <Button variant="outline" asChild className="flex-1" size="lg">
-                  <a href="/auth">Try again</a>
+                  <a href="/auth/sign-in">Try again</a>
                 </Button>
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">

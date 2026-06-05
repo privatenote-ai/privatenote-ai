@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import {
   Fragment,
   Suspense,
@@ -17,8 +17,16 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import {
+  absolutePublicUrl,
+  canonicalPathForHomeLanguage,
+  HOME_HREFLANG_ALTERNATES,
+  homeLanguageFromRoute,
+  isLocaleHomeRoute,
+} from "@shared/homeSeoLinks";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
+import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
 import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
@@ -30,11 +38,11 @@ const Terms = lazy(() => import("@/pages/Terms"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
+const Developers = lazy(() => import("@/pages/Developers"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SecurityGuideDetail = lazy(() => import("./pages/SecurityGuideDetail"));
-const Auth = lazy(() => import("@/pages/Auth"));
 const AuthMagic = lazy(() => import("@/pages/AuthMagic"));
 const AuthRecovery = lazy(() => import("@/pages/AuthRecovery"));
 const AuthSignIn = lazy(() => import("@/pages/AuthSignIn"));
@@ -46,6 +54,7 @@ const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
 const TestClientLLM = lazy(() => import("@/pages/TestClientLLM"));
@@ -63,26 +72,8 @@ function LazyRoute({ component: Component }: { component: ComponentType }) {
   );
 }
 
-const HOME_ALTERNATES: Array<{ hrefLang: string; path: string }> = [
-  { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de/" },
-  { hrefLang: "fr", path: "/fr/" },
-  { hrefLang: "es", path: "/es/" },
-  { hrefLang: "x-default", path: "/" },
-];
-
 function pathWithoutQueryOrHash(loc: string): string {
   return loc.split(/[?#]/)[0] ?? "";
-}
-
-/** Language for hreflang/canonical when the URL is a locale home route (/, /de/, /de, …). */
-function homeSeoLanguageForPath(pathname: string): SupportedLanguage | null {
-  const p = pathname || "/";
-  if (p === "/") return "en";
-  const parts = p.split("/").filter(Boolean);
-  if (parts.length !== 1) return null;
-  const code = parts[0] as SupportedLanguage;
-  return SUPPORTED_LANGUAGES.includes(code) && code !== "en" ? code : null;
 }
 
 function removeHomeLocaleSeoLinks() {
@@ -92,24 +83,22 @@ function removeHomeLocaleSeoLinks() {
 }
 
 function setHomeSeoLinks(language: SupportedLanguage) {
-  const origin = window.location.origin;
-  const canonicalPath = language === "en" ? "/" : `/${language}/`;
-  const existing = document.head.querySelectorAll<HTMLLinkElement>(
-    'link[data-privatenote-home-locale="true"]',
-  );
-  existing.forEach((link) => link.remove());
+  removeHomeLocaleSeoLinks();
+  document.head
+    .querySelectorAll<HTMLLinkElement>('link[rel="canonical"]')
+    .forEach((link) => link.remove());
 
   const canonical = document.createElement("link");
   canonical.rel = "canonical";
-  canonical.href = `${origin}${canonicalPath}`;
+  canonical.href = absolutePublicUrl(canonicalPathForHomeLanguage(language));
   canonical.dataset.privatenoteHomeLocale = "true";
   document.head.appendChild(canonical);
 
-  HOME_ALTERNATES.forEach((alternate) => {
+  HOME_HREFLANG_ALTERNATES.forEach((alternate) => {
     const link = document.createElement("link");
     link.rel = "alternate";
     link.hreflang = alternate.hrefLang;
-    link.href = `${origin}${alternate.path}`;
+    link.href = absolutePublicUrl(alternate.path);
     link.dataset.privatenoteHomeLocale = "true";
     document.head.appendChild(link);
   });
@@ -156,19 +145,17 @@ function Router() {
   useEffect(() => {
     const path = pathWithoutQueryOrHash(location);
     const meta = resolveDocumentMeta(path, t);
-    setDocumentMeta(meta.title, meta.description);
-  }, [location, t]);
-
-  useEffect(() => {
-    /** Hreflang + canonical for locale homes only; paths must match CDN 200s (e.g. …/de/, not …/de). */
-    const path = pathWithoutQueryOrHash(location);
-    const homeLang = homeSeoLanguageForPath(path);
-    if (homeLang === null) {
-      removeHomeLocaleSeoLinks();
+    const onLocaleHome = isLocaleHomeRoute(path);
+    setDocumentMeta(meta.title, meta.description, {
+      skipCanonical: onLocaleHome,
+      canonicalPath: onLocaleHome ? undefined : normalizeMarketingPathname(path),
+    });
+    if (onLocaleHome) {
+      setHomeSeoLinks(homeLanguageFromRoute(path) as SupportedLanguage);
     } else {
-      setHomeSeoLinks(homeLang);
+      removeHomeLocaleSeoLinks();
     }
-  }, [location]);
+  }, [location, t]);
 
   useEffect(() => {
     /** Wouter navigations preserve scroll — reset after paint when not already at top. */
@@ -206,6 +193,7 @@ function Router() {
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
+              <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
               <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
               <Route path={`/${language}/blog/:slug`} component={() => <LocalizedRoute language={language} component={BlogPost} />} />
@@ -222,10 +210,13 @@ function Router() {
           <Route path="/privacy" component={() => <LazyRoute component={Privacy} />} />
           <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
           <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
+          <Route path="/developers" component={() => <LazyRoute component={Developers} />} />
           <Route path="/about" component={() => <LazyRoute component={About} />} />
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
           <Route path="/blog" component={() => <LazyRoute component={Blog} />} />
           <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
+          {/* /admin is protected by Cloudflare Access in production; the ADMIN_TOKEN login is a second factor */}
+          <Route path="/admin" component={() => <LazyRoute component={AdminDashboard} />} />
           {showInternalRoutes ? (
             <>
               <Route path="/admin/blog" component={() => <LazyRoute component={BlogAdmin} />} />
@@ -235,7 +226,9 @@ function Router() {
               <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
             </>
           ) : null}
-          <Route path="/auth" component={() => <LazyRoute component={Auth} />} />
+          <Route path="/auth">
+            <Redirect to="/auth/sign-in" />
+          </Route>
           <Route path="/auth/sign-in" component={() => <LazyRoute component={AuthSignIn} />} />
           <Route path="/auth/sign-up" component={() => <LazyRoute component={AuthSignUp} />} />
           <Route path="/auth/magic" component={() => <LazyRoute component={AuthMagic} />} />

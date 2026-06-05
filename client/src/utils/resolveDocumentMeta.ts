@@ -43,6 +43,16 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogWorkplaceMetaTitle),
         description: t.blogWorkplaceMetaDescription,
       };
+    case "privatenote-for-developers":
+      return {
+        title: buildDocumentTitle(t.blogDevelopersTitle),
+        description: t.blogDevelopersExcerpt,
+      };
+    case "privatenote-codex":
+      return {
+        title: buildDocumentTitle(t.blogCodexTitle),
+        description: t.blogCodexExcerpt,
+      };
     default:
       return null;
   }
@@ -69,6 +79,11 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       return {
         title: buildDocumentTitle(`${t.howHeroPrefix} ${t.howHeroAccent}`),
         description: t.documentMetaHowItWorksDescription,
+      };
+    case "developers":
+      return {
+        title: buildDocumentTitle(t.documentMetaDevelopersTitle),
+        description: t.documentMetaDevelopersDescription,
       };
     case "about":
       return {

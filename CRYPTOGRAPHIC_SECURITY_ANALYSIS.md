@@ -1,4 +1,7 @@
 # Cryptographic Security Analysis Report
+
+> **Stale (2026):** This document predates Argon2id v2 for note passwords, AES-GCM AAD binding, and current Security Resources copy. Treat `shared/noteCrypto.ts`, `shared/kdfParamsV2.ts`, `client/src/utils/encryption.ts`, and `/security-resources` as source of truth.
+
 **Date:** 2025  
 **Analyst:** Cryptographic Engineering Review  
 **Scope:** Client-side encryption implementation (`client/src/utils/encryption.ts`)

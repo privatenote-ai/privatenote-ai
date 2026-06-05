@@ -3,10 +3,20 @@
 
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import https from "node:https";
 import { chromium } from "playwright";
+import {
+  buildHomeSeoHeadMarkup,
+  canonicalAbsoluteUrlForRoute,
+  homeLanguageFromRoute,
+  isLocaleHomeRoute,
+  PUBLIC_SITE_ORIGIN,
+} from "../shared/homeSeoLinks.ts";
+import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
+import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const BUILD_DIR = path.resolve("dist");
@@ -19,71 +29,9 @@ const PREVIEW_HOST = PREVIEW_ORIGIN.hostname;
 const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 
 // -------------------------------
-// Fallback routes (public-only)
+// Fallback routes (public-only; keep in sync with shared/publicMarketingPaths.ts)
 // -------------------------------
-const FALLBACK_ROUTES = [
-  "/",
-  "/de/",
-  "/fr/",
-  "/es/",
-  "/de/password-generator",
-  "/de/privacy-tools",
-  "/de/security-resources",
-  "/de/how-it-works",
-  "/de/about",
-  "/de/contact",
-  "/de/blog",
-  "/de/blog/privacy-tools",
-  "/de/blog/myth-good-enough-security",
-  "/de/blog/how-we-generate-passwords",
-  "/de/blog/workplace-texts-private-note",
-  "/de/privacy",
-  "/de/terms",
-  "/fr/password-generator",
-  "/fr/privacy-tools",
-  "/fr/security-resources",
-  "/fr/how-it-works",
-  "/fr/about",
-  "/fr/contact",
-  "/fr/blog",
-  "/fr/blog/privacy-tools",
-  "/fr/blog/myth-good-enough-security",
-  "/fr/blog/how-we-generate-passwords",
-  "/fr/blog/workplace-texts-private-note",
-  "/fr/privacy",
-  "/fr/terms",
-  "/es/password-generator",
-  "/es/privacy-tools",
-  "/es/security-resources",
-  "/es/how-it-works",
-  "/es/about",
-  "/es/contact",
-  "/es/blog",
-  "/es/blog/privacy-tools",
-  "/es/blog/myth-good-enough-security",
-  "/es/blog/how-we-generate-passwords",
-  "/es/blog/workplace-texts-private-note",
-  "/es/privacy",
-  "/es/terms",
-  "/privacy",
-  "/terms",
-  "/how-it-works",
-  "/about",
-  "/contact",
-  "/password-generator",
-  "/privacy-tools",
-  "/security-resources",
-  "/security-guides/vpn",
-  "/security-guides/password",
-  "/security-guides/messenger",
-  "/security-guides/email",
-  "/security-guides/browser",
-  "/blog",
-  "/blog/privacy-tools",
-  "/blog/myth-good-enough-security",
-  "/blog/how-we-generate-passwords",
-  "/blog/workplace-texts-private-note",
-];
+const FALLBACK_ROUTES = [...PUBLIC_MARKETING_PATHS];
 
 // -------------------------------
 // Preview server helpers
@@ -217,11 +165,78 @@ function routeOutDir(route) {
   return rel ? path.join(DIST_DIR, rel) : DIST_DIR;
 }
 
-function postProcessHTML(html) {
-  let out = html;
+/**
+ * Remove <link rel="modulepreload"> tags for feature chunks that were injected
+ * by Vite's module-preload polyfill at render time.  These chunks (CreateNote,
+ * NoteSettingsPanel, analyticsEvent, qr-code, …) are only needed on the
+ * interactive home/note pages, so preloading them on static marketing pages
+ * (blog posts, pricing, about…) wastes bandwidth and triggers browser warnings:
+ * "preloaded using link preload but not used within a few seconds".
+ *
+ * We keep:
+ *  • the Vite entry script (<script type="module" src="/assets/index-*.js">)
+ *  • stylesheet <link rel="stylesheet"> tags
+ *  • vendor-react and vendor-query shared chunks (nearly always needed)
+ *  • font preloads
+ *
+ * Everything else (<link rel="modulepreload"> for feature chunks) is removed.
+ */
+function stripStaleModulePreloads(html) {
+  return html.replace(
+    /<link\s+rel="modulepreload"[^>]*href="\/assets\/(?!vendor-react-|vendor-query-|index-)[^"]*\.js"[^>]*\/?>/gi,
+    "",
+  );
+}
 
-  // Rewrite preview absolute URLs -> root-relative
+function postProcessHTML(html, route) {
+  let out = injectPrerenderDocumentMeta(html, route);
+
+  // Rewrite preview absolute URLs -> root-relative (except locale-home SEO links; fixed below).
   out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
+
+  // Crawlers (X, LinkedIn) require absolute HTTPS image URLs in prerendered HTML.
+  out = out.replace(
+    /(<meta\s+(?:property="og:image"|name="twitter:image")\s+content=")\/([^"]+)"/gi,
+    `$1${PUBLIC_SITE_ORIGIN}/$2"`,
+  );
+  const isPublicSitemapRoute =
+    route === "/" ||
+    /^\/(de|fr|es)(\/|$)/.test(route) ||
+    /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
+      route,
+    ) ||
+    /^\/blog\//.test(route) ||
+    /^\/security-guides\//.test(route);
+
+  // React may snapshot canonical/og:url with a trailing slash; crawlers need the 200 URL shape.
+  out = out.replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/gi, "");
+  out = out.replace(/<meta\s+property=["']og:url["'][^>]*>/gi, "");
+
+  if (isLocaleHomeRoute(route)) {
+    out = out.replace(
+      /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
+      "",
+    );
+    const seoBlock = buildHomeSeoHeadMarkup(homeLanguageFromRoute(route));
+    out = out.replace("</head>", `${seoBlock}\n</head>`);
+  } else if (isPublicSitemapRoute) {
+    const pageUrl = canonicalAbsoluteUrlForRoute(route);
+    out = out.replace(
+      "</head>",
+      `<link rel="canonical" href="${pageUrl}" />\n<meta property="og:url" content="${pageUrl}" />\n</head>`,
+    );
+  }
+
+  // Strip feature-chunk modulepreload hints baked in by Vite's polyfill at render time.
+  // Keeps vendor-react, vendor-query, and the entry chunk; removes everything else.
+  out = stripStaleModulePreloads(out);
+
+  // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
+  out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");
+
+  if (isPublicSitemapRoute && !/<meta\s+name=["']robots["']/i.test(out)) {
+    out = out.replace("</head>", '<meta name="robots" content="index, follow" /></head>');
+  }
 
   // (Optional) hide cookie banners in the static snapshot (keeps HTML clean for bots)
   out = out.replace(
@@ -236,10 +251,103 @@ function postProcessHTML(html) {
   return out;
 }
 
+const ENTRY_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
+const ASSET_REF_RE = /\/assets\/([A-Za-z0-9_.-]+\.(?:js|css))/g;
+
+function readCanonicalEntryScript() {
+  const shellPath = path.join(BUILD_DIR, "index.html");
+  const shell = readFileSync(shellPath, "utf8");
+  const match = shell.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/);
+  if (!match) {
+    throw new Error(`Could not find Vite entry script in ${shellPath}`);
+  }
+  return match[1];
+}
+
+async function walkHtmlFiles(dir, out = []) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walkHtmlFiles(full, out);
+    } else if (entry.name.endsWith(".html")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/** Align every prerendered page with the current Vite entry (avoids stale hashed JS after redeploy). */
+async function syncEntryScriptRefs(canonicalEntry) {
+  const files = await walkHtmlFiles(DIST_DIR);
+  let updated = 0;
+  for (const file of files) {
+    const html = await fs.readFile(file, "utf8");
+    const next = html.replace(ENTRY_SCRIPT_RE, canonicalEntry);
+    if (next !== html) {
+      await fs.writeFile(file, next, "utf8");
+      updated++;
+    }
+  }
+  if (updated > 0) {
+    console.log(`🔧 Synced entry script to ${canonicalEntry} in ${updated} HTML file(s).`);
+  }
+}
+
+async function verifyPrerenderAssetRefs() {
+  const files = await walkHtmlFiles(DIST_DIR);
+  const missing = new Map();
+  for (const file of files) {
+    const html = await fs.readFile(file, "utf8");
+    const refs = new Set([...html.matchAll(ASSET_REF_RE)].map((m) => m[1]));
+    for (const ref of refs) {
+      const assetPath = path.join(DIST_DIR, "assets", ref);
+      try {
+        await fs.access(assetPath);
+      } catch {
+        const rel = path.relative(process.cwd(), file);
+        if (!missing.has(ref)) missing.set(ref, []);
+        missing.get(ref).push(rel);
+      }
+    }
+  }
+  if (missing.size > 0) {
+    const lines = [...missing.entries()].flatMap(([asset, htmlFiles]) =>
+      htmlFiles.map((f) => `  - ${asset} (referenced in ${f})`),
+    );
+    throw new Error(
+      "Prerender HTML references assets that are not in the deploy output:\n\n" + lines.join("\n"),
+    );
+  }
+  console.log(`✓ All asset references resolve under ${DIST_DIR}/assets/`);
+}
+
+/**
+ * Write prerendered HTML so both URL shapes work on Cloudflare Pages:
+ * - `about.html` → GET /about returns 200 (crawlers, navbar links)
+ * - `about/index.html` → GET /about/ returns 200
+ * Locale homes stay directory-only (`de/index.html` → /de/).
+ */
 async function saveHTML(route, html) {
-  const outDir = routeOutDir(route);
+  const cleaned = postProcessHTML(html, route);
+  const trimmed = route.replace(/\/+$/, "");
+  const rel = trimmed.replace(/^\//, "");
+
+  if (!rel) {
+    await fs.writeFile(path.join(DIST_DIR, "index.html"), cleaned, "utf8");
+    return;
+  }
+
+  const isLocaleHome = /^(de|fr|es)$/.test(rel);
+
+  if (!isLocaleHome) {
+    const flatFile = path.join(DIST_DIR, `${rel}.html`);
+    await fs.mkdir(path.dirname(flatFile), { recursive: true });
+    await fs.writeFile(flatFile, cleaned, "utf8");
+  }
+
+  const outDir = routeOutDir(trimmed === "" ? "/" : `/${rel}`);
   await fs.mkdir(outDir, { recursive: true });
-  const cleaned = postProcessHTML(html);
   await fs.writeFile(path.join(outDir, "index.html"), cleaned, "utf8");
 }
 
@@ -253,6 +361,7 @@ async function main() {
   try {
     await waitForServer(PREVIEW_URL);
     await prepareOutputDir();
+    const canonicalEntryScript = readCanonicalEntryScript();
 
     browser = await chromium.launch({
       headless: true,
@@ -308,13 +417,18 @@ async function main() {
 
     const waitForStableAboveTheFold = async () => {
       try {
-        // you already render an LCP marker; wait for it if present
         await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
       } catch {
-        // not found; small settle time so helmet/meta can commit
         await page.waitForTimeout(200);
       }
-      // one last tiny tick for microtasks
+      try {
+        await page.waitForFunction(
+          () => document.title !== "PrivateNote.ai - Secure Encrypted Notes",
+          { timeout: 4000 },
+        );
+      } catch {
+        /* postProcessHTML injects route meta if React did not update title in time */
+      }
       await page.waitForTimeout(100);
     };
 
@@ -332,6 +446,9 @@ async function main() {
         console.warn(`⚠ skipped: ${route} -> ${err?.message ?? err}`);
       }
     }
+
+    await syncEntryScriptRefs(canonicalEntryScript);
+    await verifyPrerenderAssetRefs();
   } finally {
     if (browser) {
       try {

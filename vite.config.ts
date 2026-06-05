@@ -52,41 +52,6 @@ const proxyTarget =
     ? configuredApiUrl
     : `http://localhost:${localApiPort}`;
 
-/**
- * argon2-browser uses `require("../dist/argon2.wasm")` when `require` exists. Vite's CommonJS
- * resolver then tries to load .wasm as ESM WebAssembly (unsupported). The library expects a
- * base64 string and runs `decodeWasmBinary` → atob. We satisfy that with a virtual module.
- */
-function argon2BrowserWasmPlugin(): Plugin {
-  const virtualId = "\0argon2-browser:wasm-base64";
-  const wasmAbs = path.resolve(
-    __dirname,
-    "node_modules/argon2-browser/dist/argon2.wasm",
-  );
-
-  return {
-    name: "argon2-browser-wasm-base64",
-    enforce: "pre",
-    resolveId(id, importer) {
-      if (id === virtualId) return virtualId;
-      const normId = id.replace(/\\/g, "/");
-      const normImporter = importer?.replace(/\\/g, "/") ?? "";
-      if (
-        normId.endsWith("argon2.wasm") &&
-        (normId.includes("argon2-browser") ||
-          normImporter.includes("argon2-browser/lib/argon2"))
-      ) {
-        return virtualId;
-      }
-      return null;
-    },
-    load(id) {
-      if (id !== virtualId) return null;
-      const buf = fs.readFileSync(wasmAbs);
-      return `export default ${JSON.stringify(buf.toString("base64"))};`;
-    },
-  };
-}
 
 /** Set VITE_DEV_HTTP=1 to use plain http:// (e.g. quick debugging). Default: HTTPS for Turnstile / secure contexts. */
 const useDevHttps = process.env.VITE_DEV_HTTP !== "1";
@@ -137,20 +102,36 @@ function devHttpsHintsPlugin(): Plugin {
 
 const devHost = devServerHost();
 
-/** Must match `Content-Security-Policy` in `client/public/_headers` (/* block). */
+/**
+ * Production CSP — must match `Content-Security-Policy` in `client/public/_headers` (/* block).
+ * No 'unsafe-inline' in script-src: production build has no inline scripts.
+ */
 const pageContentSecurityPolicy =
   "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none';";
+
+/**
+ * Dev-only CSP — same as production but adds 'unsafe-inline' to script-src so that
+ * @vitejs/plugin-react can inject its HMR preamble (an inline script that enables
+ * React Fast Refresh). Without this, the dev server blocks the preamble and throws
+ * "@vitejs/plugin-react can't detect preamble. Something is wrong."
+ */
+const devContentSecurityPolicy = pageContentSecurityPolicy.replace(
+  "script-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+);
 
 export default defineConfig({
   plugins: [
     htmlFontPreloadPlugin(),
-    argon2BrowserWasmPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
       : []),
     devHttpsHintsPlugin(),
     react(),
-    runtimeErrorOverlay(),
+    // Replit-only plugins — only active when running inside a Repl (REPL_ID is set).
+    // Outside Replit the runtime-error overlay causes "Importing a module script failed"
+    // CSP errors because it injects blob: module scripts that our strict dev CSP blocks.
+    ...(process.env.REPL_ID !== undefined ? [runtimeErrorOverlay()] : []),
     themePlugin(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
@@ -202,7 +183,7 @@ export default defineConfig({
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "credentialless",
-      "Content-Security-Policy": pageContentSecurityPolicy,
+      "Content-Security-Policy": devContentSecurityPolicy,
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",

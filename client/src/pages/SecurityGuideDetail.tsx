@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useRoute } from 'wouter';
 import { Link } from 'wouter';
 import { useLanguage } from '@/context/LanguageContext';
-import { localizedPath } from '@/utils/localizedPath';
+import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
 import { 
   ChevronLeft, 
@@ -221,7 +221,7 @@ const SecurityGuideDetail: React.FC = () => {
             id !== topicId && (
               <Link
                 key={id}
-                href={`/security-guides/${id}`}
+                href={joinPublicPath("security-guides", id)}
                 className="px-4 py-2 bg-white/80 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {content.title}

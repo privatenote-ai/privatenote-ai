@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
@@ -16,30 +17,52 @@ type ActivityEvent = {
   createdAt: string;
 };
 
+type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
+
 type EventGroup = {
-  label: string;
+  period: TimePeriod;
   events: ActivityEvent[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function eventLabel(type: string): string {
-  switch (type) {
-    case "note_created": return "Secure note created";
-    case "ai_note_created": return "AI-assisted note created";
-    case "note_opened": return "Note opened";
-    case "note_expired": return "Note expired";
-    default: return type.replace(/_/g, " ");
+function groupEvents(events: ActivityEvent[]): EventGroup[] {
+  const groups: EventGroup[] = [];
+  const buckets: Record<TimePeriod, ActivityEvent[] | undefined> = {
+    today: undefined,
+    yesterday: undefined,
+    this_week: undefined,
+    earlier: undefined,
+  };
+
+  for (const ev of events) {
+    let period: TimePeriod;
+    try {
+      const d = parseActivityCreatedAt(ev.createdAt);
+      if (isToday(d)) period = "today";
+      else if (isYesterday(d)) period = "yesterday";
+      else if (isThisWeek(d, { weekStartsOn: 1 })) period = "this_week";
+      else period = "earlier";
+    } catch {
+      period = "earlier";
+    }
+    if (!buckets[period]) {
+      buckets[period] = [];
+      groups.push({ period, events: buckets[period]! });
+    }
+    buckets[period]!.push(ev);
   }
+
+  return groups;
 }
 
-function eventDescription(type: string): string {
+function eventAccent(type: string): string {
   switch (type) {
-    case "note_created": return "A new secure note was sent from your account.";
-    case "ai_note_created": return "An AI-composed note was sent from your account.";
-    case "note_opened": return "A note was opened while you were signed in.";
-    case "note_expired": return "A note reached its expiry and was destroyed.";
-    default: return "";
+    case "note_created": return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400";
+    case "ai_note_created": return "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400";
+    case "note_opened": return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+    case "note_expired": return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+    default: return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
   }
 }
 
@@ -53,45 +76,11 @@ function EventIcon({ type }: { type: string }) {
   }
 }
 
-function eventAccent(type: string): string {
-  switch (type) {
-    case "note_created": return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400";
-    case "ai_note_created": return "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400";
-    case "note_opened": return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
-    case "note_expired": return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
-    default: return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
-  }
-}
-
-function groupEvents(events: ActivityEvent[]): EventGroup[] {
-  const groups: EventGroup[] = [];
-  const buckets: Record<string, ActivityEvent[]> = {};
-
-  for (const ev of events) {
-    let label: string;
-    try {
-      const d = parseActivityCreatedAt(ev.createdAt);
-      if (isToday(d)) label = "Today";
-      else if (isYesterday(d)) label = "Yesterday";
-      else if (isThisWeek(d, { weekStartsOn: 1 })) label = "This week";
-      else label = "Earlier";
-    } catch {
-      label = "Earlier";
-    }
-    if (!buckets[label]) {
-      buckets[label] = [];
-      groups.push({ label, events: buckets[label] });
-    }
-    buckets[label].push(ev);
-  }
-
-  return groups;
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountActivity() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,17 +95,46 @@ export default function AccountActivity() {
       setEvents(data.ok && Array.isArray(data.events) ? data.events : []);
     } catch {
       setEvents([]);
-      setError("Could not load activity.");
+      setError(t.authActivityLoadError || "Could not load activity.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { setLoading(false); return; }
     void load();
   }, [authLoading, user, load]);
+
+  const periodLabel = (period: TimePeriod): string => {
+    switch (period) {
+      case "today": return t.authActivityToday || "Today";
+      case "yesterday": return t.authActivityYesterday || "Yesterday";
+      case "this_week": return t.authActivityThisWeek || "This week";
+      case "earlier": return t.authActivityEarlier || "Earlier";
+    }
+  };
+
+  const eventLabel = (type: string): string => {
+    switch (type) {
+      case "note_created": return t.authActivitySecureNoteCreated || "Secure note created";
+      case "ai_note_created": return t.authActivityAiNoteCreated || "AI-assisted note created";
+      case "note_opened": return t.authActivityNoteOpened || "Note opened";
+      case "note_expired": return t.authActivityNoteExpired || "Note expired";
+      default: return type.replace(/_/g, " ");
+    }
+  };
+
+  const eventDescription = (type: string): string => {
+    switch (type) {
+      case "note_created": return t.authActivitySecureNoteCreatedDesc || "A new secure note was sent from your account.";
+      case "ai_note_created": return t.authActivityAiNoteCreatedDesc || "An AI-composed note was sent from your account.";
+      case "note_opened": return t.authActivityNoteOpenedDesc || "A note was opened while you were signed in.";
+      case "note_expired": return t.authActivityNoteExpiredDesc || "A note reached its expiry and was destroyed.";
+      default: return "";
+    }
+  };
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
@@ -137,9 +155,9 @@ export default function AccountActivity() {
     return (
       <AccountSettingsShell>
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Sign in to see recent note activity.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.authActivitySignInPrompt || "Sign in to see recent note activity."}</p>
           <Button asChild size="sm">
-            <a href="/auth/sign-in">Sign in</a>
+            <a href="/auth/sign-in">{t.signIn || "Sign in"}</a>
           </Button>
         </div>
       </AccountSettingsShell>
@@ -153,31 +171,36 @@ export default function AccountActivity() {
       <div className="space-y-6">
         {/* Page header */}
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Activity</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t.authActivityPageTitle || "Activity"}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Timestamps and event types only — note contents are never recorded here.
+            {t.authActivityPageSubtitle || "Timestamps and event types only — note contents are never recorded here."}
           </p>
         </div>
 
         {error && (
-          <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">{error}</p>
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+            <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => void load()}>
+              {t.authRetry || "Retry"}
+            </Button>
+          </div>
         )}
 
         {/* ── Event timeline ─────────────────────────────────────────────── */}
         {events.length === 0 ? (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-6 py-12 text-center">
             <Activity className="mx-auto mb-3 h-8 w-8 text-gray-300 dark:text-gray-600" />
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No activity yet</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.authActivityNoActivityTitle || "No activity yet"}</p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Create a note while signed in to see it here.
+              {t.authActivityCreateHint || "Create a note while signed in to see it here."}
             </p>
           </div>
         ) : (
           <div className="space-y-6">
             {groups.map((group) => (
-              <div key={group.label}>
+              <div key={group.period}>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                  {group.label}
+                  {periodLabel(group.period)}
                 </p>
                 <ul className="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800/80 overflow-hidden">
                   {group.events.map((ev) => {
@@ -232,7 +255,7 @@ export default function AccountActivity() {
         {/* Premium upsell nudge */}
         {events.length > 0 && (
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-            Extended history is planned for premium accounts.
+            {t.authActivityExtendedHistoryHint || "Extended history is planned for premium accounts."}
           </p>
         )}
       </div>

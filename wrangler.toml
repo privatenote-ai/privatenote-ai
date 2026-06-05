@@ -24,8 +24,8 @@ id = "dcbc57c897c442deb18d99a1193267d4"
 #
 [[d1_databases]]
 binding = "AUTH_DB"
-database_name = "privatenote-auth"
-database_id = "b9ae1541-7226-40b6-9ff7-8ce49781b025"
+database_name = "privatenote-auth-eu"
+database_id = "3f04a908-4f7a-4782-9d00-cb9c9303ae70"
 # Applies baseline auth tables (sessions, users, …) to local D1 on `wrangler dev` and on deploy.
 # Keep 0001 in sync with src/auth/schema.sql. Manual upgrades stay in src/auth/migrations/.
 migrations_dir = "src/auth/d1-migrations"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -46,10 +46,12 @@ type MobileSheet = "closed" | "nav" | "account";
 export const Navbar: React.FC = () => {
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>("closed");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
   const { language, t } = useLanguage();
   const profileRef = useRef<HTMLDivElement>(null);
+  const resourcesRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
   // Solid translucent bg only after the user scrolls; transparent on hero
@@ -63,6 +65,7 @@ export const Navbar: React.FC = () => {
   const closeMobileSheetsAndProfile = useCallback(() => {
     setMobileSheet("closed");
     setIsProfileOpen(false);
+    setIsResourcesOpen(false);
   }, []);
 
   /** Mobile nav drawer + desktop profile dropdown: close overlays when navigating */
@@ -79,11 +82,14 @@ export const Navbar: React.FC = () => {
     setMobileSheet((s) => (s === "account" ? "closed" : "account"));
   }, []);
 
-  // Handle clicks outside of desktop profile menu.
+  // Handle clicks outside of desktop dropdown menus.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+      }
+      if (resourcesRef.current && !resourcesRef.current.contains(event.target as Node)) {
+        setIsResourcesOpen(false);
       }
     };
 
@@ -102,19 +108,15 @@ export const Navbar: React.FC = () => {
     }
   }, [location, refreshAuth]);
 
-  // Mobile sheet: reduce background scroll while open (avoid `position:fixed` on body — breaks nested `fixed` nav).
+  // Mobile sheet: lock background scroll only on body (not html) so pinch-zoom + pan still work inside the sheet.
   useEffect(() => {
     if (mobileSheet === "closed") return;
-    const html = document.documentElement;
     const body = document.body;
-    const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
     const prevOverscroll = body.style.overscrollBehavior;
-    html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     body.style.overscrollBehavior = "none";
     return () => {
-      html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
       body.style.overscrollBehavior = prevOverscroll;
     };
@@ -131,6 +133,18 @@ export const Navbar: React.FC = () => {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [mobileSheet, closeMenu]);
+
+  useEffect(() => {
+    if (!isResourcesOpen && !isProfileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsResourcesOpen(false);
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isProfileOpen, isResourcesOpen]);
 
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
@@ -161,7 +175,10 @@ export const Navbar: React.FC = () => {
     "inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 outline-none focus:outline-none focus:ring-0";
 
   const mobileItemClass =
-    "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60";
+    "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary dark:text-blue-300 transition-colors hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60";
+
+  const desktopDropdownItem =
+    "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
 
   const navShellClass = [
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
@@ -220,7 +237,7 @@ export const Navbar: React.FC = () => {
       </div>
     ) : (
       <NavLink
-        href="/auth"
+        href="/auth/sign-in"
         closeMenu={closeMenu}
         className={authButtonLink}
       >
@@ -228,6 +245,39 @@ export const Navbar: React.FC = () => {
       </NavLink>
     )
   ) : null;
+
+  const resourceLinks = [
+    {
+      href: lp("/how-it-works"),
+      label: t.howItWorks,
+      description: t.navHowItWorksDesc,
+      icon: Shield,
+    },
+    {
+      href: lp("/security-resources"),
+      label: t.security,
+      description: t.navSecurityDesc,
+      icon: Sparkles,
+    },
+    {
+      href: lp("/developers"),
+      label: t.developers,
+      description: t.navDevelopersDesc,
+      icon: Code2,
+    },
+    {
+      href: lp("/blog"),
+      label: t.blog,
+      description: t.navBlogDesc,
+      icon: FileText,
+    },
+    {
+      href: lp("/about"),
+      label: t.about,
+      description: t.navAboutDesc,
+      icon: Info,
+    },
+  ];
 
   return (
     <>
@@ -257,18 +307,50 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
             </NavLink>
-            <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={desktopLink}>
-              {t.howItWorks}
-            </NavLink>
-            <NavLink href={lp("/security-resources")} closeMenu={closeMenu} className={desktopLink}>
-              {t.security}
-            </NavLink>
-            <NavLink href={lp("/blog")} closeMenu={closeMenu} className={desktopLink}>
-              {t.blog}
-            </NavLink>
-            <NavLink href={lp("/about")} closeMenu={closeMenu} className={desktopLink}>
-              {t.about}
-            </NavLink>
+            <div className="relative" ref={resourcesRef}>
+              <button
+                type="button"
+                onClick={() => setIsResourcesOpen((open) => !open)}
+                className={`${desktopLink} inline-flex items-center gap-1.5`}
+                aria-haspopup="menu"
+                aria-expanded={isResourcesOpen}
+                aria-controls="desktop-resources-menu"
+              >
+                {t.resources}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${isResourcesOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              <div
+                id="desktop-resources-menu"
+                className={`absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 transition-opacity ${
+                  isResourcesOpen ? "opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
+                }`}
+                role="menu"
+                aria-hidden={!isResourcesOpen}
+              >
+                {resourceLinks.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.href}
+                      href={item.href}
+                      closeMenu={closeMenu}
+                      className={desktopDropdownItem}
+                    >
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
+                      <span>
+                        <span className="block font-semibold">{item.label}</span>
+                        <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {item.description}
+                        </span>
+                      </span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
           </nav>
 
           {/* Auth — sits just outside the right edge of the editor column */}
@@ -333,12 +415,12 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "nav" && (
       <div
         id="mobile-nav-sheet"
-        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.toggleNavigation}
       >
-        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-background dark:border-gray-800">
           <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
             <div className="flex min-w-10 items-center justify-start">
               {!authLoading && user?.email ? (
@@ -377,7 +459,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label="Mobile">
+        <nav className="min-h-0 flex-1" aria-label="Mobile">
           <div className="py-2">
             <NavLink href={lp("/")} closeMenu={closeMenu} className={mobileItemClass}>
               <Lock className="h-4 w-4 shrink-0 opacity-80" />
@@ -400,6 +482,10 @@ export const Navbar: React.FC = () => {
               <FileText className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.blog}</span>
             </NavLink>
+            <NavLink href={lp("/developers")} closeMenu={closeMenu} className={mobileItemClass}>
+              <Code2 className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.developers}</span>
+            </NavLink>
 
             <NavLink href={lp("/about")} closeMenu={closeMenu} className={mobileItemClass}>
               <Info className="h-4 w-4 shrink-0 opacity-80" />
@@ -410,7 +496,7 @@ export const Navbar: React.FC = () => {
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
-                <NavLink href="/auth" closeMenu={closeMenu} className={mobileItemClass}>
+                <NavLink href="/auth/sign-in" closeMenu={closeMenu} className={mobileItemClass}>
                   <Mail className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                   <span>{t.signIn}</span>
                 </NavLink>
@@ -438,12 +524,12 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "account" && user?.email ? (
       <div
         id="mobile-account-sheet"
-        className="fixed inset-0 z-[9999] flex flex-col bg-background xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.account}
       >
-        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-gray-200 bg-background dark:border-gray-800">
           <div className="mx-auto grid h-16 max-w-4xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:px-6">
             <div className="flex min-w-10 items-center justify-start">
               <button
@@ -477,7 +563,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain" aria-label={t.account}>
+        <nav className="min-h-0 flex-1" aria-label={t.account}>
           <div className="py-2">
             <div className="border-b border-gray-100 px-5 pb-4 pt-1 dark:border-gray-800">
               <p className="text-xs text-gray-500 dark:text-gray-400">{t.signedInAs}</p>

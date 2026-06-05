@@ -1,0 +1,81 @@
+name: privatenote-self-host
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile.self-host
+  working_dir: /app
+  volumes:
+    - .:/app
+    - privatenote_node_modules:/app/node_modules
+
+services:
+  api:
+    <<: *app-base
+    command:
+      - sh
+      - -lc
+      - >
+        npx wrangler dev
+        --local
+        --ip 0.0.0.0
+        --port 8787
+        --persist-to /data/wrangler
+        --show-interactive-dev-session false
+        --log-level info
+    environment:
+      AUTH_ALLOW_UNSIGNED_MAGIC_LINK: ${AUTH_ALLOW_UNSIGNED_MAGIC_LINK:-1}
+      AUTH_DEBUG: ${AUTH_DEBUG:-0}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-PrivateNote <no-reply@localhost>}
+      AUTH_EMAIL_PROVIDER: ${AUTH_EMAIL_PROVIDER:-console}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-dev-only-change-me-32-byte-minimum-secret}
+      PUBLIC_WEB_APP_ORIGIN: ${PUBLIC_WEB_APP_ORIGIN:-http://localhost:5173}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-dev-only-change-me-32-byte-minimum-key}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      WRANGLER_SEND_METRICS: "false"
+    ports:
+      - "${PRIVATENOTE_API_PORT:-8787}:8787"
+    volumes:
+      - .:/app
+      - privatenote_node_modules:/app/node_modules
+      - privatenote_wrangler_state:/data/wrangler
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:8787/').then(r=>process.exit(r.ok ? 0 : 1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  web:
+    <<: *app-base
+    command:
+      - sh
+      - -lc
+      - npm run dev:client:http -- --host 0.0.0.0 --port 5173
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      LOCAL_API_PORT: "8787"
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8787}
+      VITE_DEV_HTTP: "1"
+      VITE_DISABLE_TURNSTILE: ${VITE_DISABLE_TURNSTILE:-1}
+      VITE_ENABLE_TURNSTILE_IN_DEV: ${VITE_ENABLE_TURNSTILE_IN_DEV:-0}
+      VITE_LOCAL_LLM_PREMIUM: ${VITE_LOCAL_LLM_PREMIUM:-false}
+      VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
+    ports:
+      - "${PRIVATENOTE_WEB_PORT:-5173}:5173"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok ? 0 : 1)).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  privatenote_node_modules:
+  privatenote_wrangler_state:

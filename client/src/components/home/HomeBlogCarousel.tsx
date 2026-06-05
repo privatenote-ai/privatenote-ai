@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/carousel";
 import { useMountWhenInView } from "@/hooks/useMountWhenInView";
 import type { Translations } from "@/utils/translation";
+import { joinPublicPath } from "@/utils/localizedPath";
 
 type BlogPostCard = {
   slug: string;
@@ -38,7 +39,7 @@ function BlogPostLink({
 }) {
   return (
     <Link
-      href={`${blogPath}/${post.slug}`}
+      href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)}
       className={
         className ??
         "group flex h-full min-h-[270px] flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"

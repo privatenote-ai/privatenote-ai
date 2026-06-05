@@ -472,6 +472,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setPasswordDecryptError(
         "That password didn\u2019t unlock this note. Check for typos or ask the sender.",
       );
+      import("@/utils/analyticsEvent").then(({ fireAnalyticsEvent }) => fireAnalyticsEvent("wrong_password")).catch(() => {});
     } finally {
       setIsDecrypting(false);
     }
@@ -595,7 +596,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               {t.noPasswordCannotDecrypt}
             </p>
 
-            <div className="mt-8 sm:mt-10 max-w-2xl mx-auto">
+            <div className="mt-8 sm:mt-10 max-w-2xl mx-auto text-left">
               <SecurityRecommendations type="compact" context="general" />
             </div>
           </div>
@@ -638,10 +639,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </p>
         </div>
 
-        <div className="mt-8 sm:mt-10 bg-gray-50/60 dark:bg-gray-900/35 border border-gray-200/55 dark:border-gray-700/55 rounded-md px-4 py-4 sm:px-5 sm:py-5 text-left">
-          <p className="whitespace-pre-wrap break-words text-[0.97rem] sm:text-base md:text-[1.03rem] leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
-            {noteContent}
-          </p>
+        <div
+          className="note-read-panel mt-8 sm:mt-10 text-left"
+          aria-label="Note content"
+        >
+          <div className="note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[0.97rem] sm:text-base md:text-[1.03rem] leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
+            {noteContent.trimEnd()}
+          </div>
         </div>
 
         <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">

@@ -33,9 +33,9 @@ type CreateNoteDeferredDialogsProps = {
   aiProgress: ModelLoadProgress | null;
   cellularPreloadConfirmOpen: boolean;
   isGeneratingContent: boolean;
-  onRetryFreeModelDownloadAfterReset: () => void;
   onStartFreeModelDownload: () => void;
-  onUseTemplates: () => void;
+  onUseCloudAssist: () => void;
+  onWriteWithoutAi: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
   setShowTemplateOfferPrompt: Dispatch<SetStateAction<boolean>>;
   showTemplateOfferPrompt: boolean;
@@ -45,9 +45,9 @@ export function CreateNoteDeferredDialogs({
   aiProgress,
   cellularPreloadConfirmOpen,
   isGeneratingContent,
-  onRetryFreeModelDownloadAfterReset,
   onStartFreeModelDownload,
-  onUseTemplates,
+  onUseCloudAssist,
+  onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
@@ -130,11 +130,12 @@ export function CreateNoteDeferredDialogs({
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Continue with built-in templates</AlertDialogTitle>
+            <AlertDialogTitle>Local AI not supported on this device</AlertDialogTitle>
             <AlertDialogDescription>
-              On-device private AI is not running on this device right now. You can keep writing
-              using the curated starters, or clear any partial model download and try loading private
-              AI again.
+              On-device private AI couldn't start, so the incomplete local download was cleared
+              automatically. You can write without AI, or use Cloud Assist. Cloud Assist is{" "}
+              <span className="font-semibold text-red-600 dark:text-red-400">not fully private</span>
+              {" "}because your prompt is sent to Cloudflare Workers AI.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
@@ -144,13 +145,16 @@ export function CreateNoteDeferredDialogs({
               className="w-full sm:w-auto"
               onClick={() => {
                 setShowTemplateOfferPrompt(false);
-                onRetryFreeModelDownloadAfterReset();
+                onWriteWithoutAi();
               }}
             >
-              Clear download and retry
+              Write without AI (fully private)
             </Button>
-            <AlertDialogAction className="w-full sm:w-auto" onClick={onUseTemplates}>
-              Use templates
+            <AlertDialogAction
+              className="w-full bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 sm:w-auto"
+              onClick={onUseCloudAssist}
+            >
+              Use Cloud Assist (not fully private)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

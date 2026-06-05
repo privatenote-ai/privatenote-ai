@@ -7,7 +7,7 @@
 In Cloudflare Dashboard → Your Pages Project → **Settings** → **Builds & deployments**:
 
 - ✅ **Build command**: `npm run build`
-- ✅ **Build output directory**: `dist/public`
+- ✅ **Build output directory**: `prerender` (GitHub Actions) — **not** `dist` alone
 - ✅ **Root directory**: `/` (leave empty or set to root)
 - ✅ **Node.js version**: `18` or `20` (default is usually fine)
 
@@ -112,7 +112,8 @@ In Cloudflare Dashboard:
 
 3. **Check if it's a routing issue:**
    - Try visiting: `https://your-project.pages.dev/` (root)
-   - If root works but other routes don't → `_redirects` issue
+   - If root works but `/about` returns 404 while `/about/` works → redeploy with `build:prerender` (flat `about.html` + `about/index.html`)
+   - SEO tools often flag **308** from `/about` → `/about/` as broken; flat `.html` files fix that
 
 4. **Verify API connection:**
    - Check if API calls are working
