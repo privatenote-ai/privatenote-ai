@@ -18,6 +18,11 @@ import { localizedPath } from "@/utils/localizedPath";
 type BillingMode = "monthly" | "yearly";
 type PlanId = "free" | "premium";
 
+const stripePaymentLinks: Record<BillingMode, string> = {
+  monthly: (import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK as string | undefined)?.trim() || "",
+  yearly: (import.meta.env.VITE_STRIPE_PREMIUM_YEARLY_PAYMENT_LINK as string | undefined)?.trim() || "",
+};
+
 const planOrder: PlanId[] = ["free", "premium"];
 
 const planCopy: Record<PlanId, {
@@ -41,7 +46,7 @@ const planCopy: Record<PlanId, {
   premium: {
     title: "Premium",
     audience: "Delivery controls for notes that need proof, verification, and a branded reveal experience.",
-    cta: "Request Premium",
+    cta: "Upgrade to Premium",
     highlight: "Recommended",
     features: [
       "Notifications",
@@ -120,7 +125,7 @@ const faqs = [
   },
   {
     q: "Can I pay online today?",
-    a: "Checkout is not connected yet. Use the contact button to request Premium access for staging, early access, or manual enablement.",
+    a: "Yes, once the Stripe Payment Link environment variables are set. Until then the Premium button falls back to the contact page for staging, early access, or manual enablement.",
   },
   {
     q: "When should I use recipient verification?",
@@ -144,6 +149,13 @@ function PlanCard({
   const copy = planCopy[plan];
   const highlighted = plan === "premium";
   const price = plan === "free" ? { price: "€0", cadence: "forever", note: "No payment required." } : premiumPrices[billingMode];
+  const buttonClassName = [
+    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40",
+    highlighted
+      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+      : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
+  ].join(" ");
+  const externalHref = /^https?:\/\//i.test(href);
 
   return (
     <article
@@ -172,17 +184,15 @@ function PlanCard({
         </span>
       </div>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{price.note}</p>
-      <Link
-        href={href}
-        className={[
-          "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40",
-          highlighted
-            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-            : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
-        ].join(" ")}
-      >
-        {copy.cta}
-      </Link>
+      {externalHref ? (
+        <a href={href} className={buttonClassName} rel="noopener noreferrer">
+          {copy.cta}
+        </a>
+      ) : (
+        <Link href={href} className={buttonClassName}>
+          {copy.cta}
+        </Link>
+      )}
       <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         Includes
       </p>
@@ -220,7 +230,11 @@ export default function Premium() {
   const [billingMode, setBillingMode] = useState<BillingMode>("yearly");
   const lp = (path: string) => localizedPath(path, language);
   const accountHref = user ? "/account" : "/auth/sign-up";
-  const planHref = useMemo(() => ({ free: accountHref, premium: lp("/contact") }), [accountHref, language]);
+  const premiumCheckoutHref = stripePaymentLinks[billingMode] || lp("/contact");
+  const planHref = useMemo(
+    () => ({ free: accountHref, premium: premiumCheckoutHref }),
+    [accountHref, premiumCheckoutHref]
+  );
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
@@ -254,7 +268,8 @@ export default function Premium() {
           ))}
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Premium is €3.99 monthly or €39 yearly. Checkout is not connected yet.
+          Premium is €3.99 monthly or €39 yearly.
+          {stripePaymentLinks[billingMode] ? " Secure checkout opens via Stripe." : " Add the Stripe link env vars to enable checkout."}
         </p>
       </section>
 
