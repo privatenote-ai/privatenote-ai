@@ -29,6 +29,10 @@ const earlyAdopterUserLimit = Number.parseInt(
   (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_USER_LIMIT as string | undefined)?.trim() || "200",
   10,
 );
+const earlyAdopterDisplayLimit =
+  Number.isFinite(earlyAdopterUserLimit) && earlyAdopterUserLimit > 0
+    ? earlyAdopterUserLimit
+    : 200;
 
 function withStripePromoCode(href: string): string {
   if (!stripePrefilledPromoCode || !/^https?:\/\//i.test(href)) return href;
@@ -223,6 +227,17 @@ function PlanCard({
           </li>
         ))}
       </ul>
+      {highlighted && earlyAdopterPricingEnabled ? (
+        <div className="mt-6 border-t border-primary/15 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Early adopter pricing
+          </p>
+          <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            Existing subscribers keep this price forever. Limited to the first{" "}
+            {earlyAdopterDisplayLimit} Premium users.
+          </p>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -267,20 +282,6 @@ export default function Premium() {
           Free gives you Core PrivateNote. Premium adds delivery controls for notifications,
           recipient verification, branding, and 100 MB encrypted file sharing.
         </p>
-        {earlyAdopterPricingEnabled ? (
-          <div className="mx-auto mt-6 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-left shadow-sm dark:border-amber-900/70 dark:bg-amber-950/20">
-            <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-              Early adopter pricing.
-            </p>
-            <p className="mt-1 text-sm leading-6 text-amber-900/85 dark:text-amber-100/80">
-              Existing subscribers keep this price forever. Limited to the first{" "}
-              {Number.isFinite(earlyAdopterUserLimit) && earlyAdopterUserLimit > 0
-                ? earlyAdopterUserLimit
-                : 200}{" "}
-              Premium users.
-            </p>
-          </div>
-        ) : null}
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           {(["monthly", "yearly"] as BillingMode[]).map((mode) => (
             <button
@@ -321,44 +322,60 @@ export default function Premium() {
       </section>
 
       <section className="mt-16">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Plan comparison
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
               Plans and features
             </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-400">
               Compare Core PrivateNote with the Premium delivery controls.
             </p>
           </div>
-          <Link href={lp("/contact")} className="text-sm font-semibold text-primary hover:underline">
+          <Link
+            href={lp("/contact")}
+            className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
+          >
             Request early access
           </Link>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-          <div className="min-w-[560px]">
-            <div className="grid grid-cols-[minmax(180px,1.4fr)_repeat(2,minmax(120px,1fr))] border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
-              <div className="px-4 py-3">Feature</div>
-              <div className="px-4 py-3">Free</div>
-              <div className="px-4 py-3">Premium</div>
-            </div>
-            {comparisonSections.map((section) => (
-              <div key={section.title}>
-                <div className="border-b border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-950 dark:border-gray-800 dark:bg-gray-950 dark:text-white">
-                  {section.title}
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div className="grid grid-cols-[minmax(220px,1.35fr)_repeat(2,minmax(150px,1fr))] border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
+                <div className="px-5 py-4">Feature</div>
+                <div className="px-5 py-4">Free</div>
+                <div className="bg-primary/5 px-5 py-4 text-primary dark:bg-primary/10">
+                  Premium
                 </div>
-                {section.rows.map(([feature, free, premium]) => (
-                  <div
-                    key={feature}
-                    className="grid grid-cols-[minmax(180px,1.4fr)_repeat(2,minmax(120px,1fr))] border-b border-gray-100 last:border-b-0 dark:border-gray-900"
-                  >
-                    <div className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{feature}</div>
-                    <div className="px-4 py-3"><FeatureValue value={free} /></div>
-                    <div className="px-4 py-3"><FeatureValue value={premium} /></div>
-                  </div>
-                ))}
               </div>
-            ))}
+              {comparisonSections.map((section) => (
+                <div key={section.title}>
+                  <div className="border-b border-gray-100 bg-white px-5 py-4 text-sm font-semibold text-gray-950 dark:border-gray-900 dark:bg-gray-950 dark:text-white">
+                    {section.title}
+                  </div>
+                  {section.rows.map(([feature, free, premium]) => (
+                    <div
+                      key={feature}
+                      className="grid grid-cols-[minmax(220px,1.35fr)_repeat(2,minmax(150px,1fr))] border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 dark:border-gray-900 dark:hover:bg-gray-900/35"
+                    >
+                      <div className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {feature}
+                      </div>
+                      <div className="px-5 py-4">
+                        <FeatureValue value={free} />
+                      </div>
+                      <div className="bg-primary/5 px-5 py-4 dark:bg-primary/10">
+                        <FeatureValue value={premium} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
