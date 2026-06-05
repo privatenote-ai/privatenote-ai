@@ -454,18 +454,48 @@ export const es: Translations = {
   featuresFooter: "Creado para compartir con privacidad primero: sin seguimiento, sin anuncios, sin reventa de datos.",
   securityHeroPrefix: "Arquitectura de",
   securityHeroAccent: "seguridad",
+  securityTocTitle: "En esta página",
+  securityTocRelated: "Relacionado",
   securityHeroSubtitle: "Especificaciones técnicas de nuestros protocolos de cifrado del lado del cliente (CSE) y nuestra infraestructura de almacenamiento sin confianza.",
-  securityE2eeTitle: "Modelo de seguridad",
-  securityE2eeBulletServer: "El servidor es solo almacenamiento no confiable: solo recibimos texto cifrado.",
-  securityE2eeBulletPlaintext: "El contenido en claro de las notas no se almacena en nuestros servidores.",
+  securityE2eeTitle: "Conceptos básicos de seguridad",
+  securityE2eeBulletBrowser:
+    "**Cifrado de extremo a extremo** en su **navegador**—cifrado **localmente** antes de subir, el **texto claro no sale de su dispositivo**.",
   securityE2eeBulletKeys:
-    "La clave de cifrado se genera en tu navegador. PrivateNote.ai no la recibe ni la observa (permanece en el fragmento de URL, no en la ruta de la petición), salvo que tu dispositivo esté comprometido.",
+    "La **clave de cifrado/descifrado** se genera en el **navegador** y va integrada en el **enlace compartido**. PrivateNote.ai **no la recibe ni la almacena**.",
+  securityE2eeBulletServer:
+    "Nuestros servidores solo almacenan **texto cifrado** y **no poseen las claves** necesarias para descifrarlo.",
+  securityE2eeLinkNote:
+    "**El enlace compartido concede acceso a la nota.** Compártalo solo con **destinatarios previstos**.",
   securityAiSectionTitle: "Tratamiento de datos de IA",
   securityAiBoxTitle: "Opcional al redactar una nota",
-  securityAiPrivateLine:
-    "Private AI (WebLLM): se ejecuta en tu dispositivo; los prompts no se envían a PrivateNote.ai para inferencia.",
-  securityAiCloudLine:
-    "Cloud Assist: usa Cloudflare Workers AI cuando la IA local no está disponible; debes activarlo explícitamente porque el borrador en claro se envía a Cloudflare Workers AI para inferencia. Las notas guardadas siguen cifradas.",
+  securityAiIntro:
+    "La IA es opcional al redactar una nota—no la necesita para crear un enlace seguro. Si la usa, elija entre IA privada en el dispositivo y Cloud Assist con consentimiento; los límites de privacidad son distintos.",
+  securityAiPrivateTitle: "IA privada (en el dispositivo)",
+  securityAiPrivatePrivacyLabel: "Privacidad",
+  securityAiPrivatePrivacyBody:
+    "**Se ejecuta en su navegador** (WebLLM). El texto del borrador **no se envía** a PrivateNote.ai ni a terceros para inferencia.",
+  securityAiPrivateUploadLabel: "Después de guardar",
+  securityAiPrivateUploadBody:
+    "Su texto se procesa localmente. Solo se sube la **nota cifrada**—el prompt de IA **no viaja** a nuestros servidores.",
+  securityAiPrivateDevicesLabel: "Requisitos del dispositivo",
+  securityAiPrivateDevicesBody:
+    "Si el dispositivo lo permite, cargamos **Qwen3 0.6B** o **Gemma 2 2B** en equipos de escritorio con WebGPU. Espere **hasta ~1 GB** de almacenamiento del navegador para los pesos del modelo y suficiente **memoria GPU**. A menudo **no funciona en móviles o portátiles modestos**—use Cloud Assist o escriba sin IA.",
+  securityAiPrivateDownloadLabel: "Primera configuración",
+  securityAiPrivateDownloadBody:
+    "El primer uso puede descargar pesos cuantizados (**hasta ~1 GB**) desde CDN públicos (p. ej. Hugging Face o jsDelivr)—aparte de la subida cifrada de la nota. Las visitas posteriores pueden reutilizar pesos en caché.",
+  securityAiCloudTitle: "Cloud Assist (alojado)",
+  securityAiCloudPrivacyLabel: "Privacidad",
+  securityAiCloudPrivacyBody:
+    "**Se ejecuta en Cloudflare Workers AI** (**Meta Llama 3.2 3B Instruct**). Debe **aceptar**—el **texto claro del borrador sale de su dispositivo**. No se envía nada hasta que confirme Cloud Assist.",
+  securityAiCloudUploadLabel: "Después de guardar",
+  securityAiCloudUploadBody:
+    "Solo se sube la **nota cifrada**. Al redactar, su prompt pasa por el **Worker de PrivateNote.ai** en texto claro—**no lo almacenamos**, pero nuestro edge lo maneja en esa solicitud antes de Cloudflare.",
+  securityAiCloudDevicesLabel: "Requisitos del dispositivo",
+  securityAiCloudDevicesBody:
+    "**Cualquier navegador moderno** con conexión de red—**sin GPU ni almacenamiento local grande**. Se usa cuando la IA privada no puede ejecutarse en su dispositivo o elige redacción alojada.",
+  securityAiCloudDownloadLabel: "Primera configuración",
+  securityAiCloudDownloadBody:
+    "**Ninguna.** Sin descarga de modelo, sin instalación ni caché local—acepte Cloud Assist y envíe un borrador cuando se le pida.",
   securityClientEncryptionTitle: "Cifrado del lado del cliente",
   securityClientEncryptionBody:
     "Las notas se cifran localmente en la memoria del navegador antes de la transmisión con la Web Crypto API. El servidor solo ve el blob cifrado resultante.",
@@ -500,13 +530,17 @@ export const es: Translations = {
   securityTurnstileBody: "La verificación de solicitudes humanas evita la enumeración de notas por fuerza bruta.",
   securitySupplyChainTitle: "Cadena de suministro e integridad",
   securitySupplyChainIntro:
-    "Como la criptografía se ejecuta en el cliente, la integridad del código de la aplicación entregado forma parte del modelo de confianza.",
-  securitySupplyChainBulletImmutable: "Despliegues de producción inmutables",
-  securitySupplyChainBulletCsp: "Política de seguridad de contenido (CSP) estricta",
-  securitySupplyChainBulletDeps: "Auditoría de dependencias y lockfile fijado",
-  securitySupplyChainBulletTls: "Aplicación de HTTPS/TLS",
-  securitySupplyChainBulletSri: "Subresource Integrity cuando corresponda",
-  securitySupplyChainBulletMinimalJs: "Uso mínimo de JavaScript de terceros",
+    "Como el cifrado se ejecuta en su navegador, el bundle que carga forma parte del modelo de confianza. Alojamiento estático, builds CI fijados y salvaguardas del navegador limitan de forma deliberada lo que puede ejecutarse—no garantía frente a un cliente comprometido, pero límites conscientes.",
+  securitySupplyChainDetailsToggle: "Despliegue y protecciones del navegador",
+  securitySupplyChainBulletImmutable:
+    "Despliegues estáticos en Cloudflare Pages con activos de build con hash desde CI",
+  securitySupplyChainBulletCsp:
+    "CSP HTTP y cabeceras de seguridad; listas permitidas solo donde las funciones lo requieren (Turnstile, CDN de IA local, WASM)",
+  securitySupplyChainBulletDeps:
+    "Instalaciones reproducibles desde package-lock.json (npm ci en pipelines de despliegue)",
+  securitySupplyChainBulletTls: "HTTPS con HSTS (preload) en el edge vía Cloudflare",
+  securitySupplyChainBulletMinimalJs:
+    "Sin scripts de anuncios ni analytics; JS de terceros sobre todo Turnstile y cargas CDN de IA opcionales al usar esas funciones",
   securityLinkModelTitle: "Modelo de seguridad del enlace",
   securityLinkModelBody:
     "Quien posee la URL completa de la nota puede acceder al contenido. Trate el enlace en sí como un secreto.",
@@ -519,13 +553,56 @@ export const es: Translations = {
   securityForwardSecrecyBulletChat: "Registros de chat compartidos, hilos de correo o capturas de pantalla",
   securityThreatModelTitle: "Modelo de amenazas y limitaciones",
   securityThreatModelIntro:
-    "Ningún sistema es irrompible. Nuestra arquitectura aborda amenazas del lado del servidor, pero persisten riesgos del lado del cliente:",
-  securityDeviceCompromiseTitle: "Dispositivo comprometido",
-  securityDeviceCompromiseBody: "El malware puede acceder a la RAM del navegador o al contenido de la pantalla.",
-  securityBrowserExtensionsTitle: "Extensiones del navegador",
-  securityBrowserExtensionsBody: "Las extensiones con permisos amplios pueden leer datos de la página.",
-  securityBundleManipulationTitle: "Manipulación del bundle",
-  securityBundleManipulationBody: "Una entrega JS comprometida podría filtrar claves de descifrado.",
+    "Un buen modelo de amenazas define qué protegemos, contra quién, qué asumimos, qué controles aplican—and qué queda explícitamente fuera. Las protecciones detalladas están arriba (la sección 4 resume); las secciones 1–3 y 5 fijan los límites.",
+  securityThreatAssetsTitle: "Qué protegemos",
+  securityThreatAssetPlaintext: "Texto claro de la nota",
+  securityThreatAssetKeys: "Claves de cifrado",
+  securityThreatAssetReadOnce: "Garantías de lectura única",
+  securityThreatAssetExpiry: "Caducidad y límites de lectura",
+  securityThreatAssetAccount: "Datos de cuenta",
+  securityThreatAssetAuth: "Credenciales de autenticación",
+  securityThreatAdvCoveredTitle: "Qué cubrimos",
+  securityThreatAdvCovered1: "Compromiso de servidor o base de datos (solo texto cifrado en reposo)",
+  securityThreatAdvCovered2: "Administradores maliciosos o curiosos que acceden a notas almacenadas",
+  securityThreatAdvCovered3: "Brecha en el proveedor de almacenamiento o infraestructura",
+  securityThreatAdvCovered4: "Interceptación del tráfico de notas (TLS más cifrado)",
+  securityThreatAdvCovered5: "Enumeración automatizada y abuso (Turnstile, límites de tasa)",
+  securityThreatAdvCovered6: "Fuerza bruta contra notas protegidas con contraseña (Argon2id)",
+  securityThreatAdvCovered7:
+    "Intentos de toma de cuenta (sesiones HttpOnly, rotación al iniciar sesión, límites, TOTP opcional, step-up para acciones sensibles)",
+  securityThreatAdvCovered8:
+    "Segunda consulta o relectura de notas de una sola lectura (consumo atómico en la primera apertura)",
+  securityThreatAdvNotTitle: "Qué no cubrimos",
+  securityThreatAssumptionsTitle: "Supuestos",
+  securityThreatAssumption1: "El dispositivo y navegador del usuario son de confianza al cifrar o descifrar.",
+  securityThreatAssumption2: "El navegador implementa Web Crypto correctamente.",
+  securityThreatAssumption3: "TLS hacia nuestro origen funciona según lo previsto.",
+  securityThreatAssumption4: "El código de la aplicación entregado no fue modificado maliciosamente (véase Cadena de suministro).",
+  securityThreatAssumption5: "El enlace de la nota solo se comparte con destinatarios previstos.",
+  securityThreatProtectionsTitle: "Protecciones en resumen",
+  securityThreatProtectionsPointer: "Detalles en Conceptos básicos de seguridad, Criptografía e Infraestructura arriba.",
+  securityThreatProtConfidentialityTitle: "Confidencialidad",
+  securityThreatProtConf1: "AES-256-GCM, cifrado en el cliente, clave en fragmento de URL, solo almacenamiento cifrado",
+  securityThreatProtIntegrityTitle: "Integridad",
+  securityThreatProtInt1: "Cifrado autenticado, metadatos ligados por AAD, transiciones atómicas en Durable Objects",
+  securityThreatProtAbuseTitle: "Prevención de abuso",
+  securityThreatProtAbuse1: "Turnstile, límites de tasa, resistencia a enumeración",
+  securityThreatProtPasswordTitle: "Notas protegidas con contraseña",
+  securityThreatProtPw1: "Derivación Argon2id con sales únicas",
+  securityThreatOutOfScopeTitle: "Explícitamente fuera de alcance",
+  securityThreatOutOfScopeIntro: "PrivateNote no protege contra:",
+  securityThreatOut1: "Malware en dispositivos del remitente o destinatario",
+  securityThreatOut2: "Extensiones maliciosas del navegador",
+  securityThreatOut3: "Sistemas operativos comprometidos",
+  securityThreatOut4: "Software de captura o grabación de pantalla",
+  securityThreatOut5: "Monitorización del portapapeles",
+  securityThreatOut6:
+    "Compartir la URL completa de la nota (incluida la clave #fragment) por canales inseguros o con personas no autorizadas",
+  securityThreatOut7: "Compromiso del JavaScript entregado",
+  securityThreatOut8: "Ataques de phishing contra usuarios",
+  securityThreatOut9: "Ingeniería social",
+  securityThreatOut10: "Cloud Assist si acepta (procesamiento de borrador en claro por un tercero)",
+  securityThreatRelatedLimitsTitle: "Limitaciones relacionadas",
   securityIntegrityTitle: "Integridad técnica",
   securityIntegrityBody: "Priorizamos la claridad y las garantías de seguridad medibles por encima de las promesas de marketing.",
   securityStartSession: "Iniciar sesión segura",
@@ -655,7 +732,7 @@ export const es: Translations = {
   howHeroPrefix: "Seguridad por",
   howHeroAccent: "diseño",
   howHeroSubtitle:
-    "Descubre cómo PrivateNote.ai protege mensajes sensibles con cifrado en el navegador, notas efímeras, revelado manual y asistencia de IA opcional.",
+    "PrivateNote.ai está diseñado para mantener los secretos en privado: desde cifrado en el cliente y enlaces de lectura única hasta IA centrada en la privacidad que se ejecuta localmente siempre que sea posible.",
   howEncryptStepDetail:
     "Tu dispositivo cifra la nota antes de que salga de tu pantalla y llega cifrada a nuestro servidor.",
   howInfrastructureTitle: "Infraestructura",
@@ -671,19 +748,61 @@ export const es: Translations = {
     "Los bots de vista previa de enlaces en apps como Slack o iMessage pueden “leer” accidentalmente una nota de un solo uso antes que el destinatario.",
   howManualRevealQuote:
     "Nuestro paso de revelado manual exige interacción humana, para que solo el destinatario previsto consuma la nota.",
-  howAiSectionTitle: "IA opcional al redactar una nota",
+  howAiSectionTitle: "Escribir con IA",
   howAiIntro:
-    "La IA es opcional: siempre puedes escribir sin ella. Si tu navegador lo admite, ofrecemos Private AI primero. Si la IA local no está disponible o eliges borradores alojados, puedes usar Cloud Assist.",
+    "La IA es opcional. Siempre puedes escribir una nota cifrada normal sin IA.",
+  howAiChoiceIntro:
+    "Hay dos rutas de IA. Private AI es la opción predeterminada centrada en la privacidad. Cloud Assist es una alternativa cuando eliges procesamiento alojado.",
+  howAiFirstChoice: "Primera opción",
+  howAiFallbackChoice: "Alternativa",
+  howAiDetailTransition:
+    "Veamos ahora con más detalle cómo funciona Private AI y cómo funciona Cloud Assist cuando se usa procesamiento alojado.",
   howPrivateAiTitle: "Private AI",
-  howPrivateAiBadge: "Permanece en tu dispositivo",
+  howPrivateAiBadge: "IA totalmente privada en tu navegador",
+  howPrivateAiHelper:
+    "Úsalo cuando quieras ayuda de IA sin enviar el borrador fuera del navegador.",
   howPrivateAiBody:
-    "Private AI se ejecuta en tu navegador (WebLLM). Tu prompt se procesa en el dispositivo; el texto en claro no va a PrivateNote.ai para inferencia. Solo se sube la nota cifrada después. Los archivos del modelo pueden descargarse desde CDN públicos configurados para WebLLM, separados de tu nota cifrada.",
+    "El modelo se descarga una vez, se carga en tu navegador y procesa tu prompt localmente antes del cifrado.",
+  howPrivateAiFlowGuideTitle: "Paso a paso",
+  howPrivateAiFlowStepDownloadDetail: "El archivo del modelo se descarga una vez en tu dispositivo.",
+  howPrivateAiFlowStepLoadDetail: "Se carga en tu navegador cuando usas Private AI.",
+  howPrivateAiFlowStepRequestDetail:
+    "Tu prompt se procesa localmente — el borrador nunca sale del navegador.",
+  howPrivateAiFlowStepAcceptDetail:
+    "Revisas la sugerencia y aceptas o modificas la redacción que quieres.",
+  howPrivateAiFlowStepEncryptDetail: "La nota final se cifra en tu dispositivo.",
+  howPrivateAiFlowStepShareDetail: "Solo la nota cifrada se envía a PrivateNote.",
+  howPrivateAiPrivacyTicker1:
+    "La IA se ejecuta localmente — tu borrador permanece en el navegador.",
+  howPrivateAiPrivacyTicker2:
+    "PrivateNote recibe solo la nota cifrada que apruebas.",
+  howAiPrivateStepDownload: "Descargar modelo",
+  howAiPrivateStepLoad: "Cargar modelo",
+  howAiPrivateStepRequest: "Solicitud de IA local",
+  howAiPrivateStepAccept: "Aceptar borrador",
+  howAiCloudStepSend: "Enviar borrador",
+  howAiCloudTransition:
+    "Si tu navegador no puede ejecutar el modelo local, o si eliges explícitamente redacción alojada, Cloud Assist puede ayudar con un compromiso de privacidad distinto.",
   howCloudAssistTitle: "Cloud Assist",
-  howCloudAssistBadge: "El texto en claro sale del dispositivo",
+  howCloudAssistBadge: "No totalmente privado",
+  howCloudAssistHelper:
+    "Úsalo solo si la IA local no está disponible o eliges redacción alojada.",
   howCloudAssistBody:
-    "Cloud Assist usa Cloudflare Workers AI (Llama 3.2 3B) cuando Private AI no está disponible en tu dispositivo o usas borradores alojados. Debes activarlo explícitamente porque el borrador en claro se envía a Cloudflare Workers AI para inferencia. Eso sale de nuestro límite de privacidad plena: Cloudflare procesa el texto aunque nosotros no lo almacenemos.",
-  howAiCaution:
-    "Private AI añade superficie de riesgo por memoria y descargas en el dispositivo. Cloud Assist además envía el borrador en claro a un proveedor externo de inferencia. Úsalos solo si ese compromiso es aceptable.",
+    "Tu borrador se envía a Cloudflare Workers AI para ayudar con la redacción. La respuesta vuelve a tu navegador y después la nota final se cifra.",
+  howCloudAssistFlowGuideTitle: "Paso a paso",
+  howCloudAssistFlowStepTemplate: "Prompt desde plantilla",
+  howCloudAssistFlowStepTemplateDetail:
+    "Eliges una plantilla inicial y escribes tu prompt en el navegador.",
+  howCloudAssistFlowStepCloudDetail:
+    "Tu borrador se envía a Cloudflare Workers AI para ayudar con la redacción.",
+  howCloudAssistFlowStepAcceptDetail:
+    "La respuesta vuelve a tu navegador y aceptas o modificas el borrador que quieres.",
+  howCloudAssistFlowStepEncryptDetail: "La nota final se cifra en tu dispositivo.",
+  howCloudAssistFlowStepShareDetail: "Solo la nota cifrada se envía a PrivateNote.",
+  howCloudAssistPrivacyTicker1:
+    "Tu borrador se envía a Cloudflare Workers AI para ayuda con el texto.",
+  howCloudAssistPrivacyTicker2:
+    "La nota final se cifra en tu dispositivo antes de compartir nada.",
   howCtaTitle: "¿Listo para proteger tus datos?",
   howCtaSubtitle: "Rápido, efímero y conforme a la ley.",
   howCtaButton: "Empezar a escribir",

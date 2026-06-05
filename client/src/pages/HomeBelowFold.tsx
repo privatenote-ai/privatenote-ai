@@ -52,7 +52,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
           <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,#00000012_1px,transparent_1px),linear-gradient(to_bottom,#00000012_1px,transparent_1px)] [background-size:56px_56px] dark:opacity-[0.10]" />
         </div>
 
-        <div className="relative z-10 mx-auto min-w-0 max-w-4xl px-4 pb-28 pt-20 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto min-w-0 max-w-4xl px-4 pb-32 pt-28 sm:px-6 sm:pt-32 lg:px-8 lg:pt-36 lg:pb-36">
             <motion.div
               className="inline-flex items-center rounded-full border border-gray-200/70 bg-white/80 px-3 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:border-gray-700/70 dark:bg-gray-900/60 dark:text-gray-300"
               variants={fadeUp}
@@ -65,7 +65,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
             </motion.div>
 
             <motion.h2
-              className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl"
+              className="mt-5 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:mt-6 sm:text-4xl"
               variants={fadeUp}
               initial="hidden"
               whileInView="show"
@@ -76,7 +76,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
             </motion.h2>
 
             <motion.p
-              className="mt-3 max-w-xl text-base text-gray-600 dark:text-gray-300"
+              className="mt-4 max-w-xl text-base text-gray-600 dark:text-gray-300 sm:mt-5"
               variants={fadeUp}
               initial="hidden"
               whileInView="show"
@@ -86,7 +86,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
               {t.shareSensitiveBody}
             </motion.p>
 
-            <ul className="mt-7 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+            <ul className="mt-9 space-y-4 text-sm text-gray-600 dark:text-gray-300 sm:mt-10">
               {[t.clientSideEncryption, t.readOnceExposure, t.noTrackingAds, t.aesQuantumSafe].map((line, idx) => (
                 <motion.li
                   key={line}
@@ -114,7 +114,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
       >
         <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.08] [background-image:linear-gradient(to_right,#00000014_1px,transparent_1px),linear-gradient(to_bottom,#00000014_1px,transparent_1px)] [background-size:48px_48px] dark:opacity-[0.12]" />
 
-        <div className="relative mx-auto min-w-0 max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="relative mx-auto min-w-0 max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -146,7 +146,7 @@ export default function HomeBelowFold({ t, blogPath, blogPosts }: HomeBelowFoldP
       </section>
 
       <section
-        className="relative isolate overflow-x-clip border-t border-gray-200/70 bg-gradient-to-b from-gray-50/50 via-white to-gray-50/30 py-16 dark:border-gray-800/70 dark:from-gray-950/90 dark:via-gray-950 dark:to-gray-950/85 sm:py-20 lg:py-24"
+        className="relative isolate overflow-x-clip border-t border-gray-200/70 bg-gradient-to-b from-gray-50/50 via-white to-gray-50/30 py-20 dark:border-gray-800/70 dark:from-gray-950/90 dark:via-gray-950 dark:to-gray-950/85 sm:py-24 lg:py-28"
         aria-labelledby="privacy-flow-heading"
       >
         <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.06] [background-image:linear-gradient(to_right,#00000010_1px,transparent_1px),linear-gradient(to_bottom,#00000010_1px,transparent_1px)] [background-size:52px_52px] dark:opacity-[0.08]" />

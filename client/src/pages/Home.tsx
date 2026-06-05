@@ -107,9 +107,9 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 max-w-full overflow-x-clip pb-20`}>
+    <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 max-w-full overflow-x-clip pb-28 sm:pb-32`}>
       {!isCreateSuccessView && (
-        <section className="relative isolate mx-auto max-w-4xl overflow-x-clip px-4 pb-0 sm:px-6 lg:px-8">
+        <section className="relative isolate mx-auto max-w-4xl overflow-x-clip px-4 pb-2 sm:px-6 sm:pb-4 lg:px-8">
           <div
             className="pointer-events-none absolute inset-x-0 -top-12 -z-10 h-72 w-full"
             aria-hidden
@@ -121,7 +121,7 @@ const Home: React.FC = () => {
               <span className="block">{t.homeHeroLine1}</span>
               <span className="block mt-1 text-primary">{t.homeHeroLine2}</span>
             </h1>
-            <p className="mt-3 max-w-4xl mx-auto text-lg text-gray-500 dark:text-gray-400 sm:text-xl md:mt-5 md:text-[1.375rem] md:max-w-5xl">
+            <p className="mt-4 max-w-4xl mx-auto text-lg text-gray-500 dark:text-gray-400 sm:text-xl md:mt-6 md:text-[1.375rem] md:max-w-5xl">
               {t.homeHeroSubtitle}
             </p>
           </div>
@@ -129,7 +129,7 @@ const Home: React.FC = () => {
       )}
 
       <div
-        className={`${isCreateSuccessView ? 'mt-0' : 'mt-8'} min-w-0 px-4 py-4 pb-10 sm:px-6 sm:pb-14 lg:px-8`}
+        className={`${isCreateSuccessView ? 'mt-0' : 'mt-10 md:mt-12'} min-w-0 px-4 py-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
       >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
@@ -150,7 +150,7 @@ const Home: React.FC = () => {
         ref={keyFeaturesRef}
         role="region"
         aria-label={t.keyFeatures}
-        className="relative isolate mt-4 overflow-x-clip sm:mt-6"
+        className="relative isolate mt-16 overflow-x-clip sm:mt-20 lg:mt-28"
       >
         <div
           aria-hidden
@@ -165,7 +165,7 @@ const Home: React.FC = () => {
         >
           {keyFeaturesMounted ? (
             <Suspense fallback={<HomeKeyFeaturesSkeleton />}>
-              <SecurityFeatures className="pt-5 pb-10 sm:pt-6 sm:pb-12" />
+              <SecurityFeatures className="pt-8 pb-14 sm:pt-10 sm:pb-16 lg:pt-12 lg:pb-20" />
             </Suspense>
           ) : (
             <HomeKeyFeaturesPeek title={t.keyFeatures} />

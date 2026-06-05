@@ -45,7 +45,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
   return (
     <div className={cn('relative px-4 py-10 sm:px-6 sm:py-12 lg:px-8', className)}>
       <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8 sm:mb-12">
+      <div className="text-center mb-10 sm:mb-14 lg:mb-16">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
           {t.keyFeatures}
         </h2>
@@ -55,7 +55,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       </div>
       
       {/* Card grid for medium+ screens, hidden on extra small screens */}
-      <div className="hidden sm:grid grid-cols-2 items-stretch gap-5 md:grid-cols-3 xl:gap-6">
+      <div className="hidden sm:grid grid-cols-2 items-stretch gap-6 md:grid-cols-3 md:gap-7 xl:gap-8">
         {features.map((feature, index) => (
           <div
             key={index}
@@ -76,7 +76,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
       </div>
       
       {/* List view for extra small screens only */}
-      <div className="sm:hidden space-y-4">
+      <div className="sm:hidden space-y-5">
         {features.map((feature, index) => (
           <div
             key={index}
@@ -95,7 +95,7 @@ export const SecurityFeatures: React.FC<SecurityFeaturesProps> = ({ className })
         ))}
       </div>
 
-      <div className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-14 text-center text-xs text-gray-500 dark:text-gray-400 sm:mt-16">
         {t.featuresFooter}
       </div>
       </div>

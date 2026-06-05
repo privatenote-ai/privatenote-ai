@@ -448,17 +448,47 @@ export const en: Translations = {
   securityHeroPrefix: "Security",
   securityHeroAccent: "Architecture",
   securityHeroSubtitle: "Technical specifications on our Client-Side Encryption (CSE) protocols and trustless storage infrastructure.",
-  securityE2eeTitle: "Security Model",
-  securityE2eeBulletServer: "The server is untrusted storage—we only receive ciphertext.",
-  securityE2eeBulletPlaintext: "Plaintext note content is never stored on our servers.",
+  securityTocTitle: "On this page",
+  securityTocRelated: "Related",
+  securityE2eeTitle: "Security Basics",
+  securityE2eeBulletBrowser:
+    "**End-to-end encryption** in your **browser**—encrypted **locally** before upload, so **plaintext never leaves your device**.",
   securityE2eeBulletKeys:
-    "The encryption key is generated in your browser. PrivateNote.ai does not receive or observe it (it stays in the URL fragment, not in the request path), assuming your device is not compromised.",
+    "The **encryption/decryption key** is generated in your **browser** and embedded in the **shared link**. PrivateNote.ai **never receives or stores it**.",
+  securityE2eeBulletServer:
+    "Our servers store only **encrypted ciphertext** and do **not possess the keys** needed to decrypt it.",
+  securityE2eeLinkNote:
+    "**The shared link grants access to the note.** Share it only with **intended recipients**.",
   securityAiSectionTitle: "AI Data Handling",
   securityAiBoxTitle: "Optional when drafting a note",
-  securityAiPrivateLine:
-    "Private AI (WebLLM): runs on your device; prompts are not sent to PrivateNote.ai for inference.",
-  securityAiCloudLine:
-    "Cloud Assist: uses Cloudflare Workers AI when local AI is unavailable—you must explicitly opt in because draft plaintext is sent to Cloudflare Workers AI for inference. Stored notes remain ciphertext.",
+  securityAiIntro:
+    "AI is optional when drafting a note—you never need it to create a secure link. When you use it, choose between on-device Private AI and opt-in Cloud Assist; they have different privacy boundaries.",
+  securityAiPrivateTitle: "Private AI (on-device)",
+  securityAiPrivatePrivacyLabel: "Privacy",
+  securityAiPrivatePrivacyBody:
+    "**Runs in your browser** (WebLLM). Draft text is **not sent** to PrivateNote.ai or any third party for inference.",
+  securityAiPrivateUploadLabel: "After you save",
+  securityAiPrivateUploadBody:
+    "Your text is processed locally. Only the **encrypted note** is uploaded—the AI prompt does **not** travel to our servers.",
+  securityAiPrivateDevicesLabel: "Device requirements",
+  securityAiPrivateDevicesBody:
+    "When supported, we load **Qwen3 0.6B** or **Gemma 2 2B** on WebGPU-capable desktops. Expect **up to ~1 GB** of browser storage for model weights and enough **GPU memory** to run them. Often **cannot run on phones or weaker laptops**—use Cloud Assist or write without AI.",
+  securityAiPrivateDownloadLabel: "First-time setup",
+  securityAiPrivateDownloadBody:
+    "First use may download quantized weights (**up to ~1 GB**) from public CDNs (e.g. Hugging Face or jsDelivr)—separate from your encrypted note upload. Later sessions may reuse cached weights.",
+  securityAiCloudTitle: "Cloud Assist (hosted)",
+  securityAiCloudPrivacyLabel: "Privacy",
+  securityAiCloudPrivacyBody:
+    "**Runs on Cloudflare Workers AI** (**Meta Llama 3.2 3B Instruct**). You must **opt in**—draft **plaintext leaves your device**. Nothing is sent until you confirm Cloud Assist.",
+  securityAiCloudUploadLabel: "After you save",
+  securityAiCloudUploadBody:
+    "Only the **encrypted note** is uploaded. While drafting, your prompt passes through the **PrivateNote.ai Worker** in plaintext—we **do not store** it, but our edge handles it for that request before Cloudflare processes it.",
+  securityAiCloudDevicesLabel: "Device requirements",
+  securityAiCloudDevicesBody:
+    "**Any modern browser** with a network connection—**no GPU or large local storage** required. Used when Private AI cannot run on your device or you choose hosted drafting.",
+  securityAiCloudDownloadLabel: "First-time setup",
+  securityAiCloudDownloadBody:
+    "**None required.** No model download, install step, or local cache—opt in and send a draft when prompted.",
   securityClientEncryptionTitle: "Client-Side Encryption",
   securityClientEncryptionBody:
     "Notes are encrypted locally in browser memory before transmission using the Web Crypto API. The server only sees the resulting ciphertext blob.",
@@ -493,13 +523,17 @@ export const en: Translations = {
   securityTurnstileBody: "Human-only request verification prevents brute-force note enumeration.",
   securitySupplyChainTitle: "Supply Chain & Integrity",
   securitySupplyChainIntro:
-    "Because cryptography executes client-side, integrity of delivered application code is part of the trust model.",
-  securitySupplyChainBulletImmutable: "Immutable production deployments",
-  securitySupplyChainBulletCsp: "Strict Content Security Policy (CSP)",
-  securitySupplyChainBulletDeps: "Dependency auditing and lockfile pinning",
-  securitySupplyChainBulletTls: "HTTPS/TLS enforcement",
-  securitySupplyChainBulletSri: "Subresource Integrity where applicable",
-  securitySupplyChainBulletMinimalJs: "Minimal third-party JavaScript usage",
+    "Because encryption runs in your browser, the app bundle you load is part of the trust model. We rely on static hosting, pinned CI builds, and browser guardrails—not a guarantee against a compromised client, but deliberate limits on what can execute.",
+  securitySupplyChainDetailsToggle: "Deployment and browser safeguards",
+  securitySupplyChainBulletImmutable:
+    "Static Cloudflare Pages deploys with content-hashed build assets from CI",
+  securitySupplyChainBulletCsp:
+    "HTTP Content Security Policy plus security headers; allowlists only where features require them (Turnstile, on-device AI CDNs, WASM)",
+  securitySupplyChainBulletDeps:
+    "Reproducible installs from package-lock.json (npm ci in deploy pipelines)",
+  securitySupplyChainBulletTls: "HTTPS with HSTS (preload) at the edge via Cloudflare",
+  securitySupplyChainBulletMinimalJs:
+    "No ad or analytics scripts; third-party JS is mainly Turnstile and optional AI CDN loads when you use those features",
   securityLinkModelTitle: "Link Security Model",
   securityLinkModelBody:
     "Possession of the full note URL grants access to the note contents. Users should treat the link itself as a secret.",
@@ -512,13 +546,56 @@ export const en: Translations = {
   securityForwardSecrecyBulletChat: "Shared chat logs, email threads, or screenshots",
   securityThreatModelTitle: "Threat Model & Limitations",
   securityThreatModelIntro:
-    "No system is unbreakable. Our architecture addresses server-side threats, but client-side risks remain:",
-  securityDeviceCompromiseTitle: "Device Compromise",
-  securityDeviceCompromiseBody: "Malware can access browser RAM or screen content.",
-  securityBrowserExtensionsTitle: "Browser Extensions",
-  securityBrowserExtensionsBody: "Extensions with broad permissions can read page data.",
-  securityBundleManipulationTitle: "Bundle Manipulation",
-  securityBundleManipulationBody: "Compromised JS delivery could leak decryption keys.",
+    "A useful threat model states what we protect, who we protect against, what we assume, which controls apply—and what we explicitly do not cover. Protections earlier on this page map to section 4; sections 1–3 and 5 define the boundaries.",
+  securityThreatAssetsTitle: "What we protect",
+  securityThreatAssetPlaintext: "Note plaintext",
+  securityThreatAssetKeys: "Encryption keys",
+  securityThreatAssetReadOnce: "Read-once guarantees",
+  securityThreatAssetExpiry: "Expiry & read limits",
+  securityThreatAssetAccount: "User account data",
+  securityThreatAssetAuth: "Authentication credentials",
+  securityThreatAdvCoveredTitle: "What we cover",
+  securityThreatAdvCovered1: "Server or database compromise (ciphertext at rest only)",
+  securityThreatAdvCovered2: "Malicious or curious administrators accessing stored notes",
+  securityThreatAdvCovered3: "Storage or infrastructure provider breach",
+  securityThreatAdvCovered4: "Network interception of note traffic (TLS plus ciphertext)",
+  securityThreatAdvCovered5: "Automated note enumeration and abuse (Turnstile, rate limits)",
+  securityThreatAdvCovered6: "Brute-force attempts against password-protected notes (Argon2id)",
+  securityThreatAdvCovered7:
+    "Account takeover attempts (HttpOnly sessions, rotation on sign-in, rate limits, optional TOTP, step-up for sensitive actions)",
+  securityThreatAdvCovered8:
+    "Second fetch or replay of read-once notes (atomic consumption on first view)",
+  securityThreatAdvNotTitle: "What we do not cover",
+  securityThreatAssumptionsTitle: "Assumptions",
+  securityThreatAssumption1: "The user’s device and browser are trusted when encrypting or decrypting.",
+  securityThreatAssumption2: "The browser correctly implements Web Crypto.",
+  securityThreatAssumption3: "TLS to our origin works as intended.",
+  securityThreatAssumption4: "Delivered application code has not been maliciously modified (see Supply Chain & Integrity).",
+  securityThreatAssumption5: "The note link is shared only with intended recipients.",
+  securityThreatProtectionsTitle: "Protections at a glance",
+  securityThreatProtectionsPointer: "Detailed specs appear in Security Basics, Cryptography, and Infrastructure above.",
+  securityThreatProtConfidentialityTitle: "Confidentiality",
+  securityThreatProtConf1: "AES-256-GCM, client-side encryption, key in URL fragment, ciphertext-only storage",
+  securityThreatProtIntegrityTitle: "Integrity",
+  securityThreatProtInt1: "Authenticated encryption, AAD-bound metadata, atomic Durable Object state transitions",
+  securityThreatProtAbuseTitle: "Abuse prevention",
+  securityThreatProtAbuse1: "Turnstile verification, rate limiting, enumeration resistance",
+  securityThreatProtPasswordTitle: "Password-protected notes",
+  securityThreatProtPw1: "Argon2id key derivation with unique salts",
+  securityThreatOutOfScopeTitle: "Explicitly out of scope",
+  securityThreatOutOfScopeIntro: "PrivateNote does not protect against:",
+  securityThreatOut1: "Malware on sender or recipient devices",
+  securityThreatOut2: "Malicious browser extensions",
+  securityThreatOut3: "Compromised operating systems",
+  securityThreatOut4: "Screen capture or recording software",
+  securityThreatOut5: "Clipboard monitoring",
+  securityThreatOut6:
+    "Sharing the full note URL (including the #fragment key) over insecure channels or with unauthorized parties",
+  securityThreatOut7: "Compromise of the delivered JavaScript application",
+  securityThreatOut8: "Phishing attacks against users",
+  securityThreatOut9: "Social engineering",
+  securityThreatOut10: "Cloud Assist inference when you opt in (third-party processing of draft plaintext)",
+  securityThreatRelatedLimitsTitle: "Related limitations",
   securityIntegrityTitle: "Technical Integrity",
   securityIntegrityBody: "We prioritize clarity and measurable security guarantees over marketing claims.",
   securityStartSession: "Start Secure Session",
@@ -648,7 +725,7 @@ export const en: Translations = {
   howHeroPrefix: "Security by",
   howHeroAccent: "Design",
   howHeroSubtitle:
-    "See how PrivateNote.ai protects sensitive messages with browser encryption, short-lived notes, manual reveal, and optional Private AI or Cloud Assist when you draft a note.",
+    "PrivateNote.ai is built to keep secrets private—from client-side encryption and burn-after-reading links to privacy-first AI that runs locally whenever possible.",
   howEncryptStepDetail:
     "Your device encrypts the note before it leaves your screen and lands encrypted on our server.",
   howInfrastructureTitle: "Infrastructure",
@@ -664,19 +741,61 @@ export const en: Translations = {
     "Link preview bots in apps like Slack or iMessage can accidentally “read” a one-time note before your recipient sees it.",
   howManualRevealQuote:
     "Our manual reveal step forces human interaction, ensuring only the intended recipient consumes the note.",
-  howAiSectionTitle: "Optional AI when drafting a note",
+  howAiSectionTitle: "Write with AI",
   howAiIntro:
-    "AI is optional—you can always write without it. When your browser supports it, we offer Private AI first. If local AI is unavailable or you choose hosted drafts, you may use Cloud Assist.",
+    "AI is optional. You can always write a normal encrypted note without it.",
+  howAiChoiceIntro:
+    "There are two AI paths. Private AI is the default privacy-first path. Cloud Assist is a fallback when you choose hosted processing.",
+  howAiFirstChoice: "First choice",
+  howAiFallbackChoice: "Fallback option",
+  howAiDetailTransition:
+    "Now let’s look at how Private AI works, and how Cloud Assist works when hosted processing is used.",
   howPrivateAiTitle: "Private AI",
-  howPrivateAiBadge: "Stays on your device",
+  howPrivateAiBadge: "Fully private AI in your browser",
+  howPrivateAiHelper:
+    "Use this when you want AI help without sending draft text away from your browser.",
   howPrivateAiBody:
-    "Private AI runs in your browser (WebLLM). Your prompt is processed on your device; plaintext does not go to PrivateNote.ai for inference. Only the encrypted note is uploaded afterward. Model files may download from public CDNs configured for WebLLM—separate from your encrypted note.",
+    "The model downloads once, loads in your browser, and processes your prompt locally before encryption.",
+  howPrivateAiFlowGuideTitle: "Step by step",
+  howPrivateAiFlowStepDownloadDetail:
+    "The model file downloads once to your device.",
+  howPrivateAiFlowStepLoadDetail: "It loads in your browser when you use Private AI.",
+  howPrivateAiFlowStepRequestDetail:
+    "Your prompt is processed locally — draft text never leaves the browser.",
+  howPrivateAiFlowStepAcceptDetail:
+    "You review the suggestion, then accept or modify the wording you want.",
+  howPrivateAiFlowStepEncryptDetail: "The final note is encrypted on your device.",
+  howPrivateAiFlowStepShareDetail: "Only the encrypted note is sent to PrivateNote.",
+  howPrivateAiPrivacyTicker1: "AI runs locally — your draft stays in your browser.",
+  howPrivateAiPrivacyTicker2:
+    "PrivateNote receives only the encrypted note you approve.",
+  howAiPrivateStepDownload: "Download model",
+  howAiPrivateStepLoad: "Load model",
+  howAiPrivateStepRequest: "Local AI request",
+  howAiPrivateStepAccept: "Accept draft",
+  howAiCloudStepSend: "Send draft",
+  howAiCloudTransition:
+    "If your browser cannot run the local model, or if you explicitly choose hosted drafting, Cloud Assist can help with a different privacy trade-off.",
   howCloudAssistTitle: "Cloud Assist",
-  howCloudAssistBadge: "Plaintext leaves your device",
+  howCloudAssistBadge: "Not fully private",
+  howCloudAssistHelper:
+    "Use this only when local AI is unavailable or you choose hosted drafting.",
   howCloudAssistBody:
-    "Cloud Assist uses Cloudflare Workers AI (Llama 3.2 3B) when Private AI is not available on your device or you use hosted drafts. You must explicitly opt in because draft plaintext is sent to Cloudflare Workers AI for inference. That steps outside our full-privacy boundary: Cloudflare processes the text even though we do not store it.",
-  howAiCaution:
-    "Private AI adds on-device memory and download surface. Cloud Assist additionally sends draft plaintext to a third-party inference provider. Use either only when that trade-off is acceptable.",
+    "Your draft is sent to Cloudflare Workers AI for wording help. The response comes back to your browser, then the final note is encrypted.",
+  howCloudAssistFlowGuideTitle: "Step by step",
+  howCloudAssistFlowStepTemplate: "Prompt from template",
+  howCloudAssistFlowStepTemplateDetail:
+    "You pick a starter template and write your prompt in the browser.",
+  howCloudAssistFlowStepCloudDetail:
+    "Your draft is sent to Cloudflare Workers AI for wording help.",
+  howCloudAssistFlowStepAcceptDetail:
+    "The response returns to your browser and you accept or modify the draft you want.",
+  howCloudAssistFlowStepEncryptDetail: "The final note is encrypted on your device.",
+  howCloudAssistFlowStepShareDetail: "Only the encrypted note is sent to PrivateNote.",
+  howCloudAssistPrivacyTicker1:
+    "Your draft is sent to Cloudflare Workers AI for wording help.",
+  howCloudAssistPrivacyTicker2:
+    "The finished note is encrypted on your device before anything is shared.",
   howCtaTitle: "Ready to secure your data?",
   howCtaSubtitle: "Fast, ephemeral, and legally compliant.",
   howCtaButton: "Start Writing",
