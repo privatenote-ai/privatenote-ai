@@ -22,6 +22,16 @@ const stripePaymentLinks: Record<BillingMode, string> = {
   monthly: (import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK as string | undefined)?.trim() || "",
   yearly: (import.meta.env.VITE_STRIPE_PREMIUM_YEARLY_PAYMENT_LINK as string | undefined)?.trim() || "",
 };
+const stripePrefilledPromoCode =
+  (import.meta.env.VITE_STRIPE_PREMIUM_PREFILLED_PROMO_CODE as string | undefined)?.trim() || "";
+
+function withStripePromoCode(href: string): string {
+  if (!stripePrefilledPromoCode || !/^https?:\/\//i.test(href)) return href;
+
+  const url = new URL(href);
+  url.searchParams.set("prefilled_promo_code", stripePrefilledPromoCode);
+  return url.toString();
+}
 
 const planOrder: PlanId[] = ["free", "premium"];
 
@@ -128,6 +138,10 @@ const faqs = [
     a: "Yes, once the Stripe Payment Link environment variables are set. Until then the Premium button falls back to the contact page for staging, early access, or manual enablement.",
   },
   {
+    q: "Can I use a discount code?",
+    a: "Yes, when promotion codes are enabled on the Stripe Payment Link. Stripe shows the code field during checkout, and the app can optionally prefill a public promo code for testing.",
+  },
+  {
     q: "When should I use recipient verification?",
     a: "Use it when the link alone is not enough assurance, such as client credentials, vendor onboarding, or any note that should only be revealed by a specific recipient.",
   },
@@ -230,7 +244,9 @@ export default function Premium() {
   const [billingMode, setBillingMode] = useState<BillingMode>("yearly");
   const lp = (path: string) => localizedPath(path, language);
   const accountHref = user ? "/account" : "/auth/sign-up";
-  const premiumCheckoutHref = stripePaymentLinks[billingMode] || lp("/contact");
+  const premiumCheckoutHref = stripePaymentLinks[billingMode]
+    ? withStripePromoCode(stripePaymentLinks[billingMode])
+    : lp("/contact");
   const planHref = useMemo(
     () => ({ free: accountHref, premium: premiumCheckoutHref }),
     [accountHref, premiumCheckoutHref]
