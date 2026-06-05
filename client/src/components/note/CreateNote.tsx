@@ -901,6 +901,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           description: parsed.message ?? "Shorten the prompt and try again.",
           variant: "destructive",
         });
+      } else if (parsed.code === "hosted_ai_fair_use_limit_reached") {
+        toast({
+          title: "Monthly fair-use limit reached",
+          description: parsed.message ?? "Monthly fair-use text processing limit reached.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "hosted_ai_auth_required") {
+        toast({
+          title: "Sign in required",
+          description: parsed.message ?? "Sign in to use hosted AI.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Cloud assist unavailable",

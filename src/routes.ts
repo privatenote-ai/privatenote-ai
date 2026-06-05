@@ -80,6 +80,12 @@ const HOSTED_AI_DRAFT = {
   MAX_OUTPUT_TOKENS: 260,
 };
 
+const HOSTED_AI_COST_GUARD = {
+  FAIR_USE_LIMIT_USD: 1.5,
+  INPUT_USD_PER_MILLION_TOKENS: 0.051,
+  OUTPUT_USD_PER_MILLION_TOKENS: 0.34,
+};
+
 /** When set (KV), AI paths require a fresh Turnstile token until verification succeeds. */
 const TURNSTILE_CHALLENGE = {
   KEY_PREFIX: "turnstile_challenge:",
@@ -6367,6 +6373,162 @@ function extractHostedAiText(result: unknown): string {
     : "";
 }
 
+type HostedAiTokenUsage = {
+  promptTokens: number;
+  completionTokens: number;
+};
+
+function getHostedAiBillingMonth(date = new Date()): string {
+  return date.toISOString().slice(0, 7);
+}
+
+function getNumericRecordValue(record: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return Math.floor(value);
+    }
+  }
+  return 0;
+}
+
+function extractHostedAiUsage(result: unknown): HostedAiTokenUsage {
+  const candidates: unknown[] = [];
+  if (result && typeof result === "object") {
+    const record = result as Record<string, unknown>;
+    candidates.push(record.usage, record.result);
+    if (record.result && typeof record.result === "object") {
+      candidates.push((record.result as Record<string, unknown>).usage);
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") continue;
+    const record = candidate as Record<string, unknown>;
+    const promptTokens = getNumericRecordValue(record, ["prompt_tokens", "input_tokens"]);
+    const completionTokens = getNumericRecordValue(record, [
+      "completion_tokens",
+      "output_tokens",
+      "response_tokens",
+    ]);
+    if (promptTokens > 0 || completionTokens > 0) {
+      return { promptTokens, completionTokens };
+    }
+  }
+
+  return { promptTokens: 0, completionTokens: 0 };
+}
+
+function calculateHostedAiCostUsd(usage: HostedAiTokenUsage): number {
+  const inputCost =
+    (usage.promptTokens / 1_000_000) * HOSTED_AI_COST_GUARD.INPUT_USD_PER_MILLION_TOKENS;
+  const outputCost =
+    (usage.completionTokens / 1_000_000) * HOSTED_AI_COST_GUARD.OUTPUT_USD_PER_MILLION_TOKENS;
+  return Number((inputCost + outputCost).toFixed(8));
+}
+
+function estimateTokenCountFromText(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return Math.max(1, Math.ceil(trimmed.length / 4));
+}
+
+function withHostedAiUsageFallback(
+  usage: HostedAiTokenUsage,
+  prompt: string,
+  completion: string,
+): HostedAiTokenUsage {
+  return {
+    promptTokens: usage.promptTokens || estimateTokenCountFromText(prompt),
+    completionTokens: usage.completionTokens || estimateTokenCountFromText(completion),
+  };
+}
+
+async function getHostedAiMonthlyCostUsd(
+  env: Env,
+  userId: string,
+  billingMonth = getHostedAiBillingMonth(),
+): Promise<number> {
+  if (!env.AUTH_DB) {
+    throw new Error("Auth database is not configured");
+  }
+
+  const row = await env.AUTH_DB.prepare(
+    "SELECT COALESCE(SUM(cost_usd), 0) AS total_cost_usd FROM token_usage_logs WHERE user_id = ? AND billing_month = ?",
+  )
+    .bind(userId, billingMonth)
+    .first<{ total_cost_usd: number | null }>();
+  return Number(row?.total_cost_usd ?? 0);
+}
+
+async function assertHostedAiFairUseBudget(
+  env: Env,
+  request: Request,
+  userId: string,
+): Promise<Response | null> {
+  try {
+    const monthlyCostUsd = await getHostedAiMonthlyCostUsd(env, userId);
+    if (monthlyCostUsd >= HOSTED_AI_COST_GUARD.FAIR_USE_LIMIT_USD) {
+      return jsonResponse(
+        {
+          error: "hosted_ai_fair_use_limit_reached",
+          message: "Monthly fair-use text processing limit reached.",
+          limitUsd: HOSTED_AI_COST_GUARD.FAIR_USE_LIMIT_USD,
+        },
+        429,
+        request,
+      );
+    }
+  } catch (error) {
+    console.error("[HOSTED_AI] Cost guard failed:", error);
+    return jsonResponse(
+      {
+        error: "hosted_ai_cost_guard_unavailable",
+        message: "Hosted AI cost guard is unavailable.",
+      },
+      503,
+      request,
+    );
+  }
+  return null;
+}
+
+async function logHostedAiTokenUsage(
+  env: Env,
+  args: {
+    userId: string;
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    costUsd: number;
+  },
+): Promise<void> {
+  if (!env.AUTH_DB) return;
+  await env.AUTH_DB.prepare(
+    `INSERT INTO token_usage_logs (
+      id,
+      user_id,
+      model,
+      prompt_tokens,
+      completion_tokens,
+      cost_usd,
+      billing_month,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      crypto.randomUUID(),
+      args.userId,
+      args.model,
+      args.promptTokens,
+      args.completionTokens,
+      args.costUsd,
+      getHostedAiBillingMonth(),
+      new Date().toISOString(),
+    )
+    .run();
+}
+
 async function handleHostedAiDraft(request: Request, env: Env): Promise<Response> {
   if (!env.AI) {
     return jsonResponse(
@@ -6393,6 +6555,29 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
         message: "Hosted AI requires consent because the prompt is sent to Cloudflare Workers AI.",
       },
       400,
+      request,
+    );
+  }
+
+  if (!env.AUTH_DB) {
+    return jsonResponse(
+      {
+        error: "hosted_ai_auth_unavailable",
+        message: "Hosted AI account checks are unavailable.",
+      },
+      503,
+      request,
+    );
+  }
+
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id) {
+    return jsonResponse(
+      {
+        error: "hosted_ai_auth_required",
+        message: "Sign in to use hosted AI.",
+      },
+      401,
       request,
     );
   }
@@ -6444,6 +6629,11 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     { role: "user", content: prompt },
   ];
 
+  const fairUseResponse = await assertHostedAiFairUseBudget(env, request, session.id);
+  if (fairUseResponse) {
+    return fairUseResponse;
+  }
+
   try {
     const result = await env.AI.run(HOSTED_AI_DRAFT.MODEL, {
       messages,
@@ -6454,6 +6644,15 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     if (!text) {
       throw new Error("Workers AI returned an empty draft");
     }
+    const usage = withHostedAiUsageFallback(extractHostedAiUsage(result), prompt, text);
+    const costUsd = calculateHostedAiCostUsd(usage);
+    await logHostedAiTokenUsage(env, {
+      userId: session.id,
+      model: HOSTED_AI_DRAFT.MODEL,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      costUsd,
+    });
     await commitHostedAiQuota(env, clientId, quota.nextCount, quota.resetAt);
     return jsonResponse(
       {
