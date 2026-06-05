@@ -148,7 +148,7 @@ function SectionHeading({
       <div className="flex items-center gap-2">
         <h3
           id={id}
-          className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+          className="text-sm font-semibold uppercase tracking-wide text-gray-800 dark:text-gray-100"
         >
           {title}
         </h3>
@@ -251,10 +251,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       >
         <div className="overflow-hidden">
           <div className="w-full min-w-0 max-w-2xl space-y-6">
-            <section className="space-y-3" aria-labelledby="note-access-controls-heading">
+            <section
+              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-access-controls-heading"
+            >
               <SectionHeading id="note-access-controls-heading" title="Access Controls" />
 
-              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-3 transition-colors sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
                 <div className="sm:col-span-1">
             <div className="flex flex-col">
               <label
@@ -266,17 +269,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </span>
                 <span className="block">{t.password}</span>
               </label>
-              <div className="mt-1 text-[10px] text-gray-400">
-                {t.poweredBy}{" "}
-                <a
-                  href="https://passwords.lu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2 hover:opacity-90"
-                >
-                  passwords.lu
-                </a>
-              </div>
             </div>
           </div>
           <div className="min-w-0 sm:col-span-2">
@@ -366,21 +358,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                <p>
-                  <span className="font-medium text-gray-600 dark:text-gray-300">
-                    {t.passwordBreachCheckLabel}
-                  </span>
-                  {" "}
-                  <a
-                    href="https://haveibeenpwned.com/Passwords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-2 hover:opacity-90"
-                  >
-                    {t.passwordBreachCheckProvider}
-                  </a>
-                </p>
+              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span>{t.passwordRecipientsNeedToDecrypt}</span>
+                <button
+                  type="button"
+                  title="Powered by decrypt.lu and checked via HIBP."
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gray-300 text-gray-500 transition hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-400"
+                >
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">Powered by decrypt.lu and checked via HIBP.</span>
+                </button>
               </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -404,9 +391,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
               )}
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t.passwordRecipientsNeedToDecrypt}
-              </div>
             </div>
           </div>
         </div>
@@ -522,7 +506,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         </div>
             </section>
 
-            <section className="space-y-3" aria-labelledby="note-delivery-verification-heading">
+            <section
+              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-delivery-verification-heading"
+            >
               <SectionHeading
                 id="note-delivery-verification-heading"
                 title="Delivery & Verification"
