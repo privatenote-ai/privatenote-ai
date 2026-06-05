@@ -23,6 +23,12 @@ const stripePaymentLinks: Record<BillingMode, string> = {
 };
 const stripePrefilledPromoCode =
   (import.meta.env.VITE_STRIPE_PREMIUM_PREFILLED_PROMO_CODE as string | undefined)?.trim() || "";
+const earlyAdopterPricingEnabled =
+  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_PRICING_ENABLED as string | undefined)?.trim().toLowerCase() !== "false";
+const earlyAdopterUserLimit = Number.parseInt(
+  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_USER_LIMIT as string | undefined)?.trim() || "200",
+  10,
+);
 
 function withStripePromoCode(href: string): string {
   if (!stripePrefilledPromoCode || !/^https?:\/\//i.test(href)) return href;
@@ -261,6 +267,20 @@ export default function Premium() {
           Free gives you Core PrivateNote. Premium adds delivery controls for notifications,
           recipient verification, branding, and 100 MB encrypted file sharing.
         </p>
+        {earlyAdopterPricingEnabled ? (
+          <div className="mx-auto mt-6 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-left shadow-sm dark:border-amber-900/70 dark:bg-amber-950/20">
+            <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+              Early adopter pricing.
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-900/85 dark:text-amber-100/80">
+              Existing subscribers keep this price forever. Limited to the first{" "}
+              {Number.isFinite(earlyAdopterUserLimit) && earlyAdopterUserLimit > 0
+                ? earlyAdopterUserLimit
+                : 200}{" "}
+              Premium users.
+            </p>
+          </div>
+        ) : null}
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           {(["monthly", "yearly"] as BillingMode[]).map((mode) => (
             <button
