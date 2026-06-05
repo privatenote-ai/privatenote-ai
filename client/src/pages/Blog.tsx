@@ -25,6 +25,20 @@ export default function Blog() {
   };
   const staticPosts: BlogPost[] = [
     {
+      id: -7,
+      title: t.blogAgentSecurityTitle,
+      excerpt: t.blogAgentSecurityExcerpt,
+      author: 'PrivateNote.ai',
+      slug: 'securing-ai-agents-like-employees',
+      publishedAt: new Date(),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagAi]),
+      content: '',
+      coverImage: null,
+      published: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
       id: -6,
       title: t.blogCodexTitle,
       excerpt: t.blogCodexExcerpt,

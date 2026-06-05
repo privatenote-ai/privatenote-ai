@@ -910,6 +910,10 @@ export const en: Translations = {
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
   blogCodexExcerpt: "One command wires the PrivateNote MCP server into every Codex session. Here's exactly how to set it up, what Codex can do with it, and how to keep secrets out of the agent prompt entirely.",
+  blogAgentSecurityTitle:
+    "AI Agents Are Becoming Employees. We Need to Start Securing Them Like Employees.",
+  blogAgentSecurityExcerpt:
+    "Prompt injection is no longer the whole story. As AI agents gain tools, memory, and autonomy, security must govern the entire system—not just the model.",
   blogTagDeveloper: "developer",
   blogTagMcp: "mcp",
   blogTagIntegration: "integration",
@@ -920,6 +924,10 @@ export const en: Translations = {
   blogTagPasswords: "passwords",
   blogTagCryptography: "cryptography",
   blogTagWorkplace: "workplace",
+  blogTagAi: "ai",
+  blogAgentSecurityMetaTitle: "Securing AI agents like employees",
+  blogAgentSecurityMetaDescription:
+    "Why agentic AI changes the security playbook: context boundaries, memory risk, permissions, and trust architecture beyond prompt injection.",
   aboutPageTitle: "About",
   aboutPageSubtitle:
     "Learn why PrivateNote.ai exists, the privacy values behind the product, and how simple encrypted tools can make sensitive communication safer.",

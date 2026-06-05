@@ -53,6 +53,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogCodexTitle),
         description: t.blogCodexExcerpt,
       };
+    case "securing-ai-agents-like-employees":
+      return {
+        title: buildDocumentTitle(t.blogAgentSecurityMetaTitle),
+        description: t.blogAgentSecurityMetaDescription,
+      };
     default:
       return null;
   }

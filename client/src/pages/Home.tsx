@@ -55,6 +55,13 @@ const Home: React.FC = () => {
   const blogPosts = useMemo(
     () => [
       {
+        slug: 'securing-ai-agents-like-employees',
+        category: t.blogTagAi,
+        title: t.blogAgentSecurityTitle,
+        excerpt: t.blogAgentSecurityExcerpt,
+        readTime: t.homeBlogReadTime6,
+      },
+      {
         slug: 'workplace-texts-private-note',
         category: t.blogTagWorkplace,
         title: t.blogWorkplaceTextsTitle,
@@ -84,6 +91,9 @@ const Home: React.FC = () => {
       },
     ],
     [
+      t.blogTagAi,
+      t.blogAgentSecurityTitle,
+      t.blogAgentSecurityExcerpt,
       t.blogTagWorkplace,
       t.blogWorkplaceTextsTitle,
       t.blogWorkplaceTextsExcerpt,

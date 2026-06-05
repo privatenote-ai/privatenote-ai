@@ -910,6 +910,10 @@ export const de: Translations = {
   blogWorkplaceTextsExcerpt: "Was die OpenAI-Textnachrichten-Debatte über schriftliche Spuren, Kommunikationshygiene am Arbeitsplatz und PrivateNote für sensible Einmal-Kommunikation zeigt.",
   blogDevelopersTitle: "Hör auf, Passwörter in Slack einzufügen. Nutze stattdessen PrivateNote.",
   blogDevelopersExcerpt: "Ein verständlicher Leitfaden zum sicheren Teilen von Geheimnissen aus VS Code, Cursor, einem KI-Agenten oder jedem Browser.",
+  blogAgentSecurityTitle:
+    "KI-Agenten werden zu Mitarbeitern. Wir müssen sie wie Mitarbeiter absichern.",
+  blogAgentSecurityExcerpt:
+    "Prompt Injection ist nicht mehr die ganze Geschichte. Wenn KI-Agenten Tools, Gedächtnis und Autonomie erhalten, muss Sicherheit das gesamte System steuern—nicht nur das Modell.",
   blogTagDeveloper: "Entwickler",
   blogTagIntegration: "Integration",
   blogTagPrivacy: "Privatsphäre",
@@ -919,6 +923,10 @@ export const de: Translations = {
   blogTagPasswords: "Passwörter",
   blogTagCryptography: "Kryptografie",
   blogTagWorkplace: "Arbeitsplatz",
+  blogTagAi: "ki",
+  blogAgentSecurityMetaTitle: "KI-Agenten wie Mitarbeiter absichern",
+  blogAgentSecurityMetaDescription:
+    "Warum agentische KI das Sicherheitsregelwerk verändert: Kontextgrenzen, Gedächtnisrisiken, Berechtigungen und Vertrauensarchitektur jenseits von Prompt Injection.",
   aboutPageTitle: "Über mich",
   aboutPageSubtitle:
     "Erfahren Sie, warum PrivateNote.ai entstanden ist, welche Datenschutzwerte das Produkt prägen und wie einfache verschlüsselte Tools Kommunikation sicherer machen.",

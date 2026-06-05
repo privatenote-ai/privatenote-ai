@@ -914,6 +914,10 @@ export const fr: Translations = {
   blogWorkplaceTextsExcerpt: "Ce que la controverse autour des messages OpenAI enseigne sur les traces écrites, l'hygiène au travail et PrivateNote pour les communications sensibles ponctuelles.",
   blogDevelopersTitle: "Arrêtez de coller des mots de passe dans Slack. Utilisez PrivateNote à la place.",
   blogDevelopersExcerpt: "Un guide en langage clair pour partager des secrets depuis VS Code, Cursor, un agent IA ou n'importe quel navigateur.",
+  blogAgentSecurityTitle:
+    "Les agents IA deviennent des employés. Il faut commencer à les sécuriser comme des employés.",
+  blogAgentSecurityExcerpt:
+    "L'injection de prompt n'est plus toute l'histoire. Quand les agents IA obtiennent des outils, de la mémoire et de l'autonomie, la sécurité doit gouverner l'ensemble du système—pas seulement le modèle.",
   blogTagDeveloper: "développeur",
   blogTagIntegration: "intégration",
   blogTagPrivacy: "confidentialité",
@@ -923,6 +927,10 @@ export const fr: Translations = {
   blogTagPasswords: "mots de passe",
   blogTagCryptography: "cryptographie",
   blogTagWorkplace: "travail",
+  blogTagAi: "ia",
+  blogAgentSecurityMetaTitle: "Sécuriser les agents IA comme des employés",
+  blogAgentSecurityMetaDescription:
+    "Pourquoi l'IA agentique change les règles de sécurité : frontières de contexte, risques de mémoire, permissions et architecture de confiance au-delà de l'injection de prompt.",
   aboutPageTitle: "À propos",
   aboutPageSubtitle:
     "Découvrez pourquoi PrivateNote.ai existe, les valeurs de confidentialité qui guident le produit et comment des outils chiffrés simples sécurisent les échanges.",

@@ -14,6 +14,7 @@ import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost
 import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
 import { PrivateNoteForDevelopersPost } from '@/components/blog/PrivateNoteForDevelopersPost';
 import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
+import { AgentSecurityPost } from '@/components/blog/AgentSecurityPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -25,6 +26,7 @@ const STATIC_BLOG_SLUGS = [
   'workplace-texts-private-note',
   'privatenote-for-developers',
   'privatenote-codex',
+  'securing-ai-agents-like-employees',
 ] as const;
 
 export default function BlogPostPage() {
@@ -86,6 +88,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'privatenote-codex') {
     return <PrivateNoteCodexPost />;
+  }
+  if (slug === 'securing-ai-agents-like-employees') {
+    return <AgentSecurityPost />;
   }
 
   if (error) {
