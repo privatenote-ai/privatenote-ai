@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown, Crown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -307,6 +307,9 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
             </NavLink>
+            <NavLink href={lp("/premium")} closeMenu={closeMenu} className={desktopLink}>
+              Pricing
+            </NavLink>
             <div className="relative" ref={resourcesRef}>
               <button
                 type="button"
@@ -468,6 +471,10 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={mobileItemClass}>
               <Key className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.sharePassword}</span>
+            </NavLink>
+            <NavLink href={lp("/premium")} closeMenu={closeMenu} className={mobileItemClass}>
+              <Crown className="h-4 w-4 shrink-0 opacity-80" />
+              <span>Pricing</span>
             </NavLink>
 
             <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={mobileItemClass}>

@@ -5,7 +5,6 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Crown,
   MailCheck,
   ShieldCheck,
   Sparkles,
@@ -255,11 +254,7 @@ export default function Premium() {
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
       <section className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/30 dark:text-amber-300">
-          <Crown className="h-3.5 w-3.5" aria-hidden />
-          Premium
-        </div>
-        <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
+        <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
           Simple plans for secure notes.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
