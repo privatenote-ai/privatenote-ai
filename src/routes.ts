@@ -188,7 +188,8 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-admin-token, x-file-plaintext-size",
+    "Access-Control-Allow-Headers":
+      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -7263,6 +7264,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const encryptedLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES;
+    const encryptedSizeHeader = Number(request.headers.get("x-file-encrypted-size") ?? NaN);
+    if (
+      Number.isFinite(encryptedSizeHeader) &&
+      (!Number.isInteger(encryptedSizeHeader) || encryptedSizeHeader < 0)
+    ) {
+      return jsonResponse({ error: "Invalid x-file-encrypted-size" }, 400, request);
+    }
+    if (Number.isInteger(encryptedSizeHeader) && encryptedSizeHeader > encryptedLimit) {
+      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
+    }
+
     const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
     if (Number.isFinite(contentLength) && contentLength > encryptedLimit) {
       return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);

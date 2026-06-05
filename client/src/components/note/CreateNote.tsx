@@ -817,15 +817,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         const fileAadBytes = new TextEncoder().encode(fileAadPlaintext);
         const encryptedFile = await encryptFileBytes(selectedFile, contentKey!, fileAadBytes);
         const encryptedFileBytes = new Uint8Array(encryptedFile.encryptedData);
-        const uploadResponse = await apiBinaryRequest<{ encryptedSize: number }>(
-          `/api/notes/${reservedId}/file`,
-          "PUT",
-          encryptedFileBytes.buffer,
-          {
-            "Content-Type": "application/octet-stream",
-            "x-file-plaintext-size": String(selectedFile.size),
-          },
-        );
+        let uploadResponse: { encryptedSize: number };
+        try {
+          const encryptedFileBlob = new Blob([encryptedFileBytes], {
+            type: "application/octet-stream",
+          });
+          uploadResponse = await apiBinaryRequest<{ encryptedSize: number }>(
+            `/api/notes/${reservedId}/file`,
+            "PUT",
+            encryptedFileBlob,
+            {
+              "Content-Type": "application/octet-stream",
+              "x-file-plaintext-size": String(selectedFile.size),
+              "x-file-encrypted-size": String(encryptedFileBytes.byteLength),
+            },
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "";
+          throw new Error(
+            message && message !== "Load failed"
+              ? message
+              : "Encrypted file upload failed before the server responded. Try a smaller file or save the image locally and retry.",
+          );
+        }
         attachment = {
           v: 1,
           name: selectedFile.name,

@@ -161,20 +161,32 @@ export async function apiBinaryRequest<T = any>(
   body: BodyInit,
   headers: Record<string, string> = {},
 ): Promise<T> {
-  const res = await fetch(getApiUrl(url), {
-    method,
-    headers,
-    body,
-    credentials: "include",
-  });
-  const responseText = await res.text();
-  const responseClone = new Response(responseText, {
-    status: res.status,
-    statusText: res.statusText,
-    headers: res.headers,
-  });
-  await throwIfResNotOk(responseClone);
-  return JSON.parse(responseText) as T;
+  try {
+    const res = await fetch(getApiUrl(url), {
+      method,
+      headers,
+      body,
+      credentials: "include",
+    });
+    const responseText = await res.text();
+    const responseClone = new Response(responseText, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    });
+    await throwIfResNotOk(responseClone);
+    return JSON.parse(responseText) as T;
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw error;
+    }
+    const message = error instanceof Error && error.message ? error.message : "Upload failed";
+    throw new Error(
+      message === "Load failed"
+        ? "Encrypted file upload failed before the server responded."
+        : message,
+    );
+  }
 }
 
 export async function apiBlobRequest(url: string, method: string = "GET"): Promise<Blob> {
