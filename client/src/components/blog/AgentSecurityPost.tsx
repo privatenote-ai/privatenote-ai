@@ -69,17 +69,19 @@ function ArticleParagraph({
 
 function CalloutBox({ text }: { text: string }) {
   return (
-    <blockquote className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-lg font-medium leading-relaxed text-gray-900 dark:border-primary/30 dark:bg-primary/10 dark:text-gray-100">
-      <RichText text={text} />
+    <blockquote className="border-l-2 border-gray-300 py-1 pl-5 dark:border-gray-600">
+      <p className="text-[1.05rem] leading-relaxed text-gray-800 dark:text-gray-200">
+        <RichText text={text} />
+      </p>
     </blockquote>
   );
 }
 
 function EmphasisStack({ lines }: { lines: string[] }) {
   return (
-    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/50">
+    <div className="space-y-1 border-l-2 border-gray-200 py-1 pl-5 dark:border-gray-700">
       {lines.map((line) => (
-        <p key={line} className="font-semibold text-gray-900 dark:text-white">
+        <p key={line} className="font-medium leading-relaxed text-gray-800 dark:text-gray-200">
           <RichText text={line} />
         </p>
       ))}
@@ -635,12 +637,12 @@ export const AgentSecurityPost: React.FC = () => {
         </div>
 
         {article.closingCallout ? (
-          <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 dark:border-primary/30 dark:bg-primary/10">
-            <h2 className="mb-3 flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
-              <Shield className="h-5 w-5 text-primary" />
+          <div className="mt-14 border-t border-gray-200 pt-8 dark:border-gray-800">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+              <Shield className="h-4 w-4 text-primary/70" />
               {article.closingCallout.title}
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className="leading-relaxed text-gray-700 dark:text-gray-300">
               <RichText text={article.closingCallout.body} />
             </p>
           </div>
