@@ -24,6 +24,10 @@ export type HostedCloudAiErrorCode =
   | "hosted_ai_generation_failed"
   | "hosted_ai_not_enabled"
   | "hosted_ai_consent_required"
+  | "hosted_ai_auth_required"
+  | "hosted_ai_auth_unavailable"
+  | "hosted_ai_cost_guard_unavailable"
+  | "hosted_ai_fair_use_limit_reached"
   | "prompt_required"
   | "prompt_too_long"
   | "unknown";
