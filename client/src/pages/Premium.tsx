@@ -5,110 +5,106 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Crown,
   MailCheck,
   ShieldCheck,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
-import { PLAN_CATALOG, type AccountType } from "@shared/planCatalog";
 
 type BillingMode = "monthly" | "yearly";
+type PlanId = "free" | "premium";
 
-const planOrder: AccountType[] = ["free", "personal_premium", "business_premium"];
+const planOrder: PlanId[] = ["free", "premium"];
 
-const planCopy: Record<AccountType, { audience: string; cta: string; highlight?: string }> = {
+const planCopy: Record<PlanId, {
+  title: string;
+  audience: string;
+  cta: string;
+  highlight?: string;
+  features: string[];
+}> = {
   free: {
-    audience: "For occasional secure notes and read-once sharing.",
+    title: "Free",
+    audience: "Core PrivateNote.",
     cta: "Start free",
+    features: [
+      "Encrypted secure notes",
+      "Burn after reading",
+      "Password protection",
+      "Basic expiry controls",
+    ],
   },
-  personal_premium: {
-    audience: "For people who want proof, recipient checks, and saved defaults.",
+  premium: {
+    title: "Premium",
+    audience: "Delivery controls for notes that need proof, verification, and a branded reveal experience.",
     cta: "Request Premium",
     highlight: "Recommended",
-  },
-  business_premium: {
-    audience: "For power users and teams that need higher limits.",
-    cta: "Contact us",
+    features: [
+      "Notifications",
+      "Recipient verification",
+      "Branding",
+      "Future file sharing",
+    ],
   },
 };
 
-const topFeatures: Record<AccountType, string[]> = {
-  free: [
-    "Read-once encrypted notes",
-    "Up to 7 day expiration",
-    "Password protection",
-    "3 hosted AI drafts/month",
-  ],
-  personal_premium: [
-    "Open and destroy notifications",
-    "Recipient email restrictions",
-    "14 and 30 day expirations",
-    "100 hosted AI drafts/month",
-  ],
-  business_premium: [
-    "Everything in Premium Individual",
-    "Higher hosted AI capacity",
-    "Team-oriented premium controls",
-    "500 hosted AI drafts/month",
-  ],
+const premiumPrices: Record<BillingMode, { price: string; cadence: string; note: string }> = {
+  monthly: {
+    price: "€3.99",
+    cadence: "per month",
+    note: "Monthly access for premium delivery controls.",
+  },
+  yearly: {
+    price: "€39",
+    cadence: "per year",
+    note: "Best value for ongoing secure note delivery.",
+  },
 };
 
-const deliveryFeatureCards = [
+const featureCards = [
   {
     icon: Bell,
-    title: "Open alerts",
-    text: "Know when a note link has been accessed without exposing note contents.",
+    title: "Notifications",
+    text: "Know when a note is opened or destroyed.",
   },
   {
     icon: MailCheck,
     title: "Recipient verification",
-    text: "Add delivery controls around who can reveal sensitive notes.",
-  },
-  {
-    icon: Clock,
-    title: "Longer windows",
-    text: "Use longer expirations when a recipient needs more time.",
+    text: "Restrict access to the intended recipient.",
   },
   {
     icon: ShieldCheck,
-    title: "Read controls",
-    text: "Stay read-once by default, or allow limited extra views when needed.",
+    title: "Branding",
+    text: "Add a branded reveal page for a more trusted recipient experience.",
+  },
+  {
+    icon: Sparkles,
+    title: "Future file sharing",
+    text: "Premium will include secure file-sharing controls as they arrive.",
   },
 ];
 
 const comparisonSections = [
   {
-    title: "Note delivery",
+    title: "Core",
     rows: [
-      ["Read-once notes", "Included", "Included", "Included"],
-      ["Read limit options", "1 view", "1, 2, 3, or 5 views", "1, 2, 3, or 5 views"],
-      ["Expiration options", "Up to 7 days", "Up to 30 days", "Up to 30 days"],
-      ["Open notifications", "No", "Yes", "Yes"],
-      ["Destroy notifications", "No", "Planned", "Planned"],
+      ["Encrypted secure notes", "Included", "Included"],
+      ["Burn after reading", "Included", "Included"],
+      ["Password protection", "Included", "Included"],
+      ["Basic expiry controls", "Included", "Included"],
     ],
   },
   {
-    title: "Access and verification",
+    title: "Delivery and verification",
     rows: [
-      ["Password protection", "Included", "Included", "Included"],
-      ["Restrict to recipient email", "No", "Planned", "Planned"],
-      ["Require email verification", "No", "Planned", "Planned"],
-      ["Saved note defaults", "No", "Yes", "Yes"],
-      ["Sent notes dashboard", "No", "Planned", "Planned"],
-    ],
-  },
-  {
-    title: "AI capacity",
-    rows: [
-      ["Private local AI", "When device supports it", "When device supports it", "When device supports it"],
-      ["Hosted AI drafts", "3/month", "100/month", "500/month"],
-      ["Hosted AI privacy", "Non-private opt-in", "Non-private opt-in", "Non-private opt-in"],
+      ["Open and destroy notifications", "No", "Included"],
+      ["Recipient verification", "No", "Included"],
+      ["Custom branding", "No", "Included"],
+      ["Future file sharing", "No", "Included"],
     ],
   },
 ];
@@ -116,55 +112,38 @@ const comparisonSections = [
 const faqs = [
   {
     q: "Does Premium make notes more encrypted?",
-    a: "No. The encryption promise is the same across plans: note plaintext is encrypted in your browser before upload. Premium adds delivery controls, capacity, and workflow features.",
+    a: "No. The encryption promise is the same across plans: note plaintext is encrypted in your browser before upload. Premium adds delivery controls and workflow features.",
   },
   {
-    q: "Why do some Premium controls say planned?",
-    a: "The Premium branch exposes the product direction and early controls. Some items are staged as locked discovery rows until checkout and the related delivery workflows are fully connected.",
+    q: "What is included in Premium?",
+    a: "Premium includes notifications, recipient verification, branding, and future file sharing as those controls are connected.",
   },
   {
     q: "Can I pay online today?",
     a: "Checkout is not connected yet. Use the contact button to request Premium access for staging, early access, or manual enablement.",
   },
   {
-    q: "Does hosted AI become private on Premium?",
-    a: "No. Hosted AI still sends your prompt to Cloudflare Workers AI. Premium increases limits; Private AI remains the on-device path when your browser and hardware support it.",
-  },
-  {
-    q: "What should I use recipient verification for?",
+    q: "When should I use recipient verification?",
     a: "Use it when the link alone is not enough assurance, such as client credentials, vendor onboarding, or any note that should only be revealed by a specific recipient.",
   },
   {
-    q: "Can I keep using read-once notes on Premium?",
-    a: "Yes. Read-once remains the safest default. Premium only adds extra read-limit options for workflows where limited re-opening is useful.",
+    q: "Is future file sharing available now?",
+    a: "It is listed as a Premium direction so users can see where the plan is going. The current focus is note delivery, notifications, verification, and branding.",
   },
 ];
-
-function planPrice(plan: AccountType, billingMode: BillingMode): string {
-  const p = PLAN_CATALOG[plan];
-  const price = billingMode === "monthly" ? p.priceMonthlyUsd : p.priceYearlyUsd;
-  if (price === 0) return "$0";
-  return `$${price}`;
-}
-
-function planCadence(plan: AccountType, billingMode: BillingMode): string {
-  const p = PLAN_CATALOG[plan];
-  if (p.priceMonthlyUsd === 0) return "forever";
-  return billingMode === "monthly" ? "per month" : "per year";
-}
 
 function PlanCard({
   plan,
   billingMode,
   href,
 }: {
-  plan: AccountType;
+  plan: PlanId;
   billingMode: BillingMode;
   href: string;
 }) {
-  const p = PLAN_CATALOG[plan];
   const copy = planCopy[plan];
-  const highlighted = plan === "personal_premium";
+  const highlighted = plan === "premium";
+  const price = plan === "free" ? { price: "€0", cadence: "forever", note: "No payment required." } : premiumPrices[billingMode];
 
   return (
     <article
@@ -180,25 +159,19 @@ function PlanCard({
           {copy.highlight}
         </div>
       ) : null}
-      <h2 className="pr-28 text-xl font-semibold text-gray-950 dark:text-white">{p.label}</h2>
+      <h2 className="pr-28 text-xl font-semibold text-gray-950 dark:text-white">{copy.title}</h2>
       <p className="mt-2 min-h-[3rem] text-sm leading-6 text-gray-600 dark:text-gray-400">
         {copy.audience}
       </p>
       <div className="mt-5 flex items-end gap-2">
         <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
-          {planPrice(plan, billingMode)}
+          {price.price}
         </span>
         <span className="pb-1 text-sm text-gray-500 dark:text-gray-400">
-          {planCadence(plan, billingMode)}
+          {price.cadence}
         </span>
       </div>
-      {plan !== "free" ? (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {billingMode === "yearly" ? "Best value for early access." : "Switch to yearly for lower annual cost."}
-        </p>
-      ) : (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">No payment required.</p>
-      )}
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{price.note}</p>
       <Link
         href={href}
         className={[
@@ -214,7 +187,7 @@ function PlanCard({
         Includes
       </p>
       <ul className="mt-3 space-y-2.5">
-        {topFeatures[plan].map((feature) => (
+        {copy.features.map((feature) => (
           <li key={feature} className="flex gap-2 text-sm text-gray-700 dark:text-gray-300">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
             <span>{feature}</span>
@@ -247,7 +220,7 @@ export default function Premium() {
   const [billingMode, setBillingMode] = useState<BillingMode>("yearly");
   const lp = (path: string) => localizedPath(path, language);
   const accountHref = user ? "/account" : "/auth/sign-up";
-  const planHref = useMemo(() => ({ free: accountHref, personal_premium: lp("/contact"), business_premium: lp("/contact") }), [accountHref, lp]);
+  const planHref = useMemo(() => ({ free: accountHref, premium: lp("/contact") }), [accountHref, language]);
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
@@ -257,11 +230,11 @@ export default function Premium() {
           Premium
         </div>
         <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-          Plans for secure note delivery.
+          Simple plans for secure notes.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Start with encrypted read-once notes. Upgrade when you need delivery alerts, recipient checks,
-          longer expirations, saved defaults, and more hosted AI capacity.
+          Free gives you Core PrivateNote. Premium adds delivery controls for notifications,
+          recipient verification, branding, and future file sharing.
         </p>
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           {(["monthly", "yearly"] as BillingMode[]).map((mode) => (
@@ -281,18 +254,18 @@ export default function Premium() {
           ))}
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Yearly pricing mirrors the catalog discount. Checkout is not connected yet.
+          Premium is €3.99 monthly or €39 yearly. Checkout is not connected yet.
         </p>
       </section>
 
-      <section className="mt-12 grid gap-5 lg:grid-cols-3">
+      <section className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
         {planOrder.map((plan) => (
           <PlanCard key={plan} plan={plan} billingMode={billingMode} href={planHref[plan]} />
         ))}
       </section>
 
       <section className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {deliveryFeatureCards.map(({ icon: Icon, title, text }) => (
+        {featureCards.map(({ icon: Icon, title, text }) => (
           <div key={title} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-950">
             <Icon className="h-5 w-5 text-primary" aria-hidden />
             <h2 className="mt-4 text-sm font-semibold text-gray-950 dark:text-white">{title}</h2>
@@ -308,7 +281,7 @@ export default function Premium() {
               Plans and features
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Compare the controls that affect how notes are delivered and opened.
+              Compare Core PrivateNote with the Premium delivery controls.
             </p>
           </div>
           <Link href={lp("/contact")} className="text-sm font-semibold text-primary hover:underline">
@@ -317,27 +290,25 @@ export default function Premium() {
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-          <div className="min-w-[760px]">
-            <div className="grid grid-cols-[minmax(180px,1.4fr)_repeat(3,minmax(120px,1fr))] border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
+          <div className="min-w-[560px]">
+            <div className="grid grid-cols-[minmax(180px,1.4fr)_repeat(2,minmax(120px,1fr))] border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
               <div className="px-4 py-3">Feature</div>
               <div className="px-4 py-3">Free</div>
-              <div className="px-4 py-3">Premium Individual</div>
-              <div className="px-4 py-3">Premium Plus</div>
+              <div className="px-4 py-3">Premium</div>
             </div>
             {comparisonSections.map((section) => (
               <div key={section.title}>
                 <div className="border-b border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-950 dark:border-gray-800 dark:bg-gray-950 dark:text-white">
                   {section.title}
                 </div>
-                {section.rows.map(([feature, free, personal, business]) => (
+                {section.rows.map(([feature, free, premium]) => (
                   <div
                     key={feature}
-                    className="grid grid-cols-[minmax(180px,1.4fr)_repeat(3,minmax(120px,1fr))] border-b border-gray-100 last:border-b-0 dark:border-gray-900"
+                    className="grid grid-cols-[minmax(180px,1.4fr)_repeat(2,minmax(120px,1fr))] border-b border-gray-100 last:border-b-0 dark:border-gray-900"
                   >
                     <div className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{feature}</div>
                     <div className="px-4 py-3"><FeatureValue value={free} /></div>
-                    <div className="px-4 py-3"><FeatureValue value={personal} /></div>
-                    <div className="px-4 py-3"><FeatureValue value={business} /></div>
+                    <div className="px-4 py-3"><FeatureValue value={premium} /></div>
                   </div>
                 ))}
               </div>
