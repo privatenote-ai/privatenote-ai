@@ -1,12 +1,10 @@
 import React from "react";
 import {
-  CheckCircle2,
   Crown,
   Eye,
+  Info,
   Lock,
-  Mail,
   MailCheck,
-  Palette,
   Shield,
   User,
 } from "lucide-react";
@@ -115,29 +113,24 @@ export const generateStrongPassword = (): string => {
 type PremiumFeature = {
   title: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
 };
 
 const premiumDeliveryFeatures: PremiumFeature[] = [
   {
     title: "Notify me when destroyed",
     description: "Get confirmation when the note is consumed or expires.",
-    icon: CheckCircle2,
   },
   {
     title: "Restrict to recipient email",
     description: "Only the intended recipient can reveal the note.",
-    icon: Mail,
   },
   {
     title: "Require email verification",
     description: "Verify the recipient before the note is shown.",
-    icon: Shield,
   },
   {
     title: "Branded reveal page",
     description: "Show your brand on the page where the recipient opens the note.",
-    icon: Palette,
   },
 ];
 
@@ -177,23 +170,23 @@ function LockedPremiumRow({
   feature: PremiumFeature;
   onSelect: (feature: PremiumFeature) => void;
 }) {
-  const Icon = feature.icon;
   return (
     <button
       type="button"
       onClick={() => onSelect(feature)}
-      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left transition-colors hover:border-amber-300 hover:bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-amber-700/70 dark:hover:bg-amber-900/10"
+      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-amber-300 hover:bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-amber-700/70 dark:hover:bg-amber-900/10"
+      title={feature.description}
     >
-      <span className="rounded-md bg-gray-100 p-1.5 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-gray-800 dark:text-gray-100">
-          {feature.title}
-        </span>
-        <span className="block text-xs text-gray-500 dark:text-gray-400">
-          {feature.description}
-        </span>
+      <input
+        type="checkbox"
+        tabIndex={-1}
+        aria-hidden
+        disabled
+        className="h-4 w-4 rounded border-gray-300 text-primary disabled:opacity-60"
+      />
+      <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-100">
+        <span className="truncate">{feature.title}</span>
+        <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
       </span>
       <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
         Premium
@@ -257,11 +250,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
-            <section className="space-y-2" aria-labelledby="note-access-controls-heading">
+          <div className="w-full min-w-0 max-w-2xl space-y-6">
+            <section className="space-y-3" aria-labelledby="note-access-controls-heading">
               <SectionHeading id="note-access-controls-heading" title="Access Controls" />
 
-              <div className="grid grid-cols-1 gap-2 items-start py-2 px-1 transition-colors sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-3 transition-colors sm:grid-cols-3">
                 <div className="sm:col-span-1">
             <div className="flex flex-col">
               <label
@@ -419,7 +412,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         </div>
 
               <div className="flex flex-col space-y-2">
-                <div className="grid grid-cols-1 gap-2 items-center py-2 px-1 transition-colors sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 items-center px-1 py-2 transition-colors sm:grid-cols-3">
                   <div className="sm:col-span-1">
               <label
                 htmlFor="expiry-value"
@@ -468,7 +461,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 items-start py-2 px-1 transition-colors sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
                   <div className="sm:col-span-1">
                     <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                       <span className="inline-flex items-center">
@@ -529,13 +522,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         </div>
             </section>
 
-            <section className="space-y-2" aria-labelledby="note-delivery-verification-heading">
+            <section className="space-y-3" aria-labelledby="note-delivery-verification-heading">
               <SectionHeading
                 id="note-delivery-verification-heading"
                 title="Delivery & Verification"
                 eyebrow="Premium"
               />
-              <div className="grid grid-cols-1 gap-2 items-start py-2 px-1 transition-colors sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
                 <div className="sm:col-span-1">
                   <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                     <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
@@ -546,39 +539,40 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
                 <div className="min-w-0 sm:col-span-2">
                   <label
-                    className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition ${
+                    title={
+                      canNotifyOnOpen
+                        ? "PrivateNote sends a single email after the secure link is accessed. Message content is never included."
+                        : premiumStatusLoading
+                          ? "Checking your plan..."
+                          : isPremiumUser
+                            ? "Turn on account email notifications in Preferences to use note-open alerts."
+                            : "Upgrade to Premium to enable note-open email alerts."
+                    }
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border px-3 py-2 transition ${
                       canNotifyOnOpen
                         ? "cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
                         : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-500"
                     }`}
                   >
-                    <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                        Email me when this note is opened
-                        {!isPremiumUser && !premiumStatusLoading ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                            <Crown className="h-3 w-3" aria-hidden />
-                            Premium
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-1 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                        {canNotifyOnOpen
-                          ? "PrivateNote sends a single email after the secure link is accessed. Message content is never included."
-                          : premiumStatusLoading
-                            ? "Checking your plan..."
-                            : isPremiumUser
-                              ? "Turn on account email notifications in Preferences to use note-open alerts."
-                              : "Upgrade to Premium to enable note-open email alerts."}
-                      </span>
-                    </span>
                     <input
                       type="checkbox"
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
                       checked={notifyOnOpen && canNotifyOnOpen}
                       disabled={!canNotifyOnOpen}
                       onChange={(event) => setNotifyOnOpen(event.target.checked)}
                     />
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+                      <span className="truncate">
+                        Email me when this note is opened
+                      </span>
+                      <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+                    </span>
+                    {!isPremiumUser && !premiumStatusLoading ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Crown className="h-3 w-3" aria-hidden />
+                        Premium
+                      </span>
+                    ) : null}
                   </label>
                 </div>
               </div>
