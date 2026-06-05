@@ -9,6 +9,7 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/security-resources",
   "/how-it-works",
   "/developers",
+  "/premium",
   "/about",
   "/contact",
   "/blog",

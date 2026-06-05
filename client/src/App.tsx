@@ -39,6 +39,7 @@ const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
 const Developers = lazy(() => import("@/pages/Developers"));
+const Premium = lazy(() => import("@/pages/Premium"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -194,6 +195,7 @@ function Router() {
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
               <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
+              <Route path={`/${language}/premium`} component={() => <LocalizedRoute language={language} component={Premium} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
               <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
               <Route path={`/${language}/blog/:slug`} component={() => <LocalizedRoute language={language} component={BlogPost} />} />
@@ -211,6 +213,7 @@ function Router() {
           <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
           <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
           <Route path="/developers" component={() => <LazyRoute component={Developers} />} />
+          <Route path="/premium" component={() => <LazyRoute component={Premium} />} />
           <Route path="/about" component={() => <LazyRoute component={About} />} />
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
           <Route path="/blog" component={() => <LazyRoute component={Blog} />} />

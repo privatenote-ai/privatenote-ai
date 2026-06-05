@@ -85,6 +85,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(t.documentMetaDevelopersTitle),
         description: t.documentMetaDevelopersDescription,
       };
+    case "premium":
+      return {
+        title: buildDocumentTitle("Premium"),
+        description:
+          "Upgrade PrivateNote with delivery controls, note-open alerts, recipient checks, longer expirations, and higher hosted AI limits.",
+      };
     case "about":
       return {
         title: buildDocumentTitle(t.aboutPageTitle),
