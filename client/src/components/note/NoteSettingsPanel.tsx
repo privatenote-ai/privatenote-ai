@@ -250,7 +250,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="w-full min-w-0 max-w-2xl space-y-6">
+          <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
             <section
               className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-access-controls-heading"
@@ -284,7 +284,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setPasswordSource("manual");
                   }}
                   placeholder={t.passwordPlaceholder}
-                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                 />
                 <button
                   type="button"
@@ -491,8 +491,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 {isPremiumUser
                   ? (t.viewLimitPremiumHint ??
                     "More views mean the link stays valid longer — use only when needed.")
-                  : (t.viewLimitFreeDescription ??
-                    "Free accounts use read-once. Upgrade to Premium for 2, 3, or 5 views.")}
+                  : "Free accounts use read-once."}
               </p>
             </div>
           </div>
