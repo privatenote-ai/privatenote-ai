@@ -454,12 +454,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         </span>
                         {t.viewLimit}
                       </span>
-                {!isPremiumUser && !premiumStatusLoading ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                    <Crown className="h-3 w-3" aria-hidden />
-                    Premium
-                  </span>
-                ) : null}
               </div>
             </div>
             <div className="min-w-0 space-y-1.5 sm:col-span-2">
