@@ -12,6 +12,8 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/about",
   "/contact",
   "/blog",
+  "/blog/one-time-secret-links",
+  "/blog/securing-ai-agents-like-employees",
   "/blog/privacy-tools",
   "/blog/myth-good-enough-security",
   "/blog/how-we-generate-passwords",

@@ -817,6 +817,7 @@ export const de: Translations = {
   homeBlogReadTime4: "4 Min. Lesezeit",
   homeBlogReadTime5: "5 Min. Lesezeit",
   homeBlogReadTime6: "6 Min. Lesezeit",
+  homeBlogReadTime7: "7 Min. Lesezeit",
   homeBlogCarouselHint: "Wischen oder Pfeile nutzen, um empfohlene Beiträge zu durchsuchen.",
   homeBlogCarouselPrev: "Vorherige Beiträge",
   homeBlogCarouselNext: "Weitere Beiträge",
@@ -910,6 +911,12 @@ export const de: Translations = {
   blogWorkplaceTextsExcerpt: "Was die OpenAI-Textnachrichten-Debatte über schriftliche Spuren, Kommunikationshygiene am Arbeitsplatz und PrivateNote für sensible Einmal-Kommunikation zeigt.",
   blogDevelopersTitle: "Hör auf, Passwörter in Slack einzufügen. Nutze stattdessen PrivateNote.",
   blogDevelopersExcerpt: "Ein verständlicher Leitfaden zum sicheren Teilen von Geheimnissen aus VS Code, Cursor, einem KI-Agenten oder jedem Browser.",
+  blogOneTimeLinksTitle: "One-Time-Secret-Links: Sensible Informationen teilen, ohne dauerhafte Spuren zu hinterlassen",
+  blogOneTimeLinksExcerpt:
+    "E-Mail, Slack und SMS speichern Nachrichten für immer. Manche Geheimnisse sind nicht dafür gedacht. So funktionieren einmalige verschlüsselte Links, wann Sie sie nutzen sollten und warum Burn-after-Reading ein Sicherheitsfeature ist.",
+  blogOneTimeLinksMetaTitle: "One-Time-Secret-Links erklärt",
+  blogOneTimeLinksMetaDescription:
+    "Erfahren Sie, wie Burn-after-Reading-Links funktionieren, wann Sie sie statt E-Mail oder Slack nutzen sollten und warum Ephemerität Risiken reduziert.",
   blogAgentSecurityTitle:
     "KI-Agenten werden zu Mitarbeitern. Wir müssen sie wie Mitarbeiter absichern.",
   blogAgentSecurityExcerpt:

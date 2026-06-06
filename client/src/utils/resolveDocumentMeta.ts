@@ -58,6 +58,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogAgentSecurityMetaTitle),
         description: t.blogAgentSecurityMetaDescription,
       };
+    case "one-time-secret-links":
+      return {
+        title: buildDocumentTitle(t.blogOneTimeLinksMetaTitle),
+        description: t.blogOneTimeLinksMetaDescription,
+      };
     default:
       return null;
   }

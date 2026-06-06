@@ -822,6 +822,7 @@ export const es: Translations = {
   homeBlogReadTime4: "4 min de lectura",
   homeBlogReadTime5: "5 min de lectura",
   homeBlogReadTime6: "6 min de lectura",
+  homeBlogReadTime7: "7 min de lectura",
   homeBlogCarouselHint: "Desliza o usa las flechas para ver las entradas destacadas.",
   homeBlogCarouselPrev: "Entradas anteriores",
   homeBlogCarouselNext: "Siguientes entradas",
@@ -915,6 +916,12 @@ export const es: Translations = {
   blogWorkplaceTextsExcerpt: "Qué enseña la controversia de textos de OpenAI sobre registros escritos, higiene laboral y el uso de PrivateNote para comunicación sensible de una sola vez.",
   blogDevelopersTitle: "Deja de pegar contraseñas en Slack. Usa PrivateNote.",
   blogDevelopersExcerpt: "Una guía en lenguaje sencillo para compartir secretos desde VS Code, Cursor, un agente de IA o cualquier navegador.",
+  blogOneTimeLinksTitle: "Enlaces secretos de un solo uso: compartir información sensible sin dejar un registro permanente",
+  blogOneTimeLinksExcerpt:
+    "El correo, Slack y los SMS guardan mensajes para siempre. Algunos secretos no deben persistir. Así funcionan los enlaces cifrados de un solo uso, cuándo usarlos y por qué quemar después de leer es una función de seguridad.",
+  blogOneTimeLinksMetaTitle: "Enlaces secretos de un solo uso explicados",
+  blogOneTimeLinksMetaDescription:
+    "Aprende cómo funcionan los enlaces cifrados burn-after-reading, cuándo usarlos en lugar de correo o Slack y por qué la ephemeridad reduce el riesgo.",
   blogAgentSecurityTitle:
     "Los agentes de IA se están convirtiendo en empleados. Debemos empezar a asegurarlos como empleados.",
   blogAgentSecurityExcerpt:

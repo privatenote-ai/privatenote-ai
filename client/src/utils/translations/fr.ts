@@ -821,6 +821,7 @@ export const fr: Translations = {
   homeBlogReadTime4: "4 min de lecture",
   homeBlogReadTime5: "5 min de lecture",
   homeBlogReadTime6: "6 min de lecture",
+  homeBlogReadTime7: "7 min de lecture",
   homeBlogCarouselHint: "Faites défiler ou utilisez les flèches pour parcourir les articles en vedette.",
   homeBlogCarouselPrev: "Articles précédents",
   homeBlogCarouselNext: "Articles suivants",
@@ -914,6 +915,12 @@ export const fr: Translations = {
   blogWorkplaceTextsExcerpt: "Ce que la controverse autour des messages OpenAI enseigne sur les traces écrites, l'hygiène au travail et PrivateNote pour les communications sensibles ponctuelles.",
   blogDevelopersTitle: "Arrêtez de coller des mots de passe dans Slack. Utilisez PrivateNote à la place.",
   blogDevelopersExcerpt: "Un guide en langage clair pour partager des secrets depuis VS Code, Cursor, un agent IA ou n'importe quel navigateur.",
+  blogOneTimeLinksTitle: "Liens secrets à usage unique : partager des informations sensibles sans laisser de trace permanente",
+  blogOneTimeLinksExcerpt:
+    "E-mail, Slack et SMS conservent les messages indéfiniment. Certains secrets ne devraient pas persister. Voici comment fonctionnent les liens chiffrés à usage unique, quand les utiliser et pourquoi brûler après lecture est une fonctionnalité de sécurité.",
+  blogOneTimeLinksMetaTitle: "Liens secrets à usage unique expliqués",
+  blogOneTimeLinksMetaDescription:
+    "Découvrez comment fonctionnent les liens chiffrés burn-after-reading, quand les utiliser à la place de l'e-mail ou Slack, et pourquoi l'éphémérité réduit les risques.",
   blogAgentSecurityTitle:
     "Les agents IA deviennent des employés. Il faut commencer à les sécuriser comme des employés.",
   blogAgentSecurityExcerpt:

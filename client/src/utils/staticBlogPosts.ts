@@ -3,6 +3,7 @@ import type { Translations } from "@/utils/translations/types";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "one-time-secret-links": "2026-06-06T12:00:00.000Z",
   "privacy-tools": "2026-01-11T12:00:00.000Z",
   "myth-good-enough-security": "2026-01-21T12:00:00.000Z",
   "how-we-generate-passwords": "2026-01-21T12:00:00.000Z",
@@ -22,6 +23,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -8,
+      title: t.blogOneTimeLinksTitle,
+      excerpt: t.blogOneTimeLinksExcerpt,
+      author: "PrivateNote.ai",
+      slug: "one-time-secret-links",
+      publishedAt: at("one-time-secret-links"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("one-time-secret-links"),
+      updatedAt: at("one-time-secret-links"),
+    },
     {
       id: -7,
       title: t.blogAgentSecurityTitle,
@@ -111,11 +126,11 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
 
 export function buildFeaturedBlogPost(t: Translations) {
   return {
-    title: t.blogWorkplaceTextsTitle,
-    excerpt: t.blogWorkplaceTextsExcerpt,
+    title: t.blogOneTimeLinksTitle,
+    excerpt: t.blogOneTimeLinksExcerpt,
     author: "PrivateNote.ai",
-    slug: "workplace-texts-private-note",
-    publishedAt: STATIC_BLOG_PUBLISHED_AT["workplace-texts-private-note"],
-    tags: [t.blogTagPrivacy, t.blogTagWorkplace, t.blogTagSecurity],
+    slug: "one-time-secret-links",
+    publishedAt: STATIC_BLOG_PUBLISHED_AT["one-time-secret-links"],
+    tags: [t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography],
   };
 }

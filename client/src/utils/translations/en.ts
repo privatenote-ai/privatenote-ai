@@ -815,6 +815,7 @@ export const en: Translations = {
   homeBlogReadTime4: "4 min read",
   homeBlogReadTime5: "5 min read",
   homeBlogReadTime6: "6 min read",
+  homeBlogReadTime7: "7 min read",
   homeBlogCarouselHint: "Swipe or use the arrows to browse featured posts.",
   homeBlogCarouselPrev: "Previous posts",
   homeBlogCarouselNext: "Next posts",
@@ -910,6 +911,12 @@ export const en: Translations = {
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
   blogCodexExcerpt: "One command wires the PrivateNote MCP server into every Codex session. Here's exactly how to set it up, what Codex can do with it, and how to keep secrets out of the agent prompt entirely.",
+  blogOneTimeLinksTitle: "One-Time Secret Links: How to Share Sensitive Information Without Leaving a Permanent Record",
+  blogOneTimeLinksExcerpt:
+    "Email, Slack, and text messages were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
+  blogOneTimeLinksMetaTitle: "One-time secret links explained",
+  blogOneTimeLinksMetaDescription:
+    "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
   blogAgentSecurityTitle:
     "AI Agents Are Becoming Employees. We Need to Start Securing Them Like Employees.",
   blogAgentSecurityExcerpt:
