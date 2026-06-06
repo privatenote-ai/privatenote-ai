@@ -5,6 +5,12 @@ import { useLanguage } from "@/context/LanguageContext";
 import { joinPublicPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 
+const heroImagePath = "/images/dieandreart-footprint-2143685.jpg";
+const heroArtistUrl =
+  "https://pixabay.com/users/dieandreart-3765415/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=2143685";
+const heroPixabayUrl =
+  "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=2143685";
+
 type BulletItem = {
   label: string;
   body: string;
@@ -837,6 +843,35 @@ export const OneTimeSecretLinksPost: React.FC = () => {
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">
             {t.blogOneTimeLinksExcerpt}
           </p>
+          <figure className="mt-6">
+            <img
+              src={heroImagePath}
+              alt="Footprints in sand fading away, symbolizing ephemeral one-time secret links"
+              className="mx-auto w-full max-w-2xl max-h-[340px] rounded-2xl border border-gray-200 object-cover dark:border-gray-800"
+              loading="lazy"
+            />
+            <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
+              Image by{" "}
+              <a
+                href={heroArtistUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 hover:opacity-90"
+              >
+                DieAndreArt
+              </a>{" "}
+              from{" "}
+              <a
+                href={heroPixabayUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 hover:opacity-90"
+              >
+                Pixabay
+              </a>
+              .
+            </figcaption>
+          </figure>
         </header>
 
         <div className="space-y-6 leading-relaxed">
