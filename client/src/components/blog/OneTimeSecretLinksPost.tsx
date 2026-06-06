@@ -34,7 +34,9 @@ type ArticleSection = {
   paragraphs: string[];
   bullets?: BulletItem[];
   callout?: string;
+  beforeFlowSteps?: string;
   flowSteps?: FlowStep[];
+  afterFlowSteps?: string[];
   table?: TableRow[];
   goodFits?: string[];
   poorFits?: string[];
@@ -264,30 +266,52 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       {
         title: "What a One-Time Secret Link Actually Is",
         paragraphs: [
-          'A one-time secret link (sometimes called a "burn after reading" link or self-destructing note) is a unique URL that reveals a piece of sensitive text exactly once, then completely removes it from the server architecture.',
-          "A true zero-knowledge platform follows a strict cryptographic flow:",
+          'A one-time secret link (sometimes called a "burn after reading" link or self-destructing note) is a URL meant to deliver sensitive text to one reader, once. After that read, the content should be gone—not archived, not searchable, not lingering in a mailbox or chat history.',
+          "A **true one-time secret design** is stricter than an expiry timer. Four properties have to line up:",
+        ],
+        beforeFlowSteps: "**In practice, that architecture looks like this:**",
+        bullets: [
+          {
+            label: "Encrypt before upload",
+            body: "Plaintext is encrypted in the browser before any network request—not on the server afterward.",
+          },
+          {
+            label: "Separate the key",
+            body: "The decryption key never sits where the service can read it (for example, in the URL fragment after #).",
+          },
+          {
+            label: "Store only ciphertext",
+            body: "The server keeps encrypted data it cannot decrypt on its own.",
+          },
+          {
+            label: "Deliver once",
+            body: "The message is removed after the first successful read—not just hidden or time-limited.",
+          },
         ],
         flowSteps: [
           {
             title: "Local Client-Side Encryption",
             step: "Step 1: Your Browser",
-            body: "You write the secret in your web browser interface. The browser encrypts the text locally before anything hits the network.",
+            body: "You write the secret in your web browser. The browser encrypts the text locally before anything hits the network.",
           },
           {
             title: "Ciphertext Isolation",
             step: "Step 2: The Server",
-            body: "Only the unreadable ciphertext blob is uploaded and stored on the host database. The host server holds data it cannot decrypt.",
+            body: "Only the unreadable ciphertext blob is uploaded and stored. The host server holds data it cannot decrypt.",
           },
           {
             title: "Fragment Separation",
             step: "Step 3: The URL",
-            body: "The unique decryption key is placed entirely in the URL fragment—the part of the web address located after the # symbol.",
+            body: "The unique decryption key is placed entirely in the URL fragment—the part of the web address after the # symbol.",
           },
           {
             title: "Local Decryption & Self-Destruction",
             step: "Step 4: The Recipient",
-            body: "The recipient opens the full link. Their browser extracts the key from the fragment, decrypts the text locally, and the server deletes the encrypted payload immediately.",
+            body: "The recipient opens the full link. Their browser extracts the key from the fragment, decrypts locally, and the server deletes the encrypted payload after that read.",
           },
+        ],
+        afterFlowSteps: [
+          "Not every product sold as a one-time secret link follows this pattern. Some tools encrypt on the server after receiving your text. Others rely on a shared password the service can validate. Still others delete on a schedule but keep metadata, logs, or recoverable copies. When you evaluate a tool, ask whether it implements the full design—not only whether the link expires.",
         ],
       },
       {
@@ -365,7 +389,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
     poorFitsLabel: "Poor Fits",
     closingTitle: "Where PrivateNote Fits",
     closingBody:
-      "PrivateNote is engineered precisely around this zero-knowledge pattern. It isn't a long-term password vault, a team wiki, or a permanent compliance archive. It is a lean, lightning-fast utility designed for delivery.",
+      "PrivateNote is engineered around this client-side encryption model. It isn't a long-term password vault, a team wiki, or a permanent compliance archive. It is a lean, lightning-fast utility designed for delivery.",
     encryptLu:
       "For larger files that need the same client-side encryption model, [Encrypt.lu](https://encrypt.lu) applies the same architectural approach at file scale.",
     tagline:
@@ -413,19 +437,38 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       {
         title: "Was ein One-Time-Secret-Link wirklich ist",
         paragraphs: [
-          'Ein One-Time-Secret-Link (manchmal „Burn-after-Reading“-Link oder selbstzerstörende Notiz genannt) ist eine eindeutige URL, die einen sensiblen Text genau einmal anzeigt und ihn danach vollständig aus der Server-Architektur entfernt.',
-          "Eine echte Zero-Knowledge-Plattform folgt einem strengen kryptografischen Ablauf:",
+          'Ein One-Time-Secret-Link (manchmal „Burn-after-Reading“-Link oder selbstzerstörende Notiz genannt) ist eine URL, die sensible Texte genau einmal an einen Leser liefern soll. Nach dem Lesen soll der Inhalt weg sein—nicht archiviert, nicht durchsuchbar, nicht in Postfach oder Chatverlauf hängen geblieben.',
+          "Ein **wirklich One-Time-Secret-Design** ist strenger als ein Ablauf-Timer. Vier Eigenschaften müssen zusammenpassen:",
+        ],
+        beforeFlowSteps: "**In der Praxis sieht diese Architektur so aus:**",
+        bullets: [
+          {
+            label: "Verschlüsseln vor dem Upload",
+            body: "Klartext wird im Browser verschlüsselt, bevor eine Netzwerkanfrage losgeht—nicht erst danach auf dem Server.",
+          },
+          {
+            label: "Schlüssel trennen",
+            body: "Der Entschlüsselungsschlüssel liegt nie dort, wo der Dienst ihn lesen kann (z. B. im URL-Fragment nach #).",
+          },
+          {
+            label: "Nur Chiffretext speichern",
+            body: "Der Server hält verschlüsselte Daten, die er allein nicht entschlüsseln kann.",
+          },
+          {
+            label: "Einmal ausliefern",
+            body: "Die Nachricht wird nach dem ersten erfolgreichen Lesen entfernt—nicht nur ausgeblendet oder zeitlich begrenzt.",
+          },
         ],
         flowSteps: [
           {
             title: "Lokale clientseitige Verschlüsselung",
             step: "Schritt 1: Ihr Browser",
-            body: "Sie schreiben das Geheimnis in der Weboberfläche. Der Browser verschlüsselt den Text lokal, bevor etwas das Netzwerk berührt.",
+            body: "Sie schreiben das Geheimnis im Browser. Der Text wird lokal verschlüsselt, bevor etwas das Netzwerk berührt.",
           },
           {
             title: "Chiffretext-Isolation",
             step: "Schritt 2: Der Server",
-            body: "Nur der unlesbare Chiffretext wird hochgeladen und in der Host-Datenbank gespeichert. Der Server hält Daten, die er nicht entschlüsseln kann.",
+            body: "Nur der unlesbare Chiffretext wird hochgeladen und gespeichert. Der Server hält Daten, die er nicht entschlüsseln kann.",
           },
           {
             title: "Fragment-Trennung",
@@ -435,8 +478,11 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
           {
             title: "Lokale Entschlüsselung & Selbstzerstörung",
             step: "Schritt 4: Der Empfänger",
-            body: "Der Empfänger öffnet den vollständigen Link. Der Browser extrahiert den Schlüssel aus dem Fragment, entschlüsselt lokal, und der Server löscht die verschlüsselte Nutzlast sofort.",
+            body: "Der Empfänger öffnet den vollständigen Link. Der Browser extrahiert den Schlüssel aus dem Fragment, entschlüsselt lokal, und der Server löscht die verschlüsselte Nutzlast nach diesem Lesevorgang.",
           },
+        ],
+        afterFlowSteps: [
+          "Nicht jedes Produkt, das als One-Time-Secret-Link verkauft wird, folgt diesem Muster. Manche Tools verschlüsseln erst auf dem Server, nachdem sie Ihren Text erhalten haben. Andere verlassen sich auf ein gemeinsames Passwort, das der Dienst prüfen kann. Wieder andere löschen nach Zeitplan, behalten aber Metadaten, Logs oder wiederherstellbare Kopien. Fragen Sie bei der Auswahl, ob das volle Design umgesetzt ist—nicht nur, ob der Link abläuft.",
         ],
       },
       {
@@ -514,7 +560,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
     poorFitsLabel: "Schlechte Einsatzfälle",
     closingTitle: "Wo PrivateNote passt",
     closingBody:
-      "PrivateNote ist genau um dieses Zero-Knowledge-Muster herum gebaut. Es ist kein Langzeit-Passworttresor, kein Team-Wiki und kein dauerhaftes Compliance-Archiv. Es ist ein schlankes, schnelles Werkzeug für die Übergabe.",
+      "PrivateNote ist genau um dieses clientseitige Verschlüsselungsmodell herum gebaut. Es ist kein Langzeit-Passworttresor, kein Team-Wiki und kein dauerhaftes Compliance-Archiv. Es ist ein schlankes, schnelles Werkzeug für die Übergabe.",
     encryptLu:
       "Für größere Dateien mit demselben clientseitigen Verschlüsselungsmodell wendet [Encrypt.lu](https://encrypt.lu) denselben architektonischen Ansatz in Dateigröße an.",
     tagline:
@@ -562,14 +608,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       {
         title: "Ce qu'est réellement un lien secret à usage unique",
         paragraphs: [
-          'Un lien secret à usage unique (parfois appelé lien « brûler après lecture » ou note autodestructible) est une URL unique qui révèle un texte sensible exactement une fois, puis le supprime complètement de l\'architecture serveur.',
-          "Une véritable plateforme zero-knowledge suit un flux cryptographique strict :",
+          'Un lien secret à usage unique (parfois appelé lien « brûler après lecture » ou note autodestructible) est une URL destinée à livrer un texte sensible à un seul lecteur, une fois. Après cette lecture, le contenu doit disparaître—pas archivé, pas consultable, pas laissé dans une boîte mail ou un historique de chat.',
+          "Un **vrai design de secret à usage unique** est plus strict qu'un simple délai d'expiration. Quatre propriétés doivent s'aligner :",
+        ],
+        beforeFlowSteps: "**En pratique, cette architecture ressemble à ceci :**",
+        bullets: [
+          {
+            label: "Chiffrer avant l'envoi",
+            body: "Le texte clair est chiffré dans le navigateur avant toute requête réseau—pas ensuite sur le serveur.",
+          },
+          {
+            label: "Séparer la clé",
+            body: "La clé de déchiffrement ne se trouve jamais là où le service peut la lire (par exemple, dans le fragment d'URL après #).",
+          },
+          {
+            label: "Ne stocker que du chiffré",
+            body: "Le serveur conserve des données chiffrées qu'il ne peut pas déchiffrer seul.",
+          },
+          {
+            label: "Livrer une seule fois",
+            body: "Le message est supprimé après la première lecture réussie—pas seulement masqué ou limité dans le temps.",
+          },
         ],
         flowSteps: [
           {
             title: "Chiffrement local côté client",
             step: "Étape 1 : votre navigateur",
-            body: "Vous rédigez le secret dans l'interface web. Le navigateur chiffre le texte localement avant tout envoi réseau.",
+            body: "Vous rédigez le secret dans le navigateur. Le texte est chiffré localement avant tout envoi réseau.",
           },
           {
             title: "Isolation du chiffré",
@@ -584,8 +649,11 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
           {
             title: "Déchiffrement local & autodestruction",
             step: "Étape 4 : le destinataire",
-            body: "Le destinataire ouvre le lien complet. Son navigateur extrait la clé du fragment, déchiffre localement, et le serveur supprime immédiatement la charge chiffrée.",
+            body: "Le destinataire ouvre le lien complet. Son navigateur extrait la clé du fragment, déchiffre localement, et le serveur supprime la charge chiffrée après cette lecture.",
           },
+        ],
+        afterFlowSteps: [
+          "Tous les produits vendus comme liens secrets à usage unique ne suivent pas ce modèle. Certains outils chiffrent côté serveur après réception de votre texte. D'autres s'appuient sur un mot de passe partagé que le service peut valider. D'autres encore suppriment selon un calendrier mais conservent métadonnées, journaux ou copies récupérables. Lors du choix d'un outil, demandez s'il implémente le design complet—pas seulement si le lien expire.",
         ],
       },
       {
@@ -663,7 +731,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
     poorFitsLabel: "Mauvais cas d'usage",
     closingTitle: "Où PrivateNote s'inscrit",
     closingBody:
-      "PrivateNote est conçu précisément autour de ce modèle zero-knowledge. Ce n'est ni un coffre de mots de passe long terme, ni un wiki d'équipe, ni une archive de conformité permanente. C'est un utilitaire léger et rapide, pensé pour la remise.",
+      "PrivateNote est conçu autour de ce modèle de chiffrement côté client. Ce n'est ni un coffre de mots de passe long terme, ni un wiki d'équipe, ni une archive de conformité permanente. C'est un utilitaire léger et rapide, pensé pour la remise.",
     encryptLu:
       "Pour des fichiers plus volumineux avec le même modèle de chiffrement côté client, [Encrypt.lu](https://encrypt.lu) applique la même approche architecturale à l'échelle des fichiers.",
     tagline:
@@ -711,14 +779,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       {
         title: "Qué es realmente un enlace secreto de un solo uso",
         paragraphs: [
-          'Un enlace secreto de un solo uso (a veces llamado enlace "quemar tras leer" o nota autodestructiva) es una URL única que revela un texto sensible exactamente una vez y luego lo elimina por completo de la arquitectura del servidor.',
-          "Una plataforma zero-knowledge de verdad sigue un flujo criptográfico estricto:",
+          'Un enlace secreto de un solo uso (a veces llamado enlace "quemar tras leer" o nota autodestructiva) es una URL pensada para entregar texto sensible a un solo lector, una vez. Tras esa lectura, el contenido debe desaparecer—sin archivar, sin buscar, sin quedar en un buzón o historial de chat.',
+          "Un **diseño verdaderamente de un solo uso** es más estricto que un temporizador de caducidad. Cuatro propiedades deben alinearse:",
+        ],
+        beforeFlowSteps: "**En la práctica, esa arquitectura se ve así:**",
+        bullets: [
+          {
+            label: "Cifrar antes de subir",
+            body: "El texto en claro se cifra en el navegador antes de cualquier petición de red—no después en el servidor.",
+          },
+          {
+            label: "Separar la clave",
+            body: "La clave de descifrado nunca está donde el servicio puede leerla (por ejemplo, en el fragmento de la URL tras #).",
+          },
+          {
+            label: "Almacenar solo texto cifrado",
+            body: "El servidor guarda datos cifrados que no puede descifrar por sí solo.",
+          },
+          {
+            label: "Entregar una vez",
+            body: "El mensaje se elimina tras la primera lectura exitosa—no solo se oculta o limita en el tiempo.",
+          },
         ],
         flowSteps: [
           {
             title: "Cifrado local en el cliente",
             step: "Paso 1: tu navegador",
-            body: "Escribes el secreto en la interfaz web. El navegador cifra el texto localmente antes de que nada toque la red.",
+            body: "Escribes el secreto en el navegador. El texto se cifra localmente antes de que nada toque la red.",
           },
           {
             title: "Aislamiento del texto cifrado",
@@ -733,8 +820,11 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
           {
             title: "Descifrado local y autodestrucción",
             step: "Paso 4: el destinatario",
-            body: "El destinatario abre el enlace completo. Su navegador extrae la clave del fragmento, descifra localmente y el servidor elimina la carga cifrada de inmediato.",
+            body: "El destinatario abre el enlace completo. Su navegador extrae la clave del fragmento, descifra localmente y el servidor elimina la carga cifrada tras esa lectura.",
           },
+        ],
+        afterFlowSteps: [
+          "No todos los productos vendidos como enlaces secretos de un solo uso siguen este patrón. Algunas herramientas cifran en el servidor tras recibir tu texto. Otras dependen de una contraseña compartida que el servicio puede validar. Otras eliminan según un calendario pero conservan metadatos, registros o copias recuperables. Al evaluar una herramienta, pregunte si implementa el diseño completo—no solo si el enlace caduca.",
         ],
       },
       {
@@ -812,7 +902,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
     poorFitsLabel: "Malos casos de uso",
     closingTitle: "Dónde encaja PrivateNote",
     closingBody:
-      "PrivateNote está diseñado precisamente en torno a este patrón zero-knowledge. No es una bóveda de contraseñas a largo plazo, ni un wiki de equipo, ni un archivo de cumplimiento permanente. Es una utilidad ligera y rápida pensada para la entrega.",
+      "PrivateNote está diseñado en torno a este modelo de cifrado en el cliente. No es una bóveda de contraseñas a largo plazo, ni un wiki de equipo, ni un archivo de cumplimiento permanente. Es una utilidad ligera y rápida pensada para la entrega.",
     encryptLu:
       "Para archivos más grandes que necesitan el mismo modelo de cifrado en el cliente, [Encrypt.lu](https://encrypt.lu) aplica el mismo enfoque arquitectónico a escala de archivos.",
     tagline:
@@ -891,9 +981,15 @@ export const OneTimeSecretLinksPost: React.FC = () => {
 
               {section.bullets ? <BulletList items={section.bullets} /> : null}
 
+              {section.beforeFlowSteps ? <ArticleParagraph text={section.beforeFlowSteps} /> : null}
+
               {section.callout ? <CalloutBox text={section.callout} /> : null}
 
               {section.flowSteps ? <FlowStepsList steps={section.flowSteps} /> : null}
+
+              {section.afterFlowSteps?.map((paragraph) => (
+                <ArticleParagraph key={paragraph} text={paragraph} />
+              ))}
 
               {section.table ? (
                 <ComparisonTable headers={article.tableHeaders} rows={section.table} />
