@@ -4,6 +4,7 @@ import {
   registerRoutes,
   cleanupAuditLogs,
   cleanupExpiredSessions,
+  processExpiredSentNoteNotifications,
   processPendingAccountDeletions,
 } from "./routes";
 import type { Env } from "./types";
@@ -128,6 +129,11 @@ export default {
       // Cleanup expired/revoked sessions
       const sessionResult = await cleanupExpiredSessions(env);
       console.log(`[CRON] Session cleanup: deleted ${sessionResult.deleted} entries${sessionResult.error ? `, error: ${sessionResult.error}` : ''}`);
+
+      const sentNoteResult = await processExpiredSentNoteNotifications(env);
+      console.log(
+        `[CRON] Sent-note expiry notifications: processed ${sentNoteResult.processed}, notified ${sentNoteResult.notified}${sentNoteResult.error ? `, error: ${sentNoteResult.error}` : ''}`,
+      );
 
       const pendingDeleteResult = await processPendingAccountDeletions(env);
       console.log(

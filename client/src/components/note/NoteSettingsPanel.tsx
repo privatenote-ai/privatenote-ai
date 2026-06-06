@@ -117,10 +117,6 @@ type PremiumFeature = {
 
 const premiumDeliveryFeatures: PremiumFeature[] = [
   {
-    title: "Notify me when destroyed",
-    description: "Get confirmation when the note is consumed or expires.",
-  },
-  {
     title: "Restrict to recipient email",
     description: "Only the intended recipient can reveal the note.",
   },
@@ -210,6 +206,8 @@ export type NoteSettingsPanelProps = {
   setExpiryValue: (v: NoteExpiryPresetId) => void;
   notifyOnOpen: boolean;
   setNotifyOnOpen: (v: boolean) => void;
+  notifyOnDestroyed: boolean;
+  setNotifyOnDestroyed: (v: boolean) => void;
   canNotifyOnOpen: boolean;
   isPremiumUser: boolean;
   premiumStatusLoading: boolean;
@@ -232,6 +230,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setExpiryValue,
   notifyOnOpen,
   setNotifyOnOpen,
+  notifyOnDestroyed,
+  setNotifyOnDestroyed,
   canNotifyOnOpen,
   isPremiumUser,
   premiumStatusLoading,
@@ -545,6 +545,52 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       <span className="truncate">
                         Email me when this note is opened
                       </span>
+                      <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+                    </span>
+                    {!isPremiumUser && !premiumStatusLoading ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Crown className="h-3 w-3" aria-hidden />
+                        Premium
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+                <div className="sm:col-span-1">
+                  <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
+                      <MailCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </span>
+                    Destroyed alert
+                  </div>
+                </div>
+                <div className="min-w-0 sm:col-span-2">
+                  <label
+                    title={
+                      canNotifyOnOpen
+                        ? "PrivateNote sends one email when this note can no longer be opened because its read limit was reached."
+                        : premiumStatusLoading
+                          ? "Checking your plan..."
+                          : isPremiumUser
+                            ? "Verify your account email and turn on email notifications in Preferences to use destroyed alerts."
+                            : "Upgrade to Premium to enable destroyed alerts."
+                    }
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border px-3 py-2 transition ${
+                      canNotifyOnOpen
+                        ? "cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
+                        : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-500"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+                      checked={notifyOnDestroyed && canNotifyOnOpen}
+                      disabled={!canNotifyOnOpen}
+                      onChange={(event) => setNotifyOnDestroyed(event.target.checked)}
+                    />
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+                      <span className="truncate">Email me when this note is destroyed</span>
                       <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
                     </span>
                     {!isPremiumUser && !premiumStatusLoading ? (

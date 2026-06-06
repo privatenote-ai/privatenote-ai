@@ -202,14 +202,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
+  const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
   const [accountType, setAccountType] = useState<AccountType>("free");
   const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
+  const [accountEmailVerified, setAccountEmailVerified] = useState(false);
   const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
-  const canNotifyOnOpen = isPremiumUser && accountEmailNotifications;
+  const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
 
   const { toast } = useToast();
@@ -248,7 +250,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     if (!user) {
       setAccountType("free");
       setAccountEmailNotifications(false);
+      setAccountEmailVerified(false);
       setNotifyOnOpen(false);
+      setNotifyOnDestroyed(false);
       setPremiumStatusLoading(false);
       return;
     }
@@ -261,15 +265,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           accountType?: unknown;
           plan?: unknown;
           emailNotifications?: boolean;
+          emailVerified?: boolean;
         }>("/api/auth/account/summary", "GET");
         if (cancelled) return;
         setAccountType(normalizeAccountType(summary.accountType ?? summary.plan));
         setAccountEmailNotifications(summary.emailNotifications === true);
+        setAccountEmailVerified(summary.emailVerified === true);
       } catch {
         if (!cancelled) {
           setAccountType("free");
           setAccountEmailNotifications(false);
+          setAccountEmailVerified(false);
           setNotifyOnOpen(false);
+          setNotifyOnDestroyed(false);
         }
       } finally {
         if (!cancelled) setPremiumStatusLoading(false);
@@ -291,7 +299,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     if (!canNotifyOnOpen && notifyOnOpen) {
       setNotifyOnOpen(false);
     }
-  }, [canNotifyOnOpen, notifyOnOpen]);
+    if (!canNotifyOnOpen && notifyOnDestroyed) {
+      setNotifyOnDestroyed(false);
+    }
+  }, [canNotifyOnOpen, notifyOnDestroyed, notifyOnOpen]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
@@ -858,6 +869,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         expirySeconds,
         maxReads: readCount,
         notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
+        notifyOnDestroyed: notifyOnDestroyed && canNotifyOnOpen,
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -1673,6 +1685,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 setExpiryValue={setExpiryValue}
                 notifyOnOpen={notifyOnOpen}
                 setNotifyOnOpen={setNotifyOnOpen}
+                notifyOnDestroyed={notifyOnDestroyed}
+                setNotifyOnDestroyed={setNotifyOnDestroyed}
                 canNotifyOnOpen={canNotifyOnOpen}
                 isPremiumUser={isPremiumUser}
                 premiumStatusLoading={premiumStatusLoading}

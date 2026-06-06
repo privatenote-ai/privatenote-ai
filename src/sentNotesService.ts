@@ -13,12 +13,16 @@ export type SentNoteRow = {
   label: string | null;
   recipient_email_hint: string | null;
   notify_on_open: number;
+  notify_on_destroyed: number;
   require_recipient_verification: number;
   proof_enabled: number;
   expires_at: string | null;
   created_at: string;
   opened_at: string | null;
+  destroyed_at: string | null;
   revoked_at: string | null;
+  opened_notified_at: string | null;
+  destroyed_notified_at: string | null;
   open_country: string | null;
   open_device_class: string | null;
   open_browser: string | null;
@@ -31,6 +35,7 @@ export type CreateSentNoteInput = {
   recipientEmail?: string | null;
   recipientCode?: string | null;
   notifyOnOpen?: boolean;
+  notifyOnDestroyed?: boolean;
   requireRecipientVerification?: boolean;
   proofEnabled?: boolean;
   expiresAt?: string | null;
@@ -104,9 +109,26 @@ export async function getUserAccountType(env: Env, userId: string): Promise<stri
 
 export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string; verificationCode?: string }> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
-  const accountType = await getUserAccountType(env, input.userId);
+  const sender = await env.AUTH_DB.prepare(
+    `SELECT email, email_verified, email_notifications, account_type, plan
+     FROM users WHERE id = ? LIMIT 1`,
+  )
+    .bind(input.userId)
+    .first<{
+      email: string | null;
+      email_verified: number | null;
+      email_notifications: number | null;
+      account_type: string | null;
+      plan: string | null;
+    }>();
+  const accountType = normalizeAccountType(sender?.account_type ?? sender?.plan);
   if (!hasPremiumFeatures(accountType)) {
     throw new Error("premium_required");
+  }
+  if (!sender?.email || !isPlausibleEmailFormat(sender.email)) throw new Error("sender_email_required");
+  if (sender.email_verified !== 1) throw new Error("sender_email_unverified");
+  if (sender.email_notifications !== 1 && (input.notifyOnOpen || input.notifyOnDestroyed)) {
+    throw new Error("email_notifications_disabled");
   }
 
   const id = crypto.randomUUID();
@@ -121,8 +143,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
-      notify_on_open, require_recipient_verification, proof_enabled, expires_at
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?)`,
+      notify_on_open, notify_on_destroyed, require_recipient_verification, proof_enabled, expires_at
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -131,6 +153,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.label?.trim().slice(0, 120) || null,
       emailHint,
       input.notifyOnOpen ? 1 : 0,
+      input.notifyOnDestroyed ? 1 : 0,
       input.requireRecipientVerification ? 1 : 0,
       input.proofEnabled !== false ? 1 : 0,
       input.expiresAt ?? null,
@@ -252,41 +275,196 @@ export async function recordSentNoteOpened(
   noteId: string,
   request: Request,
   sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+  destroyed = false,
 ): Promise<void> {
   const row = await getSentNoteByNoteId(env, noteId);
-  if (!row || row.status === "revoked" || row.status === "opened") return;
+  if (!row || row.status === "revoked" || row.status === "destroyed" || row.status === "expired") return;
 
   const country = request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null;
   const ua = request.headers.get("User-Agent");
   const { deviceClass, browser } = parseUserAgent(ua);
+  const eventAt = new Date().toISOString();
+  const nextStatus: SentNoteStatus = destroyed ? "destroyed" : row.status === "created" ? "opened" : row.status;
 
   await env.AUTH_DB!.prepare(
-    `UPDATE sent_notes SET status = 'opened', opened_at = datetime('now'),
-      open_country = ?, open_device_class = ?, open_browser = ?
-     WHERE note_id = ? AND status = 'created'`,
+    `UPDATE sent_notes
+     SET status = ?,
+       opened_at = COALESCE(opened_at, ?),
+       destroyed_at = CASE WHEN ? = 1 THEN COALESCE(destroyed_at, ?) ELSE destroyed_at END,
+       open_country = COALESCE(open_country, ?),
+       open_device_class = COALESCE(open_device_class, ?),
+       open_browser = COALESCE(open_browser, ?)
+     WHERE note_id = ? AND status IN ('created', 'opened')`,
   )
-    .bind(country, deviceClass, browser, noteId)
+    .bind(nextStatus, eventAt, destroyed ? 1 : 0, eventAt, country, deviceClass, browser, noteId)
     .run();
 
-  if (row.notify_on_open === 1) {
-    const senderRow = await env.AUTH_DB!.prepare(`SELECT email FROM users WHERE id = ? LIMIT 1`)
-      .bind(row.user_id)
-      .first<{ email: string | null }>();
-    const notifyEmail = senderRow?.email;
-    if (notifyEmail && isPlausibleEmailFormat(notifyEmail)) {
-      const label = row.label || noteId.slice(0, 8);
-      const subject = `PrivateNote: your note "${label}" was opened`;
-      const text = [
-        `Your secure note "${label}" was opened.`,
-        country ? `Approximate country: ${country}` : "",
-        `Device: ${deviceClass}, browser: ${browser}`,
-        "",
-        "This is proof the link was accessed, not that the recipient read or understood the content.",
-      ]
-        .filter(Boolean)
-        .join("\n");
-      await sendEmailFn(notifyEmail, subject, text, `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`);
+  if (destroyed && row.notify_on_open === 1 && row.notify_on_destroyed === 1 && !row.opened_notified_at && !row.destroyed_notified_at) {
+    await sendSentNoteLifecycleEmail(env, row, noteId, "opened_destroyed", eventAt, {
+      country,
+      deviceClass,
+      browser,
+      sendEmailFn,
+    });
+    return;
+  }
+
+  if (row.notify_on_open === 1 && !row.opened_notified_at) {
+    await sendSentNoteLifecycleEmail(env, row, noteId, "opened", eventAt, {
+      country,
+      deviceClass,
+      browser,
+      sendEmailFn,
+    });
+  }
+
+  if (destroyed && row.notify_on_destroyed === 1 && !row.destroyed_notified_at) {
+    await sendSentNoteLifecycleEmail(env, row, noteId, "destroyed", eventAt, {
+      country,
+      deviceClass,
+      browser,
+      sendEmailFn,
+    });
+  }
+}
+
+type SentNoteLifecycleEvent = "opened" | "destroyed" | "opened_destroyed" | "expired";
+
+async function sendSentNoteLifecycleEmail(
+  env: Env,
+  row: SentNoteRow,
+  noteId: string,
+  event: SentNoteLifecycleEvent,
+  eventAt: string,
+  context: {
+    country?: string | null;
+    deviceClass?: string;
+    browser?: string;
+    sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>;
+  },
+): Promise<void> {
+  const senderRow = await env.AUTH_DB!.prepare(
+    `SELECT email, email_verified, email_notifications, account_type, plan
+     FROM users WHERE id = ? LIMIT 1`,
+  )
+    .bind(row.user_id)
+    .first<{
+      email: string | null;
+      email_verified: number | null;
+      email_notifications: number | null;
+      account_type: string | null;
+      plan: string | null;
+    }>();
+
+  const notifyEmail = senderRow?.email;
+  if (!notifyEmail || !isPlausibleEmailFormat(notifyEmail)) return;
+  if (senderRow.email_verified !== 1 || senderRow.email_notifications !== 1) return;
+  if (!hasPremiumFeatures(normalizeAccountType(senderRow.account_type ?? senderRow.plan))) return;
+
+  const setClause =
+    event === "opened"
+      ? "opened_notified_at = ?"
+      : event === "opened_destroyed"
+        ? "opened_notified_at = ?, destroyed_notified_at = ?"
+        : "destroyed_notified_at = ?";
+  const whereClause =
+    event === "opened"
+      ? "opened_notified_at IS NULL"
+      : event === "opened_destroyed"
+        ? "opened_notified_at IS NULL AND destroyed_notified_at IS NULL"
+        : "destroyed_notified_at IS NULL";
+  const bindValues =
+    event === "opened_destroyed" ? [eventAt, eventAt, noteId] : [eventAt, noteId];
+  const claim = await env.AUTH_DB!.prepare(
+    `UPDATE sent_notes SET ${setClause} WHERE note_id = ? AND ${whereClause}`,
+  )
+    .bind(...bindValues)
+    .run();
+  const rowsChanged = (claim?.meta as { changes?: number } | undefined)?.changes ?? 0;
+  if (rowsChanged < 1) return;
+
+  const label = row.label || `${noteId.slice(0, 8)}...`;
+  const countryLine = context.country ? `Approximate country: ${context.country}` : "";
+  const deviceLine =
+    context.deviceClass || context.browser
+      ? `Device: ${context.deviceClass ?? "unknown"}, browser: ${context.browser ?? "unknown"}`
+      : "";
+  const eventLabel =
+    event === "opened_destroyed"
+      ? "opened and destroyed"
+      : event === "expired"
+        ? "expired"
+        : event;
+  const subject = `PrivateNote: your note "${label}" was ${eventLabel}`;
+  const explanatoryLine =
+    event === "opened"
+      ? "This is proof the link was accessed, not that the recipient read or understood the content."
+      : event === "expired"
+        ? "This means the note can no longer be opened because its expiry time passed."
+        : event === "opened_destroyed"
+          ? "This means the link was accessed and the note can no longer be opened."
+          : "This means the note can no longer be opened because its read limit was reached.";
+  const text = [
+    `Your secure note "${label}" was ${eventLabel}.`,
+    `Time: ${eventAt}`,
+    countryLine,
+    deviceLine,
+    "",
+    explanatoryLine,
+    "",
+    "PrivateNote cannot see the decrypted message content.",
+  ].filter(Boolean).join("\n");
+
+  try {
+    await context.sendEmailFn(notifyEmail, subject, text, `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`);
+  } catch (error) {
+    const resetClause =
+      event === "opened"
+        ? "opened_notified_at = NULL"
+        : event === "opened_destroyed"
+          ? "opened_notified_at = NULL, destroyed_notified_at = NULL"
+          : "destroyed_notified_at = NULL";
+    await env.AUTH_DB!.prepare(`UPDATE sent_notes SET ${resetClause} WHERE note_id = ?`)
+      .bind(noteId)
+      .run();
+    throw error;
+  }
+}
+
+export async function processExpiredSentNotes(
+  env: Env,
+  sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+  limit = 100,
+): Promise<{ processed: number; notified: number; error?: string }> {
+  if (!env.AUTH_DB) return { processed: 0, notified: 0 };
+  try {
+    const rows = await env.AUTH_DB.prepare(
+      `SELECT * FROM sent_notes
+       WHERE status IN ('created', 'opened')
+         AND expires_at IS NOT NULL
+         AND datetime(expires_at) <= datetime('now')
+       ORDER BY expires_at ASC
+       LIMIT ?`,
+    ).bind(limit).all<SentNoteRow>();
+    let processed = 0;
+    let notified = 0;
+    const expiredAt = new Date().toISOString();
+    for (const row of rows.results ?? []) {
+      const update = await env.AUTH_DB.prepare(
+        `UPDATE sent_notes
+         SET status = 'expired', destroyed_at = COALESCE(destroyed_at, ?)
+         WHERE note_id = ? AND status IN ('created', 'opened')`,
+      ).bind(expiredAt, row.note_id).run();
+      if (((update?.meta as { changes?: number } | undefined)?.changes ?? 0) < 1) continue;
+      processed += 1;
+      if (row.notify_on_destroyed === 1 && !row.destroyed_notified_at) {
+        await sendSentNoteLifecycleEmail(env, row, row.note_id, "expired", expiredAt, { sendEmailFn });
+        notified += 1;
+      }
     }
+    return { processed, notified };
+  } catch (error) {
+    return { processed: 0, notified: 0, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

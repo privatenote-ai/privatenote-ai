@@ -37,6 +37,7 @@ import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
+import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened } from "./sentNotesService";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -763,137 +764,34 @@ function noteReadNotificationDeviceLabel(request: Request): string {
   return "unknown device";
 }
 
-async function registerPremiumNoteReadNotification(
+async function registerPremiumSentNote(
   env: Env,
   request: Request,
   noteId: string,
-  requested: boolean,
+  input: {
+    notifyOnOpen?: boolean;
+    notifyOnDestroyed?: boolean;
+    label?: string | null;
+    expiresAt?: string | null;
+  },
 ): Promise<void> {
-  if (!requested) return;
+  if (!input.notifyOnOpen && !input.notifyOnDestroyed) return;
   if (!env.AUTH_DB) return;
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session?.id) return;
-
-    const user = await env.AUTH_DB.prepare(
-      `SELECT id, email, account_type, plan, email_notifications
-       FROM users
-       WHERE id = ?
-       LIMIT 1`,
-    )
-      .bind(session.id)
-      .first<{
-        id: string;
-        email: string | null;
-        account_type: string | null;
-        plan: string | null;
-        email_notifications: number | null;
-      }>();
-
-    if (!user?.id) return;
-    if (!isPremiumAccountType(user.account_type, user.plan)) return;
-    if (user.email_notifications !== 1) return;
-    if (!user.email || !isPlausibleEmailFormat(user.email)) return;
-
-    await env.AUTH_DB.prepare(
-      `INSERT OR REPLACE INTO note_read_notifications (note_id, user_id, enabled, created_at, opened_at, notified_at)
-       VALUES (?, ?, 1, datetime('now'), NULL, NULL)`,
-    )
-      .bind(noteId, user.id)
-      .run();
+    await insertSentNote(env, {
+      userId: session.id,
+      noteId,
+      label: input.label,
+      notifyOnOpen: input.notifyOnOpen,
+      notifyOnDestroyed: input.notifyOnDestroyed,
+      expiresAt: input.expiresAt,
+      proofEnabled: true,
+    });
   } catch (error) {
-    console.warn("[NOTE_READ_NOTIFICATION] Failed to register note-open notification:", error);
-  }
-}
-
-async function sendPremiumNoteReadNotification(env: Env, request: Request, noteId: string): Promise<void> {
-  if (!env.AUTH_DB) return;
-
-  try {
-    const row = await env.AUTH_DB.prepare(
-      `SELECT
-         note_read_notifications.note_id as note_id,
-         note_read_notifications.enabled as enabled,
-         note_read_notifications.notified_at as notified_at,
-         users.email as email,
-         users.email_notifications as email_notifications,
-         users.account_type as account_type,
-         users.plan as plan
-       FROM note_read_notifications
-       INNER JOIN users ON users.id = note_read_notifications.user_id
-       WHERE note_read_notifications.note_id = ?
-       LIMIT 1`,
-    )
-      .bind(noteId)
-      .first<{
-        note_id: string;
-        enabled: number | null;
-        notified_at: string | null;
-        email: string | null;
-        email_notifications: number | null;
-        account_type: string | null;
-        plan: string | null;
-      }>();
-
-    if (!row || row.enabled !== 1 || row.notified_at) return;
-    if (row.email_notifications !== 1) return;
-    if (!isPremiumAccountType(row.account_type, row.plan)) return;
-    if (!row.email || !isPlausibleEmailFormat(row.email)) return;
-
-    const openedAt = new Date().toISOString();
-    const claimResult = await env.AUTH_DB.prepare(
-      `UPDATE note_read_notifications
-       SET opened_at = COALESCE(opened_at, ?), notified_at = ?
-       WHERE note_id = ? AND enabled = 1 AND notified_at IS NULL`,
-    )
-      .bind(openedAt, openedAt, noteId)
-      .run();
-
-    const rowsChanged = (claimResult?.meta as { changes?: number } | undefined)?.changes ?? 0;
-    if (rowsChanged < 1) return;
-
-    const country = request.headers.get("CF-IPCountry") || "";
-    const locationText = country && country !== "XX" ? ` from ${country}` : "";
-    const device = noteReadNotificationDeviceLabel(request);
-    const noteLabel = `${noteId.slice(0, 8)}...`;
-    const subject = "Your PrivateNote was opened";
-    const text = [
-      "Your PrivateNote secure link was opened.",
-      "",
-      `Note: ${noteLabel}`,
-      `Time: ${openedAt}`,
-      `Device: ${device}${locationText}`,
-      "",
-      "This confirms the secure note link was accessed. PrivateNote cannot see the decrypted message content.",
-      "",
-      "You can switch off these emails in Account > Preferences.",
-    ].join("\n");
-    const html = `
-      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; line-height: 1.5;">
-        <h1 style="font-size: 20px; margin: 0 0 12px;">Your PrivateNote was opened</h1>
-        <p>Your PrivateNote secure link was opened.</p>
-        <p><strong>Note:</strong> ${escapeHtml(noteLabel)}<br>
-        <strong>Time:</strong> ${escapeHtml(openedAt)}<br>
-        <strong>Device:</strong> ${escapeHtml(`${device}${locationText}`)}</p>
-        <p style="color: #4b5563;">This confirms the secure note link was accessed. PrivateNote cannot see the decrypted message content.</p>
-        <p style="color: #6b7280; font-size: 13px;">You can switch off these emails in Account &gt; Preferences.</p>
-      </div>
-    `;
-
-    const emailResult = await sendEmail(env, { to: row.email, subject, text, html });
-    if (!emailResult.ok) {
-      console.warn("[NOTE_READ_NOTIFICATION] Failed to send note-open email:", emailResult.error);
-      await env.AUTH_DB.prepare(
-        `UPDATE note_read_notifications
-         SET notified_at = NULL
-         WHERE note_id = ? AND notified_at = ?`,
-      )
-        .bind(noteId, openedAt)
-        .run();
-    }
-  } catch (error) {
-    console.warn("[NOTE_READ_NOTIFICATION] Failed to process note-open notification:", error);
+    console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
   }
 }
 
@@ -7677,7 +7575,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (doResponse.ok) {
-      await registerPremiumNoteReadNotification(env, request, id, requestBody?.notifyOnOpen === true);
+      await registerPremiumSentNote(env, request, id, {
+        notifyOnOpen: requestBody?.notifyOnOpen === true,
+        notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+        label: typeof requestBody?.label === "string" ? requestBody.label : null,
+        expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
+      });
     }
 
     if (doResponse.ok && requestedId) {
@@ -7730,6 +7633,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (doResponse.ok) {
+      let noteDestroyed = false;
       try {
         type RevealJson = {
           content?: string;
@@ -7747,6 +7651,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         const maxReads = data.maxReads ?? 0;
         const readCount = data.readCount ?? 0;
         const destroyed = maxReads > 0 && readCount >= maxReads;
+        noteDestroyed = destroyed;
         const noteForAnalytics: Note = {
           id,
           content: data.content ?? "",
@@ -7768,7 +7673,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } catch (error) {
         console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
-      await sendPremiumNoteReadNotification(env, request, id);
+      try {
+        await recordSentNoteOpened(
+          env,
+          id,
+          request,
+          async (to, subject, text, html) => {
+            const result = await sendEmail(env, { to, subject, text, html });
+            if (!result.ok) throw new Error(result.error ?? "Email send failed");
+            return result;
+          },
+          noteDestroyed,
+        );
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
+      }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed
       storage.trackNoteRevealFailed().catch(() => {});
@@ -8620,6 +8539,16 @@ export async function processPendingAccountDeletions(
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return { finalized: 0, error: errorMessage };
   }
+}
+
+export async function processExpiredSentNoteNotifications(
+  env: Env,
+): Promise<{ processed: number; notified: number; error?: string }> {
+  return processExpiredSentNotes(env, async (to, subject, text, html) => {
+    const result = await sendEmail(env, { to, subject, text, html });
+    if (!result.ok) throw new Error(result.error ?? "Email send failed");
+    return result;
+  });
 }
 
 /**
