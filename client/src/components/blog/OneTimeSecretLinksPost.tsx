@@ -1,7 +1,16 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { joinPublicPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 
@@ -57,7 +66,6 @@ type ArticleCopy = {
   closingBody: string;
   encryptLu: string;
   tagline: string;
-  ctaButton: string;
   relatedReading: string;
 };
 
@@ -173,6 +181,26 @@ function FlowStepsList({ steps }: { steps: FlowStep[] }) {
   );
 }
 
+function VerdictBadge({ verdict }: { verdict: string }) {
+  const isGood = verdict.includes("✓");
+  const isBad = verdict.includes("✗");
+
+  return (
+    <span
+      className={cn(
+        "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset",
+        isGood && "whitespace-nowrap bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-800",
+        isBad && "whitespace-nowrap bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-800",
+        !isGood &&
+          !isBad &&
+          "max-w-[12rem] whitespace-normal text-left leading-snug bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800",
+      )}
+    >
+      {verdict}
+    </span>
+  );
+}
+
 function ComparisonTable({
   headers,
   rows,
@@ -180,31 +208,53 @@ function ComparisonTable({
   headers: ArticleCopy["tableHeaders"];
   rows: TableRow[];
 }) {
+  const headCellClass =
+    "h-11 border-r border-gray-200 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500 last:border-r-0 dark:border-gray-700 dark:text-gray-400";
+  const bodyCellClass =
+    "border-r border-gray-100 px-4 py-3.5 align-top last:border-r-0 dark:border-gray-800";
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[540px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-700">
-            <th className="pb-3 pr-4 font-semibold text-gray-900 dark:text-white">{headers.channel}</th>
-            <th className="pb-3 pr-4 font-semibold text-gray-900 dark:text-white">{headers.encrypted}</th>
-            <th className="pb-3 pr-4 font-semibold text-gray-900 dark:text-white">{headers.persistent}</th>
-            <th className="pb-3 font-semibold text-gray-900 dark:text-white">{headers.verdict}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.channel}
-              className="border-b border-gray-100 last:border-0 dark:border-gray-800"
-            >
-              <td className="py-3 pr-4 font-medium text-gray-900 dark:text-white">{row.channel}</td>
-              <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">{row.encrypted}</td>
-              <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">{row.persistent}</td>
-              <td className="py-3 text-gray-700 dark:text-gray-300">{row.verdict}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+      <Table className="min-w-[640px]">
+        <TableHeader>
+          <TableRow className="border-b border-gray-200 bg-gray-50/90 hover:bg-gray-50/90 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800/60">
+            <TableHead className={headCellClass}>{headers.channel}</TableHead>
+            <TableHead className={headCellClass}>{headers.encrypted}</TableHead>
+            <TableHead className={headCellClass}>{headers.persistent}</TableHead>
+            <TableHead className={cn(headCellClass, "text-right")}>{headers.verdict}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const isRecommended = row.verdict.includes("✓");
+
+            return (
+              <TableRow
+                key={row.channel}
+                className={cn(
+                  "border-b border-gray-100 last:border-0 dark:border-gray-800",
+                  isRecommended
+                    ? "bg-emerald-50/50 hover:bg-emerald-50/70 dark:bg-emerald-950/15 dark:hover:bg-emerald-950/25"
+                    : "hover:bg-gray-50/80 dark:hover:bg-gray-800/30",
+                )}
+              >
+                <TableCell className={cn(bodyCellClass, "font-medium text-gray-900 dark:text-white")}>
+                  {row.channel}
+                </TableCell>
+                <TableCell className={cn(bodyCellClass, "text-gray-600 dark:text-gray-300")}>
+                  {row.encrypted}
+                </TableCell>
+                <TableCell className={cn(bodyCellClass, "text-gray-600 dark:text-gray-300")}>
+                  {row.persistent}
+                </TableCell>
+                <TableCell className={cn(bodyCellClass, isRecommended ? "text-right" : "text-left sm:text-right")}>
+                  <VerdictBadge verdict={row.verdict} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -267,51 +317,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
         title: "What a One-Time Secret Link Actually Is",
         paragraphs: [
           'A one-time secret link (sometimes called a "burn after reading" link or self-destructing note) is a URL meant to deliver sensitive text to one reader, once. After that read, the content should be gone—not archived, not searchable, not lingering in a mailbox or chat history.',
-          "A **true one-time secret design** is stricter than an expiry timer. Four properties have to line up:",
+          "A **true one-time secret design** is stricter than an expiry timer. Critically, the **encryption key is generated in your browser**—never on the server—and the plaintext is encrypted there before anything is uploaded.",
         ],
-        beforeFlowSteps: "**In practice, that architecture looks like this:**",
-        bullets: [
-          {
-            label: "Encrypt before upload",
-            body: "Plaintext is encrypted in the browser before any network request—not on the server afterward.",
-          },
-          {
-            label: "Separate the key",
-            body: "The decryption key never sits where the service can read it (for example, in the URL fragment after #).",
-          },
-          {
-            label: "Store only ciphertext",
-            body: "The server keeps encrypted data it cannot decrypt on its own.",
-          },
-          {
-            label: "Deliver once",
-            body: "The message is removed after the first successful read—not just hidden or time-limited.",
-          },
-        ],
+        beforeFlowSteps: "**In practice, the full flow looks like this:**",
         flowSteps: [
           {
-            title: "Local Client-Side Encryption",
+            title: "Browser-Generated Key & Encryption",
             step: "Step 1: Your Browser",
-            body: "You write the secret in your web browser. The browser encrypts the text locally before anything hits the network.",
+            body: "You write the secret in your web browser. The browser generates a fresh encryption key locally and uses it to encrypt the text—before any network request leaves your device.",
           },
           {
-            title: "Ciphertext Isolation",
+            title: "Ciphertext Upload",
             step: "Step 2: The Server",
-            body: "Only the unreadable ciphertext blob is uploaded and stored. The host server holds data it cannot decrypt.",
+            body: "Only the encrypted blob is uploaded. The server stores ciphertext it cannot read because it never received the key or the plaintext.",
           },
           {
-            title: "Fragment Separation",
+            title: "Key Stays in the Link",
             step: "Step 3: The URL",
-            body: "The unique decryption key is placed entirely in the URL fragment—the part of the web address after the # symbol.",
+            body: "The browser-generated key is appended to the link in the URL fragment—the part after #—which is never sent to the server.",
           },
           {
-            title: "Local Decryption & Self-Destruction",
+            title: "One Read, Then Gone",
             step: "Step 4: The Recipient",
-            body: "The recipient opens the full link. Their browser extracts the key from the fragment, decrypts locally, and the server deletes the encrypted payload after that read.",
+            body: "The recipient opens the full link. Their browser reads the key from the fragment, decrypts locally, and the server deletes the ciphertext after that first successful read.",
           },
         ],
         afterFlowSteps: [
-          "Not every product sold as a one-time secret link follows this pattern. Some tools encrypt on the server after receiving your text. Others rely on a shared password the service can validate. Still others delete on a schedule but keep metadata, logs, or recoverable copies. When you evaluate a tool, ask whether it implements the full design—not only whether the link expires.",
+          "Not every product sold as a one-time secret link follows this pattern. Some tools encrypt on the server after receiving your text—or generate the key there, meaning the service could read your secret. Others rely on a shared password the service can validate. Still others delete on a schedule but keep metadata, logs, or recoverable copies. When you evaluate a tool, ask whether it implements the full design—not only whether the link expires.",
         ],
       },
       {
@@ -349,7 +381,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
             channel: "Password Manager",
             encrypted: "Yes",
             persistent: "Designed specifically for retention",
-            verdict: "✗ Wrong Tool",
+            verdict: "Usually cumbersome—often paid, high-friction for quick handoffs",
           },
           {
             channel: "One-Time Link",
@@ -394,7 +426,6 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       "For larger files that need the same client-side encryption model, [Encrypt.lu](https://encrypt.lu) applies the same architectural approach at file scale.",
     tagline:
       "It ensures that the lifespan of your sensitive data matches the lifespan of the medium it is traveling through. Because sometimes, the most secure message is the one that completely stops existing.",
-    ctaButton: "Create a one-time note →",
     relatedReading: "Related reading",
   },
   de: {
@@ -438,51 +469,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
         title: "Was ein One-Time-Secret-Link wirklich ist",
         paragraphs: [
           'Ein One-Time-Secret-Link (manchmal „Burn-after-Reading“-Link oder selbstzerstörende Notiz genannt) ist eine URL, die sensible Texte genau einmal an einen Leser liefern soll. Nach dem Lesen soll der Inhalt weg sein—nicht archiviert, nicht durchsuchbar, nicht in Postfach oder Chatverlauf hängen geblieben.',
-          "Ein **wirklich One-Time-Secret-Design** ist strenger als ein Ablauf-Timer. Vier Eigenschaften müssen zusammenpassen:",
+          "Ein **wirklich One-Time-Secret-Design** ist strenger als ein Ablauf-Timer. Entscheidend: Der **Verschlüsselungsschlüssel wird in Ihrem Browser erzeugt**—niemals auf dem Server—und der Klartext wird dort verschlüsselt, bevor etwas hochgeladen wird.",
         ],
-        beforeFlowSteps: "**In der Praxis sieht diese Architektur so aus:**",
-        bullets: [
-          {
-            label: "Verschlüsseln vor dem Upload",
-            body: "Klartext wird im Browser verschlüsselt, bevor eine Netzwerkanfrage losgeht—nicht erst danach auf dem Server.",
-          },
-          {
-            label: "Schlüssel trennen",
-            body: "Der Entschlüsselungsschlüssel liegt nie dort, wo der Dienst ihn lesen kann (z. B. im URL-Fragment nach #).",
-          },
-          {
-            label: "Nur Chiffretext speichern",
-            body: "Der Server hält verschlüsselte Daten, die er allein nicht entschlüsseln kann.",
-          },
-          {
-            label: "Einmal ausliefern",
-            body: "Die Nachricht wird nach dem ersten erfolgreichen Lesen entfernt—nicht nur ausgeblendet oder zeitlich begrenzt.",
-          },
-        ],
+        beforeFlowSteps: "**In der Praxis sieht der Ablauf so aus:**",
         flowSteps: [
           {
-            title: "Lokale clientseitige Verschlüsselung",
+            title: "Schlüsselerzeugung & Verschlüsselung im Browser",
             step: "Schritt 1: Ihr Browser",
-            body: "Sie schreiben das Geheimnis im Browser. Der Text wird lokal verschlüsselt, bevor etwas das Netzwerk berührt.",
+            body: "Sie schreiben das Geheimnis im Browser. Der Browser erzeugt lokal einen neuen Verschlüsselungsschlüssel und verschlüsselt damit den Text—bevor eine Netzwerkanfrage Ihr Gerät verlässt.",
           },
           {
-            title: "Chiffretext-Isolation",
+            title: "Upload des Chiffretexts",
             step: "Schritt 2: Der Server",
-            body: "Nur der unlesbare Chiffretext wird hochgeladen und gespeichert. Der Server hält Daten, die er nicht entschlüsseln kann.",
+            body: "Nur der verschlüsselte Blob wird hochgeladen. Der Server speichert Chiffretext, den er nicht lesen kann, weil er weder Schlüssel noch Klartext erhalten hat.",
           },
           {
-            title: "Fragment-Trennung",
+            title: "Schlüssel bleibt im Link",
             step: "Schritt 3: Die URL",
-            body: "Der eindeutige Entschlüsselungsschlüssel wird vollständig im URL-Fragment platziert—dem Teil der Webadresse nach dem #-Symbol.",
+            body: "Der im Browser erzeugte Schlüssel wird an den Link im URL-Fragment angehängt—dem Teil nach #—der niemals an den Server gesendet wird.",
           },
           {
-            title: "Lokale Entschlüsselung & Selbstzerstörung",
+            title: "Einmal lesen, dann weg",
             step: "Schritt 4: Der Empfänger",
-            body: "Der Empfänger öffnet den vollständigen Link. Der Browser extrahiert den Schlüssel aus dem Fragment, entschlüsselt lokal, und der Server löscht die verschlüsselte Nutzlast nach diesem Lesevorgang.",
+            body: "Der Empfänger öffnet den vollständigen Link. Der Browser liest den Schlüssel aus dem Fragment, entschlüsselt lokal, und der Server löscht den Chiffretext nach diesem ersten erfolgreichen Lesevorgang.",
           },
         ],
         afterFlowSteps: [
-          "Nicht jedes Produkt, das als One-Time-Secret-Link verkauft wird, folgt diesem Muster. Manche Tools verschlüsseln erst auf dem Server, nachdem sie Ihren Text erhalten haben. Andere verlassen sich auf ein gemeinsames Passwort, das der Dienst prüfen kann. Wieder andere löschen nach Zeitplan, behalten aber Metadaten, Logs oder wiederherstellbare Kopien. Fragen Sie bei der Auswahl, ob das volle Design umgesetzt ist—nicht nur, ob der Link abläuft.",
+          "Nicht jedes Produkt, das als One-Time-Secret-Link verkauft wird, folgt diesem Muster. Manche Tools verschlüsseln erst auf dem Server, nachdem sie Ihren Text erhalten haben—oder erzeugen den Schlüssel dort, sodass der Dienst Ihr Geheimnis lesen könnte. Andere verlassen sich auf ein gemeinsames Passwort, das der Dienst prüfen kann. Wieder andere löschen nach Zeitplan, behalten aber Metadaten, Logs oder wiederherstellbare Kopien. Fragen Sie bei der Auswahl, ob das volle Design umgesetzt ist—nicht nur, ob der Link abläuft.",
         ],
       },
       {
@@ -520,7 +533,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
             channel: "Passwortmanager",
             encrypted: "Ja",
             persistent: "Für dauerhafte Aufbewahrung konzipiert",
-            verdict: "✗ Falsches Werkzeug",
+            verdict: "Meist umständlich—oft kostenpflichtig, aufwendig für schnelle Übergaben",
           },
           {
             channel: "One-Time-Link",
@@ -565,7 +578,6 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       "Für größere Dateien mit demselben clientseitigen Verschlüsselungsmodell wendet [Encrypt.lu](https://encrypt.lu) denselben architektonischen Ansatz in Dateigröße an.",
     tagline:
       "Es stellt sicher, dass die Lebensdauer sensibler Daten zur Lebensdauer des Mediums passt, durch das sie reisen. Denn manchmal ist die sicherste Nachricht die, die vollständig aufhört zu existieren.",
-    ctaButton: "One-Time-Notiz erstellen →",
     relatedReading: "Weiterlesen",
   },
   fr: {
@@ -609,51 +621,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
         title: "Ce qu'est réellement un lien secret à usage unique",
         paragraphs: [
           'Un lien secret à usage unique (parfois appelé lien « brûler après lecture » ou note autodestructible) est une URL destinée à livrer un texte sensible à un seul lecteur, une fois. Après cette lecture, le contenu doit disparaître—pas archivé, pas consultable, pas laissé dans une boîte mail ou un historique de chat.',
-          "Un **vrai design de secret à usage unique** est plus strict qu'un simple délai d'expiration. Quatre propriétés doivent s'aligner :",
+          "Un **vrai design de secret à usage unique** est plus strict qu'un simple délai d'expiration. Point crucial : **la clé de chiffrement est générée dans votre navigateur**—jamais sur le serveur—et le texte clair y est chiffré avant tout envoi.",
         ],
-        beforeFlowSteps: "**En pratique, cette architecture ressemble à ceci :**",
-        bullets: [
-          {
-            label: "Chiffrer avant l'envoi",
-            body: "Le texte clair est chiffré dans le navigateur avant toute requête réseau—pas ensuite sur le serveur.",
-          },
-          {
-            label: "Séparer la clé",
-            body: "La clé de déchiffrement ne se trouve jamais là où le service peut la lire (par exemple, dans le fragment d'URL après #).",
-          },
-          {
-            label: "Ne stocker que du chiffré",
-            body: "Le serveur conserve des données chiffrées qu'il ne peut pas déchiffrer seul.",
-          },
-          {
-            label: "Livrer une seule fois",
-            body: "Le message est supprimé après la première lecture réussie—pas seulement masqué ou limité dans le temps.",
-          },
-        ],
+        beforeFlowSteps: "**En pratique, voici le déroulement complet :**",
         flowSteps: [
           {
-            title: "Chiffrement local côté client",
+            title: "Clé générée et chiffrement dans le navigateur",
             step: "Étape 1 : votre navigateur",
-            body: "Vous rédigez le secret dans le navigateur. Le texte est chiffré localement avant tout envoi réseau.",
+            body: "Vous rédigez le secret dans le navigateur. Il génère localement une nouvelle clé de chiffrement et l'utilise pour chiffrer le texte—avant que toute requête réseau ne quitte votre appareil.",
           },
           {
-            title: "Isolation du chiffré",
+            title: "Envoi du chiffré uniquement",
             step: "Étape 2 : le serveur",
-            body: "Seul le blob de chiffré illisible est téléversé et stocké. Le serveur héberge des données qu'il ne peut pas déchiffrer.",
+            body: "Seul le blob chiffré est téléversé. Le serveur stocke du chiffré qu'il ne peut pas lire, car il n'a jamais reçu la clé ni le texte clair.",
           },
           {
-            title: "Séparation du fragment",
+            title: "La clé reste dans le lien",
             step: "Étape 3 : l'URL",
-            body: "La clé de déchiffrement unique est placée entièrement dans le fragment d'URL—la partie de l'adresse web après le symbole #.",
+            body: "La clé générée dans le navigateur est ajoutée au lien dans le fragment d'URL—la partie après #—qui n'est jamais envoyée au serveur.",
           },
           {
-            title: "Déchiffrement local & autodestruction",
+            title: "Une lecture, puis disparition",
             step: "Étape 4 : le destinataire",
-            body: "Le destinataire ouvre le lien complet. Son navigateur extrait la clé du fragment, déchiffre localement, et le serveur supprime la charge chiffrée après cette lecture.",
+            body: "Le destinataire ouvre le lien complet. Son navigateur lit la clé dans le fragment, déchiffre localement, et le serveur supprime le chiffré après cette première lecture réussie.",
           },
         ],
         afterFlowSteps: [
-          "Tous les produits vendus comme liens secrets à usage unique ne suivent pas ce modèle. Certains outils chiffrent côté serveur après réception de votre texte. D'autres s'appuient sur un mot de passe partagé que le service peut valider. D'autres encore suppriment selon un calendrier mais conservent métadonnées, journaux ou copies récupérables. Lors du choix d'un outil, demandez s'il implémente le design complet—pas seulement si le lien expire.",
+          "Tous les produits vendus comme liens secrets à usage unique ne suivent pas ce modèle. Certains outils chiffrent côté serveur après réception de votre texte—ou y génèrent la clé, ce qui permettrait au service de lire votre secret. D'autres s'appuient sur un mot de passe partagé que le service peut valider. D'autres encore suppriment selon un calendrier mais conservent métadonnées, journaux ou copies récupérables. Lors du choix d'un outil, demandez s'il implémente le design complet—pas seulement si le lien expire.",
         ],
       },
       {
@@ -691,7 +685,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
             channel: "Gestionnaire de mots de passe",
             encrypted: "Oui",
             persistent: "Conçu pour la rétention",
-            verdict: "✗ Mauvais outil",
+            verdict: "Souvent lourd—souvent payant, peu pratique pour une remise rapide",
           },
           {
             channel: "Lien à usage unique",
@@ -736,7 +730,6 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       "Pour des fichiers plus volumineux avec le même modèle de chiffrement côté client, [Encrypt.lu](https://encrypt.lu) applique la même approche architecturale à l'échelle des fichiers.",
     tagline:
       "Il garantit que la durée de vie de vos données sensibles correspond à celle du médium par lequel elles transitent. Car parfois, le message le plus sûr est celui qui cesse complètement d'exister.",
-    ctaButton: "Créer une note à usage unique →",
     relatedReading: "À lire aussi",
   },
   es: {
@@ -780,51 +773,33 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
         title: "Qué es realmente un enlace secreto de un solo uso",
         paragraphs: [
           'Un enlace secreto de un solo uso (a veces llamado enlace "quemar tras leer" o nota autodestructiva) es una URL pensada para entregar texto sensible a un solo lector, una vez. Tras esa lectura, el contenido debe desaparecer—sin archivar, sin buscar, sin quedar en un buzón o historial de chat.',
-          "Un **diseño verdaderamente de un solo uso** es más estricto que un temporizador de caducidad. Cuatro propiedades deben alinearse:",
+          "Un **diseño verdaderamente de un solo uso** es más estricto que un temporizador de caducidad. Punto clave: **la clave de cifrado se genera en tu navegador**—nunca en el servidor—y el texto en claro se cifra allí antes de subir nada.",
         ],
-        beforeFlowSteps: "**En la práctica, esa arquitectura se ve así:**",
-        bullets: [
-          {
-            label: "Cifrar antes de subir",
-            body: "El texto en claro se cifra en el navegador antes de cualquier petición de red—no después en el servidor.",
-          },
-          {
-            label: "Separar la clave",
-            body: "La clave de descifrado nunca está donde el servicio puede leerla (por ejemplo, en el fragmento de la URL tras #).",
-          },
-          {
-            label: "Almacenar solo texto cifrado",
-            body: "El servidor guarda datos cifrados que no puede descifrar por sí solo.",
-          },
-          {
-            label: "Entregar una vez",
-            body: "El mensaje se elimina tras la primera lectura exitosa—no solo se oculta o limita en el tiempo.",
-          },
-        ],
+        beforeFlowSteps: "**En la práctica, el flujo completo es este:**",
         flowSteps: [
           {
-            title: "Cifrado local en el cliente",
+            title: "Clave generada y cifrado en el navegador",
             step: "Paso 1: tu navegador",
-            body: "Escribes el secreto en el navegador. El texto se cifra localmente antes de que nada toque la red.",
+            body: "Escribes el secreto en el navegador. Este genera localmente una clave de cifrado nueva y la usa para cifrar el texto—antes de que salga cualquier petición de red de tu dispositivo.",
           },
           {
-            title: "Aislamiento del texto cifrado",
+            title: "Subida solo del texto cifrado",
             step: "Paso 2: el servidor",
-            body: "Solo se sube y almacena el blob de texto cifrado ilegible. El servidor aloja datos que no puede descifrar.",
+            body: "Solo se sube el blob cifrado. El servidor almacena texto cifrado que no puede leer porque nunca recibió la clave ni el texto en claro.",
           },
           {
-            title: "Separación del fragmento",
+            title: "La clave permanece en el enlace",
             step: "Paso 3: la URL",
-            body: "La clave de descifrado única se coloca enteramente en el fragmento de la URL—la parte de la dirección web después del símbolo #.",
+            body: "La clave generada en el navegador se añade al enlace en el fragmento de la URL—la parte tras #—que nunca se envía al servidor.",
           },
           {
-            title: "Descifrado local y autodestrucción",
+            title: "Una lectura y desaparece",
             step: "Paso 4: el destinatario",
-            body: "El destinatario abre el enlace completo. Su navegador extrae la clave del fragmento, descifra localmente y el servidor elimina la carga cifrada tras esa lectura.",
+            body: "El destinatario abre el enlace completo. Su navegador lee la clave del fragmento, descifra localmente y el servidor elimina el texto cifrado tras esa primera lectura exitosa.",
           },
         ],
         afterFlowSteps: [
-          "No todos los productos vendidos como enlaces secretos de un solo uso siguen este patrón. Algunas herramientas cifran en el servidor tras recibir tu texto. Otras dependen de una contraseña compartida que el servicio puede validar. Otras eliminan según un calendario pero conservan metadatos, registros o copias recuperables. Al evaluar una herramienta, pregunte si implementa el diseño completo—no solo si el enlace caduca.",
+          "No todos los productos vendidos como enlaces secretos de un solo uso siguen este patrón. Algunas herramientas cifran en el servidor tras recibir tu texto—o generan la clave allí, lo que permitiría al servicio leer tu secreto. Otras dependen de una contraseña compartida que el servicio puede validar. Otras eliminan según un calendario pero conservan metadatos, registros o copias recuperables. Al evaluar una herramienta, pregunte si implementa el diseño completo—no solo si el enlace caduca.",
         ],
       },
       {
@@ -862,7 +837,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
             channel: "Gestor de contraseñas",
             encrypted: "Sí",
             persistent: "Diseñado para retención",
-            verdict: "✗ Herramienta incorrecta",
+            verdict: "A menudo pesado—a menudo de pago, mucha fricción para entregas rápidas",
           },
           {
             channel: "Enlace de un solo uso",
@@ -907,7 +882,6 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
       "Para archivos más grandes que necesitan el mismo modelo de cifrado en el cliente, [Encrypt.lu](https://encrypt.lu) aplica el mismo enfoque arquitectónico a escala de archivos.",
     tagline:
       "Garantiza que la vida útil de tus datos sensibles coincida con la del medio por el que viajan. Porque a veces, el mensaje más seguro es el que deja por completo de existir.",
-    ctaButton: "Crear una nota de un solo uso →",
     relatedReading: "Lecturas relacionadas",
   },
 };
@@ -915,7 +889,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
 export const OneTimeSecretLinksPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
-  const notePath = localizedPath("/", language);
+  const howItWorksPath = localizedPath("/how-it-works", language);
   const article = copy[language];
 
   return (
@@ -1021,10 +995,11 @@ export const OneTimeSecretLinksPost: React.FC = () => {
             <RichText text={article.tagline} />
           </p>
           <Link
-            href={notePath}
-            className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+            href={howItWorksPath}
+            className="group inline-flex items-center gap-2.5 rounded-xl border border-primary/25 bg-primary/5 px-6 py-3.5 text-lg font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/10 dark:hover:bg-primary/15"
           >
-            {article.ctaButton}
+            {t.howItWorks}
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
