@@ -105,6 +105,11 @@ const NOTE_RESERVATION = {
   KEY_PREFIX: "note_reserve:",
 };
 
+const NOTE_FILE_ACCESS = {
+  TTL_SECONDS: 5 * 60,
+  KEY_PREFIX: "note_file_access:",
+};
+
 const SESSION_POLICY = {
   TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days sliding
   ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 90, // 90 days absolute
@@ -196,7 +201,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size",
+      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -805,7 +810,7 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
         ...SECURITY_HEADERS,
         "Access-Control-Allow-Origin": DEFAULT_CORS_ORIGIN,
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+        "Access-Control-Allow-Headers": "Content-Type, x-admin-token, x-file-access-token",
         "Content-Security-Policy": getApiContentSecurityPolicy(),
       }),
   };
@@ -6909,6 +6914,50 @@ function noteFileChunkObjectKey(id: string, chunkIndex: number): string {
   return `note-files/${id}/chunks/${chunkIndex}`;
 }
 
+function noteFileAccessKey(noteId: string, token: string): string {
+  return `${NOTE_FILE_ACCESS.KEY_PREFIX}${noteId}:${token}`;
+}
+
+function randomUrlToken(bytes = 32): string {
+  const value = new Uint8Array(bytes);
+  crypto.getRandomValues(value);
+  let binary = "";
+  for (const byte of value) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function issueNoteFileAccessToken(env: Env, noteId: string): Promise<string> {
+  const token = randomUrlToken();
+  await env.NOTES_KV.put(
+    noteFileAccessKey(noteId, token),
+    JSON.stringify({ noteId, issuedAt: new Date().toISOString() }),
+    { expirationTtl: NOTE_FILE_ACCESS.TTL_SECONDS },
+  );
+  return token;
+}
+
+function getNoteFileAccessTokenFromRequest(request: Request): string | null {
+  const header = request.headers.get("x-file-access-token");
+  if (header?.trim()) return header.trim();
+  const url = new URL(request.url);
+  const queryToken = url.searchParams.get("fileAccessToken");
+  return queryToken?.trim() || null;
+}
+
+async function requireNoteFileAccess(env: Env, request: Request, noteId: string): Promise<Response | null> {
+  const token = getNoteFileAccessTokenFromRequest(request);
+  if (!token || token.length > 256) {
+    return jsonResponse({ error: "file_access_required", message: "Reveal the note before downloading its attachment." }, 403, request);
+  }
+  const marker = await env.NOTES_KV.get(noteFileAccessKey(noteId, token));
+  if (!marker) {
+    return jsonResponse({ error: "file_access_expired", message: "Attachment access expired. Reveal the note again if it is still available." }, 403, request);
+  }
+  return null;
+}
+
 async function reserveNoteId(env: Env, clientId: string): Promise<string> {
   const id = crypto.randomUUID();
   const kv = env.NOTES_KV;
@@ -7412,6 +7461,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
+    const accessError = await requireNoteFileAccess(env, request, id);
+    if (accessError) return accessError;
     const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(id, chunkIndex));
     if (!object) {
       return jsonResponse({ error: "File chunk not found" }, 404, request);
@@ -7503,6 +7554,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
+    const accessError = await requireNoteFileAccess(env, request, id);
+    if (accessError) return accessError;
     const object = await env.NOTE_FILES_R2.get(noteFileObjectKey(id));
     if (!object) {
       return jsonResponse({ error: "File not found" }, 404, request);
@@ -7771,6 +7824,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           content?: string;
           iv?: string;
           aad?: string | null;
+          attachment?: unknown;
           expiresAt?: string;
           maxReads?: number;
           readCount?: number;
@@ -7819,6 +7873,23 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       } catch (error) {
         console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
+      }
+      try {
+        const data = (await doResponse.clone().json()) as { attachment?: unknown };
+        if (data.attachment != null) {
+          const fileAccessToken = await issueNoteFileAccessToken(env, id);
+          doResponse = jsonResponse(
+            {
+              ...data,
+              fileAccessToken,
+              fileAccessTokenExpiresIn: NOTE_FILE_ACCESS.TTL_SECONDS,
+            },
+            doResponse.status,
+            request,
+          ) as unknown as typeof doResponse;
+        }
+      } catch (error) {
+        console.warn("[ROUTES] Failed to issue file access token:", error);
       }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed

@@ -66,6 +66,8 @@ interface NoteData {
   kdfIterations?: number; // KDF iteration count
   kdfPolicyTag?: string; // KDF policy/profile tag (e.g. argon2id-m65536-p1)
   keyDerivation?: string;
+  fileAccessToken?: string;
+  fileAccessTokenExpiresIn?: number;
   attachment?: NoteAttachment;
 }
 
@@ -569,6 +571,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   const handleDownloadAttachment = async () => {
     if (!noteData?.attachment || !contentKey) return;
+    const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
+      ? { "x-file-access-token": noteData.fileAccessToken }
+      : {};
     setIsDownloadingFile(true);
     try {
       let decryptedParts: BlobPart[];
@@ -581,12 +586,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             const encryptedChunkBlob = await apiBlobRequest(
               `/api/notes/${id}/file/chunks/${index}`,
               "GET",
+              fileAccessHeaders,
             );
             return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
           },
         );
       } else {
-        const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET");
+        const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET", fileAccessHeaders);
         const encryptedBytes = new Uint8Array(await encryptedBlob.arrayBuffer());
         const decryptedBytes = await decryptFileBytes(
           encryptedBytes,

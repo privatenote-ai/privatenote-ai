@@ -189,9 +189,14 @@ export async function apiBinaryRequest<T = any>(
   }
 }
 
-export async function apiBlobRequest(url: string, method: string = "GET"): Promise<Blob> {
+export async function apiBlobRequest(
+  url: string,
+  method: string = "GET",
+  headers: Record<string, string> = {},
+): Promise<Blob> {
   const res = await fetch(getApiUrl(url), {
     method,
+    headers,
     credentials: "include",
   });
   await throwIfResNotOk(res);
