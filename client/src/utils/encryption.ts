@@ -262,7 +262,7 @@ export async function importAesGcmKeyFromRawBytes(
       usage,
     );
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.error("Error importing key:", error);
     }
     throw new Error("Invalid decryption key");
@@ -310,7 +310,7 @@ export async function decryptNote(
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.error("Error decrypting note:", error);
     }
     throw new Error(
@@ -353,7 +353,7 @@ export async function decryptFileBytes(
       asBufferSource(encryptedData),
     );
   } catch (error) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.error("Error decrypting file:", error);
     }
     throw new Error("Failed to decrypt file. The key may be incorrect or the file may have been tampered with.");
@@ -547,7 +547,7 @@ export async function decryptWithPassword(
       message.includes("Invalid AES-256 raw key length") ||
       message.includes("Invalid decryption key");
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       if (malformedOrUnsupportedRecord) {
         console.error(
           "Password decryption failed due to malformed/unsupported encrypted record format.",
