@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MAX_NOTE_CIPHERTEXT_BASE64_CHARS } from "./noteSizeLimits.ts";
 import {
+  NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS,
   NOTE_AES_GCM_IV_BYTE_LENGTH,
   NOTE_KDF_SALT_MIN_BYTES,
   passwordWireFieldsPresent,
+  validateAttachmentMetadataCiphertextWire,
   validateNoteAesGcmIvWire,
   validateNoteCiphertextWire,
   validateNoteEncryptedKeyWire,
@@ -64,6 +66,26 @@ describe("validateNoteCiphertextWire", () => {
     const r = validateNoteCiphertextWire("a".repeat(MAX_NOTE_CIPHERTEXT_BASE64_CHARS + 1));
     assert.equal(r.ok, false);
     assert.ok(r.ok === false && r.kind === "too_large");
+  });
+});
+
+describe("validateAttachmentMetadataCiphertextWire", () => {
+  it("accepts a small base64 ciphertext", () => {
+    assert.equal(validateAttachmentMetadataCiphertextWire(btoa("metadata-ciphertext")).ok, true);
+  });
+
+  it("returns too_large kind when over cap", () => {
+    const r = validateAttachmentMetadataCiphertextWire(
+      "a".repeat(NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS + 1),
+    );
+    assert.equal(r.ok, false);
+    assert.ok(r.ok === false && r.kind === "too_large");
+  });
+
+  it("rejects invalid base64", () => {
+    const r = validateAttachmentMetadataCiphertextWire("not valid !!!");
+    assert.equal(r.ok, false);
+    assert.ok(r.ok === false && r.message.includes("base64"));
   });
 });
 

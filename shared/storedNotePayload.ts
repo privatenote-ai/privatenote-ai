@@ -1,24 +1,19 @@
 import { tryParseKdfParamsV2Object, type KdfParamsV2 } from "./kdfParamsV2.ts";
 import {
+  validateAttachmentMetadataCiphertextWire,
   validateNoteAesGcmIvWire,
   validateNoteCiphertextWire,
   validateNoteEncryptedKeyWire,
   validateNoteKdfSaltWire,
 } from "./noteCryptoWire.ts";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  isNoteFileAccessWindowSeconds,
+} from "./noteFileAccess.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
 export const NOTE_KEY_DERIVATION_HKDF_ROOT_V2 = "hkdf-root-v2" as const;
-
-export interface StoredNoteAttachmentV1 {
-  v: 1;
-  name: string;
-  type: string;
-  size: number;
-  encryptedSize: number;
-  iv: string;
-  aad: string;
-}
 
 export interface StoredNoteAttachmentV2Chunk {
   index: number;
@@ -28,14 +23,17 @@ export interface StoredNoteAttachmentV2Chunk {
 export interface StoredNoteAttachmentV2 {
   v: 2;
   alg: "libsodium-secretstream-xchacha20poly1305";
-  name: string;
-  type: string;
-  size: number;
   encryptedSize: number;
   chunkSize: number;
   totalChunks: number;
   header: string;
   aad: string;
+  encryptedMetadata: {
+    alg: "AES-GCM";
+    iv: string;
+    aad: string;
+    ciphertext: string;
+  };
   wrappedKey: {
     alg: "AES-GCM";
     iv: string;
@@ -45,7 +43,7 @@ export interface StoredNoteAttachmentV2 {
   chunks: StoredNoteAttachmentV2Chunk[];
 }
 
-export type StoredNoteAttachment = StoredNoteAttachmentV1 | StoredNoteAttachmentV2;
+export type StoredNoteAttachment = StoredNoteAttachmentV2;
 
 export interface ParsedStoredNoteCiphertext {
   v: number;
@@ -61,16 +59,14 @@ export interface ParsedStoredNoteCiphertext {
   kdfParams?: KdfParamsV2;
   keyDerivation?: typeof NOTE_KEY_DERIVATION_HKDF_ROOT_V2;
   attachment?: StoredNoteAttachment;
+  fileAccessWindowSeconds?: number;
 }
 
 function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
   if (raw == null) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
-  if (o.v !== 1 && o.v !== 2) return null;
-  if (typeof o.name !== "string" || !o.name.trim() || o.name.length > 255) return null;
-  if (typeof o.type !== "string" || o.type.length > 255) return null;
-  if (typeof o.size !== "number" || !Number.isInteger(o.size) || o.size < 0) return null;
+  if (o.v !== 2) return null;
   if (
     typeof o.encryptedSize !== "number" ||
     !Number.isInteger(o.encryptedSize) ||
@@ -78,80 +74,86 @@ function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
   ) {
     return null;
   }
-  if (o.v === 2) {
-    if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
-    if (typeof o.chunkSize !== "number" || !Number.isInteger(o.chunkSize) || o.chunkSize <= 0) {
-      return null;
-    }
+  if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
+  if (o.name != null || o.type != null || o.size != null) return null;
+  let encryptedMetadata: StoredNoteAttachmentV2["encryptedMetadata"];
+  if (
+    typeof o.encryptedMetadata !== "object" ||
+    o.encryptedMetadata === null ||
+    Array.isArray(o.encryptedMetadata)
+  ) {
+    return null;
+  }
+  const metadata = o.encryptedMetadata as Record<string, unknown>;
+  if (metadata.alg !== "AES-GCM") return null;
+  const metadataIvCheck = validateNoteAesGcmIvWire(metadata.iv, "attachment.encryptedMetadata.iv");
+  if (!metadataIvCheck.ok) return null;
+  if (typeof metadata.aad !== "string" || !metadata.aad.trim()) return null;
+  const metadataCiphertextCheck = validateAttachmentMetadataCiphertextWire(metadata.ciphertext);
+  if (!metadataCiphertextCheck.ok) return null;
+  encryptedMetadata = {
+    alg: "AES-GCM",
+    iv: (metadata.iv as string).trim(),
+    aad: metadata.aad.trim(),
+    ciphertext: (metadata.ciphertext as string).trim(),
+  };
+  if (typeof o.chunkSize !== "number" || !Number.isInteger(o.chunkSize) || o.chunkSize <= 0) {
+    return null;
+  }
+  if (
+    typeof o.totalChunks !== "number" ||
+    !Number.isInteger(o.totalChunks) ||
+    o.totalChunks <= 0 ||
+    o.totalChunks > 1000
+  ) {
+    return null;
+  }
+  if (typeof o.header !== "string" || !o.header.trim()) return null;
+  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  if (typeof o.wrappedKey !== "object" || o.wrappedKey === null || Array.isArray(o.wrappedKey)) {
+    return null;
+  }
+  const wrappedKey = o.wrappedKey as Record<string, unknown>;
+  if (wrappedKey.alg !== "AES-GCM") return null;
+  const wrapIvCheck = validateNoteAesGcmIvWire(wrappedKey.iv, "attachment.wrappedKey.iv");
+  if (!wrapIvCheck.ok) return null;
+  if (typeof wrappedKey.aad !== "string" || !wrappedKey.aad.trim()) return null;
+  if (typeof wrappedKey.encryptedKey !== "string" || !wrappedKey.encryptedKey.trim()) return null;
+  if (!Array.isArray(o.chunks) || o.chunks.length !== o.totalChunks) return null;
+  const chunks: StoredNoteAttachmentV2Chunk[] = [];
+  let encryptedSizeTotal = 0;
+  for (let index = 0; index < o.chunks.length; index += 1) {
+    const chunkRaw = o.chunks[index];
+    if (typeof chunkRaw !== "object" || chunkRaw === null || Array.isArray(chunkRaw)) return null;
+    const chunk = chunkRaw as Record<string, unknown>;
+    if (chunk.index !== index) return null;
     if (
-      typeof o.totalChunks !== "number" ||
-      !Number.isInteger(o.totalChunks) ||
-      o.totalChunks <= 0 ||
-      o.totalChunks > 1000
+      typeof chunk.encryptedSize !== "number" ||
+      !Number.isInteger(chunk.encryptedSize) ||
+      chunk.encryptedSize <= 0
     ) {
       return null;
     }
-    if (typeof o.header !== "string" || !o.header.trim()) return null;
-    if (typeof o.aad !== "string" || !o.aad.trim()) return null;
-    if (typeof o.wrappedKey !== "object" || o.wrappedKey === null || Array.isArray(o.wrappedKey)) {
-      return null;
-    }
-    const wrappedKey = o.wrappedKey as Record<string, unknown>;
-    if (wrappedKey.alg !== "AES-GCM") return null;
-    const wrapIvCheck = validateNoteAesGcmIvWire(wrappedKey.iv, "attachment.wrappedKey.iv");
-    if (!wrapIvCheck.ok) return null;
-    if (typeof wrappedKey.aad !== "string" || !wrappedKey.aad.trim()) return null;
-    if (typeof wrappedKey.encryptedKey !== "string" || !wrappedKey.encryptedKey.trim()) return null;
-    if (!Array.isArray(o.chunks) || o.chunks.length !== o.totalChunks) return null;
-    const chunks: StoredNoteAttachmentV2Chunk[] = [];
-    let encryptedSizeTotal = 0;
-    for (let index = 0; index < o.chunks.length; index += 1) {
-      const chunkRaw = o.chunks[index];
-      if (typeof chunkRaw !== "object" || chunkRaw === null || Array.isArray(chunkRaw)) return null;
-      const chunk = chunkRaw as Record<string, unknown>;
-      if (chunk.index !== index) return null;
-      if (
-        typeof chunk.encryptedSize !== "number" ||
-        !Number.isInteger(chunk.encryptedSize) ||
-        chunk.encryptedSize <= 0
-      ) {
-        return null;
-      }
-      encryptedSizeTotal += chunk.encryptedSize;
-      chunks.push({ index, encryptedSize: chunk.encryptedSize });
-    }
-    if (encryptedSizeTotal !== o.encryptedSize) return null;
-    return {
-      v: 2,
-      alg: "libsodium-secretstream-xchacha20poly1305",
-      name: o.name.trim(),
-      type: o.type.trim(),
-      size: o.size,
-      encryptedSize: o.encryptedSize,
-      chunkSize: o.chunkSize,
-      totalChunks: o.totalChunks,
-      header: o.header.trim(),
-      aad: o.aad.trim(),
-      wrappedKey: {
-        alg: "AES-GCM",
-        iv: (wrappedKey.iv as string).trim(),
-        aad: wrappedKey.aad.trim(),
-        encryptedKey: wrappedKey.encryptedKey.trim(),
-      },
-      chunks,
-    };
+    encryptedSizeTotal += chunk.encryptedSize;
+    chunks.push({ index, encryptedSize: chunk.encryptedSize });
   }
-  const ivCheck = validateNoteAesGcmIvWire(o.iv, "attachment.iv");
-  if (!ivCheck.ok) return null;
-  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  if (encryptedSizeTotal !== o.encryptedSize) return null;
   return {
-    v: 1,
-    name: o.name.trim(),
-    type: o.type.trim(),
-    size: o.size,
+    v: 2,
+    alg: "libsodium-secretstream-xchacha20poly1305",
     encryptedSize: o.encryptedSize,
-    iv: (o.iv as string).trim(),
+    chunkSize: o.chunkSize,
+    totalChunks: o.totalChunks,
+    header: o.header.trim(),
     aad: o.aad.trim(),
+    encryptedMetadata,
+    wrappedKey: {
+      alg: "AES-GCM",
+      iv: (wrappedKey.iv as string).trim(),
+      aad: wrappedKey.aad.trim(),
+      encryptedKey: wrappedKey.encryptedKey.trim(),
+    },
+    chunks,
   };
 }
 
@@ -253,6 +255,12 @@ export function parseStoredNoteCiphertextForReveal(raw: string): ParsedStoredNot
   if (o.attachment != null && !attachment) return null;
   if (attachment) {
     ciphertext.attachment = attachment;
+  }
+  if (o.fileAccessWindowSeconds != null) {
+    if (!isNoteFileAccessWindowSeconds(o.fileAccessWindowSeconds)) return null;
+    ciphertext.fileAccessWindowSeconds = o.fileAccessWindowSeconds;
+  } else if (attachment) {
+    ciphertext.fileAccessWindowSeconds = NOTE_FILE_ACCESS_DEFAULT_SECONDS;
   }
   return ciphertext;
 }

@@ -1,5 +1,6 @@
 export const NOTE_FILE_FREE_MAX_BYTES = 10 * 1024 * 1024;
-export const NOTE_FILE_PREMIUM_MAX_BYTES = 100 * 1024 * 1024;
+export const NOTE_FILE_PREMIUM_MAX_BYTES = 1024 * 1024 * 1024;
+export const NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES = 20 * 1024 * 1024 * 1024;
 export const NOTE_FILE_AES_GCM_TAG_BYTES = 16;
 
 export function noteFileLimitBytesForAccount(isPremium: boolean): number {

@@ -5,6 +5,7 @@ import {
   Info,
   Lock,
   MailCheck,
+  Timer,
   Shield,
   User,
 } from "lucide-react";
@@ -18,6 +19,11 @@ import {
   isPremiumNoteReadLimit,
   type NoteReadLimit,
 } from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_ACCESS_WINDOW_OPTIONS,
+  formatNoteFileAccessWindow,
+  type NoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
 import {
   DEFAULT_STRONG_PASSWORD_LENGTH,
   TRANSPORT_SAFE_STRONG_PASSWORD_CHARSET,
@@ -213,6 +219,8 @@ export type NoteSettingsPanelProps = {
   premiumStatusLoading: boolean;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
+  fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
@@ -237,6 +245,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   premiumStatusLoading,
   readCount,
   setReadCount,
+  fileAccessWindowSeconds,
+  setFileAccessWindowSeconds,
 }) => {
   const { t } = useLanguage();
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
@@ -496,6 +506,60 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+            <div className="sm:col-span-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="inline-flex items-center">
+                  <span className="bg-indigo-50 p-1 rounded mr-2 dark:bg-indigo-900/30">
+                    <Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  </span>
+                  Attachment window
+                </span>
+              </div>
+            </div>
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+              <div className="flex items-center gap-2">
+                <select
+                  id="note-file-access-window"
+                  value={fileAccessWindowSeconds}
+                  disabled={premiumStatusLoading}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
+                      setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
+                    }
+                  }}
+                  className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                  style={{
+                    backgroundImage:
+                      "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.75rem center",
+                    backgroundSize: "0.75em",
+                  }}
+                >
+                  {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                    const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
+                    return (
+                      <option key={seconds} value={seconds} disabled={locked}>
+                        {formatNoteFileAccessWindow(seconds)}
+                        {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                {!isPremiumUser && (
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    Premium
+                  </span>
+                )}
+              </div>
+              <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                Attachment downloads stay available for this long after the note is revealed.
+              </p>
+            </div>
+          </div>
+
         </div>
             </section>
 
@@ -514,10 +578,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
                       <MailCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     </span>
-                    Open alert
+                    Notifications
                   </div>
                 </div>
-                <div className="min-w-0 sm:col-span-2">
+                <div className="min-w-0 space-y-3 sm:col-span-2">
                   <label
                     title={
                       canNotifyOnOpen
@@ -528,10 +592,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                             ? "Turn on account email notifications in Preferences to use note-open alerts."
                             : "Upgrade to Premium to enable note-open email alerts."
                     }
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border px-3 py-2 transition ${
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 transition ${
                       canNotifyOnOpen
-                        ? "cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
-                        : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-500"
+                        ? "cursor-pointer text-gray-800 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white"
+                        : "cursor-not-allowed text-gray-400 opacity-75 dark:text-gray-500"
                     }`}
                   >
                     <input
@@ -554,18 +618,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       </span>
                     ) : null}
                   </label>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                <div className="sm:col-span-1">
-                  <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
-                      <MailCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </span>
-                    Destroyed alert
-                  </div>
-                </div>
-                <div className="min-w-0 sm:col-span-2">
                   <label
                     title={
                       canNotifyOnOpen
@@ -576,10 +628,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                             ? "Verify your account email and turn on email notifications in Preferences to use destroyed alerts."
                             : "Upgrade to Premium to enable destroyed alerts."
                     }
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border px-3 py-2 transition ${
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 transition ${
                       canNotifyOnOpen
-                        ? "cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
-                        : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-500"
+                        ? "cursor-pointer text-gray-800 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white"
+                        : "cursor-not-allowed text-gray-400 opacity-75 dark:text-gray-500"
                     }`}
                   >
                     <input

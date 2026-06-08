@@ -3,6 +3,7 @@ import { decodeNoteAadBase64, parseNoteAadPlaintext } from "@shared/noteAad";
 import { tryParseKdfParamsV2Object, type KdfParamsV2 } from "@shared/kdfParamsV2";
 import { noteMetaEligibility, type NoteMetaRow } from "@shared/noteMetaEligibility";
 import {
+  validateAttachmentMetadataCiphertextWire,
   passwordWireFieldsPresent,
   validateNoteAesGcmIvWire,
   validateNoteCiphertextWire,
@@ -10,6 +11,10 @@ import {
   validateNoteKdfSaltWire,
 } from "@shared/noteCryptoWire";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  isNoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
 import { isValidNoteId } from "@shared/noteId";
 import {
   NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
@@ -29,10 +34,7 @@ function parseAttachmentForCreate(raw: unknown): StoredNoteAttachment | null {
   if (raw == null) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
-  if (o.v !== 1 && o.v !== 2) return null;
-  if (typeof o.name !== "string" || !o.name.trim() || o.name.length > 255) return null;
-  if (typeof o.type !== "string" || o.type.length > 255) return null;
-  if (typeof o.size !== "number" || !Number.isInteger(o.size) || o.size < 0) return null;
+  if (o.v !== 2) return null;
   if (
     typeof o.encryptedSize !== "number" ||
     !Number.isInteger(o.encryptedSize) ||
@@ -40,80 +42,86 @@ function parseAttachmentForCreate(raw: unknown): StoredNoteAttachment | null {
   ) {
     return null;
   }
-  if (o.v === 2) {
-    if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
-    if (typeof o.chunkSize !== "number" || !Number.isInteger(o.chunkSize) || o.chunkSize <= 0) {
-      return null;
-    }
+  if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
+  if (o.name != null || o.type != null || o.size != null) return null;
+  let encryptedMetadata: StoredNoteAttachment["encryptedMetadata"];
+  if (
+    typeof o.encryptedMetadata !== "object" ||
+    o.encryptedMetadata === null ||
+    Array.isArray(o.encryptedMetadata)
+  ) {
+    return null;
+  }
+  const metadata = o.encryptedMetadata as Record<string, unknown>;
+  if (metadata.alg !== "AES-GCM") return null;
+  const metadataIvCheck = validateNoteAesGcmIvWire(metadata.iv, "attachment.encryptedMetadata.iv");
+  if (!metadataIvCheck.ok) return null;
+  if (typeof metadata.aad !== "string" || !metadata.aad.trim()) return null;
+  const metadataCiphertextCheck = validateAttachmentMetadataCiphertextWire(metadata.ciphertext);
+  if (!metadataCiphertextCheck.ok) return null;
+  encryptedMetadata = {
+    alg: "AES-GCM",
+    iv: (metadata.iv as string).trim(),
+    aad: metadata.aad.trim(),
+    ciphertext: (metadata.ciphertext as string).trim(),
+  };
+  if (typeof o.chunkSize !== "number" || !Number.isInteger(o.chunkSize) || o.chunkSize <= 0) {
+    return null;
+  }
+  if (
+    typeof o.totalChunks !== "number" ||
+    !Number.isInteger(o.totalChunks) ||
+    o.totalChunks <= 0 ||
+    o.totalChunks > 1000
+  ) {
+    return null;
+  }
+  if (typeof o.header !== "string" || !o.header.trim()) return null;
+  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  if (typeof o.wrappedKey !== "object" || o.wrappedKey === null || Array.isArray(o.wrappedKey)) {
+    return null;
+  }
+  const wrappedKey = o.wrappedKey as Record<string, unknown>;
+  if (wrappedKey.alg !== "AES-GCM") return null;
+  const wrapIvCheck = validateNoteAesGcmIvWire(wrappedKey.iv, "attachment.wrappedKey.iv");
+  if (!wrapIvCheck.ok) return null;
+  if (typeof wrappedKey.aad !== "string" || !wrappedKey.aad.trim()) return null;
+  if (typeof wrappedKey.encryptedKey !== "string" || !wrappedKey.encryptedKey.trim()) return null;
+  if (!Array.isArray(o.chunks) || o.chunks.length !== o.totalChunks) return null;
+  const chunks: Array<{ index: number; encryptedSize: number }> = [];
+  let encryptedSizeTotal = 0;
+  for (let index = 0; index < o.chunks.length; index += 1) {
+    const chunkRaw = o.chunks[index];
+    if (typeof chunkRaw !== "object" || chunkRaw === null || Array.isArray(chunkRaw)) return null;
+    const chunk = chunkRaw as Record<string, unknown>;
+    if (chunk.index !== index) return null;
     if (
-      typeof o.totalChunks !== "number" ||
-      !Number.isInteger(o.totalChunks) ||
-      o.totalChunks <= 0 ||
-      o.totalChunks > 1000
+      typeof chunk.encryptedSize !== "number" ||
+      !Number.isInteger(chunk.encryptedSize) ||
+      chunk.encryptedSize <= 0
     ) {
       return null;
     }
-    if (typeof o.header !== "string" || !o.header.trim()) return null;
-    if (typeof o.aad !== "string" || !o.aad.trim()) return null;
-    if (typeof o.wrappedKey !== "object" || o.wrappedKey === null || Array.isArray(o.wrappedKey)) {
-      return null;
-    }
-    const wrappedKey = o.wrappedKey as Record<string, unknown>;
-    if (wrappedKey.alg !== "AES-GCM") return null;
-    const wrapIvCheck = validateNoteAesGcmIvWire(wrappedKey.iv, "attachment.wrappedKey.iv");
-    if (!wrapIvCheck.ok) return null;
-    if (typeof wrappedKey.aad !== "string" || !wrappedKey.aad.trim()) return null;
-    if (typeof wrappedKey.encryptedKey !== "string" || !wrappedKey.encryptedKey.trim()) return null;
-    if (!Array.isArray(o.chunks) || o.chunks.length !== o.totalChunks) return null;
-    const chunks: Array<{ index: number; encryptedSize: number }> = [];
-    let encryptedSizeTotal = 0;
-    for (let index = 0; index < o.chunks.length; index += 1) {
-      const chunkRaw = o.chunks[index];
-      if (typeof chunkRaw !== "object" || chunkRaw === null || Array.isArray(chunkRaw)) return null;
-      const chunk = chunkRaw as Record<string, unknown>;
-      if (chunk.index !== index) return null;
-      if (
-        typeof chunk.encryptedSize !== "number" ||
-        !Number.isInteger(chunk.encryptedSize) ||
-        chunk.encryptedSize <= 0
-      ) {
-        return null;
-      }
-      encryptedSizeTotal += chunk.encryptedSize;
-      chunks.push({ index, encryptedSize: chunk.encryptedSize });
-    }
-    if (encryptedSizeTotal !== o.encryptedSize) return null;
-    return {
-      v: 2,
-      alg: "libsodium-secretstream-xchacha20poly1305",
-      name: o.name.trim(),
-      type: o.type.trim(),
-      size: o.size,
-      encryptedSize: o.encryptedSize,
-      chunkSize: o.chunkSize,
-      totalChunks: o.totalChunks,
-      header: o.header.trim(),
-      aad: o.aad.trim(),
-      wrappedKey: {
-        alg: "AES-GCM",
-        iv: (wrappedKey.iv as string).trim(),
-        aad: wrappedKey.aad.trim(),
-        encryptedKey: wrappedKey.encryptedKey.trim(),
-      },
-      chunks,
-    };
+    encryptedSizeTotal += chunk.encryptedSize;
+    chunks.push({ index, encryptedSize: chunk.encryptedSize });
   }
-  const ivCheck = validateNoteAesGcmIvWire(o.iv, "attachment.iv");
-  if (!ivCheck.ok) return null;
-  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
+  if (encryptedSizeTotal !== o.encryptedSize) return null;
   return {
-    v: 1,
-    name: o.name.trim(),
-    type: o.type.trim(),
-    size: o.size,
+    v: 2,
+    alg: "libsodium-secretstream-xchacha20poly1305",
     encryptedSize: o.encryptedSize,
-    iv: (o.iv as string).trim(),
+    chunkSize: o.chunkSize,
+    totalChunks: o.totalChunks,
+    header: o.header.trim(),
     aad: o.aad.trim(),
+    encryptedMetadata,
+    wrappedKey: {
+      alg: "AES-GCM",
+      iv: (wrappedKey.iv as string).trim(),
+      aad: wrappedKey.aad.trim(),
+      encryptedKey: wrappedKey.encryptedKey.trim(),
+    },
+    chunks,
   };
 }
 
@@ -294,6 +302,7 @@ export class SecureNoteStorageSql {
       kdfParams = undefined,
       keyDerivation = undefined,
       attachment: attachmentRaw = undefined,
+      fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
     } = body || {};
 
     const ippField = body?.isPasswordProtected;
@@ -478,6 +487,16 @@ export class SecureNoteStorageSql {
         headers: { "Content-Type": "application/json" },
       });
     }
+    const fileAccessWindowSeconds =
+      fileAccessWindowSecondsRaw == null
+        ? NOTE_FILE_ACCESS_DEFAULT_SECONDS
+        : fileAccessWindowSecondsRaw;
+    if (!isNoteFileAccessWindowSeconds(fileAccessWindowSeconds)) {
+      return new Response(JSON.stringify({ error: "Invalid attachment access window" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const ciphertext: StoredCiphertext = {
       v: STORED_NOTE_PAYLOAD_VERSION,
@@ -490,6 +509,7 @@ export class SecureNoteStorageSql {
       encryptedKey: null,
       encryptedKeyIv: null,
       ...(attachment ? { attachment } : {}),
+      ...(attachment ? { fileAccessWindowSeconds } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
       ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
         ? { keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2 }
@@ -629,6 +649,12 @@ export class SecureNoteStorageSql {
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
           ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
           ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
+          ...(ciphertext.attachment
+            ? {
+                fileAccessWindowSeconds:
+                  ciphertext.fileAccessWindowSeconds ?? NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+              }
+            : {}),
           ...(ciphertext.isPasswordProtected && {
             salt: ciphertext.salt,
             ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),

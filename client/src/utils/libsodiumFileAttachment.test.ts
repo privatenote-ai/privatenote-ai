@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { deriveNoteRootKeys, generateRootKeyBytes } from "./encryption.ts";
+import { arrayBufferToBase64, deriveNoteRootKeys, generateRootKeyBytes } from "./encryption.ts";
 import {
   decryptSodiumAttachmentChunks,
+  decryptSodiumAttachmentMetadata,
   encryptFileToSodiumChunks,
   SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
   type SodiumAttachmentChunk,
 } from "./libsodiumFileAttachment.ts";
 
 (globalThis as unknown as { window: typeof globalThis }).window = globalThis;
+
+const NOTE_ID = "00000000-0000-4000-8000-000000044444";
 
 function buildTestFile(): File {
   const bytes = new Uint8Array(SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES + 97);
@@ -32,7 +35,7 @@ function join(chunks: Uint8Array[]): Uint8Array {
 describe("libsodium attachment chunk encryption", () => {
   it("encrypts and decrypts a multi-chunk file", async () => {
     const { rootKeyBytes } = generateRootKeyBytes();
-    const { fileWrapKey } = await deriveNoteRootKeys(rootKeyBytes);
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
     rootKeyBytes.fill(0);
     const file = buildTestFile();
     const encryptedChunks = new Map<number, Uint8Array>();
@@ -40,14 +43,21 @@ describe("libsodium attachment chunk encryption", () => {
     const metadata = await encryptFileToSodiumChunks(
       file,
       fileWrapKey,
-      "00000000-0000-4000-8000-000000044444",
+      metadataKey,
+      NOTE_ID,
       async (chunk) => {
         encryptedChunks.set(chunk.index, chunk.encryptedBytes);
       },
     );
 
     assert.equal(metadata.totalChunks, 2);
+    assert.ok(metadata.encryptedMetadata);
     assert.equal(encryptedChunks.size, 2);
+    assert.deepEqual(await decryptSodiumAttachmentMetadata(metadata, metadataKey, NOTE_ID), {
+      name: "chunked.bin",
+      type: "application/octet-stream",
+      size: file.size,
+    });
 
     const decryptedChunks = await decryptSodiumAttachmentChunks(
       metadata,
@@ -57,14 +67,106 @@ describe("libsodium attachment chunk encryption", () => {
     assert.deepEqual(join(decryptedChunks), new Uint8Array(await file.arrayBuffer()));
   });
 
-  it("rejects out-of-order chunks", async () => {
+  it("rejects encrypted metadata when AAD does not match the note", async () => {
     const { rootKeyBytes } = generateRootKeyBytes();
-    const { fileWrapKey } = await deriveNoteRootKeys(rootKeyBytes);
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
     rootKeyBytes.fill(0);
     const encryptedChunks = new Map<number, Uint8Array>();
     const metadata = await encryptFileToSodiumChunks(
       buildTestFile(),
       fileWrapKey,
+      metadataKey,
+      NOTE_ID,
+      async (chunk) => {
+        encryptedChunks.set(chunk.index, chunk.encryptedBytes);
+      },
+    );
+    const tampered = {
+      ...metadata,
+      encryptedMetadata: {
+        ...metadata.encryptedMetadata!,
+        aad: arrayBufferToBase64(
+          new TextEncoder().encode(
+            JSON.stringify({
+              v: 1,
+              purpose: "privatenote-attachment-metadata",
+              alg: "libsodium-secretstream-xchacha20poly1305",
+              noteId: "00000000-0000-4000-8000-000000099999",
+              totalChunks: metadata.totalChunks,
+            }),
+          ),
+        ),
+      },
+    };
+
+    await assert.rejects(
+      () => decryptSodiumAttachmentMetadata(tampered, metadataKey, NOTE_ID),
+      /authentication data does not match/i,
+    );
+  });
+
+  it("rejects decrypted attachment metadata over wire limits", async () => {
+    const { rootKeyBytes } = generateRootKeyBytes();
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
+    rootKeyBytes.fill(0);
+    const metadata = await encryptFileToSodiumChunks(
+      buildTestFile(),
+      fileWrapKey,
+      metadataKey,
+      NOTE_ID,
+      async () => {},
+    );
+    const aad = new TextEncoder().encode(
+      JSON.stringify({
+        v: 1,
+        purpose: "privatenote-attachment-metadata",
+        alg: "libsodium-secretstream-xchacha20poly1305",
+        noteId: NOTE_ID,
+        totalChunks: metadata.totalChunks,
+      }),
+    );
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv,
+        additionalData: aad,
+        tagLength: 128,
+      },
+      metadataKey,
+      new TextEncoder().encode(
+        JSON.stringify({
+          name: "a".repeat(256),
+          type: "application/octet-stream",
+          size: 1,
+        }),
+      ),
+    );
+    const tampered = {
+      ...metadata,
+      encryptedMetadata: {
+        alg: "AES-GCM" as const,
+        iv: arrayBufferToBase64(iv),
+        aad: arrayBufferToBase64(aad),
+        ciphertext: arrayBufferToBase64(new Uint8Array(ciphertext)),
+      },
+    };
+
+    await assert.rejects(
+      () => decryptSodiumAttachmentMetadata(tampered, metadataKey, NOTE_ID),
+      /metadata is invalid/i,
+    );
+  });
+
+  it("rejects out-of-order chunks", async () => {
+    const { rootKeyBytes } = generateRootKeyBytes();
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
+    rootKeyBytes.fill(0);
+    const encryptedChunks = new Map<number, Uint8Array>();
+    const metadata = await encryptFileToSodiumChunks(
+      buildTestFile(),
+      fileWrapKey,
+      metadataKey,
       "00000000-0000-4000-8000-000000055555",
       async (chunk: SodiumAttachmentChunk) => {
         encryptedChunks.set(chunk.index, chunk.encryptedBytes);
@@ -82,12 +184,13 @@ describe("libsodium attachment chunk encryption", () => {
 
   it("rejects truncated chunks", async () => {
     const { rootKeyBytes } = generateRootKeyBytes();
-    const { fileWrapKey } = await deriveNoteRootKeys(rootKeyBytes);
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
     rootKeyBytes.fill(0);
     const encryptedChunks = new Map<number, Uint8Array>();
     const metadata = await encryptFileToSodiumChunks(
       buildTestFile(),
       fileWrapKey,
+      metadataKey,
       "00000000-0000-4000-8000-000000066666",
       async (chunk) => {
         encryptedChunks.set(chunk.index, chunk.encryptedBytes);

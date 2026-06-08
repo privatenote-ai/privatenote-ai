@@ -21,6 +21,11 @@ import {
   clampNoteReadLimitForAccount,
   type NoteReadLimit,
 } from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  clampNoteFileAccessWindowForAccount,
+  type NoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
 import { loadClientLLM } from "@/utils/loadClientLLM";
@@ -208,6 +213,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [accountEmailVerified, setAccountEmailVerified] = useState(false);
   const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
+  const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
+    useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
@@ -293,6 +300,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     if (premiumStatusLoading) return;
     setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, isPremiumUser));
     setReadCount((current) => clampNoteReadLimitForAccount(current, isPremiumUser));
+    setFileAccessWindowSeconds((current) =>
+      clampNoteFileAccessWindowForAccount(current, isPremiumUser),
+    );
   }, [isPremiumUser, premiumStatusLoading]);
 
   useEffect(() => {
@@ -759,14 +769,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       let attachment: {
         v: 2;
         alg: "libsodium-secretstream-xchacha20poly1305";
-        name: string;
-        type: string;
-        size: number;
         encryptedSize: number;
         chunkSize: number;
         totalChunks: number;
         header: string;
         aad: string;
+        encryptedMetadata: {
+          alg: "AES-GCM";
+          iv: string;
+          aad: string;
+          ciphertext: string;
+        };
         wrappedKey: {
           alg: "AES-GCM";
           iv: string;
@@ -785,6 +798,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const { rootKeyBytes, exportedRootKey } = generateRootKeyBytes();
       let noteTextKey: CryptoKey;
       let fileWrapKey: CryptoKey;
+      let metadataKey: CryptoKey;
       let fragmentKey: string | undefined;
 
       if (isPasswordProtected) {
@@ -798,6 +812,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         const derivedKeys = await deriveNoteRootKeys(rootKeyBytes);
         noteTextKey = derivedKeys.noteTextKey;
         fileWrapKey = derivedKeys.fileWrapKey;
+        metadataKey = derivedKeys.metadataKey;
         const encryptionResult = await encryptNote(contentToEncrypt, noteTextKey, aadBinding);
         const { encryptedData, iv, aadBytes } = encryptionResult;
         const wirePayload = serializeEncryptedPayload({ encryptedData, iv, aadBytes });
@@ -817,6 +832,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         const derivedKeys = await deriveNoteRootKeys(rootKeyBytes);
         noteTextKey = derivedKeys.noteTextKey;
         fileWrapKey = derivedKeys.fileWrapKey;
+        metadataKey = derivedKeys.metadataKey;
         exportedKey = exportedRootKey;
         fragmentKey = exportedRootKey;
         const encryptionResult = await encryptNote(contentToEncrypt, noteTextKey, aadBinding);
@@ -842,6 +858,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
             fileWrapKey!,
+            metadataKey!,
             reservedId,
             async (chunk) => {
               const encryptedFileBlob = new Blob([chunk.encryptedBytes], {
@@ -878,6 +895,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         maxReads: readCount,
         notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
         notifyOnDestroyed: notifyOnDestroyed && canNotifyOnOpen,
+        fileAccessWindowSeconds,
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -1614,7 +1632,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                       File sharing
                     </div>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      AES-GCM-256 encrypted in your browser. Limit: {formatNoteFileSize(fileLimitBytes)}.
+                      Browser-encrypted attachments with libsodium secretstream. Limit: {formatNoteFileSize(fileLimitBytes)}.
                     </p>
                   </div>
                   <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900">
@@ -1699,6 +1717,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 premiumStatusLoading={premiumStatusLoading}
                 readCount={readCount}
                 setReadCount={setReadCount}
+                fileAccessWindowSeconds={fileAccessWindowSeconds}
+                setFileAccessWindowSeconds={setFileAccessWindowSeconds}
               />
             </Suspense>
           )}

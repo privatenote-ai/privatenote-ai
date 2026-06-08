@@ -8,7 +8,11 @@ import {
   ARGON2ID_TIME_COST_V2,
   KDF_VERSION_2,
 } from "./kdfParamsV2.ts";
-import { NOTE_AES_GCM_IV_BYTE_LENGTH, NOTE_KDF_SALT_MIN_BYTES } from "./noteCryptoWire.ts";
+import {
+  NOTE_AES_GCM_IV_BYTE_LENGTH,
+  NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS,
+  NOTE_KDF_SALT_MIN_BYTES,
+} from "./noteCryptoWire.ts";
 import { MAX_NOTE_CIPHERTEXT_BASE64_CHARS } from "./noteSizeLimits.ts";
 import {
   parseStoredNoteCiphertextForReveal,
@@ -83,7 +87,7 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.equal(p!.encryptedKey, null);
   });
 
-  it("accepts libsodium secretstream chunked attachment metadata", () => {
+  it("rejects v2 chunked attachment metadata with plaintext file metadata", () => {
     const raw = JSON.stringify(
       basePayload({
         attachment: {
@@ -111,9 +115,78 @@ describe("parseStoredNoteCiphertextForReveal", () => {
       }),
     );
     const p = parseStoredNoteCiphertextForReveal(raw);
+    assert.equal(p, null);
+  });
+
+  it("accepts v2 chunked attachment metadata with encrypted file metadata", () => {
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: {
+          v: 2,
+          alg: "libsodium-secretstream-xchacha20poly1305",
+          encryptedSize: 8_000_034,
+          chunkSize: 4 * 1024 * 1024,
+          totalChunks: 2,
+          header: btoa("secretstream-header"),
+          aad: btoa("stream-aad"),
+          encryptedMetadata: {
+            alg: "AES-GCM",
+            iv: twelveZeroB64,
+            aad: btoa("metadata-aad"),
+            ciphertext: btoa("encrypted-name-type-size"),
+          },
+          wrappedKey: {
+            alg: "AES-GCM",
+            iv: twelveZeroB64,
+            aad: btoa("wrap-aad"),
+            encryptedKey: btoa("wrapped-file-key"),
+          },
+          chunks: [
+            { index: 0, encryptedSize: 4_194_321 },
+            { index: 1, encryptedSize: 3_805_713 },
+          ],
+        },
+      }),
+    );
+    const p = parseStoredNoteCiphertextForReveal(raw);
     assert.ok(p);
     assert.equal(p!.attachment?.v, 2);
     assert.equal(p!.attachment?.encryptedSize, 8_000_034);
+    assert.equal("name" in p!.attachment!, false);
+    assert.ok(p!.attachment?.v === 2 ? p!.attachment.encryptedMetadata : null);
+  });
+
+  it("rejects v2 encrypted attachment metadata ciphertext over the wire cap", () => {
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: {
+          v: 2,
+          alg: "libsodium-secretstream-xchacha20poly1305",
+          encryptedSize: 8_000_034,
+          chunkSize: 4 * 1024 * 1024,
+          totalChunks: 2,
+          header: btoa("secretstream-header"),
+          aad: btoa("stream-aad"),
+          encryptedMetadata: {
+            alg: "AES-GCM",
+            iv: twelveZeroB64,
+            aad: btoa("metadata-aad"),
+            ciphertext: "a".repeat(NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS + 1),
+          },
+          wrappedKey: {
+            alg: "AES-GCM",
+            iv: twelveZeroB64,
+            aad: btoa("wrap-aad"),
+            encryptedKey: btoa("wrapped-file-key"),
+          },
+          chunks: [
+            { index: 0, encryptedSize: 4_194_321 },
+            { index: 1, encryptedSize: 3_805_713 },
+          ],
+        },
+      }),
+    );
+    assert.equal(parseStoredNoteCiphertextForReveal(raw), null);
   });
 
   it("rejects invalid JSON", () => {

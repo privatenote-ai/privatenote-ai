@@ -4,6 +4,7 @@ import {
   registerRoutes,
   cleanupAuditLogs,
   cleanupExpiredSessions,
+  cleanupExpiredNoteFileStorage,
   processExpiredSentNoteNotifications,
   processPendingAccountDeletions,
 } from "./routes";
@@ -133,6 +134,12 @@ export default {
       const sentNoteResult = await processExpiredSentNoteNotifications(env);
       console.log(
         `[CRON] Sent-note expiry notifications: processed ${sentNoteResult.processed}, notified ${sentNoteResult.notified}${sentNoteResult.error ? `, error: ${sentNoteResult.error}` : ''}`,
+      );
+
+      const noteFileStorageResult = await cleanupExpiredNoteFileStorage(env);
+      console.log(
+        `[CRON] Note file storage cleanup: checked ${noteFileStorageResult.checked}, released ${noteFileStorageResult.released}, abandoned ${noteFileStorageResult.abandoned}, pruned ${noteFileStorageResult.pruned}` +
+          `${noteFileStorageResult.error ? `, error: ${noteFileStorageResult.error}` : ""}`,
       );
 
       const pendingDeleteResult = await processPendingAccountDeletions(env);

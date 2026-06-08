@@ -18,9 +18,7 @@ import {
   decryptNote,
   deriveNoteRootKeysFromUrlFragment,
   importAesGcmKeyFromUrlFragment,
-  decryptFileBytes,
   base64ToArrayBuffer,
-  base64ToUint8Array,
   deserializeEncryptedPayload,
   NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
   unwrapContentKeyWithPassword,
@@ -68,30 +66,24 @@ interface NoteData {
   keyDerivation?: string;
   fileAccessToken?: string;
   fileAccessTokenExpiresIn?: number;
+  fileAccessTokenExpiresAtMs?: number;
   attachment?: NoteAttachment;
-}
-
-interface NoteAttachmentV1 {
-  v: 1;
-  name: string;
-  type: string;
-  size: number;
-  encryptedSize: number;
-  iv: string;
-  aad: string;
 }
 
 interface NoteAttachmentV2 {
   v: 2;
   alg: "libsodium-secretstream-xchacha20poly1305";
-  name: string;
-  type: string;
-  size: number;
   encryptedSize: number;
   chunkSize: number;
   totalChunks: number;
   header: string;
   aad: string;
+  encryptedMetadata: {
+    alg: "AES-GCM";
+    iv: string;
+    aad: string;
+    ciphertext: string;
+  };
   wrappedKey: {
     alg: "AES-GCM";
     iv: string;
@@ -101,7 +93,13 @@ interface NoteAttachmentV2 {
   chunks: Array<{ index: number; encryptedSize: number }>;
 }
 
-type NoteAttachment = NoteAttachmentV1 | NoteAttachmentV2;
+type NoteAttachment = NoteAttachmentV2;
+
+type AttachmentDisplayMetadata = {
+  name: string;
+  type: string;
+  size: number;
+};
 
 interface RevealHeroProps {
   isRevealing: boolean;
@@ -152,6 +150,28 @@ const getBrandingLine = (branding?: RevealBranding): string | null => {
   if (company) return `Shared by ${company}`;
   return null;
 };
+
+function withFileAccessDeadline<T extends NoteData>(data: T): T {
+  if (!data.fileAccessToken || typeof data.fileAccessTokenExpiresIn !== "number") {
+    return data;
+  }
+  return {
+    ...data,
+    fileAccessTokenExpiresAtMs: Date.now() + data.fileAccessTokenExpiresIn * 1000,
+  };
+}
+
+function formatFileAccessRemaining(totalSeconds: number): string {
+  const seconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}:${String(remainingMinutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
 
 const NoteAccessProblem: React.FC<{
   variant: NoteAccessProblemVariant;
@@ -312,7 +332,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [isRevealButtonReady, setIsRevealButtonReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
+  const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
+  const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const { toast } = useToast();
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
@@ -353,6 +375,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => window.clearTimeout(timer);
   }, [id]);
 
+  useEffect(() => {
+    if (!noteData?.fileAccessTokenExpiresAtMs) return;
+    setFileAccessNowMs(Date.now());
+    const interval = window.setInterval(() => setFileAccessNowMs(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [noteData?.fileAccessTokenExpiresAtMs]);
+
   const decryptWithKey = async (data: NoteData, key: string) => {
     try {
       if (!data.aad) {
@@ -364,14 +393,21 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         aad: data.aad,
       });
 
-      const { noteTextKey, fileWrapKey } =
+      const { noteTextKey, fileWrapKey, metadataKey } =
         data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
           ? await deriveNoteRootKeysFromUrlFragment(key)
           : {
               noteTextKey: await importAesGcmKeyFromUrlFragment(key),
               fileWrapKey: await importAesGcmKeyFromUrlFragment(key),
+              metadataKey: await importAesGcmKeyFromUrlFragment(key),
             };
       setContentKey(fileWrapKey);
+      if (data.attachment?.v === 2) {
+        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
+        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(data.attachment, metadataKey, id));
+      } else {
+        setAttachmentMetadata(null);
+      }
 
       // Decrypt the note with AAD for context validation
       // Fixed: Added AAD support
@@ -384,7 +420,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setNoteContent(decryptedContent);
       reportNoteOpenedIfSignedIn(id);
     } catch (cryptoError) {
-      console.error("Crypto error:", cryptoError);
+      if (import.meta.env.DEV) {
+        console.error("Crypto error:", cryptoError);
+      }
       throw new Error("Failed to decrypt the note. The encryption key may be invalid or the data may have been tampered with.");
     } finally {
       setIsLoading(false);
@@ -409,7 +447,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const data = await apiRequest(`/api/notes/${id}/reveal`, "POST");
 
       setIsPasswordProtected(data.isPasswordProtected || false);
-      setNoteData(data);
+      setNoteData(withFileAccessDeadline(data));
       setHasRevealed(true);
 
       if (data.isPasswordProtected) {
@@ -492,7 +530,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const encryptedKeyIv = base64ToArrayBuffer(noteData.encryptedKeyIv!);
       const salt = base64ToArrayBuffer(noteData.salt!);
 
-      const { noteTextKey, fileWrapKey } =
+      const { noteTextKey, fileWrapKey, metadataKey } =
         noteData.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
           ? await unwrapRootKeyWithPassword(
               encryptedKey,
@@ -528,6 +566,17 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 noteData.kdfIterations,
                 noteData.kdfPolicyTag,
               ),
+              metadataKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
             };
 
       const decryptedContent = await decryptNote(
@@ -539,6 +588,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
       setNoteContent(decryptedContent);
       setContentKey(fileWrapKey);
+      if (noteData.attachment?.v === 2) {
+        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
+        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(noteData.attachment, metadataKey, id));
+      } else {
+        setAttachmentMetadata(null);
+      }
       reportNoteOpenedIfSignedIn(id);
 
       // Hide password input after successful decryption
@@ -549,7 +604,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         description: "Note decrypted successfully",
       });
     } catch (error) {
-      console.error("Password decryption error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Password decryption error:", error);
+      }
       setPasswordDecryptError(
         "That password didn\u2019t unlock this note. Check for typos or ask the sender.",
       );
@@ -571,50 +628,48 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   const handleDownloadAttachment = async () => {
     if (!noteData?.attachment || !contentKey) return;
+    if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
+      toast({
+        title: "File access expired",
+        description: "Reveal the note again if it is still available.",
+        variant: "destructive",
+      });
+      return;
+    }
     const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
       ? { "x-file-access-token": noteData.fileAccessToken }
       : {};
     setIsDownloadingFile(true);
     try {
       let decryptedParts: BlobPart[];
-      if (noteData.attachment.v === 2) {
-        const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
-        decryptedParts = await decryptSodiumAttachmentChunks(
-          noteData.attachment,
-          contentKey,
-          async (index) => {
-            const encryptedChunkBlob = await apiBlobRequest(
-              `/api/notes/${id}/file/chunks/${index}`,
-              "GET",
-              fileAccessHeaders,
-            );
-            return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
-          },
-        );
-      } else {
-        const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET", fileAccessHeaders);
-        const encryptedBytes = new Uint8Array(await encryptedBlob.arrayBuffer());
-        const decryptedBytes = await decryptFileBytes(
-          encryptedBytes,
-          contentKey,
-          base64ToUint8Array(noteData.attachment.iv),
-          base64ToUint8Array(noteData.attachment.aad),
-        );
-        decryptedParts = [decryptedBytes];
-      }
+      const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
+      decryptedParts = await decryptSodiumAttachmentChunks(
+        noteData.attachment,
+        contentKey,
+        async (index) => {
+          const encryptedChunkBlob = await apiBlobRequest(
+            `/api/notes/${id}/file/chunks/${index}`,
+            "GET",
+            fileAccessHeaders,
+          );
+          return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
+        },
+      );
       const blob = new Blob(decryptedParts, {
-        type: noteData.attachment.type || "application/octet-stream",
+        type: attachmentMetadata?.type || "application/octet-stream",
       });
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = noteData.attachment.name || "privatenote-file";
+      link.download = attachmentMetadata?.name || "privatenote-file";
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (error) {
-      console.error("Attachment download/decrypt failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("Attachment download/decrypt failed:", error);
+      }
       toast({
         title: "File download failed",
         description: "The encrypted file could not be downloaded or decrypted.",
@@ -624,6 +679,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setIsDownloadingFile(false);
     }
   };
+
+  const fileAccessRemainingSeconds =
+    noteData?.fileAccessTokenExpiresAtMs != null
+      ? Math.max(0, Math.ceil((noteData.fileAccessTokenExpiresAtMs - fileAccessNowMs) / 1000))
+      : null;
+  const fileAccessExpired = fileAccessRemainingSeconds === 0;
 
   const handleCreateNew = () => {
     window.location.href = '/';
@@ -792,17 +853,33 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 <Paperclip className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {noteData.attachment.name}
+                    {attachmentMetadata?.name || "Encrypted attachment"}
                   </p>
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Encrypted attachment · {formatNoteFileSize(noteData.attachment.size)}
+                    Encrypted attachment
+                    {attachmentMetadata?.size != null
+                      ? ` · ${formatNoteFileSize(attachmentMetadata.size)}`
+                      : ""}
                   </p>
+                  {fileAccessRemainingSeconds != null && (
+                    <p
+                      className={`mt-1 text-xs font-medium ${
+                        fileAccessExpired
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-amber-700 dark:text-amber-300"
+                      }`}
+                    >
+                      {fileAccessExpired
+                        ? "Attachment access expired. Reveal again if the note is still available."
+                        : `Download access expires in ${formatFileAccessRemaining(fileAccessRemainingSeconds)}`}
+                    </p>
+                  )}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => void handleDownloadAttachment()}
-                disabled={isDownloadingFile || !contentKey}
+                disabled={isDownloadingFile || !contentKey || fileAccessExpired}
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download className="mr-2 h-4 w-4" aria-hidden />

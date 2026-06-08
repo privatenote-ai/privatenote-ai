@@ -519,7 +519,7 @@ export const de: Translations = {
   securityKdfTitle: "Schlüsselableitung (KDF)",
   securityArgonTitle: "Argon2id (v2-Profil)",
   securityArgonBody:
-    "Passwortgeschützte Notizen verwenden Argon2id mit speicherharten Parametern (time=3, memory=64 MiB, parallelism=1), um Brute-Force-Angriffe, besonders auf GPU/ASIC, zu verteuern.",
+    "Passwortgeschützte Notizen verwenden Argon2id mit browser-kompatiblen speicherharten Parametern (time=3, memory=64 MiB, parallelism=1), um Brute-Force-Angriffe, besonders auf GPU/ASIC, zu verteuern. Das ist für zuverlässige Entschlüsselung kurzlebiger Notizen auf Desktop und Mobilgeräten abgestimmt; für besonders wertvolle Geheimnisse nutzen Sie ein starkes generiertes Passwort oder teilen Sie den Entschlüsselungsschlüssel über einen separaten vertrauenswürdigen Kanal.",
   securitySaltTitle: "16-Byte-kryptografisches Salt",
   securitySaltBody: "Ein eindeutiges Salt pro Notiz schützt vor Rainbow-Table-Angriffen.",
   securityInfrastructureTitle: "Infrastruktur & Betriebssicherheit",
@@ -977,7 +977,7 @@ export const de: Translations = {
     "Nein. Bei Standardnotizen speichern wir die verschlüsselte Notiz und Metadaten, nicht den nutzbaren Entschlüsselungsschlüssel. Der Schlüssel steht im Linkteil nach `#`. Browser behalten alles nach `#` beim Laden auf dem Gerät—sie senden es nicht an unsere Server—, sodass wir Ihren Schlüssel nie erhalten.",
   homeFaq_metadata_question: "Welche Metadaten speichern Sie?",
   homeFaq_metadata_answer:
-    "Wir speichern verschlüsselte Notizdaten und die Einstellungen für Ablauf und Leselimits—nicht Ihren Klartext. Zusätzlich führen wir aggregierte First-Party-Service-Statistiken: tägliche Zähler wie erstellte oder gelesene Notizen, Passwortschutz- und KI-Modus-Nutzung, grobe Landes- und UI-Sprachangaben sowie ähnliche Betriebskennzahlen. Diese Statistiken enthalten nie Notizinhalte und werden nicht an Werbe- oder Drittanbieter-Analytics weitergegeben. Begrenzte Sicherheits- und Missbrauchsschutz-Logs (z. B. IP-Metadaten und Rate Limiting) werden kurzzeitig aufbewahrt, wie in unserer Datenschutzerklärung beschrieben.",
+    "Wir speichern verschlüsselte Notizdaten und die Einstellungen für Ablauf und Leselimits—nicht Ihren Klartext. Bei verschlüsselten Dateianhängen werden Dateiname und MIME-Typ in den Notizmetadaten verschlüsselt, die Klartext-Dateigröße wird beim Upload jedoch weiterhin an den Server gesendet, um Kontolimits durchzusetzen, und kann für PrivateNote-Betreiber oder Infrastruktur sichtbar sein. Verschlüsselte Dateigröße, Chunk-Anzahl und ähnliche Abrufmetadaten bleiben betrieblich sichtbar. Zusätzlich führen wir aggregierte First-Party-Service-Statistiken: tägliche Zähler wie erstellte oder gelesene Notizen, Passwortschutz- und KI-Modus-Nutzung, grobe Landes- und UI-Sprachangaben sowie ähnliche Betriebskennzahlen. Diese Statistiken enthalten nie Notizinhalte und werden nicht an Werbe- oder Drittanbieter-Analytics weitergegeben. Begrenzte Sicherheits- und Missbrauchsschutz-Logs (z. B. IP-Metadaten und Rate Limiting) werden kurzzeitig aufbewahrt, wie in unserer Datenschutzerklärung beschrieben.",
   homeFaq_euStorage_question: "Werden PrivateNote.ai-Daten in der EU gespeichert?",
   homeFaq_euStorage_answer:
     "Ja. Authentifizierungsdaten, verschlüsselte Notizen und Betriebsdaten werden in Infrastruktur unter EU-Gerichtsbarkeit gespeichert. Ein Teil des Netzwerkverkehrs kann weiterhin Sicherheits- und Auslieferungssysteme durchlaufen, bevor er den Speicher erreicht.",

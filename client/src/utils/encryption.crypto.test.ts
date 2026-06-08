@@ -77,6 +77,17 @@ describe("root-key note cryptography", () => {
         ),
       /Failed to decrypt note/,
     );
+
+    await assert.rejects(
+      () =>
+        decryptNote(
+          new Uint8Array(encrypted.encryptedData),
+          first.metadataKey,
+          encrypted.iv,
+          encrypted.aadBytes,
+        ),
+      /Failed to decrypt note/,
+    );
   });
 
   it("wraps and unwraps the root key with a password-derived key", async () => {

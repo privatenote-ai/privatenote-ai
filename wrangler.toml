@@ -75,9 +75,9 @@ AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
 command = "npm run build"
 
 # Cron triggers for scheduled maintenance tasks
-# Runs daily at 3:00 AM UTC for audit log cleanup (GDPR compliance)
+# Runs hourly so expired/destroyed attachment storage is released promptly.
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["0 * * * *"]
 
 [observability]
 enabled = false

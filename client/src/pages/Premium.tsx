@@ -26,13 +26,13 @@ const stripePrefilledPromoCode =
 const earlyAdopterPricingEnabled =
   (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_PRICING_ENABLED as string | undefined)?.trim().toLowerCase() !== "false";
 const earlyAdopterUserLimit = Number.parseInt(
-  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_USER_LIMIT as string | undefined)?.trim() || "200",
+  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_USER_LIMIT as string | undefined)?.trim() || "100",
   10,
 );
 const earlyAdopterDisplayLimit =
   Number.isFinite(earlyAdopterUserLimit) && earlyAdopterUserLimit > 0
     ? earlyAdopterUserLimit
-    : 200;
+    : 100;
 
 function withStripePromoCode(href: string): string {
   if (!stripePrefilledPromoCode || !/^https?:\/\//i.test(href)) return href;
@@ -70,8 +70,9 @@ const planCopy: Record<PlanId, {
     features: [
       "Notifications",
       "Recipient verification",
-      "Branding",
-      "100 MB encrypted file sharing",
+      "Branding and customization",
+      "1 GB encrypted file sharing",
+      "20 GB total encrypted storage",
     ],
   },
 };
@@ -80,12 +81,12 @@ const premiumPrices: Record<BillingMode, { price: string; cadence: string; note:
   monthly: {
     price: "€3.99",
     cadence: "per month",
-    note: "Monthly access for premium delivery controls.",
+    note: "Early adopter price. Later Premium price: €4.99/month.",
   },
   yearly: {
     price: "€39",
     cadence: "per year",
-    note: "Best value for ongoing secure note delivery.",
+    note: "Early adopter yearly price for ongoing secure note delivery.",
   },
 };
 
@@ -102,13 +103,13 @@ const featureCards = [
   },
   {
     icon: ShieldCheck,
-    title: "Branding",
-    text: "Add a branded reveal page for a more trusted recipient experience.",
+    title: "Branding and customization",
+    text: "Add branded reveal pages and customize the delivery experience.",
   },
   {
     icon: Sparkles,
     title: "Encrypted file sharing",
-    text: "Attach browser-encrypted files up to 100 MB on Premium.",
+    text: "Attach browser-encrypted files up to 1 GB, with 20 GB total encrypted storage.",
   },
 ];
 
@@ -127,8 +128,10 @@ const comparisonSections = [
     rows: [
       ["Open and destroy notifications", "No", "Included"],
       ["Recipient verification", "No", "Included"],
-      ["Custom branding", "No", "Included"],
-      ["Encrypted file sharing", "Up to 10 MB", "Up to 100 MB"],
+      ["Branding and customization", "No", "Included"],
+      ["Encrypted file sharing", "Up to 10 MB", "Up to 1 GB per file"],
+      ["Total encrypted file storage", "No", "20 GB"],
+      ["Longer retention", "Basic", "Included"],
     ],
   },
 ];
@@ -140,7 +143,7 @@ const faqs = [
   },
   {
     q: "What is included in Premium?",
-    a: "Premium includes notifications, recipient verification, branding, and encrypted file sharing up to 100 MB.",
+    a: "Premium includes notifications, recipient verification, branding and customization, longer retention, encrypted file sharing up to 1 GB per file, and 20 GB total encrypted file storage.",
   },
   {
     q: "Can I pay online today?",
@@ -156,7 +159,7 @@ const faqs = [
   },
   {
     q: "How are files encrypted?",
-    a: "Files are encrypted in the browser with the Web Crypto API using AES-GCM-256 before upload. PrivateNote stores only encrypted file bytes.",
+    a: "Files are encrypted in the browser with libsodium secretstream before upload. AES-GCM is used only to wrap the attachment key with the note key; PrivateNote stores only encrypted file bytes. The server still sees operational metadata such as encrypted size and chunk count.",
   },
 ];
 
@@ -279,8 +282,8 @@ export default function Premium() {
           Simple plans for secure notes.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Free gives you Core PrivateNote. Premium adds delivery controls for notifications,
-          recipient verification, branding, and 100 MB encrypted file sharing.
+          Free gives you Core PrivateNote. Premium adds delivery controls, recipient verification,
+          branding, longer retention, and encrypted file sharing up to 1 GB per file.
         </p>
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           {(["monthly", "yearly"] as BillingMode[]).map((mode) => (
@@ -300,7 +303,7 @@ export default function Premium() {
           ))}
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Premium is €3.99 monthly or €39 yearly.
+          Premium is €3.99 monthly for the first {earlyAdopterDisplayLimit} adopters, then €4.99 monthly.
           {stripePaymentLinks[billingMode] ? " Secure checkout opens via Stripe." : " Add the Stripe link env vars to enable checkout."}
         </p>
       </section>

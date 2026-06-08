@@ -7,6 +7,9 @@ export const NOTE_AES_GCM_IV_BYTE_LENGTH = 12;
 /** Minimum KDF salt size (matches client `encryptNoteWithPassword`). */
 export const NOTE_KDF_SALT_MIN_BYTES = 16;
 
+/** Attachment metadata is tiny JSON (name/type/size) plus AES-GCM tag; keep the wire blob small. */
+export const NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS = 2048;
+
 export type ValidateCryptoWireResult =
   | { ok: true }
   | { ok: false; message: string; kind?: "too_large" };
@@ -57,6 +60,35 @@ export function validateNoteCiphertextWire(
       ok: false,
       kind: "too_large",
       message: `${fieldLabel} exceeds maximum length (${MAX_NOTE_CIPHERTEXT_BASE64_CHARS} base64 characters)`,
+    };
+  }
+  const bytes = decodeBase64UrlToBytes(trimmed);
+  if (!bytes || bytes.length < 1) {
+    return { ok: false, message: `${fieldLabel} must be valid base64 or base64url` };
+  }
+  return { ok: true };
+}
+
+/**
+ * Attachment metadata ciphertext on the wire: base64/base64url, non-empty, capped well below
+ * full note ciphertext because it only contains encrypted filename, MIME type, and plaintext size.
+ */
+export function validateAttachmentMetadataCiphertextWire(
+  ciphertext: unknown,
+  fieldLabel = "attachment.encryptedMetadata.ciphertext",
+): ValidateCryptoWireResult {
+  if (typeof ciphertext !== "string") {
+    return { ok: false, message: `${fieldLabel} must be a string` };
+  }
+  const trimmed = ciphertext.trim();
+  if (!trimmed) {
+    return { ok: false, message: `${fieldLabel} is required` };
+  }
+  if (trimmed.length > NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS) {
+    return {
+      ok: false,
+      kind: "too_large",
+      message: `${fieldLabel} exceeds maximum length (${NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS} base64 characters)`,
     };
   }
   const bytes = decodeBase64UrlToBytes(trimmed);

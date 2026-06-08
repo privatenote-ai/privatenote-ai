@@ -56,10 +56,12 @@ export const NOTE_KEY_DERIVATION_HKDF_ROOT_V2 = "hkdf-root-v2" as const;
 const NOTE_ROOT_HKDF_SALT = new TextEncoder().encode("privatenote/v2/root-key-separation");
 const NOTE_TEXT_KEY_INFO = new TextEncoder().encode("privatenote/v2/text");
 const NOTE_FILE_WRAP_KEY_INFO = new TextEncoder().encode("privatenote/v2/file-wrap");
+const NOTE_METADATA_KEY_INFO = new TextEncoder().encode("privatenote/v2/metadata");
 
 export interface DerivedNoteRootKeys {
   noteTextKey: CryptoKey;
   fileWrapKey: CryptoKey;
+  metadataKey: CryptoKey;
 }
 
 export interface EncryptWithPasswordResult {
@@ -213,11 +215,12 @@ export async function deriveNoteRootKeys(
   rootKeyBytes: Uint8Array | ArrayBuffer,
 ): Promise<DerivedNoteRootKeys> {
   const rootKey = await importRootKeyForHkdf(rootKeyBytes);
-  const [noteTextKey, fileWrapKey] = await Promise.all([
+  const [noteTextKey, fileWrapKey, metadataKey] = await Promise.all([
     deriveAesGcmKeyFromRoot(rootKey, NOTE_TEXT_KEY_INFO),
     deriveAesGcmKeyFromRoot(rootKey, NOTE_FILE_WRAP_KEY_INFO),
+    deriveAesGcmKeyFromRoot(rootKey, NOTE_METADATA_KEY_INFO),
   ]);
-  return { noteTextKey, fileWrapKey };
+  return { noteTextKey, fileWrapKey, metadataKey };
 }
 
 export async function deriveNoteRootKeysFromUrlFragment(
@@ -316,47 +319,6 @@ export async function decryptNote(
     throw new Error(
       "Failed to decrypt note. The key may be incorrect or the data may have been tampered with.",
     );
-  }
-}
-
-export async function encryptFileBytes(file: File, key: CryptoKey, additionalData: Uint8Array) {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const fileBytes = await file.arrayBuffer();
-  const encryptedData = await window.crypto.subtle.encrypt(
-    {
-      name: "AES-GCM",
-      iv: asBufferSource(iv),
-      additionalData: asBufferSource(additionalData),
-      tagLength: 128,
-    },
-    key,
-    fileBytes,
-  );
-  return { encryptedData, iv };
-}
-
-export async function decryptFileBytes(
-  encryptedData: Uint8Array,
-  key: CryptoKey,
-  iv: Uint8Array,
-  additionalData: Uint8Array,
-) {
-  try {
-    return await window.crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: asBufferSource(iv),
-        additionalData: asBufferSource(additionalData),
-        tagLength: 128,
-      },
-      key,
-      asBufferSource(encryptedData),
-    );
-  } catch (error) {
-    if (import.meta.env?.DEV) {
-      console.error("Error decrypting file:", error);
-    }
-    throw new Error("Failed to decrypt file. The key may be incorrect or the file may have been tampered with.");
   }
 }
 

@@ -5,8 +5,15 @@ import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import {
   NOTE_FILE_AES_GCM_TAG_BYTES,
+  NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES,
   noteFileLimitBytesForAccount,
 } from "@shared/noteFileLimits";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  NOTE_FILE_ACCESS_WINDOW_OPTIONS,
+  isNoteFileAccessWindowSeconds,
+  parseNoteFileAccessWindowFromBody,
+} from "@shared/noteFileAccess";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { DurableObjectNamespace, DurableObjectStub, KVNamespace } from "@cloudflare/workers-types";
@@ -101,13 +108,20 @@ const TURNSTILE_CHALLENGE = {
 };
 
 const NOTE_RESERVATION = {
-  TTL_SECONDS: 5 * 60,
+  TTL_SECONDS: 30 * 60,
   KEY_PREFIX: "note_reserve:",
 };
 
 const NOTE_FILE_ACCESS = {
-  TTL_SECONDS: 5 * 60,
   KEY_PREFIX: "note_file_access:",
+};
+
+const NOTE_FILE_STORAGE_CLEANUP = {
+  BATCH_SIZE: 200,
+  ABANDONED_RESERVED_AFTER_SECONDS: 2 * 60 * 60,
+  DOWNLOAD_WINDOW_GRACE_SECONDS: 15 * 60,
+  ACTIVE_RECHECK_SECONDS: 6 * 60 * 60,
+  RELEASED_ROW_RETENTION_DAYS: 30,
 };
 
 const SESSION_POLICY = {
@@ -6906,12 +6920,406 @@ function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
 
-function noteFileObjectKey(id: string): string {
-  return `note-files/${id}`;
-}
-
 function noteFileChunkObjectKey(id: string, chunkIndex: number): string {
   return `note-files/${id}/chunks/${chunkIndex}`;
+}
+
+function noteFileChunkObjectPrefix(id: string): string {
+  return `note-files/${id}/chunks/`;
+}
+
+let accountFileStorageSchemaReady = false;
+
+async function ensureAccountFileStorageSchema(env: Env): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  if (accountFileStorageSchemaReady) return true;
+  await env.AUTH_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS account_file_storage_usage (
+      user_id TEXT PRIMARY KEY,
+      used_bytes INTEGER NOT NULL DEFAULT 0 CHECK (used_bytes >= 0),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  ).run();
+  await env.AUTH_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS account_file_storage_reservations (
+      note_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      encrypted_size INTEGER NOT NULL CHECK (encrypted_size >= 0),
+      total_chunks INTEGER,
+      max_reads INTEGER,
+      file_access_window_seconds INTEGER NOT NULL DEFAULT ${NOTE_FILE_ACCESS_DEFAULT_SECONDS},
+      expires_at TEXT,
+      last_checked_at TEXT,
+      status TEXT NOT NULL DEFAULT 'reserved'
+        CHECK (status IN ('reserved', 'active', 'released')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      activated_at TEXT,
+      released_at TEXT,
+      release_reason TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  ).run();
+  await env.AUTH_DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_account_file_storage_reservations_user_status ON account_file_storage_reservations(user_id, status)",
+  ).run();
+  const columns = await env.AUTH_DB.prepare("PRAGMA table_info(account_file_storage_reservations)").all<{
+    name: string;
+  }>();
+  const hasFileAccessWindowColumn = (columns.results ?? []).some(
+    (column) => column.name === "file_access_window_seconds",
+  );
+  const hasExpiresAtColumn = (columns.results ?? []).some((column) => column.name === "expires_at");
+  const hasLastCheckedAtColumn = (columns.results ?? []).some((column) => column.name === "last_checked_at");
+  if (!hasFileAccessWindowColumn) {
+    await env.AUTH_DB.prepare(
+      `ALTER TABLE account_file_storage_reservations
+         ADD COLUMN file_access_window_seconds INTEGER NOT NULL DEFAULT ${NOTE_FILE_ACCESS_DEFAULT_SECONDS}`,
+    ).run();
+  }
+  if (!hasExpiresAtColumn) {
+    await env.AUTH_DB.prepare("ALTER TABLE account_file_storage_reservations ADD COLUMN expires_at TEXT").run();
+  }
+  if (!hasLastCheckedAtColumn) {
+    await env.AUTH_DB.prepare("ALTER TABLE account_file_storage_reservations ADD COLUMN last_checked_at TEXT").run();
+  }
+  accountFileStorageSchemaReady = true;
+  return true;
+}
+
+async function getAuthenticatedPremiumUserIdForNoteFiles(
+  env: Env,
+  request: Request,
+): Promise<string | null> {
+  if (!env.AUTH_DB) return null;
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id) return null;
+  const user = await env.AUTH_DB.prepare(
+    "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
+  )
+    .bind(session.id)
+    .first<{ account_type: string | null; plan: string | null }>();
+  if (!user || !isPremiumAccountType(user.account_type, user.plan)) return null;
+  return session.id;
+}
+
+export async function reserveAccountFileStorageBytes(
+  env: Env,
+  userId: string,
+  noteId: string,
+  encryptedSize: number,
+): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
+    return {
+      ok: false,
+      status: 503,
+      body: {
+        error: "file_storage_quota_unavailable",
+        message: "Premium file storage quota is not configured.",
+      },
+    };
+  }
+
+  const abandoned = await env.AUTH_DB.prepare(
+    `SELECT note_id
+       FROM account_file_storage_reservations
+      WHERE user_id = ?
+        AND status = 'reserved'
+        AND created_at < datetime('now', '-2 hours')
+      LIMIT 20`,
+  )
+    .bind(userId)
+    .all<{ note_id: string }>();
+  for (const row of abandoned.results ?? []) {
+    await cleanupNoteFileChunks(env, row.note_id, "abandoned attachment reservation");
+  }
+
+  const existing = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (existing) {
+    if (existing.user_id !== userId || existing.status === "released" || existing.encrypted_size !== encryptedSize) {
+      return {
+        ok: false,
+        status: 409,
+        body: { error: "Attachment storage reservation conflict" },
+      };
+    }
+    return { ok: true };
+  }
+
+  await env.AUTH_DB.prepare(
+    "INSERT OR IGNORE INTO account_file_storage_usage (user_id, used_bytes, updated_at) VALUES (?, 0, datetime('now'))",
+  )
+    .bind(userId)
+    .run();
+  const usageUpdate = await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_usage
+       SET used_bytes = used_bytes + ?, updated_at = datetime('now')
+     WHERE user_id = ? AND used_bytes + ? <= ?`,
+  )
+    .bind(encryptedSize, userId, encryptedSize, NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES)
+    .run();
+  const changed = Number((usageUpdate as any).meta?.changes ?? 0);
+  if (changed !== 1) {
+    const usage = await env.AUTH_DB.prepare(
+      "SELECT used_bytes FROM account_file_storage_usage WHERE user_id = ? LIMIT 1",
+    )
+      .bind(userId)
+      .first<{ used_bytes: number }>();
+    return {
+      ok: false,
+      status: 413,
+      body: {
+        error: "account_file_storage_quota_exceeded",
+        message: "Premium encrypted file storage limit reached.",
+        limitBytes: NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES,
+        usedBytes: Math.max(0, Number(usage?.used_bytes ?? 0)),
+      },
+    };
+  }
+
+  try {
+    await env.AUTH_DB.prepare(
+      `INSERT INTO account_file_storage_reservations
+        (note_id, user_id, encrypted_size, status, created_at)
+       VALUES (?, ?, ?, 'reserved', datetime('now'))`,
+    )
+      .bind(noteId, userId, encryptedSize)
+      .run();
+  } catch (error) {
+    await env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    )
+      .bind(encryptedSize, userId)
+      .run();
+    throw error;
+  }
+
+  return { ok: true };
+}
+
+export async function activateAccountFileStorageReservation(
+  env: Env,
+  noteId: string,
+  encryptedSize: number,
+  totalChunks: number,
+  maxReads: number,
+  fileAccessWindowSeconds: number,
+  expiresAt: string | null,
+): Promise<void> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) return;
+  const reservation = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (!reservation || reservation.status === "released") return;
+
+  const previousSize = Math.max(0, Number(reservation.encrypted_size ?? 0));
+  const nextSize = Math.max(0, encryptedSize);
+  const delta = nextSize - previousSize;
+  if (delta !== 0) {
+    await env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes + ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    )
+      .bind(delta, reservation.user_id)
+      .run();
+  }
+  await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_reservations
+       SET encrypted_size = ?,
+           total_chunks = ?,
+           max_reads = ?,
+           file_access_window_seconds = ?,
+           expires_at = ?,
+           last_checked_at = NULL,
+           status = 'active',
+           activated_at = datetime('now')
+     WHERE note_id = ? AND status != 'released'`,
+  )
+    .bind(
+      nextSize,
+      totalChunks,
+      maxReads,
+      isNoteFileAccessWindowSeconds(fileAccessWindowSeconds)
+        ? fileAccessWindowSeconds
+        : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      expiresAt,
+      noteId,
+    )
+    .run();
+}
+
+async function releaseAccountFileStorageReservation(
+  env: Env,
+  noteId: string,
+  reason: string,
+): Promise<void> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) return;
+  const reservation = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (!reservation || reservation.status === "released") return;
+  const bytes = Math.max(0, Number(reservation.encrypted_size ?? 0));
+  await env.AUTH_DB.batch([
+    env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    ).bind(bytes, reservation.user_id),
+    env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_reservations
+         SET status = 'released', released_at = datetime('now'), release_reason = ?
+       WHERE note_id = ? AND status != 'released'`,
+    ).bind(reason, noteId),
+  ]);
+}
+
+async function cleanupNoteFileChunks(env: Env, noteId: string, reason: string): Promise<void> {
+  if (env.NOTE_FILES_R2) {
+    try {
+      const prefix = noteFileChunkObjectPrefix(noteId);
+      let cursor: string | undefined;
+      do {
+        const listed = await env.NOTE_FILES_R2.list({ prefix, cursor });
+        const keys = listed.objects.map((object) => object.key);
+        if (keys.length > 0) {
+          await Promise.all(keys.map((key) => env.NOTE_FILES_R2!.delete(key)));
+        }
+        cursor = listed.truncated ? listed.cursor : undefined;
+      } while (cursor);
+    } catch (error) {
+      console.warn(`[NOTE_FILES] Failed to clean attachment chunks for ${noteId} after ${reason}:`, error);
+    }
+  }
+  try {
+    await releaseAccountFileStorageReservation(env, noteId, reason);
+  } catch (error) {
+    console.warn(`[NOTE_FILES] Failed to release attachment quota for ${noteId} after ${reason}:`, error);
+  }
+}
+
+function maxNoteFileAccessWindowSeconds(): number {
+  return NOTE_FILE_ACCESS_WINDOW_OPTIONS.reduce((max, seconds) => Math.max(max, seconds), 0);
+}
+
+async function markAccountFileStorageReservationChecked(env: Env, noteId: string): Promise<void> {
+  if (!env.AUTH_DB) return;
+  await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_reservations
+        SET last_checked_at = datetime('now')
+      WHERE note_id = ? AND status = 'active'`,
+  )
+    .bind(noteId)
+    .run();
+}
+
+export async function cleanupExpiredNoteFileStorage(
+  env: Env,
+): Promise<{ checked: number; released: number; abandoned: number; pruned: number; error?: string }> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
+    return { checked: 0, released: 0, abandoned: 0, pruned: 0, error: "AUTH_DB not configured" };
+  }
+
+  let checked = 0;
+  let released = 0;
+  let abandoned = 0;
+  let pruned = 0;
+
+  try {
+    const abandonedRows = await env.AUTH_DB.prepare(
+      `SELECT note_id
+         FROM account_file_storage_reservations
+        WHERE status = 'reserved'
+          AND created_at < datetime('now', ?)
+        ORDER BY created_at ASC
+        LIMIT ?`,
+    )
+      .bind(
+        `-${NOTE_FILE_STORAGE_CLEANUP.ABANDONED_RESERVED_AFTER_SECONDS} seconds`,
+        NOTE_FILE_STORAGE_CLEANUP.BATCH_SIZE,
+      )
+      .all<{ note_id: string }>();
+
+    for (const row of abandonedRows.results ?? []) {
+      await cleanupNoteFileChunks(env, row.note_id, "scheduled abandoned attachment cleanup");
+      abandoned += 1;
+    }
+
+    const maxWindowSeconds =
+      maxNoteFileAccessWindowSeconds() + NOTE_FILE_STORAGE_CLEANUP.DOWNLOAD_WINDOW_GRACE_SECONDS;
+    const activeRows = await env.AUTH_DB.prepare(
+      `SELECT note_id, file_access_window_seconds
+         FROM account_file_storage_reservations
+        WHERE status = 'active'
+          AND datetime(COALESCE(activated_at, created_at), ?) <= datetime('now')
+          AND (
+            last_checked_at IS NULL
+            OR last_checked_at < datetime('now', ?)
+            OR (expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now'))
+          )
+        ORDER BY
+          CASE WHEN expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now') THEN 0 ELSE 1 END,
+          COALESCE(last_checked_at, '1970-01-01T00:00:00Z') ASC,
+          COALESCE(activated_at, created_at) ASC
+        LIMIT ?`,
+    )
+      .bind(
+        `+${maxWindowSeconds} seconds`,
+        `-${NOTE_FILE_STORAGE_CLEANUP.ACTIVE_RECHECK_SECONDS} seconds`,
+        NOTE_FILE_STORAGE_CLEANUP.BATCH_SIZE,
+      )
+      .all<{ note_id: string; file_access_window_seconds: number | null }>();
+
+    for (const row of activeRows.results ?? []) {
+      const noteId = row.note_id;
+      checked += 1;
+      const doUrl = new URL(`https://internal.privatenote.invalid/api/notes/${noteId}`);
+      const request = new Request(doUrl.toString(), { method: "GET" });
+      const stub = getSecureNoteStub(env, noteId, true);
+      let response = await stub.fetch(request as any);
+
+      if (response.status === 404) {
+        const legacyStub = getSecureNoteStub(env, noteId, false);
+        response = await legacyStub.fetch(request as any);
+      }
+
+      if (response.status === 404) {
+        await cleanupNoteFileChunks(env, noteId, "scheduled expired or destroyed attachment cleanup");
+        released += 1;
+      } else {
+        if (!response.ok) {
+          console.warn(`[NOTE_FILES] Scheduled cleanup meta check returned ${response.status} for ${noteId}`);
+        }
+        await markAccountFileStorageReservationChecked(env, noteId);
+      }
+    }
+
+    const prunedResult = await env.AUTH_DB.prepare(
+      `DELETE FROM account_file_storage_reservations
+        WHERE status = 'released'
+          AND released_at IS NOT NULL
+          AND released_at < datetime('now', ?)`,
+    )
+      .bind(`-${NOTE_FILE_STORAGE_CLEANUP.RELEASED_ROW_RETENTION_DAYS} days`)
+      .run();
+    pruned = Number((prunedResult as any).meta?.changes ?? 0);
+
+    return { checked, released, abandoned, pruned };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[NOTE_FILES] Scheduled storage cleanup failed:", error);
+    return { checked, released, abandoned, pruned, error: message };
+  }
 }
 
 function noteFileAccessKey(noteId: string, token: string): string {
@@ -6928,12 +7336,16 @@ function randomUrlToken(bytes = 32): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-async function issueNoteFileAccessToken(env: Env, noteId: string): Promise<string> {
+async function issueNoteFileAccessToken(
+  env: Env,
+  noteId: string,
+  ttlSeconds = NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+): Promise<string> {
   const token = randomUrlToken();
   await env.NOTES_KV.put(
     noteFileAccessKey(noteId, token),
     JSON.stringify({ noteId, issuedAt: new Date().toISOString() }),
-    { expirationTtl: NOTE_FILE_ACCESS.TTL_SECONDS },
+    { expirationTtl: ttlSeconds },
   );
   return token;
 }
@@ -7394,7 +7806,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
     }
 
-    const isPremium = await noteCreationAllowsPremiumExpiry(env, request);
+    const premiumUserId = await getAuthenticatedPremiumUserIdForNoteFiles(env, request);
+    const isPremium = premiumUserId !== null;
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
     const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
@@ -7419,6 +7832,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (encryptedTotalSize > encryptedTotalLimit) {
       return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
     }
+    if (isPremium && premiumUserId) {
+      const quotaReservation = await reserveAccountFileStorageBytes(
+        env,
+        premiumUserId,
+        id,
+        encryptedTotalSize,
+      );
+      if (!quotaReservation.ok) {
+        return jsonResponse(quotaReservation.body, quotaReservation.status, request);
+      }
+    }
 
     const encryptedChunkSize = Number(request.headers.get("x-file-chunk-encrypted-size") ?? NaN);
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
@@ -7437,7 +7861,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
       httpMetadata: { contentType: "application/octet-stream" },
       customMetadata: {
-        plaintextSize: String(plaintextSize),
         encryptedSize: String(encryptedTotalSize),
         chunkIndex: String(chunkIndex),
         chunkEncryptedSize: String(encryptedBytes.byteLength),
@@ -7466,99 +7889,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(id, chunkIndex));
     if (!object) {
       return jsonResponse({ error: "File chunk not found" }, 404, request);
-    }
-    const headers = new Headers({
-      "Content-Type": "application/octet-stream",
-      "Cache-Control": "no-store",
-    });
-    return applyCorsHeaders(new Response(object.body as unknown as BodyInit, { status: 200, headers }), request);
-  }
-
-  const noteFileParams = parsePathParams(pathname, "/api/notes/:id/file");
-  if (noteFileParams && method === "PUT") {
-    const { id } = noteFileParams;
-    if (!isValidNoteId(id)) {
-      return jsonResponse({ error: "Invalid note ID" }, 400, request);
-    }
-    if (!env.NOTE_FILES_R2) {
-      return jsonResponse(
-        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
-        503,
-        request,
-      );
-    }
-    if (!(await hasReservation(env, id))) {
-      return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
-    }
-
-    const isPremium = await noteCreationAllowsPremiumExpiry(env, request);
-    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
-    const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);
-    if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
-      return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
-    }
-    if (plaintextSize > plaintextLimit) {
-      return jsonResponse(
-        {
-          error: "file_too_large",
-          message: `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
-        },
-        413,
-        request,
-      );
-    }
-
-    const encryptedLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES;
-    const encryptedSizeHeader = Number(request.headers.get("x-file-encrypted-size") ?? NaN);
-    if (
-      Number.isFinite(encryptedSizeHeader) &&
-      (!Number.isInteger(encryptedSizeHeader) || encryptedSizeHeader < 0)
-    ) {
-      return jsonResponse({ error: "Invalid x-file-encrypted-size" }, 400, request);
-    }
-    if (Number.isInteger(encryptedSizeHeader) && encryptedSizeHeader > encryptedLimit) {
-      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
-    }
-
-    const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
-    if (Number.isFinite(contentLength) && contentLength > encryptedLimit) {
-      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
-    }
-
-    const encryptedBytes = await request.arrayBuffer();
-    if (encryptedBytes.byteLength > encryptedLimit) {
-      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
-    }
-
-    await env.NOTE_FILES_R2.put(noteFileObjectKey(id), encryptedBytes, {
-      httpMetadata: { contentType: "application/octet-stream" },
-      customMetadata: {
-        plaintextSize: String(plaintextSize),
-        encryptedSize: String(encryptedBytes.byteLength),
-        createdAt: new Date().toISOString(),
-      },
-    });
-
-    return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
-  }
-
-  if (noteFileParams && method === "GET") {
-    const { id } = noteFileParams;
-    if (!isValidNoteId(id)) {
-      return jsonResponse({ error: "Invalid note ID" }, 400, request);
-    }
-    if (!env.NOTE_FILES_R2) {
-      return jsonResponse(
-        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
-        503,
-        request,
-      );
-    }
-    const accessError = await requireNoteFileAccess(env, request, id);
-    if (accessError) return accessError;
-    const object = await env.NOTE_FILES_R2.get(noteFileObjectKey(id));
-    if (!object) {
-      return jsonResponse({ error: "File not found" }, 404, request);
     }
     const headers = new Headers({
       "Content-Type": "application/octet-stream",
@@ -7670,6 +8000,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: maxReadsForCreate.message }, 400, request);
     }
 
+    const fileAccessWindowForCreate = parseNoteFileAccessWindowFromBody(
+      requestBody?.fileAccessWindowSeconds,
+      { isPremium: noteCreationIsPremium },
+    );
+    if (!fileAccessWindowForCreate.ok) {
+      return jsonResponse({ error: fileAccessWindowForCreate.message }, 400, request);
+    }
+
     const id = requestedId || crypto.randomUUID();
 
     if (requestBody?.attachment != null) {
@@ -7680,41 +8018,43 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           request,
         );
       }
-      if (requestBody.attachment?.v === 2) {
-        const chunks = Array.isArray(requestBody.attachment.chunks) ? requestBody.attachment.chunks : [];
-        const totalChunks = Number(requestBody.attachment.totalChunks);
-        if (!Number.isInteger(totalChunks) || totalChunks <= 0 || chunks.length !== totalChunks) {
+      if (requestBody.attachment?.v !== 2) {
+        await cleanupNoteFileChunks(env, id, "unsupported attachment version");
+        return jsonResponse({ error: "Attachment version is unsupported" }, 400, request);
+      }
+      const chunks = Array.isArray(requestBody.attachment.chunks) ? requestBody.attachment.chunks : [];
+      const totalChunks = Number(requestBody.attachment.totalChunks);
+      if (!Number.isInteger(totalChunks) || totalChunks <= 0 || chunks.length !== totalChunks) {
+        await cleanupNoteFileChunks(env, id, "invalid attachment chunks");
+        return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
+      }
+      let uploadedEncryptedSize = 0;
+      for (let index = 0; index < chunks.length; index += 1) {
+        const chunk = chunks[index];
+        if (
+          !chunk ||
+          chunk.index !== index ||
+          !Number.isInteger(chunk.encryptedSize) ||
+          chunk.encryptedSize <= 0
+        ) {
+          await cleanupNoteFileChunks(env, id, "invalid attachment chunk metadata");
           return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
         }
-        let uploadedEncryptedSize = 0;
-        for (let index = 0; index < chunks.length; index += 1) {
-          const chunk = chunks[index];
-          if (
-            !chunk ||
-            chunk.index !== index ||
-            !Number.isInteger(chunk.encryptedSize) ||
-            chunk.encryptedSize <= 0
-          ) {
-            return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
-          }
-          const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
-          if (!uploadedChunk) {
-            return jsonResponse({ error: "Attachment upload missing" }, 400, request);
-          }
-          const uploadedChunkSize = Number(uploadedChunk.customMetadata?.chunkEncryptedSize ?? NaN);
-          if (uploadedChunkSize !== chunk.encryptedSize) {
-            return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
-          }
-          uploadedEncryptedSize += chunk.encryptedSize;
-        }
-        if (uploadedEncryptedSize !== requestBody.attachment.encryptedSize) {
-          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
-        }
-      } else {
-        const uploaded = await env.NOTE_FILES_R2.head(noteFileObjectKey(id));
-        if (!uploaded) {
+        const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
+        if (!uploadedChunk) {
+          await cleanupNoteFileChunks(env, id, "missing attachment upload");
           return jsonResponse({ error: "Attachment upload missing" }, 400, request);
         }
+        const uploadedChunkSize = Number(uploadedChunk.customMetadata?.chunkEncryptedSize ?? NaN);
+        if (uploadedChunkSize !== chunk.encryptedSize) {
+          await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        uploadedEncryptedSize += chunk.encryptedSize;
+      }
+      if (uploadedEncryptedSize !== requestBody.attachment.encryptedSize) {
+        await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
+        return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
       }
     }
 
@@ -7730,8 +8070,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }) as any,
     );
 
-    if (doResponse.ok && noteForAnalytics) {
-      noteForAnalytics.id = id;
+	    if (doResponse.ok && noteForAnalytics) {
+	      noteForAnalytics.id = id;
       const rawReferrer = typeof requestBody?.referrer === "string" ? requestBody.referrer : null;
       const sanitizedReferrer = rawReferrer
         ? rawReferrer.replace(/[^a-zA-Z0-9.\-_ ]/g, "").slice(0, 60).trim() || null
@@ -7752,11 +8092,23 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         referrer: sanitizedReferrer,
         country: country ?? null,
         language: sanitizedLang,
-      });
-    }
+	      });
+	    }
 
-    if (doResponse.ok && aiMode) {
-      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
+	    if (doResponse.ok && requestBody?.attachment != null) {
+	      await activateAccountFileStorageReservation(
+	        env,
+	        id,
+	        Number(requestBody.attachment.encryptedSize),
+	        Number(requestBody.attachment.totalChunks),
+	        maxReadsForCreate.maxReads,
+	        fileAccessWindowForCreate.seconds,
+	        new Date(Date.now() + expiryForCreate.seconds * 1000).toISOString(),
+	      );
+	    }
+
+	    if (doResponse.ok && aiMode) {
+	      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
     }
 
     if (doResponse.ok) {
@@ -7768,12 +8120,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       });
     }
 
-    if (doResponse.ok && requestedId) {
-      await clearReservation(env, requestedId);
-    }
+	    if (doResponse.ok && requestedId) {
+	      await clearReservation(env, requestedId);
+	    }
 
-    return applyCorsHeaders(doResponse as unknown as Response, request);
-  }
+	    if (!doResponse.ok && requestBody?.attachment != null) {
+	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
+	    }
+
+	    return applyCorsHeaders(doResponse as unknown as Response, request);
+	  }
 
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
   if (noteRevealParams && method === "POST") {
@@ -7875,14 +8231,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
       }
       try {
-        const data = (await doResponse.clone().json()) as { attachment?: unknown };
+        const data = (await doResponse.clone().json()) as {
+          attachment?: unknown;
+          fileAccessWindowSeconds?: unknown;
+        };
         if (data.attachment != null) {
-          const fileAccessToken = await issueNoteFileAccessToken(env, id);
+          const fileAccessTokenExpiresIn = isNoteFileAccessWindowSeconds(data.fileAccessWindowSeconds)
+            ? data.fileAccessWindowSeconds
+            : NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+          const fileAccessToken = await issueNoteFileAccessToken(env, id, fileAccessTokenExpiresIn);
           doResponse = jsonResponse(
             {
               ...data,
               fileAccessToken,
-              fileAccessTokenExpiresIn: NOTE_FILE_ACCESS.TTL_SECONDS,
+              fileAccessTokenExpiresIn,
             },
             doResponse.status,
             request,
@@ -7893,6 +8255,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed
+      await cleanupNoteFileChunks(env, id, "reveal returned 404");
       storage.trackNoteRevealFailed().catch(() => {});
     }
 
@@ -7908,6 +8271,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (doResponse.status === 404) {
       const legacyStub = getSecureNoteStub(env, id, false);
       doResponse = await legacyStub.fetch(request as any);
+    }
+    if (method === "DELETE" && (doResponse.ok || doResponse.status === 404)) {
+      await cleanupNoteFileChunks(env, id, `note delete returned ${doResponse.status}`);
     }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }
