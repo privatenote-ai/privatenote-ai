@@ -362,7 +362,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         aad: data.aad,
       });
 
-      console.log("Importing key:", key);
       const { noteTextKey, fileWrapKey } =
         data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
           ? await deriveNoteRootKeysFromUrlFragment(key)
@@ -374,7 +373,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
       // Decrypt the note with AAD for context validation
       // Fixed: Added AAD support
-      console.log("Decrypting content with key");
       const decryptedContent = await decryptNote(
         payloadBytes.encryptedData,
         noteTextKey,
