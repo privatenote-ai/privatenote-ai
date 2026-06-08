@@ -16,12 +16,15 @@ import { apiBlobRequest, apiRequest } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
+  deriveNoteRootKeysFromUrlFragment,
   importAesGcmKeyFromUrlFragment,
   decryptFileBytes,
   base64ToArrayBuffer,
   base64ToUint8Array,
   deserializeEncryptedPayload,
+  NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
   unwrapContentKeyWithPassword,
+  unwrapRootKeyWithPassword,
 } from '@/utils/encryption';
 import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { useToast } from '@/hooks/use-toast';
@@ -62,10 +65,11 @@ interface NoteData {
   kdfVersion?: number; // Key Derivation Function version
   kdfIterations?: number; // KDF iteration count
   kdfPolicyTag?: string; // KDF policy/profile tag (e.g. argon2id-m65536-p1)
+  keyDerivation?: string;
   attachment?: NoteAttachment;
 }
 
-interface NoteAttachment {
+interface NoteAttachmentV1 {
   v: 1;
   name: string;
   type: string;
@@ -74,6 +78,28 @@ interface NoteAttachment {
   iv: string;
   aad: string;
 }
+
+interface NoteAttachmentV2 {
+  v: 2;
+  alg: "libsodium-secretstream-xchacha20poly1305";
+  name: string;
+  type: string;
+  size: number;
+  encryptedSize: number;
+  chunkSize: number;
+  totalChunks: number;
+  header: string;
+  aad: string;
+  wrappedKey: {
+    alg: "AES-GCM";
+    iv: string;
+    aad: string;
+    encryptedKey: string;
+  };
+  chunks: Array<{ index: number; encryptedSize: number }>;
+}
+
+type NoteAttachment = NoteAttachmentV1 | NoteAttachmentV2;
 
 interface RevealHeroProps {
   isRevealing: boolean;
@@ -337,15 +363,21 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       });
 
       console.log("Importing key:", key);
-      const cryptoKey = await importAesGcmKeyFromUrlFragment(key);
-      setContentKey(cryptoKey);
+      const { noteTextKey, fileWrapKey } =
+        data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+          ? await deriveNoteRootKeysFromUrlFragment(key)
+          : {
+              noteTextKey: await importAesGcmKeyFromUrlFragment(key),
+              fileWrapKey: await importAesGcmKeyFromUrlFragment(key),
+            };
+      setContentKey(fileWrapKey);
 
       // Decrypt the note with AAD for context validation
       // Fixed: Added AAD support
       console.log("Decrypting content with key");
       const decryptedContent = await decryptNote(
         payloadBytes.encryptedData,
-        cryptoKey,
+        noteTextKey,
         payloadBytes.iv,
         payloadBytes.aadBytes,
       );
@@ -460,27 +492,53 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const encryptedKeyIv = base64ToArrayBuffer(noteData.encryptedKeyIv!);
       const salt = base64ToArrayBuffer(noteData.salt!);
 
-      const unwrappedKey = await unwrapContentKeyWithPassword(
-        encryptedKey,
-        new Uint8Array(encryptedKeyIv),
-        new Uint8Array(salt),
-        password,
-        payloadBytes.aadBytes,
-        noteData.kdfParams,
-        noteData.kdfVersion,
-        noteData.kdfIterations,
-        noteData.kdfPolicyTag,
-      );
+      const { noteTextKey, fileWrapKey } =
+        noteData.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+          ? await unwrapRootKeyWithPassword(
+              encryptedKey,
+              new Uint8Array(encryptedKeyIv),
+              new Uint8Array(salt),
+              password,
+              payloadBytes.aadBytes,
+              noteData.kdfParams,
+              noteData.kdfVersion,
+              noteData.kdfIterations,
+              noteData.kdfPolicyTag,
+            )
+          : {
+              noteTextKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
+              fileWrapKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
+            };
 
       const decryptedContent = await decryptNote(
         payloadBytes.encryptedData,
-        unwrappedKey,
+        noteTextKey,
         payloadBytes.iv,
         payloadBytes.aadBytes,
       );
 
       setNoteContent(decryptedContent);
-      setContentKey(unwrappedKey);
+      setContentKey(fileWrapKey);
       reportNoteOpenedIfSignedIn(id);
 
       // Hide password input after successful decryption
@@ -515,15 +573,32 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (!noteData?.attachment || !contentKey) return;
     setIsDownloadingFile(true);
     try {
-      const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET");
-      const encryptedBytes = new Uint8Array(await encryptedBlob.arrayBuffer());
-      const decryptedBytes = await decryptFileBytes(
-        encryptedBytes,
-        contentKey,
-        base64ToUint8Array(noteData.attachment.iv),
-        base64ToUint8Array(noteData.attachment.aad),
-      );
-      const blob = new Blob([decryptedBytes], {
+      let decryptedParts: BlobPart[];
+      if (noteData.attachment.v === 2) {
+        const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
+        decryptedParts = await decryptSodiumAttachmentChunks(
+          noteData.attachment,
+          contentKey,
+          async (index) => {
+            const encryptedChunkBlob = await apiBlobRequest(
+              `/api/notes/${id}/file/chunks/${index}`,
+              "GET",
+            );
+            return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
+          },
+        );
+      } else {
+        const encryptedBlob = await apiBlobRequest(`/api/notes/${id}/file`, "GET");
+        const encryptedBytes = new Uint8Array(await encryptedBlob.arrayBuffer());
+        const decryptedBytes = await decryptFileBytes(
+          encryptedBytes,
+          contentKey,
+          base64ToUint8Array(noteData.attachment.iv),
+          base64ToUint8Array(noteData.attachment.aad),
+        );
+        decryptedParts = [decryptedBytes];
+      }
+      const blob = new Blob(decryptedParts, {
         type: noteData.attachment.type || "application/octet-stream",
       });
       const objectUrl = URL.createObjectURL(blob);

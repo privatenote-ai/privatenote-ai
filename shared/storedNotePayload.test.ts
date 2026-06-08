@@ -67,6 +67,55 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.deepEqual(p!.kdfParams, validKdfParams);
   });
 
+  it("accepts hkdf-root-v2 password payload without stored encryptedKey", () => {
+    const raw = JSON.stringify(
+      basePayload({
+        isPasswordProtected: true,
+        keyDerivation: "hkdf-root-v2",
+        kdfParams: validKdfParams,
+        salt: sixteenZeroB64,
+        encryptedKeyIv: twelveZeroB64,
+      }),
+    );
+    const p = parseStoredNoteCiphertextForReveal(raw);
+    assert.ok(p);
+    assert.equal(p!.keyDerivation, "hkdf-root-v2");
+    assert.equal(p!.encryptedKey, null);
+  });
+
+  it("accepts libsodium secretstream chunked attachment metadata", () => {
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: {
+          v: 2,
+          alg: "libsodium-secretstream-xchacha20poly1305",
+          name: "photo.jpg",
+          type: "image/jpeg",
+          size: 8_000_000,
+          encryptedSize: 8_000_034,
+          chunkSize: 4 * 1024 * 1024,
+          totalChunks: 2,
+          header: btoa("secretstream-header"),
+          aad: btoa("stream-aad"),
+          wrappedKey: {
+            alg: "AES-GCM",
+            iv: twelveZeroB64,
+            aad: btoa("wrap-aad"),
+            encryptedKey: btoa("wrapped-file-key"),
+          },
+          chunks: [
+            { index: 0, encryptedSize: 4_194_321 },
+            { index: 1, encryptedSize: 3_805_713 },
+          ],
+        },
+      }),
+    );
+    const p = parseStoredNoteCiphertextForReveal(raw);
+    assert.ok(p);
+    assert.equal(p!.attachment?.v, 2);
+    assert.equal(p!.attachment?.encryptedSize, 8_000_034);
+  });
+
   it("rejects invalid JSON", () => {
     assert.equal(parseStoredNoteCiphertextForReveal("not-json"), null);
   });

@@ -51,6 +51,17 @@ export interface EncryptedPayloadWire {
   aad: string;
 }
 
+export const NOTE_KEY_DERIVATION_HKDF_ROOT_V2 = "hkdf-root-v2" as const;
+
+const NOTE_ROOT_HKDF_SALT = new TextEncoder().encode("privatenote/v2/root-key-separation");
+const NOTE_TEXT_KEY_INFO = new TextEncoder().encode("privatenote/v2/text");
+const NOTE_FILE_WRAP_KEY_INFO = new TextEncoder().encode("privatenote/v2/file-wrap");
+
+export interface DerivedNoteRootKeys {
+  noteTextKey: CryptoKey;
+  fileWrapKey: CryptoKey;
+}
+
 export interface EncryptWithPasswordResult {
   encryptedData: ArrayBuffer;
   iv: Uint8Array;
@@ -156,6 +167,67 @@ export async function generateContentKey(): Promise<{
   const exportedKey = rawAesKeyBytesToUrlFragmentKey(keyBytes);
 
   return { key, keyBytes, exportedKey };
+}
+
+export function generateRootKeyBytes(): { rootKeyBytes: Uint8Array; exportedRootKey: string } {
+  const rootKeyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+  const exportedRootKey = rawAesKeyBytesToUrlFragmentKey(rootKeyBytes);
+  return { rootKeyBytes, exportedRootKey };
+}
+
+async function importRootKeyForHkdf(rootKeyBytes: Uint8Array | ArrayBuffer): Promise<CryptoKey> {
+  if (rootKeyBytes.byteLength !== 32) {
+    throw new Error("Invalid root key length");
+  }
+  return await window.crypto.subtle.importKey(
+    "raw",
+    asBufferSource(rootKeyBytes),
+    "HKDF",
+    false,
+    ["deriveKey"],
+  );
+}
+
+async function deriveAesGcmKeyFromRoot(
+  rootKey: CryptoKey,
+  info: Uint8Array,
+): Promise<CryptoKey> {
+  return await window.crypto.subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: asBufferSource(NOTE_ROOT_HKDF_SALT),
+      info: asBufferSource(info),
+    },
+    rootKey,
+    {
+      name: "AES-GCM",
+      length: 256,
+    },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+export async function deriveNoteRootKeys(
+  rootKeyBytes: Uint8Array | ArrayBuffer,
+): Promise<DerivedNoteRootKeys> {
+  const rootKey = await importRootKeyForHkdf(rootKeyBytes);
+  const [noteTextKey, fileWrapKey] = await Promise.all([
+    deriveAesGcmKeyFromRoot(rootKey, NOTE_TEXT_KEY_INFO),
+    deriveAesGcmKeyFromRoot(rootKey, NOTE_FILE_WRAP_KEY_INFO),
+  ]);
+  return { noteTextKey, fileWrapKey };
+}
+
+export async function deriveNoteRootKeysFromUrlFragment(
+  keyString: string,
+): Promise<DerivedNoteRootKeys> {
+  const decoded = tryDecodeRawAesKeyUrlFragment(keyString);
+  if (!decoded) {
+    throw new Error("Invalid root key");
+  }
+  return await deriveNoteRootKeys(new Uint8Array(decoded));
 }
 
 export async function importAesGcmKeyFromUrlFragment(
@@ -490,6 +562,61 @@ export async function decryptWithPassword(
     }
 
     throw new Error(PASSWORD_DECRYPTION_FAILURE_MESSAGE);
+  }
+}
+
+export async function wrapRootKeyWithPassword(
+  rootKeyBytes: Uint8Array,
+  passwordKey: CryptoKey,
+  aad: Uint8Array,
+): Promise<{ encryptedRootKey: ArrayBuffer; encryptedRootKeyIv: Uint8Array }> {
+  const encryptedRootKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encryptedRootKey = await window.crypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv: asBufferSource(encryptedRootKeyIv),
+      additionalData: asBufferSource(aad),
+      tagLength: 128,
+    },
+    passwordKey,
+    asBufferSource(rootKeyBytes),
+  );
+  return { encryptedRootKey, encryptedRootKeyIv };
+}
+
+export async function unwrapRootKeyWithPassword(
+  encryptedRootKey: Uint8Array | ArrayBuffer,
+  encryptedRootKeyIv: Uint8Array,
+  salt: Uint8Array,
+  password: string,
+  aad: Uint8Array,
+  kdfParams?: unknown,
+  kdfVersion?: unknown,
+  kdfIterations?: unknown,
+  kdfPolicyTag?: unknown,
+): Promise<DerivedNoteRootKeys> {
+  const { timeCost, paramTag } = resolveKdfParamsForDecrypt(
+    kdfParams,
+    kdfVersion,
+    kdfIterations,
+    kdfPolicyTag,
+  );
+  const passwordKey = await deriveAesKeyFromPassword(password, salt, timeCost, paramTag);
+  const rootKeyBuffer = await window.crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: asBufferSource(encryptedRootKeyIv),
+      additionalData: asBufferSource(aad),
+      tagLength: 128,
+    },
+    passwordKey,
+    asBufferSource(encryptedRootKey),
+  );
+  const rootKeyBytes = new Uint8Array(rootKeyBuffer);
+  try {
+    return await deriveNoteRootKeys(rootKeyBytes);
+  } finally {
+    rootKeyBytes.fill(0);
   }
 }
 

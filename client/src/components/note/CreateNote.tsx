@@ -727,13 +727,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     try {
       const {
         encryptNote,
-        generateContentKey,
+        generateRootKeyBytes,
+        deriveNoteRootKeys,
         arrayBufferToBase64,
         currentKdfParamsV2,
         deriveAesKeyFromPassword,
-        encryptFileBytes,
+        wrapRootKeyWithPassword,
         serializeEncryptedPayload,
         generateSalt,
+        NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         ARGON2ID_PARAM_TAG_V2,
         ARGON2ID_TIME_COST_V2,
       } = await import("@/utils/encryption");
@@ -741,7 +743,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         ivBase64,
         exportedKey,
         saltBase64,
-        encryptedKeyBase64,
         encryptedKeyIvBase64;
       const encodeBase64 = (value: ArrayBuffer | Uint8Array) => {
         const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
@@ -756,13 +757,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       let aad: string;
       let kdfParams: unknown;
       let attachment: {
-        v: 1;
+        v: 2;
+        alg: "libsodium-secretstream-xchacha20poly1305";
         name: string;
         type: string;
         size: number;
         encryptedSize: number;
-        iv: string;
+        chunkSize: number;
+        totalChunks: number;
+        header: string;
         aad: string;
+        wrappedKey: {
+          alg: "AES-GCM";
+          iv: string;
+          aad: string;
+          encryptedKey: string;
+        };
+        chunks: Array<{ index: number; encryptedSize: number }>;
       } | null = null;
 
       const aadBinding = {
@@ -771,7 +782,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         maxReads: readCount,
       };
       const contentToEncrypt = noteContent.trim() || "Encrypted file attached.";
-      let contentKey: CryptoKey;
+      const { rootKeyBytes, exportedRootKey } = generateRootKeyBytes();
+      let noteTextKey: CryptoKey;
+      let fileWrapKey: CryptoKey;
+      let fragmentKey: string | undefined;
 
       if (isPasswordProtected) {
         const salt = generateSalt();
@@ -781,66 +795,69 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           ARGON2ID_TIME_COST_V2,
           ARGON2ID_PARAM_TAG_V2,
         );
-        const { key, keyBytes } = await generateContentKey();
-        contentKey = key;
-        const encryptionResult = await encryptNote(contentToEncrypt, key, aadBinding);
+        const derivedKeys = await deriveNoteRootKeys(rootKeyBytes);
+        noteTextKey = derivedKeys.noteTextKey;
+        fileWrapKey = derivedKeys.fileWrapKey;
+        const encryptionResult = await encryptNote(contentToEncrypt, noteTextKey, aadBinding);
         const { encryptedData, iv, aadBytes } = encryptionResult;
         const wirePayload = serializeEncryptedPayload({ encryptedData, iv, aadBytes });
-        const encryptedKeyIv = window.crypto.getRandomValues(new Uint8Array(12));
-        const encryptedKey = await window.crypto.subtle.encrypt(
-          {
-            name: "AES-GCM",
-            iv: encryptedKeyIv as unknown as BufferSource,
-            additionalData: aadBytes as unknown as BufferSource,
-            tagLength: 128,
-          },
+        const { encryptedRootKey, encryptedRootKeyIv } = await wrapRootKeyWithPassword(
+          rootKeyBytes,
           passwordKey,
-          keyBytes as unknown as BufferSource,
+          aadBytes,
         );
-        keyBytes.fill(0);
         aad = wirePayload.aad;
         kdfParams = currentKdfParamsV2();
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
         saltBase64 = encodeBase64(salt);
-        encryptedKeyBase64 = encodeBase64(encryptedKey);
-        encryptedKeyIvBase64 = encodeBase64(encryptedKeyIv);
+        fragmentKey = encodeBase64(encryptedRootKey);
+        encryptedKeyIvBase64 = encodeBase64(encryptedRootKeyIv);
       } else {
-        const { key, exportedKey: generatedKey } = await generateContentKey();
-        contentKey = key;
-        exportedKey = generatedKey;
-        const encryptionResult = await encryptNote(contentToEncrypt, key, aadBinding);
+        const derivedKeys = await deriveNoteRootKeys(rootKeyBytes);
+        noteTextKey = derivedKeys.noteTextKey;
+        fileWrapKey = derivedKeys.fileWrapKey;
+        exportedKey = exportedRootKey;
+        fragmentKey = exportedRootKey;
+        const encryptionResult = await encryptNote(contentToEncrypt, noteTextKey, aadBinding);
         const { encryptedData, iv, aadBytes } = encryptionResult;
         const wirePayload = serializeEncryptedPayload({ encryptedData, iv, aadBytes });
         aad = wirePayload.aad;
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
       }
+      rootKeyBytes.fill(0);
 
       if (selectedFile) {
-        const fileAadPlaintext = JSON.stringify({
-          v: 1,
-          noteId: reservedId,
-          name: selectedFile.name,
-          type: selectedFile.type || "application/octet-stream",
-          size: selectedFile.size,
-        });
-        const fileAadBytes = new TextEncoder().encode(fileAadPlaintext);
-        const encryptedFile = await encryptFileBytes(selectedFile, contentKey!, fileAadBytes);
-        const encryptedFileBytes = new Uint8Array(encryptedFile.encryptedData);
-        let uploadResponse: { encryptedSize: number };
         try {
-          const encryptedFileBlob = new Blob([encryptedFileBytes], {
-            type: "application/octet-stream",
-          });
-          uploadResponse = await apiBinaryRequest<{ encryptedSize: number }>(
-            `/api/notes/${reservedId}/file`,
-            "PUT",
-            encryptedFileBlob,
-            {
-              "Content-Type": "application/octet-stream",
-              "x-file-plaintext-size": String(selectedFile.size),
-              "x-file-encrypted-size": String(encryptedFileBytes.byteLength),
+          const {
+            encryptFileToSodiumChunks,
+            SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+          } = await import("@/utils/libsodiumFileAttachment");
+          const totalChunks = Math.max(
+            1,
+            Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
+          );
+          const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
+          attachment = await encryptFileToSodiumChunks(
+            selectedFile,
+            fileWrapKey!,
+            reservedId,
+            async (chunk) => {
+              const encryptedFileBlob = new Blob([chunk.encryptedBytes], {
+                type: "application/octet-stream",
+              });
+              await apiBinaryRequest<{ encryptedSize: number }>(
+                `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
+                "PUT",
+                encryptedFileBlob,
+                {
+                  "Content-Type": "application/octet-stream",
+                  "x-file-plaintext-size": String(selectedFile.size),
+                  "x-file-encrypted-size": String(encryptedSizeUpperBound),
+                  "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                },
+              );
             },
           );
         } catch (error) {
@@ -851,15 +868,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               : "Encrypted file upload failed before the server responded. Try a smaller file or save the image locally and retry.",
           );
         }
-        attachment = {
-          v: 1,
-          name: selectedFile.name,
-          type: selectedFile.type || "application/octet-stream",
-          size: selectedFile.size,
-          encryptedSize: uploadResponse.encryptedSize ?? encryptedFileBytes.byteLength,
-          iv: encodeBase64(encryptedFile.iv),
-          aad: encodeBase64(fileAadBytes),
-        };
       }
 
       const { id } = await apiRequest("/api/notes", "POST", {
@@ -873,6 +881,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
+        keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         aad,
         ...(attachment ? { attachment } : {}),
         _hp: honeypotValue,
@@ -880,14 +889,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
         ...(isPasswordProtected && {
           salt: saltBase64,
-          encryptedKey: encryptedKeyBase64,
           encryptedKeyIv: encryptedKeyIvBase64,
           kdfParams,
         }),
       });
 
       const baseUrl = window.location.origin;
-      const fragmentKey = isPasswordProtected ? encryptedKeyBase64 : exportedKey;
       const urlKey = normalizeUrlFragmentKey(fragmentKey ?? "");
       const url = `${baseUrl}/note/${id}#${urlKey}`;
 

@@ -22,7 +22,7 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size",
+      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
