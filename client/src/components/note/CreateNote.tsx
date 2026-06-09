@@ -95,6 +95,29 @@ function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
   return promptTemplatesModulePromise;
 }
 
+function copyToExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+async function uploadEncryptedAttachmentChunk(
+  url: string,
+  encryptedBytes: Uint8Array,
+  headers: Record<string, string>,
+): Promise<void> {
+  const body = copyToExactArrayBuffer(encryptedBytes);
+  try {
+    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers);
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw error;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers);
+  }
+}
+
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
   if (!t) return "Working…";
@@ -861,13 +884,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             metadataKey!,
             reservedId,
             async (chunk) => {
-              const encryptedFileBlob = new Blob([chunk.encryptedBytes], {
-                type: "application/octet-stream",
-              });
-              await apiBinaryRequest<{ encryptedSize: number }>(
+              await uploadEncryptedAttachmentChunk(
                 `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                "PUT",
-                encryptedFileBlob,
+                chunk.encryptedBytes,
                 {
                   "Content-Type": "application/octet-stream",
                   "x-file-plaintext-size": String(selectedFile.size),

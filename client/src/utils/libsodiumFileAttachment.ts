@@ -1,7 +1,7 @@
 import sodium from "libsodium-wrappers";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
 
-export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 4 * 1024 * 1024;
+export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 2 * 1024 * 1024;
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
 export interface SodiumAttachmentChunk {

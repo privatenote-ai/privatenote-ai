@@ -33,6 +33,11 @@ function join(chunks: Uint8Array[]): Uint8Array {
 }
 
 describe("libsodium attachment chunk encryption", () => {
+  it("keeps upload chunks below proxy-sensitive sizes while supporting 1 GB files", () => {
+    assert.equal(SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES, 2 * 1024 * 1024);
+    assert.ok(Math.ceil((1024 * 1024 * 1024) / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES) <= 999);
+  });
+
   it("encrypts and decrypts a multi-chunk file", async () => {
     const { rootKeyBytes } = generateRootKeyBytes();
     const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
