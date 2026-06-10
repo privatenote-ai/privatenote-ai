@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef, useState, useCallback } from "react";
-import { apiBinaryRequest, apiRequest, ApiRequestError } from "@/lib/queryClient";
+import { apiBinaryRequest, apiRequest, ApiRequestError, logFileUpload } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -109,7 +109,7 @@ async function uploadEncryptedAttachmentChunk(
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
   const body = copyToExactArrayBuffer(encryptedBytes);
-  console.info("[FILE_UPLOAD] uploading chunk", {
+  logFileUpload("info", "uploading chunk", {
     chunkIndex,
     encryptedBytes: encryptedBytes.byteLength,
     bodyBytes: body.byteLength,
@@ -119,10 +119,10 @@ async function uploadEncryptedAttachmentChunk(
   });
   try {
     await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers);
-    console.info("[FILE_UPLOAD] chunk uploaded", { chunkIndex, url });
+    logFileUpload("info", "chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
-      console.error("[FILE_UPLOAD] chunk rejected by server", {
+      logFileUpload("error", "chunk rejected by server", {
         chunkIndex,
         url,
         status: error.status,
@@ -130,7 +130,7 @@ async function uploadEncryptedAttachmentChunk(
       });
       throw error;
     }
-    console.warn("[FILE_UPLOAD] chunk upload failed, retrying once", {
+    logFileUpload("warn", "chunk upload failed, retrying once", {
       chunkIndex,
       url,
       error: error instanceof Error ? error.message : String(error),
@@ -138,9 +138,9 @@ async function uploadEncryptedAttachmentChunk(
     await new Promise((resolve) => window.setTimeout(resolve, 250));
     try {
       await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers);
-      console.info("[FILE_UPLOAD] chunk uploaded after retry", { chunkIndex, url });
+      logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
     } catch (retryError) {
-      console.error("[FILE_UPLOAD] chunk retry failed", {
+      logFileUpload("error", "chunk retry failed", {
         chunkIndex,
         url,
         error:
@@ -915,7 +915,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
           );
           const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
-          console.info("[FILE_UPLOAD] starting attachment encryption", {
+          logFileUpload("info", "starting attachment encryption", {
             noteId: reservedId,
             fileName: selectedFile.name,
             fileType: selectedFile.type || "application/octet-stream",
@@ -943,13 +943,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               );
             },
           );
-          console.info("[FILE_UPLOAD] attachment encryption complete", {
+          logFileUpload("info", "attachment encryption complete", {
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
             encryptedSize: attachment.encryptedSize,
           });
         } catch (error) {
-          console.error("[FILE_UPLOAD] attachment failed", {
+          logFileUpload("error", "attachment failed", {
             noteId: reservedId,
             fileName: selectedFile.name,
             fileType: selectedFile.type || "application/octet-stream",

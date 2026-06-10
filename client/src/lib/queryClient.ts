@@ -155,6 +155,19 @@ export async function apiRequest<T = any>(
   }
 }
 
+export function logFileUpload(level: "info" | "warn" | "error", message: string, details: Record<string, unknown>): void {
+  const payload = JSON.stringify(details);
+  if (level === "error") {
+    console.error(`[FILE_UPLOAD] ${message}`, payload);
+    return;
+  }
+  if (level === "warn") {
+    console.warn(`[FILE_UPLOAD] ${message}`, payload);
+    return;
+  }
+  console.info(`[FILE_UPLOAD] ${message}`, payload);
+}
+
 function binaryRequestBodyBytes(body: BodyInit): number | null {
   if (body instanceof ArrayBuffer) return body.byteLength;
   if (ArrayBuffer.isView(body)) return body.byteLength;
@@ -208,7 +221,7 @@ export async function apiBinaryRequest<T = any>(
   };
   const startedAt = performance.now();
 
-  console.info("[FILE_UPLOAD] request start", logBase);
+  logFileUpload("info", "request start", logBase);
 
   try {
     const res = await fetch(fullUrl, {
@@ -219,7 +232,7 @@ export async function apiBinaryRequest<T = any>(
     });
     const responseText = await res.text();
     const elapsedMs = Math.round(performance.now() - startedAt);
-    console.info("[FILE_UPLOAD] response received", {
+    logFileUpload("info", "response received", {
       ...logBase,
       status: res.status,
       statusText: res.statusText,
@@ -236,7 +249,7 @@ export async function apiBinaryRequest<T = any>(
   } catch (error) {
     const elapsedMs = Math.round(performance.now() - startedAt);
     const errorDetails = formatBinaryRequestError(error);
-    console.error("[FILE_UPLOAD] request failed", {
+    logFileUpload("error", "request failed", {
       ...logBase,
       elapsedMs,
       online: typeof navigator !== "undefined" ? navigator.onLine : null,

@@ -15,6 +15,10 @@
  *    the `Cookie` header before forwarding. Those are only meaningful at the edge
  *    in front of Pages; passing the JWT through bloats every API request by ~1KB
  *    and pollutes Worker logs.
+ *
+ * 3. Materializes non-GET bodies with `arrayBuffer()` before forwarding. Passing
+ *    `new Request(workerUrl, incomingRequest)` drops PUT/POST binary bodies on
+ *    Pages Functions and Safari reports "network connection was lost".
  */
 const ACCESS_COOKIE_NAME_PATTERN = /^CF_(?:Authorization|AppSession)=/;
 
@@ -27,6 +31,10 @@ function stripAccessCookies(value: string | null): string | null {
   return filtered.length > 0 ? filtered.join("; ") : null;
 }
 
+function proxyBodyAllowed(method: string): boolean {
+  return method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
+}
+
 export async function onRequest(context: {
   request: Request;
   env?: { API_PROXY_TARGET?: string };
@@ -37,15 +45,26 @@ export async function onRequest(context: {
   target.pathname = url.pathname;
   target.search = url.search;
 
-  const proxyRequest = new Request(target.toString(), context.request);
-  proxyRequest.headers.set("X-Forwarded-Host", url.host);
+  const method = context.request.method;
+  const headers = new Headers(context.request.headers);
+  headers.set("X-Forwarded-Host", url.host);
+  // Target host is the Worker; let fetch set Host/Content-Length from the materialized body.
+  headers.delete("Host");
+  headers.delete("Content-Length");
 
-  const cleanedCookie = stripAccessCookies(proxyRequest.headers.get("Cookie"));
+  const cleanedCookie = stripAccessCookies(headers.get("Cookie"));
   if (cleanedCookie) {
-    proxyRequest.headers.set("Cookie", cleanedCookie);
+    headers.set("Cookie", cleanedCookie);
   } else {
-    proxyRequest.headers.delete("Cookie");
+    headers.delete("Cookie");
   }
 
-  return fetch(proxyRequest);
+  const body = proxyBodyAllowed(method) ? await context.request.arrayBuffer() : undefined;
+
+  return fetch(target.toString(), {
+    method,
+    headers,
+    body,
+    redirect: "manual",
+  });
 }
