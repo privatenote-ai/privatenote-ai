@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isValidAttachmentContentHash,
   noteUploadAuthorizationHeader,
+  noteUploadQueryParam,
   noteReservationClientMatches,
   noteReservationUploadClientMatches,
   parseNoteReserveAttachmentBinding,
@@ -21,6 +22,10 @@ describe("note file upload auth", () => {
 
   it("builds Authorization headers", () => {
     assert.equal(noteUploadAuthorizationHeader("tok"), "Bearer tok");
+  });
+
+  it("builds upload token query params", () => {
+    assert.equal(noteUploadQueryParam("tok:/?"), "uploadToken=tok%3A%2F%3F");
   });
 
   it("parses reserve attachment size bindings", () => {

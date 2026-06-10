@@ -82,7 +82,7 @@ export async function sendBinaryHttpRequest(
   credentials: RequestCredentials,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
-  if (isSafariBrowser() && method === "PUT") {
+  if (isSafariBrowser() && (method === "PUT" || method === "POST")) {
     return xhrBinaryRequest(url, method, await body.arrayBuffer(), safeHeaders, credentials);
   }
   return fetch(url, {

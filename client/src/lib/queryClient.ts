@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
-import { noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
+import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 import { bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
 
@@ -10,6 +10,9 @@ type BinaryUploadAttempt = {
   url: string;
   uploadRoute: BinaryUploadRoute;
   credentials: RequestCredentials;
+  method?: string;
+  tokenInQuery?: boolean;
+  metadataInQuery?: boolean;
 };
 
 const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
@@ -71,6 +74,34 @@ function getDirectWorkerUploadUrl(url: string): string {
   return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)}${normalizeApiPath(url)}`;
 }
 
+function appendQuery(url: string, params: Record<string, string | undefined>): string {
+  const [base, hash = ""] = url.split("#", 2);
+  const [path, existingQuery = ""] = base!.split("?", 2);
+  const query = new URLSearchParams(existingQuery);
+  for (const [name, value] of Object.entries(params)) {
+    if (value != null && value.length > 0) {
+      query.set(name, value);
+    }
+  }
+  const serialized = query.toString();
+  return `${path}${serialized ? `?${serialized}` : ""}${hash ? `#${hash}` : ""}`;
+}
+
+function redactUploadUrlForLog(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.searchParams.has(NOTE_UPLOAD_QUERY_PARAM)) {
+      parsed.searchParams.set(NOTE_UPLOAD_QUERY_PARAM, "[redacted]");
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return parsed.toString();
+  } catch {
+    return url.replace(new RegExp(`([?&]${NOTE_UPLOAD_QUERY_PARAM}=)[^&]+`, "g"), "$1[redacted]");
+  }
+}
+
 function getBinaryUploadAttempts(
   url: string,
   options: { uploadToken?: string } = {},
@@ -85,6 +116,14 @@ function getBinaryUploadAttempts(
     credentials: "omit",
   };
   if (options.uploadToken) {
+    if (isSafariBrowser()) {
+      return [{
+        ...directWorker,
+        method: "POST",
+        tokenInQuery: true,
+        metadataInQuery: true,
+      }];
+    }
     return [directWorker];
   }
 
@@ -317,12 +356,28 @@ export async function apiBinaryRequest<T = any>(
     for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
       const attempt = attempts[attemptIndex]!;
       const requestHeaders: Record<string, string> = { ...headers };
-      if (options.uploadToken) {
+      if (options.uploadToken && !attempt.tokenInQuery) {
         requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
       }
+      if (attempt.metadataInQuery) {
+        delete requestHeaders["x-file-plaintext-size"];
+        delete requestHeaders["x-file-encrypted-size"];
+        delete requestHeaders["x-file-chunk-encrypted-size"];
+      }
+      const requestMethod = attempt.method ?? method;
+      const requestUrl =
+        options.uploadToken && attempt.tokenInQuery
+          ? appendQuery(attempt.url, {
+              [NOTE_UPLOAD_QUERY_PARAM]: options.uploadToken,
+              plaintextSize: headers["x-file-plaintext-size"],
+              encryptedSize: headers["x-file-encrypted-size"],
+              chunkEncryptedSize: headers["x-file-chunk-encrypted-size"],
+            })
+          : attempt.url;
       const logBase = {
         ...sharedLogBase,
-        url: attempt.url,
+        method: requestMethod,
+        url: redactUploadUrlForLog(requestUrl),
         uploadRoute: attempt.uploadRoute,
         attempt: attemptIndex + 1,
         attemptCount: attempts.length,
@@ -334,8 +389,8 @@ export async function apiBinaryRequest<T = any>(
 
       try {
         const res = await executeBinaryUploadAttempt(
-          attempt,
-          method,
+          { ...attempt, url: requestUrl },
+          requestMethod,
           uploadBlob,
           requestHeaders,
         );

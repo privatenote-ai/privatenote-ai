@@ -45,6 +45,7 @@ import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import {
   type NoteReservationRecord,
   type NoteReserveAttachmentBinding,
+  NOTE_UPLOAD_QUERY_PARAM,
   isValidAttachmentContentHash,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
@@ -6990,7 +6991,9 @@ async function authorizeNoteFileChunkUpload(
   }
 
   const bearer = parseNoteUploadBearerToken(request.headers.get("Authorization"));
-  if (!bearer) {
+  const queryToken = new URL(request.url).searchParams.get(NOTE_UPLOAD_QUERY_PARAM)?.trim() || null;
+  const uploadToken = bearer || queryToken;
+  if (!uploadToken) {
     return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
   }
   if (!record.uploadTokenHash) {
@@ -7000,7 +7003,7 @@ async function authorizeNoteFileChunkUpload(
     };
   }
 
-  const tokenHash = await sha256Hex(bearer);
+  const tokenHash = await sha256Hex(uploadToken);
   if (tokenHash !== record.uploadTokenHash) {
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
   }
@@ -7452,6 +7455,11 @@ function getNoteFileAccessTokenFromRequest(request: Request): string | null {
   const url = new URL(request.url);
   const queryToken = url.searchParams.get("fileAccessToken");
   return queryToken?.trim() || null;
+}
+
+function readUploadInteger(request: Request, headerName: string, queryName: string): number {
+  const url = new URL(request.url);
+  return Number(request.headers.get(headerName) ?? url.searchParams.get(queryName) ?? NaN);
 }
 
 async function requireNoteFileAccess(env: Env, request: Request, noteId: string): Promise<Response | null> {
@@ -7932,7 +7940,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   const noteFileChunkParams = parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
-  if (noteFileChunkParams && method === "PUT") {
+  if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
     if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
@@ -7972,7 +7980,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const isPremium = premiumUserId !== null;
     const reservation = uploadAuth.record;
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
-    const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);
+    const plaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
       return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
     }
@@ -7993,7 +8001,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: "Attachment plaintext size mismatch" }, 400, request);
     }
 
-    const encryptedTotalSize = Number(request.headers.get("x-file-encrypted-size") ?? NaN);
+    const encryptedTotalSize = readUploadInteger(request, "x-file-encrypted-size", "encryptedSize");
     if (!Number.isInteger(encryptedTotalSize) || encryptedTotalSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-encrypted-size" }, 400, request);
     }
@@ -8019,7 +8027,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    const encryptedChunkSize = Number(request.headers.get("x-file-chunk-encrypted-size") ?? NaN);
+    const encryptedChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
     }

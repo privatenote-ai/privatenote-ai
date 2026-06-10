@@ -1,5 +1,6 @@
 /** Bearer upload token issued with {@link NoteReserveResponse.uploadToken}. */
 export const NOTE_UPLOAD_BEARER_PREFIX = "Bearer ";
+export const NOTE_UPLOAD_QUERY_PARAM = "uploadToken";
 
 export interface NoteReserveResponse {
   id: string;
@@ -66,6 +67,10 @@ export function parseNoteUploadBearerToken(authHeader: string | null | undefined
 
 export function noteUploadAuthorizationHeader(uploadToken: string): string {
   return `${NOTE_UPLOAD_BEARER_PREFIX}${uploadToken}`;
+}
+
+export function noteUploadQueryParam(uploadToken: string): string {
+  return `${NOTE_UPLOAD_QUERY_PARAM}=${encodeURIComponent(uploadToken)}`;
 }
 
 export function parseClientIdentifierParts(clientId: string): { ip?: string; cookieId?: string } {
