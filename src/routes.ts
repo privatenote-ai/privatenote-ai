@@ -6946,6 +6946,10 @@ function sha256HexBytes(bytes: Uint8Array): string {
   return [...sha256(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
   await env.NOTES_KV.put(getReservationKey(noteId), JSON.stringify(record), {
     expirationTtl: NOTE_RESERVATION.TTL_SECONDS,
@@ -6964,7 +6968,7 @@ async function computeUploadedAttachmentContentHash(
     if (!object) return null;
     hasher.update(new Uint8Array(await object.arrayBuffer()));
   }
-  return sha256HexBytes(hasher.digest());
+  return bytesToHex(hasher.digest());
 }
 
 async function authorizeNoteFileChunkUpload(
