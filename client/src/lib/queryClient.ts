@@ -304,10 +304,7 @@ export async function apiBinaryRequest<T = any>(
 
     for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
       const attempt = attempts[attemptIndex]!;
-      const requestHeaders: Record<string, string> = {
-        ...headers,
-        "Content-Length": String(bodyBytes),
-      };
+      const requestHeaders: Record<string, string> = { ...headers };
       if (options.uploadToken) {
         requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
       }

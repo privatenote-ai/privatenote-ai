@@ -3,12 +3,45 @@
  * XHR uses a reliable WebKit path (same approach as encrypt.lu relay uploads).
  */
 
+const BROWSER_FORBIDDEN_REQUEST_HEADERS = new Set([
+  "accept-charset",
+  "access-control-request-headers",
+  "access-control-request-method",
+  "connection",
+  "content-length",
+  "cookie",
+  "cookie2",
+  "date",
+  "dnt",
+  "expect",
+  "host",
+  "keep-alive",
+  "origin",
+  "referer",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "via",
+]);
+
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {
     return false;
   }
   const ua = navigator.userAgent;
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
+}
+
+function filterBrowserUploadHeaders(headers: Record<string, string>): Record<string, string> {
+  const filtered: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (BROWSER_FORBIDDEN_REQUEST_HEADERS.has(name.toLowerCase())) {
+      continue;
+    }
+    filtered[name] = value;
+  }
+  return filtered;
 }
 
 function xhrBinaryRequest(
@@ -23,7 +56,7 @@ function xhrBinaryRequest(
     xhr.open(method, url);
     xhr.withCredentials = credentials === "include";
     xhr.responseType = "text";
-    for (const [name, value] of Object.entries(headers)) {
+    for (const [name, value] of Object.entries(filterBrowserUploadHeaders(headers))) {
       xhr.setRequestHeader(name, value);
     }
     xhr.onload = () => {
@@ -47,12 +80,13 @@ export async function sendBinaryHttpRequest(
   headers: Record<string, string>,
   credentials: RequestCredentials,
 ): Promise<Response> {
+  const safeHeaders = filterBrowserUploadHeaders(headers);
   if (isSafariBrowser() && method === "PUT") {
-    return xhrBinaryRequest(url, method, body, headers, credentials);
+    return xhrBinaryRequest(url, method, body, safeHeaders, credentials);
   }
   return fetch(url, {
     method,
-    headers,
+    headers: safeHeaders,
     body,
     credentials,
   });
