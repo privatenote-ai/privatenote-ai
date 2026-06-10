@@ -4,6 +4,7 @@ import {
   isValidAttachmentContentHash,
   noteUploadAuthorizationHeader,
   noteReservationClientMatches,
+  noteReservationUploadClientMatches,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
   uploadedChunkHashKey,
@@ -52,5 +53,32 @@ describe("note file upload auth", () => {
     assert.equal(noteReservationClientMatches({ clientId: "abc" }, "def"), false);
     assert.equal(noteReservationClientMatches({ clientId: "" }, "abc"), false);
     assert.equal(noteReservationClientMatches({}, "abc"), false);
+    assert.equal(
+      noteReservationClientMatches({ clientId: "ip:1.2.3.4|cid:abc" }, "ip:1.2.3.4"),
+      true,
+    );
+    assert.equal(
+      noteReservationClientMatches({ clientId: "ip:1.2.3.4|cid:abc" }, "ip:9.9.9.9"),
+      false,
+    );
+  });
+
+  it("matches upload clients by stored IP or client bucket", () => {
+    assert.equal(
+      noteReservationUploadClientMatches(
+        { clientId: "ip:1.2.3.4|cid:abc", clientIp: "1.2.3.4" },
+        "ip:9.9.9.9",
+        "1.2.3.4",
+      ),
+      true,
+    );
+    assert.equal(
+      noteReservationUploadClientMatches(
+        { clientId: "ip:1.2.3.4|cid:abc", clientIp: "1.2.3.4" },
+        "ip:9.9.9.9",
+        "9.9.9.9",
+      ),
+      false,
+    );
   });
 });

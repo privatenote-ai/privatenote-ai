@@ -48,7 +48,7 @@ import {
   isValidAttachmentContentHash,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
-  noteReservationClientMatches,
+  noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -7005,7 +7005,11 @@ async function authorizeNoteFileChunkUpload(
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
   }
 
-  if (!noteReservationClientMatches(record, getClientIdentifier(request))) {
+  if (!noteReservationUploadClientMatches(
+    record,
+    getClientIdentifier(request),
+    request.headers.get("CF-Connecting-IP"),
+  )) {
     return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
   }
 
@@ -7467,15 +7471,18 @@ async function reserveNoteId(
   clientId: string,
   premiumUserId: string | null,
   attachmentBinding: NoteReserveAttachmentBinding | null,
+  clientIp?: string,
 ): Promise<{ id: string; uploadToken: string }> {
   const id = crypto.randomUUID();
   const uploadToken = randomUrlToken(32);
   const uploadTokenHash = await sha256Hex(uploadToken);
+  const normalizedClientIp = clientIp?.trim() || undefined;
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
     JSON.stringify({
       clientId,
+      ...(normalizedClientIp ? { clientIp: normalizedClientIp } : {}),
       createdAt: new Date().toISOString(),
       uploadTokenHash,
       premiumUserId,
@@ -7911,6 +7918,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         clientId,
         premiumUserId,
         attachmentBinding,
+        request.headers.get("CF-Connecting-IP") ?? undefined,
       );
       return jsonResponse(
         { id, uploadToken, expiresIn: NOTE_RESERVATION.TTL_SECONDS },
