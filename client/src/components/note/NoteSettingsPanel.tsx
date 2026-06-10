@@ -4,7 +4,6 @@ import {
   Eye,
   Info,
   Lock,
-  MailCheck,
   Timer,
   Shield,
   User,
@@ -162,6 +161,48 @@ function SectionHeading({
         )}
       </div>
     </div>
+  );
+}
+
+function NotificationToggleRow({
+  id,
+  checked,
+  disabled,
+  onChange,
+  title,
+  description,
+}: {
+  id: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={`flex gap-3 px-3 py-2.5 transition-colors ${
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "cursor-pointer hover:bg-white/60 dark:hover:bg-gray-900/40"
+      }`}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">{title}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+          {description}
+        </span>
+      </span>
+    </label>
   );
 }
 
@@ -514,49 +555,74 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
             </div>
             <div className="min-w-0 space-y-1.5 sm:col-span-2">
-              <div className="flex items-center gap-2">
-                <select
-                  id="note-file-access-window"
-                  value={fileAccessWindowSeconds}
-                  disabled={premiumStatusLoading}
-                  onChange={(e) => {
-                    const next = Number(e.target.value);
-                    if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
-                      setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
-                    }
-                  }}
-                  className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 0.75rem center",
-                    backgroundSize: "0.75em",
-                  }}
-                >
-                  {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
-                    const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
-                    return (
-                      <option key={seconds} value={seconds} disabled={locked}>
-                        {formatNoteFileAccessWindow(seconds)}
-                        {locked ? ` (${t.premium ?? "Premium"})` : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                {!isPremiumUser && (
-                  <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                    Premium
-                  </span>
-                )}
-              </div>
+              <select
+                id="note-file-access-window"
+                value={fileAccessWindowSeconds}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
+                    setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
+                  }
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={{
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 0.75rem center",
+                  backgroundSize: "0.75em",
+                }}
+              >
+                {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                  const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
+                  return (
+                    <option key={seconds} value={seconds} disabled={locked}>
+                      {formatNoteFileAccessWindow(seconds)}
+                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
               <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
-                Attachment downloads stay available for this long after the note is revealed.
+                How long file downloads work after reveal.
               </p>
             </div>
           </div>
 
         </div>
+            </section>
+
+            <section
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-email-alerts-heading"
+            >
+              <SectionHeading id="note-email-alerts-heading" title="Email alerts" />
+              <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
+                <NotificationToggleRow
+                  id="notify-on-open"
+                  checked={notifyOnOpen && canNotifyOnOpen}
+                  disabled={!canNotifyOnOpen}
+                  onChange={setNotifyOnOpen}
+                  title="When this note is opened"
+                  description="One email when the link is accessed. Message content is never included."
+                />
+                <NotificationToggleRow
+                  id="notify-on-destroyed"
+                  checked={notifyOnDestroyed && canNotifyOnOpen}
+                  disabled={!canNotifyOnOpen}
+                  onChange={setNotifyOnDestroyed}
+                  title="When this note is destroyed"
+                  description="One email when the note can no longer be opened."
+                />
+              </div>
+              {!canNotifyOnOpen && !premiumStatusLoading ? (
+                <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {isPremiumUser
+                    ? "Turn on email notifications in Account → Preferences."
+                    : "Available on Premium with email notifications enabled."}
+                </p>
+              ) : null}
             </section>
 
             <section
@@ -566,90 +632,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <SectionHeading
                 id="note-delivery-verification-heading"
                 title="Delivery & Verification"
-                eyebrow="Premium"
               />
-              <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                <div className="sm:col-span-1">
-                  <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <span className="bg-amber-50 dark:bg-amber-900/30 p-1 rounded mr-2">
-                      <MailCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </span>
-                    Notifications
-                  </div>
-                </div>
-                <div className="min-w-0 space-y-3 sm:col-span-2">
-                  <label
-                    title={
-                      canNotifyOnOpen
-                        ? "PrivateNote sends a single email after the secure link is accessed. Message content is never included."
-                        : premiumStatusLoading
-                          ? "Checking your plan..."
-                          : isPremiumUser
-                            ? "Turn on account email notifications in Preferences to use note-open alerts."
-                            : "Upgrade to Premium to enable note-open email alerts."
-                    }
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 transition ${
-                      canNotifyOnOpen
-                        ? "cursor-pointer text-gray-800 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white"
-                        : "cursor-not-allowed text-gray-400 opacity-75 dark:text-gray-500"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
-                      checked={notifyOnOpen && canNotifyOnOpen}
-                      disabled={!canNotifyOnOpen}
-                      onChange={(event) => setNotifyOnOpen(event.target.checked)}
-                    />
-                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      <span className="truncate">
-                        Email me when this note is opened
-                      </span>
-                      <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
-                    </span>
-                    {!isPremiumUser && !premiumStatusLoading ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                        <Crown className="h-3 w-3" aria-hidden />
-                        Premium
-                      </span>
-                    ) : null}
-                  </label>
-                  <label
-                    title={
-                      canNotifyOnOpen
-                        ? "PrivateNote sends one email when this note can no longer be opened because its read limit was reached."
-                        : premiumStatusLoading
-                          ? "Checking your plan..."
-                          : isPremiumUser
-                            ? "Verify your account email and turn on email notifications in Preferences to use destroyed alerts."
-                            : "Upgrade to Premium to enable destroyed alerts."
-                    }
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 transition ${
-                      canNotifyOnOpen
-                        ? "cursor-pointer text-gray-800 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white"
-                        : "cursor-not-allowed text-gray-400 opacity-75 dark:text-gray-500"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
-                      checked={notifyOnDestroyed && canNotifyOnOpen}
-                      disabled={!canNotifyOnOpen}
-                      onChange={(event) => setNotifyOnDestroyed(event.target.checked)}
-                    />
-                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
-                      <span className="truncate">Email me when this note is destroyed</span>
-                      <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
-                    </span>
-                    {!isPremiumUser && !premiumStatusLoading ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                        <Crown className="h-3 w-3" aria-hidden />
-                        Premium
-                      </span>
-                    ) : null}
-                  </label>
-                </div>
-              </div>
               <div className="grid gap-2 px-1 sm:max-w-[700px]">
                 {premiumDeliveryFeatures.map((feature) => (
                   <LockedPremiumRow

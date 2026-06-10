@@ -311,6 +311,7 @@ export const de: Translations = {
   typeHere: "Geben Sie hier Ihre vertrauliche Nachricht ein...",
   hideOptions: "Optionen ausblenden",
   customize: "Anpassen",
+  customizeDone: "Fertig",
   aiComposerRunsLocallyTitle: "Läuft lokal in Ihrem Browser.",
   aiComposerRunsLocallyBody:
     "Ihr Text verlässt Ihr Gerät nie. Keine Server, kein Tracking, keine externe Speicherung.",

@@ -311,6 +311,7 @@ export const es: Translations = {
   typeHere: "Escribe aquí tu mensaje confidencial...",
   hideOptions: "Ocultar opciones",
   customize: "Personalizar",
+  customizeDone: "Listo",
   aiComposerRunsLocallyTitle: "Se ejecuta localmente en tu navegador.",
   aiComposerRunsLocallyBody:
     "Tu texto nunca sale de tu dispositivo. Sin servidores, sin seguimiento, sin almacenamiento externo.",

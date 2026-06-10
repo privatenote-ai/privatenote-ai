@@ -315,6 +315,7 @@ export const en: Translations = {
   typeHere: "Type your confidential message here...",
   hideOptions: "Hide Options",
   customize: "Customize",
+  customizeDone: "Done",
   aiComposerRunsLocallyTitle: "Runs locally in your browser.",
   aiComposerRunsLocallyBody: "Your text never leaves your device. No servers, no tracking, no external storage.",
   aiComposerGenerating: "Generating…",

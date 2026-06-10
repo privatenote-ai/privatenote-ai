@@ -311,6 +311,7 @@ export const fr: Translations = {
   typeHere: "Tapez votre message confidentiel ici...",
   hideOptions: "Masquer les options",
   customize: "Personnaliser",
+  customizeDone: "Terminé",
   aiComposerRunsLocallyTitle: "S’exécute localement dans votre navigateur.",
   aiComposerRunsLocallyBody:
     "Votre texte ne quitte jamais votre appareil. Pas de serveurs, pas de suivi, pas de stockage externe.",
