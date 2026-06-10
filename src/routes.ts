@@ -42,6 +42,10 @@ import {
 } from "./trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import {
+  type NoteReservationRecord,
+  parseNoteUploadBearerToken,
+} from "@shared/noteFileUploadAuth";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
 import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened } from "./sentNotesService";
@@ -215,7 +219,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token",
+      "Content-Type, Authorization, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token",
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -6920,6 +6924,50 @@ function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function authorizeNoteFileChunkUpload(
+  env: Env,
+  request: Request,
+  noteId: string,
+): Promise<{ ok: true; premiumUserId: string | null } | { ok: false; response: Response }> {
+  const raw = await env.NOTES_KV.get(getReservationKey(noteId));
+  if (!raw) {
+    return {
+      ok: false,
+      response: jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request),
+    };
+  }
+
+  let record: NoteReservationRecord;
+  try {
+    record = JSON.parse(raw) as NoteReservationRecord;
+  } catch {
+    return { ok: false, response: jsonResponse({ error: "Invalid note reservation" }, 403, request) };
+  }
+
+  const bearer = parseNoteUploadBearerToken(request.headers.get("Authorization"));
+  if (record.uploadTokenHash) {
+    if (!bearer) {
+      return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
+    }
+    const tokenHash = await sha256Hex(bearer);
+    if (tokenHash !== record.uploadTokenHash) {
+      return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+    }
+    return { ok: true, premiumUserId: record.premiumUserId ?? null };
+  }
+
+  if (!bearer) {
+    return { ok: true, premiumUserId: null };
+  }
+
+  return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+}
+
 function noteFileChunkObjectKey(id: string, chunkIndex: number): string {
   return `note-files/${id}/chunks/${chunkIndex}`;
 }
@@ -7370,15 +7418,26 @@ async function requireNoteFileAccess(env: Env, request: Request, noteId: string)
   return null;
 }
 
-async function reserveNoteId(env: Env, clientId: string): Promise<string> {
+async function reserveNoteId(
+  env: Env,
+  clientId: string,
+  premiumUserId: string | null,
+): Promise<{ id: string; uploadToken: string }> {
   const id = crypto.randomUUID();
+  const uploadToken = randomUrlToken(32);
+  const uploadTokenHash = await sha256Hex(uploadToken);
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
-    JSON.stringify({ clientId, createdAt: new Date().toISOString() }),
+    JSON.stringify({
+      clientId,
+      createdAt: new Date().toISOString(),
+      uploadTokenHash,
+      premiumUserId,
+    } satisfies NoteReservationRecord),
     { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
   );
-  return id;
+  return { id, uploadToken };
 }
 
 async function hasReservation(env: Env, id: string): Promise<boolean> {
@@ -7780,8 +7839,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes/reserve" && method === "POST") {
     try {
       const clientId = getClientIdentifier(request);
-      const id = await reserveNoteId(env, clientId);
-      return jsonResponse({ id, expiresIn: NOTE_RESERVATION.TTL_SECONDS }, 200, request);
+      const premiumUserId = await getAuthenticatedPremiumUserIdForNoteFiles(env, request);
+      const { id, uploadToken } = await reserveNoteId(env, clientId, premiumUserId);
+      return jsonResponse(
+        { id, uploadToken, expiresIn: NOTE_RESERVATION.TTL_SECONDS },
+        200,
+        request,
+      );
     } catch (error) {
       console.error("[ROUTES] Failed to reserve note ID:", error);
       return jsonResponse({ error: "Failed to reserve note ID" }, 500, request);
@@ -7802,11 +7866,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-    if (!(await hasReservation(env, id))) {
-      return jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request);
+    const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
+    if (!uploadAuth.ok) {
+      return uploadAuth.response;
     }
 
-    const premiumUserId = await getAuthenticatedPremiumUserIdForNoteFiles(env, request);
+    const premiumUserId =
+      uploadAuth.premiumUserId ?? (await getAuthenticatedPremiumUserIdForNoteFiles(env, request));
     const isPremium = premiumUserId !== null;
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
     const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);

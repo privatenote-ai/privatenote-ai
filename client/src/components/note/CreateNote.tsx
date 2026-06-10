@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef, useState, useCallback } from "react";
-import { apiBinaryRequest, apiRequest, ApiRequestError, logFileUpload } from "@/lib/queryClient";
+import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -105,20 +105,23 @@ async function uploadEncryptedAttachmentChunk(
   url: string,
   encryptedBytes: Uint8Array,
   headers: Record<string, string>,
+  uploadToken: string,
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const body = copyToExactArrayBuffer(encryptedBytes);
+  const body = new Blob([copyToExactArrayBuffer(encryptedBytes)], {
+    type: "application/octet-stream",
+  });
   logFileUpload("info", "uploading chunk", {
     chunkIndex,
     encryptedBytes: encryptedBytes.byteLength,
-    bodyBytes: body.byteLength,
+    bodyBytes: body.size,
     declaredChunkSize: Number.isFinite(declaredSize) ? declaredSize : null,
-    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.byteLength : null,
+    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.size : null,
     url,
   });
   try {
-    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers);
+    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, { uploadToken });
     logFileUpload("info", "chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
@@ -137,7 +140,9 @@ async function uploadEncryptedAttachmentChunk(
     });
     await new Promise((resolve) => window.setTimeout(resolve, 250));
     try {
-      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers);
+      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(), headers, {
+        uploadToken,
+      });
       logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
     } catch (retryError) {
       logFileUpload("error", "chunk retry failed", {
@@ -821,7 +826,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         return arrayBufferToBase64(copy.buffer);
       };
 
-      const { id: reservedId } = await apiRequest("/api/notes/reserve", "POST");
+      const { id: reservedId, uploadToken } = await apiRequest<{
+        id: string;
+        uploadToken: string;
+      }>("/api/notes/reserve", "POST");
       const expirySeconds = noteExpiryPresetIdToSeconds(expiryValue);
 
       let aad: string;
@@ -905,6 +913,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       rootKeyBytes.fill(0);
 
       if (selectedFile) {
+        if (!uploadToken) {
+          throw new Error("Upload token missing from note reservation.");
+        }
         try {
           const {
             encryptFileToSodiumChunks,
@@ -923,7 +934,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             totalChunks,
             chunkSizeBytes: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
             encryptedSizeUpperBound,
-            apiBase: import.meta.env.VITE_API_URL || "(same-origin /api proxy)",
+            apiBase: getFileUploadTargetLabel(),
           });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
@@ -940,6 +951,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                   "x-file-encrypted-size": String(encryptedSizeUpperBound),
                   "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
                 },
+                uploadToken,
               );
             },
           );

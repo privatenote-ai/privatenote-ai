@@ -1,4 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
+import { noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
@@ -48,6 +50,26 @@ function getApiUrl(url: string): string {
   }
   // If no API_BASE_URL, use relative URL
   return url;
+}
+
+function getDirectWorkerApiOrigin(): string {
+  return normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN);
+}
+
+/** Chunk PUTs bypass the Pages /api proxy (Cloudflare Access drops large binary PUTs). */
+function getBinaryUploadUrl(url: string): string {
+  if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
+    const path = url.startsWith("/") ? url : `/${url}`;
+    return `${getDirectWorkerApiOrigin()}${path}`;
+  }
+  return getApiUrl(url);
+}
+
+export function getFileUploadTargetLabel(): string {
+  if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
+    return getDirectWorkerApiOrigin();
+  }
+  return RAW_API_BASE_URL || "(same-origin /api proxy)";
 }
 
 /** Thrown for non-2xx API responses; `bodyText` is always the raw response body (for structured client handling). */
@@ -203,12 +225,30 @@ export async function apiBinaryRequest<T = any>(
   method: string,
   body: BodyInit,
   headers: Record<string, string> = {},
+  options: { uploadToken?: string } = {},
 ): Promise<T> {
-  const fullUrl = getApiUrl(url);
+  const fullUrl = getBinaryUploadUrl(url);
   const bodyBytes = binaryRequestBodyBytes(body);
+  const requestHeaders = { ...headers };
+  let credentials: RequestCredentials = "include";
+  if (options.uploadToken) {
+    requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
+    credentials = "omit";
+  }
+  if (bodyBytes != null) {
+    requestHeaders["Content-Length"] = String(bodyBytes);
+  }
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
+  const uploadRoute =
+    typeof window !== "undefined" &&
+    hasPagesSameOriginApiProxy(window.location.hostname) &&
+    !fullUrl.startsWith("/")
+      ? "direct-worker"
+      : "same-origin";
   const logBase = {
     url: fullUrl,
+    uploadRoute,
+    usesUploadToken: Boolean(options.uploadToken),
     method,
     bodyBytes,
     declaredChunkSize: Number.isFinite(declaredChunkSize) ? declaredChunkSize : null,
@@ -226,9 +266,9 @@ export async function apiBinaryRequest<T = any>(
   try {
     const res = await fetch(fullUrl, {
       method,
-      headers,
+      headers: requestHeaders,
       body,
-      credentials: "include",
+      credentials,
     });
     const responseText = await res.text();
     const elapsedMs = Math.round(performance.now() - startedAt);

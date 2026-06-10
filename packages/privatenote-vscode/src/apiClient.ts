@@ -11,6 +11,7 @@ import { URL } from "node:url";
 
 export interface ReserveNoteResult {
   id: string;
+  uploadToken?: string;
 }
 
 export interface CreateNoteBody {
@@ -83,7 +84,8 @@ export async function reserveNoteId(apiBaseUrl: string): Promise<ReserveNoteResu
   if (typeof body["id"] !== "string") {
     throw new Error("Note reservation response missing id");
   }
-  return { id: body["id"] };
+  const uploadToken = typeof body["uploadToken"] === "string" ? body["uploadToken"] : undefined;
+  return { id: body["id"], uploadToken };
 }
 
 export async function createNote(apiBaseUrl: string, body: CreateNoteBody): Promise<void> {
