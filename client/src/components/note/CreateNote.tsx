@@ -54,8 +54,10 @@ import {
   X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
+import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import type { AiPostGenTransform } from "./AiComposer";
@@ -68,6 +70,9 @@ const CreateNoteDeferredDialogs = lazy(() =>
 );
 const NoteSettingsPanel = lazy(() =>
   import("./NoteSettingsPanel").then((m) => ({ default: m.NoteSettingsPanel })),
+);
+const CustomizeSettingsOverlay = lazy(() =>
+  import("./CustomizeSettingsOverlay").then((m) => ({ default: m.CustomizeSettingsOverlay })),
 );
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
@@ -268,6 +273,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     null,
   );
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [customizeSheetOpen, setCustomizeSheetOpen] = useState(false);
+  const customizeSheetExperiment = isCustomizeSheetExperimentEnabled();
+  const isMobile = useIsMobile();
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
@@ -1815,7 +1823,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
           <div className="mt-[-0.5rem]" />
 
-          {(!isAiMode || aiDraftAccepted) && (
+          {(!isAiMode || aiDraftAccepted) && !customizeSheetExperiment && (
             <Suspense
               fallback={
                 <div
@@ -1858,18 +1866,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:justify-between">
                 <button
                   type="button"
-                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  onClick={() => {
+                    if (customizeSheetExperiment) {
+                      setCustomizeSheetOpen(true);
+                    } else {
+                      setShowAdvancedOptions(!showAdvancedOptions);
+                    }
+                  }}
                   className="flex w-full min-w-0 items-center justify-center rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:w-auto sm:min-w-[180px]"
                 >
-                  {showAdvancedOptions ? (
-                    <>
-                      <ChevronUp className="w-4 h-4 mr-1.5 text-primary" />
-                      <span>{t.hideOptions}</span>
-                    </>
-                  ) : (
+                  {customizeSheetExperiment || !showAdvancedOptions ? (
                     <>
                       <Settings className="w-4 h-4 mr-1.5 text-primary" />
                       <span>{t.customize}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="w-4 h-4 mr-1.5 text-primary" />
+                      <span>{t.hideOptions}</span>
                     </>
                   )}
                 </button>
@@ -1915,6 +1929,40 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           ) : null}
         </form>
       </div>
+
+      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) ? (
+        <Suspense fallback={null}>
+          <CustomizeSettingsOverlay
+            open={customizeSheetOpen}
+            onOpenChange={setCustomizeSheetOpen}
+            isMobile={isMobile}
+            settings={{
+              password,
+              setPassword,
+              showPassword,
+              setShowPassword,
+              passwordSource,
+              setPasswordSource,
+              passwordStrength,
+              breachState,
+              breachCount,
+              expiryValue,
+              setExpiryValue,
+              notifyOnOpen,
+              setNotifyOnOpen,
+              notifyOnDestroyed,
+              setNotifyOnDestroyed,
+              canNotifyOnOpen,
+              isPremiumUser,
+              premiumStatusLoading,
+              readCount,
+              setReadCount,
+              fileAccessWindowSeconds,
+              setFileAccessWindowSeconds,
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       {shouldRenderDeferredDialogs ? (
         <Suspense fallback={null}>

@@ -198,6 +198,8 @@ function LockedPremiumRow({
 }
 
 export type NoteSettingsPanelProps = {
+  /** inline = accordion on create page; overlay = inside sheet/modal experiment */
+  presentation?: "inline" | "overlay";
   showAdvancedOptions: boolean;
   password: string;
   setPassword: (p: string) => void;
@@ -224,6 +226,7 @@ export type NoteSettingsPanelProps = {
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
+  presentation = "inline",
   showAdvancedOptions,
   password,
   setPassword,
@@ -252,15 +255,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
 
-  return (
-    <>
-      <div
-        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
-          showAdvancedOptions ? "mb-3 grid-rows-[1fr] opacity-100" : "mb-0 grid-rows-[0fr] opacity-0"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
+  const settingsBody = (
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
             <section
               className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-access-controls-heading"
@@ -665,9 +661,24 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
             </section>
           </div>
-        </div>
-      </div>
+  );
 
+  const settingsShell =
+    presentation === "overlay" ? (
+      settingsBody
+    ) : (
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+          showAdvancedOptions ? "mb-3 grid-rows-[1fr] opacity-100" : "mb-0 grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">{settingsBody}</div>
+      </div>
+    );
+
+  return (
+    <>
+      {settingsShell}
       <Dialog
         open={selectedPremiumFeature !== null}
         onOpenChange={(open) => {
