@@ -18,7 +18,8 @@
  *
  * 3. Materializes non-GET bodies with `arrayBuffer()` before forwarding. Passing
  *    `new Request(workerUrl, incomingRequest)` drops PUT/POST binary bodies on
- *    Pages Functions and Safari reports "network connection was lost".
+ *    Pages Functions and Safari reports "network connection was lost". File chunk
+ *    PUTs from the SPA use this same-origin proxy (not cross-origin workers.dev).
  */
 const ACCESS_COOKIE_NAME_PATTERN = /^CF_(?:Authorization|AppSession)=/;
 

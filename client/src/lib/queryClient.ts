@@ -1,5 +1,4 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
@@ -52,22 +51,25 @@ function getApiUrl(url: string): string {
   return url;
 }
 
-function getDirectWorkerApiOrigin(): string {
-  return normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN);
+function isCrossOriginApiUrl(fullUrl: string): boolean {
+  if (typeof window === "undefined" || fullUrl.startsWith("/")) {
+    return false;
+  }
+  try {
+    return new URL(fullUrl).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
-/** Chunk PUTs bypass the Pages /api proxy (Cloudflare Access drops large binary PUTs). */
+/** File chunk PUTs use the same URL routing as JSON API calls (Pages /api proxy when on Pages). */
 function getBinaryUploadUrl(url: string): string {
-  if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
-    const path = url.startsWith("/") ? url : `/${url}`;
-    return `${getDirectWorkerApiOrigin()}${path}`;
-  }
   return getApiUrl(url);
 }
 
 export function getFileUploadTargetLabel(): string {
   if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
-    return getDirectWorkerApiOrigin();
+    return `${window.location.origin}/api (Pages proxy)`;
   }
   return RAW_API_BASE_URL || "(same-origin /api proxy)";
 }
@@ -230,20 +232,19 @@ export async function apiBinaryRequest<T = any>(
   const fullUrl = getBinaryUploadUrl(url);
   const bodyBytes = binaryRequestBodyBytes(body);
   const requestHeaders = { ...headers };
+  const isCrossOrigin = isCrossOriginApiUrl(fullUrl);
   let credentials: RequestCredentials = "include";
   if (options.uploadToken) {
     requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
-    credentials = "omit";
-  }
-  if (bodyBytes != null) {
-    requestHeaders["Content-Length"] = String(bodyBytes);
+    if (isCrossOrigin) {
+      credentials = "omit";
+    }
   }
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const uploadRoute =
-    typeof window !== "undefined" &&
-    hasPagesSameOriginApiProxy(window.location.hostname) &&
-    !fullUrl.startsWith("/")
-      ? "direct-worker"
+  const uploadRoute = isCrossOrigin
+    ? "direct-worker"
+    : typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)
+      ? "pages-proxy"
       : "same-origin";
   const logBase = {
     url: fullUrl,
