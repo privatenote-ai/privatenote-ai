@@ -253,6 +253,15 @@ export async function encryptFileToSodiumChunks(
       );
       encryptedSize += encryptedBytes.byteLength;
       chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
+      console.info("[FILE_UPLOAD] chunk encrypted locally", {
+        noteId,
+        chunkIndex: index,
+        totalChunks,
+        plaintextBytes: plaintext.byteLength,
+        encryptedBytes: encryptedBytes.byteLength,
+        bufferBytes: encryptedBytes.buffer.byteLength,
+        byteOffset: encryptedBytes.byteOffset,
+      });
       await onChunk({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
     }
   } finally {

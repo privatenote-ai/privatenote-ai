@@ -106,15 +106,52 @@ async function uploadEncryptedAttachmentChunk(
   encryptedBytes: Uint8Array,
   headers: Record<string, string>,
 ): Promise<void> {
+  const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
+  const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
   const body = copyToExactArrayBuffer(encryptedBytes);
+  console.info("[FILE_UPLOAD] uploading chunk", {
+    chunkIndex,
+    encryptedBytes: encryptedBytes.byteLength,
+    bodyBytes: body.byteLength,
+    declaredChunkSize: Number.isFinite(declaredSize) ? declaredSize : null,
+    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.byteLength : null,
+    url,
+  });
   try {
     await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers);
+    console.info("[FILE_UPLOAD] chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
+      console.error("[FILE_UPLOAD] chunk rejected by server", {
+        chunkIndex,
+        url,
+        status: error.status,
+        bodyPreview: error.bodyText.slice(0, 500),
+      });
       throw error;
     }
+    console.warn("[FILE_UPLOAD] chunk upload failed, retrying once", {
+      chunkIndex,
+      url,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await new Promise((resolve) => window.setTimeout(resolve, 250));
-    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers);
+    try {
+      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers);
+      console.info("[FILE_UPLOAD] chunk uploaded after retry", { chunkIndex, url });
+    } catch (retryError) {
+      console.error("[FILE_UPLOAD] chunk retry failed", {
+        chunkIndex,
+        url,
+        error:
+          retryError instanceof ApiRequestError
+            ? { status: retryError.status, bodyPreview: retryError.bodyText.slice(0, 500) }
+            : retryError instanceof Error
+              ? retryError.message
+              : String(retryError),
+      });
+      throw retryError;
+    }
   }
 }
 
@@ -878,6 +915,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
             Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
           );
           const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
+          console.info("[FILE_UPLOAD] starting attachment encryption", {
+            noteId: reservedId,
+            fileName: selectedFile.name,
+            fileType: selectedFile.type || "application/octet-stream",
+            fileSize: selectedFile.size,
+            totalChunks,
+            chunkSizeBytes: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+            encryptedSizeUpperBound,
+            apiBase: import.meta.env.VITE_API_URL || "(same-origin /api proxy)",
+          });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
             fileWrapKey!,
@@ -896,7 +943,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               );
             },
           );
+          console.info("[FILE_UPLOAD] attachment encryption complete", {
+            noteId: reservedId,
+            totalChunks: attachment.totalChunks,
+            encryptedSize: attachment.encryptedSize,
+          });
         } catch (error) {
+          console.error("[FILE_UPLOAD] attachment failed", {
+            noteId: reservedId,
+            fileName: selectedFile.name,
+            fileType: selectedFile.type || "application/octet-stream",
+            fileSize: selectedFile.size,
+            error:
+              error instanceof ApiRequestError
+                ? { status: error.status, bodyPreview: error.bodyText.slice(0, 500) }
+                : error instanceof Error
+                  ? { name: error.name, message: error.message }
+                  : String(error),
+          });
           const message = error instanceof Error ? error.message : "";
           throw new Error(
             message && message !== "Load failed"

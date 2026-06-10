@@ -155,20 +155,77 @@ export async function apiRequest<T = any>(
   }
 }
 
+function binaryRequestBodyBytes(body: BodyInit): number | null {
+  if (body instanceof ArrayBuffer) return body.byteLength;
+  if (ArrayBuffer.isView(body)) return body.byteLength;
+  if (body instanceof Blob) return body.size;
+  return null;
+}
+
+function formatBinaryRequestError(error: unknown): Record<string, unknown> {
+  if (error instanceof ApiRequestError) {
+    return {
+      kind: "ApiRequestError",
+      status: error.status,
+      bodyPreview: error.bodyText.slice(0, 500),
+    };
+  }
+  if (error instanceof Error) {
+    const cause = (error as Error & { cause?: unknown }).cause;
+    return {
+      kind: error.name || "Error",
+      message: error.message,
+      ...(cause instanceof Error
+        ? { cause: { name: cause.name, message: cause.message } }
+        : cause != null
+          ? { cause: String(cause) }
+          : {}),
+    };
+  }
+  return { kind: "unknown", value: String(error) };
+}
+
 export async function apiBinaryRequest<T = any>(
   url: string,
   method: string,
   body: BodyInit,
   headers: Record<string, string> = {},
 ): Promise<T> {
+  const fullUrl = getApiUrl(url);
+  const bodyBytes = binaryRequestBodyBytes(body);
+  const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
+  const logBase = {
+    url: fullUrl,
+    method,
+    bodyBytes,
+    declaredChunkSize: Number.isFinite(declaredChunkSize) ? declaredChunkSize : null,
+    chunkSizeMismatch:
+      Number.isFinite(declaredChunkSize) && bodyBytes != null
+        ? declaredChunkSize !== bodyBytes
+        : null,
+    plaintextSize: headers["x-file-plaintext-size"] ?? null,
+    encryptedTotalSize: headers["x-file-encrypted-size"] ?? null,
+  };
+  const startedAt = performance.now();
+
+  console.info("[FILE_UPLOAD] request start", logBase);
+
   try {
-    const res = await fetch(getApiUrl(url), {
+    const res = await fetch(fullUrl, {
       method,
       headers,
       body,
       credentials: "include",
     });
     const responseText = await res.text();
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.info("[FILE_UPLOAD] response received", {
+      ...logBase,
+      status: res.status,
+      statusText: res.statusText,
+      elapsedMs,
+      responsePreview: responseText.slice(0, 300),
+    });
     const responseClone = new Response(responseText, {
       status: res.status,
       statusText: res.statusText,
@@ -177,6 +234,14 @@ export async function apiBinaryRequest<T = any>(
     await throwIfResNotOk(responseClone);
     return JSON.parse(responseText) as T;
   } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    const errorDetails = formatBinaryRequestError(error);
+    console.error("[FILE_UPLOAD] request failed", {
+      ...logBase,
+      elapsedMs,
+      online: typeof navigator !== "undefined" ? navigator.onLine : null,
+      ...errorDetails,
+    });
     if (error instanceof ApiRequestError) {
       throw error;
     }
