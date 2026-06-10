@@ -408,6 +408,19 @@ export const de: Translations = {
     "Kostenlose Konten: nur einmal lesbar. Mit Premium: 2, 3 oder 5 Aufrufe.",
   viewLimitPremiumHint:
     "Mehr Aufrufe bedeuten, dass der Link länger gültig bleibt — nur bei Bedarf nutzen.",
+  settingsNoteLifetime: "Notiz-Lebensdauer",
+  settingsNoteLifetimeHint: "Wann der Link unbenutzt abläuft.",
+  settingsNoteLifetimeInfo:
+    "Getrennt von Aufruflimit und Datei-Downloads. Danach werden ungeöffnete Notizen gelöscht.",
+  settingsOpenLimit: "Aufruflimit",
+  settingsOpenLimitHint: "Wie oft die Notiz geöffnet werden kann.",
+  settingsOpenLimitInfo:
+    "Einmal lesen erlaubt insgesamt einen Aufruf. Höhere Limits gelten, bis das Kontingent aufgebraucht ist oder die Lebensdauer endet.",
+  settingsFileDownloads: "Datei-Downloads",
+  settingsFileDownloadsHint: "Wie lange Anhänge nach dem Öffnen herunterladbar bleiben.",
+  settingsFileDownloadsInfo:
+    "Unabhängig von der Notiz-Lebensdauer. Danach ist die Datei nicht mehr verfügbar, auch wenn der Text noch lesbar wäre.",
+  settingsPasswordInfo: "Unterstützt von decrypt.lu und gegen Have I Been Pwned geprüft.",
   premium: "Premium",
   viewDetails: "Details anzeigen",
   passwordBreachCheckLabel: "Leak-Prüfung:",

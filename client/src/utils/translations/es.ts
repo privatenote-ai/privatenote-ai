@@ -411,6 +411,19 @@ export const es: Translations = {
     "Cuentas gratuitas: solo una lectura. Con Premium: 2, 3 o 5 vistas.",
   viewLimitPremiumHint:
     "Más vistas significan que el enlace sigue válido más tiempo — úsalo solo cuando haga falta.",
+  settingsNoteLifetime: "Vida del enlace",
+  settingsNoteLifetimeHint: "Cuándo deja de funcionar si nunca se abre.",
+  settingsNoteLifetimeInfo:
+    "Independiente del límite de aperturas y de las descargas. Después, las notas no abiertas se eliminan.",
+  settingsOpenLimit: "Límite de aperturas",
+  settingsOpenLimitHint: "Cuántas veces se puede abrir la nota.",
+  settingsOpenLimitInfo:
+    "Lectura única permite una sola apertura. Límites mayores aplican hasta agotarse o terminar la vida del enlace.",
+  settingsFileDownloads: "Descargas de archivo",
+  settingsFileDownloadsHint: "Cuánto tiempo permanece disponible el adjunto tras abrir la nota.",
+  settingsFileDownloadsInfo:
+    "Independiente de la vida del enlace. Después, el archivo ya no se puede descargar aunque el texto siga legible.",
+  settingsPasswordInfo: "Con tecnología de decrypt.lu y comprobado con Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "Ver detalles",
   passwordBreachCheckLabel: "Comprobación de filtraciones:",

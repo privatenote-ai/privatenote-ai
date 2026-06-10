@@ -410,6 +410,19 @@ export const fr: Translations = {
     "Comptes gratuits : lecture unique. Avec Premium : 2, 3 ou 5 vues.",
   viewLimitPremiumHint:
     "Plus de vues signifient que le lien reste valide plus longtemps — à utiliser avec parcimonie.",
+  settingsNoteLifetime: "Durée de vie",
+  settingsNoteLifetimeHint: "Quand le lien expire s'il n'est jamais ouvert.",
+  settingsNoteLifetimeInfo:
+    "Distinct de la limite d'ouvertures et des téléchargements. Ensuite, les notes non ouvertes sont supprimées.",
+  settingsOpenLimit: "Limite d'ouvertures",
+  settingsOpenLimitHint: "Combien de fois la note peut être ouverte.",
+  settingsOpenLimitInfo:
+    "Lecture unique : une seule ouverture. Des limites plus élevées restent valides jusqu'à épuisement ou fin de durée de vie.",
+  settingsFileDownloads: "Téléchargements",
+  settingsFileDownloadsHint: "Durée de disponibilité des pièces jointes après ouverture.",
+  settingsFileDownloadsInfo:
+    "Indépendant de la durée de vie de la note. Ensuite, le fichier n'est plus téléchargeable même si le texte reste lisible.",
+  settingsPasswordInfo: "Propulsé par decrypt.lu et vérifié via Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "Voir les détails",
   passwordBreachCheckLabel: "Vérification de fuite :",

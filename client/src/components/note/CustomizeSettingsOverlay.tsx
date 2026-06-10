@@ -28,7 +28,7 @@ function CustomizeDoneButton({ label, onClick }: { label: string; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+      className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
       {label}
     </button>
@@ -59,7 +59,7 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
             <SheetTitle>{t.customize}</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{panel}</div>
-          <SheetFooter className="shrink-0 border-t border-gray-200/80 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-gray-800/80 sm:flex-col sm:space-x-0">
+          <SheetFooter className="shrink-0 border-t border-gray-200/80 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-gray-800/80 sm:flex-row sm:justify-end sm:space-x-0">
             <CustomizeDoneButton label={doneLabel} onClick={close} />
           </SheetFooter>
         </SheetContent>
@@ -74,7 +74,7 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
           <DialogTitle>{t.customize}</DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{panel}</div>
-        <DialogFooter className="shrink-0 border-t border-gray-200/80 px-6 py-4 dark:border-gray-800/80 sm:justify-stretch">
+        <DialogFooter className="shrink-0 border-t border-gray-200/80 px-6 py-3 dark:border-gray-800/80 sm:justify-end">
           <CustomizeDoneButton label={doneLabel} onClick={close} />
         </DialogFooter>
       </DialogContent>

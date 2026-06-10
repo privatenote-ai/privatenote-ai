@@ -40,6 +40,78 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const SELECT_CHEVRON_STYLE = {
+  backgroundImage:
+    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+  backgroundRepeat: "no-repeat" as const,
+  backgroundPosition: "right 0.75rem center",
+  backgroundSize: "0.75em",
+};
+
+function SettingsFieldHelper({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">{children}</p>
+  );
+}
+
+function LabelInfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          aria-label={text}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Info className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SettingsFieldLabel({
+  htmlFor,
+  icon,
+  iconToneClassName,
+  label,
+  info,
+}: {
+  htmlFor?: string;
+  icon: React.ReactNode;
+  iconToneClassName: string;
+  label: string;
+  info?: string;
+}) {
+  const content = (
+    <>
+      <span className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}`}>{icon}</span>
+      <span className="min-w-0">{label}</span>
+      {info ? <LabelInfoTip text={info} /> : null}
+    </>
+  );
+  const className = "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300";
+  if (htmlFor) {
+    return (
+      <label htmlFor={htmlFor} className={className}>
+        {content}
+      </label>
+    );
+  }
+  return <div className={className}>{content}</div>;
+}
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
@@ -297,6 +369,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     React.useState<PremiumFeature | null>(null);
 
   const settingsBody = (
+    <TooltipProvider delayDuration={200}>
     <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
             <section
               className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
@@ -306,17 +379,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
               <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
                 <div className="sm:col-span-1">
-            <div className="flex flex-col">
-              <label
-                htmlFor="note-password"
-                className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 pt-0.5"
-              >
-                <span className="bg-green-50 dark:bg-green-900/30 p-1 rounded mr-2">
-                  <Lock className="w-4 h-4 text-green-500 dark:text-green-400" />
-                </span>
-                <span className="block">{t.password}</span>
-              </label>
-            </div>
+            <SettingsFieldLabel
+              htmlFor="note-password"
+              icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
+              iconToneClassName="bg-green-50 dark:bg-green-900/30"
+              label={t.password}
+              info={t.settingsPasswordInfo}
+            />
           </div>
           <div className="min-w-0 sm:col-span-2">
             <div className="relative min-w-0">
@@ -405,16 +474,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span>{t.passwordRecipientsNeedToDecrypt}</span>
-                <button
-                  type="button"
-                  title="Powered by decrypt.lu and checked via HIBP."
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gray-300 text-gray-500 transition hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-400"
-                >
-                  <Info className="h-3.5 w-3.5" aria-hidden />
-                  <span className="sr-only">Powered by decrypt.lu and checked via HIBP.</span>
-                </button>
+              <div className="mt-2">
+                <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
               </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -443,18 +504,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         </div>
 
               <div className="flex flex-col space-y-2">
-                <div className="grid grid-cols-1 gap-2 items-center px-1 py-2 transition-colors sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
                   <div className="sm:col-span-1">
-              <label
+              <SettingsFieldLabel
                 htmlFor="expiry-value"
-                className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                <span className="bg-blue-50 dark:bg-blue-900/30 p-1 rounded mr-2">
+                icon={
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 text-blue-500 dark:text-blue-400"
                     viewBox="0 0 20 20"
                     fill="currentColor"
+                    aria-hidden
                   >
                     <path
                       fillRule="evenodd"
@@ -462,11 +522,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       clipRule="evenodd"
                     />
                   </svg>
-                </span>
-                {t.expiration}
-              </label>
+                }
+                iconToneClassName="bg-blue-50 dark:bg-blue-900/30"
+                label={t.settingsNoteLifetime ?? t.expiration}
+                info={t.settingsNoteLifetimeInfo}
+              />
             </div>
-                  <div className="min-w-0 sm:col-span-2">
+                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <select
                 id="expiry-value"
                 value={expiryValue}
@@ -475,13 +537,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   if (isNoteExpiryPresetId(v)) setExpiryValue(v);
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
-                style={{
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.75rem center",
-                  backgroundSize: "0.75em",
-                }}
+                style={SELECT_CHEVRON_STYLE}
               >
                 {noteExpiryPresetsForAccount(isPremiumUser).map((p) => (
                   <option key={p.id} value={p.id}>
@@ -489,19 +545,21 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </option>
                 ))}
               </select>
+              <SettingsFieldHelper>
+                {t.settingsNoteLifetimeHint ?? "When the link stops working if never opened."}
+              </SettingsFieldHelper>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
                   <div className="sm:col-span-1">
-                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      <span className="inline-flex items-center">
-                        <span className="bg-teal-50 p-1 rounded mr-2 dark:bg-teal-900/30">
-                          <Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-                        </span>
-                        {t.viewLimit}
-                      </span>
-              </div>
+                    <SettingsFieldLabel
+                      htmlFor="note-read-limit"
+                      icon={<Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                      iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
+                      label={t.settingsOpenLimit ?? t.viewLimit}
+                      info={t.settingsOpenLimitInfo}
+                    />
             </div>
             <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <select
@@ -515,13 +573,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                style={{
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.75rem center",
-                  backgroundSize: "0.75em",
-                }}
+                style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
                   const premiumOnly = isPremiumNoteReadLimit(limit);
@@ -534,25 +586,23 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   );
                 })}
               </select>
-              <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+              <SettingsFieldHelper>
                 {isPremiumUser
-                  ? (t.viewLimitPremiumHint ??
-                    "More views mean the link stays valid longer — use only when needed.")
-                  : "Free accounts use read-once."}
-              </p>
+                  ? (t.settingsOpenLimitHint ?? t.viewLimitPremiumHint)
+                  : (t.viewLimitFreeDescription ?? "Free accounts use read-once.")}
+              </SettingsFieldHelper>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
             <div className="sm:col-span-1">
-              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                <span className="inline-flex items-center">
-                  <span className="bg-indigo-50 p-1 rounded mr-2 dark:bg-indigo-900/30">
-                    <Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  </span>
-                  Attachment window
-                </span>
-              </div>
+              <SettingsFieldLabel
+                htmlFor="note-file-access-window"
+                icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                label={t.settingsFileDownloads ?? "File downloads"}
+                info={t.settingsFileDownloadsInfo}
+              />
             </div>
             <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <select
@@ -566,13 +616,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                style={{
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.75rem center",
-                  backgroundSize: "0.75em",
-                }}
+                style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
                   const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
@@ -584,9 +628,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   );
                 })}
               </select>
-              <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
-                How long file downloads work after reveal.
-              </p>
+              <SettingsFieldHelper>
+                {t.settingsFileDownloadsHint ??
+                  "How long attachments stay downloadable after the note is opened."}
+              </SettingsFieldHelper>
             </div>
           </div>
 
@@ -644,6 +689,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
             </section>
           </div>
+    </TooltipProvider>
   );
 
   const settingsShell =

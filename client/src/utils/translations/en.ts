@@ -434,6 +434,19 @@ export const en: Translations = {
   viewLimitFive: "5 views",
   viewLimitFreeDescription: "Free accounts use read-once. Upgrade to Premium for 2, 3, or 5 views.",
   viewLimitPremiumHint: "More views mean the link stays valid longer — use only when needed.",
+  settingsNoteLifetime: "Note lifetime",
+  settingsNoteLifetimeHint: "When the link stops working if never opened.",
+  settingsNoteLifetimeInfo:
+    "Separate from open limit and file downloads. After this time, unopened notes are deleted.",
+  settingsOpenLimit: "Open limit",
+  settingsOpenLimitHint: "How many times the note can be opened.",
+  settingsOpenLimitInfo:
+    "Read-once allows one view total. Higher limits keep the link valid until the count is used or note lifetime ends.",
+  settingsFileDownloads: "File downloads",
+  settingsFileDownloadsHint: "How long attachments stay downloadable after the note is opened.",
+  settingsFileDownloadsInfo:
+    "Independent of note lifetime. After this period, the file cannot be downloaded even if the note text could still be read.",
+  settingsPasswordInfo: "Powered by decrypt.lu and checked against Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "View details",
   passwordBreachCheckLabel: "Breach check:",
