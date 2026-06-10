@@ -43,6 +43,8 @@ export function parseNoteReserveAttachmentBinding(body: unknown): NoteReserveAtt
   const attachmentPlaintextSize = record.attachmentPlaintextSize;
   const attachmentEncryptedSize = record.attachmentEncryptedSize;
   if (
+    typeof attachmentPlaintextSize !== "number" ||
+    typeof attachmentEncryptedSize !== "number" ||
     !Number.isInteger(attachmentPlaintextSize) ||
     !Number.isInteger(attachmentEncryptedSize) ||
     attachmentPlaintextSize < 0 ||

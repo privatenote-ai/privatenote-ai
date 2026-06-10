@@ -91,6 +91,7 @@ interface NoteAttachmentV2 {
     encryptedKey: string;
   };
   chunks: Array<{ index: number; encryptedSize: number }>;
+  encryptedContentSha256: string;
 }
 
 type NoteAttachment = NoteAttachmentV2;

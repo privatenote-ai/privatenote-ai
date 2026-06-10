@@ -1,6 +1,7 @@
 /**
- * Binary PUT transport — Safari fetch() can drop upload bodies after CORS preflight;
- * XHR uses a reliable WebKit path (same approach as encrypt.lu relay uploads).
+ * Binary PUT transport — Safari fetch() can drop upload bodies and Blob-backed
+ * XHR uploads can fail on WebKit. XHR with an ArrayBuffer body uses the most
+ * reliable WebKit path for encrypted attachment chunks.
  */
 
 const BROWSER_FORBIDDEN_REQUEST_HEADERS = new Set([
@@ -47,7 +48,7 @@ function filterBrowserUploadHeaders(headers: Record<string, string>): Record<str
 function xhrBinaryRequest(
   url: string,
   method: string,
-  body: Blob,
+  body: XMLHttpRequestBodyInit,
   headers: Record<string, string>,
   credentials: RequestCredentials,
 ): Promise<Response> {
@@ -73,17 +74,6 @@ function xhrBinaryRequest(
   });
 }
 
-function isCrossOriginRequestUrl(url: string): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  try {
-    return new URL(url, window.location.href).origin !== window.location.origin;
-  } catch {
-    return false;
-  }
-}
-
 export async function sendBinaryHttpRequest(
   url: string,
   method: string,
@@ -92,9 +82,8 @@ export async function sendBinaryHttpRequest(
   credentials: RequestCredentials,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
-  // Safari XHR is only needed for cross-origin PUT; same-origin fetch handles large bodies reliably.
-  if (isSafariBrowser() && method === "PUT" && isCrossOriginRequestUrl(url)) {
-    return xhrBinaryRequest(url, method, body, safeHeaders, credentials);
+  if (isSafariBrowser() && method === "PUT") {
+    return xhrBinaryRequest(url, method, await body.arrayBuffer(), safeHeaders, credentials);
   }
   return fetch(url, {
     method,
@@ -113,7 +102,7 @@ export function bodyInitToUploadBlob(body: BodyInit): Blob | null {
   }
   if (ArrayBuffer.isView(body)) {
     const copy = new Uint8Array(body.byteLength);
-    copy.set(body);
+    copy.set(new Uint8Array(body.buffer, body.byteOffset, body.byteLength));
     return new Blob([copy.buffer], { type: "application/octet-stream" });
   }
   return null;

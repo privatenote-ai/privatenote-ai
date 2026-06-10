@@ -109,15 +109,13 @@ async function uploadEncryptedAttachmentChunk(
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const body = new Blob([copyToExactArrayBuffer(encryptedBytes)], {
-    type: "application/octet-stream",
-  });
+  const body = copyToExactArrayBuffer(encryptedBytes);
   logFileUpload("info", "uploading chunk", {
     chunkIndex,
     encryptedBytes: encryptedBytes.byteLength,
-    bodyBytes: body.size,
+    bodyBytes: body.byteLength,
     declaredChunkSize: Number.isFinite(declaredSize) ? declaredSize : null,
-    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.size : null,
+    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.byteLength : null,
     url,
   });
   try {
@@ -140,7 +138,7 @@ async function uploadEncryptedAttachmentChunk(
     });
     await new Promise((resolve) => window.setTimeout(resolve, 250));
     try {
-      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(), headers, {
+      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
         uploadToken,
       });
       logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
