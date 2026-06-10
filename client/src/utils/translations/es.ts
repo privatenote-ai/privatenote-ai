@@ -423,7 +423,7 @@ export const es: Translations = {
   settingsFileDownloadsHint: "Cuánto tiempo permanece disponible el adjunto tras abrir la nota.",
   settingsFileDownloadsInfo:
     "Independiente de la vida del enlace. Después, el archivo ya no se puede descargar aunque el texto siga legible.",
-  settingsPasswordInfo: "Con tecnología de decrypt.lu y comprobado con Have I Been Pwned.",
+  settingsPasswordInfo: "Con tecnología de passwords.lu y comprobado con Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "Ver detalles",
   passwordBreachCheckLabel: "Comprobación de filtraciones:",

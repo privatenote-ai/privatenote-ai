@@ -420,7 +420,7 @@ export const de: Translations = {
   settingsFileDownloadsHint: "Wie lange Anhänge nach dem Öffnen herunterladbar bleiben.",
   settingsFileDownloadsInfo:
     "Unabhängig von der Notiz-Lebensdauer. Danach ist die Datei nicht mehr verfügbar, auch wenn der Text noch lesbar wäre.",
-  settingsPasswordInfo: "Unterstützt von decrypt.lu und gegen Have I Been Pwned geprüft.",
+  settingsPasswordInfo: "Unterstützt von passwords.lu und gegen Have I Been Pwned geprüft.",
   premium: "Premium",
   viewDetails: "Details anzeigen",
   passwordBreachCheckLabel: "Leak-Prüfung:",

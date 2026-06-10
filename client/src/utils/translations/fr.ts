@@ -422,7 +422,7 @@ export const fr: Translations = {
   settingsFileDownloadsHint: "Durée de disponibilité des pièces jointes après ouverture.",
   settingsFileDownloadsInfo:
     "Indépendant de la durée de vie de la note. Ensuite, le fichier n'est plus téléchargeable même si le texte reste lisible.",
-  settingsPasswordInfo: "Propulsé par decrypt.lu et vérifié via Have I Been Pwned.",
+  settingsPasswordInfo: "Propulsé par passwords.lu et vérifié via Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "Voir les détails",
   passwordBreachCheckLabel: "Vérification de fuite :",

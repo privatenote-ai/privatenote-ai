@@ -446,7 +446,7 @@ export const en: Translations = {
   settingsFileDownloadsHint: "How long attachments stay downloadable after the note is opened.",
   settingsFileDownloadsInfo:
     "Independent of note lifetime. After this period, the file cannot be downloaded even if the note text could still be read.",
-  settingsPasswordInfo: "Powered by decrypt.lu and checked against Have I Been Pwned.",
+  settingsPasswordInfo: "Powered by passwords.lu and checked against Have I Been Pwned.",
   premium: "Premium",
   viewDetails: "View details",
   passwordBreachCheckLabel: "Breach check:",
