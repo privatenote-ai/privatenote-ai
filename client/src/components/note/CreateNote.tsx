@@ -281,6 +281,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
+  const canAttachFiles = Boolean(user);
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
 
@@ -367,6 +368,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       clampNoteFileAccessWindowForAccount(current, isPremiumUser),
     );
   }, [isPremiumUser, premiumStatusLoading]);
+
+  useEffect(() => {
+    if (!canAttachFiles && selectedFile) {
+      setSelectedFile(null);
+    }
+  }, [canAttachFiles, selectedFile]);
 
   useEffect(() => {
     if (!canNotifyOnOpen && notifyOnOpen) {
@@ -748,6 +755,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       toast({
         title: "File too large",
         description: `File sharing is limited to ${formatNoteFileSize(fileLimitBytes)} for your account.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedFile && !canAttachFiles) {
+      toast({
+        title: "Sign in to attach files",
+        description: "Encrypted file sharing uses account storage limits. Text notes still work without signing in.",
         variant: "destructive",
       });
       return;
@@ -1735,11 +1751,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                       File sharing
                     </div>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Browser-encrypted attachments with libsodium secretstream. Limit: {formatNoteFileSize(fileLimitBytes)}.
+                      {canAttachFiles
+                        ? `Browser-encrypted attachments with libsodium secretstream. Limit: ${formatNoteFileSize(fileLimitBytes)}.`
+                        : "Sign in to attach encrypted files. Text notes can still be shared without an account."}
                     </p>
                   </div>
                   <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900">
-                    Choose file
+                    {canAttachFiles ? "Choose file" : "Sign in for files"}
                     <input
                       type="file"
                       className="sr-only"
@@ -1747,6 +1765,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                         const file = event.target.files?.[0] ?? null;
                         event.target.value = "";
                         if (!file) return;
+                        if (!canAttachFiles) {
+                          toast({
+                            title: "Sign in to attach files",
+                            description: "Encrypted file sharing uses account storage limits. Text notes still work without signing in.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
                         if (file.size > fileLimitBytes) {
                           toast({
                             title: "File too large",

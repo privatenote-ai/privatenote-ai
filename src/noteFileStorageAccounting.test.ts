@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { D1Database, DurableObjectNamespace, DurableObjectStub, R2Bucket } from "@cloudflare/workers-types";
 import { NOTE_FILE_ACCESS_DEFAULT_SECONDS } from "@shared/noteFileAccess";
-import { NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES } from "@shared/noteFileLimits";
+import {
+  NOTE_FILE_FREE_TOTAL_STORAGE_BYTES,
+  NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES,
+} from "@shared/noteFileLimits";
 import {
   activateAccountFileStorageReservation,
   cleanupExpiredNoteFileStorage,
@@ -35,6 +38,8 @@ type ReservationRow = {
 const USER_ID = "user-premium";
 const NOTE_ID = "00000000-0000-4000-8000-000000033333";
 const NOTE_ID_2 = "00000000-0000-4000-8000-000000044444";
+const FREE_STORAGE_LIMIT = NOTE_FILE_FREE_TOTAL_STORAGE_BYTES;
+const PREMIUM_STORAGE_LIMIT = NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES;
 
 function isoSecondsAgo(seconds: number): string {
   return new Date(Date.now() - seconds * 1000).toISOString();
@@ -382,18 +387,54 @@ async function putChunks(r2: FakeR2Bucket, noteId: string, count: number): Promi
 }
 
 describe("note file storage accounting", () => {
+  it("reserves free encrypted bytes against the 250 MB account cap", async () => {
+    const db = new FakeD1Database();
+    const env = makeEnv(db);
+    const firstSize = NOTE_FILE_FREE_TOTAL_STORAGE_BYTES - 1;
+
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, firstSize, FREE_STORAGE_LIMIT),
+      { ok: true },
+    );
+
+    const blocked = await reserveAccountFileStorageBytes(
+      env,
+      USER_ID,
+      NOTE_ID_2,
+      2,
+      FREE_STORAGE_LIMIT,
+    );
+    assert.equal(blocked.ok, false);
+    if (!blocked.ok) {
+      assert.equal(blocked.status, 413);
+      assert.equal(blocked.body.limitBytes, FREE_STORAGE_LIMIT);
+    }
+  });
+
   it("reserves Premium encrypted bytes atomically and blocks over the 20 GB account cap", async () => {
     const db = new FakeD1Database();
     const env = makeEnv(db);
     const firstSize = NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES - 10;
 
-    assert.deepEqual(await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, firstSize), { ok: true });
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, firstSize, PREMIUM_STORAGE_LIMIT),
+      { ok: true },
+    );
     assert.equal(db.usage.get(USER_ID)?.used_bytes, firstSize);
 
-    assert.deepEqual(await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, firstSize), { ok: true });
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, firstSize, PREMIUM_STORAGE_LIMIT),
+      { ok: true },
+    );
     assert.equal(db.usage.get(USER_ID)?.used_bytes, firstSize);
 
-    const blocked = await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID_2, 11);
+    const blocked = await reserveAccountFileStorageBytes(
+      env,
+      USER_ID,
+      NOTE_ID_2,
+      11,
+      PREMIUM_STORAGE_LIMIT,
+    );
     assert.equal(blocked.ok, false);
     if (!blocked.ok) {
       assert.equal(blocked.status, 413);
@@ -411,7 +452,10 @@ describe("note file storage accounting", () => {
     const env = makeEnv(db, r2, notes);
     notes.noteStatuses.set(NOTE_ID, 404);
 
-    assert.deepEqual(await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 1_000), { ok: true });
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 1_000, PREMIUM_STORAGE_LIMIT),
+      { ok: true },
+    );
     await activateAccountFileStorageReservation(
       env,
       NOTE_ID,
@@ -440,7 +484,10 @@ describe("note file storage accounting", () => {
     const env = makeEnv(db, r2, notes);
     notes.noteStatuses.set(NOTE_ID, 200);
 
-    assert.deepEqual(await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 500), { ok: true });
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 500, PREMIUM_STORAGE_LIMIT),
+      { ok: true },
+    );
     await activateAccountFileStorageReservation(
       env,
       NOTE_ID,
@@ -468,7 +515,10 @@ describe("note file storage accounting", () => {
     const r2 = new FakeR2Bucket();
     const env = makeEnv(db, r2);
 
-    assert.deepEqual(await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 700), { ok: true });
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(env, USER_ID, NOTE_ID, 700, PREMIUM_STORAGE_LIMIT),
+      { ok: true },
+    );
     db.reservations.get(NOTE_ID)!.created_at = isoSecondsAgo(3 * 60 * 60);
     await putChunks(r2, NOTE_ID, 4);
 

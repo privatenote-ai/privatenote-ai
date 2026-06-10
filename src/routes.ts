@@ -5,8 +5,8 @@ import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import {
   NOTE_FILE_AES_GCM_TAG_BYTES,
-  NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES,
   noteFileLimitBytesForAccount,
+  noteFileTotalStorageBytesForAccount,
 } from "@shared/noteFileLimits";
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
@@ -7090,10 +7090,10 @@ async function ensureAccountFileStorageSchema(env: Env): Promise<boolean> {
   return true;
 }
 
-async function getAuthenticatedPremiumUserIdForNoteFiles(
+async function getAuthenticatedAccountForNoteFiles(
   env: Env,
   request: Request,
-): Promise<string | null> {
+): Promise<{ userId: string; isPremium: boolean } | null> {
   if (!env.AUTH_DB) return null;
   const session = await getSessionFromRequest(env, request, { rotate: false });
   if (!session?.id) return null;
@@ -7102,8 +7102,11 @@ async function getAuthenticatedPremiumUserIdForNoteFiles(
   )
     .bind(session.id)
     .first<{ account_type: string | null; plan: string | null }>();
-  if (!user || !isPremiumAccountType(user.account_type, user.plan)) return null;
-  return session.id;
+  if (!user) return null;
+  return {
+    userId: session.id,
+    isPremium: isPremiumAccountType(user.account_type, user.plan),
+  };
 }
 
 export async function reserveAccountFileStorageBytes(
@@ -7111,6 +7114,7 @@ export async function reserveAccountFileStorageBytes(
   userId: string,
   noteId: string,
   encryptedSize: number,
+  storageLimitBytes: number,
 ): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
   if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
     return {
@@ -7118,7 +7122,7 @@ export async function reserveAccountFileStorageBytes(
       status: 503,
       body: {
         error: "file_storage_quota_unavailable",
-        message: "Premium file storage quota is not configured.",
+        message: "File storage quota is not configured.",
       },
     };
   }
@@ -7163,7 +7167,7 @@ export async function reserveAccountFileStorageBytes(
        SET used_bytes = used_bytes + ?, updated_at = datetime('now')
      WHERE user_id = ? AND used_bytes + ? <= ?`,
   )
-    .bind(encryptedSize, userId, encryptedSize, NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES)
+    .bind(encryptedSize, userId, encryptedSize, storageLimitBytes)
     .run();
   const changed = Number((usageUpdate as any).meta?.changes ?? 0);
   if (changed !== 1) {
@@ -7177,8 +7181,8 @@ export async function reserveAccountFileStorageBytes(
       status: 413,
       body: {
         error: "account_file_storage_quota_exceeded",
-        message: "Premium encrypted file storage limit reached.",
-        limitBytes: NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES,
+        message: "Encrypted file storage limit reached.",
+        limitBytes: storageLimitBytes,
         usedBytes: Math.max(0, Number(usage?.used_bytes ?? 0)),
       },
     };
@@ -7481,7 +7485,7 @@ async function requireNoteFileAccess(env: Env, request: Request, noteId: string)
 async function reserveNoteId(
   env: Env,
   clientId: string,
-  premiumUserId: string | null,
+  fileAccount: { userId: string; isPremium: boolean } | null,
   attachmentBinding: NoteReserveAttachmentBinding | null,
   clientIp?: string,
 ): Promise<{ id: string; uploadToken: string }> {
@@ -7497,7 +7501,8 @@ async function reserveNoteId(
       ...(normalizedClientIp ? { clientIp: normalizedClientIp } : {}),
       createdAt: new Date().toISOString(),
       uploadTokenHash,
-      premiumUserId,
+      fileStorageUserId: attachmentBinding ? fileAccount?.userId ?? null : null,
+      premiumUserId: attachmentBinding && fileAccount?.isPremium ? fileAccount.userId : null,
       ...(attachmentBinding ?? {}),
     } satisfies NoteReservationRecord),
     { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
@@ -7917,7 +7922,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes/reserve" && method === "POST") {
     try {
       const clientId = getClientIdentifier(request);
-      const premiumUserId = await getAuthenticatedPremiumUserIdForNoteFiles(env, request);
       let reserveBody: unknown = null;
       try {
         reserveBody = await request.json();
@@ -7925,10 +7929,23 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         reserveBody = null;
       }
       const attachmentBinding = parseNoteReserveAttachmentBinding(reserveBody);
+      const fileAccount = attachmentBinding
+        ? await getAuthenticatedAccountForNoteFiles(env, request)
+        : null;
+      if (attachmentBinding && !fileAccount) {
+        return jsonResponse(
+          {
+            error: "file_upload_auth_required",
+            message: "Sign in to attach encrypted files.",
+          },
+          401,
+          request,
+        );
+      }
       const { id, uploadToken } = await reserveNoteId(
         env,
         clientId,
-        premiumUserId,
+        fileAccount,
         attachmentBinding,
         readClientIpFromRequestHeaders(request.headers) ?? undefined,
       );
@@ -7982,7 +7999,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const premiumUserId = uploadAuth.premiumUserId;
     const isPremium = premiumUserId !== null;
+    const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
     const reservation = uploadAuth.record;
+    if (
+      !fileStorageUserId ||
+      reservation.attachmentPlaintextSize == null ||
+      reservation.attachmentEncryptedSize == null
+    ) {
+      return jsonResponse(
+        { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+        401,
+        request,
+      );
+    }
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
     const plaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
@@ -8019,12 +8048,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (encryptedTotalSize > encryptedTotalLimit) {
       return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
     }
-    if (isPremium && premiumUserId) {
+    if (fileStorageUserId) {
       const quotaReservation = await reserveAccountFileStorageBytes(
         env,
-        premiumUserId,
+        fileStorageUserId,
         id,
         encryptedTotalSize,
+        noteFileTotalStorageBytesForAccount(isPremium),
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8207,6 +8237,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const reservation = await getNoteReservationRecord(env, requestedId);
       if (!reservation?.attachmentEncryptedSize || reservation.attachmentPlaintextSize == null) {
         return jsonResponse({ error: "Attachment upload was not initialized" }, 400, request);
+      }
+      if (!reservation.fileStorageUserId && !reservation.premiumUserId) {
+        return jsonResponse(
+          { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+          401,
+          request,
+        );
       }
       const attachmentEncryptedSize = Number(requestBody.attachment.encryptedSize);
       if (

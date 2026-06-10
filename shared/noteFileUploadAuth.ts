@@ -14,6 +14,8 @@ export interface NoteReservationRecord {
   clientIp?: string;
   createdAt: string;
   uploadTokenHash: string;
+  /** Signed-in account that owns attachment storage quota, free or premium. */
+  fileStorageUserId?: string | null;
   premiumUserId?: string | null;
   attachmentPlaintextSize?: number;
   attachmentEncryptedSize?: number;

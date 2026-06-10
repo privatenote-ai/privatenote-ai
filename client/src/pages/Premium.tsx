@@ -60,6 +60,7 @@ const planCopy: Record<PlanId, {
       "Burn after reading",
       "Password protection",
       "Basic expiry controls",
+      "25 MB encrypted file sharing when signed in",
     ],
   },
   premium: {
@@ -129,8 +130,8 @@ const comparisonSections = [
       ["Open and destroy notifications", "No", "Included"],
       ["Recipient verification", "No", "Included"],
       ["Branding and customization", "No", "Included"],
-      ["Encrypted file sharing", "Up to 10 MB", "Up to 1 GB per file"],
-      ["Total encrypted file storage", "No", "20 GB"],
+      ["Encrypted file sharing", "25 MB per file when signed in", "Up to 1 GB per file"],
+      ["Total encrypted file storage", "250 MB when signed in", "20 GB"],
       ["Longer retention", "Basic", "Included"],
     ],
   },
