@@ -71,9 +71,21 @@ function getDirectWorkerUploadUrl(url: string): string {
   return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)}${normalizeApiPath(url)}`;
 }
 
-function getBinaryUploadAttempts(url: string): BinaryUploadAttempt[] {
+function getBinaryUploadAttempts(
+  url: string,
+  options: { uploadToken?: string } = {},
+): BinaryUploadAttempt[] {
   if (!hasSameOriginApiProxy) {
     return [{ url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" }];
+  }
+
+  const directWorker: BinaryUploadAttempt = {
+    url: getDirectWorkerUploadUrl(url),
+    uploadRoute: "direct-worker",
+    credentials: "omit",
+  };
+  if (options.uploadToken) {
+    return [directWorker];
   }
 
   const sameOrigin: BinaryUploadAttempt = {
@@ -81,24 +93,12 @@ function getBinaryUploadAttempts(url: string): BinaryUploadAttempt[] {
     uploadRoute: "same-origin",
     credentials: "include",
   };
-  const directWorker: BinaryUploadAttempt = {
-    url: getDirectWorkerUploadUrl(url),
-    uploadRoute: "direct-worker",
-    credentials: "omit",
-  };
 
-  // Safari aborts large cross-origin PUTs to workers.dev; same-origin Pages proxy is reliable.
-  if (isSafariBrowser()) {
-    return [sameOrigin, directWorker];
-  }
   return [directWorker, sameOrigin];
 }
 
 export function getFileUploadTargetLabel(): string {
   if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
-    if (isSafariBrowser()) {
-      return "same-origin /api proxy (Safari)";
-    }
     return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)} (direct Worker)`;
   }
   return RAW_API_BASE_URL || "(same-origin /api proxy)";
@@ -299,7 +299,7 @@ export async function apiBinaryRequest<T = any>(
     encryptedTotalSize: headers["x-file-encrypted-size"] ?? null,
     safariTransport: isSafariBrowser(),
   };
-  const attempts = getBinaryUploadAttempts(url);
+  const attempts = getBinaryUploadAttempts(url, options);
   let lastError: unknown = null;
 
   for (let round = 0; round < 2; round += 1) {
