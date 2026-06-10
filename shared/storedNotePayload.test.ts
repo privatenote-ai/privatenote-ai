@@ -22,6 +22,8 @@ import {
 
 const twelveZeroB64 = btoa(String.fromCharCode(...new Uint8Array(NOTE_AES_GCM_IV_BYTE_LENGTH)));
 const sixteenZeroB64 = btoa(String.fromCharCode(...new Uint8Array(NOTE_KDF_SALT_MIN_BYTES)));
+const attachmentAlg = "libsodium-secretstream-xchacha20poly1305";
+const attachmentNoteId = "00000000-0000-4000-8000-000000000001";
 
 const validKdfParams = {
   version: KDF_VERSION_2,
@@ -41,6 +43,61 @@ function basePayload(over: Record<string, unknown> = {}): Record<string, unknown
     iv: twelveZeroB64,
     aad: "eyJleHAiOjEsImlkIjoibiIsInJlYWRzIjoxfQ",
     isPasswordProtected: false,
+    ...over,
+  };
+}
+
+function b64Json(value: Record<string, unknown>): string {
+  return btoa(JSON.stringify(value));
+}
+
+function validAttachment(over: Record<string, unknown> = {}, noteId = attachmentNoteId): Record<string, unknown> {
+  const chunkSize = 4 * 1024 * 1024;
+  const totalChunks = 2;
+  const streamAad = b64Json({
+    v: 1,
+    purpose: "privatenote-attachment-stream",
+    alg: attachmentAlg,
+    noteId,
+    chunkSize,
+    totalChunks,
+  });
+  return {
+    v: 2,
+    alg: attachmentAlg,
+    encryptedSize: 8_000_034,
+    chunkSize,
+    totalChunks,
+    header: btoa("secretstream-header"),
+    aad: streamAad,
+    encryptedMetadata: {
+      alg: "AES-GCM",
+      iv: twelveZeroB64,
+      aad: b64Json({
+        v: 1,
+        purpose: "privatenote-attachment-metadata",
+        alg: attachmentAlg,
+        noteId,
+        totalChunks,
+      }),
+      ciphertext: btoa("encrypted-name-type-size"),
+    },
+    wrappedKey: {
+      alg: "AES-GCM",
+      iv: twelveZeroB64,
+      aad: b64Json({
+        v: 1,
+        purpose: "privatenote-attachment-key-wrap",
+        alg: attachmentAlg,
+        noteId,
+        streamAad,
+      }),
+      encryptedKey: btoa("wrapped-file-key"),
+    },
+    chunks: [
+      { index: 0, encryptedSize: 4_194_321 },
+      { index: 1, encryptedSize: 3_805_713 },
+    ],
     ...over,
   };
 }
@@ -121,31 +178,7 @@ describe("parseStoredNoteCiphertextForReveal", () => {
   it("accepts v2 chunked attachment metadata with encrypted file metadata", () => {
     const raw = JSON.stringify(
       basePayload({
-        attachment: {
-          v: 2,
-          alg: "libsodium-secretstream-xchacha20poly1305",
-          encryptedSize: 8_000_034,
-          chunkSize: 4 * 1024 * 1024,
-          totalChunks: 2,
-          header: btoa("secretstream-header"),
-          aad: btoa("stream-aad"),
-          encryptedMetadata: {
-            alg: "AES-GCM",
-            iv: twelveZeroB64,
-            aad: btoa("metadata-aad"),
-            ciphertext: btoa("encrypted-name-type-size"),
-          },
-          wrappedKey: {
-            alg: "AES-GCM",
-            iv: twelveZeroB64,
-            aad: btoa("wrap-aad"),
-            encryptedKey: btoa("wrapped-file-key"),
-          },
-          chunks: [
-            { index: 0, encryptedSize: 4_194_321 },
-            { index: 1, encryptedSize: 3_805_713 },
-          ],
-        },
+        attachment: validAttachment(),
       }),
     );
     const p = parseStoredNoteCiphertextForReveal(raw);
@@ -156,34 +189,54 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.ok(p!.attachment?.v === 2 ? p!.attachment.encryptedMetadata : null);
   });
 
+  it("accepts v2 encrypted attachment metadata when AAD matches the note id", () => {
+    const raw = JSON.stringify(basePayload({ attachment: validAttachment() }));
+    const p = parseStoredNoteCiphertextForReveal(raw, attachmentNoteId);
+    assert.ok(p);
+    assert.equal(p!.attachment?.v, 2);
+  });
+
+  it("rejects v2 encrypted attachment metadata when AAD belongs to another note id", () => {
+    const raw = JSON.stringify(basePayload({ attachment: validAttachment() }));
+    assert.equal(parseStoredNoteCiphertextForReveal(raw, "00000000-0000-4000-8000-000000000002"), null);
+  });
+
+  it("rejects v2 encrypted attachment metadata when wrapped-key AAD points at another stream", () => {
+    const attachment = validAttachment({
+      wrappedKey: {
+        alg: "AES-GCM",
+        iv: twelveZeroB64,
+        aad: b64Json({
+          v: 1,
+          purpose: "privatenote-attachment-key-wrap",
+          alg: attachmentAlg,
+          noteId: attachmentNoteId,
+          streamAad: btoa("different-stream-aad"),
+        }),
+        encryptedKey: btoa("wrapped-file-key"),
+      },
+    });
+    const raw = JSON.stringify(basePayload({ attachment }));
+    assert.equal(parseStoredNoteCiphertextForReveal(raw, attachmentNoteId), null);
+  });
+
   it("rejects v2 encrypted attachment metadata ciphertext over the wire cap", () => {
     const raw = JSON.stringify(
       basePayload({
-        attachment: {
-          v: 2,
-          alg: "libsodium-secretstream-xchacha20poly1305",
-          encryptedSize: 8_000_034,
-          chunkSize: 4 * 1024 * 1024,
-          totalChunks: 2,
-          header: btoa("secretstream-header"),
-          aad: btoa("stream-aad"),
+        attachment: validAttachment({
           encryptedMetadata: {
             alg: "AES-GCM",
             iv: twelveZeroB64,
-            aad: btoa("metadata-aad"),
+            aad: b64Json({
+              v: 1,
+              purpose: "privatenote-attachment-metadata",
+              alg: attachmentAlg,
+              noteId: attachmentNoteId,
+              totalChunks: 2,
+            }),
             ciphertext: "a".repeat(NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS + 1),
           },
-          wrappedKey: {
-            alg: "AES-GCM",
-            iv: twelveZeroB64,
-            aad: btoa("wrap-aad"),
-            encryptedKey: btoa("wrapped-file-key"),
-          },
-          chunks: [
-            { index: 0, encryptedSize: 4_194_321 },
-            { index: 1, encryptedSize: 3_805_713 },
-          ],
-        },
+        }),
       }),
     );
     assert.equal(parseStoredNoteCiphertextForReveal(raw), null);

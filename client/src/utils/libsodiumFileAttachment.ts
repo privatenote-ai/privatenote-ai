@@ -262,18 +262,20 @@ export async function encryptFileToSodiumChunks(
       encryptedSize += encryptedBytes.byteLength;
       contentHasher.update(encryptedBytes);
       chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
-      console.info(
-        "[FILE_UPLOAD] chunk encrypted locally",
-        JSON.stringify({
-          noteId,
-          chunkIndex: index,
-          totalChunks,
-          plaintextBytes: plaintext.byteLength,
-          encryptedBytes: encryptedBytes.byteLength,
-          bufferBytes: encryptedBytes.buffer.byteLength,
-          byteOffset: encryptedBytes.byteOffset,
-        }),
-      );
+      if (import.meta.env?.DEV) {
+        console.info(
+          "[FILE_UPLOAD] chunk encrypted locally",
+          JSON.stringify({
+            noteId,
+            chunkIndex: index,
+            totalChunks,
+            plaintextBytes: plaintext.byteLength,
+            encryptedBytes: encryptedBytes.byteLength,
+            bufferBytes: encryptedBytes.buffer.byteLength,
+            byteOffset: encryptedBytes.byteOffset,
+          }),
+        );
+      }
       await onChunk({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
     }
   } finally {

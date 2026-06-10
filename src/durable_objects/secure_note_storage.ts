@@ -3,7 +3,6 @@ import { decodeNoteAadBase64, parseNoteAadPlaintext } from "@shared/noteAad";
 import { tryParseKdfParamsV2Object, type KdfParamsV2 } from "@shared/kdfParamsV2";
 import { noteMetaEligibility, type NoteMetaRow } from "@shared/noteMetaEligibility";
 import {
-  validateAttachmentMetadataCiphertextWire,
   passwordWireFieldsPresent,
   validateNoteAesGcmIvWire,
   validateNoteCiphertextWire,
@@ -18,10 +17,10 @@ import {
 import { isValidNoteId } from "@shared/noteId";
 import {
   NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
+  parseStoredNoteAttachmentForNote,
   parseStoredNoteCiphertextForReveal,
   STORED_NOTE_CIPHER_ALG,
   STORED_NOTE_PAYLOAD_VERSION,
-  type StoredNoteAttachment,
   type ParsedStoredNoteCiphertext,
 } from "@shared/storedNotePayload";
 
@@ -29,101 +28,6 @@ type StoredCiphertext = ParsedStoredNoteCiphertext;
 
 const MIN_EXPIRY_SECONDS = 60;
 const MAX_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
-
-function parseAttachmentForCreate(raw: unknown): StoredNoteAttachment | null {
-  if (raw == null) return null;
-  if (typeof raw !== "object" || Array.isArray(raw)) return null;
-  const o = raw as Record<string, unknown>;
-  if (o.v !== 2) return null;
-  if (
-    typeof o.encryptedSize !== "number" ||
-    !Number.isInteger(o.encryptedSize) ||
-    o.encryptedSize <= 0
-  ) {
-    return null;
-  }
-  if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
-  if (o.name != null || o.type != null || o.size != null) return null;
-  let encryptedMetadata: StoredNoteAttachment["encryptedMetadata"];
-  if (
-    typeof o.encryptedMetadata !== "object" ||
-    o.encryptedMetadata === null ||
-    Array.isArray(o.encryptedMetadata)
-  ) {
-    return null;
-  }
-  const metadata = o.encryptedMetadata as Record<string, unknown>;
-  if (metadata.alg !== "AES-GCM") return null;
-  const metadataIvCheck = validateNoteAesGcmIvWire(metadata.iv, "attachment.encryptedMetadata.iv");
-  if (!metadataIvCheck.ok) return null;
-  if (typeof metadata.aad !== "string" || !metadata.aad.trim()) return null;
-  const metadataCiphertextCheck = validateAttachmentMetadataCiphertextWire(metadata.ciphertext);
-  if (!metadataCiphertextCheck.ok) return null;
-  encryptedMetadata = {
-    alg: "AES-GCM",
-    iv: (metadata.iv as string).trim(),
-    aad: metadata.aad.trim(),
-    ciphertext: (metadata.ciphertext as string).trim(),
-  };
-  if (typeof o.chunkSize !== "number" || !Number.isInteger(o.chunkSize) || o.chunkSize <= 0) {
-    return null;
-  }
-  if (
-    typeof o.totalChunks !== "number" ||
-    !Number.isInteger(o.totalChunks) ||
-    o.totalChunks <= 0 ||
-    o.totalChunks > 1000
-  ) {
-    return null;
-  }
-  if (typeof o.header !== "string" || !o.header.trim()) return null;
-  if (typeof o.aad !== "string" || !o.aad.trim()) return null;
-  if (typeof o.wrappedKey !== "object" || o.wrappedKey === null || Array.isArray(o.wrappedKey)) {
-    return null;
-  }
-  const wrappedKey = o.wrappedKey as Record<string, unknown>;
-  if (wrappedKey.alg !== "AES-GCM") return null;
-  const wrapIvCheck = validateNoteAesGcmIvWire(wrappedKey.iv, "attachment.wrappedKey.iv");
-  if (!wrapIvCheck.ok) return null;
-  if (typeof wrappedKey.aad !== "string" || !wrappedKey.aad.trim()) return null;
-  if (typeof wrappedKey.encryptedKey !== "string" || !wrappedKey.encryptedKey.trim()) return null;
-  if (!Array.isArray(o.chunks) || o.chunks.length !== o.totalChunks) return null;
-  const chunks: Array<{ index: number; encryptedSize: number }> = [];
-  let encryptedSizeTotal = 0;
-  for (let index = 0; index < o.chunks.length; index += 1) {
-    const chunkRaw = o.chunks[index];
-    if (typeof chunkRaw !== "object" || chunkRaw === null || Array.isArray(chunkRaw)) return null;
-    const chunk = chunkRaw as Record<string, unknown>;
-    if (chunk.index !== index) return null;
-    if (
-      typeof chunk.encryptedSize !== "number" ||
-      !Number.isInteger(chunk.encryptedSize) ||
-      chunk.encryptedSize <= 0
-    ) {
-      return null;
-    }
-    encryptedSizeTotal += chunk.encryptedSize;
-    chunks.push({ index, encryptedSize: chunk.encryptedSize });
-  }
-  if (encryptedSizeTotal !== o.encryptedSize) return null;
-  return {
-    v: 2,
-    alg: "libsodium-secretstream-xchacha20poly1305",
-    encryptedSize: o.encryptedSize,
-    chunkSize: o.chunkSize,
-    totalChunks: o.totalChunks,
-    header: o.header.trim(),
-    aad: o.aad.trim(),
-    encryptedMetadata,
-    wrappedKey: {
-      alg: "AES-GCM",
-      iv: (wrappedKey.iv as string).trim(),
-      aad: wrappedKey.aad.trim(),
-      encryptedKey: wrappedKey.encryptedKey.trim(),
-    },
-    chunks,
-  };
-}
 
 function isUniqueConstraintError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -480,7 +384,7 @@ export class SecureNoteStorageSql {
 
     const contentTrimmed = content.trim();
     const ivTrimmed = iv.trim();
-    const attachment = parseAttachmentForCreate(attachmentRaw);
+    const attachment = parseStoredNoteAttachmentForNote(attachmentRaw, noteId);
     if (attachmentRaw != null && !attachment) {
       return new Response(JSON.stringify({ error: "Invalid attachment metadata" }), {
         status: 400,
@@ -619,7 +523,7 @@ export class SecureNoteStorageSql {
           return { ok: false };
         }
 
-        const ciphertext = parseStoredNoteCiphertextForReveal(raw);
+        const ciphertext = parseStoredNoteCiphertextForReveal(raw, noteId);
         if (!ciphertext) {
           this.purgeNoteRowsSync(noteId);
           return { ok: false };

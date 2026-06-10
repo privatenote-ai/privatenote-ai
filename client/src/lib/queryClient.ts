@@ -248,8 +248,36 @@ export async function apiRequest<T = any>(
   }
 }
 
+function redactFileUploadDetailsForProduction(details: Record<string, unknown>): Record<string, unknown> {
+  const allowedKeys = [
+    "kind",
+    "status",
+    "message",
+    "cause",
+    "online",
+    "elapsedMs",
+    "uploadRoute",
+    "method",
+    "attempt",
+    "attemptCount",
+    "retryRound",
+    "delayMs",
+  ] as const;
+  const redacted: Record<string, unknown> = {};
+  for (const key of allowedKeys) {
+    if (details[key] !== undefined) {
+      redacted[key] = details[key];
+    }
+  }
+  return redacted;
+}
+
 export function logFileUpload(level: "info" | "warn" | "error", message: string, details: Record<string, unknown>): void {
-  const payload = JSON.stringify(details);
+  const isDev = Boolean(import.meta.env?.DEV);
+  if (level === "info" && !isDev) {
+    return;
+  }
+  const payload = JSON.stringify(isDev ? details : redactFileUploadDetailsForProduction(details));
   if (level === "error") {
     console.error(`[FILE_UPLOAD] ${message}`, payload);
     return;

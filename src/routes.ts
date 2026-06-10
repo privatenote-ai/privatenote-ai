@@ -127,6 +127,7 @@ const TURNSTILE_CHALLENGE = {
 
 const NOTE_RESERVATION = {
   TTL_SECONDS: 30 * 60,
+  ATTACHMENT_TTL_SECONDS: 15 * 60,
   KEY_PREFIX: "note_reserve:",
 };
 
@@ -6951,8 +6952,11 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
+  const expiresIn = record.fileStorageUserId
+    ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
+    : NOTE_RESERVATION.TTL_SECONDS;
   await env.NOTES_KV.put(getReservationKey(noteId), JSON.stringify(record), {
-    expirationTtl: NOTE_RESERVATION.TTL_SECONDS,
+    expirationTtl: expiresIn,
   });
 }
 
@@ -7460,9 +7464,7 @@ async function issueNoteFileAccessToken(
 function getNoteFileAccessTokenFromRequest(request: Request): string | null {
   const header = request.headers.get("x-file-access-token");
   if (header?.trim()) return header.trim();
-  const url = new URL(request.url);
-  const queryToken = url.searchParams.get("fileAccessToken");
-  return queryToken?.trim() || null;
+  return null;
 }
 
 function readUploadInteger(request: Request, headerName: string, queryName: string): number {
@@ -7488,11 +7490,14 @@ async function reserveNoteId(
   fileAccount: { userId: string; isPremium: boolean } | null,
   attachmentBinding: NoteReserveAttachmentBinding | null,
   clientIp?: string,
-): Promise<{ id: string; uploadToken: string }> {
+): Promise<{ id: string; uploadToken: string; expiresIn: number }> {
   const id = crypto.randomUUID();
   const uploadToken = randomUrlToken(32);
   const uploadTokenHash = await sha256Hex(uploadToken);
   const normalizedClientIp = clientIp?.trim() || undefined;
+  const expiresIn = attachmentBinding
+    ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
+    : NOTE_RESERVATION.TTL_SECONDS;
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
@@ -7505,9 +7510,9 @@ async function reserveNoteId(
       premiumUserId: attachmentBinding && fileAccount?.isPremium ? fileAccount.userId : null,
       ...(attachmentBinding ?? {}),
     } satisfies NoteReservationRecord),
-    { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
+    { expirationTtl: expiresIn },
   );
-  return { id, uploadToken };
+  return { id, uploadToken, expiresIn };
 }
 
 async function getNoteReservationRecord(
@@ -7942,7 +7947,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           request,
         );
       }
-      const { id, uploadToken } = await reserveNoteId(
+      const { id, uploadToken, expiresIn } = await reserveNoteId(
         env,
         clientId,
         fileAccount,
@@ -7950,7 +7955,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         readClientIpFromRequestHeaders(request.headers) ?? undefined,
       );
       return jsonResponse(
-        { id, uploadToken, expiresIn: NOTE_RESERVATION.TTL_SECONDS },
+        { id, uploadToken, expiresIn },
         200,
         request,
       );

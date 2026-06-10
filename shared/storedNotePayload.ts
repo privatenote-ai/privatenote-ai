@@ -6,6 +6,7 @@ import {
   validateNoteEncryptedKeyWire,
   validateNoteKdfSaltWire,
 } from "./noteCryptoWire.ts";
+import { decodeBase64UrlToBytes } from "./urlFragmentKey.ts";
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   isNoteFileAccessWindowSeconds,
@@ -45,6 +46,8 @@ export interface StoredNoteAttachmentV2 {
 
 export type StoredNoteAttachment = StoredNoteAttachmentV2;
 
+const ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
+
 export interface ParsedStoredNoteCiphertext {
   v: number;
   content: string;
@@ -62,7 +65,65 @@ export interface ParsedStoredNoteCiphertext {
   fileAccessWindowSeconds?: number;
 }
 
-function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
+function decodeJsonAad(value: string): Record<string, unknown> | null {
+  const bytes = decodeBase64UrlToBytes(value);
+  if (!bytes) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function attachmentAadMatches(
+  attachment: {
+    aad: string;
+    chunkSize: number;
+    totalChunks: number;
+    encryptedMetadata: { aad: string };
+    wrappedKey: { aad: string };
+  },
+  noteId?: string,
+): boolean {
+  if (!noteId) return true;
+  const streamAad = decodeJsonAad(attachment.aad);
+  const metadataAad = decodeJsonAad(attachment.encryptedMetadata.aad);
+  const wrappedKeyAad = decodeJsonAad(attachment.wrappedKey.aad);
+  if (!streamAad || !metadataAad || !wrappedKeyAad) return false;
+  if (
+    streamAad.v !== 1 ||
+    streamAad.purpose !== "privatenote-attachment-stream" ||
+    streamAad.alg !== ATTACHMENT_ALG ||
+    streamAad.noteId !== noteId ||
+    streamAad.chunkSize !== attachment.chunkSize ||
+    streamAad.totalChunks !== attachment.totalChunks
+  ) {
+    return false;
+  }
+  if (
+    metadataAad.v !== 1 ||
+    metadataAad.purpose !== "privatenote-attachment-metadata" ||
+    metadataAad.alg !== ATTACHMENT_ALG ||
+    metadataAad.noteId !== noteId ||
+    metadataAad.totalChunks !== attachment.totalChunks
+  ) {
+    return false;
+  }
+  return (
+    wrappedKeyAad.v === 1 &&
+    wrappedKeyAad.purpose === "privatenote-attachment-key-wrap" &&
+    wrappedKeyAad.alg === ATTACHMENT_ALG &&
+    wrappedKeyAad.noteId === noteId &&
+    wrappedKeyAad.streamAad === attachment.aad
+  );
+}
+
+export function parseStoredNoteAttachmentForNote(
+  raw: unknown,
+  noteId?: string,
+): StoredNoteAttachment | null {
   if (raw == null) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
@@ -74,7 +135,7 @@ function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
   ) {
     return null;
   }
-  if (o.alg !== "libsodium-secretstream-xchacha20poly1305") return null;
+  if (o.alg !== ATTACHMENT_ALG) return null;
   if (o.name != null || o.type != null || o.size != null) return null;
   let encryptedMetadata: StoredNoteAttachmentV2["encryptedMetadata"];
   if (
@@ -138,9 +199,9 @@ function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
     chunks.push({ index, encryptedSize: chunk.encryptedSize });
   }
   if (encryptedSizeTotal !== o.encryptedSize) return null;
-  return {
+  const parsedAttachment = {
     v: 2,
-    alg: "libsodium-secretstream-xchacha20poly1305",
+    alg: ATTACHMENT_ALG,
     encryptedSize: o.encryptedSize,
     chunkSize: o.chunkSize,
     totalChunks: o.totalChunks,
@@ -154,14 +215,18 @@ function parseStoredNoteAttachment(raw: unknown): StoredNoteAttachment | null {
       encryptedKey: wrappedKey.encryptedKey.trim(),
     },
     chunks,
-  };
+  } satisfies StoredNoteAttachment;
+  return attachmentAadMatches(parsedAttachment, noteId) ? parsedAttachment : null;
 }
 
 /**
  * Parse ciphertext JSON as stored by the Durable Object. Rejects unknown versions/algorithms
  * and malformed wire fields so reveal can purge inconsistent rows safely.
  */
-export function parseStoredNoteCiphertextForReveal(raw: string): ParsedStoredNoteCiphertext | null {
+export function parseStoredNoteCiphertextForReveal(
+  raw: string,
+  noteId?: string,
+): ParsedStoredNoteCiphertext | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -251,7 +316,7 @@ export function parseStoredNoteCiphertextForReveal(raw: string): ParsedStoredNot
   if (keyDerivation) {
     ciphertext.keyDerivation = keyDerivation;
   }
-  const attachment = parseStoredNoteAttachment(o.attachment);
+  const attachment = parseStoredNoteAttachmentForNote(o.attachment, noteId);
   if (o.attachment != null && !attachment) return null;
   if (attachment) {
     ciphertext.attachment = attachment;
