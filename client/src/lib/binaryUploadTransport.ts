@@ -73,6 +73,17 @@ function xhrBinaryRequest(
   });
 }
 
+function isCrossOriginRequestUrl(url: string): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return new URL(url, window.location.href).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 export async function sendBinaryHttpRequest(
   url: string,
   method: string,
@@ -81,7 +92,8 @@ export async function sendBinaryHttpRequest(
   credentials: RequestCredentials,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
-  if (isSafariBrowser() && method === "PUT") {
+  // Safari XHR is only needed for cross-origin PUT; same-origin fetch handles large bodies reliably.
+  if (isSafariBrowser() && method === "PUT" && isCrossOriginRequestUrl(url)) {
     return xhrBinaryRequest(url, method, body, safeHeaders, credentials);
   }
   return fetch(url, {
