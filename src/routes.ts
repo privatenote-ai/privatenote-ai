@@ -44,8 +44,13 @@ import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import {
   type NoteReservationRecord,
+  type NoteReserveAttachmentBinding,
+  isValidAttachmentContentHash,
+  parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
+  uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
 import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened } from "./sentNotesService";
@@ -79,6 +84,12 @@ const RATE_LIMIT_REVEAL = {
   MAX_REQUESTS: 12,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:reveal:",
+};
+
+const RATE_LIMIT_FILE_CHUNK_PUT = {
+  MAX_REQUESTS: 120,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:put:file-chunk:",
 };
 
 const AI_VERIFICATION = {
@@ -6929,11 +6940,39 @@ async function sha256Hex(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function sha256HexBytes(bytes: Uint8Array): string {
+  return [...sha256(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
+  await env.NOTES_KV.put(getReservationKey(noteId), JSON.stringify(record), {
+    expirationTtl: NOTE_RESERVATION.TTL_SECONDS,
+  });
+}
+
+async function computeUploadedAttachmentContentHash(
+  env: Env,
+  noteId: string,
+  totalChunks: number,
+): Promise<string | null> {
+  if (!env.NOTE_FILES_R2) return null;
+  const hasher = sha256.create();
+  for (let index = 0; index < totalChunks; index += 1) {
+    const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(noteId, index));
+    if (!object) return null;
+    hasher.update(new Uint8Array(await object.arrayBuffer()));
+  }
+  return sha256HexBytes(hasher.digest());
+}
+
 async function authorizeNoteFileChunkUpload(
   env: Env,
   request: Request,
   noteId: string,
-): Promise<{ ok: true; premiumUserId: string | null } | { ok: false; response: Response }> {
+): Promise<
+  | { ok: true; premiumUserId: string | null; record: NoteReservationRecord }
+  | { ok: false; response: Response }
+> {
   const raw = await env.NOTES_KV.get(getReservationKey(noteId));
   if (!raw) {
     return {
@@ -6950,22 +6989,22 @@ async function authorizeNoteFileChunkUpload(
   }
 
   const bearer = parseNoteUploadBearerToken(request.headers.get("Authorization"));
-  if (record.uploadTokenHash) {
-    if (!bearer) {
-      return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
-    }
-    const tokenHash = await sha256Hex(bearer);
-    if (tokenHash !== record.uploadTokenHash) {
-      return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
-    }
-    return { ok: true, premiumUserId: record.premiumUserId ?? null };
-  }
-
   if (!bearer) {
-    return { ok: true, premiumUserId: null };
+    return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
+  }
+  if (!record.uploadTokenHash) {
+    return {
+      ok: false,
+      response: jsonResponse({ error: "Reservation invalid or expired" }, 403, request),
+    };
   }
 
-  return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+  const tokenHash = await sha256Hex(bearer);
+  if (tokenHash !== record.uploadTokenHash) {
+    return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+  }
+
+  return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
 }
 
 function noteFileChunkObjectKey(id: string, chunkIndex: number): string {
@@ -7422,6 +7461,7 @@ async function reserveNoteId(
   env: Env,
   clientId: string,
   premiumUserId: string | null,
+  attachmentBinding: NoteReserveAttachmentBinding | null,
 ): Promise<{ id: string; uploadToken: string }> {
   const id = crypto.randomUUID();
   const uploadToken = randomUrlToken(32);
@@ -7434,10 +7474,24 @@ async function reserveNoteId(
       createdAt: new Date().toISOString(),
       uploadTokenHash,
       premiumUserId,
+      ...(attachmentBinding ?? {}),
     } satisfies NoteReservationRecord),
     { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
   );
   return { id, uploadToken };
+}
+
+async function getNoteReservationRecord(
+  env: Env,
+  noteId: string,
+): Promise<NoteReservationRecord | null> {
+  const raw = await env.NOTES_KV.get(getReservationKey(noteId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as NoteReservationRecord;
+  } catch {
+    return null;
+  }
 }
 
 async function hasReservation(env: Env, id: string): Promise<boolean> {
@@ -7840,7 +7894,19 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     try {
       const clientId = getClientIdentifier(request);
       const premiumUserId = await getAuthenticatedPremiumUserIdForNoteFiles(env, request);
-      const { id, uploadToken } = await reserveNoteId(env, clientId, premiumUserId);
+      let reserveBody: unknown = null;
+      try {
+        reserveBody = await request.json();
+      } catch {
+        reserveBody = null;
+      }
+      const attachmentBinding = parseNoteReserveAttachmentBinding(reserveBody);
+      const { id, uploadToken } = await reserveNoteId(
+        env,
+        clientId,
+        premiumUserId,
+        attachmentBinding,
+      );
       return jsonResponse(
         { id, uploadToken, expiresIn: NOTE_RESERVATION.TTL_SECONDS },
         200,
@@ -7871,9 +7937,27 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return uploadAuth.response;
     }
 
-    const premiumUserId =
-      uploadAuth.premiumUserId ?? (await getAuthenticatedPremiumUserIdForNoteFiles(env, request));
+    const clientId = getClientIdentifier(request);
+    const chunkRateLimit = await checkRateLimit(
+      env,
+      `${clientId}:file-chunk:${id}`,
+      RATE_LIMIT_FILE_CHUNK_PUT,
+    );
+    if (!chunkRateLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "Rate limit exceeded",
+          message: `Too many attachment chunk uploads. Please try again in ${chunkRateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: chunkRateLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    const premiumUserId = uploadAuth.premiumUserId;
     const isPremium = premiumUserId !== null;
+    const reservation = uploadAuth.record;
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
     const plaintextSize = Number(request.headers.get("x-file-plaintext-size") ?? NaN);
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
@@ -7889,10 +7973,22 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
+    if (
+      reservation.attachmentPlaintextSize != null &&
+      plaintextSize !== reservation.attachmentPlaintextSize
+    ) {
+      return jsonResponse({ error: "Attachment plaintext size mismatch" }, 400, request);
+    }
 
     const encryptedTotalSize = Number(request.headers.get("x-file-encrypted-size") ?? NaN);
     if (!Number.isInteger(encryptedTotalSize) || encryptedTotalSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-encrypted-size" }, 400, request);
+    }
+    if (
+      reservation.attachmentEncryptedSize != null &&
+      encryptedTotalSize !== reservation.attachmentEncryptedSize
+    ) {
+      return jsonResponse({ error: "Attachment encrypted size mismatch" }, 400, request);
     }
     const encryptedTotalLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES * 1000 + 24;
     if (encryptedTotalSize > encryptedTotalLimit) {
@@ -7924,13 +8020,43 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
     }
 
+    const chunkSha256Hex = sha256HexBytes(new Uint8Array(encryptedBytes));
+    const chunkKey = uploadedChunkHashKey(chunkIndex);
+    const existingHash = reservation.uploadedChunkHashes?.[chunkKey];
+    if (existingHash) {
+      if (existingHash !== chunkSha256Hex) {
+        return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+      }
+      const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
+      if (
+        existingObject &&
+        existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
+        Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
+      ) {
+        return jsonResponse(
+          { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
+          200,
+          request,
+        );
+      }
+    }
+
     await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
       httpMetadata: { contentType: "application/octet-stream" },
       customMetadata: {
         encryptedSize: String(encryptedTotalSize),
         chunkIndex: String(chunkIndex),
         chunkEncryptedSize: String(encryptedBytes.byteLength),
+        chunkSha256: chunkSha256Hex,
         createdAt: new Date().toISOString(),
+      },
+    });
+
+    await persistNoteReservation(env, id, {
+      ...reservation,
+      uploadedChunkHashes: {
+        ...(reservation.uploadedChunkHashes ?? {}),
+        [chunkKey]: chunkSha256Hex,
       },
     });
 
@@ -8052,6 +8178,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
+    if (requestedId && requestBody?.attachment != null) {
+      const reservation = await getNoteReservationRecord(env, requestedId);
+      if (!reservation?.attachmentEncryptedSize || reservation.attachmentPlaintextSize == null) {
+        return jsonResponse({ error: "Attachment upload was not initialized" }, 400, request);
+      }
+      const attachmentEncryptedSize = Number(requestBody.attachment.encryptedSize);
+      if (
+        !Number.isInteger(attachmentEncryptedSize) ||
+        attachmentEncryptedSize <= 0 ||
+        attachmentEncryptedSize > reservation.attachmentEncryptedSize
+      ) {
+        return jsonResponse({ error: "Attachment encrypted size is invalid" }, 400, request);
+      }
+    }
+
     const expiryForCreate = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
       isPremium: noteCreationIsPremium,
     });
@@ -8095,6 +8236,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
       }
       let uploadedEncryptedSize = 0;
+      const reservation = requestedId ? await getNoteReservationRecord(env, requestedId) : null;
       for (let index = 0; index < chunks.length; index += 1) {
         const chunk = chunks[index];
         if (
@@ -8106,6 +8248,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "invalid attachment chunk metadata");
           return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
         }
+        const expectedChunkHash = reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)];
+        if (!expectedChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from reservation");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
         const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
         if (!uploadedChunk) {
           await cleanupNoteFileChunks(env, id, "missing attachment upload");
@@ -8116,11 +8263,25 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }
+        if (uploadedChunk.customMetadata?.chunkSha256 !== expectedChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash mismatch");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
         uploadedEncryptedSize += chunk.encryptedSize;
       }
       if (uploadedEncryptedSize !== requestBody.attachment.encryptedSize) {
         await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
         return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+      }
+      const attachmentContentHash = requestBody.attachmentContentHash;
+      if (!isValidAttachmentContentHash(attachmentContentHash)) {
+        await cleanupNoteFileChunks(env, id, "missing attachment content hash");
+        return jsonResponse({ error: "Attachment content hash is required" }, 400, request);
+      }
+      const computedContentHash = await computeUploadedAttachmentContentHash(env, id, totalChunks);
+      if (!computedContentHash || computedContentHash !== attachmentContentHash.toLowerCase()) {
+        await cleanupNoteFileChunks(env, id, "attachment content hash mismatch");
+        return jsonResponse({ error: "Attachment content hash mismatch" }, 400, request);
       }
     }
 

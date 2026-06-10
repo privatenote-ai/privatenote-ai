@@ -1,4 +1,5 @@
 import sodium from "libsodium-wrappers";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
 
 export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 2 * 1024 * 1024;
@@ -47,6 +48,11 @@ export interface SodiumAttachmentMetadata {
     encryptedKey: string;
   };
   chunks: SodiumAttachmentMetadataChunk[];
+  encryptedContentSha256: string;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -235,6 +241,7 @@ export async function encryptFileToSodiumChunks(
   const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
   const chunks: SodiumAttachmentMetadataChunk[] = [];
   let encryptedSize = 0;
+  const contentHasher = sha256.create();
 
   try {
     for (let index = 0; index < totalChunks; index += 1) {
@@ -252,6 +259,7 @@ export async function encryptFileToSodiumChunks(
         tag,
       );
       encryptedSize += encryptedBytes.byteLength;
+      contentHasher.update(encryptedBytes);
       chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
       console.info(
         "[FILE_UPLOAD] chunk encrypted locally",
@@ -282,6 +290,7 @@ export async function encryptFileToSodiumChunks(
     encryptedMetadata,
     wrappedKey,
     chunks,
+    encryptedContentSha256: bytesToHex(contentHasher.digest()),
   };
 }
 

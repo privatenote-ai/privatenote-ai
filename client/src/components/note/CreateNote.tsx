@@ -826,10 +826,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         return arrayBufferToBase64(copy.buffer);
       };
 
+      const { SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES } = await import("@/utils/libsodiumFileAttachment");
+      const attachmentReserveBinding = selectedFile
+        ? {
+            attachmentPlaintextSize: selectedFile.size,
+            attachmentEncryptedSize:
+              selectedFile.size +
+              Math.max(1, Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES)) * 17,
+          }
+        : undefined;
+
       const { id: reservedId, uploadToken } = await apiRequest<{
         id: string;
         uploadToken: string;
-      }>("/api/notes/reserve", "POST");
+      }>("/api/notes/reserve", "POST", attachmentReserveBinding);
       const expirySeconds = noteExpiryPresetIdToSeconds(expiryValue);
 
       let aad: string;
@@ -855,6 +865,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           encryptedKey: string;
         };
         chunks: Array<{ index: number; encryptedSize: number }>;
+        encryptedContentSha256: string;
       } | null = null;
 
       const aadBinding = {
@@ -917,10 +928,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           throw new Error("Upload token missing from note reservation.");
         }
         try {
-          const {
-            encryptFileToSodiumChunks,
-            SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
-          } = await import("@/utils/libsodiumFileAttachment");
+          const { encryptFileToSodiumChunks } = await import("@/utils/libsodiumFileAttachment");
           const totalChunks = Math.max(
             1,
             Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
@@ -996,7 +1004,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         isPasswordProtected,
         keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         aad,
-        ...(attachment ? { attachment } : {}),
+        ...(attachment
+          ? { attachment, attachmentContentHash: attachment.encryptedContentSha256 }
+          : {}),
         _hp: honeypotValue,
         ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),

@@ -12,6 +12,44 @@ export interface NoteReservationRecord {
   createdAt: string;
   uploadTokenHash: string;
   premiumUserId?: string | null;
+  attachmentPlaintextSize?: number;
+  attachmentEncryptedSize?: number;
+  /** chunkIndex (string) → SHA-256 hex of uploaded ciphertext bytes */
+  uploadedChunkHashes?: Record<string, string>;
+}
+
+export interface NoteReserveAttachmentBinding {
+  attachmentPlaintextSize: number;
+  attachmentEncryptedSize: number;
+}
+
+const ATTACHMENT_CONTENT_HASH_PATTERN = /^[a-f0-9]{64}$/i;
+
+export function isValidAttachmentContentHash(value: unknown): value is string {
+  return typeof value === "string" && ATTACHMENT_CONTENT_HASH_PATTERN.test(value);
+}
+
+export function uploadedChunkHashKey(chunkIndex: number): string {
+  return String(chunkIndex);
+}
+
+export function parseNoteReserveAttachmentBinding(body: unknown): NoteReserveAttachmentBinding | null {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return null;
+  }
+  const record = body as Record<string, unknown>;
+  const attachmentPlaintextSize = record.attachmentPlaintextSize;
+  const attachmentEncryptedSize = record.attachmentEncryptedSize;
+  if (
+    !Number.isInteger(attachmentPlaintextSize) ||
+    !Number.isInteger(attachmentEncryptedSize) ||
+    attachmentPlaintextSize < 0 ||
+    attachmentEncryptedSize <= 0 ||
+    attachmentEncryptedSize < attachmentPlaintextSize
+  ) {
+    return null;
+  }
+  return { attachmentPlaintextSize, attachmentEncryptedSize };
 }
 
 export function parseNoteUploadBearerToken(authHeader: string | null | undefined): string | null {

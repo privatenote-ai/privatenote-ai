@@ -57,6 +57,7 @@ describe("libsodium attachment chunk encryption", () => {
 
     assert.equal(metadata.totalChunks, 2);
     assert.ok(metadata.encryptedMetadata);
+    assert.match(metadata.encryptedContentSha256, /^[a-f0-9]{64}$/);
     assert.equal(encryptedChunks.size, 2);
     assert.deepEqual(await decryptSodiumAttachmentMetadata(metadata, metadataKey, NOTE_ID), {
       name: "chunked.bin",
