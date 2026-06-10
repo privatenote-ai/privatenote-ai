@@ -63,3 +63,14 @@ export function parseNoteUploadBearerToken(authHeader: string | null | undefined
 export function noteUploadAuthorizationHeader(uploadToken: string): string {
   return `${NOTE_UPLOAD_BEARER_PREFIX}${uploadToken}`;
 }
+
+export function noteReservationClientMatches(
+  record: Pick<NoteReservationRecord, "clientId">,
+  requestClientId: string,
+): boolean {
+  return (
+    typeof record.clientId === "string" &&
+    record.clientId.length > 0 &&
+    record.clientId === requestClientId
+  );
+}

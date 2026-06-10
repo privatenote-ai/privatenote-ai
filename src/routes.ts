@@ -48,6 +48,7 @@ import {
   isValidAttachmentContentHash,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
+  noteReservationClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -7002,6 +7003,10 @@ async function authorizeNoteFileChunkUpload(
   const tokenHash = await sha256Hex(bearer);
   if (tokenHash !== record.uploadTokenHash) {
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+  }
+
+  if (!noteReservationClientMatches(record, getClientIdentifier(request))) {
+    return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
   }
 
   return { ok: true, premiumUserId: record.premiumUserId ?? null, record };

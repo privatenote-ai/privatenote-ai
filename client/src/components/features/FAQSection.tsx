@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { applyCspNonceToScript } from '@/lib/cspNonce';
 import { Link } from 'wouter';
 import {
   Accordion,
@@ -59,6 +60,7 @@ export const FAQSection: React.FC = () => {
       script = document.createElement('script');
       script.type = 'application/ld+json';
       script.id = scriptId;
+      applyCspNonceToScript(script);
       document.head.appendChild(script);
     }
 

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isValidAttachmentContentHash,
   noteUploadAuthorizationHeader,
+  noteReservationClientMatches,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
   uploadedChunkHashKey,
@@ -44,5 +45,12 @@ describe("note file upload auth", () => {
   it("uses string keys for uploaded chunk hashes", () => {
     assert.equal(uploadedChunkHashKey(0), "0");
     assert.equal(uploadedChunkHashKey(12), "12");
+  });
+
+  it("matches reservation client identifiers", () => {
+    assert.equal(noteReservationClientMatches({ clientId: "abc" }, "abc"), true);
+    assert.equal(noteReservationClientMatches({ clientId: "abc" }, "def"), false);
+    assert.equal(noteReservationClientMatches({ clientId: "" }, "abc"), false);
+    assert.equal(noteReservationClientMatches({}, "abc"), false);
   });
 });

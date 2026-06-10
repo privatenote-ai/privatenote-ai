@@ -3,9 +3,14 @@
  * then the SPA shell for known marketing routes, before returning 404.html.
  */
 import { isPublicMarketingPath } from "../shared/publicMarketingPaths";
+import { applyHtmlPageSecurity } from "./_shared/applyHtmlPageSecurity";
 import { serveSpaShell, type SpaShellEnv } from "./_shared/serveSpaShell";
 
 type MiddlewareEnv = SpaShellEnv;
+
+async function finalizeHtmlResponse(request: Request, response: Response): Promise<Response> {
+  return applyHtmlPageSecurity(request, response);
+}
 
 export async function onRequest(context: {
   request: Request;
@@ -40,7 +45,7 @@ export async function onRequest(context: {
 
   const response = await context.next();
   if (response.status !== 404) {
-    return response;
+    return finalizeHtmlResponse(request, response);
   }
 
   const { env } = context;
@@ -74,16 +79,16 @@ export async function onRequest(context: {
       }),
     );
     if (assetResponse.status === 200) {
-      return assetResponse;
+      return finalizeHtmlResponse(request, assetResponse);
     }
   }
 
   if (isPublicMarketingPath(pathname) || pathname === "/admin") {
     const shell = await serveSpaShell({ request, env, next: context.next });
     if (shell.status === 200) {
-      return shell;
+      return finalizeHtmlResponse(request, shell);
     }
   }
 
-  return response;
+  return finalizeHtmlResponse(request, response);
 }
