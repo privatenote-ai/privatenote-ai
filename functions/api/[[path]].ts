@@ -21,6 +21,8 @@
  *    Pages Functions and Safari reports "network connection was lost". File chunk
  *    PUTs from the SPA use this same-origin proxy (not cross-origin workers.dev).
  */
+import { PN_CLIENT_IP_HEADER } from "../../shared/clientRequestIdentity";
+
 const ACCESS_COOKIE_NAME_PATTERN = /^CF_(?:Authorization|AppSession)=/;
 
 function stripAccessCookies(value: string | null): string | null {
@@ -49,6 +51,10 @@ export async function onRequest(context: {
   const method = context.request.method;
   const headers = new Headers(context.request.headers);
   headers.set("X-Forwarded-Host", url.host);
+  const visitorIp = context.request.headers.get("CF-Connecting-IP")?.trim();
+  if (visitorIp) {
+    headers.set(PN_CLIENT_IP_HEADER, visitorIp);
+  }
   // Target host is the Worker; let fetch set Host/Content-Length from the materialized body.
   headers.delete("Host");
   headers.delete("Content-Length");

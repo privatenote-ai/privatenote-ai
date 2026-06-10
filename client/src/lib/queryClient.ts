@@ -62,8 +62,11 @@ function isCrossOriginApiUrl(fullUrl: string): boolean {
   }
 }
 
-/** File chunk PUTs use the same URL routing as JSON API calls (Pages /api proxy when on Pages). */
+/** File chunk PUTs on Pages always use same-origin /api (never cross-origin workers.dev). */
 function getBinaryUploadUrl(url: string): string {
+  if (typeof window !== "undefined" && hasSameOriginApiProxy) {
+    return url.startsWith("/") ? url : `/${url}`;
+  }
   return getApiUrl(url);
 }
 

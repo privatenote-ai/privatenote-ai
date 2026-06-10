@@ -58,6 +58,10 @@ describe("note file upload auth", () => {
       true,
     );
     assert.equal(
+      noteReservationClientMatches({ clientId: "ip:1.2.3.4|cid:abc" }, "ip:9.9.9.9|cid:abc"),
+      true,
+    );
+    assert.equal(
       noteReservationClientMatches({ clientId: "ip:1.2.3.4|cid:abc" }, "ip:9.9.9.9"),
       false,
     );

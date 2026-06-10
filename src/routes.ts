@@ -51,6 +51,7 @@ import {
   noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
+import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
@@ -7008,7 +7009,7 @@ async function authorizeNoteFileChunkUpload(
   if (!noteReservationUploadClientMatches(
     record,
     getClientIdentifier(request),
-    request.headers.get("CF-Connecting-IP"),
+    readClientIpFromRequestHeaders(request.headers),
   )) {
     return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
   }
@@ -7526,12 +7527,12 @@ function getClientIdentifier(request: Request): string {
   const cookieMatch = cookieHeader.match(/(?:^|;\s*)pn_client_id=([^;]+)/);
   const cookieId = cookieMatch?.[1]?.trim();
 
-  const cfConnectingIp = request.headers.get("CF-Connecting-IP");
-  if (cfConnectingIp && cookieId) {
-    return `ip:${cfConnectingIp}|cid:${cookieId}`;
+  const clientIp = readClientIpFromRequestHeaders(request.headers);
+  if (clientIp && cookieId) {
+    return `ip:${clientIp}|cid:${cookieId}`;
   }
-  if (cfConnectingIp) {
-    return `ip:${cfConnectingIp}`;
+  if (clientIp) {
+    return `ip:${clientIp}`;
   }
   if (cookieId) {
     return `cookie:${cookieId}`;
@@ -7918,7 +7919,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         clientId,
         premiumUserId,
         attachmentBinding,
-        request.headers.get("CF-Connecting-IP") ?? undefined,
+        readClientIpFromRequestHeaders(request.headers) ?? undefined,
       );
       return jsonResponse(
         { id, uploadToken, expiresIn: NOTE_RESERVATION.TTL_SECONDS },

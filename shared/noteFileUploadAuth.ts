@@ -88,10 +88,17 @@ export function noteReservationClientMatches(
   if (record.clientId === requestClientId) {
     return true;
   }
-  // Direct Worker chunk PUTs use credentials: "omit" (cross-origin), so pn_client_id is not
-  // sent and the request bucket is ip-only while reserve often stored ip|cid.
   const reserved = parseClientIdentifierParts(record.clientId);
   const request = parseClientIdentifierParts(requestClientId);
+  if (
+    reserved.cookieId &&
+    request.cookieId &&
+    reserved.cookieId === request.cookieId
+  ) {
+    return true;
+  }
+  // Direct Worker chunk PUTs use credentials: "omit" (cross-origin), so pn_client_id is not
+  // sent and the request bucket is ip-only while reserve often stored ip|cid.
   return Boolean(reserved.ip && request.ip && !request.cookieId && reserved.ip === request.ip);
 }
 
