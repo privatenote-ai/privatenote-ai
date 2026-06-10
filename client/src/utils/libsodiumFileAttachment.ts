@@ -2,7 +2,8 @@ import sodium from "libsodium-wrappers";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
 
-export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 2 * 1024 * 1024;
+/** Plaintext bytes per chunk — min size so 1 GB premium files stay within 999 chunks; ~1 MiB per PUT for Safari. */
+export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = Math.ceil((1024 * 1024 * 1024) / 999);
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
 export interface SodiumAttachmentChunk {

@@ -42,3 +42,13 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
     "publickey-credentials-create=(self)",
   ].join(", "),
 };
+
+/** Default CORS allowlist; preflight may request Content-Length for binary PUT uploads. */
+export const API_CORS_ALLOW_HEADERS_DEFAULT =
+  "Content-Type, Authorization, Content-Length, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token";
+
+/** Echo browser preflight requested headers when present (encrypt.lu relay pattern). */
+export function resolveAccessControlAllowHeaders(request: Request): string {
+  const requested = request.headers.get("Access-Control-Request-Headers")?.trim();
+  return requested || API_CORS_ALLOW_HEADERS_DEFAULT;
+}

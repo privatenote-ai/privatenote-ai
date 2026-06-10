@@ -1,6 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
+import { bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+
+type BinaryUploadRoute = "direct-worker" | "same-origin";
+
+type BinaryUploadAttempt = {
+  url: string;
+  uploadRoute: BinaryUploadRoute;
+  credentials: RequestCredentials;
+};
+
+const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_URL || "").trim();
@@ -51,28 +63,31 @@ function getApiUrl(url: string): string {
   return url;
 }
 
-function isCrossOriginApiUrl(fullUrl: string): boolean {
-  if (typeof window === "undefined" || fullUrl.startsWith("/")) {
-    return false;
-  }
-  try {
-    return new URL(fullUrl).origin !== window.location.origin;
-  } catch {
-    return false;
-  }
+function normalizeApiPath(url: string): string {
+  return url.startsWith("/") ? url : `/${url}`;
 }
 
-/** File chunk PUTs on Pages always use same-origin /api (never cross-origin workers.dev). */
-function getBinaryUploadUrl(url: string): string {
-  if (typeof window !== "undefined" && hasSameOriginApiProxy) {
-    return url.startsWith("/") ? url : `/${url}`;
+function getDirectWorkerUploadUrl(url: string): string {
+  return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)}${normalizeApiPath(url)}`;
+}
+
+/** Large ciphertext PUTs go direct to the Worker (encrypt.lu relay pattern), not Pages Functions. */
+function getBinaryUploadAttempts(url: string): BinaryUploadAttempt[] {
+  if (hasSameOriginApiProxy) {
+    return [
+      {
+        url: getDirectWorkerUploadUrl(url),
+        uploadRoute: "direct-worker",
+        credentials: "omit",
+      },
+    ];
   }
-  return getApiUrl(url);
+  return [{ url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" }];
 }
 
 export function getFileUploadTargetLabel(): string {
   if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
-    return `${window.location.origin}/api (Pages proxy)`;
+    return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)} (direct Worker)`;
   }
   return RAW_API_BASE_URL || "(same-origin /api proxy)";
 }
@@ -195,12 +210,6 @@ export function logFileUpload(level: "info" | "warn" | "error", message: string,
   console.info(`[FILE_UPLOAD] ${message}`, payload);
 }
 
-function binaryRequestBodyBytes(body: BodyInit): number | null {
-  if (body instanceof ArrayBuffer) return body.byteLength;
-  if (ArrayBuffer.isView(body)) return body.byteLength;
-  if (body instanceof Blob) return body.size;
-  return null;
-}
 
 function formatBinaryRequestError(error: unknown): Record<string, unknown> {
   if (error instanceof ApiRequestError) {
@@ -225,6 +234,35 @@ function formatBinaryRequestError(error: unknown): Record<string, unknown> {
   return { kind: "unknown", value: String(error) };
 }
 
+function isBinaryUploadNetworkError(error: unknown): boolean {
+  if (error instanceof ApiRequestError) {
+    return false;
+  }
+  if (error instanceof Error) {
+    return (
+      error.message === "Load failed" ||
+      error.message === "XHR network request failed" ||
+      error.name === "TypeError"
+    );
+  }
+  return false;
+}
+
+async function executeBinaryUploadAttempt(
+  attempt: BinaryUploadAttempt,
+  method: string,
+  body: Blob,
+  requestHeaders: Record<string, string>,
+): Promise<Response> {
+  return sendBinaryHttpRequest(
+    attempt.url,
+    method,
+    body,
+    requestHeaders,
+    attempt.credentials,
+  );
+}
+
 export async function apiBinaryRequest<T = any>(
   url: string,
   method: string,
@@ -232,83 +270,108 @@ export async function apiBinaryRequest<T = any>(
   headers: Record<string, string> = {},
   options: { uploadToken?: string } = {},
 ): Promise<T> {
-  const fullUrl = getBinaryUploadUrl(url);
-  const bodyBytes = binaryRequestBodyBytes(body);
-  const requestHeaders = { ...headers };
-  const isCrossOrigin = isCrossOriginApiUrl(fullUrl);
-  let credentials: RequestCredentials = "include";
-  if (options.uploadToken) {
-    requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
-    if (isCrossOrigin) {
-      credentials = "omit";
-    }
+  const uploadBlob = bodyInitToUploadBlob(body);
+  if (!uploadBlob) {
+    throw new Error("Unsupported upload body type.");
   }
+  const bodyBytes = uploadBlob.size;
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const uploadRoute = isCrossOrigin
-    ? "direct-worker"
-    : typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)
-      ? "pages-proxy"
-      : "same-origin";
-  const logBase = {
-    url: fullUrl,
-    uploadRoute,
+  const sharedLogBase = {
     usesUploadToken: Boolean(options.uploadToken),
     method,
     bodyBytes,
     declaredChunkSize: Number.isFinite(declaredChunkSize) ? declaredChunkSize : null,
     chunkSizeMismatch:
-      Number.isFinite(declaredChunkSize) && bodyBytes != null
-        ? declaredChunkSize !== bodyBytes
-        : null,
+      Number.isFinite(declaredChunkSize) ? declaredChunkSize !== bodyBytes : null,
     plaintextSize: headers["x-file-plaintext-size"] ?? null,
     encryptedTotalSize: headers["x-file-encrypted-size"] ?? null,
+    safariTransport: isSafariBrowser(),
   };
-  const startedAt = performance.now();
+  const attempts = getBinaryUploadAttempts(url);
+  let lastError: unknown = null;
 
-  logFileUpload("info", "request start", logBase);
-
-  try {
-    const res = await fetch(fullUrl, {
-      method,
-      headers: requestHeaders,
-      body,
-      credentials,
-    });
-    const responseText = await res.text();
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    logFileUpload("info", "response received", {
-      ...logBase,
-      status: res.status,
-      statusText: res.statusText,
-      elapsedMs,
-      responsePreview: responseText.slice(0, 300),
-    });
-    const responseClone = new Response(responseText, {
-      status: res.status,
-      statusText: res.statusText,
-      headers: res.headers,
-    });
-    await throwIfResNotOk(responseClone);
-    return JSON.parse(responseText) as T;
-  } catch (error) {
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    const errorDetails = formatBinaryRequestError(error);
-    logFileUpload("error", "request failed", {
-      ...logBase,
-      elapsedMs,
-      online: typeof navigator !== "undefined" ? navigator.onLine : null,
-      ...errorDetails,
-    });
-    if (error instanceof ApiRequestError) {
-      throw error;
+  for (let round = 0; round < 2; round += 1) {
+    if (round === 1) {
+      if (!isBinaryUploadNetworkError(lastError)) {
+        break;
+      }
+      logFileUpload("warn", "network retry after delay", {
+        ...sharedLogBase,
+        delayMs: BINARY_UPLOAD_NETWORK_RETRY_MS,
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, BINARY_UPLOAD_NETWORK_RETRY_MS));
     }
-    const message = error instanceof Error && error.message ? error.message : "Upload failed";
-    throw new Error(
-      message === "Load failed"
-        ? "Encrypted file upload failed before the server responded."
-        : message,
-    );
+
+    for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
+      const attempt = attempts[attemptIndex]!;
+      const requestHeaders: Record<string, string> = {
+        ...headers,
+        "Content-Length": String(bodyBytes),
+      };
+      if (options.uploadToken) {
+        requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
+      }
+      const logBase = {
+        ...sharedLogBase,
+        url: attempt.url,
+        uploadRoute: attempt.uploadRoute,
+        attempt: attemptIndex + 1,
+        attemptCount: attempts.length,
+        retryRound: round + 1,
+      };
+      const startedAt = performance.now();
+
+      logFileUpload("info", "request start", logBase);
+
+      try {
+        const res = await executeBinaryUploadAttempt(
+          attempt,
+          method,
+          uploadBlob,
+          requestHeaders,
+        );
+        const responseText = await res.text();
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        logFileUpload("info", "response received", {
+          ...logBase,
+          status: res.status,
+          statusText: res.statusText,
+          elapsedMs,
+          responsePreview: responseText.slice(0, 300),
+        });
+        const responseClone = new Response(responseText, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: res.headers,
+        });
+        await throwIfResNotOk(responseClone);
+        return JSON.parse(responseText) as T;
+      } catch (error) {
+        lastError = error;
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        const errorDetails = formatBinaryRequestError(error);
+        logFileUpload("error", "request failed", {
+          ...logBase,
+          elapsedMs,
+          online: typeof navigator !== "undefined" ? navigator.onLine : null,
+          ...errorDetails,
+        });
+        if (error instanceof ApiRequestError) {
+          throw error;
+        }
+      }
+    }
   }
+
+  if (lastError instanceof ApiRequestError) {
+    throw lastError;
+  }
+  const message = lastError instanceof Error && lastError.message ? lastError.message : "Upload failed";
+  throw new Error(
+    message === "Load failed"
+      ? "Encrypted file upload failed before the server responded."
+      : message,
+  );
 }
 
 export async function apiBlobRequest(

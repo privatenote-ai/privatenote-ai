@@ -40,7 +40,7 @@ import {
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import {
   type NoteReservationRecord,
@@ -231,8 +231,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token",
+    "Access-Control-Allow-Headers": resolveAccessControlAllowHeaders(request),
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",

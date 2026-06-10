@@ -10,7 +10,7 @@ import {
 } from "./routes";
 import type { Env } from "./types";
 import { getAllowedOriginFromRequest } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
 
 // Export both for migration compatibility
 // SecureNoteStorage is deleted in v3 migration but needed for migration history
@@ -22,8 +22,7 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token",
+    "Access-Control-Allow-Headers": resolveAccessControlAllowHeaders(request),
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
