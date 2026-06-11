@@ -761,8 +761,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
     if (selectedFile && selectedFile.size > fileLimitBytes) {
       toast({
-        title: "File too large",
-        description: `File sharing is limited to ${formatNoteFileSize(fileLimitBytes)} for your account.`,
+        title: t.fileTooLarge ?? "File too large",
+        description: (t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account.").replace(
+          "{limit}",
+          formatNoteFileSize(fileLimitBytes),
+        ),
         variant: "destructive",
       });
       return;
@@ -770,8 +773,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
     if (selectedFile && !canAttachFiles) {
       toast({
-        title: "Sign in to attach files",
-        description: "Encrypted file sharing uses account storage limits. Text notes still work without signing in.",
+        title: t.signInToAttachFiles ?? "Sign in to attach files",
+        description:
+          t.signInToAttachFilesHint ?? "Sign in to add encrypted file attachments.",
         variant: "destructive",
       });
       return;
@@ -1751,66 +1755,72 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 placeholder={t.typeHere}
                 required={!selectedFile}
               />
-              <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-900/40">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      <Paperclip className="h-4 w-4 text-primary" aria-hidden />
-                      File sharing
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {canAttachFiles
-                        ? `Browser-encrypted attachments with libsodium secretstream. Limit: ${formatNoteFileSize(fileLimitBytes)}.`
-                        : "Sign in to attach encrypted files. Text notes can still be shared without an account."}
+              <div className="mt-2 rounded-md border border-gray-200/70 bg-gray-50/40 px-2.5 py-2 dark:border-gray-800/50 dark:bg-gray-900/20">
+                <div className="flex items-center gap-2">
+                  <Paperclip
+                    className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500"
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {t.encryptedFileSharingTitle ?? "Encrypted file sharing"}
+                    </p>
+                    <p className="truncate text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                      {t.encryptedFileSharingDescription ??
+                        "Share files with end-to-end encryption."}
                     </p>
                   </div>
-                  <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900">
-                    {canAttachFiles ? "Choose file" : "Sign in for files"}
-                    <input
-                      type="file"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] ?? null;
-                        event.target.value = "";
-                        if (!file) return;
-                        if (!canAttachFiles) {
-                          toast({
-                            title: "Sign in to attach files",
-                            description: "Encrypted file sharing uses account storage limits. Text notes still work without signing in.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        if (file.size > fileLimitBytes) {
-                          toast({
-                            title: "File too large",
-                            description: `File sharing is limited to ${formatNoteFileSize(fileLimitBytes)} for your account.`,
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        setSelectedFile(file);
-                      }}
-                    />
-                  </label>
+                  {canAttachFiles ? (
+                    <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs">
+                      {t.attachFiles ?? "Attach files"}
+                      <input
+                        type="file"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          event.target.value = "";
+                          if (!file) return;
+                          if (file.size > fileLimitBytes) {
+                            toast({
+                              title: t.fileTooLarge ?? "File too large",
+                              description: (
+                                t.fileTooLargeDescription ??
+                                "Maximum file size is {limit} for your account."
+                              ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          setSelectedFile(file);
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <a
+                      href={localizedPath("/auth/sign-in", language)}
+                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs"
+                    >
+                      {t.enableFileSharing ?? "Enable file sharing"}
+                    </a>
+                  )}
                 </div>
                 {selectedFile ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950">
-                    <div className="min-w-0 text-sm">
-                      <p className="truncate font-medium text-gray-900 dark:text-gray-100">
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded border border-gray-200/80 bg-white/80 px-2 py-1.5 dark:border-gray-800/80 dark:bg-gray-950/60">
+                    <div className="min-w-0 text-xs">
+                      <p className="truncate font-medium text-gray-800 dark:text-gray-200">
                         {selectedFile.name}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
                         {formatNoteFileSize(selectedFile.size)}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedFile(null)}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                      aria-label="Remove selected file"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
                     >
-                      <X className="h-4 w-4" aria-hidden />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </div>
                 ) : null}
