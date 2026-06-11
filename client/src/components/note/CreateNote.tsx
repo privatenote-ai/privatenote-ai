@@ -1849,7 +1849,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onChange={handleAttachFileSelected}
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full flex-col gap-3 min-[520px]:flex-row min-[520px]:items-center sm:w-auto">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -1859,7 +1859,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                         setShowAdvancedOptions(!showAdvancedOptions);
                       }
                     }}
-                    className={`${secondaryActionButtonClass} w-full min-[520px]:w-auto`}
+                    className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 sm:flex-none sm:px-5`}
                   >
                     {customizeSheetExperiment || !showAdvancedOptions ? (
                       <>
@@ -1874,7 +1874,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     )}
                   </button>
 
-                  <div className="flex w-full min-w-0 items-center gap-1 min-[520px]:w-auto">
+                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none sm:max-w-[220px]">
                     <button
                       type="button"
                       onClick={handleAttachFileClick}
@@ -1883,7 +1883,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                           ? (t.attachFileChangeHint ?? "Click to choose a different file")
                           : undefined
                       }
-                      className={`${secondaryActionButtonClass} w-full min-w-0 gap-1.5 min-[520px]:max-w-[220px]`}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
                     >
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="truncate">{attachFileButtonLabel}</span>
