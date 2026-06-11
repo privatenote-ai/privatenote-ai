@@ -373,13 +373,13 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       <div className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
         <div className="space-y-6">
           {/* Header Section */}
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl font-bold leading-tight text-gray-900 dark:text-white sm:text-4xl">
               {isFileAttachSignIn
                 ? tx("authFileAttachTitle", "Sign in to attach files")
                 : tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
-            <p className="text-base text-gray-600 dark:text-gray-300">
+            <p className="mx-auto max-w-md text-base leading-relaxed text-gray-600 dark:text-gray-300">
               {isFileAttachSignIn
                 ? tx(
                     "authFileAttachSubtitle",
@@ -392,11 +392,11 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Form Card */}
           {view === "form" ? (
             <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="text-xl">
+              <CardHeader className="space-y-2.5">
+                <CardTitle className="text-xl leading-snug">
                   {tx("authGetStarted", "Get started")}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="leading-relaxed">
                   {tx("authUnifiedCardDesc", "Use a secure email link, or sign in faster with a passkey already saved on this device.")}
                 </CardDescription>
               </CardHeader>
@@ -517,8 +517,8 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     </div>
                   </div>
                 </div>
-                <CardTitle className="text-2xl">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
-                <CardDescription className="text-base mt-2">
+                <CardTitle className="text-2xl leading-snug">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
+                <CardDescription className="mt-2 text-base leading-relaxed">
                   {tx("authUnifiedSentText", "If this address can receive PrivateNote email, a secure link is on its way to")}{" "}
                   <strong>{email.trim()}</strong>.
                 </CardDescription>

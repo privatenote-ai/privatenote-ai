@@ -19,17 +19,26 @@ describe("magicLinkEmail", () => {
     assert.doesNotMatch(html, /Continue to PrivateNote/);
     assert.match(text, /10 minutes/);
     assert.match(html, /paste this link into your browser/i);
+    assert.match(html, /privatenote\.ai\/magic\?t=abc/);
   });
 
-  it("uses file-attach copy when purpose is file_attach", () => {
-    const { subject, html } = buildMagicLinkEmailContent({
-      magicUrl: "https://privatenote.ai/magic?t=abc",
+  it("uses compact file-attach copy with linked fallback only in HTML", () => {
+    const magicUrl = "https://privatenote.ai/magic?t=abc&returnTo=%2F";
+    const { subject, html, text } = buildMagicLinkEmailContent({
+      magicUrl,
       locale: "en",
       purpose: "file_attach",
     });
-    assert.equal(subject, "Sign in to attach encrypted files");
-    assert.match(html, /Enable file sharing/);
+    assert.equal(subject, "Attach encrypted files");
+    assert.match(html, /Attach encrypted files/);
+    assert.match(html, /bring you back automatically/i);
     assert.match(html, /Sign in and attach files/);
+    assert.match(html, /Button not working\?/);
+    assert.match(html, /Use this sign-in link/);
+    assert.match(html, /This link expires in 10 minutes/);
+    assert.match(html, /End-to-end encrypted notes and file sharing/);
+    assert.doesNotMatch(html, /word-break: break-all/);
+    assert.ok(text.includes(magicUrl));
   });
 
   it("normalizes email purpose", () => {
