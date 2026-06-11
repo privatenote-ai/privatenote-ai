@@ -702,6 +702,8 @@ export const en: Translations = {
   encryptedFileSharingTitle: "Encrypted file sharing",
   encryptedFileSharingDescription: "Share files with end-to-end encryption.",
   enableFileSharing: "Enable file sharing",
+  attachFile: "Attach File",
+  attachFileChangeHint: "Click to choose a different file",
   attachFiles: "Attach files",
   signInToAttachFiles: "Sign in to attach files",
   signInToAttachFilesHint: "Sign in to add encrypted file attachments.",

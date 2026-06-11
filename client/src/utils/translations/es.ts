@@ -684,6 +684,8 @@ export const es: Translations = {
   encryptedFileSharingTitle: "Compartir archivos cifrados",
   encryptedFileSharingDescription: "Comparte archivos con cifrado de extremo a extremo.",
   enableFileSharing: "Activar archivos",
+  attachFile: "Adjuntar archivo",
+  attachFileChangeHint: "Haz clic para elegir otro archivo",
   attachFiles: "Adjuntar archivo",
   signInToAttachFiles: "Inicia sesión para adjuntar",
   signInToAttachFilesHint: "Inicia sesión para añadir archivos cifrados.",

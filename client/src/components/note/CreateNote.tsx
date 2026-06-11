@@ -287,13 +287,47 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
   const canAttachFiles = Boolean(user);
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
+  const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent("/")}`;
 
   const { toast } = useToast();
+
+  const secondaryActionButtonClass =
+    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
+
+  const handleAttachFileClick = () => {
+    if (!canAttachFiles) {
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleAttachFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > fileLimitBytes) {
+      toast({
+        title: t.fileTooLarge ?? "File too large",
+        description: (
+          t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
+        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const attachFileButtonLabel = selectedFile
+    ? selectedFile.name
+    : (t.attachFile ?? "Attach File");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -1761,84 +1795,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 placeholder={t.typeHere}
                 required={!selectedFile}
               />
-              <div className="mt-2 rounded-md border border-gray-200/70 bg-gray-50/40 px-2.5 py-2 dark:border-gray-800/50 dark:bg-gray-900/20">
-                <div className="flex items-center gap-2">
-                  <Paperclip
-                    className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500"
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-300 sm:hidden">
-                      {t.encryptedFileSharingTitle ?? "Encrypted file sharing"}
-                    </p>
-                    <p className="truncate text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:hidden">
-                      {t.encryptedFileSharingDescription ??
-                        "Share files with end-to-end encryption."}
-                    </p>
-                    <p className="hidden truncate text-xs text-gray-500 dark:text-gray-400 sm:block">
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {t.encryptedFileSharingTitle ?? "Encrypted file sharing"}
-                      </span>
-                      <span className="text-gray-400 dark:text-gray-500"> · </span>
-                      {t.encryptedFileSharingDescription ??
-                        "Share files with end-to-end encryption."}
-                    </p>
-                  </div>
-                  {canAttachFiles ? (
-                    <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs">
-                      {t.attachFiles ?? "Attach files"}
-                      <input
-                        type="file"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0] ?? null;
-                          event.target.value = "";
-                          if (!file) return;
-                          if (file.size > fileLimitBytes) {
-                            toast({
-                              title: t.fileTooLarge ?? "File too large",
-                              description: (
-                                t.fileTooLargeDescription ??
-                                "Maximum file size is {limit} for your account."
-                              ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          setSelectedFile(file);
-                        }}
-                      />
-                    </label>
-                  ) : (
-                    <a
-                      href={`${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent("/")}`}
-                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs"
-                    >
-                      {t.enableFileSharing ?? "Enable file sharing"}
-                    </a>
-                  )}
-                </div>
-                {selectedFile ? (
-                  <div className="mt-2 flex items-center justify-between gap-2 rounded border border-gray-200/80 bg-white/80 px-2 py-1.5 dark:border-gray-800/80 dark:bg-gray-950/60">
-                    <div className="min-w-0 text-xs">
-                      <p className="truncate font-medium text-gray-800 dark:text-gray-200">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                        {formatNoteFileSize(selectedFile.size)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                ) : null}
-              </div>
             </div>
           ) : null}
 
@@ -1884,30 +1840,66 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}
           {!isAiMode || (noteContent && isAiMode && !showPrompt && aiDraftAccepted) ? (
             <div className="space-y-3 mt-1">
-              <div className="flex flex-col sm:flex-row items-center gap-3 sm:justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (customizeSheetExperiment) {
-                      setCustomizeSheetOpen(true);
-                    } else {
-                      setShowAdvancedOptions(!showAdvancedOptions);
-                    }
-                  }}
-                  className="flex w-full min-w-0 items-center justify-center rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:w-auto sm:min-w-[180px]"
-                >
-                  {customizeSheetExperiment || !showAdvancedOptions ? (
-                    <>
-                      <Settings className="w-4 h-4 mr-1.5 text-primary" />
-                      <span>{t.customize}</span>
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUp className="w-4 h-4 mr-1.5 text-primary" />
-                      <span>{t.hideOptions}</span>
-                    </>
-                  )}
-                </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={handleAttachFileSelected}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex w-full flex-col gap-3 min-[520px]:flex-row min-[520px]:items-center sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customizeSheetExperiment) {
+                        setCustomizeSheetOpen(true);
+                      } else {
+                        setShowAdvancedOptions(!showAdvancedOptions);
+                      }
+                    }}
+                    className={`${secondaryActionButtonClass} w-full min-[520px]:w-auto`}
+                  >
+                    {customizeSheetExperiment || !showAdvancedOptions ? (
+                      <>
+                        <Settings className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{t.customize}</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{t.hideOptions}</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex w-full min-w-0 items-center gap-1 min-[520px]:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleAttachFileClick}
+                      title={
+                        selectedFile
+                          ? (t.attachFileChangeHint ?? "Click to choose a different file")
+                          : undefined
+                      }
+                      className={`${secondaryActionButtonClass} w-full min-w-0 gap-1.5 min-[520px]:max-w-[220px]`}
+                    >
+                      <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">{attachFileButtonLabel}</span>
+                    </button>
+                    {selectedFile ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFile(null)}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                        aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
 
                 <button
                   type="submit"

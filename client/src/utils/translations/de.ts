@@ -680,6 +680,8 @@ export const de: Translations = {
   encryptedFileSharingTitle: "Verschlüsselte Dateifreigabe",
   encryptedFileSharingDescription: "Dateien mit Ende-zu-Ende-Verschlüsselung teilen.",
   enableFileSharing: "Dateifreigabe aktivieren",
+  attachFile: "Datei anhängen",
+  attachFileChangeHint: "Klicken, um eine andere Datei zu wählen",
   attachFiles: "Datei anhängen",
   signInToAttachFiles: "Anmelden zum Anhängen",
   signInToAttachFilesHint: "Melden Sie sich an, um verschlüsselte Dateianhänge hinzuzufügen.",

@@ -684,6 +684,8 @@ export const fr: Translations = {
   encryptedFileSharingTitle: "Partage de fichiers chiffré",
   encryptedFileSharingDescription: "Partagez des fichiers avec chiffrement de bout en bout.",
   enableFileSharing: "Activer le partage de fichiers",
+  attachFile: "Joindre un fichier",
+  attachFileChangeHint: "Cliquez pour choisir un autre fichier",
   attachFiles: "Joindre un fichier",
   signInToAttachFiles: "Se connecter pour joindre",
   signInToAttachFilesHint: "Connectez-vous pour ajouter des pièces jointes chiffrées.",
