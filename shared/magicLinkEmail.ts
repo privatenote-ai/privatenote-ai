@@ -51,7 +51,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "For your security, open this link in the same browser where you requested it. It expires in 10 minutes and works only once.",
       securityExpiryHtml:
-        "For your security, open this link in the <strong>same browser</strong> where you requested it. It expires in <strong>10 minutes</strong> and works only once.",
+        "Open this link in the same browser you used to request it. It expires in 10 minutes and works only once.",
       cta: "Sign in securely",
       urlFallback: "Or paste this link into your browser:",
       ignore: "If you did not request this email, you can safely ignore it.",
@@ -65,7 +65,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Aus Sicherheitsgruenden oeffnen Sie diesen Link im selben Browser, in dem Sie ihn angefordert haben. Er laeuft in 10 Minuten ab und funktioniert nur einmal.",
       securityExpiryHtml:
-        "Aus Sicherheitsgruenden oeffnen Sie diesen Link im <strong>selben Browser</strong>, in dem Sie ihn angefordert haben. Er laeuft in <strong>10 Minuten</strong> ab und funktioniert nur einmal.",
+        "Aus Sicherheitsgruenden oeffnen Sie diesen Link im selben Browser, in dem Sie ihn angefordert haben. Er laeuft in 10 Minuten ab und funktioniert nur einmal.",
       cta: "Sicher anmelden",
       urlFallback: "Oder fuegen Sie diesen Link in Ihren Browser ein:",
       ignore: "Wenn Sie diese E-Mail nicht angefordert haben, koennen Sie sie getrost ignorieren.",
@@ -79,7 +79,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Pour votre securite, ouvrez ce lien dans le meme navigateur que celui utilise pour la demande. Il expire dans 10 minutes et ne fonctionne qu une seule fois.",
       securityExpiryHtml:
-        "Pour votre securite, ouvrez ce lien dans le <strong>meme navigateur</strong> que celui utilise pour la demande. Il expire dans <strong>10 minutes</strong> et ne fonctionne qu une seule fois.",
+        "Pour votre securite, ouvrez ce lien dans le meme navigateur que celui utilise pour la demande. Il expire dans 10 minutes et ne fonctionne qu une seule fois.",
       cta: "Se connecter en toute securite",
       urlFallback: "Ou collez ce lien dans votre navigateur :",
       ignore: "Si vous n avez pas demande cet e-mail, vous pouvez l ignorer en toute securite.",
@@ -93,7 +93,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Por seguridad, abre este enlace en el mismo navegador donde lo solicitaste. Caduca en 10 minutos y solo funciona una vez.",
       securityExpiryHtml:
-        "Por seguridad, abre este enlace en el <strong>mismo navegador</strong> donde lo solicitaste. Caduca en <strong>10 minutos</strong> y solo funciona una vez.",
+        "Por seguridad, abre este enlace en el mismo navegador donde lo solicitaste. Caduca en 10 minutos y solo funciona una vez.",
       cta: "Iniciar sesion de forma segura",
       urlFallback: "O pega este enlace en tu navegador:",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
@@ -106,11 +106,11 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       preheader: "Sign in to attach encrypted files to your note.",
       title: "Sign in to attach files",
       intro:
-        "You asked to share encrypted files with your note. Tap below to sign in and continue where you left off.",
+        "You clicked Enable file sharing on your note. Sign in below — you'll return to your note ready to attach encrypted files.",
       securityExpiry:
         "For your security, open this link in the same browser where you requested it. It expires in 10 minutes and works only once.",
       securityExpiryHtml:
-        "For your security, open this link in the <strong>same browser</strong> where you requested it. It expires in <strong>10 minutes</strong> and works only once.",
+        "Open this link in the same browser you used to request it. It expires in 10 minutes and works only once.",
       cta: "Sign in and attach files",
       urlFallback: "Or paste this link into your browser:",
       ignore: "If you did not request this email, you can safely ignore it.",
@@ -125,7 +125,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Aus Sicherheitsgruenden oeffnen Sie diesen Link im selben Browser, in dem Sie ihn angefordert haben. Er laeuft in 10 Minuten ab und funktioniert nur einmal.",
       securityExpiryHtml:
-        "Aus Sicherheitsgruenden oeffnen Sie diesen Link im <strong>selben Browser</strong>, in dem Sie ihn angefordert haben. Er laeuft in <strong>10 Minuten</strong> ab und funktioniert nur einmal.",
+        "Aus Sicherheitsgruenden oeffnen Sie diesen Link im selben Browser, in dem Sie ihn angefordert haben. Er laeuft in 10 Minuten ab und funktioniert nur einmal.",
       cta: "Anmelden und Dateien anhaengen",
       urlFallback: "Oder fuegen Sie diesen Link in Ihren Browser ein:",
       ignore: "Wenn Sie diese E-Mail nicht angefordert haben, koennen Sie sie getrost ignorieren.",
@@ -140,7 +140,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Pour votre securite, ouvrez ce lien dans le meme navigateur que celui utilise pour la demande. Il expire dans 10 minutes et ne fonctionne qu une seule fois.",
       securityExpiryHtml:
-        "Pour votre securite, ouvrez ce lien dans le <strong>meme navigateur</strong> que celui utilise pour la demande. Il expire dans <strong>10 minutes</strong> et ne fonctionne qu une seule fois.",
+        "Pour votre securite, ouvrez ce lien dans le meme navigateur que celui utilise pour la demande. Il expire dans 10 minutes et ne fonctionne qu une seule fois.",
       cta: "Se connecter et joindre des fichiers",
       urlFallback: "Ou collez ce lien dans votre navigateur :",
       ignore: "Si vous n avez pas demande cet e-mail, vous pouvez l ignorer en toute securite.",
@@ -155,7 +155,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       securityExpiry:
         "Por seguridad, abre este enlace en el mismo navegador donde lo solicitaste. Caduca en 10 minutos y solo funciona una vez.",
       securityExpiryHtml:
-        "Por seguridad, abre este enlace en el <strong>mismo navegador</strong> donde lo solicitaste. Caduca en <strong>10 minutos</strong> y solo funciona una vez.",
+        "Por seguridad, abre este enlace en el mismo navegador donde lo solicitaste. Caduca en 10 minutos y solo funciona una vez.",
       cta: "Iniciar sesion y adjuntar archivos",
       urlFallback: "O pega este enlace en tu navegador:",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
@@ -192,20 +192,22 @@ export function buildMagicLinkEmailContent(options: {
   ].join("\n");
 
   const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
+    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 520px; margin: 0 auto; padding: 32px 24px 28px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
-    `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${escapeHtml(copy.title)}</div>`,
-    `  <p style="margin: 0 0 12px; color: #374151; font-size: 15px; line-height: 1.45;">${escapeHtml(copy.intro)}</p>`,
+    `  <h1 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; line-height: 1.3; color: #111827;">${escapeHtml(copy.title)}</h1>`,
+    `  <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(copy.intro)}</p>`,
+    "  <p style=\"margin: 0 0 24px;\">",
     "  <a href=\"" +
       safeUrl +
-      `" referrerpolicy="no-referrer" style="display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center; word-wrap: break-word;">${escapeHtml(copy.cta)}</a>`,
-    `  <p style="margin: 14px 0 4px; color: #6B7280; font-size: 12px; line-height: 1.45;">${escapeHtml(copy.urlFallback)}</p>`,
-    `  <p style="margin: 0 0 12px; color: #374151; font-size: 12px; line-height: 1.45; word-break: break-all;">${safeUrl}</p>`,
-    `  <p style="margin: 0 0 8px; color: #374151; font-size: 13px; line-height: 1.45;">${copy.securityExpiryHtml}</p>`,
-    `  <p style="margin: 10px 0 0; color: #6B7280; font-size: 12px; line-height: 1.45;">${escapeHtml(copy.ignore)}</p>`,
-    `  <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: 18px 0 14px;" />`,
-    `  <p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3;">PrivateNote</p>`,
-    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 12px; line-height: 1.42;">${escapeHtml(copy.footer)}</p>`,
+      `" referrerpolicy="no-referrer" style="display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 16px; line-height: 1.3; text-align: center;">${escapeHtml(copy.cta)}</a>`,
+    "  </p>",
+    `  <p style="margin: 0 0 6px; color: #6B7280; font-size: 13px; line-height: 1.5;">${escapeHtml(copy.urlFallback)}</p>`,
+    `  <p style="margin: 0 0 24px; color: #374151; font-size: 13px; line-height: 1.5; word-break: break-all;">${safeUrl}</p>`,
+    `  <p style="margin: 0 0 16px; color: #374151; font-size: 14px; line-height: 1.6;">${copy.securityExpiryHtml}</p>`,
+    `  <p style="margin: 0; color: #6B7280; font-size: 13px; line-height: 1.55;">${escapeHtml(copy.ignore)}</p>`,
+    `  <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: 28px 0 16px;" />`,
+    `  <p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4;">PrivateNote</p>`,
+    `  <p style="margin: 8px 0 0; color: #6B7280; font-size: 13px; line-height: 1.5;">${escapeHtml(copy.footer)}</p>`,
     "</div>",
   ].join("");
 

@@ -28,7 +28,7 @@ describe("magicLinkEmail", () => {
       purpose: "file_attach",
     });
     assert.equal(subject, "Sign in to attach encrypted files");
-    assert.match(html, /attach files/i);
+    assert.match(html, /Enable file sharing/);
     assert.match(html, /Sign in and attach files/);
   });
 

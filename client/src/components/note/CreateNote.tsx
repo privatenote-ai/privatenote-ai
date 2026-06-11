@@ -1755,6 +1755,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 placeholder={t.typeHere}
                 required={!selectedFile}
               />
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                {privacyBannerItems}
+              </div>
               <div className="mt-2 rounded-md border border-gray-200/70 bg-gray-50/40 px-2.5 py-2 dark:border-gray-800/50 dark:bg-gray-900/20">
                 <div className="flex items-center gap-2">
                   <Paperclip
@@ -1832,9 +1835,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     </button>
                   </div>
                 ) : null}
-              </div>
-              <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
-                {privacyBannerItems}
               </div>
             </div>
           ) : null}
