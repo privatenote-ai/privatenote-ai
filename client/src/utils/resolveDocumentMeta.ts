@@ -220,6 +220,13 @@ function metaForAccountSegments(segments: string[], t: Translations): { title: s
         title: buildDocumentTitle(t.documentMetaAccountActivityTitle),
         description: t.documentMetaAccountActivityDescription,
       };
+    case "notifications":
+      return {
+        title: buildDocumentTitle(t.documentMetaNotificationCenterTitle ?? "Notifications"),
+        description:
+          t.documentMetaNotificationCenterDescription ??
+          "Delivery status for your sent notes — no content or previews.",
+      };
     case "preferences":
       return {
         title: buildDocumentTitle(t.documentMetaAccountPreferencesTitle),

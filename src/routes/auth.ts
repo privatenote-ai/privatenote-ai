@@ -38,6 +38,13 @@ import {
   type MagicLinkEmailPurpose,
 } from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
+import { hasPremiumFeatures } from "@shared/planCatalog";
+import {
+  clearSentNoteNotifications,
+  deleteSentNoteNotification,
+  getUserAccountType,
+  listSentNoteNotificationsForUser,
+} from "../sentNotesService";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -3950,6 +3957,91 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
 
     await recordAccountActivity(env, session.id, "note_opened", noteId);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const accountType = await getUserAccountType(env, session.id);
+    if (!hasPremiumFeatures(accountType)) {
+      return jsonResponse({ message: "Premium required", code: "premium_required" }, 403, request);
+    }
+    const url = new URL(request.url);
+    const limitRaw = Number(url.searchParams.get("limit") ?? "50");
+    const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50));
+    let notifications: Awaited<ReturnType<typeof listSentNoteNotificationsForUser>> = [];
+    try {
+      notifications = await listSentNoteNotificationsForUser(env, session.id, limit);
+    } catch (e) {
+      console.warn("[account/notifications] list failed:", e);
+    }
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(JSON.stringify({ ok: true, notifications }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const accountType = await getUserAccountType(env, session.id);
+    if (!hasPremiumFeatures(accountType)) {
+      return jsonResponse({ message: "Premium required", code: "premium_required" }, 403, request);
+    }
+    let deleted = 0;
+    try {
+      deleted = await clearSentNoteNotifications(env, session.id);
+    } catch (e) {
+      console.warn("[account/notifications] clear failed:", e);
+      return jsonResponse({ message: "Could not clear notification history" }, 500, request);
+    }
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ ok: true, deleted }), { status: 200, headers });
+  }
+
+  const notificationItemParams = pathname.match(
+    /^\/api\/auth\/account\/notifications\/([^/]+)$/,
+  );
+  if (notificationItemParams && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const accountType = await getUserAccountType(env, session.id);
+    if (!hasPremiumFeatures(accountType)) {
+      return jsonResponse({ message: "Premium required", code: "premium_required" }, 403, request);
+    }
+    const notificationId = decodeURIComponent(notificationItemParams[1] ?? "");
+    if (!notificationId) {
+      return jsonResponse({ message: "Invalid notification id" }, 400, request);
+    }
+    let deleted = false;
+    try {
+      deleted = await deleteSentNoteNotification(env, session.id, notificationId);
+    } catch (e) {
+      console.warn("[account/notifications] delete failed:", e);
+      return jsonResponse({ message: "Could not delete notification" }, 500, request);
+    }
+    if (!deleted) {
+      return jsonResponse({ message: "Notification not found" }, 404, request);
+    }
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });

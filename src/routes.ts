@@ -56,7 +56,7 @@ import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
-import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened } from "./sentNotesService";
+import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened, recordSentNoteAttachmentDownloaded } from "./sentNotesService";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -8138,6 +8138,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
     const accessError = await requireNoteFileAccess(env, request, id);
     if (accessError) return accessError;
+    if (chunkIndex === 0) {
+      try {
+        await recordSentNoteAttachmentDownloaded(env, id);
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to record attachment download:", error);
+      }
+    }
     const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(id, chunkIndex));
     if (!object) {
       return jsonResponse({ error: "File chunk not found" }, 404, request);

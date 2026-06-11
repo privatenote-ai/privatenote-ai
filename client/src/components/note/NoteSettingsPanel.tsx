@@ -2,7 +2,6 @@ import React from "react";
 import {
   Crown,
   Eye,
-  Info,
   Lock,
   Timer,
   Shield,
@@ -62,20 +61,17 @@ function SettingsFieldHelper({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LabelInfoTip({ text }: { text: string }) {
+function SettingsInfoTooltip({
+  text,
+  children,
+}: {
+  text?: string;
+  children: React.ReactElement;
+}) {
+  if (!text) return children;
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-          aria-label={text}
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Info className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
         {text}
       </TooltipContent>
@@ -98,9 +94,16 @@ function SettingsFieldLabel({
 }) {
   const content = (
     <>
-      <span className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}`}>{icon}</span>
+      <SettingsInfoTooltip text={info}>
+        <span
+          className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
+          tabIndex={info ? 0 : undefined}
+          aria-label={info}
+        >
+          {icon}
+        </span>
+      </SettingsInfoTooltip>
       <span className="min-w-0">{label}</span>
-      {info ? <LabelInfoTip text={info} /> : null}
     </>
   );
   const className = "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300";
@@ -245,10 +248,15 @@ function SettingsToggleRow({
   onLockedClick?: () => void;
 }) {
   const titleContent = (
-    <span className="flex min-w-0 flex-1 items-center text-sm font-medium text-gray-800 dark:text-gray-200">
-      <span className="truncate">{title}</span>
-      <LabelInfoTip text={info} />
-    </span>
+    <SettingsInfoTooltip text={info}>
+      <span
+        className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
+        tabIndex={0}
+        aria-label={info}
+      >
+        <span className="truncate">{title}</span>
+      </span>
+    </SettingsInfoTooltip>
   );
 
   if (locked) {

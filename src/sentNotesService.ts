@@ -2,6 +2,11 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 import { hasPremiumFeatures, normalizeAccountType } from "@shared/planCatalog";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import {
+  formatNotificationNoteDisplayId,
+  resolveSentNoteNotificationEvent,
+  type SentNoteNotificationStatus,
+} from "@shared/sentNoteNotification";
 
 export type SentNoteStatus = "created" | "opened" | "expired" | "destroyed" | "revoked";
 
@@ -26,6 +31,7 @@ export type SentNoteRow = {
   open_country: string | null;
   open_device_class: string | null;
   open_browser: string | null;
+  attachment_downloaded_at: string | null;
 };
 
 export type CreateSentNoteInput = {
@@ -187,6 +193,68 @@ export async function listSentNotesForUser(env: Env, userId: string, limit = 50)
     .bind(userId, limit)
     .all<SentNoteRow>();
   return res.results ?? [];
+}
+
+export type SentNoteNotificationItem = {
+  id: string;
+  recipientEmail: string | null;
+  displayNoteId: string;
+  status: SentNoteNotificationStatus;
+  eventAt: string;
+};
+
+export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificationItem {
+  const { status, eventAt } = resolveSentNoteNotificationEvent(row);
+  return {
+    id: row.id,
+    recipientEmail: row.recipient_email_hint,
+    displayNoteId: formatNotificationNoteDisplayId(row.note_id),
+    status,
+    eventAt,
+  };
+}
+
+export async function listSentNoteNotificationsForUser(
+  env: Env,
+  userId: string,
+  limit = 50,
+): Promise<SentNoteNotificationItem[]> {
+  const rows = await listSentNotesForUser(env, userId, limit);
+  return rows.map(toSentNoteNotificationItem);
+}
+
+export async function deleteSentNoteNotification(
+  env: Env,
+  userId: string,
+  notificationId: string,
+): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  const result = await env.AUTH_DB.prepare(
+    `DELETE FROM sent_notes WHERE id = ? AND user_id = ?`,
+  )
+    .bind(notificationId, userId)
+    .run();
+  return ((result?.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
+}
+
+export async function clearSentNoteNotifications(env: Env, userId: string): Promise<number> {
+  if (!env.AUTH_DB) return 0;
+  const result = await env.AUTH_DB.prepare(`DELETE FROM sent_notes WHERE user_id = ?`)
+    .bind(userId)
+    .run();
+  return (result?.meta as { changes?: number } | undefined)?.changes ?? 0;
+}
+
+export async function recordSentNoteAttachmentDownloaded(env: Env, noteId: string): Promise<void> {
+  if (!env.AUTH_DB) return;
+  const eventAt = new Date().toISOString();
+  await env.AUTH_DB.prepare(
+    `UPDATE sent_notes
+     SET attachment_downloaded_at = COALESCE(attachment_downloaded_at, ?)
+     WHERE note_id = ? AND status IN ('created', 'opened', 'destroyed', 'expired')`,
+  )
+    .bind(eventAt, noteId)
+    .run();
 }
 
 export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<SentNoteRow | null> {

@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS sent_notes (
   open_country TEXT,
   open_device_class TEXT,
   open_browser TEXT,
+  attachment_downloaded_at TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
