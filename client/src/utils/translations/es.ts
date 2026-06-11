@@ -424,6 +424,26 @@ export const es: Translations = {
   settingsFileDownloadsInfo:
     "Independiente de la vida del enlace. Después, el archivo ya no se puede descargar aunque el texto siga legible.",
   settingsPasswordInfo: "Con tecnología de passwords.lu y comprobado con Have I Been Pwned.",
+  settingsEmailAlerts: "Alertas por correo",
+  settingsEmailAlertOnOpen: "Cuando se abre esta nota",
+  settingsEmailAlertOnOpenInfo:
+    "Un correo cuando se accede al enlace. El contenido del mensaje nunca se incluye.",
+  settingsEmailAlertOnDestroyed: "Cuando se destruye esta nota",
+  settingsEmailAlertOnDestroyedInfo: "Un correo cuando la nota ya no se puede abrir.",
+  settingsEmailAlertsPrefsHint:
+    "Activa las notificaciones por correo en Cuenta → Preferencias.",
+  settingsEmailAlertsUpgradeLink: "Mejora a Premium para alertas por correo",
+  settingsDeliveryVerification: "Entrega y verificación",
+  settingsDeliveryRestrictEmail: "Restringir al correo del destinatario",
+  settingsDeliveryRestrictEmailInfo: "Solo el destinatario previsto puede revelar la nota.",
+  settingsDeliveryVerifyEmail: "Requerir verificación por correo",
+  settingsDeliveryVerifyEmailInfo: "Verificar al destinatario antes de mostrar la nota.",
+  settingsDeliveryBrandedReveal: "Página de revelación con marca",
+  settingsDeliveryBrandedRevealInfo:
+    "Muestra tu marca en la página donde el destinatario abre la nota.",
+  settingsDeliveryUpgradeLink: "Mejora a Premium para controles de entrega",
+  settingsPremiumFeatureLabel: "Función Premium —",
+  settingsUpgradeToPremium: "Mejorar a Premium",
   premium: "Premium",
   viewDetails: "Ver detalles",
   passwordBreachCheckLabel: "Comprobación de filtraciones:",

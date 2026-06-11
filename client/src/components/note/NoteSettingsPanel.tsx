@@ -33,6 +33,7 @@ import {
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
 import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
 import {
   Dialog,
   DialogContent,
@@ -192,121 +193,103 @@ type PremiumFeature = {
   description: string;
 };
 
-const premiumDeliveryFeatures: PremiumFeature[] = [
-  {
-    title: "Restrict to recipient email",
-    description: "Only the intended recipient can reveal the note.",
-  },
-  {
-    title: "Require email verification",
-    description: "Verify the recipient before the note is shown.",
-  },
-  {
-    title: "Branded reveal page",
-    description: "Show your brand on the page where the recipient opens the note.",
-  },
-];
-
 function SectionHeading({
   title,
-  eyebrow,
   id,
+  showPremiumBadge,
+  premiumLabel,
 }: {
   title: string;
-  eyebrow?: string;
   id?: string;
+  showPremiumBadge?: boolean;
+  premiumLabel?: string;
 }) {
   return (
-    <div className="px-1 pt-2">
-      <div className="flex items-center gap-2">
-        <h3
-          id={id}
-          className="text-sm font-semibold uppercase tracking-wide text-gray-800 dark:text-gray-100"
-        >
-          {title}
-        </h3>
-        {eyebrow && (
-          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300">
-            <Crown className="mr-1 h-3 w-3" />
-            {eyebrow}
-          </span>
-        )}
-      </div>
+    <div className="flex items-center justify-between gap-2 px-1 pt-2">
+      <h3 id={id} className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+        {title}
+      </h3>
+      {showPremiumBadge ? (
+        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300">
+          <Crown className="mr-1 h-3 w-3" aria-hidden />
+          {premiumLabel}
+        </span>
+      ) : null}
     </div>
   );
 }
 
-function NotificationToggleRow({
+function SettingsOptionList({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
+      {children}
+    </div>
+  );
+}
+
+function SettingsToggleRow({
   id,
-  checked,
-  disabled,
-  onChange,
   title,
-  description,
+  info,
+  checked,
+  locked,
+  onCheckedChange,
+  onLockedClick,
 }: {
-  id: string;
-  checked: boolean;
-  disabled: boolean;
-  onChange: (checked: boolean) => void;
+  id?: string;
   title: string;
-  description: string;
+  info: string;
+  checked?: boolean;
+  locked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  onLockedClick?: () => void;
 }) {
+  const titleContent = (
+    <span className="flex min-w-0 flex-1 items-center text-sm font-medium text-gray-800 dark:text-gray-200">
+      <span className="truncate">{title}</span>
+      <LabelInfoTip text={info} />
+    </span>
+  );
+
+  if (locked) {
+    const className =
+      "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/30 dark:hover:bg-gray-900/40";
+    if (onLockedClick) {
+      return (
+        <button type="button" onClick={onLockedClick} className={className}>
+          <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+          {titleContent}
+        </button>
+      );
+    }
+    return (
+      <div className={className} aria-disabled="true">
+        <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+        {titleContent}
+      </div>
+    );
+  }
+
   return (
     <label
       htmlFor={id}
-      className={`flex gap-3 px-3 py-2.5 transition-colors ${
-        disabled
-          ? "cursor-not-allowed opacity-60"
-          : "cursor-pointer hover:bg-white/60 dark:hover:bg-gray-900/40"
-      }`}
+      className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40"
     >
       <input
         id={id}
         type="checkbox"
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+        className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
         checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
+        onChange={(event) => onCheckedChange?.(event.target.checked)}
       />
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">{title}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-          {description}
-        </span>
-      </span>
+      {titleContent}
     </label>
   );
 }
 
-function LockedPremiumRow({
-  feature,
-  onSelect,
-}: {
-  feature: PremiumFeature;
-  onSelect: (feature: PremiumFeature) => void;
-}) {
+function PremiumSectionFooter({ children }: { children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(feature)}
-      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-amber-300 hover:bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-amber-700/70 dark:hover:bg-amber-900/10"
-      title={feature.description}
-    >
-      <input
-        type="checkbox"
-        tabIndex={-1}
-        aria-hidden
-        disabled
-        className="h-4 w-4 rounded border-gray-300 text-primary disabled:opacity-60"
-      />
-      <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-100">
-        <span className="truncate">{feature.title}</span>
-        <Info className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
-      </span>
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-        Premium
-      </span>
-    </button>
+    <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">{children}</p>
   );
 }
 
@@ -364,9 +347,34 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   fileAccessWindowSeconds,
   setFileAccessWindowSeconds,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const premiumUpgradeHref = localizedPath("/premium", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
+
+  const premiumDeliveryFeatures = React.useMemo<PremiumFeature[]>(
+    () => [
+      {
+        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
+        description:
+          t.settingsDeliveryRestrictEmailInfo ??
+          "Only the intended recipient can reveal the note.",
+      },
+      {
+        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
+        description:
+          t.settingsDeliveryVerifyEmailInfo ??
+          "Verify the recipient before the note is shown.",
+      },
+      {
+        title: t.settingsDeliveryBrandedReveal ?? "Branded reveal page",
+        description:
+          t.settingsDeliveryBrandedRevealInfo ??
+          "Show your brand on the page where the recipient opens the note.",
+      },
+    ],
+    [t],
+  );
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
@@ -642,51 +650,87 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-email-alerts-heading"
             >
-              <SectionHeading id="note-email-alerts-heading" title="Email alerts" />
-              <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
-                <NotificationToggleRow
+              <SectionHeading
+                id="note-email-alerts-heading"
+                title={t.settingsEmailAlerts ?? "Email alerts"}
+                showPremiumBadge={!canNotifyOnOpen && !isPremiumUser}
+                premiumLabel={t.premium ?? "Premium"}
+              />
+              <SettingsOptionList>
+                <SettingsToggleRow
                   id="notify-on-open"
-                  checked={notifyOnOpen && canNotifyOnOpen}
-                  disabled={!canNotifyOnOpen}
-                  onChange={setNotifyOnOpen}
-                  title="When this note is opened"
-                  description="One email when the link is accessed. Message content is never included."
+                  locked={!canNotifyOnOpen}
+                  checked={notifyOnOpen}
+                  onCheckedChange={setNotifyOnOpen}
+                  title={t.settingsEmailAlertOnOpen ?? "When this note is opened"}
+                  info={
+                    t.settingsEmailAlertOnOpenInfo ??
+                    "One email when the link is accessed. Message content is never included."
+                  }
                 />
-                <NotificationToggleRow
+                <SettingsToggleRow
                   id="notify-on-destroyed"
-                  checked={notifyOnDestroyed && canNotifyOnOpen}
-                  disabled={!canNotifyOnOpen}
-                  onChange={setNotifyOnDestroyed}
-                  title="When this note is destroyed"
-                  description="One email when the note can no longer be opened."
+                  locked={!canNotifyOnOpen}
+                  checked={notifyOnDestroyed}
+                  onCheckedChange={setNotifyOnDestroyed}
+                  title={t.settingsEmailAlertOnDestroyed ?? "When this note is destroyed"}
+                  info={
+                    t.settingsEmailAlertOnDestroyedInfo ??
+                    "One email when the note can no longer be opened."
+                  }
                 />
-              </div>
+              </SettingsOptionList>
               {!canNotifyOnOpen && !premiumStatusLoading ? (
-                <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  {isPremiumUser
-                    ? "Turn on email notifications in Account → Preferences."
-                    : "Available on Premium with email notifications enabled."}
-                </p>
+                <PremiumSectionFooter>
+                  {isPremiumUser ? (
+                    t.settingsEmailAlertsPrefsHint ??
+                    "Turn on email notifications in Account → Preferences."
+                  ) : (
+                    <>
+                      {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                      <a
+                        href={premiumUpgradeHref}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t.settingsEmailAlertsUpgradeLink ?? "Upgrade to unlock email alerts"}
+                      </a>
+                    </>
+                  )}
+                </PremiumSectionFooter>
               ) : null}
             </section>
 
             <section
-              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-delivery-verification-heading"
             >
               <SectionHeading
                 id="note-delivery-verification-heading"
-                title="Delivery & Verification"
+                title={t.settingsDeliveryVerification ?? "Delivery & verification"}
+                showPremiumBadge={!isPremiumUser}
+                premiumLabel={t.premium ?? "Premium"}
               />
-              <div className="grid gap-2 px-1 sm:max-w-[700px]">
+              <SettingsOptionList>
                 {premiumDeliveryFeatures.map((feature) => (
-                  <LockedPremiumRow
+                  <SettingsToggleRow
                     key={feature.title}
-                    feature={feature}
-                    onSelect={setSelectedPremiumFeature}
+                    locked
+                    title={feature.title}
+                    info={feature.description}
+                    onLockedClick={
+                      isPremiumUser ? undefined : () => setSelectedPremiumFeature(feature)
+                    }
                   />
                 ))}
-              </div>
+              </SettingsOptionList>
+              {!isPremiumUser ? (
+                <PremiumSectionFooter>
+                  {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                  <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
+                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                  </a>
+                </PremiumSectionFooter>
+              ) : null}
             </section>
           </div>
     </TooltipProvider>
@@ -726,10 +770,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             {selectedPremiumFeature?.title ?? "Delivery & Verification"} is part of Premium.
           </div>
           <a
-            href="/premium"
+            href={premiumUpgradeHref}
             className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            Upgrade to Premium
+            {t.settingsUpgradeToPremium ?? "Upgrade to Premium"}
           </a>
         </DialogContent>
       </Dialog>

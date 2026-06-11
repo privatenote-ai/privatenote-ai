@@ -423,6 +423,27 @@ export const fr: Translations = {
   settingsFileDownloadsInfo:
     "Indépendant de la durée de vie de la note. Ensuite, le fichier n'est plus téléchargeable même si le texte reste lisible.",
   settingsPasswordInfo: "Propulsé par passwords.lu et vérifié via Have I Been Pwned.",
+  settingsEmailAlerts: "Alertes e-mail",
+  settingsEmailAlertOnOpen: "Quand cette note est ouverte",
+  settingsEmailAlertOnOpenInfo:
+    "Un e-mail lorsque le lien est consulté. Le contenu du message n'est jamais inclus.",
+  settingsEmailAlertOnDestroyed: "Quand cette note est détruite",
+  settingsEmailAlertOnDestroyedInfo:
+    "Un e-mail lorsque la note ne peut plus être ouverte.",
+  settingsEmailAlertsPrefsHint:
+    "Activez les notifications e-mail dans Compte → Préférences.",
+  settingsEmailAlertsUpgradeLink: "Passer à Premium pour les alertes e-mail",
+  settingsDeliveryVerification: "Livraison et vérification",
+  settingsDeliveryRestrictEmail: "Restreindre à l'e-mail du destinataire",
+  settingsDeliveryRestrictEmailInfo: "Seul le destinataire prévu peut révéler la note.",
+  settingsDeliveryVerifyEmail: "Exiger une vérification e-mail",
+  settingsDeliveryVerifyEmailInfo: "Vérifier le destinataire avant d'afficher la note.",
+  settingsDeliveryBrandedReveal: "Page de révélation personnalisée",
+  settingsDeliveryBrandedRevealInfo:
+    "Affichez votre marque sur la page où le destinataire ouvre la note.",
+  settingsDeliveryUpgradeLink: "Passer à Premium pour les contrôles de livraison",
+  settingsPremiumFeatureLabel: "Fonction Premium —",
+  settingsUpgradeToPremium: "Passer à Premium",
   premium: "Premium",
   viewDetails: "Voir les détails",
   passwordBreachCheckLabel: "Vérification de fuite :",

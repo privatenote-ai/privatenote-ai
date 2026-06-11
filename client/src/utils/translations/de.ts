@@ -421,6 +421,27 @@ export const de: Translations = {
   settingsFileDownloadsInfo:
     "Unabhängig von der Notiz-Lebensdauer. Danach ist die Datei nicht mehr verfügbar, auch wenn der Text noch lesbar wäre.",
   settingsPasswordInfo: "Unterstützt von passwords.lu und gegen Have I Been Pwned geprüft.",
+  settingsEmailAlerts: "E-Mail-Benachrichtigungen",
+  settingsEmailAlertOnOpen: "Wenn diese Notiz geöffnet wird",
+  settingsEmailAlertOnOpenInfo:
+    "Eine E-Mail, wenn der Link aufgerufen wird. Der Nachrichteninhalt ist nie enthalten.",
+  settingsEmailAlertOnDestroyed: "Wenn diese Notiz zerstört wird",
+  settingsEmailAlertOnDestroyedInfo:
+    "Eine E-Mail, wenn die Notiz nicht mehr geöffnet werden kann.",
+  settingsEmailAlertsPrefsHint:
+    "Aktivieren Sie E-Mail-Benachrichtigungen unter Konto → Einstellungen.",
+  settingsEmailAlertsUpgradeLink: "Upgrade für E-Mail-Benachrichtigungen",
+  settingsDeliveryVerification: "Zustellung & Verifizierung",
+  settingsDeliveryRestrictEmail: "Auf Empfänger-E-Mail beschränken",
+  settingsDeliveryRestrictEmailInfo: "Nur der vorgesehene Empfänger kann die Notiz lesen.",
+  settingsDeliveryVerifyEmail: "E-Mail-Verifizierung erforderlich",
+  settingsDeliveryVerifyEmailInfo: "Empfänger verifizieren, bevor die Notiz angezeigt wird.",
+  settingsDeliveryBrandedReveal: "Markenseite beim Öffnen",
+  settingsDeliveryBrandedRevealInfo:
+    "Ihre Marke auf der Seite anzeigen, auf der der Empfänger die Notiz öffnet.",
+  settingsDeliveryUpgradeLink: "Upgrade für Zustellungssteuerung",
+  settingsPremiumFeatureLabel: "Premium-Funktion —",
+  settingsUpgradeToPremium: "Auf Premium upgraden",
   premium: "Premium",
   viewDetails: "Details anzeigen",
   passwordBreachCheckLabel: "Leak-Prüfung:",

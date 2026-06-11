@@ -1762,16 +1762,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     aria-hidden
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-300 sm:hidden">
                       {t.encryptedFileSharingTitle ?? "Encrypted file sharing"}
                     </p>
-                    <p className="truncate text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                    <p className="truncate text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:hidden">
+                      {t.encryptedFileSharingDescription ??
+                        "Share files with end-to-end encryption."}
+                    </p>
+                    <p className="hidden truncate text-xs text-gray-500 dark:text-gray-400 sm:block">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        {t.encryptedFileSharingTitle ?? "Encrypted file sharing"}
+                      </span>
+                      <span className="text-gray-400 dark:text-gray-500"> · </span>
                       {t.encryptedFileSharingDescription ??
                         "Share files with end-to-end encryption."}
                     </p>
                   </div>
                   {canAttachFiles ? (
-                    <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs">
+                    <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs">
                       {t.attachFiles ?? "Attach files"}
                       <input
                         type="file"
@@ -1798,7 +1806,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                   ) : (
                     <a
                       href={`${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent("/")}`}
-                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs"
+                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs"
                     >
                       {t.enableFileSharing ?? "Enable file sharing"}
                     </a>
