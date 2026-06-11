@@ -590,6 +590,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 />
               </div>
             </div>
+            {aiDraftAccepted ? (
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                {privacyBannerItems}
+              </div>
+            ) : null}
             <textarea
               value={noteContent}
               onChange={(e) =>
@@ -602,12 +607,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               rows={6}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             />
-
-            {aiDraftAccepted ? (
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
-                {privacyBannerItems}
-              </div>
-            ) : null}
 
             {noteHasPlaceholderBrackets ? (
               <div
