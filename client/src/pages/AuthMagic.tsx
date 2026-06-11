@@ -10,6 +10,7 @@ import {
   registerPasskeyWithRetry,
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { useAuth } from "@/context/AuthContext";
+import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 
 /**
@@ -17,20 +18,34 @@ import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-r
  * finishes so Strict Mode remounts still see it. Cleared after use.
  */
 let magicLinkTokenCache: string | null = null;
+let magicLinkReturnToCache: string = "/";
+let magicLinkReturnToFromUrlCache = false;
 
-function takeMagicLinkTokenOnce(): string | null {
+function takeMagicLinkContextOnce(): {
+  token: string | null;
+  returnTo: string;
+  returnToFromUrl: boolean;
+} {
   const url = new URL(window.location.href);
   const fromQuery = url.searchParams.get("t") || url.searchParams.get("token");
   const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
   const fromHash = hash ? new URLSearchParams(hash).get("token") : null;
   const fromUrl = fromQuery || fromHash;
+  const returnToFromUrl = sanitizeAuthReturnTo(url.searchParams.get("returnTo"));
+  const returnTo = returnToFromUrl ?? "/";
 
   if (fromUrl) {
     magicLinkTokenCache = fromUrl;
+    magicLinkReturnToCache = returnTo;
+    magicLinkReturnToFromUrlCache = returnToFromUrl !== null;
     window.history.replaceState(null, "", url.pathname);
-    return fromUrl;
+    return { token: fromUrl, returnTo, returnToFromUrl: returnToFromUrl !== null };
   }
-  return magicLinkTokenCache;
+  return {
+    token: magicLinkTokenCache,
+    returnTo: magicLinkReturnToCache,
+    returnToFromUrl: magicLinkReturnToFromUrlCache,
+  };
 }
 
 type Phase = "initial" | "confirm" | "loading" | "success" | "error";
@@ -47,9 +62,14 @@ export default function AuthMagic() {
   const [dismissedNudge, setDismissedNudge] = useState(false);
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
   const [emailCode, setEmailCode] = useState("");
+  const [returnTo, setReturnTo] = useState("/");
+  const [returnToFromUrl, setReturnToFromUrl] = useState(false);
 
   useEffect(() => {
-    const t = takeMagicLinkTokenOnce();
+    const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
+      takeMagicLinkContextOnce();
+    setReturnTo(nextReturnTo);
+    setReturnToFromUrl(nextReturnToFromUrl);
     if (!t) {
       setPhase("error");
       setFriendlyMessage("Open the sign-in link from your email on this device, or request a new link.");
@@ -144,6 +164,10 @@ export default function AuthMagic() {
       setFriendlyMessage("You're signed in.");
       // Retry: D1 read-after-write lag can briefly return authenticated:false.
       await refreshUntilAuthenticated();
+      if (returnToFromUrl) {
+        window.location.href = returnTo;
+        return;
+      }
       const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
       if (me && typeof me.hasPasskeys === "boolean") {
         setHasPasskeys(me.hasPasskeys);
@@ -310,11 +334,11 @@ export default function AuthMagic() {
                 <div className="flex justify-center">
                   <Button
                     variant="outline"
-                    onClick={() => setLocation("/")}
+                    onClick={() => setLocation(returnTo)}
                     size="lg"
                     className="min-w-[140px]"
                   >
-                    Continue to Home
+                    {returnTo === "/" ? "Continue to Home" : "Continue"}
                   </Button>
                 </div>
               </CardContent>

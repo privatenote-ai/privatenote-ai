@@ -30,6 +30,14 @@ import {
 } from "../trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "../httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import {
+  buildMagicLinkEmailContent,
+  detectAuthEmailLocale,
+  normalizeMagicLinkEmailPurpose,
+  type AuthEmailLocale,
+  type MagicLinkEmailPurpose,
+} from "@shared/magicLinkEmail";
+import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -550,6 +558,10 @@ async function sendMagicLinkEmail(
   env: Env,
   to: string,
   magicUrl: string,
+  options: {
+    locale?: AuthEmailLocale;
+    purpose?: MagicLinkEmailPurpose;
+  } = {},
 ): Promise<{ ok: boolean; error?: string }> {
   const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
   if (provider !== "resend") {
@@ -565,38 +577,11 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const subject = "Continue to PrivateNote";
-  const text = [
-    "Continue to PrivateNote",
-    "",
-    "Click the secure link below to continue:",
+  const { subject, text, html } = buildMagicLinkEmailContent({
     magicUrl,
-    "",
-    "For security, complete sign-in in the same browser and device where you opened the link.",
-    "",
-    "This link expires automatically and can only be used for this sign-in request.",
-    "",
-    "If you did not request this email, you can safely ignore it.",
-    "",
-    "—",
-    "PrivateNote",
-    "Securely create, share, and destroy private notes — only the recipient can read them.",
-  ].join("\n");
-  const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
-    "  <div style=\"font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;\">Continue to PrivateNote</div>",
-    "  <p style=\"margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;\">Click the secure link below to continue:</p>",
-    "  <a href=\"" +
-      magicUrl +
-      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center; word-wrap: break-word;\">Continue to PrivateNote</a>",
-    "  <p style=\"margin: 12px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">For security, complete sign-in in the <strong>same browser and device</strong> where you opened the link.</p>",
-    "  <p style=\"margin: 8px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">This link expires automatically and can only be used for this sign-in request.</p>",
-    "  <p style=\"margin: 10px 0 0; color: #6B7280; font-size: 12px; line-height: 1.45;\">If you did not request this email, you can safely ignore it.</p>",
-    "  <hr style=\"border: 0; border-top: 1px solid #E5E7EB; margin: 18px 0 14px;\" />",
-    "  <p style=\"margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3;\">PrivateNote</p>",
-    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px; line-height: 1.42;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
-    "</div>",
-  ].join("");
+    locale: options.locale ?? "en",
+    purpose: options.purpose ?? "default",
+  });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -4912,6 +4897,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     console.log("[MAGIC_LINK] Body parsed, email present:", !!body?.email);
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
+    const locale = detectAuthEmailLocale(request, body?.locale);
+    const emailPurpose = normalizeMagicLinkEmailPurpose(body?.emailPurpose ?? body?.purpose);
+    const returnTo = sanitizeAuthReturnTo(body?.returnTo);
     const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const responsePayload: Record<string, unknown> = {
       ok: true,
@@ -5056,7 +5044,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       if (storeResult.ok) {
         const magicOrigin = getMagicLinkOrigin(env, request);
         // Query param is non-authenticating: session is only created on explicit POST after the user clicks Continue.
-        const magicUrl = `${magicOrigin}/magic?t=${encodeURIComponent(token)}`;
+        const magicUrl = appendMagicLinkReturnTo(
+          `${magicOrigin}/magic?t=${encodeURIComponent(token)}`,
+          returnTo,
+        );
         console.log(`[MAGIC_LINK] Prepared link for ${intent}, origin=${magicOrigin}, isLocal=${isLocal}`);
 
         if (isLocal) {
@@ -5071,7 +5062,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           });
         } else {
           console.log("[MAGIC_LINK] Calling sendMagicLinkEmail via Resend...");
-          const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
+          const sendResult = await sendMagicLinkEmail(env, email, magicUrl, {
+            locale,
+            purpose: emailPurpose,
+          });
           if (!sendResult.ok) {
             console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);
             await logAuditEvent(env, {

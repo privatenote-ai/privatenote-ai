@@ -24,6 +24,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { normalizeMagicLinkEmailPurpose } from "@shared/magicLinkEmail";
+import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
 
@@ -118,6 +120,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   const shouldShowTurnstile = !!turnstileSiteKey;
   const showDebugMagicLinkUi = import.meta.env.DEV && Boolean(debugMagicLink);
+  const signInContext = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { purpose: "default" as const, returnTo: "/" };
+    }
+    const params = new URLSearchParams(window.location.search);
+    return {
+      purpose: normalizeMagicLinkEmailPurpose(params.get("purpose")),
+      returnTo: sanitizeAuthReturnTo(params.get("returnTo")) ?? "/",
+    };
+  }, []);
+  const isFileAttachSignIn = signInContext.purpose === "file_attach";
 
   const resetAuthTurnstile = useCallback(() => {
     setTurnstileToken(null);
@@ -230,7 +243,13 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
         "POST",
-        { email: trimmedEmail, turnstileToken, locale: language }
+        {
+          email: trimmedEmail,
+          turnstileToken,
+          locale: language,
+          emailPurpose: signInContext.purpose,
+          returnTo: signInContext.returnTo,
+        }
       );
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
@@ -356,10 +375,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Header Section */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              {tx("authContinueTitle", "Continue to PrivateNote")}
+              {isFileAttachSignIn
+                ? tx("authFileAttachTitle", "Sign in to attach files")
+                : tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
-              {tx("authUnifiedSubtitle", "Enter your email to continue. If you’re new, we’ll create your account.")}
+              {isFileAttachSignIn
+                ? tx(
+                    "authFileAttachSubtitle",
+                    "Enter your email to sign in. You’ll return to your note to attach encrypted files.",
+                  )
+                : tx("authUnifiedSubtitle", "Enter your email to continue. If you’re new, we’ll create your account.")}
             </p>
           </div>
 

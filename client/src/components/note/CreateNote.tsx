@@ -1797,7 +1797,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     </label>
                   ) : (
                     <a
-                      href={localizedPath("/auth/sign-in", language)}
+                      href={`${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent("/")}`}
                       className="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900 sm:px-3 sm:py-1.5 sm:text-xs"
                     >
                       {t.enableFileSharing ?? "Enable file sharing"}
