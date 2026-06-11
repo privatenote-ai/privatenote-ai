@@ -603,6 +603,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             />
 
+            {aiDraftAccepted ? (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                {privacyBannerItems}
+              </div>
+            ) : null}
+
             {noteHasPlaceholderBrackets ? (
               <div
                 className="mt-2 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50"
@@ -615,12 +621,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {unresolvedPlaceholderLabels.map((label) => `[${label}]`).join(", ")}
                   </p>
                 ) : null}
-              </div>
-            ) : null}
-
-            {aiDraftAccepted ? (
-              <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
-                {privacyBannerItems}
               </div>
             ) : null}
 
