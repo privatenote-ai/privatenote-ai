@@ -392,12 +392,12 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Form Card */}
           {view === "form" ? (
             <Card className="border-2">
-              <CardHeader className="space-y-2.5">
+              <CardHeader className="space-y-2.5 text-center">
                 <CardTitle className="text-xl leading-snug">
                   {tx("authGetStarted", "Get started")}
                 </CardTitle>
-                <CardDescription className="leading-relaxed">
-                  {tx("authUnifiedCardDesc", "Use a secure email link, or sign in faster with a passkey already saved on this device.")}
+                <CardDescription className="mx-auto max-w-sm leading-relaxed">
+                  {tx("authUnifiedCardDesc", "Use a secure email link or a passkey on this device.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -482,8 +482,14 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   </p>
                 )}
 
-                <p className="text-xs text-gray-500 text-center leading-relaxed">
-                  {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
+                <p className="mx-auto max-w-xs text-center text-xs leading-relaxed text-gray-500">
+                  {tx(
+                    "authByContinuingLine1",
+                    "By continuing, you acknowledge that you understand and",
+                  )}
+                  <br />
+                  {tx("authByContinuingLine2Prefix", "agree to the")}
+                  {" "}
                   <a
                     href={localizedPath("/terms", language)}
                     target="_blank"
@@ -501,7 +507,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   >
                     {tx("privacyPolicy", "Privacy Policy")}
                   </a>
-                  .
+                  {tx("authByContinuingLine2Suffix", ".")}
                 </p>
               </CardContent>
             </Card>
