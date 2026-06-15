@@ -12,7 +12,7 @@ import {
   Download,
   Paperclip,
 } from 'lucide-react';
-import { apiBlobRequest, apiRequest } from '@/lib/queryClient';
+import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
@@ -336,6 +336,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
+  const [recipientGateLoading, setRecipientGateLoading] = useState(true);
+  const [recipientGateRequired, setRecipientGateRequired] = useState(false);
+  const [recipientGateEmailRequired, setRecipientGateEmailRequired] = useState(false);
+  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
+  const [recipientGateVerified, setRecipientGateVerified] = useState(false);
+  const [recipientEmailInput, setRecipientEmailInput] = useState("");
+  const [recipientCodeInput, setRecipientCodeInput] = useState("");
+  const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
+  const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
   const { toast } = useToast();
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
@@ -357,6 +366,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (isDecryptKeyFailureMessage(message)) {
       return "This link's key doesn't match this note. Copy the full URL—including everything after #—or ask the sender for a new link.";
     }
+    if (message.includes("recipient_verification_required")) {
+      return "Recipient verification is required before this note can be revealed.";
+    }
     return message;
   };
 
@@ -365,8 +377,72 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setError('Invalid note ID');
       setKeyMismatchError(false);
       setIsLoading(false);
+      setRecipientGateLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setRecipientGateLoading(true);
+    void (async () => {
+      try {
+        const status = await apiRequest<{
+          required?: boolean;
+          emailRequired?: boolean;
+          codeRequired?: boolean;
+          verified?: boolean;
+        }>(`/api/notes/${id}/recipient-gate`, "GET");
+        if (cancelled) return;
+        setRecipientGateRequired(status.required === true);
+        setRecipientGateEmailRequired(status.emailRequired === true);
+        setRecipientGateCodeRequired(status.codeRequired === true);
+        setRecipientGateVerified(status.required !== true || status.verified === true);
+      } catch {
+        if (!cancelled) {
+          setRecipientGateRequired(false);
+          setRecipientGateVerified(true);
+        }
+      } finally {
+        if (!cancelled) setRecipientGateLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  const handleRecipientGateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setRecipientGateSubmitting(true);
+    setRecipientGateError(null);
+    try {
+      await apiRequest(`/api/notes/${id}/recipient-verify`, "POST", {
+        ...(recipientGateEmailRequired ? { email: recipientEmailInput.trim() } : {}),
+        ...(recipientGateCodeRequired ? { code: recipientCodeInput.trim() } : {}),
+      });
+      setRecipientGateVerified(true);
+      toast({
+        title: t.recipientGateVerifiedTitle ?? "Verified",
+        description:
+          t.recipientGateVerifiedDescription ?? "You can now reveal the note.",
+      });
+    } catch (error) {
+      let message =
+        t.recipientGateVerifyFailed ?? "Verification failed. Check the details and try again.";
+      if (error instanceof ApiRequestError) {
+        try {
+          const body = JSON.parse(error.bodyText) as { message?: string };
+          if (body.message) message = body.message;
+        } catch {
+          /* ignore */
+        }
+      }
+      setRecipientGateError(message);
+    } finally {
+      setRecipientGateSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     setIsRevealButtonReady(false);
@@ -691,7 +767,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     window.location.href = '/';
   };
 
-  if (isLoading) {
+  if (isLoading || recipientGateLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -712,6 +788,76 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }
 
   if (!hasRevealed) {
+    if (recipientGateRequired && !recipientGateVerified) {
+      return (
+        <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
+          <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+            <div className="mx-auto max-w-md text-center">
+              <div className="mb-4 flex justify-center text-primary">
+                <ShieldCheck className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
+              </div>
+              <h1 className="page-title text-gray-900 dark:text-white">
+                {t.recipientGateTitle ?? "Verify before opening"}
+              </h1>
+              <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                {t.recipientGateDescription ??
+                  "The sender restricted who can open this note. Confirm your details to continue."}
+              </p>
+              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
+                {recipientGateEmailRequired ? (
+                  <div>
+                    <label htmlFor="recipient-gate-email" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {t.recipientGateEmail ?? "Your email"}
+                    </label>
+                    <input
+                      id="recipient-gate-email"
+                      type="email"
+                      autoComplete="email"
+                      value={recipientEmailInput}
+                      onChange={(event) => setRecipientEmailInput(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                ) : null}
+                {recipientGateCodeRequired ? (
+                  <div>
+                    <label htmlFor="recipient-gate-code" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {t.recipientGateCode ?? "Verification code"}
+                    </label>
+                    <input
+                      id="recipient-gate-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      value={recipientCodeInput}
+                      onChange={(event) => setRecipientCodeInput(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                ) : null}
+                {recipientGateError ? (
+                  <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                    {recipientGateError}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={recipientGateSubmitting}
+                  className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {recipientGateSubmitting
+                    ? (t.recipientGateSubmitting ?? "Verifying…")
+                    : (t.recipientGateSubmit ?? "Continue")}
+                </button>
+              </form>
+            </div>
+          </section>
+        </section>
+      );
+    }
+
     return (
       <RevealHero
         isRevealing={isRevealing}

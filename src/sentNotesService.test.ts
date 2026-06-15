@@ -1,0 +1,124 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  clearSentNoteNotifications,
+  deleteSentNoteNotification,
+  listSentNoteNotificationsForUser,
+  type SentNoteRow,
+} from "./sentNotesService.ts";
+import type { Env } from "./types.ts";
+
+class FakePreparedStatement {
+  public bindings: unknown[] = [];
+
+  constructor(
+    public readonly sql: string,
+    private readonly db: FakeD1Database,
+  ) {}
+
+  bind(...values: unknown[]): this {
+    this.bindings = values;
+    return this;
+  }
+
+  async run(): Promise<{ meta: { changes: number } }> {
+    this.db.runs.push({ sql: this.sql, bindings: this.bindings });
+    return { meta: { changes: this.db.nextChanges } };
+  }
+
+  async all<T>(): Promise<{ results: T[] }> {
+    this.db.alls.push({ sql: this.sql, bindings: this.bindings });
+    return { results: this.db.rows as T[] };
+  }
+}
+
+class FakeD1Database {
+  public runs: Array<{ sql: string; bindings: unknown[] }> = [];
+  public alls: Array<{ sql: string; bindings: unknown[] }> = [];
+  public rows: SentNoteRow[] = [];
+  public nextChanges = 1;
+
+  prepare(sql: string): FakePreparedStatement {
+    return new FakePreparedStatement(sql, this);
+  }
+}
+
+function envWithDb(db: FakeD1Database): Env {
+  return { AUTH_DB: db } as unknown as Env;
+}
+
+function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
+  return {
+    id: "sent-note-1",
+    user_id: "user-1",
+    note_id: "550e8400-e29b-41d4-a716-446655440000",
+    status: "created",
+    label: null,
+    recipient_email_hint: "al***e@e***e.com",
+    notify_on_open: 1,
+    notify_on_destroyed: 0,
+    require_recipient_verification: 0,
+    proof_enabled: 1,
+    expires_at: null,
+    created_at: "2026-06-14T09:00:00.000Z",
+    opened_at: null,
+    destroyed_at: null,
+    revoked_at: null,
+    opened_notified_at: null,
+    destroyed_notified_at: null,
+    open_country: null,
+    open_device_class: null,
+    open_browser: null,
+    attachment_downloaded_at: null,
+    notification_deleted_at: null,
+    ...overrides,
+  };
+}
+
+describe("sent note notification service", () => {
+  it("lists only non-hidden notification rows", async () => {
+    const db = new FakeD1Database();
+    db.rows = [
+      sentNote({
+        status: "opened",
+        opened_at: "2026-06-14T10:00:00.000Z",
+      }),
+    ];
+
+    const notifications = await listSentNoteNotificationsForUser(envWithDb(db), "user-1", 25);
+
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0]?.status, "viewed");
+    assert.match(db.alls[0]?.sql ?? "", /notification_deleted_at IS NULL/);
+    assert.deepEqual(db.alls[0]?.bindings, ["user-1", 25]);
+  });
+
+  it("soft-deletes one notification without deleting the sent_notes row", async () => {
+    const db = new FakeD1Database();
+
+    const deleted = await deleteSentNoteNotification(envWithDb(db), "user-1", "sent-note-1");
+
+    assert.equal(deleted, true);
+    const sql = db.runs[0]?.sql ?? "";
+    assert.match(sql, /^UPDATE sent_notes/i);
+    assert.match(sql, /notification_deleted_at = COALESCE\(notification_deleted_at, datetime\('now'\)\)/);
+    assert.match(sql, /notification_deleted_at IS NULL/);
+    assert.doesNotMatch(sql, /\bDELETE\b/i);
+    assert.deepEqual(db.runs[0]?.bindings, ["sent-note-1", "user-1"]);
+  });
+
+  it("soft-clears notification history without deleting operational records", async () => {
+    const db = new FakeD1Database();
+    db.nextChanges = 3;
+
+    const cleared = await clearSentNoteNotifications(envWithDb(db), "user-1");
+
+    assert.equal(cleared, 3);
+    const sql = db.runs[0]?.sql ?? "";
+    assert.match(sql, /^UPDATE sent_notes/i);
+    assert.match(sql, /notification_deleted_at = COALESCE\(notification_deleted_at, datetime\('now'\)\)/);
+    assert.match(sql, /notification_deleted_at IS NULL/);
+    assert.doesNotMatch(sql, /\bDELETE\b/i);
+    assert.deepEqual(db.runs[0]?.bindings, ["user-1"]);
+  });
+});

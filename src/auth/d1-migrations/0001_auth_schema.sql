@@ -11,9 +11,27 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TEXT,
   plan TEXT NOT NULL DEFAULT 'free',
   account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
+  stripe_customer_id TEXT UNIQUE,
+  stripe_subscription_id TEXT UNIQUE,
+  subscription_status TEXT,
+  subscription_current_period_end TEXT,
+  premium_granted_at TEXT,
+  premium_revoked_at TEXT,
   business_display_name TEXT,
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
   preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON users(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_subscription_id ON users(stripe_subscription_id);
+
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  livemode INTEGER NOT NULL DEFAULT 0 CHECK (livemode IN (0, 1)),
+  received_at TEXT NOT NULL DEFAULT (datetime('now')),
+  processed_at TEXT,
+  processing_error TEXT
 );
 
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
@@ -143,6 +161,7 @@ CREATE TABLE IF NOT EXISTS sent_notes (
   open_device_class TEXT,
   open_browser TEXT,
   attachment_downloaded_at TEXT,
+  notification_deleted_at TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

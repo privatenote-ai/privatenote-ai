@@ -434,7 +434,33 @@ export const es: Translations = {
   settingsEmailAlertOnDestroyedInfo: "Un correo cuando la nota ya no se puede abrir.",
   settingsEmailAlertsPrefsHint:
     "Activa las notificaciones por correo en Cuenta → Preferencias.",
+  settingsEmailAlertsPrefsHintPrefix: "Activa las notificaciones por correo en",
+  settingsEmailAlertsPrefsLink: "Cuenta → Preferencias",
   settingsEmailAlertsUpgradeLink: "Mejora a Premium para alertas por correo",
+  settingsNoteLabel: "Etiqueta de la nota",
+  settingsNoteLabelPlaceholder: "p. ej. Pack de onboarding del cliente",
+  settingsNoteLabelHint:
+    "Opcional. Solo se muestra en tu Centro de notificaciones en este dispositivo — nunca se envía con la nota.",
+  settingsRecipientEmail: "Correo del destinatario",
+  settingsRecipientEmailPlaceholder: "destinatario@ejemplo.com",
+  settingsRecipientEmailHint:
+    "El destinatario debe introducir este correo antes de poder revelar la nota.",
+  settingsRecipientEmailInvalid: "Correo del destinatario obligatorio",
+  settingsRecipientEmailInvalidHint:
+    "Introduce un correo válido cuando restrinjas el acceso.",
+  recipientVerificationCodeLabel: "Código de verificación del destinatario",
+  recipientVerificationCodeHint:
+    "Comparte este código por separado con el destinatario. Debe introducirlo antes de revelar la nota.",
+  recipientGateTitle: "Verificar antes de abrir",
+  recipientGateDescription:
+    "El remitente restringió quién puede abrir esta nota. Confirma tus datos para continuar.",
+  recipientGateEmail: "Tu correo",
+  recipientGateCode: "Código de verificación",
+  recipientGateSubmit: "Continuar",
+  recipientGateSubmitting: "Verificando…",
+  recipientGateVerifyFailed: "La verificación falló. Revisa los datos e inténtalo de nuevo.",
+  recipientGateVerifiedTitle: "Verificado",
+  recipientGateVerifiedDescription: "Ya puedes revelar la nota.",
   settingsDeliveryVerification: "Entrega y verificación",
   settingsDeliveryRestrictEmail: "Restringir al correo del destinatario",
   settingsDeliveryRestrictEmailInfo: "Solo el destinatario previsto puede revelar la nota.",

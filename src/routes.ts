@@ -56,7 +56,17 @@ import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
-import { insertSentNote, processExpiredSentNotes, recordSentNoteOpened, recordSentNoteAttachmentDownloaded } from "./sentNotesService";
+import {
+  getRecipientGateStatus,
+  insertSentNote,
+  isRecipientVerified,
+  noteRequiresRecipientVerification,
+  processExpiredSentNotes,
+  recipientVerifiedCookieHeader,
+  recordSentNoteOpened,
+  recordSentNoteAttachmentDownloaded,
+  verifyRecipientAccess,
+} from "./sentNotesService";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -87,6 +97,12 @@ const RATE_LIMIT_REVEAL = {
   MAX_REQUESTS: 12,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:reveal:",
+};
+
+const RATE_LIMIT_RECIPIENT_VERIFY = {
+  MAX_REQUESTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:recipient-verify:",
 };
 
 const RATE_LIMIT_FILE_CHUNK_PUT = {
@@ -566,6 +582,25 @@ async function sendMagicSignInOtpEmail(
   return sendEmail(env, { to, subject, text, html });
 }
 
+function maskEmailForLog(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  const at = normalized.indexOf("@");
+  if (at <= 0 || at === normalized.length - 1) return "[invalid-email]";
+  const local = normalized.slice(0, at);
+  const domain = normalized.slice(at + 1);
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
+  const localHint =
+    local.length <= 2
+      ? `${local[0] ?? ""}*`
+      : `${local.slice(0, 2)}***${local.slice(-1)}`;
+  const domainHint =
+    domainName.length <= 2
+      ? `${domainName[0] ?? ""}*`
+      : `${domainName[0]}***${domainName.slice(-1)}`;
+  return `${localHint}@${domainHint}${tld}`;
+}
+
 async function sendMagicLinkEmail(
   env: Env,
   to: string,
@@ -698,8 +733,8 @@ async function sendMagicLinkEmail(
   });
 
   if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    await res.text().catch(() => "");
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   return { ok: true };
@@ -729,7 +764,9 @@ async function sendEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  console.log(`[EMAIL] Sending email via Resend: to=${options.to}, subject=${options.subject}`);
+  console.log(
+    `[EMAIL] Sending email via Resend: to=${maskEmailForLog(options.to)}, subject=${options.subject}`,
+  );
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -747,17 +784,16 @@ async function sendEmail(
   });
 
   const responseText = await res.text();
-  console.log(`[EMAIL] Resend API response: status=${res.status}, body=${responseText}`);
+  console.log(`[EMAIL] Resend API response: status=${res.status}`);
 
   if (!res.ok) {
-    const message = responseText || res.statusText;
-    console.error(`[EMAIL] Resend API error: ${res.status} ${message}`);
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    console.error(`[EMAIL] Resend API error: status=${res.status}`);
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   try {
     const responseJson = JSON.parse(responseText);
-    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || 'unknown'}`);
+    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || "unknown"}`);
   } catch (e) {
     console.log(`[EMAIL] Resend email sent successfully (response not JSON)`);
   }
@@ -808,27 +844,50 @@ async function registerPremiumSentNote(
   input: {
     notifyOnOpen?: boolean;
     notifyOnDestroyed?: boolean;
+    restrictRecipientEmail?: boolean;
+    requireRecipientVerification?: boolean;
+    recipientEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
   },
-): Promise<void> {
-  if (!input.notifyOnOpen && !input.notifyOnDestroyed) return;
-  if (!env.AUTH_DB) return;
+): Promise<{ recipientVerificationCode?: string } | undefined> {
+  const notifyOnOpen = input.notifyOnOpen === true;
+  const notifyOnDestroyed = input.notifyOnDestroyed === true;
+  const restrictRecipientEmail = input.restrictRecipientEmail === true;
+  const requireRecipientVerification = input.requireRecipientVerification === true;
+  if (
+    !notifyOnOpen &&
+    !notifyOnDestroyed &&
+    !restrictRecipientEmail &&
+    !requireRecipientVerification
+  ) {
+    return undefined;
+  }
+  if (!env.AUTH_DB) return undefined;
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session?.id) return;
-    await insertSentNote(env, {
+    if (!session?.id) return undefined;
+    const recipientEmail =
+      typeof input.recipientEmail === "string" ? input.recipientEmail.trim() : null;
+    const result = await insertSentNote(env, {
       userId: session.id,
       noteId,
       label: input.label,
-      notifyOnOpen: input.notifyOnOpen,
-      notifyOnDestroyed: input.notifyOnDestroyed,
+      recipientEmail,
+      notifyOnOpen,
+      notifyOnDestroyed,
+      restrictRecipientEmail,
+      requireRecipientVerification,
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
+    return result.verificationCode
+      ? { recipientVerificationCode: result.verificationCode }
+      : undefined;
   } catch (error) {
     console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
+    return undefined;
   }
 }
 
@@ -1838,6 +1897,9 @@ type AuditEventType =
   | "magic_consume_success"
   | "magic_consume_replay_blocked"
   | "magic_email_otp_exhausted"
+  | "recipient_verification_failed"
+  | "recipient_verification_rate_limited"
+  | "recipient_verification_success"
   | "rate_limit_exceeded"
   | "ip_mismatch"
   | "step_up_required"
@@ -5398,7 +5460,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       },
     }[locale];
 
-    console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change request: userId=${session.id}, currentEmail=${maskEmailForLog(normalizedCurrentEmail)}, newEmail=${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
@@ -5437,7 +5501,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Failed to send verification email" }, 500, request);
     }
 
-    console.log(`[AUTH] Email change verification email sent successfully to ${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change verification email sent successfully to ${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     await logAuditEvent(env, {
       userId: session.id,
@@ -6487,6 +6553,12 @@ async function checkRateLimit(
       resetAt: windowStart + config.WINDOW_SECONDS,
     };
   }
+}
+
+async function recipientVerificationFailureDelay(usedAttempts: number): Promise<void> {
+  const boundedAttempts = Math.max(1, Math.min(usedAttempts, RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS));
+  const delayMs = Math.min(4000, 500 * 2 ** (boundedAttempts - 1));
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 type HostedAiQuota = {
@@ -8412,10 +8484,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
     }
 
+    let premiumSentNoteExtras: { recipientVerificationCode?: string } | undefined;
     if (doResponse.ok) {
-      await registerPremiumSentNote(env, request, id, {
+      premiumSentNoteExtras = await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+        restrictRecipientEmail: requestBody?.restrictRecipientEmail === true,
+        requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        recipientEmail:
+          typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
@@ -8429,8 +8506,123 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
 	    }
 
+      if (doResponse.ok && premiumSentNoteExtras?.recipientVerificationCode) {
+        try {
+          const created = (await doResponse.clone().json()) as Record<string, unknown>;
+          return jsonResponse(
+            {
+              ...created,
+              recipientVerificationCode: premiumSentNoteExtras.recipientVerificationCode,
+            },
+            doResponse.status,
+            request,
+          );
+        } catch {
+          // fall through to raw DO response
+        }
+      }
+
 	    return applyCorsHeaders(doResponse as unknown as Response, request);
 	  }
+
+  const recipientGateParams = parsePathParams(pathname, "/api/notes/:id/recipient-gate");
+  if (recipientGateParams && method === "GET") {
+    const { id } = recipientGateParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const status = await getRecipientGateStatus(env, id);
+    const verified = status.required ? await isRecipientVerified(env, id, request) : true;
+    return jsonResponse({ ...status, verified }, 200, request);
+  }
+
+  const recipientVerifyParams = parsePathParams(pathname, "/api/notes/:id/recipient-verify");
+  if (recipientVerifyParams && method === "POST") {
+    const { id } = recipientVerifyParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    let body: { code?: unknown; email?: unknown } = {};
+    try {
+      body = (await request.json()) as { code?: unknown; email?: unknown };
+    } catch {
+      return jsonResponse({ error: "Invalid JSON" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const verifyLimit = await checkRateLimit(
+      env,
+      `${id}:${clientId}`,
+      RATE_LIMIT_RECIPIENT_VERIFY,
+    );
+    if (!verifyLimit.allowed) {
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "recipient_verification_rate_limited",
+        status: "warning",
+        details: {
+          noteId: id,
+          resetAt: verifyLimit.resetAt,
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse(
+        {
+          error: "recipient_verification_rate_limited",
+          message: `Too many verification attempts. Please try again in ${verifyLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: verifyLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    const result = await verifyRecipientAccess(env, id, {
+      code: typeof body.code === "string" ? body.code : undefined,
+      email: typeof body.email === "string" ? body.email : undefined,
+    });
+    if (!result.ok) {
+      const usedAttempts = RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS - verifyLimit.remaining;
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "recipient_verification_failed",
+        status: "failure",
+        details: {
+          noteId: id,
+          reason: result.error,
+          attemptsRemaining: verifyLimit.remaining,
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      await recipientVerificationFailureDelay(usedAttempts);
+      const message =
+        result.error === "invalid_code"
+          ? "Invalid verification code."
+          : result.error === "invalid_email"
+            ? "This email does not match the intended recipient."
+            : result.error === "email_required"
+              ? "Recipient email is required."
+              : result.error === "code_required"
+                ? "Verification code is required."
+                : "Recipient verification is not available for this note.";
+      return jsonResponse({ error: result.error, message }, 400, request);
+    }
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "recipient_verification_success",
+      status: "success",
+      details: { noteId: id },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    const response = jsonResponse({ ok: true }, 200, request);
+    response.headers.append(
+      "Set-Cookie",
+      recipientVerifiedCookieHeader(id, result.setCookie, request),
+    );
+    return response;
+  }
 
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
   if (noteRevealParams && method === "POST") {
@@ -8447,6 +8639,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         message: `Too many reveal attempts. Please try again in ${revealLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
         resetAt: revealLimit.resetAt,
       }, 429, request);
+    }
+
+    if (await noteRequiresRecipientVerification(env, id)) {
+      const verified = await isRecipientVerified(env, id, request);
+      if (!verified) {
+        return jsonResponse(
+          {
+            error: "recipient_verification_required",
+            message: "Recipient verification is required before this note can be revealed.",
+          },
+          403,
+          request,
+        );
+      }
     }
 
     const stub = getSecureNoteStub(env, id, true);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  NOTE_EXPIRY_DEFAULT_PRESET_ID,
   clampNoteExpiryPresetForAccount,
   noteExpiryPresetIdToSeconds,
   parseNoteExpirySecondsFromBody,
@@ -16,6 +17,16 @@ describe("parseNoteExpirySecondsFromBody", () => {
   it("accepts 30d for premium", () => {
     const r = parseNoteExpirySecondsFromBody(noteExpiryPresetIdToSeconds("30d"), { isPremium: true });
     assert.equal(r.ok, true);
+  });
+
+  it("accepts 3d for free", () => {
+    const r = parseNoteExpirySecondsFromBody(noteExpiryPresetIdToSeconds("3d"), { isPremium: false });
+    assert.equal(r.ok, true);
+  });
+
+  it("rejects 7d for free", () => {
+    const r = parseNoteExpirySecondsFromBody(noteExpiryPresetIdToSeconds("7d"), { isPremium: false });
+    assert.equal(r.ok, false);
   });
 
   it("rejects 30d for free", () => {
@@ -40,8 +51,13 @@ describe("parseNoteExpirySecondsFromBody", () => {
 });
 
 describe("clampNoteExpiryPresetForAccount", () => {
-  it("clamps premium presets to 7d for free users", () => {
-    assert.equal(clampNoteExpiryPresetForAccount("30d", false), "7d");
+  it("keeps the default at 1d", () => {
+    assert.equal(NOTE_EXPIRY_DEFAULT_PRESET_ID, "1d");
+  });
+
+  it("clamps premium presets to 3d for free users", () => {
+    assert.equal(clampNoteExpiryPresetForAccount("7d", false), "3d");
+    assert.equal(clampNoteExpiryPresetForAccount("30d", false), "3d");
     assert.equal(clampNoteExpiryPresetForAccount("30d", true), "30d");
   });
 });

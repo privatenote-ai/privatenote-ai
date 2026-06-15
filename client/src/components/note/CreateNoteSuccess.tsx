@@ -23,6 +23,7 @@ export type CreatedNoteMeta = {
   expiryValue: NoteExpiryPresetId;
   readCount: number;
   isPasswordProtected: boolean;
+  recipientVerificationCode?: string;
 };
 
 export type CreatedNoteState = {
@@ -68,7 +69,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   onCreateNewNote,
   successQrSectionRef,
 }) => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const createdNoteMeta = createdNote.meta;
   if (!createdNoteMeta) {
     return (
@@ -86,6 +87,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     expiryValue: createdExpiryValue,
     readCount: createdReadCount,
     isPasswordProtected: createdPasswordProtected,
+    recipientVerificationCode,
   } = createdNoteMeta;
 
   return (
@@ -127,6 +129,22 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     <CircleHelp className="h-5 w-5 text-primary" />
                   </button>
                 </div>
+
+                {recipientVerificationCode ? (
+                  <div
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100"
+                    role="note"
+                  >
+                    <p className="m-0 font-medium">
+                      {t.recipientVerificationCodeLabel ?? "Recipient verification code"}
+                    </p>
+                    <p className="mt-2 font-mono text-lg tracking-widest">{recipientVerificationCode}</p>
+                    <p className="mt-2 m-0 text-xs leading-snug opacity-90">
+                      {t.recipientVerificationCodeHint ??
+                        "Share this code with the recipient separately. They must enter it before the note can be revealed."}
+                    </p>
+                  </div>
+                ) : null}
 
                 {showSuccessHelp && (
                   <div

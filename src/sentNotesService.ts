@@ -32,6 +32,7 @@ export type SentNoteRow = {
   open_device_class: string | null;
   open_browser: string | null;
   attachment_downloaded_at: string | null;
+  notification_deleted_at: string | null;
 };
 
 export type CreateSentNoteInput = {
@@ -42,9 +43,17 @@ export type CreateSentNoteInput = {
   recipientCode?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
+  restrictRecipientEmail?: boolean;
   requireRecipientVerification?: boolean;
   proofEnabled?: boolean;
   expiresAt?: string | null;
+};
+
+type RecipientGatePayload = {
+  codeHash?: string;
+  salt?: string;
+  emailMac?: string | null;
+  emailHash?: string | null;
 };
 
 const RECIPIENT_GATE_PREFIX = "note_rcv_gate:";
@@ -64,6 +73,58 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function requireAuthSecretKey(env: Env): string {
+  if (!env.AUTH_SECRET_KEY) {
+    throw new Error("auth_secret_key_required");
+  }
+  return env.AUTH_SECRET_KEY;
+}
+
+function recipientEmailMacPayload(email: string): string {
+  return `recipient-email:v1:${email}`;
+}
+
+async function recipientEmailMac(env: Env, email: string): Promise<string> {
+  return `hmac-sha256:v1:${await hmacSha256Hex(
+    requireAuthSecretKey(env),
+    recipientEmailMacPayload(email),
+  )}`;
+}
+
+function maskEmailHint(email: string | null): string | null {
+  if (!email) return null;
+  const at = email.indexOf("@");
+  if (at <= 0 || at === email.length - 1) return null;
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
+  const localHint =
+    local.length <= 2
+      ? `${local[0] ?? ""}*`
+      : `${local.slice(0, 2)}***${local.slice(-1)}`;
+  const domainHint =
+    domainName.length <= 2
+      ? `${domainName[0] ?? ""}*`
+      : `${domainName[0]}***${domainName.slice(-1)}`;
+  return `${localHint}@${domainHint}${tld}`;
 }
 
 function randomSixDigitCode(): string {
@@ -138,13 +199,17 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   }
 
   const id = crypto.randomUUID();
+  const restrictRecipientEmail = input.restrictRecipientEmail === true;
+  const requireRecipientVerification = input.requireRecipientVerification === true;
   const emailHint =
     input.recipientEmail && isPlausibleEmailFormat(input.recipientEmail)
       ? input.recipientEmail.trim().toLowerCase()
       : null;
-  if (input.requireRecipientVerification && !emailHint) {
+  if (restrictRecipientEmail && !emailHint) {
     throw new Error("recipient_email_required");
   }
+
+  const hasRecipientGate = restrictRecipientEmail || requireRecipientVerification;
 
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
@@ -157,29 +222,32 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.userId,
       input.noteId,
       input.label?.trim().slice(0, 120) || null,
-      emailHint,
+      maskEmailHint(emailHint),
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
-      input.requireRecipientVerification ? 1 : 0,
+      hasRecipientGate ? 1 : 0,
       input.proofEnabled !== false ? 1 : 0,
       input.expiresAt ?? null,
     )
     .run();
 
   let verificationCode: string | undefined;
-  if (input.requireRecipientVerification) {
-    verificationCode = input.recipientCode?.trim() || randomSixDigitCode();
-    const salt = crypto.randomUUID();
-    const codeHash = await sha256Hex(`${salt}:${verificationCode}`);
-    const emailHash = emailHint ? await sha256Hex(emailHint) : null;
+  if (hasRecipientGate) {
+    const gate: RecipientGatePayload = {};
+    if (emailHint) {
+      gate.emailMac = await recipientEmailMac(env, emailHint);
+    }
+    if (requireRecipientVerification) {
+      verificationCode = input.recipientCode?.trim() || randomSixDigitCode();
+      gate.salt = crypto.randomUUID();
+      gate.codeHash = await sha256Hex(`${gate.salt}:${verificationCode}`);
+    }
     const ttlSeconds = input.expiresAt
       ? Math.max(3600, Math.floor((Date.parse(input.expiresAt) - Date.now()) / 1000))
       : 7 * 24 * 3600;
-    await kv(env).put(
-      gateKey(input.noteId),
-      JSON.stringify({ codeHash, salt, emailHash }),
-      { expirationTtl: Math.min(ttlSeconds, 30 * 24 * 3600) },
-    );
+    await kv(env).put(gateKey(input.noteId), JSON.stringify(gate), {
+      expirationTtl: Math.min(ttlSeconds, 30 * 24 * 3600),
+    });
   }
 
   return { id, verificationCode };
@@ -188,7 +256,11 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
 export async function listSentNotesForUser(env: Env, userId: string, limit = 50): Promise<SentNoteRow[]> {
   if (!env.AUTH_DB) return [];
   const res = await env.AUTH_DB.prepare(
-    `SELECT * FROM sent_notes WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
+    `SELECT * FROM sent_notes
+      WHERE user_id = ?
+        AND notification_deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT ?`,
   )
     .bind(userId, limit)
     .all<SentNoteRow>();
@@ -197,6 +269,7 @@ export async function listSentNotesForUser(env: Env, userId: string, limit = 50)
 
 export type SentNoteNotificationItem = {
   id: string;
+  noteId: string;
   recipientEmail: string | null;
   displayNoteId: string;
   status: SentNoteNotificationStatus;
@@ -207,6 +280,7 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
   const { status, eventAt } = resolveSentNoteNotificationEvent(row);
   return {
     id: row.id,
+    noteId: row.note_id,
     recipientEmail: row.recipient_email_hint,
     displayNoteId: formatNotificationNoteDisplayId(row.note_id),
     status,
@@ -230,7 +304,9 @@ export async function deleteSentNoteNotification(
 ): Promise<boolean> {
   if (!env.AUTH_DB) return false;
   const result = await env.AUTH_DB.prepare(
-    `DELETE FROM sent_notes WHERE id = ? AND user_id = ?`,
+    `UPDATE sent_notes
+       SET notification_deleted_at = COALESCE(notification_deleted_at, datetime('now'))
+     WHERE id = ? AND user_id = ? AND notification_deleted_at IS NULL`,
   )
     .bind(notificationId, userId)
     .run();
@@ -239,7 +315,11 @@ export async function deleteSentNoteNotification(
 
 export async function clearSentNoteNotifications(env: Env, userId: string): Promise<number> {
   if (!env.AUTH_DB) return 0;
-  const result = await env.AUTH_DB.prepare(`DELETE FROM sent_notes WHERE user_id = ?`)
+  const result = await env.AUTH_DB.prepare(
+    `UPDATE sent_notes
+       SET notification_deleted_at = COALESCE(notification_deleted_at, datetime('now'))
+     WHERE user_id = ? AND notification_deleted_at IS NULL`,
+  )
     .bind(userId)
     .run();
   return (result?.meta as { changes?: number } | undefined)?.changes ?? 0;
@@ -282,6 +362,21 @@ export async function noteRequiresRecipientVerification(env: Env, noteId: string
   return Boolean(gate);
 }
 
+export async function getRecipientGateStatus(
+  env: Env,
+  noteId: string,
+): Promise<{ required: boolean; emailRequired: boolean; codeRequired: boolean }> {
+  const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
+  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) {
+    return { required: false, emailRequired: false, codeRequired: false };
+  }
+  return {
+    required: true,
+    emailRequired: Boolean(stored.emailMac || stored.emailHash),
+    codeRequired: Boolean(stored.codeHash),
+  };
+}
+
 export async function isRecipientVerified(env: Env, noteId: string, request: Request): Promise<boolean> {
   const cookies = parseCookieHeader(request.headers.get("Cookie"));
   const raw = cookies.pn_rcv;
@@ -308,24 +403,26 @@ export async function verifyRecipientAccess(
   noteId: string,
   body: { code?: string; email?: string },
 ): Promise<{ ok: true; setCookie: string } | { ok: false; error: string }> {
-  const stored = await kv(env).get(gateKey(noteId), { type: "json" }) as {
-    codeHash: string;
-    salt: string;
-    emailHash: string | null;
-  } | null;
-  if (!stored) return { ok: false, error: "no_gate" };
+  const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
+  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) return { ok: false, error: "no_gate" };
 
-  const code = typeof body.code === "string" ? body.code.trim() : "";
-  if (!code) return { ok: false, error: "code_required" };
+  if (stored.codeHash) {
+    const code = typeof body.code === "string" ? body.code.trim() : "";
+    if (!code) return { ok: false, error: "code_required" };
+    const codeHash = await sha256Hex(`${stored.salt}:${code}`);
+    if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
+  }
 
-  const codeHash = await sha256Hex(`${stored.salt}:${code}`);
-  if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
-
-  if (stored.emailHash) {
+  if (stored.emailMac || stored.emailHash) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!email || !isPlausibleEmailFormat(email)) return { ok: false, error: "email_required" };
-    const emailHash = await sha256Hex(email);
-    if (emailHash !== stored.emailHash) return { ok: false, error: "invalid_email" };
+    if (stored.emailMac) {
+      const emailMac = await recipientEmailMac(env, email);
+      if (emailMac !== stored.emailMac) return { ok: false, error: "invalid_email" };
+    } else if (stored.emailHash) {
+      const emailHash = await sha256Hex(email);
+      if (emailHash !== stored.emailHash) return { ok: false, error: "invalid_email" };
+    }
   }
 
   const token = crypto.randomUUID();

@@ -426,7 +426,7 @@ export default function SecuritySettings() {
     try {
       const stepped = await stepUpForRetry();
       if (!stepped) return;
-      await apiRequest("/api/auth/passkeys/reset", "POST");
+      await apiRequest("/api/auth/passkeys/reset", "POST", {});
       toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: "All passkeys have been removed from your account." });
       setPasskeys([]);
       closePasskeyResetDialog();

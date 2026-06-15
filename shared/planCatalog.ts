@@ -1,6 +1,6 @@
 /**
  * Subscription plan catalog — single source for limits, pricing display, and feature flags.
- * Payment integration (Stripe) is not wired yet; account_type is set after purchase or for staging tests.
+ * Stripe entitlements are applied server-side from verified webhook events.
  */
 
 export type AccountType = "free" | "personal_premium" | "business_premium";

@@ -195,8 +195,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       // Retry: D1 read-after-write lag can briefly return authenticated:false
       // even though the verify endpoint just created the session.
       await refreshUntilAuthenticated();
-      // Redirect to home on successful login
-      window.location.href = "/";
+      window.location.href = signInContext.returnTo;
     } catch (error) {
       toast({
         title: tx("authPasskeyLoginFailedTitle", "Passkey login failed"),

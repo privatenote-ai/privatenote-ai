@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { format, isToday, isYesterday } from "date-fns";
 import { Bell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,106 +15,31 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
-import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
 import { AccountSettingsShell } from "./AccountSettingsShell";
-import type { SentNoteNotificationStatus } from "@shared/sentNoteNotification";
 import { hasPremiumFeatures, normalizeAccountType } from "@shared/planCatalog";
-
-type NotificationItem = {
-  id: string;
-  recipientEmail: string | null;
-  displayNoteId: string;
-  status: SentNoteNotificationStatus;
-  eventAt: string;
-};
-
-type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
-
-type NotificationGroup = {
-  period: TimePeriod;
-  items: NotificationItem[];
-};
-
-function groupNotifications(items: NotificationItem[]): NotificationGroup[] {
-  const groups: NotificationGroup[] = [];
-  const buckets: Record<TimePeriod, NotificationItem[] | undefined> = {
-    today: undefined,
-    yesterday: undefined,
-    this_week: undefined,
-    earlier: undefined,
-  };
-
-  for (const item of items) {
-    let period: TimePeriod;
-    try {
-      const d = parseActivityCreatedAt(item.eventAt);
-      if (isToday(d)) period = "today";
-      else if (isYesterday(d)) period = "yesterday";
-      else if (d.getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000) period = "this_week";
-      else period = "earlier";
-    } catch {
-      period = "earlier";
-    }
-    if (!buckets[period]) {
-      buckets[period] = [];
-      groups.push({ period, items: buckets[period]! });
-    }
-    buckets[period]!.push(item);
-  }
-
-  return groups;
-}
-
-function formatNotificationTimestamp(raw: string): string {
-  const d = parseActivityCreatedAt(raw);
-  const time = format(d, "HH:mm");
-  if (isToday(d)) return `Today ${time}`;
-  if (isYesterday(d)) return `Yesterday ${time}`;
-  return format(d, "MMM d, HH:mm");
-}
-
-function statusLabel(
-  status: SentNoteNotificationStatus,
-  t: Record<string, string>,
-): string {
-  switch (status) {
-    case "created":
-      return t.notificationStatusCreated ?? "Created";
-    case "viewed":
-      return t.notificationStatusViewed ?? "Viewed";
-    case "burned":
-      return t.notificationStatusBurned ?? "Burned";
-    case "expired":
-      return t.notificationStatusExpired ?? "Expired";
-    case "attachment_downloaded":
-      return t.notificationStatusAttachmentDownloaded ?? "Downloaded attachment";
-    default:
-      return status;
-  }
-}
-
-function statusTone(status: SentNoteNotificationStatus): string {
-  switch (status) {
-    case "viewed":
-      return "text-primary";
-    case "attachment_downloaded":
-      return "text-indigo-600 dark:text-indigo-400";
-    case "burned":
-      return "text-amber-700 dark:text-amber-300";
-    case "expired":
-      return "text-gray-600 dark:text-gray-400";
-    default:
-      return "text-emerald-700 dark:text-emerald-400";
-  }
-}
+import {
+  deleteNoteLabel,
+  deleteNoteLabels,
+  readNoteLabels,
+} from "@/utils/noteLabelsStorage";
+import {
+  formatNotificationTimestamp,
+  groupNotifications,
+  statusLabel,
+  statusTone,
+  type NotificationItem,
+  type TimePeriod,
+} from "./NotificationCenter.logic";
 
 function NotificationCard({
   item,
+  noteLabel,
   onDelete,
   deleting,
   t,
 }: {
   item: NotificationItem;
+  noteLabel: string | null;
   onDelete: (id: string) => void;
   deleting: boolean;
   t: Record<string, string>;
@@ -123,6 +47,7 @@ function NotificationCard({
   const recipient =
     item.recipientEmail?.trim() ||
     (t.notificationRecipientUnknown ?? "Recipient not recorded");
+  const headline = noteLabel?.trim() || recipient;
 
   return (
     <li className="relative rounded-xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950/30">
@@ -137,7 +62,10 @@ function NotificationCard({
       </button>
 
       <div className="space-y-1 pr-10 text-left">
-        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{recipient}</p>
+        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{headline}</p>
+        {noteLabel?.trim() ? (
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{recipient}</p>
+        ) : null}
         <p className="font-mono text-xs text-gray-400 dark:text-gray-500">{item.displayNoteId}</p>
         <p className={`pt-1 text-sm font-semibold ${statusTone(item.status)}`}>
           {statusLabel(item.status, t)}
@@ -155,6 +83,7 @@ export default function NotificationCenter() {
   const { t } = useLanguage();
   const tx = (key: string, fallback: string) => t[key] || fallback;
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [noteLabels, setNoteLabels] = useState<Record<string, string>>(() => readNoteLabels());
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,6 +110,7 @@ export default function NotificationCenter() {
         "GET",
       );
       setNotifications(data.ok && Array.isArray(data.notifications) ? data.notifications : []);
+      setNoteLabels(readNoteLabels());
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 403) {
         setIsPremium(false);
@@ -218,11 +148,16 @@ export default function NotificationCenter() {
   };
 
   const handleDelete = async (id: string) => {
+    const item = notifications.find((entry) => entry.id === id);
     setDeletingId(id);
     setError(null);
     try {
       await apiRequest(`/api/auth/account/notifications/${encodeURIComponent(id)}`, "DELETE");
-      setNotifications((prev) => prev.filter((item) => item.id !== id));
+      setNotifications((prev) => prev.filter((entry) => entry.id !== id));
+      if (item?.noteId) {
+        deleteNoteLabel(item.noteId);
+        setNoteLabels(readNoteLabels());
+      }
     } catch {
       setError(tx("notificationDeleteError", "Could not delete that notification."));
     } finally {
@@ -235,6 +170,8 @@ export default function NotificationCenter() {
     setError(null);
     try {
       await apiRequest("/api/auth/account/notifications", "DELETE");
+      deleteNoteLabels(notifications.map((item) => item.noteId).filter(Boolean));
+      setNoteLabels(readNoteLabels());
       setNotifications([]);
       setClearDialogOpen(false);
     } catch {
@@ -371,6 +308,7 @@ export default function NotificationCenter() {
                     <NotificationCard
                       key={item.id}
                       item={item}
+                      noteLabel={noteLabels[item.noteId] ?? null}
                       onDelete={(id) => void handleDelete(id)}
                       deleting={deletingId === item.id}
                       t={t}

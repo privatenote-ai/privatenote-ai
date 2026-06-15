@@ -31,8 +31,10 @@ import {
   SIMPLE_PASSWORD_NOUNS,
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
+import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
+import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
 import {
   Dialog,
   DialogContent,
@@ -321,8 +323,16 @@ export type NoteSettingsPanelProps = {
   notifyOnDestroyed: boolean;
   setNotifyOnDestroyed: (v: boolean) => void;
   canNotifyOnOpen: boolean;
+  noteLabel: string;
+  setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
   premiumStatusLoading: boolean;
+  restrictRecipientEmail: boolean;
+  setRestrictRecipientEmail: (v: boolean) => void;
+  requireRecipientVerification: boolean;
+  setRequireRecipientVerification: (v: boolean) => void;
+  recipientEmail: string;
+  setRecipientEmail: (v: string) => void;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
@@ -348,8 +358,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   notifyOnDestroyed,
   setNotifyOnDestroyed,
   canNotifyOnOpen,
+  noteLabel,
+  setNoteLabel,
   isPremiumUser,
   premiumStatusLoading,
+  restrictRecipientEmail,
+  setRestrictRecipientEmail,
+  requireRecipientVerification,
+  setRequireRecipientVerification,
+  recipientEmail,
+  setRecipientEmail,
   readCount,
   setReadCount,
   fileAccessWindowSeconds,
@@ -357,30 +375,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const premiumUpgradeHref = localizedPath("/premium", language);
+  const preferencesHref = localizedPath("/account/preferences", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
 
-  const premiumDeliveryFeatures = React.useMemo<PremiumFeature[]>(
-    () => [
-      {
-        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
-        description:
-          t.settingsDeliveryRestrictEmailInfo ??
-          "Only the intended recipient can reveal the note.",
-      },
-      {
-        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
-        description:
-          t.settingsDeliveryVerifyEmailInfo ??
-          "Verify the recipient before the note is shown.",
-      },
-      {
-        title: t.settingsDeliveryBrandedReveal ?? "Branded reveal page",
-        description:
-          t.settingsDeliveryBrandedRevealInfo ??
-          "Show your brand on the page where the recipient opens the note.",
-      },
-    ],
+  const brandedRevealFeature = React.useMemo<PremiumFeature>(
+    () => ({
+      title: t.settingsDeliveryBrandedReveal ?? "Branded reveal page",
+      description:
+        t.settingsDeliveryBrandedRevealInfo ??
+        "Show your brand on the page where the recipient opens the note.",
+    }),
     [t],
   );
 
@@ -688,11 +693,43 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                 />
               </SettingsOptionList>
+              {isPremiumUser ? (
+                <div className="px-1 pt-2">
+                  <label
+                    htmlFor="note-label"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsNoteLabel ?? "Note label"}
+                  </label>
+                  <input
+                    id="note-label"
+                    type="text"
+                    maxLength={NOTE_LABEL_MAX_LENGTH}
+                    value={noteLabel}
+                    onChange={(event) => setNoteLabel(event.target.value)}
+                    placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsNoteLabelHint ??
+                      "Optional. Shown only in your Notification Center on this device — never sent with the note."}
+                  </p>
+                </div>
+              ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (
                 <PremiumSectionFooter>
                   {isPremiumUser ? (
-                    t.settingsEmailAlertsPrefsHint ??
-                    "Turn on email notifications in Account → Preferences."
+                    <>
+                      {t.settingsEmailAlertsPrefsHintPrefix ??
+                        "Turn on email notifications in"}{" "}
+                      <Link
+                        href={preferencesHref}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t.settingsEmailAlertsPrefsLink ?? "Account → Preferences"}
+                      </Link>
+                      .
+                    </>
                   ) : (
                     <>
                       {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
@@ -719,18 +756,79 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 premiumLabel={t.premium ?? "Premium"}
               />
               <SettingsOptionList>
-                {premiumDeliveryFeatures.map((feature) => (
-                  <SettingsToggleRow
-                    key={feature.title}
-                    locked
-                    title={feature.title}
-                    info={feature.description}
-                    onLockedClick={
-                      isPremiumUser ? undefined : () => setSelectedPremiumFeature(feature)
-                    }
-                  />
-                ))}
+                <SettingsToggleRow
+                  id="restrict-recipient-email"
+                  locked={!isPremiumUser}
+                  checked={restrictRecipientEmail}
+                  onCheckedChange={(checked) => {
+                    setRestrictRecipientEmail(checked);
+                    if (!checked) setRecipientEmail("");
+                  }}
+                  title={t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email"}
+                  info={
+                    t.settingsDeliveryRestrictEmailInfo ??
+                    "Only the intended recipient can reveal the note."
+                  }
+                  onLockedClick={
+                    isPremiumUser ? undefined : () =>
+                      setSelectedPremiumFeature({
+                        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
+                        description:
+                          t.settingsDeliveryRestrictEmailInfo ??
+                          "Only the intended recipient can reveal the note.",
+                      })
+                  }
+                />
+                <SettingsToggleRow
+                  id="require-recipient-verification"
+                  locked={!isPremiumUser}
+                  checked={requireRecipientVerification}
+                  onCheckedChange={setRequireRecipientVerification}
+                  title={t.settingsDeliveryVerifyEmail ?? "Require email verification"}
+                  info={
+                    t.settingsDeliveryVerifyEmailInfo ??
+                    "Verify the recipient before the note is shown."
+                  }
+                  onLockedClick={
+                    isPremiumUser ? undefined : () =>
+                      setSelectedPremiumFeature({
+                        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
+                        description:
+                          t.settingsDeliveryVerifyEmailInfo ??
+                          "Verify the recipient before the note is shown.",
+                      })
+                  }
+                />
+                <SettingsToggleRow
+                  locked
+                  title={brandedRevealFeature.title}
+                  info={brandedRevealFeature.description}
+                  onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
+                />
               </SettingsOptionList>
+              {isPremiumUser && restrictRecipientEmail ? (
+                <div className="px-1 pt-1">
+                  <label
+                    htmlFor="recipient-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="recipient-email"
+                    type="email"
+                    autoComplete="email"
+                    value={recipientEmail}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
+                    placeholder={t.settingsRecipientEmailPlaceholder ?? "recipient@example.com"}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsRecipientEmailHint ??
+                      "The recipient must enter this email before the note can be revealed."}
+                  </p>
+                </div>
+              ) : null}
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
                   {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}

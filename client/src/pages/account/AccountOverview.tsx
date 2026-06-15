@@ -25,6 +25,7 @@ import {
   Moon,
   Monitor,
   Copy,
+  CreditCard,
 } from "lucide-react";
 import { getThemePreference } from "@/hooks/useThemePreference";
 
@@ -43,6 +44,14 @@ type AccountSummary = {
   emailNotifications: boolean;
   limits: { notesPerDay: number | null; aiUsesPerDay: number | null };
   usage: { notesToday: number; aiToday: number; notesMonth: number; aiMonth: number };
+  billing?: {
+    stripeCustomerLinked?: boolean;
+    stripeSubscriptionLinked?: boolean;
+    subscriptionStatus?: string | null;
+    subscriptionCurrentPeriodEnd?: string | null;
+    premiumGrantedAt?: string | null;
+    premiumRevokedAt?: string | null;
+  };
 };
 
 type MeResponse = {
@@ -131,6 +140,7 @@ export default function AccountOverview() {
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const [themePref, setThemePref] = useState(getThemePreference());
 
   // Keep theme label in sync with storage changes
@@ -208,6 +218,25 @@ export default function AccountOverview() {
       });
     }
   }, [summary?.id, toast]);
+
+  const openBillingPortal = useCallback(async () => {
+    setBillingPortalLoading(true);
+    try {
+      const result = await apiRequest<{ ok: boolean; url?: string }>("/api/auth/billing/portal", "POST", {});
+      if (result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+      throw new Error("Missing portal URL");
+    } catch {
+      toast({
+        title: tx("authBillingPortalFailedTitle", "Billing portal unavailable"),
+        description: tx("authBillingPortalFailedDesc", "Could not open billing management. Please try again later."),
+        variant: "destructive",
+      });
+      setBillingPortalLoading(false);
+    }
+  }, [toast]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || loading) {
@@ -475,12 +504,32 @@ export default function AccountOverview() {
               {tx("authCurrentPlan", "Current plan")}
             </p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
+            {summary?.billing?.subscriptionStatus ? (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {tx("authBillingStatus", "Billing status")}: {summary.billing.subscriptionStatus}
+              </p>
+            ) : null}
             <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
               {tx(
                 "authPlanHostedAiNote",
                 "Premium unlocks higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
               )}
             </p>
+            {summary?.billing?.stripeCustomerLinked ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={openBillingPortal}
+                disabled={billingPortalLoading}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {billingPortalLoading
+                  ? tx("authBillingOpening", "Opening...")
+                  : tx("authManageBilling", "Manage billing")}
+              </Button>
+            ) : null}
           </div>
 
           {accountType === "free" && (

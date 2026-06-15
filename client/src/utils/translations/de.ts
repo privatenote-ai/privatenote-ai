@@ -432,7 +432,33 @@ export const de: Translations = {
     "Eine E-Mail, wenn die Notiz nicht mehr geöffnet werden kann.",
   settingsEmailAlertsPrefsHint:
     "Aktivieren Sie E-Mail-Benachrichtigungen unter Konto → Einstellungen.",
+  settingsEmailAlertsPrefsHintPrefix: "Aktivieren Sie E-Mail-Benachrichtigungen unter",
+  settingsEmailAlertsPrefsLink: "Konto → Einstellungen",
   settingsEmailAlertsUpgradeLink: "Upgrade für E-Mail-Benachrichtigungen",
+  settingsNoteLabel: "Notiz-Label",
+  settingsNoteLabelPlaceholder: "z. B. Kunden-Onboarding",
+  settingsNoteLabelHint:
+    "Optional. Wird nur im Benachrichtigungscenter auf diesem Gerät angezeigt — nie mit der Notiz gesendet.",
+  settingsRecipientEmail: "Empfänger-E-Mail",
+  settingsRecipientEmailPlaceholder: "empfaenger@beispiel.de",
+  settingsRecipientEmailHint:
+    "Der Empfänger muss diese E-Mail eingeben, bevor die Notiz geöffnet werden kann.",
+  settingsRecipientEmailInvalid: "Empfänger-E-Mail erforderlich",
+  settingsRecipientEmailInvalidHint:
+    "Geben Sie eine gültige Empfänger-E-Mail ein, wenn der Zugriff eingeschränkt ist.",
+  recipientVerificationCodeLabel: "Empfänger-Verifizierungscode",
+  recipientVerificationCodeHint:
+    "Teilen Sie diesen Code separat mit dem Empfänger. Er muss ihn eingeben, bevor die Notiz geöffnet werden kann.",
+  recipientGateTitle: "Vor dem Öffnen verifizieren",
+  recipientGateDescription:
+    "Der Absender hat eingeschränkt, wer diese Notiz öffnen darf. Bestätigen Sie Ihre Angaben, um fortzufahren.",
+  recipientGateEmail: "Ihre E-Mail",
+  recipientGateCode: "Verifizierungscode",
+  recipientGateSubmit: "Weiter",
+  recipientGateSubmitting: "Wird verifiziert…",
+  recipientGateVerifyFailed: "Verifizierung fehlgeschlagen. Prüfen Sie die Angaben und versuchen Sie es erneut.",
+  recipientGateVerifiedTitle: "Verifiziert",
+  recipientGateVerifiedDescription: "Sie können die Notiz jetzt öffnen.",
   settingsDeliveryVerification: "Zustellung & Verifizierung",
   settingsDeliveryRestrictEmail: "Auf Empfänger-E-Mail beschränken",
   settingsDeliveryRestrictEmailInfo: "Nur der vorgesehene Empfänger kann die Notiz lesen.",

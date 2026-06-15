@@ -18,11 +18,12 @@ export const NOTE_EXPIRY_PRESETS = [
 
 export type NoteExpiryPresetId = (typeof NOTE_EXPIRY_PRESETS)[number]["id"];
 
-/** Free accounts may not exceed this lifetime (7 days). */
-export const NOTE_EXPIRY_FREE_MAX_SECONDS = 7 * 24 * 60 * 60;
+/** Free accounts may not exceed this lifetime (3 days). */
+export const NOTE_EXPIRY_FREE_MAX_SECONDS = 3 * 24 * 60 * 60;
 
-/** Premium-only preset ids (14d, 30d). */
+/** Premium-only preset ids (7d, 14d, 30d). */
 export const NOTE_EXPIRY_PREMIUM_PRESET_IDS: ReadonlySet<NoteExpiryPresetId> = new Set([
+  "7d",
   "14d",
   "30d",
 ]);
@@ -81,7 +82,7 @@ export function clampNoteExpiryPresetForAccount(
   isPremium: boolean,
 ): NoteExpiryPresetId {
   if (isPremium || !isPremiumNoteExpiryPresetId(presetId)) return presetId;
-  return "7d";
+  return "3d";
 }
 
 export type NoteExpiryParseResult =
@@ -120,7 +121,7 @@ export function parseNoteExpirySecondsFromBody(
   if (!isNoteExpirySecondsAllowedForAccount(asInt, isPremium)) {
     return {
       ok: false,
-      message: "Longer expirations (14 or 30 days) require a Premium plan",
+      message: "Longer expirations (7, 14, or 30 days) require a Premium plan",
     };
   }
   return { ok: true, seconds: asInt };

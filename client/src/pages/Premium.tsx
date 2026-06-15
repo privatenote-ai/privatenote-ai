@@ -148,7 +148,7 @@ const faqs = [
   },
   {
     q: "Can I pay online today?",
-    a: "Yes, once the Stripe Payment Link environment variables are set. Until then the Premium button falls back to the contact page for staging, early access, or manual enablement.",
+    a: "Yes, once Stripe Payment Links and the verified webhook are configured. Until then the Premium button falls back to the contact page for staging or early access.",
   },
   {
     q: "Can I use a discount code?",
@@ -305,7 +305,7 @@ export default function Premium() {
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
           Premium is €3.99 monthly for the first {earlyAdopterDisplayLimit} adopters, then €4.99 monthly.
-          {stripePaymentLinks[billingMode] ? " Secure checkout opens via Stripe." : " Add the Stripe link env vars to enable checkout."}
+          {stripePaymentLinks[billingMode] ? " Secure checkout opens via Stripe." : " Add the Stripe link and webhook env vars to enable checkout."}
         </p>
       </section>
 

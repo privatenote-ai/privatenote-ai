@@ -482,7 +482,33 @@ export const en: Translations = {
   settingsEmailAlertOnDestroyed: "When this note is destroyed",
   settingsEmailAlertOnDestroyedInfo: "One email when the note can no longer be opened.",
   settingsEmailAlertsPrefsHint: "Turn on email notifications in Account → Preferences.",
+  settingsEmailAlertsPrefsHintPrefix: "Turn on email notifications in",
+  settingsEmailAlertsPrefsLink: "Account → Preferences",
   settingsEmailAlertsUpgradeLink: "Upgrade to unlock email alerts",
+  settingsNoteLabel: "Note label",
+  settingsNoteLabelPlaceholder: "e.g. Client onboarding pack",
+  settingsNoteLabelHint:
+    "Optional. Saved only in this browser for your Notification Center — never sent with the note.",
+  settingsRecipientEmail: "Recipient email",
+  settingsRecipientEmailPlaceholder: "recipient@example.com",
+  settingsRecipientEmailHint:
+    "The recipient must enter this email before the note can be revealed.",
+  settingsRecipientEmailInvalid: "Recipient email required",
+  settingsRecipientEmailInvalidHint:
+    "Enter a valid recipient email when restricting access.",
+  recipientVerificationCodeLabel: "Recipient verification code",
+  recipientVerificationCodeHint:
+    "Share this code with the recipient separately. They must enter it before the note can be revealed.",
+  recipientGateTitle: "Verify before opening",
+  recipientGateDescription:
+    "The sender restricted who can open this note. Confirm your details to continue.",
+  recipientGateEmail: "Your email",
+  recipientGateCode: "Verification code",
+  recipientGateSubmit: "Continue",
+  recipientGateSubmitting: "Verifying…",
+  recipientGateVerifyFailed: "Verification failed. Check the details and try again.",
+  recipientGateVerifiedTitle: "Verified",
+  recipientGateVerifiedDescription: "You can now reveal the note.",
   settingsDeliveryVerification: "Delivery & verification",
   settingsDeliveryRestrictEmail: "Restrict to recipient email",
   settingsDeliveryRestrictEmailInfo: "Only the intended recipient can reveal the note.",

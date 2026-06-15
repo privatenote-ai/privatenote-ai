@@ -472,6 +472,12 @@ function normalizePasskeyDisplayName(raw: unknown): string | null {
 type UsersTableColumns = {
   plan: boolean;
   account_type: boolean;
+  stripe_customer_id: boolean;
+  stripe_subscription_id: boolean;
+  subscription_status: boolean;
+  subscription_current_period_end: boolean;
+  premium_granted_at: boolean;
+  premium_revoked_at: boolean;
   business_display_name: boolean;
   email_notifications: boolean;
   preferred_language: boolean;
@@ -482,6 +488,12 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
   const defaults: UsersTableColumns = {
     plan: false,
     account_type: false,
+    stripe_customer_id: false,
+    stripe_subscription_id: false,
+    subscription_status: false,
+    subscription_current_period_end: false,
+    premium_granted_at: false,
+    premium_revoked_at: false,
     business_display_name: false,
     email_notifications: false,
     preferred_language: false,
@@ -494,6 +506,12 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     return {
       plan: names.has("plan"),
       account_type: names.has("account_type"),
+      stripe_customer_id: names.has("stripe_customer_id"),
+      stripe_subscription_id: names.has("stripe_subscription_id"),
+      subscription_status: names.has("subscription_status"),
+      subscription_current_period_end: names.has("subscription_current_period_end"),
+      premium_granted_at: names.has("premium_granted_at"),
+      premium_revoked_at: names.has("premium_revoked_at"),
       business_display_name: names.has("business_display_name"),
       email_notifications: names.has("email_notifications"),
       preferred_language: names.has("preferred_language"),
@@ -508,6 +526,12 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   const columns = [...baseColumns];
   if (optionalColumns.plan) columns.push("plan");
   if (optionalColumns.account_type) columns.push("account_type");
+  if (optionalColumns.stripe_customer_id) columns.push("stripe_customer_id");
+  if (optionalColumns.stripe_subscription_id) columns.push("stripe_subscription_id");
+  if (optionalColumns.subscription_status) columns.push("subscription_status");
+  if (optionalColumns.subscription_current_period_end) columns.push("subscription_current_period_end");
+  if (optionalColumns.premium_granted_at) columns.push("premium_granted_at");
+  if (optionalColumns.premium_revoked_at) columns.push("premium_revoked_at");
   if (optionalColumns.business_display_name) columns.push("business_display_name");
   if (optionalColumns.email_notifications) columns.push("email_notifications");
   if (optionalColumns.preferred_language) columns.push("preferred_language");
@@ -561,6 +585,25 @@ async function sendMagicSignInOtpEmail(env: Env, to: string, code: string): Prom
   return sendEmail(env, { to, subject, text, html });
 }
 
+function maskEmailForLog(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  const at = normalized.indexOf("@");
+  if (at <= 0 || at === normalized.length - 1) return "[invalid-email]";
+  const local = normalized.slice(0, at);
+  const domain = normalized.slice(at + 1);
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
+  const localHint =
+    local.length <= 2
+      ? `${local[0] ?? ""}*`
+      : `${local.slice(0, 2)}***${local.slice(-1)}`;
+  const domainHint =
+    domainName.length <= 2
+      ? `${domainName[0] ?? ""}*`
+      : `${domainName[0]}***${domainName.slice(-1)}`;
+  return `${localHint}@${domainHint}${tld}`;
+}
+
 async function sendMagicLinkEmail(
   env: Env,
   to: string,
@@ -606,8 +649,8 @@ async function sendMagicLinkEmail(
   });
 
   if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    await res.text().catch(() => "");
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   return { ok: true };
@@ -637,7 +680,9 @@ async function sendEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  console.log(`[EMAIL] Sending email via Resend: to=${options.to}, subject=${options.subject}`);
+  console.log(
+    `[EMAIL] Sending email via Resend: to=${maskEmailForLog(options.to)}, subject=${options.subject}`,
+  );
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -655,17 +700,16 @@ async function sendEmail(
   });
 
   const responseText = await res.text();
-  console.log(`[EMAIL] Resend API response: status=${res.status}, body=${responseText}`);
+  console.log(`[EMAIL] Resend API response: status=${res.status}`);
 
   if (!res.ok) {
-    const message = responseText || res.statusText;
-    console.error(`[EMAIL] Resend API error: ${res.status} ${message}`);
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    console.error(`[EMAIL] Resend API error: status=${res.status}`);
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   try {
     const responseJson = JSON.parse(responseText);
-    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || 'unknown'}`);
+    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || "unknown"}`);
   } catch (e) {
     console.log(`[EMAIL] Resend email sent successfully (response not JSON)`);
   }
@@ -1345,6 +1389,49 @@ function assertTrustedJsonPost(request: Request): Response | null {
       }
     } catch {
       return jsonResponse({ message: "Invalid Referer" }, 403, request);
+    }
+  }
+  return null;
+}
+
+function requireTrustedMutation(
+  request: Request,
+  options: { requireJson?: boolean } = {},
+): Response | null {
+  const method = request.method.toUpperCase();
+  if (!["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
+    return jsonResponse({ message: "Method not allowed" }, 405, request);
+  }
+  const allowedOrigin = getAllowedOrigin(request);
+  if (!allowedOrigin) {
+    return jsonResponse(
+      { message: "Cross-site request rejected", code: "origin_required" },
+      403,
+      request,
+    );
+  }
+  const referer = request.headers.get("Referer");
+  if (referer) {
+    try {
+      const refOrigin = new URL(referer).origin;
+      if (!isTrustedBrowserOrigin(refOrigin)) {
+        return jsonResponse({ message: "Invalid Referer" }, 403, request);
+      }
+      if (normalizeOrigin(refOrigin) !== normalizeOrigin(allowedOrigin)) {
+        return jsonResponse(
+          { message: "Cross-site request rejected", code: "origin_referer_mismatch" },
+          403,
+          request,
+        );
+      }
+    } catch {
+      return jsonResponse({ message: "Invalid Referer" }, 403, request);
+    }
+  }
+  if (options.requireJson) {
+    const ct = request.headers.get("Content-Type") || "";
+    if (!ct.toLowerCase().includes("application/json")) {
+      return jsonResponse({ message: "Content-Type must be application/json" }, 415, request);
     }
   }
   return null;
@@ -2817,6 +2904,277 @@ function usageLimitsForPlan(plan: string | null | undefined): {
   };
 }
 
+type StripeSubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused"
+  | string;
+
+const STRIPE_SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+const STRIPE_PAST_DUE_GRACE_SECONDS = 3 * 24 * 60 * 60;
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function unixSecondsToIso(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  return new Date(Math.floor(value) * 1000).toISOString();
+}
+
+function stripeObjectId(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value && typeof value === "object") {
+    const id = (value as Record<string, unknown>).id;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  return null;
+}
+
+export function stripeSubscriptionEntitlesPremium(
+  status: StripeSubscriptionStatus | null | undefined,
+  currentPeriodEndIso: string | null,
+  nowMs = Date.now(),
+): boolean {
+  if (status === "active" || status === "trialing") return true;
+  if (status === "past_due" && currentPeriodEndIso) {
+    const endMs = Date.parse(currentPeriodEndIso);
+    return Number.isFinite(endMs) && nowMs <= endMs + STRIPE_PAST_DUE_GRACE_SECONDS * 1000;
+  }
+  return false;
+}
+
+function stripeSignatureParts(header: string | null): { timestamp: string; signatures: string[] } | null {
+  if (!header) return null;
+  let timestamp = "";
+  const signatures: string[] = [];
+  for (const part of header.split(",")) {
+    const [key, ...rest] = part.split("=");
+    const value = rest.join("=");
+    if (key === "t") timestamp = value;
+    if (key === "v1" && value) signatures.push(value);
+  }
+  return timestamp && signatures.length ? { timestamp, signatures } : null;
+}
+
+async function verifyStripeWebhookSignature(
+  payload: string,
+  signatureHeader: string | null,
+  secret: string | undefined,
+): Promise<boolean> {
+  const trimmedSecret = secret?.trim();
+  const parts = stripeSignatureParts(signatureHeader);
+  if (!trimmedSecret || !parts) return false;
+
+  const timestampSeconds = Number(parts.timestamp);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
+  if (ageSeconds > STRIPE_SIGNATURE_TOLERANCE_SECONDS) return false;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(trimmedSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signedPayload = `${parts.timestamp}.${payload}`;
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedPayload));
+  const expected = bytesToHex(new Uint8Array(signature));
+  return parts.signatures.some((candidate) => constantTimeEquals(candidate, expected));
+}
+
+function stripeReturnUrlFromRequest(env: Env, request: Request): string {
+  return `${getMagicLinkOrigin(env, request)}/account`;
+}
+
+async function requireBillingColumns(env: Env, request: Request): Promise<Response | null> {
+  const columns = await getUsersTableColumns(env);
+  if (
+    !columns.stripe_customer_id ||
+    !columns.stripe_subscription_id ||
+    !columns.subscription_status ||
+    !columns.subscription_current_period_end ||
+    !columns.premium_granted_at ||
+    !columns.premium_revoked_at
+  ) {
+    return jsonResponse({ message: "Billing migrations are not applied" }, 501, request);
+  }
+  return null;
+}
+
+async function updateUserStripeEntitlement(
+  env: Env,
+  userId: string,
+  input: {
+    customerId: string | null;
+    subscriptionId: string | null;
+    status: StripeSubscriptionStatus | null;
+    currentPeriodEndIso: string | null;
+    grantPremium: boolean;
+  },
+): Promise<void> {
+  if (!env.AUTH_DB) return;
+  const nowIso = new Date().toISOString();
+  await env.AUTH_DB.prepare(
+    `UPDATE users
+     SET stripe_customer_id = COALESCE(?, stripe_customer_id),
+         stripe_subscription_id = COALESCE(?, stripe_subscription_id),
+         subscription_status = ?,
+         subscription_current_period_end = ?,
+         account_type = ?,
+         plan = ?,
+         premium_granted_at = CASE WHEN ? = 1 THEN COALESCE(premium_granted_at, ?) ELSE premium_granted_at END,
+         premium_revoked_at = CASE WHEN ? = 1 THEN NULL ELSE COALESCE(premium_revoked_at, ?) END,
+         updated_at = ?
+     WHERE id = ?`
+  )
+    .bind(
+      input.customerId,
+      input.subscriptionId,
+      input.status,
+      input.currentPeriodEndIso,
+      input.grantPremium ? "personal_premium" : "free",
+      input.grantPremium ? "personal_premium" : "free",
+      input.grantPremium ? 1 : 0,
+      nowIso,
+      input.grantPremium ? 1 : 0,
+      nowIso,
+      nowIso,
+      userId,
+    )
+    .run();
+}
+
+async function findStripeBillingUserId(
+  env: Env,
+  input: { customerId: string | null; subscriptionId: string | null; email: string | null; userId: string | null },
+): Promise<string | null> {
+  if (!env.AUTH_DB) return null;
+  if (input.userId) {
+    const row = await env.AUTH_DB.prepare("SELECT id FROM users WHERE id = ? LIMIT 1")
+      .bind(input.userId)
+      .first<{ id: string }>();
+    if (row?.id) return row.id;
+  }
+  if (input.subscriptionId) {
+    const row = await env.AUTH_DB.prepare("SELECT id FROM users WHERE stripe_subscription_id = ? LIMIT 1")
+      .bind(input.subscriptionId)
+      .first<{ id: string }>();
+    if (row?.id) return row.id;
+  }
+  if (input.customerId) {
+    const row = await env.AUTH_DB.prepare("SELECT id FROM users WHERE stripe_customer_id = ? LIMIT 1")
+      .bind(input.customerId)
+      .first<{ id: string }>();
+    if (row?.id) return row.id;
+  }
+  if (input.email) {
+    const row = await env.AUTH_DB.prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
+      .bind(input.email)
+      .first<{ id: string }>();
+    if (row?.id) return row.id;
+  }
+  return null;
+}
+
+async function processStripeWebhookEvent(env: Env, event: Record<string, unknown>): Promise<void> {
+  if (!env.AUTH_DB) return;
+  const eventId = typeof event.id === "string" ? event.id : "";
+  const eventType = typeof event.type === "string" ? event.type : "";
+  if (!eventId || !eventType) throw new Error("invalid_stripe_event");
+
+  const livemode = event.livemode === true ? 1 : 0;
+  try {
+    await env.AUTH_DB.prepare(
+      "INSERT INTO stripe_webhook_events (id, event_type, livemode, received_at) VALUES (?, ?, ?, datetime('now'))",
+    )
+      .bind(eventId, eventType, livemode)
+      .run();
+  } catch (error: any) {
+    const message = String(error?.message ?? "");
+    if (message.includes("UNIQUE constraint") || message.toLowerCase().includes("unique")) {
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const data = event.data && typeof event.data === "object" ? (event.data as Record<string, unknown>) : null;
+    const object = data?.object && typeof data.object === "object" ? (data.object as Record<string, unknown>) : null;
+    if (!object) throw new Error("missing_stripe_object");
+
+    if (eventType === "checkout.session.completed") {
+      const customerId = stripeObjectId(object.customer);
+      const subscriptionId = stripeObjectId(object.subscription);
+      const metadata = object.metadata && typeof object.metadata === "object"
+        ? object.metadata as Record<string, unknown>
+        : {};
+      const userIdFromMetadata =
+        typeof metadata.userId === "string" ? metadata.userId : typeof object.client_reference_id === "string" ? object.client_reference_id : null;
+      const email = normalizeEmail(
+        typeof object.customer_email === "string"
+          ? object.customer_email
+          : object.customer_details && typeof object.customer_details === "object"
+          ? (object.customer_details as Record<string, unknown>).email as string | undefined
+          : null,
+      );
+      const userId = await findStripeBillingUserId(env, {
+        customerId,
+        subscriptionId,
+        email,
+        userId: userIdFromMetadata,
+      });
+      if (!userId) throw new Error("stripe_checkout_user_not_found");
+      await updateUserStripeEntitlement(env, userId, {
+        customerId,
+        subscriptionId,
+        status: "active",
+        currentPeriodEndIso: null,
+        grantPremium: true,
+      });
+    } else if (eventType === "customer.subscription.updated" || eventType === "customer.subscription.deleted") {
+      const customerId = stripeObjectId(object.customer);
+      const subscriptionId = stripeObjectId(object.id);
+      const status = typeof object.status === "string" ? object.status : null;
+      const currentPeriodEndIso = unixSecondsToIso(object.current_period_end);
+      const userId = await findStripeBillingUserId(env, {
+        customerId,
+        subscriptionId,
+        email: null,
+        userId: null,
+      });
+      if (!userId) throw new Error("stripe_subscription_user_not_found");
+      await updateUserStripeEntitlement(env, userId, {
+        customerId,
+        subscriptionId,
+        status,
+        currentPeriodEndIso,
+        grantPremium: stripeSubscriptionEntitlesPremium(status, currentPeriodEndIso),
+      });
+    }
+
+    await env.AUTH_DB.prepare(
+      "UPDATE stripe_webhook_events SET processed_at = datetime('now'), processing_error = NULL WHERE id = ?",
+    )
+      .bind(eventId)
+      .run();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await env.AUTH_DB.prepare(
+      "UPDATE stripe_webhook_events SET processing_error = ? WHERE id = ?",
+    )
+      .bind(message.slice(0, 500), eventId)
+      .run();
+    throw error;
+  }
+}
+
 /**
  * SQLite `datetime('now')` is UTC clock time without a TZ suffix; JSON clients parsed it as local.
  * Emit RFC3339 UTC (`...Z`) so Intl, Date, and date-fns interpret instants correctly in each viewer's TZ.
@@ -3161,11 +3519,95 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   const pathname = url.pathname;
   const method = request.method;
 
-  if (!pathname.startsWith("/api/auth/")) {
+  if (!pathname.startsWith("/api/auth/") && pathname !== "/api/billing/stripe/webhook") {
     return null;
   }
 
+  if (
+    (pathname === "/api/billing/stripe/webhook" || pathname === "/api/auth/billing/stripe/webhook") &&
+    method === "POST"
+  ) {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const billingColumnsError = await requireBillingColumns(env, request);
+    if (billingColumnsError) return billingColumnsError;
+
+    const payload = await request.text();
+    const verified = await verifyStripeWebhookSignature(
+      payload,
+      request.headers.get("Stripe-Signature"),
+      env.STRIPE_WEBHOOK_SECRET,
+    );
+    if (!verified) {
+      console.warn("[billing/stripe/webhook] rejected unsigned or stale Stripe event");
+      return jsonResponse({ message: "Invalid signature" }, 400, request);
+    }
+
+    let event: Record<string, unknown>;
+    try {
+      event = JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+
+    try {
+      await processStripeWebhookEvent(env, event);
+    } catch (error) {
+      console.error("[billing/stripe/webhook] processing failed:", error);
+      return jsonResponse({ message: "Webhook processing failed" }, 500, request);
+    }
+    return jsonResponse({ received: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/billing/portal" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    if (!env.STRIPE_SECRET_KEY?.trim()) {
+      return jsonResponse({ message: "Billing is not configured" }, 501, request);
+    }
+    const billingColumnsError = await requireBillingColumns(env, request);
+    if (billingColumnsError) return billingColumnsError;
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const user = await env.AUTH_DB.prepare(
+      "SELECT stripe_customer_id FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ stripe_customer_id: string | null }>();
+    const customerId = user?.stripe_customer_id?.trim();
+    if (!customerId) {
+      return jsonResponse({ message: "No Stripe customer is linked to this account" }, 409, request);
+    }
+
+    const form = new URLSearchParams();
+    form.set("customer", customerId);
+    form.set("return_url", stripeReturnUrlFromRequest(env, request));
+    const stripeResponse = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.STRIPE_SECRET_KEY.trim()}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form.toString(),
+    });
+    const responseBody = await stripeResponse.json().catch(() => null) as Record<string, unknown> | null;
+    const portalUrl = typeof responseBody?.url === "string" ? responseBody.url : null;
+    if (!stripeResponse.ok || !portalUrl) {
+      console.error("[billing/portal] Stripe portal session failed:", stripeResponse.status);
+      return jsonResponse({ message: "Could not create billing portal session" }, 502, request);
+    }
+    return jsonResponse({ ok: true, url: portalUrl }, 200, request);
+  }
+
   if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     let body: any;
     try {
       body = await readJsonBody(request);
@@ -3272,6 +3714,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/webauthn/register/verify" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     let body: any;
     try {
       body = await request.json();
@@ -3783,6 +4227,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         email_notifications?: number | null;
         preferred_language?: string | null;
         allow_hosted_ai?: number | null;
+        stripe_customer_id?: string | null;
+        stripe_subscription_id?: string | null;
+        subscription_status?: string | null;
+        subscription_current_period_end?: string | null;
+        premium_granted_at?: string | null;
+        premium_revoked_at?: string | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
@@ -3806,6 +4256,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
         allowHostedAi: (user?.allow_hosted_ai ?? 0) === 1,
+        billing: {
+          stripeCustomerLinked: Boolean(user?.stripe_customer_id),
+          stripeSubscriptionLinked: Boolean(user?.stripe_subscription_id),
+          subscriptionStatus: user?.subscription_status ?? null,
+          subscriptionCurrentPeriodEnd: user?.subscription_current_period_end ?? null,
+          premiumGrantedAt: user?.premium_granted_at ?? null,
+          premiumRevokedAt: user?.premium_revoked_at ?? null,
+        },
       }),
       { status: 200, headers }
     );
@@ -3835,6 +4293,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         email_notifications?: number | null;
         preferred_language?: string | null;
         allow_hosted_ai?: number | null;
+        stripe_customer_id?: string | null;
+        stripe_subscription_id?: string | null;
+        subscription_status?: string | null;
+        subscription_current_period_end?: string | null;
+        premium_granted_at?: string | null;
+        premium_revoked_at?: string | null;
       }>();
 
     const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
@@ -3888,6 +4352,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           aiMonth,
         },
         storageUsedBytes: null,
+        billing: {
+          stripeCustomerLinked: Boolean(user?.stripe_customer_id),
+          stripeSubscriptionLinked: Boolean(user?.stripe_subscription_id),
+          subscriptionStatus: user?.subscription_status ?? null,
+          subscriptionCurrentPeriodEnd: user?.subscription_current_period_end ?? null,
+          premiumGrantedAt: user?.premium_granted_at ?? null,
+          premiumRevokedAt: user?.premium_revoked_at ?? null,
+        },
       }),
       { status: 200, headers }
     );
@@ -3930,6 +4402,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/activity" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -3990,6 +4464,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/notifications" && method === "DELETE") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4017,6 +4493,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     /^\/api\/auth\/account\/notifications\/([^/]+)$/,
   );
   if (notificationItemParams && method === "DELETE") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4048,6 +4526,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4142,6 +4622,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/webauthn/stepup/options" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4221,6 +4703,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/webauthn/stepup/verify" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     let body: any;
     try {
       body = await request.json();
@@ -4397,6 +4881,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname.startsWith("/api/auth/passkeys/") && method === "PATCH") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4453,6 +4939,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname.startsWith("/api/auth/passkeys/") && method === "DELETE") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4511,6 +4999,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/passkeys/reset" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4617,6 +5107,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/sessions/revoke" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     let body: any;
     try {
       body = await request.json();
@@ -4650,6 +5142,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/sessions/revoke-all" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4691,6 +5185,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/recovery-codes/generate" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -5239,6 +5735,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/logout" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     const cookies = parseCookies(request.headers.get("Cookie"));
@@ -5284,6 +5782,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   // ============================================================================
 
   if (pathname === "/api/auth/email/change/request" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -5403,7 +5903,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const webOrigin = getMagicLinkOrigin(env, request);
     const verifyUrl = `${webOrigin}/auth/email-change?token=${encodeURIComponent(token)}`;
 
-    console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change request: userId=${session.id}, currentEmail=${maskEmailForLog(normalizedCurrentEmail)}, newEmail=${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
@@ -5438,7 +5940,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       return jsonResponse({ message: "Failed to send verification email" }, 500, request);
     }
 
-    console.log(`[AUTH] Email change verification email sent successfully to ${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change verification email sent successfully to ${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     await logAuditEvent(env, {
       userId: session.id,
@@ -5630,6 +6134,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/delete/passkey-abandoned" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -5673,6 +6179,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/delete/email-code" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -5833,6 +6341,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/delete" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -6079,6 +6589,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/totp/setup" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -6135,6 +6647,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/totp/verify-setup" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -6198,6 +6712,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/totp/verify" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request, { requireJson: true });
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -6284,6 +6800,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/totp/disable" && method === "POST") {
+    const mutationGate = requireTrustedMutation(request);
+    if (mutationGate) return mutationGate;
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }

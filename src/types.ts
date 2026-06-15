@@ -21,7 +21,12 @@ export interface Env {
   AUTH_EMAIL_FROM?: string;
   AUTH_EMAIL_PROVIDER?: string;
   RESEND_API_KEY?: string;
-  // Required in production for magic-link KV integrity (HMAC). Optional only when AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 or Worker URL is localhost.
+  /** Stripe secret key for server-side billing portal sessions. Set via `wrangler secret put STRIPE_SECRET_KEY`. */
+  STRIPE_SECRET_KEY?: string;
+  /** Stripe webhook signing secret. Required for `/api/auth/billing/stripe/webhook`. */
+  STRIPE_WEBHOOK_SECRET?: string;
+  // Required in production for magic-link KV integrity and recipient email gate HMACs.
+  // Optional only when AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 or Worker URL is localhost and recipient email gates are not used.
   AUTH_SECRET_KEY?: string;
   /** Dev-only: allow magic links without AUTH_SECRET_KEY / unsigned KV rows. Never set in production. */
   AUTH_ALLOW_UNSIGNED_MAGIC_LINK?: string;

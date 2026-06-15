@@ -434,7 +434,33 @@ export const fr: Translations = {
     "Un e-mail lorsque la note ne peut plus être ouverte.",
   settingsEmailAlertsPrefsHint:
     "Activez les notifications e-mail dans Compte → Préférences.",
+  settingsEmailAlertsPrefsHintPrefix: "Activez les notifications e-mail dans",
+  settingsEmailAlertsPrefsLink: "Compte → Préférences",
   settingsEmailAlertsUpgradeLink: "Passer à Premium pour les alertes e-mail",
+  settingsNoteLabel: "Libellé de la note",
+  settingsNoteLabelPlaceholder: "p. ex. Pack onboarding client",
+  settingsNoteLabelHint:
+    "Optionnel. Affiché uniquement dans votre Centre de notifications sur cet appareil — jamais envoyé avec la note.",
+  settingsRecipientEmail: "E-mail du destinataire",
+  settingsRecipientEmailPlaceholder: "destinataire@exemple.com",
+  settingsRecipientEmailHint:
+    "Le destinataire doit saisir cet e-mail avant de pouvoir révéler la note.",
+  settingsRecipientEmailInvalid: "E-mail du destinataire requis",
+  settingsRecipientEmailInvalidHint:
+    "Saisissez un e-mail valide lorsque l'accès est restreint.",
+  recipientVerificationCodeLabel: "Code de vérification du destinataire",
+  recipientVerificationCodeHint:
+    "Partagez ce code séparément avec le destinataire. Il doit le saisir avant de révéler la note.",
+  recipientGateTitle: "Vérifier avant d'ouvrir",
+  recipientGateDescription:
+    "L'expéditeur a restreint qui peut ouvrir cette note. Confirmez vos informations pour continuer.",
+  recipientGateEmail: "Votre e-mail",
+  recipientGateCode: "Code de vérification",
+  recipientGateSubmit: "Continuer",
+  recipientGateSubmitting: "Vérification…",
+  recipientGateVerifyFailed: "Échec de la vérification. Vérifiez les informations et réessayez.",
+  recipientGateVerifiedTitle: "Vérifié",
+  recipientGateVerifiedDescription: "Vous pouvez maintenant révéler la note.",
   settingsDeliveryVerification: "Livraison et vérification",
   settingsDeliveryRestrictEmail: "Restreindre à l'e-mail du destinataire",
   settingsDeliveryRestrictEmailInfo: "Seul le destinataire prévu peut révéler la note.",

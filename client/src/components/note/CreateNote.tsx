@@ -89,6 +89,8 @@ import {
 } from "@/utils/hostedAiPreference";
 import { useAuth } from "@/context/AuthContext";
 import { localizedPath } from "@/utils/localizedPath";
+import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { saveNoteLabel } from "@/utils/noteLabelsStorage";
 
 type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
 let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
@@ -192,10 +194,121 @@ interface CreateNoteProps {
 
 type AccountType = "free" | "personal_premium" | "business_premium";
 
+const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
+const CREATE_NOTE_AUTH_DRAFT_TTL_MS = 30 * 60 * 1000;
+
+type CreateNoteAuthDraft = {
+  v: 1;
+  expiresAt: number;
+  noteContent: string;
+  isAiMode: boolean;
+  aiPrompt: string;
+  aiEnhancementType: "improve" | "summarize" | "secure" | "ask";
+  showPrompt: boolean;
+  originalPrompt: string;
+  userPromptHistory: string[];
+  transformHistory: AiPostGenTransform[];
+  aiDraftAccepted: boolean;
+  selectedTemplateId: string | null;
+  aiSentenceLength: AiSentenceLengthId;
+  expiryValue: NoteExpiryPresetId;
+  readCount: NoteReadLimit;
+  fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+};
+
 function normalizeAccountType(value: unknown): AccountType {
   if (value === "personal_premium" || value === "pro" || value === "premium") return "personal_premium";
   if (value === "business_premium" || value === "business") return "business_premium";
   return "free";
+}
+
+function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(CREATE_NOTE_AUTH_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CreateNoteAuthDraft>;
+    if (parsed.v !== 1 || typeof parsed.expiresAt !== "number") return null;
+    if (Date.now() > parsed.expiresAt) {
+      window.sessionStorage.removeItem(CREATE_NOTE_AUTH_DRAFT_KEY);
+      return null;
+    }
+    if (typeof parsed.noteContent !== "string") return null;
+    return {
+      v: 1,
+      expiresAt: parsed.expiresAt,
+      noteContent: parsed.noteContent,
+      isAiMode: parsed.isAiMode === true,
+      aiPrompt: typeof parsed.aiPrompt === "string" ? parsed.aiPrompt : "",
+      aiEnhancementType:
+        parsed.aiEnhancementType === "improve" ||
+        parsed.aiEnhancementType === "summarize" ||
+        parsed.aiEnhancementType === "secure" ||
+        parsed.aiEnhancementType === "ask"
+          ? parsed.aiEnhancementType
+          : "ask",
+      showPrompt: parsed.showPrompt !== false,
+      originalPrompt: typeof parsed.originalPrompt === "string" ? parsed.originalPrompt : "",
+      userPromptHistory: Array.isArray(parsed.userPromptHistory)
+        ? parsed.userPromptHistory.filter((item): item is string => typeof item === "string")
+        : [],
+      transformHistory: Array.isArray(parsed.transformHistory)
+        ? parsed.transformHistory.filter(
+            (item): item is AiPostGenTransform =>
+              Boolean(item) &&
+              typeof item === "object" &&
+              typeof (item as AiPostGenTransform).kind === "string" &&
+              typeof (item as AiPostGenTransform).contentBefore === "string",
+          )
+        : [],
+      aiDraftAccepted: parsed.aiDraftAccepted === true,
+      selectedTemplateId:
+        typeof parsed.selectedTemplateId === "string" || parsed.selectedTemplateId === null
+          ? parsed.selectedTemplateId
+          : "ask-anything",
+      aiSentenceLength:
+        parsed.aiSentenceLength === "auto" ||
+        parsed.aiSentenceLength === "1-2" ||
+        parsed.aiSentenceLength === "2-3" ||
+        parsed.aiSentenceLength === "4-6" ||
+        parsed.aiSentenceLength === "7-10"
+          ? parsed.aiSentenceLength
+          : "auto",
+      expiryValue:
+        parsed.expiryValue === "5m" ||
+        parsed.expiryValue === "10m" ||
+        parsed.expiryValue === "30m" ||
+        parsed.expiryValue === "1h" ||
+        parsed.expiryValue === "2h" ||
+        parsed.expiryValue === "8h" ||
+        parsed.expiryValue === "1d" ||
+        parsed.expiryValue === "3d" ||
+        parsed.expiryValue === "7d" ||
+        parsed.expiryValue === "14d" ||
+        parsed.expiryValue === "30d"
+          ? (parsed.expiryValue as NoteExpiryPresetId)
+          : NOTE_EXPIRY_DEFAULT_PRESET_ID,
+      readCount:
+        parsed.readCount === 1 || parsed.readCount === 2 || parsed.readCount === 3 || parsed.readCount === 5
+          ? parsed.readCount
+          : NOTE_READ_LIMIT_DEFAULT,
+      fileAccessWindowSeconds:
+        parsed.fileAccessWindowSeconds === 15 * 60 ||
+        parsed.fileAccessWindowSeconds === 30 * 60 ||
+        parsed.fileAccessWindowSeconds === 60 * 60
+          ? (parsed.fileAccessWindowSeconds as NoteFileAccessWindowSeconds)
+          : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearCreateNoteAuthDraft(): void {
+  try {
+    window.sessionStorage.removeItem(CREATE_NOTE_AUTH_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
@@ -279,6 +392,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
+  const [restrictRecipientEmail, setRestrictRecipientEmail] = useState(false);
+  const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [noteLabel, setNoteLabel] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("free");
   const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
   const [accountEmailVerified, setAccountEmailVerified] = useState(false);
@@ -293,15 +410,61 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const canAttachFiles = Boolean(user);
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
-  const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent("/")}`;
+  const attachFileReturnTo =
+    typeof window === "undefined"
+      ? localizedPath("/", language)
+      : `${window.location.pathname}${window.location.search}` || localizedPath("/", language);
+  const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
 
   const { toast } = useToast();
 
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
 
+  const saveAuthRedirectDraft = useCallback(() => {
+    try {
+      const draft: CreateNoteAuthDraft = {
+        v: 1,
+        expiresAt: Date.now() + CREATE_NOTE_AUTH_DRAFT_TTL_MS,
+        noteContent,
+        isAiMode,
+        aiPrompt,
+        aiEnhancementType,
+        showPrompt,
+        originalPrompt,
+        userPromptHistory,
+        transformHistory,
+        aiDraftAccepted,
+        selectedTemplateId,
+        aiSentenceLength,
+        expiryValue,
+        readCount,
+        fileAccessWindowSeconds,
+      };
+      window.sessionStorage.setItem(CREATE_NOTE_AUTH_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* Best effort: navigation should still work if storage is unavailable. */
+    }
+  }, [
+    aiDraftAccepted,
+    aiEnhancementType,
+    aiPrompt,
+    aiSentenceLength,
+    expiryValue,
+    fileAccessWindowSeconds,
+    isAiMode,
+    noteContent,
+    originalPrompt,
+    readCount,
+    selectedTemplateId,
+    showPrompt,
+    transformHistory,
+    userPromptHistory,
+  ]);
+
   const handleAttachFileClick = () => {
     if (!canAttachFiles) {
+      saveAuthRedirectDraft();
       window.location.href = attachFileSignInHref;
       return;
     }
@@ -358,6 +521,34 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
   }, [prefillText]);
 
+  const authDraftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (authDraftRestoredRef.current || prefillText) return;
+    authDraftRestoredRef.current = true;
+    const draft = readCreateNoteAuthDraft();
+    if (!draft) return;
+    clearCreateNoteAuthDraft();
+
+    const { text } = truncateUtf8StringToMaxBytes(
+      draft.noteContent,
+      MAX_NOTE_PLAINTEXT_UTF8_BYTES,
+    );
+    setNoteContent(text);
+    setIsAiMode(draft.isAiMode);
+    setAiPrompt(draft.aiPrompt);
+    setAiEnhancementType(draft.aiEnhancementType);
+    setShowPrompt(draft.showPrompt);
+    setOriginalPrompt(draft.originalPrompt);
+    setUserPromptHistory(draft.userPromptHistory);
+    setTransformHistory(draft.transformHistory);
+    setAiDraftAccepted(draft.aiDraftAccepted);
+    setSelectedTemplateId(draft.selectedTemplateId);
+    setAiSentenceLength(draft.aiSentenceLength);
+    setExpiryValue(draft.expiryValue);
+    setReadCount(draft.readCount);
+    setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
+  }, [prefillText]);
+
   useEffect(() => {
     let cancelled = false;
     if (!user) {
@@ -366,6 +557,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setAccountEmailVerified(false);
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
+      setRestrictRecipientEmail(false);
+      setRequireRecipientVerification(false);
+      setRecipientEmail("");
+      setNoteLabel("");
       setPremiumStatusLoading(false);
       return;
     }
@@ -391,6 +586,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           setAccountEmailVerified(false);
           setNotifyOnOpen(false);
           setNotifyOnDestroyed(false);
+          setRestrictRecipientEmail(false);
+          setRequireRecipientVerification(false);
+          setRecipientEmail("");
+          setNoteLabel("");
         }
       } finally {
         if (!cancelled) setPremiumStatusLoading(false);
@@ -425,6 +624,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setNotifyOnDestroyed(false);
     }
   }, [canNotifyOnOpen, notifyOnDestroyed, notifyOnOpen]);
+
+  useEffect(() => {
+    if (isPremiumUser) return;
+    if (restrictRecipientEmail) setRestrictRecipientEmail(false);
+    if (requireRecipientVerification) setRequireRecipientVerification(false);
+    if (recipientEmail) setRecipientEmail("");
+  }, [
+    isPremiumUser,
+    recipientEmail,
+    requireRecipientVerification,
+    restrictRecipientEmail,
+  ]);
+
+  useEffect(() => {
+    if (isPremiumUser) return;
+    if (noteLabel) setNoteLabel("");
+  }, [isPremiumUser, noteLabel]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
@@ -815,6 +1031,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return;
     }
 
+    const applyRestrictRecipientEmail = isPremiumUser && restrictRecipientEmail;
+    const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
+    if (applyRestrictRecipientEmail) {
+      const trimmedRecipientEmail = recipientEmail.trim();
+      if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
+        toast({
+          title: t.settingsRecipientEmailInvalid ?? "Recipient email required",
+          description:
+            t.settingsRecipientEmailInvalidHint ??
+            "Enter a valid recipient email when restricting access.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
+    const tracksDelivery =
+      (notifyOnOpen && canNotifyOnOpen) ||
+      (notifyOnDestroyed && canNotifyOnOpen) ||
+      applyRestrictRecipientEmail ||
+      applyRequireRecipientVerification;
+
     if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
       toast({
         title: t.aiComposerPlaceholdersToastTitle,
@@ -1050,7 +1289,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         }
       }
 
-      const { id } = await apiRequest("/api/notes", "POST", {
+      const { id, recipientVerificationCode } = await apiRequest<{
+        id: string;
+        recipientVerificationCode?: string;
+      }>("/api/notes", "POST", {
         id: reservedId,
         content: encryptedBase64,
         iv: ivBase64,
@@ -1058,6 +1300,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         maxReads: readCount,
         notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
         notifyOnDestroyed: notifyOnDestroyed && canNotifyOnOpen,
+        ...(applyRestrictRecipientEmail
+          ? {
+              restrictRecipientEmail: true,
+              recipientEmail: recipientEmail.trim().toLowerCase(),
+            }
+          : {}),
+        ...(applyRequireRecipientVerification
+          ? { requireRecipientVerification: true }
+          : {}),
         fileAccessWindowSeconds,
         aiMode: isAiMode,
         uiLanguage: language,
@@ -1081,7 +1332,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const urlKey = normalizeUrlFragmentKey(fragmentKey ?? "");
       const url = `${baseUrl}/note/${id}#${urlKey}`;
 
-      setCreatedNote({ url, meta: { expiryValue, readCount, isPasswordProtected } });
+      if (applyNoteLabel && tracksDelivery) {
+        saveNoteLabel(id, applyNoteLabel);
+      }
+
+      clearCreateNoteAuthDraft();
+      setCreatedNote({
+        url,
+        meta: {
+          expiryValue,
+          readCount,
+          isPasswordProtected,
+          recipientVerificationCode:
+            typeof recipientVerificationCode === "string"
+              ? recipientVerificationCode
+              : undefined,
+        },
+      });
       resetAiTurnstileWidget();
       try {
         const d = await apiRequest<{ required: boolean }>("/api/notes/turnstile-challenge", "GET");
@@ -1171,6 +1438,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   };
 
   const createNewNote = () => {
+    clearCreateNoteAuthDraft();
     setShowSuccessQr(false);
     setSuccessLinkCopied(false);
     setCreatedNote(null);
@@ -1181,6 +1449,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setTransformHistory([]);
     setShowAdvancedOptions(false);
     setNotifyOnOpen(false);
+    setNotifyOnDestroyed(false);
+    setRestrictRecipientEmail(false);
+    setRequireRecipientVerification(false);
+    setRecipientEmail("");
+    setNoteLabel("");
     setShowPrompt(true);
     setAiDraftAccepted(false);
     setSelectedTemplateId("ask-anything");
@@ -1827,8 +2100,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 notifyOnDestroyed={notifyOnDestroyed}
                 setNotifyOnDestroyed={setNotifyOnDestroyed}
                 canNotifyOnOpen={canNotifyOnOpen}
+                noteLabel={noteLabel}
+                setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
                 premiumStatusLoading={premiumStatusLoading}
+                restrictRecipientEmail={restrictRecipientEmail}
+                setRestrictRecipientEmail={setRestrictRecipientEmail}
+                requireRecipientVerification={requireRecipientVerification}
+                setRequireRecipientVerification={setRequireRecipientVerification}
+                recipientEmail={recipientEmail}
+                setRecipientEmail={setRecipientEmail}
                 readCount={readCount}
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
@@ -1966,8 +2247,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               notifyOnDestroyed,
               setNotifyOnDestroyed,
               canNotifyOnOpen,
+              noteLabel,
+              setNoteLabel,
               isPremiumUser,
               premiumStatusLoading,
+              restrictRecipientEmail,
+              setRestrictRecipientEmail,
+              requireRecipientVerification,
+              setRequireRecipientVerification,
+              recipientEmail,
+              setRecipientEmail,
               readCount,
               setReadCount,
               fileAccessWindowSeconds,
