@@ -12,6 +12,7 @@ const REQUIRED_FLAT_HTML = [
   "how-it-works.html",
   "developers.html",
   "password-generator.html",
+  "secure-file-transfer.html",
   "privacy.html",
   "privacy-tools.html",
   "security-resources.html",

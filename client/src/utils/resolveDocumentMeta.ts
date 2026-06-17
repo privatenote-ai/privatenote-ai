@@ -65,6 +65,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(t.passwordGenerator),
         description: t.passwordGeneratorSubtitle,
       };
+    case "secure-file-transfer":
+      return {
+        title: buildDocumentTitle("Secure File Transfer"),
+        description:
+          "Share encrypted files and folders with PrivateNote. Folders are zipped locally, then encrypted before upload.",
+      };
     case "privacy-tools":
       return {
         title: buildDocumentTitle(t.documentMetaPrivacyToolsTitle),

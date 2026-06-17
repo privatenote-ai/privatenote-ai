@@ -51,6 +51,7 @@ import {
   Sparkles,
   Loader2,
   Paperclip,
+  FolderArchive,
   X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
@@ -190,6 +191,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
 
 interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
+  mode?: "note" | "file-transfer";
 }
 
 type AccountType = "free" | "personal_premium" | "business_premium";
@@ -311,9 +313,10 @@ function clearCreateNoteAuthDraft(): void {
   }
 }
 
-export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
+export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mode = "note" }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const isFileTransferMode = mode === "file-transfer";
 
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
@@ -404,7 +407,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
   const canAttachFiles = Boolean(user);
@@ -471,6 +476,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     fileInputRef.current?.click();
   };
 
+  const handleAttachFolderClick = () => {
+    if (!canAttachFiles) {
+      saveAuthRedirectDraft();
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    folderInputRef.current?.click();
+  };
+
   const handleAttachFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
@@ -488,9 +502,44 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setSelectedFile(file);
   };
 
+  const handleAttachFolderSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+    setIsPreparingFolder(true);
+    try {
+      const { createStoredZipFromFiles } = await import("@/utils/createStoredZip");
+      const zippedFolder = await createStoredZipFromFiles(files);
+      if (zippedFolder.size > fileLimitBytes) {
+        toast({
+          title: t.fileTooLarge ?? "File too large",
+          description: (
+            t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
+          ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(zippedFolder);
+    } catch (error) {
+      toast({
+        title: "Folder could not be prepared",
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : "Zip the folder failed. Try a smaller folder or attach a zip file.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPreparingFolder(false);
+    }
+  };
+
   const attachFileButtonLabel = selectedFile
     ? selectedFile.name
-    : (t.attachFile ?? "Attach File");
+    : isFileTransferMode
+      ? "Attach file"
+      : (t.attachFile ?? "Attach File");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -999,6 +1048,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   // ── Submission ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isFileTransferMode && !selectedFile) {
+      toast({
+        title: "Attach a file or folder",
+        description: "Choose a file or folder before creating the secure transfer link.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!noteContent.trim() && !selectedFile) {
       toast({
@@ -2065,8 +2123,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 }
                 rows={6}
                 className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                placeholder={t.typeHere}
-                required={!selectedFile}
+                placeholder={isFileTransferMode ? "Optional message for this secure file transfer" : t.typeHere}
+                required={!selectedFile && !isFileTransferMode}
               />
             </div>
           ) : null}
@@ -2129,6 +2187,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 aria-hidden
                 onChange={handleAttachFileSelected}
               />
+              {isFileTransferMode ? (
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden
+                  multiple
+                  onChange={handleAttachFolderSelected}
+                  {...({
+                    webkitdirectory: "",
+                    directory: "",
+                  } as React.InputHTMLAttributes<HTMLInputElement> & {
+                    webkitdirectory: string;
+                    directory: string;
+                  })}
+                />
+              ) : null}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex w-full items-center gap-2 sm:w-auto">
                   <button
@@ -2155,7 +2231,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                     )}
                   </button>
 
-                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none sm:max-w-[220px]">
+                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none sm:max-w-none">
                     <button
                       type="button"
                       onClick={handleAttachFileClick}
@@ -2169,6 +2245,21 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="truncate">{attachFileButtonLabel}</span>
                     </button>
+                    {isFileTransferMode && !selectedFile ? (
+                      <button
+                        type="button"
+                        onClick={handleAttachFolderClick}
+                        disabled={isPreparingFolder}
+                        className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
+                      >
+                        {isPreparingFolder ? (
+                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                        ) : (
+                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        )}
+                        <span className="truncate">{isPreparingFolder ? "Zipping folder..." : "Attach folder"}</span>
+                      </button>
+                    ) : null}
                     {selectedFile ? (
                       <button
                         type="button"

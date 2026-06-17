@@ -5,6 +5,7 @@ const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter((l): l is Exclude<Suppo
 const LOCALIZED_PUBLIC_PATHS = new Set([
   "/",
   "/password-generator",
+  "/secure-file-transfer",
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",

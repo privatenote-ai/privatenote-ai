@@ -202,7 +202,7 @@ function postProcessHTML(html, route) {
   const isPublicSitemapRoute =
     route === "/" ||
     /^\/(de|fr|es)(\/|$)/.test(route) ||
-    /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
+    /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|secure-file-transfer|security-resources|terms)(\/|$)/.test(
       route,
     ) ||
     /^\/blog\//.test(route) ||
