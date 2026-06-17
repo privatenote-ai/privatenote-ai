@@ -275,7 +275,7 @@ function FitList({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     intro: [
       "Most people share sensitive information the same way they share everything else: paste it into an email, drop it in Slack, or send a text.",
@@ -890,7 +890,7 @@ export const OneTimeSecretLinksPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
   const howItWorksPath = localizedPath("/how-it-works", language);
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">

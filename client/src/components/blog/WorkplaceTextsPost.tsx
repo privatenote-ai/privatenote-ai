@@ -19,7 +19,7 @@ const heroImagePath = "/images/workplace-texting-jonas-leupe.jpg";
 const heroImageCreditUrl =
   "https://unsplash.com/photos/man-in-black-crew-neck-top-using-smartphone-8pCtwj37VB4?utm_source=unsplash&utm_medium=referral&utm_content=creditShareLink";
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     sourceLabel: "Inspired by reporting from Business Insider",
     intro: [
@@ -272,7 +272,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
 
 export const WorkplaceTextsPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
   const blogPath = localizedPath("/blog", language);
   const notePath = localizedPath("/", language);
 

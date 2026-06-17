@@ -17,7 +17,7 @@ type ArticleCopy = {
   sections: ArticleSection[];
 };
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     intro: [
       "For a long time, the industry told us that being careful was mostly a matter of password complexity and common sense. A long string of characters and a cautious clicking finger were supposed to be enough.",
@@ -318,7 +318,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
 
 export const GoodEnoughSecurityPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
   const blogPath = localizedPath("/blog", language);
 
   return (

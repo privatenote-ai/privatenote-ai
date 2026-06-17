@@ -105,7 +105,7 @@ function BulletList({ items }: { items: BulletItem[] }) {
   );
 }
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     intro: [
       "The AI industry has spent the last few years obsessing over **prompt injection**—worrying that a malicious prompt might trick a chatbot into producing an unintended response.",
@@ -590,7 +590,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
 export const AgentSecurityPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">

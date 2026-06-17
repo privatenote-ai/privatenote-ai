@@ -22,7 +22,7 @@ type ArticleCopy = {
   ctaButton: string;
 };
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     intro: [
       "OpenAI Codex is an AI coding agent. You describe what you want — fix a bug, add a feature, write a test — and it does it autonomously in a sandboxed environment.",

@@ -9,6 +9,8 @@ const OG_LOCALE_BY_LANG: Record<string, string> = {
   de: "de_DE",
   fr: "fr_FR",
   es: "es_ES",
+  it: "it_IT",
+  nl: "nl_NL",
 };
 
 export type DocumentMetaOptions = {

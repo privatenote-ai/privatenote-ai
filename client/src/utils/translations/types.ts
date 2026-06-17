@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ["en", "de", "fr", "es"] as const;
+export const SUPPORTED_LANGUAGES = ["en", "de", "fr", "es", "it", "nl"] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -15,6 +15,8 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: "de", nativeName: "Deutsch", englishName: "German" },
   { code: "fr", nativeName: "Français", englishName: "French" },
   { code: "es", nativeName: "Español", englishName: "Spanish" },
+  { code: "it", nativeName: "Italiano", englishName: "Italian" },
+  { code: "nl", nativeName: "Nederlands", englishName: "Dutch" },
 ];
 
 export function normalizeLanguageCode(language: string | null | undefined): SupportedLanguage {

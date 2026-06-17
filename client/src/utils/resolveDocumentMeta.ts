@@ -1,7 +1,49 @@
 import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
 
-const LOCALE_PREFIXES = new Set(["de", "fr", "es"]);
+const LOCALE_PREFIXES = new Set(["de", "fr", "es", "it", "nl"]);
+const LOCALE_TITLE_LABELS: Record<string, string> = {
+  de: "Deutsch",
+  fr: "Français",
+  es: "Español",
+  it: "Italiano",
+  nl: "Nederlands",
+};
+
+const SECURITY_GUIDE_META: Record<string, { title: string; description: string }> = {
+  vpn: {
+    title: "VPN Services Guide",
+    description:
+      "Learn how VPNs protect internet browsing, reduce exposure on public Wi-Fi, hide your IP address, and fit into a practical privacy setup.",
+  },
+  password: {
+    title: "Password Managers Guide",
+    description:
+      "Learn how password managers generate unique passwords, store them safely, reduce reuse, and make stronger account security practical.",
+  },
+  messenger: {
+    title: "Secure Messaging Guide",
+    description:
+      "Compare safer messaging habits for private conversations, including end-to-end encryption, disappearing messages, metadata exposure, and secure sharing limits.",
+  },
+  email: {
+    title: "Secure Email Guide",
+    description:
+      "Protect email communications from scanning, surveillance, account takeover, and data mining with encrypted providers and safer handling habits.",
+  },
+  browser: {
+    title: "Privacy Browsers Guide",
+    description:
+      "Browse with less tracking by choosing privacy-focused browsers, blocking invasive trackers, limiting fingerprinting, and controlling cookies.",
+  },
+};
+
+const AUTH_META_DESCRIPTIONS = {
+  signIn:
+    "Sign in to PrivateNote.ai with email or passkeys to access your account, manage secure note settings, and keep private sharing workflows protected safely.",
+  signUp:
+    "Create a PrivateNote.ai account to send encrypted self-destructing notes, manage recovery options, and use passkeys for privacy-focused access safely.",
+};
 
 export function normalizeDocumentPath(pathname: string): string {
   const raw = pathname.split(/[?#]/)[0] ?? "";
@@ -22,6 +64,23 @@ function notFoundDocumentMeta(t: Translations): { title: string; description: st
     title: buildDocumentTitle(t.documentMetaNotFoundTitle),
     description: t.documentMetaNotFoundDescription,
   };
+}
+
+function withLocaleTitleLabel(
+  meta: { title: string; description: string },
+  locale: string | undefined,
+): { title: string; description: string } {
+  const label = locale ? LOCALE_TITLE_LABELS[locale] : undefined;
+  if (!label) return meta;
+
+  const suffix = " · PrivateNote.ai";
+  if (meta.title.endsWith(suffix)) {
+    return {
+      ...meta,
+      title: `${meta.title.slice(0, -suffix.length)} (${label})${suffix}`,
+    };
+  }
+  return { ...meta, title: `${meta.title} (${label})` };
 }
 
 function blogSlugStaticMeta(
@@ -157,8 +216,9 @@ function metaForAuthSegments(segments: string[], t: Translations): { title: stri
   }
   switch (sub) {
     case "sign-in":
+      return { title: buildDocumentTitle(t.signIn), description: AUTH_META_DESCRIPTIONS.signIn };
     case "sign-up":
-      return { title: buildDocumentTitle(t.signIn), description: t.authUnifiedSubtitle };
+      return { title: buildDocumentTitle(t.signUp), description: AUTH_META_DESCRIPTIONS.signUp };
     case "magic":
       return { title: buildDocumentTitle(t.authCheckEmailTitle), description: t.authCheckEmailDesc };
     case "recovery":
@@ -283,6 +343,13 @@ export function resolveDocumentMeta(
   }
 
   if (segments[0] === "security-guides" && segments[1] && segments.length === 2) {
+    const guide = SECURITY_GUIDE_META[segments[1]];
+    if (guide) {
+      return {
+        title: buildDocumentTitle(guide.title),
+        description: guide.description,
+      };
+    }
     return {
       title: buildDocumentTitle(t.documentMetaSecurityGuideTitle),
       description: t.documentMetaSecurityGuideDescription,
@@ -302,8 +369,8 @@ export function resolveDocumentMeta(
   if (segments.length >= 2 && LOCALE_PREFIXES.has(segments[0])) {
     const rest = segments.slice(1).join("/");
     const localized = metaForLocalizedRest(rest, t);
-    if (localized) return localized;
-    return notFoundDocumentMeta(t);
+    if (localized) return withLocaleTitleLabel(localized, segments[0]);
+    return withLocaleTitleLabel(notFoundDocumentMeta(t), segments[0]);
   }
 
   if (segments.length === 1) {

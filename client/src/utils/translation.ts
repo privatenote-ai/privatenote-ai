@@ -23,6 +23,8 @@ const localeLoaders: Record<Exclude<SupportedLanguage, "en">, () => Promise<Tran
   de: () => import("./translations/de").then((m) => ({ ...en, ...m.de })),
   fr: () => import("./translations/fr").then((m) => ({ ...en, ...m.fr })),
   es: () => import("./translations/es").then((m) => ({ ...en, ...m.es })),
+  it: () => import("./translations/it").then((m) => ({ ...en, ...m.it })),
+  nl: () => import("./translations/nl").then((m) => ({ ...en, ...m.nl })),
 };
 
 const cache: Partial<Record<SupportedLanguage, Translations>> = { en };

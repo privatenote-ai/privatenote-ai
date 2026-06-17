@@ -18,6 +18,8 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/blog/myth-good-enough-security",
   "/blog/how-we-generate-passwords",
   "/blog/workplace-texts-private-note",
+  "/blog/privatenote-for-developers",
+  "/blog/privatenote-codex",
   "/privacy",
   "/terms",
 ]);

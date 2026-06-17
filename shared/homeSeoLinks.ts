@@ -8,10 +8,13 @@ export const HOME_HREFLANG_ALTERNATES = [
   { hrefLang: "de", path: "/de/" },
   { hrefLang: "fr", path: "/fr/" },
   { hrefLang: "es", path: "/es/" },
+  { hrefLang: "it", path: "/it/" },
+  { hrefLang: "nl", path: "/nl/" },
   { hrefLang: "x-default", path: "/" },
 ] as const;
 
-const LOCALE_HOME_CODES = ["de", "fr", "es"] as const;
+const LOCALE_HOME_CODES = ["de", "fr", "es", "it", "nl"] as const;
+type HomeLanguage = "en" | (typeof LOCALE_HOME_CODES)[number];
 
 export function absolutePublicUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
@@ -39,20 +42,20 @@ export function isLocaleHomeRoute(route: string): boolean {
   return parts.length === 1 && (LOCALE_HOME_CODES as readonly string[]).includes(parts[0]!);
 }
 
-export function homeLanguageFromRoute(route: string): "en" | "de" | "fr" | "es" {
+export function homeLanguageFromRoute(route: string): HomeLanguage {
   const r = route.replace(/\/+$/, "") || "/";
   if (r === "/") return "en";
   const code = r.split("/").filter(Boolean)[0];
-  if (code === "de" || code === "fr" || code === "es") return code;
+  if ((LOCALE_HOME_CODES as readonly string[]).includes(code!)) return code as HomeLanguage;
   return "en";
 }
 
-export function canonicalPathForHomeLanguage(language: "en" | "de" | "fr" | "es"): string {
+export function canonicalPathForHomeLanguage(language: HomeLanguage): string {
   return language === "en" ? "/" : `/${language}/`;
 }
 
 /** Static `<link>` block for prerendered locale home pages (absolute URLs for crawlers). */
-export function buildHomeSeoHeadMarkup(language: "en" | "de" | "fr" | "es"): string {
+export function buildHomeSeoHeadMarkup(language: HomeLanguage): string {
   const canonicalPath = canonicalPathForHomeLanguage(language);
   const lines = [
     `<link rel="canonical" href="${absolutePublicUrl(canonicalPath)}" data-privatenote-home-locale="true" />`,

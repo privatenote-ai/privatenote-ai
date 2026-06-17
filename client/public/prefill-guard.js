@@ -33,11 +33,21 @@
       l2: "tu privacidad",
       sub: "Notas cifradas de extremo a extremo que se autodestruyen después de leerse. Más seguras que las alternativas, con cifrado del lado del cliente para mantener privados tus mensajes.",
     },
+    it: {
+      l1: "I tuoi messaggi,",
+      l2: "la tua privacy",
+      sub: "Note crittografate end-to-end che si autodistruggono dopo la lettura. Piu sicure delle alternative, con crittografia lato client che mantiene privati i tuoi messaggi.",
+    },
+    nl: {
+      l1: "Uw berichten,",
+      l2: "uw privacy",
+      sub: "End-to-end versleutelde notities die zichzelf vernietigen na het lezen. Veiliger dan alternatieven, met client-side versleuteling die uw berichten prive houdt.",
+    },
   };
 
   function pathHomeLocale() {
     var seg = (location.pathname || "/").split("/").filter(Boolean)[0];
-    if (seg === "de" || seg === "fr" || seg === "es") return seg;
+    if (seg === "de" || seg === "fr" || seg === "es" || seg === "it" || seg === "nl") return seg;
     return "en";
   }
 
@@ -50,7 +60,11 @@
       p === "/fr" ||
       p === "/fr/" ||
       p === "/es" ||
-      p === "/es/"
+      p === "/es/" ||
+      p === "/it" ||
+      p === "/it/" ||
+      p === "/nl" ||
+      p === "/nl/"
     );
   }
 

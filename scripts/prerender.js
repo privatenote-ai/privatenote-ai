@@ -201,7 +201,7 @@ function postProcessHTML(html, route) {
   );
   const isPublicSitemapRoute =
     route === "/" ||
-    /^\/(de|fr|es)(\/|$)/.test(route) ||
+    /^\/(de|fr|es|it|nl)(\/|$)/.test(route) ||
     /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
       route,
     ) ||
@@ -338,7 +338,7 @@ async function saveHTML(route, html) {
     return;
   }
 
-  const isLocaleHome = /^(de|fr|es)$/.test(rel);
+  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
 
   if (!isLocaleHome) {
     const flatFile = path.join(DIST_DIR, `${rel}.html`);

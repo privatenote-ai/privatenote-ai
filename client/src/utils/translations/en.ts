@@ -675,7 +675,7 @@ export const en: Translations = {
   passwordTitleWord: "Password",
   generatorTitleWord: "Generator",
   passwordGeneratorSubtitle:
-    "Create cryptographically secure passwords with unbiased randomness and accurate strength estimation.",
+    "Generate strong random passwords in your browser with cryptographic entropy, clear strength feedback, and options for length, symbols, and memorable phrases.",
   length: "Length",
   uppercaseLetters: "Uppercase Letters",
   lowercaseLetters: "Lowercase Letters",
@@ -1021,7 +1021,7 @@ export const en: Translations = {
   documentMetaDevelopersDescription:
     "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and fully private.",
   documentMetaAboutDescription:
-    "Why PrivateNote.ai exists, the privacy values behind it, and how encrypted tools make sensitive communication safer.",
+    "Learn why PrivateNote.ai exists, how its privacy-first design protects sensitive communication, and what values guide encrypted one-time note sharing.",
   blogPasswordMetaDescription:
     "See how PrivateNote.ai generates secure passwords with cryptographic randomness, unbiased character selection, and practical strength analysis.",
   blogWorkplaceMetaTitle: "Workplace texts and ephemeral notes",
@@ -1057,7 +1057,7 @@ export const en: Translations = {
     "Practical privacy guidance for VPNs, passwords, messaging, email, and browsers.",
   documentMetaAuthRootTitle: "Sign in or sign up",
   documentMetaAuthRootDescription:
-    "Create an account or sign in securely with email or a passkey.",
+    "Sign in or create a PrivateNote.ai account with email or passkeys to manage secure notes, recovery settings, and private account access from any browser.",
   documentMetaAdminBlogTitle: "Blog admin",
   documentMetaAdminBlogDescription: "Create and manage blog posts.",
   documentMetaAnalyticsTitle: "Analytics",

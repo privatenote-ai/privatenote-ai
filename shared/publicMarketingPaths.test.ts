@@ -13,5 +13,7 @@ test("normalizeMarketingPathname strips trailing slash", () => {
 test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/developers"), true);
   assert.equal(isPublicMarketingPath("/de/about/"), true);
+  assert.equal(isPublicMarketingPath("/it/about/"), true);
+  assert.equal(isPublicMarketingPath("/nl/blog/privatenote-codex"), true);
   assert.equal(isPublicMarketingPath("/note/abc"), false);
 });
