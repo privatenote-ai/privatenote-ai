@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown, Check, Languages } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
-import { LANGUAGE_OPTIONS } from '@/utils/translation';
-import { isLocaleSiteHomeHref, localizedPath, switchLanguagePath } from '@/utils/localizedPath';
+import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
 import { shouldEagerPrefetchAuth } from '@/utils/authPrefetch';
 
 // Custom NavLink component that closes the menu when clicked
@@ -48,13 +47,11 @@ export const Navbar: React.FC = () => {
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>("closed");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
-  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
   const profileRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
-  const languageRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
 
   // Solid translucent bg only after the user scrolls; transparent on hero
@@ -94,9 +91,6 @@ export const Navbar: React.FC = () => {
       if (resourcesRef.current && !resourcesRef.current.contains(event.target as Node)) {
         setIsResourcesOpen(false);
       }
-      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
-        setIsLanguageOpen(false);
-      }
     };
 
     document.addEventListener('click', handleClickOutside);
@@ -109,7 +103,6 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMobileSheet("closed");
     setIsProfileOpen(false);
-    setIsLanguageOpen(false);
     if (shouldEagerPrefetchAuth(location)) {
       void refreshAuth();
     }
@@ -142,21 +135,19 @@ export const Navbar: React.FC = () => {
   }, [mobileSheet, closeMenu]);
 
   useEffect(() => {
-    if (!isResourcesOpen && !isProfileOpen && !isLanguageOpen) return;
+    if (!isResourcesOpen && !isProfileOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsResourcesOpen(false);
         setIsProfileOpen(false);
-        setIsLanguageOpen(false);
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isLanguageOpen, isProfileOpen, isResourcesOpen]);
+  }, [isProfileOpen, isResourcesOpen]);
 
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
-  const activeLanguage = LANGUAGE_OPTIONS.find((option) => option.code === language) ?? LANGUAGE_OPTIONS[0];
 
   const initials = React.useMemo(() => {
     if (!user?.email) return 'U';
@@ -188,56 +179,6 @@ export const Navbar: React.FC = () => {
 
   const desktopDropdownItem =
     "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
-
-  const languageMenu = (
-    <div className="relative" ref={languageRef}>
-      <button
-        type="button"
-        onClick={() => setIsLanguageOpen((open) => !open)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-primary/15 bg-white/80 px-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-primary/5 dark:border-gray-800 dark:bg-gray-900/80"
-        aria-haspopup="menu"
-        aria-expanded={isLanguageOpen}
-        aria-label={t.language}
-      >
-        <Languages className="h-4 w-4" aria-hidden />
-        <span>{activeLanguage.code.toUpperCase()}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${isLanguageOpen ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
-      <div
-        className={`absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 transition-opacity ${
-          isLanguageOpen ? "opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
-        }`}
-        role="menu"
-        aria-hidden={!isLanguageOpen}
-      >
-        {LANGUAGE_OPTIONS.map((option) => (
-          <NavLink
-            key={option.code}
-            href={switchLanguagePath(location, option.code)}
-            closeMenu={() => {
-              setLanguage(option.code);
-              setIsLanguageOpen(false);
-              closeMenu();
-            }}
-            className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-              language === option.code
-                ? "bg-primary/8 text-primary"
-                : "text-gray-700 hover:bg-gray-50 hover:text-primary dark:text-gray-200 dark:hover:bg-gray-800/60"
-            }`}
-          >
-            <span>
-              <span className="block font-semibold">{option.nativeName}</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">{option.englishName}</span>
-            </span>
-            {language === option.code ? <Check className="h-4 w-4" aria-hidden /> : null}
-          </NavLink>
-        ))}
-      </div>
-    </div>
-  );
 
   const navShellClass = [
     'fixed top-0 left-0 right-0 z-50 overflow-visible',
@@ -415,16 +356,10 @@ export const Navbar: React.FC = () => {
           {/* Auth — sits just outside the right edge of the editor column */}
           {authCluster && (
             <div
-              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center gap-2.5 2xl:gap-3"
+              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center"
               ref={user?.email ? profileRef : undefined}
             >
-              {languageMenu}
               {authCluster}
-            </div>
-          )}
-          {!authCluster && (
-            <div className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center">
-              {languageMenu}
             </div>
           )}
         </div>
@@ -556,37 +491,6 @@ export const Navbar: React.FC = () => {
               <Info className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.about}</span>
             </NavLink>
-
-            <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
-
-            <div className="px-5 py-3">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                <Languages className="h-3.5 w-3.5" aria-hidden />
-                <span>{t.language}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {LANGUAGE_OPTIONS.map((option) => (
-                  <NavLink
-                    key={option.code}
-                    href={switchLanguagePath(location, option.code)}
-                    closeMenu={() => {
-                      setLanguage(option.code);
-                      closeMenu();
-                    }}
-                    className={`flex min-h-10 items-center justify-between rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
-                      language === option.code
-                        ? "border-primary bg-primary text-white"
-                        : "border-gray-200 text-primary hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60"
-                    }`}
-                  >
-                    <span>{option.nativeName}</span>
-                    {language === option.code ? <Check className="h-4 w-4" aria-hidden /> : null}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-
-            <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>
