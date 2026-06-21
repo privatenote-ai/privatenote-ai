@@ -1314,17 +1314,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   // ── Create form ───────────────────────────────────────────────────────────
   return (
     <section className="mx-auto w-full min-w-0 max-w-full">
-      <div className="pt-4">
+      <div className="pt-0 sm:pt-4">
         {/* Mode toggle */}
-        <div className="mb-6">
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-2 sm:mb-3">
             <button
               type="button"
               onClick={() => {
                 setIsAiMode(false);
                 setAiDraftAccepted(false);
               }}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors sm:py-3 ${
                 !isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1340,7 +1340,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
               onClick={() => {
                 enterAiMode();
               }}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 text-center text-sm font-medium transition-colors sm:py-3 ${
                 isAiMode
                   ? "bg-primary/10 text-primary border-b-2 border-primary"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
