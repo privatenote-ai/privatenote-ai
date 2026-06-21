@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
 
@@ -100,6 +101,11 @@ function passkeyFailureDescription(error: unknown): string {
 
 type AuthMode = "sign-in" | "sign-up";
 
+function normalizeSignInPurpose(raw: unknown): "default" | "cloud_assist" {
+  if (typeof raw !== "string") return "default";
+  return raw.trim().toLowerCase() === "cloud_assist" ? "cloud_assist" : "default";
+}
+
 export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
@@ -118,6 +124,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   const shouldShowTurnstile = !!turnstileSiteKey;
   const showDebugMagicLinkUi = import.meta.env.DEV && Boolean(debugMagicLink);
+  const signInContext = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { purpose: "default" as const, returnTo: "/" };
+    }
+    const params = new URLSearchParams(window.location.search);
+    return {
+      purpose: normalizeSignInPurpose(params.get("purpose")),
+      returnTo: sanitizeAuthReturnTo(params.get("returnTo")) ?? "/",
+    };
+  }, []);
+  const isCloudAssistSignIn = signInContext.purpose === "cloud_assist";
 
   const resetAuthTurnstile = useCallback(() => {
     setTurnstileToken(null);
@@ -182,8 +199,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       // Retry: D1 read-after-write lag can briefly return authenticated:false
       // even though the verify endpoint just created the session.
       await refreshUntilAuthenticated();
-      // Redirect to home on successful login
-      window.location.href = "/";
+      window.location.href = signInContext.returnTo;
     } catch (error) {
       toast({
         title: tx("authPasskeyLoginFailedTitle", "Passkey login failed"),
@@ -230,7 +246,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       const response = await apiRequest<{ debugMagicLink?: string }>(
         "/api/auth/magic/send",
         "POST",
-        { email: trimmedEmail, turnstileToken, locale: language }
+        { email: trimmedEmail, turnstileToken, locale: language, returnTo: signInContext.returnTo },
       );
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
@@ -356,10 +372,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
           {/* Header Section */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              {tx("authContinueTitle", "Continue to PrivateNote")}
+              {isCloudAssistSignIn
+                ? tx("authCloudAssistTitle", "Sign in to use Cloud Assist")
+                : tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
-              {tx("authUnifiedSubtitle", "Enter your email to continue. If you’re new, we’ll create your account.")}
+              {isCloudAssistSignIn
+                ? tx(
+                    "authCloudAssistSubtitle",
+                    "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
+                  )
+                : tx("authUnifiedSubtitle", "Enter your email to continue. If you're new, we'll create your account.")}
             </p>
           </div>
 

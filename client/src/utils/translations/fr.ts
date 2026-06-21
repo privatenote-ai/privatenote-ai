@@ -359,6 +359,10 @@ export const fr: Translations = {
     "Écrivez un mot d’anniversaire chaleureux et personnel, sans être trop formel...",
   aiComposerCloudAssistButton: "Générer un brouillon hébergé",
   aiComposerCloudAssistNoFree: "Les brouillons hébergés gratuits sont épuisés pour aujourd’hui.",
+  signInToUseCloudAssist: "Se connecter pour Cloud Assist",
+  signInToUseCloudAssistHint: "Connectez-vous pour générer un brouillon hébergé avec Cloud Assist.",
+  authCloudAssistTitle: "Se connecter pour Cloud Assist",
+  authCloudAssistSubtitle: "Entrez votre e-mail. Vous reviendrez à votre note pour générer un brouillon IA hébergé.",
   aiComposerCloudAssistTemplatesAlternative:
     "Si vous préférez ne pas envoyer de texte à l’IA cloud, utilisez les modèles hors ligne.",
   aiComposerWriteWithoutAi: "Écrire sans IA",

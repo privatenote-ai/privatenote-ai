@@ -55,6 +55,8 @@ const NoteSettingsPanel = lazy(() =>
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
 import {
@@ -93,12 +95,79 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   return expiryValue;
 }
 
+const CLOUD_ASSIST_DRAFT_KEY = "privatenote:cloud-assist-draft:v1";
+const CLOUD_ASSIST_DRAFT_TTL_MS = 30 * 60 * 1000;
+
+type CloudAssistDraft = {
+  v: 1;
+  expiresAt: number;
+  noteContent: string;
+  isAiMode: boolean;
+  aiPrompt: string;
+  aiEnhancementType: "improve" | "summarize" | "secure" | "ask";
+  showPrompt: boolean;
+  selectedTemplateId: string | null;
+  aiSentenceLength: AiSentenceLengthId;
+};
+
+function readCloudAssistDraft(): CloudAssistDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(CLOUD_ASSIST_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CloudAssistDraft>;
+    if (parsed.v !== 1 || typeof parsed.expiresAt !== "number") return null;
+    if (Date.now() > parsed.expiresAt) {
+      window.sessionStorage.removeItem(CLOUD_ASSIST_DRAFT_KEY);
+      return null;
+    }
+    if (typeof parsed.noteContent !== "string") return null;
+    return {
+      v: 1,
+      expiresAt: parsed.expiresAt,
+      noteContent: parsed.noteContent,
+      isAiMode: parsed.isAiMode === true,
+      aiPrompt: typeof parsed.aiPrompt === "string" ? parsed.aiPrompt : "",
+      aiEnhancementType:
+        parsed.aiEnhancementType === "improve" ||
+        parsed.aiEnhancementType === "summarize" ||
+        parsed.aiEnhancementType === "secure" ||
+        parsed.aiEnhancementType === "ask"
+          ? parsed.aiEnhancementType
+          : "ask",
+      showPrompt: parsed.showPrompt !== false,
+      selectedTemplateId:
+        typeof parsed.selectedTemplateId === "string" || parsed.selectedTemplateId === null
+          ? parsed.selectedTemplateId
+          : "ask-anything",
+      aiSentenceLength:
+        parsed.aiSentenceLength === "auto" ||
+        parsed.aiSentenceLength === "1-2" ||
+        parsed.aiSentenceLength === "2-3" ||
+        parsed.aiSentenceLength === "4-6" ||
+        parsed.aiSentenceLength === "7-10"
+          ? parsed.aiSentenceLength
+          : "auto",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearCloudAssistDraft(): void {
+  try {
+    window.sessionStorage.removeItem(CLOUD_ASSIST_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
 }
 
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) => {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
 
   // ── Note content ──────────────────────────────────────────────────────────
   const [noteContent, setNoteContent] = useState("");
@@ -175,6 +244,40 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const { toast } = useToast();
 
+  const cloudAssistReturnTo =
+    typeof window === "undefined"
+      ? localizedPath("/", language)
+      : `${window.location.pathname}${window.location.search}` || localizedPath("/", language);
+  const cloudAssistSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=cloud_assist&returnTo=${encodeURIComponent(cloudAssistReturnTo)}`;
+
+  const saveCloudAssistDraft = useCallback(
+    (overrides?: Partial<CloudAssistDraft>) => {
+      try {
+        const draft: CloudAssistDraft = {
+          v: 1,
+          expiresAt: Date.now() + CLOUD_ASSIST_DRAFT_TTL_MS,
+          noteContent,
+          isAiMode,
+          aiPrompt,
+          aiEnhancementType,
+          showPrompt,
+          selectedTemplateId,
+          aiSentenceLength,
+          ...overrides,
+        };
+        window.sessionStorage.setItem(CLOUD_ASSIST_DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        /* Best effort */
+      }
+    },
+    [aiEnhancementType, aiPrompt, aiSentenceLength, isAiMode, noteContent, selectedTemplateId, showPrompt],
+  );
+
+  const handleCloudAssistSignInRedirect = useCallback(() => {
+    saveCloudAssistDraft({ isAiMode: true, showPrompt: true });
+    window.location.href = cloudAssistSignInHref;
+  }, [cloudAssistSignInHref, saveCloudAssistDraft]);
+
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
   const { downloadQrCode, shareQrCode } = useQrShare({
@@ -202,6 +305,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       const { text } = truncateUtf8StringToMaxBytes(prefillText, MAX_NOTE_PLAINTEXT_UTF8_BYTES);
       setNoteContent(text);
     }
+  }, [prefillText]);
+
+  const cloudAssistDraftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (cloudAssistDraftRestoredRef.current || prefillText) return;
+    cloudAssistDraftRestoredRef.current = true;
+    const draft = readCloudAssistDraft();
+    if (!draft) return;
+    clearCloudAssistDraft();
+
+    const { text } = truncateUtf8StringToMaxBytes(
+      draft.noteContent,
+      MAX_NOTE_PLAINTEXT_UTF8_BYTES,
+    );
+    setNoteContent(text);
+    setIsAiMode(draft.isAiMode);
+    setAiPrompt(draft.aiPrompt);
+    setAiEnhancementType(draft.aiEnhancementType);
+    setShowPrompt(draft.showPrompt);
+    setSelectedTemplateId(draft.selectedTemplateId);
+    setAiSentenceLength(draft.aiSentenceLength);
   }, [prefillText]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
@@ -859,6 +983,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return;
     }
 
+    if (!user) {
+      handleCloudAssistSignInRedirect();
+      return;
+    }
+
     setIsGeneratingContent(true);
     setHostedCloudAiStatusText("Cloud assist is writing with Llama 3.2 3B...");
     if (!originalPrompt) setOriginalPrompt(promptToUse);
@@ -908,11 +1037,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_auth_required") {
-        toast({
-          title: "Sign in required",
-          description: parsed.message ?? "Sign in to use hosted AI.",
-          variant: "destructive",
-        });
+        handleCloudAssistSignInRedirect();
+        return;
       } else {
         toast({
           title: "Cloud assist unavailable",
@@ -1278,6 +1404,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onHostedCloudGenerate={(override) => void handleHostedCloudGenerate(override)}
                 hostedCloudAiRemaining={hostedCloudAiRemaining}
                 hostedCloudAiLimit={hostedCloudAiLimit}
+                isSignedIn={Boolean(user)}
+                onSignInRequired={handleCloudAssistSignInRedirect}
                 onImprove={() => void handleImprove()}
                 onSummarize={() => void handleSummarize()}
                 onSimplify={() => void handleSimplify()}

@@ -9,6 +9,7 @@ import {
   ZoomIn,
   FileText,
   Info,
+  LogIn,
   Sparkles,
   RefreshCw,
 } from "lucide-react";
@@ -95,6 +96,8 @@ export type AiComposerProps = {
   }) => void;
   hostedCloudAiRemaining: number | null;
   hostedCloudAiLimit: number;
+  isSignedIn?: boolean;
+  onSignInRequired?: () => void;
   onImprove: () => void;
   onSummarize: () => void;
   onSimplify: () => void;
@@ -135,6 +138,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onHostedCloudGenerate,
   hostedCloudAiRemaining,
   hostedCloudAiLimit,
+  isSignedIn = true,
+  onSignInRequired,
   onImprove,
   onSummarize,
   onSimplify,
@@ -447,6 +452,23 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   </Popover>
                 </div>
 
+                {!isSignedIn ? (
+                  <div className="rounded-xl border border-amber-300/70 bg-white px-4 py-4 dark:border-amber-800/60 dark:bg-gray-900">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {t.signInToUseCloudAssistHint ??
+                        "Sign in to generate a hosted draft with Cloud Assist."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onSignInRequired?.()}
+                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 sm:w-auto"
+                    >
+                      <LogIn className="h-4 w-4 shrink-0" aria-hidden />
+                      {t.signInToUseCloudAssist ?? "Sign in to use Cloud Assist"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
                 <div className="mb-3 flex items-center justify-end gap-3">
                   <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
                     {hostedCloudAiRemaining === null
@@ -537,6 +559,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                           : t.aiComposerCloudAssistPlaceholder}
                   </span>
                 </div>
+                  </>
+                )}
 
                 <button
                   type="button"

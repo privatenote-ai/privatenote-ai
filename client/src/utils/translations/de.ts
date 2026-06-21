@@ -358,6 +358,10 @@ export const de: Translations = {
     "Schreiben Sie eine warme, persönliche Geburtstagsnotiz, die nicht zu formell klingt...",
   aiComposerCloudAssistButton: "Gehosteten Entwurf erstellen",
   aiComposerCloudAssistNoFree: "Die kostenlosen gehosteten Entwürfe sind für heute aufgebraucht.",
+  signInToUseCloudAssist: "Anmelden für Cloud Assist",
+  signInToUseCloudAssistHint: "Melden Sie sich an, um einen gehosteten Entwurf mit Cloud Assist zu erstellen.",
+  authCloudAssistTitle: "Anmelden für Cloud Assist",
+  authCloudAssistSubtitle: "Geben Sie Ihre E-Mail ein. Sie kehren zu Ihrer Notiz zurück, um einen gehosteten KI-Entwurf zu erstellen.",
   aiComposerCloudAssistTemplatesAlternative:
     "Wenn Sie keinen Text an Cloud-KI senden möchten, verwenden Sie die Offline-Vorlagen.",
   aiComposerWriteWithoutAi: "Ohne KI schreiben",

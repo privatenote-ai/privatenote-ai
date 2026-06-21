@@ -30,6 +30,7 @@ import {
 } from "../trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "../httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -5023,8 +5024,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
 
       if (storeResult.ok) {
         const magicOrigin = getMagicLinkOrigin(env, request);
+        const returnTo = sanitizeAuthReturnTo(body?.returnTo);
         // Query param is non-authenticating: session is only created on explicit POST after the user clicks Continue.
-        const magicUrl = `${magicOrigin}/magic?t=${encodeURIComponent(token)}`;
+        const magicUrl = appendMagicLinkReturnTo(
+          `${magicOrigin}/magic?t=${encodeURIComponent(token)}`,
+          returnTo,
+        );
         console.log(`[MAGIC_LINK] Prepared link for ${intent}, origin=${magicOrigin}, isLocal=${isLocal}`);
 
         if (isLocal) {

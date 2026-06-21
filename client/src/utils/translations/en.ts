@@ -355,6 +355,10 @@ export const en: Translations = {
   aiComposerCloudAssistPlaceholder: "Write a birthday note for my wife that feels warm, personal, and not too formal...",
   aiComposerCloudAssistButton: "Generate hosted draft",
   aiComposerCloudAssistNoFree: "Free hosted drafts are used for today.",
+  signInToUseCloudAssist: "Sign in to use Cloud Assist",
+  signInToUseCloudAssistHint: "Sign in to generate a hosted draft with Cloud Assist.",
+  authCloudAssistTitle: "Sign in to use Cloud Assist",
+  authCloudAssistSubtitle: "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
   aiComposerCloudAssistTemplatesAlternative:
     "Prefer not to send text to cloud AI? Use the offline templates below instead.",
   aiComposerWriteWithoutAi: "Write without AI (fully private)",

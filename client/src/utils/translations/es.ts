@@ -359,6 +359,10 @@ export const es: Translations = {
     "Escribe una nota de cumpleaños cálida y personal que no suene demasiado formal...",
   aiComposerCloudAssistButton: "Generar borrador alojado",
   aiComposerCloudAssistNoFree: "Los borradores alojados gratuitos se agotaron por hoy.",
+  signInToUseCloudAssist: "Inicia sesión para Cloud Assist",
+  signInToUseCloudAssistHint: "Inicia sesión para generar un borrador alojado con Cloud Assist.",
+  authCloudAssistTitle: "Inicia sesión para Cloud Assist",
+  authCloudAssistSubtitle: "Introduce tu correo. Volverás a tu nota para generar un borrador de IA alojado.",
   aiComposerCloudAssistTemplatesAlternative:
     "Si prefieres no enviar texto a la IA en la nube, usa las plantillas sin conexión.",
   aiComposerWriteWithoutAi: "Escribir sin IA",
