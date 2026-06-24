@@ -44,7 +44,7 @@ export const fr: Translations = {
   authAnd: "et",
   authByContinuing: "En continuant, vous reconnaissez avoir compris et accepté les",
   authCheckEmailTitle: "Vérifiez votre e-mail",
-  authCheckEmailDesc: "Nous avons envoyé un lien de connexion si l'adresse est valide.",
+  authCheckEmailDesc: "Nous avons envoyé un code et un lien de connexion si l'adresse est valide.",
   authSignUpSentText: "Si cette adresse e-mail est valide, un lien sécurisé est en route vers",
   authSignInSentText: "Si un compte peut utiliser cette adresse, un lien de connexion sécurisé est en route vers",
   authCheckInboxHint: "Vérifiez votre boîte de réception (et les spams). L'arrivée peut prendre une minute.",

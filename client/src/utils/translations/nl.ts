@@ -44,7 +44,7 @@ export const nl: Translations = {
   authAnd: "En",
   authByContinuing: "Door verder te gaan, erkent u dat u de voorwaarden begrijpt en ermee akkoord gaat",
   authCheckEmailTitle: "Controleer uw e-mail",
-  authCheckEmailDesc: "We hebben een inloglink gestuurd als het adres geldig is.",
+  authCheckEmailDesc: "We hebben een inlogcode en link gestuurd als het adres geldig is.",
   authSignUpSentText: "Als dit e-mailadres geldig is, is er een beveiligde link onderweg",
   authSignInSentText: "Als een account dit adres kan gebruiken, is er een beveiligde inloglink onderweg",
   authCheckInboxHint: "Controleer uw inbox (en spammap). Het kan een minuut duren voordat u arriveert.",

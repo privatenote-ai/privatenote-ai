@@ -30,6 +30,12 @@ import {
 } from "../trustedOrigins";
 import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "../httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import {
+  buildMagicLinkEmailContent,
+  detectAuthEmailLocale,
+  type AuthEmailLocale,
+  type MagicLinkEmailPurpose,
+} from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
@@ -521,101 +527,25 @@ function normalizeMagicEmailCode(raw: unknown): string | null {
   return digits.length === 6 ? digits : null;
 }
 
-async function sendMagicSignInOtpEmail(env: Env, to: string, code: string): Promise<{ ok: boolean; error?: string }> {
-  const subject = "Your PrivateNote sign-in code";
-  const text = [
-    "PrivateNote sign-in code",
-    "",
-    `Your confirmation code is: ${code}`,
-    "",
-    "Enter this code after opening your magic link and pressing Continue.",
-    "",
-    "If you did not request this, you can ignore this email.",
-  ].join("\n");
-  const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827;\">",
-    "  <p style=\"margin: 0 0 12px; font-size: 18px; font-weight: 700;\">PrivateNote sign-in code</p>",
-    `  <p style=\"margin: 0 0 8px; color: #374151;\">Your confirmation code is:</p>`,
-    `  <p style=\"margin: 0 0 20px; font-size: 28px; letter-spacing: 0.2em; font-weight: 700; color: #111827;\">${code}</p>`,
-    "  <p style=\"margin: 0; color: #6B7280; font-size: 13px;\">Enter this code on the page after you press Continue sign in.</p>",
-    "</div>",
-  ].join("");
-  return sendEmail(env, { to, subject, text, html });
-}
-
 async function sendMagicLinkEmail(
   env: Env,
   to: string,
   magicUrl: string,
+  options: {
+    signInCode: string;
+    locale?: AuthEmailLocale;
+    purpose?: MagicLinkEmailPurpose;
+    hostLabel?: string;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
-  const provider = env.AUTH_EMAIL_PROVIDER?.toLowerCase();
-  if (provider !== "resend") {
-    return { ok: false, error: "Email provider not configured" };
-  }
-
-  const apiKey = env.RESEND_API_KEY;
-  const from = env.AUTH_EMAIL_FROM;
-  if (!apiKey) {
-    return { ok: false, error: "Resend API key not configured" };
-  }
-  if (!from) {
-    return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
-  }
-
-  const subject = "Continue to PrivateNote";
-  const text = [
-    "Continue to PrivateNote",
-    "",
-    "Click the secure link below to continue:",
+  const { subject, text, html } = buildMagicLinkEmailContent({
     magicUrl,
-    "",
-    "For security, complete sign-in in the same browser and device where you opened the link.",
-    "",
-    "This link expires automatically and can only be used for this sign-in request.",
-    "",
-    "If you did not request this email, you can safely ignore it.",
-    "",
-    "—",
-    "PrivateNote",
-    "Securely create, share, and destroy private notes — only the recipient can read them.",
-  ].join("\n");
-  const html = [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
-    "  <div style=\"font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;\">Continue to PrivateNote</div>",
-    "  <p style=\"margin: 0 0 8px; color: #374151; font-size: 15px; line-height: 1.4;\">Click the secure link below to continue:</p>",
-    "  <a href=\"" +
-      magicUrl +
-      "\" referrerpolicy=\"no-referrer\" style=\"display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 15px; line-height: 1.25; text-align: center; word-wrap: break-word;\">Continue to PrivateNote</a>",
-    "  <p style=\"margin: 12px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">For security, complete sign-in in the <strong>same browser and device</strong> where you opened the link.</p>",
-    "  <p style=\"margin: 8px 0 0; color: #374151; font-size: 13px; line-height: 1.45;\">This link expires automatically and can only be used for this sign-in request.</p>",
-    "  <p style=\"margin: 10px 0 0; color: #6B7280; font-size: 12px; line-height: 1.45;\">If you did not request this email, you can safely ignore it.</p>",
-    "  <hr style=\"border: 0; border-top: 1px solid #E5E7EB; margin: 18px 0 14px;\" />",
-    "  <p style=\"margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3;\">PrivateNote</p>",
-    "  <p style=\"margin: 6px 0 0; color: #6B7280; font-size: 12px; line-height: 1.42;\">Securely create, share, and destroy private notes — only the recipient can read them.</p>",
-    "</div>",
-  ].join("");
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      text,
-      html,
-    }),
+    signInCode: options.signInCode,
+    locale: options.locale ?? "en",
+    purpose: options.purpose ?? "default",
+    hostLabel: options.hostLabel,
   });
-
-  if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
-  }
-
-  return { ok: true };
+  return sendEmail(env, { to, subject, text, html });
 }
 
 // Generic email sending function
@@ -2174,6 +2104,8 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
   }
 
   let otpHash: string | undefined;
+  const storedOtpHash = typeof payload.otpHash === "string" ? payload.otpHash : undefined;
+
   if (policy.risk === "medium") {
     await logAuditEvent(env, {
       userId: userIdForAudit,
@@ -2183,28 +2115,15 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
         ipSoftMismatch: policy.ipDrift,
         uaSoftMismatch: policy.uaDrift,
         emailOtpRequired: true,
+        otpFromInitialEmail: true,
       },
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
     });
-    const email = normalizeEmail(typeof payload.email === "string" ? payload.email : null);
-    if (!email) {
+    if (!storedOtpHash) {
       return jsonResponse({ message: "Invalid link data" }, 400, request);
     }
-    const otp = generateMagicEmailOtpDigits();
-    otpHash = await sha256Base64Url(otp);
-    const sendResult = await sendMagicSignInOtpEmail(env, email, otp);
-    if (!sendResult.ok) {
-      await logAuditEvent(env, {
-        userId: userIdForAudit,
-        eventType: "magic_link_failed",
-        status: "failure",
-        details: { reason: "sign_in_otp_email_failed", error: sendResult.error?.slice(0, 500) },
-        ip: getRequestIp(request),
-        userAgent: request.headers.get("User-Agent"),
-      });
-      return jsonResponse({ message: "Could not send confirmation email" }, 500, request);
-    }
+    otpHash = storedOtpHash;
   }
 
   const nonce = await issueMagicPrepareNonce(
@@ -4881,6 +4800,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     console.log("[MAGIC_LINK] Body parsed, email present:", !!body?.email);
     const email = normalizeEmail(typeof body?.email === "string" ? body.email : null);
+    const locale = detectAuthEmailLocale(request, body?.locale);
     const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     const responsePayload: Record<string, unknown> = {
       ok: true,
@@ -4991,6 +4911,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
 
     if (userId) {
       const token = randomId(32);
+      const signInCode = generateMagicEmailOtpDigits();
+      const otpHash = await sha256Base64Url(signInCode);
       const magicCtx = await magicLinkSoftContext(request);
       const storeResult = await storeMagicLink(env, token, {
         userId,
@@ -4999,6 +4921,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         createdAt: Date.now(),
         magicIpPrefix: magicCtx.ipPrefix,
         magicUaHash: magicCtx.uaHash,
+        otpHash,
       }, request);
 
       if (!storeResult.ok) {
@@ -5034,6 +4957,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
 
         if (isLocal) {
           responsePayload.debugMagicLink = magicUrl;
+          responsePayload.debugSignInCode = signInCode;
           await logAuditEvent(env, {
             userId,
             eventType: "magic_link_sent",
@@ -5044,7 +4968,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           });
         } else {
           console.log("[MAGIC_LINK] Calling sendMagicLinkEmail via Resend...");
-          const sendResult = await sendMagicLinkEmail(env, email, magicUrl);
+          const sendResult = await sendMagicLinkEmail(env, email, magicUrl, {
+            signInCode,
+            locale,
+          });
           if (!sendResult.ok) {
             console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);
             await logAuditEvent(env, {

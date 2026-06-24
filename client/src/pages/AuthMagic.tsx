@@ -89,7 +89,7 @@ export default function AuthMagic() {
         setEmailCodeRequired(needCode);
         if (needCode) {
           setFriendlyMessage(
-            "Your network or browser looks different from when the link was sent. We emailed a 6-digit code — enter it below, then continue. For security, finish in the same browser where you opened the link.",
+            "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link.",
           );
         } else {
           setFriendlyMessage(

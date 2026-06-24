@@ -44,7 +44,7 @@ export const it: Translations = {
   authAnd: "e",
   authByContinuing: "Continuando dichiari di comprendere e accettare i",
   authCheckEmailTitle: "Controlla la tua email",
-  authCheckEmailDesc: "Abbiamo inviato un collegamento di accesso se l'indirizzo è valido.",
+  authCheckEmailDesc: "Abbiamo inviato un codice e un collegamento di accesso se l'indirizzo è valido.",
   authSignUpSentText: "Se questo indirizzo email è valido, è in arrivo un collegamento sicuro",
   authSignInSentText: "Se un account può utilizzare questo indirizzo, è in arrivo un collegamento di accesso sicuro",
   authCheckInboxHint: "Controlla la tua casella di posta (e la cartella spam). Potrebbe volerci un minuto per arrivare.",

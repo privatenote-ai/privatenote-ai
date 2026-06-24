@@ -44,7 +44,7 @@ export const es: Translations = {
   authAnd: "y",
   authByContinuing: "Al continuar, reconoces que entiendes y aceptas los",
   authCheckEmailTitle: "Revisa tu correo",
-  authCheckEmailDesc: "Enviamos un enlace de inicio de sesión si la dirección es válida.",
+  authCheckEmailDesc: "Enviamos un código y un enlace de inicio de sesión si la dirección es válida.",
   authSignUpSentText: "Si esta dirección es válida, un enlace seguro está en camino a",
   authSignInSentText: "Si existe una cuenta para esta dirección, un enlace seguro está en camino a",
   authCheckInboxHint: "Revisa tu bandeja de entrada (y spam). Puede tardar un minuto en llegar.",

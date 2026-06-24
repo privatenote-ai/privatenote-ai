@@ -44,7 +44,7 @@ export const de: Translations = {
   authAnd: "und",
   authByContinuing: "Wenn Sie fortfahren, bestätigen Sie, dass Sie Folgendes verstanden haben und zustimmen:",
   authCheckEmailTitle: "E-Mail prüfen",
-  authCheckEmailDesc: "Wir haben einen Anmeldelink gesendet, falls die Adresse gültig ist.",
+  authCheckEmailDesc: "Wir haben einen Anmeldecode und Link gesendet, falls die Adresse gültig ist.",
   authSignUpSentText: "Wenn diese E-Mail-Adresse gültig ist, ist ein sicherer Link unterwegs an",
   authSignInSentText: "Wenn ein Konto diese Adresse nutzen kann, ist ein sicherer Anmeldelink unterwegs an",
   authCheckInboxHint: "Prüfen Sie Ihren Posteingang (und Spam-Ordner). Es kann eine Minute dauern.",
