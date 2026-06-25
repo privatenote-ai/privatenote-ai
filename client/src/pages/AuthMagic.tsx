@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,85 +68,25 @@ export default function AuthMagic() {
   const [emailCode, setEmailCode] = useState("");
   const [returnTo, setReturnTo] = useState("/");
   const [returnToFromUrl, setReturnToFromUrl] = useState(false);
+  const autoConsumeTokenRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
-      takeMagicLinkContextOnce();
-    setReturnTo(nextReturnTo);
-    setReturnToFromUrl(nextReturnToFromUrl);
-    if (!t) {
-      setPhase("error");
-      setFriendlyMessage(tx("authMagicMissingLinkDesc", "Open the sign-in link from your email on this device, or request a new link."));
-      return;
-    }
-    setToken(t);
-
-    void (async () => {
-      try {
-        const prep = await apiRequest<{
-          ok?: boolean;
-          emailCodeRequired?: boolean;
-          oneTapAllowed?: boolean;
-          riskLevel?: string;
-        }>("/api/auth/magic/prepare", "POST", { token: t });
-
-        const needCode = prep?.emailCodeRequired === true;
-        const canOneTap = prep?.oneTapAllowed === true;
-        setEmailCodeRequired(needCode);
-        setOneTapAllowed(canOneTap);
-        if (needCode) {
-          setFriendlyMessage(
-            tx(
-              "authMagicMediumRiskDesc",
-              "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
-            ),
-          );
-        } else {
-          setFriendlyMessage(
-            tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Log in below to finish in this browser."),
-          );
-        }
-        setPhase("confirm");
-      } catch (err) {
-        if (err instanceof ApiRequestError && err.status === 403) {
-          try {
-            const body = JSON.parse(err.bodyText) as { code?: string };
-            if (body.code === "context_high_risk") {
-              setPhase("error");
-              setFriendlyMessage(
-                tx(
-                  "authMagicHighRiskDesc",
-                  "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
-                ),
-              );
-              return;
-            }
-            if (body.code === "origin_required") {
-              setPhase("error");
-              setFriendlyMessage(
-                tx(
-                  "authMagicOriginRequiredDesc",
-                  "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
-                ),
-              );
-              return;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        setPhase("error");
-        setFriendlyMessage(
-          tx("authMagicVerifyFailedDesc", "We couldn’t verify that sign-in link. Open it from your email again, or request a new link."),
-        );
-      }
-    })();
-  }, [t]);
-
-  const runConsume = async () => {
-    if (!token) return;
-    if (emailCodeRequired) {
-      const digits = emailCode.replace(/\D/g, "");
+  const runConsume = async (
+    options: {
+      token?: string;
+      emailCodeRequired?: boolean;
+      emailCode?: string;
+      returnTo?: string;
+      returnToFromUrl?: boolean;
+    } = {},
+  ) => {
+    const activeToken = options.token ?? token;
+    const requiresCode = options.emailCodeRequired ?? emailCodeRequired;
+    const activeEmailCode = options.emailCode ?? emailCode;
+    const nextReturnTo = options.returnTo ?? returnTo;
+    const nextReturnToFromUrl = options.returnToFromUrl ?? returnToFromUrl;
+    if (!activeToken) return;
+    if (requiresCode) {
+      const digits = activeEmailCode.replace(/\D/g, "");
       if (digits.length !== 6) {
         toast({
           title: tx("authMagicEnterCodeTitle", "Enter the code"),
@@ -160,9 +100,9 @@ export default function AuthMagic() {
     setFriendlyMessage(tx("authMagicCompletingDesc", "Completing sign-in…"));
 
     try {
-      const payload: { token: string; emailCode?: string } = { token };
-      if (emailCodeRequired) {
-        payload.emailCode = emailCode.replace(/\D/g, "").slice(0, 6);
+      const payload: { token: string; emailCode?: string } = { token: activeToken };
+      if (requiresCode) {
+        payload.emailCode = activeEmailCode.replace(/\D/g, "").slice(0, 6);
       }
       const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
         "/api/auth/magic/consume",
@@ -180,8 +120,8 @@ export default function AuthMagic() {
       setFriendlyMessage(tx("authMagicSignedInDesc", "You're signed in."));
       // Retry: D1 read-after-write lag can briefly return authenticated:false.
       await refreshUntilAuthenticated();
-      if (returnToFromUrl) {
-        window.location.href = returnTo;
+      if (nextReturnToFromUrl) {
+        window.location.href = nextReturnTo;
         return;
       }
       const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
@@ -242,6 +182,91 @@ export default function AuthMagic() {
       magicLinkTokenCache = null;
     }
   };
+
+  useEffect(() => {
+    const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
+      takeMagicLinkContextOnce();
+    setReturnTo(nextReturnTo);
+    setReturnToFromUrl(nextReturnToFromUrl);
+    if (!t) {
+      setPhase("error");
+      setFriendlyMessage(tx("authMagicMissingLinkDesc", "Open the sign-in link from your email on this device, or request a new link."));
+      return;
+    }
+    setToken(t);
+
+    void (async () => {
+      try {
+        const prep = await apiRequest<{
+          ok?: boolean;
+          emailCodeRequired?: boolean;
+          oneTapAllowed?: boolean;
+          riskLevel?: string;
+        }>("/api/auth/magic/prepare", "POST", { token: t });
+
+        const needCode = prep?.emailCodeRequired === true;
+        const canOneTap = prep?.oneTapAllowed === true;
+        setEmailCodeRequired(needCode);
+        setOneTapAllowed(canOneTap);
+        if (needCode) {
+          setFriendlyMessage(
+            tx(
+              "authMagicMediumRiskDesc",
+              "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
+            ),
+          );
+          setPhase("confirm");
+          return;
+        }
+        if (canOneTap && autoConsumeTokenRef.current !== t) {
+          autoConsumeTokenRef.current = t;
+          await runConsume({
+            token: t,
+            emailCodeRequired: false,
+            returnTo: nextReturnTo,
+            returnToFromUrl: nextReturnToFromUrl,
+          });
+          return;
+        }
+        setFriendlyMessage(
+          tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Log in below to finish in this browser."),
+        );
+        setPhase("confirm");
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 403) {
+          try {
+            const body = JSON.parse(err.bodyText) as { code?: string };
+            if (body.code === "context_high_risk") {
+              setPhase("error");
+              setFriendlyMessage(
+                tx(
+                  "authMagicHighRiskDesc",
+                  "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
+                ),
+              );
+              return;
+            }
+            if (body.code === "origin_required") {
+              setPhase("error");
+              setFriendlyMessage(
+                tx(
+                  "authMagicOriginRequiredDesc",
+                  "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+                ),
+              );
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setPhase("error");
+        setFriendlyMessage(
+          tx("authMagicVerifyFailedDesc", "We couldn’t verify that sign-in link. Open it from your email again, or request a new link."),
+        );
+      }
+    })();
+  }, []);
 
   const handleRegisterPasskey = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
