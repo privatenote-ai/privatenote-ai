@@ -110,8 +110,11 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
+  const [isVerifyingEmailCode, setIsVerifyingEmailCode] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
   const [debugSignInCode, setDebugSignInCode] = useState<string | null>(null);
+  const [signInToken, setSignInToken] = useState<string | null>(null);
+  const [emailCode, setEmailCode] = useState("");
   const [view, setView] = useState<"form" | "sent">("form");
   const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -161,7 +164,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     return LIKELY_TYPO_EMAIL_DOMAINS.has(domain);
   };
 
-  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey;
+  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isVerifyingEmailCode;
 
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
@@ -240,8 +243,14 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     setIsSendingMagicLink(true);
     setDebugMagicLink(null);
     setDebugSignInCode(null);
+    setSignInToken(null);
+    setEmailCode("");
     try {
-      const response = await apiRequest<{ debugMagicLink?: string; debugSignInCode?: string }>(
+      const response = await apiRequest<{
+        debugMagicLink?: string;
+        debugSignInCode?: string;
+        signInToken?: string;
+      }>(
         "/api/auth/magic/send",
         "POST",
         {
@@ -258,6 +267,9 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       if (import.meta.env.DEV && response.debugSignInCode) {
         setDebugSignInCode(response.debugSignInCode);
       }
+      if (typeof response.signInToken === "string" && response.signInToken.length > 0) {
+        setSignInToken(response.signInToken);
+      }
       setView("sent");
       toast({
         title: tx("authCheckEmailTitle", "Check your email"),
@@ -272,6 +284,61 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     } finally {
       resetAuthTurnstile();
       setIsSendingMagicLink(false);
+    }
+  };
+
+  const handleEmailCodeLogin = async () => {
+    if (!signInToken) return;
+    const digits = emailCode.replace(/\D/g, "");
+    if (digits.length !== 6) {
+      toast({
+        title: tx("authEmailCodeRequiredTitle", "Enter the code"),
+        description: tx("authEmailCodeRequiredDesc", "Use the 6-digit code from the email we just sent."),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifyingEmailCode(true);
+    try {
+      const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
+        "/api/auth/magic/consume",
+        "POST",
+        { token: signInToken, emailCode: digits },
+      );
+      if (result?.totpRequired) {
+        window.location.href = "/auth/totp";
+        return;
+      }
+      await refreshUntilAuthenticated();
+      window.location.href = signInContext.returnTo;
+    } catch (error) {
+      let description = tx("authEmailCodeInvalidDesc", "That code doesn’t match. Check the latest email and try again.");
+      if (error instanceof ApiRequestError) {
+        try {
+          const body = JSON.parse(error.bodyText) as { code?: string };
+          if (body.code === "magic_bind_required") {
+            description = tx(
+              "authEmailCodeExpiredDesc",
+              "This code entry expired. Open the link in your email or request a new code.",
+            );
+          } else if (body.code === "magic_email_otp_exhausted") {
+            description = tx(
+              "authEmailCodeExhaustedDesc",
+              "Too many incorrect codes. Request a new email to continue.",
+            );
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      toast({
+        title: tx("authEmailCodeFailedTitle", "Code sign-in failed"),
+        description,
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingEmailCode(false);
     }
   };
 
@@ -541,14 +608,52 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx(
                       "authCheckEmailCodeHint",
-                      "Open the Log in link in that email. You may be asked for the 6-digit code.",
+                      "Enter the 6-digit code here, or open the Log in link in that email.",
                     )}
                   </p>
                 </div>
+                {signInToken && (
+                  <form
+                    className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleEmailCodeLogin();
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <label htmlFor="email-code-input" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {tx("authEmailCodeLabel", "6-digit code")}
+                      </label>
+                      <Input
+                        id="email-code-input"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={12}
+                        placeholder="000000"
+                        value={emailCode}
+                        onChange={(event) => setEmailCode(event.target.value)}
+                        className="text-center text-lg tracking-widest"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isVerifyingEmailCode}
+                      className="mt-3 w-full"
+                      size="lg"
+                    >
+                      {isVerifyingEmailCode
+                        ? tx("authEmailCodeSigningIn", "Signing in...")
+                        : tx("authEmailCodeSubmit", "Log in with code")}
+                    </Button>
+                  </form>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => {
                     resetAuthTurnstile();
+                    setSignInToken(null);
+                    setEmailCode("");
                     setView("form");
                   }}
                   className="w-full"
