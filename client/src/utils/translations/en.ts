@@ -45,7 +45,7 @@ export const en: Translations = {
   authByContinuing: "By continuing, you acknowledge that you understand and agree to the",
   authCheckEmailTitle: "Check your email",
   authCheckEmailDesc: "We sent a sign-in code and link if the address is valid.",
-  authCheckEmailCodeHint: "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
+  authCheckEmailCodeHint: "Enter the 6-digit code from the email below.",
   authSignInCodeTitle: "Your PrivateNote sign-in code",
   authSignInCodeSubtitle: "We emailed a 6-digit code to",
   authSignInCodeLabel: "6-digit code",
