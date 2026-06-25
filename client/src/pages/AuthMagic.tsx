@@ -61,6 +61,7 @@ export default function AuthMagic() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [dismissedNudge, setDismissedNudge] = useState(false);
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
+  const [oneTapAllowed, setOneTapAllowed] = useState(false);
   const [emailCode, setEmailCode] = useState("");
   const [returnTo, setReturnTo] = useState("/");
   const [returnToFromUrl, setReturnToFromUrl] = useState(false);
@@ -82,20 +83,21 @@ export default function AuthMagic() {
         const prep = await apiRequest<{
           ok?: boolean;
           emailCodeRequired?: boolean;
+          oneTapAllowed?: boolean;
           riskLevel?: string;
         }>("/api/auth/magic/prepare", "POST", { token: t });
 
         const needCode = prep?.emailCodeRequired === true;
+        const canOneTap = prep?.oneTapAllowed === true;
         setEmailCodeRequired(needCode);
+        setOneTapAllowed(canOneTap);
         if (needCode) {
           setFriendlyMessage(
-            prep?.riskLevel === "medium"
-              ? "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link."
-              : "Enter the 6-digit code from your sign-in email, then continue. For security, finish sign-in in the same browser where you opened the link.",
+            "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
           );
         } else {
           setFriendlyMessage(
-            "This page only prepares sign-in in your browser. Your session starts after you confirm. For security, finish sign-in in the same browser where you opened the link.",
+            "You opened the sign-in link from your email. Press Log in below to finish in this browser.",
           );
         }
         setPhase("confirm");
@@ -275,12 +277,13 @@ export default function AuthMagic() {
                 </div>
               )}
               <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
-                Continue sign in
+                {oneTapAllowed && !emailCodeRequired ? "Log in" : "Continue sign in"}
               </Button>
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                Opening the link only loads this page. Your session starts after you confirm here — not from the link
-                alone.
-              </p>
+              {oneTapAllowed && !emailCodeRequired ? (
+                <p className="text-xs text-muted-foreground text-center max-w-md">
+                  Your session starts after you confirm here — not from the link alone.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         )}

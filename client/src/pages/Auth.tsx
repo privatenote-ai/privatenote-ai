@@ -27,6 +27,7 @@ import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
+import { Loader2 } from "lucide-react";
 
 const PASSKEY_FAIL_GENERIC =
   "Sign-in could not be completed. Try again or use a different sign-in method.";
@@ -116,7 +117,10 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
   const [debugSignInCode, setDebugSignInCode] = useState<string | null>(null);
-  const [view, setView] = useState<"form" | "sent">("form");
+  const [signInToken, setSignInToken] = useState<string | null>(null);
+  const [signInCode, setSignInCode] = useState("");
+  const [isCompletingMagic, setIsCompletingMagic] = useState(false);
+  const [view, setView] = useState<"form" | "code" | "sent">("form");
   const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
@@ -165,7 +169,47 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     return LIKELY_TYPO_EMAIL_DOMAINS.has(domain);
   };
 
-  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey;
+  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isCompletingMagic;
+
+  const completeMagicFromAuthPage = async (emailCode: string) => {
+    if (!signInToken) return;
+    setIsCompletingMagic(true);
+    try {
+      const digits = emailCode.replace(/\D/g, "");
+      if (digits.length !== 6) {
+        toast({
+          title: tx("authSignInCodeRequiredTitle", "Enter your code"),
+          description: tx(
+            "authSignInCodeRequiredDesc",
+            "Use the 6-digit code from the email we just sent.",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+      const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
+        "/api/auth/magic/consume",
+        "POST",
+        { token: signInToken, emailCode: digits },
+      );
+      if (result?.totpRequired) {
+        window.location.href = "/auth/totp";
+        return;
+      }
+      await refreshUntilAuthenticated();
+      window.location.href = signInContext.returnTo;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Sign-in could not be completed. Try again.";
+      toast({
+        title: tx("authMagicLinkFailedTitle", "Sign-in failed"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompletingMagic(false);
+    }
+  };
 
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
@@ -242,10 +286,16 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     }
     setEmail(trimmedEmail);
     setIsSendingMagicLink(true);
+    setSignInToken(null);
+    setSignInCode("");
     setDebugMagicLink(null);
     setDebugSignInCode(null);
     try {
-      const response = await apiRequest<{ debugMagicLink?: string; debugSignInCode?: string }>(
+      const response = await apiRequest<{
+        debugMagicLink?: string;
+        debugSignInCode?: string;
+        signInToken?: string;
+      }>(
         "/api/auth/magic/send",
         "POST",
         { email: trimmedEmail, turnstileToken, locale: language, returnTo: signInContext.returnTo },
@@ -256,11 +306,16 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       if (import.meta.env.DEV && response.debugSignInCode) {
         setDebugSignInCode(response.debugSignInCode);
       }
-      setView("sent");
-      toast({
-        title: tx("authCheckEmailTitle", "Check your email"),
-        description: tx("authCheckEmailDesc", "We sent a sign-in code and link if the address is valid."),
-      });
+      if (typeof response.signInToken === "string" && response.signInToken.length > 0) {
+        setSignInToken(response.signInToken);
+        setView("code");
+      } else {
+        setView("sent");
+        toast({
+          title: tx("authCheckEmailTitle", "Check your email"),
+          description: tx("authCheckEmailDesc", "We sent a sign-in code and link if the address is valid."),
+        });
+      }
     } catch {
       toast({
         title: tx("authMagicLinkFailedTitle", "Magic link failed"),
@@ -505,6 +560,71 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   </a>
                   .
                 </p>
+              </CardContent>
+            </Card>
+          ) : view === "code" ? (
+            <Card className="border-2">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl leading-snug">
+                  {tx("authSignInCodeTitle", "Your PrivateNote sign-in code")}
+                </CardTitle>
+                <CardDescription className="mt-2 text-base leading-relaxed">
+                  {tx("authSignInCodeSubtitle", "We emailed a 6-digit code to")}{" "}
+                  <strong>{email.trim()}</strong>.
+                  {import.meta.env.DEV && debugSignInCode ? (
+                    <span className="block mt-2 font-mono tracking-widest text-foreground">
+                      Dev code: {debugSignInCode}
+                    </span>
+                  ) : null}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="w-full max-w-xs mx-auto space-y-2">
+                  <label htmlFor="auth-sign-in-code" className="text-sm font-medium text-center block">
+                    {tx("authSignInCodeLabel", "6-digit code")}
+                  </label>
+                  <Input
+                    id="auth-sign-in-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={12}
+                    placeholder="000000"
+                    value={signInCode}
+                    onChange={(e) => setSignInCode(e.target.value)}
+                    className="text-center text-lg tracking-widest"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  size="lg"
+                  disabled={isCompletingMagic}
+                  onClick={() => void completeMagicFromAuthPage(signInCode)}
+                >
+                  {isCompletingMagic ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {tx("authSigningIn", "Signing in…")}
+                    </>
+                  ) : (
+                    tx("authContinueWithCode", "Continue with code")
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    resetAuthTurnstile();
+                    setSignInToken(null);
+                    setSignInCode("");
+                    setView("form");
+                  }}
+                  className="w-full"
+                  size="sm"
+                >
+                  {tx("authDidntReceive", "Didn't receive an email? Try again")}
+                </Button>
               </CardContent>
             </Card>
           ) : (

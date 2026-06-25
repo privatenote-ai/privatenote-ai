@@ -1939,6 +1939,8 @@ type MagicPrepareKvRecord = {
   stage: "prepared";
   risk: "low" | "medium";
   otpHash?: string;
+  /** Issued from the original email-submit tab; token alone must not complete sign-in. */
+  requireOtp?: boolean;
   /** Remaining wrong-code attempts for medium-risk OTP gate; omitted for low risk. */
   otpAttemptsRemaining?: number;
 };
@@ -1961,7 +1963,7 @@ async function issueMagicPrepareNonce(
   env: Env,
   request: Request,
   token: string,
-  record: Pick<MagicPrepareKvRecord, "risk" | "otpHash">,
+  record: Pick<MagicPrepareKvRecord, "risk" | "otpHash" | "requireOtp">,
   userIdForAudit: string | null,
 ): Promise<string | null> {
   const kv = getAuthKv(env);
@@ -1991,6 +1993,7 @@ async function issueMagicPrepareNonce(
     expiresAtSec,
     stage: "prepared",
     risk: record.risk,
+    ...(record.requireOtp ? { requireOtp: true } : {}),
     ...(record.otpHash
       ? { otpHash: record.otpHash, otpAttemptsRemaining: AUTH_MAGIC_PREPARE.EMAIL_OTP_MAX_ATTEMPTS }
       : {}),
@@ -2034,7 +2037,7 @@ async function verifyMagicPrepareNonceForConsume(
     if (typeof rec.issuedAt !== "number" || nowSec > magicPrepareExpiresAtSec(rec)) {
       return { ok: false, reason: "nonce_expired" };
     }
-    if (rec.risk === "medium" && typeof rec.otpHash !== "string") {
+    if ((rec.risk === "medium" || rec.requireOtp === true) && typeof rec.otpHash !== "string") {
       return { ok: false, reason: "missing_otp_in_record" };
     }
     return { ok: true, nonceKey, record: rec };
@@ -2159,7 +2162,8 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
     JSON.stringify({
       ok: true,
       riskLevel: policy.risk,
-      emailCodeRequired: true,
+      emailCodeRequired: policy.risk === "medium",
+      oneTapAllowed: policy.risk !== "medium",
     }),
     { status: 200, headers },
   );
@@ -2199,19 +2203,23 @@ async function respondToMagicLinkConsume(
 
   const { nonceKey, record } = bindCheck;
 
-  if (record.otpHash) {
-    const normalized = normalizeMagicEmailCode(emailCode);
-    if (!normalized) {
-      return jsonResponse(
-        {
-          message: "Enter the 6-digit code we emailed you.",
-          code: "magic_email_code_required",
-        },
-        400,
-        request,
-      );
-    }
-    const gotHash = await sha256Base64Url(normalized);
+  const normalizedOtp = normalizeMagicEmailCode(emailCode);
+  const otpRequired = (record.requireOtp === true || record.risk === "medium") && !!record.otpHash;
+  const otpVerify = !!record.otpHash && (otpRequired || !!normalizedOtp);
+
+  if (otpRequired && !normalizedOtp) {
+    return jsonResponse(
+      {
+        message: "Enter the 6-digit code we emailed you.",
+        code: "magic_email_code_required",
+      },
+      400,
+      request,
+    );
+  }
+
+  if (otpVerify && record.otpHash) {
+    const gotHash = await sha256Base64Url(normalizedOtp!);
     if (!constantTimeEquals(gotHash, record.otpHash)) {
       const cap = AUTH_MAGIC_PREPARE.EMAIL_OTP_MAX_ATTEMPTS;
       let remaining =
@@ -4806,6 +4814,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       ok: true,
       message: "Check your email for a sign-in link.",
     };
+    let magicSendPrepareCookie: string | null = null;
 
     if (!env.AUTH_DB) {
       console.error(
@@ -4953,11 +4962,25 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           `${magicOrigin}/magic?t=${encodeURIComponent(token)}`,
           returnTo,
         );
+        const enableImmediateCodeEntry = async () => {
+          const sendNonce = await issueMagicPrepareNonce(
+            env,
+            request,
+            token,
+            { risk: "low", otpHash, requireOtp: true },
+            userId,
+          );
+          if (sendNonce) {
+            magicSendPrepareCookie = magicPrepareCookieHeader(sendNonce);
+            responsePayload.signInToken = token;
+          }
+        };
         console.log(`[MAGIC_LINK] Prepared link for ${intent}, origin=${magicOrigin}, isLocal=${isLocal}`);
 
         if (isLocal) {
           responsePayload.debugMagicLink = magicUrl;
           responsePayload.debugSignInCode = signInCode;
+          await enableImmediateCodeEntry();
           await logAuditEvent(env, {
             userId,
             eventType: "magic_link_sent",
@@ -4988,6 +5011,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
             });
           } else {
             console.log("[MAGIC_LINK] ✅ Email sent successfully via Resend");
+            await enableImmediateCodeEntry();
             await logAuditEvent(env, {
               userId,
               eventType: "magic_link_sent",
@@ -5003,7 +5027,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
 
     await jitterDelay();
     console.log("[MAGIC_LINK] <<< Handler complete, returning 200");
-    return jsonResponse(responsePayload, 200, request);
+    const response = jsonResponse(responsePayload, 200, request);
+    if (magicSendPrepareCookie) {
+      response.headers.append("Set-Cookie", magicSendPrepareCookie);
+    }
+    return response;
     } catch (handlerErr) {
       console.error("[MAGIC_LINK] !!! Unhandled error in magic/send handler:", handlerErr);
       return jsonResponse({ ok: true, message: "Check your email for a sign-in link." }, 200, request);
