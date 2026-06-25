@@ -142,25 +142,56 @@ function substituteHost(template: string, hostLabel: string): string {
 function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: string, hostLabel: string): string {
   const safeUrl = escapeHtml(magicUrl);
   const safeCode = escapeHtml(signInCode);
+  const safeTitle = escapeHtml(copy.title);
+  const safeCodeExpiry = escapeHtml(copy.codeExpiry);
+  const safeAltHeading = escapeHtml(copy.linkAlternativeHeading);
   const altBody = escapeHtml(substituteHost(copy.linkAlternativeBody, hostLabel));
+  const safeCta = escapeHtml(copy.cta);
+  const safeIgnore = escapeHtml(copy.ignore);
+  const safeFooter = escapeHtml(copy.footer);
 
   return [
-    '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px 24px 28px; text-align: left; -webkit-text-size-adjust: 100%; box-sizing: border-box;">',
+    '<div style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;text-size-adjust:100%;">',
     `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
-    `  <h1 style="margin: 0 0 20px; font-size: 22px; font-weight: 700; line-height: 1.3; color: #111827;">${escapeHtml(copy.title)}</h1>`,
-    `  <p style="margin: 0 0 8px; font-size: 32px; letter-spacing: 0.18em; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums;">${safeCode}</p>`,
-    `  <p style="margin: 0 0 28px; color: #6B7280; font-size: 14px; line-height: 1.45;">${escapeHtml(copy.codeExpiry)}</p>`,
-    `  <p style="margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #111827;">${escapeHtml(copy.linkAlternativeHeading)}</p>`,
-    `  <p style="margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.5;">${altBody}</p>`,
-    '  <p style="margin: 0 0 24px;">',
-    '  <a href="' +
-      safeUrl +
-      `" referrerpolicy="no-referrer" style="display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 9999px; font-weight: 600; font-size: 16px; line-height: 1.3; text-align: center;">${escapeHtml(copy.cta)}</a>`,
-    "  </p>",
-    `  <p style="margin: 0; color: #9CA3AF; font-size: 12px; line-height: 1.45;">${escapeHtml(copy.ignore)}</p>`,
-    '  <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: 28px 0 16px;" />',
-    '  <p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.35;">PrivateNote</p>',
-    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 13px; line-height: 1.45;">${escapeHtml(copy.footer)}</p>`,
+    '  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f3f4f6;margin:0;padding:0;">',
+    '    <tr>',
+    '      <td align="center" style="padding:24px 16px 0;">',
+    '        <table role="presentation" cellpadding="0" cellspacing="0" width="640" style="border-collapse:collapse;width:100%;max-width:640px;background:#ffffff;">',
+    '          <tr><td style="height:10px;background:#0066ff;font-size:0;line-height:0;">&nbsp;</td></tr>',
+    '          <tr>',
+    '            <td style="padding:42px 40px 36px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#050816;text-align:left;">',
+    '              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 56px;">',
+    '                <tr>',
+    '                  <td style="width:46px;height:46px;background:#0066ff;border-radius:10px;color:#ffffff;font-size:24px;font-weight:800;text-align:center;line-height:46px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;">P</td>',
+    '                  <td style="padding-left:14px;font-size:24px;line-height:1.1;font-weight:800;letter-spacing:0.18em;color:#050816;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;">PRIVATENOTE</td>',
+    '                </tr>',
+    '              </table>',
+    `              <h1 style="margin:0 0 28px;font-size:26px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
+    `              <p style="margin:0 0 30px;font-size:40px;line-height:1.15;letter-spacing:0.08em;font-weight:500;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
+    `              <p style="margin:0 0 34px;font-size:18px;line-height:1.45;font-weight:400;color:#111827;">${safeCodeExpiry}</p>`,
+    `              <p style="margin:0 0 8px;font-size:24px;line-height:1.25;font-weight:800;color:#050816;">${safeAltHeading}</p>`,
+    `              <p style="margin:0 0 22px;font-size:18px;line-height:1.45;font-weight:400;color:#111827;">${altBody}</p>`,
+    '              <p style="margin:0 0 30px;">',
+    `                <a href="${safeUrl}" referrerpolicy="no-referrer" style="display:inline-block;max-width:100%;box-sizing:border-box;background:#0066ff;color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:8px;font-weight:600;font-size:18px;line-height:1.25;text-align:center;">${safeCta}</a>`,
+    '              </p>',
+    `              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.45;">${safeIgnore}</p>`,
+    '            </td>',
+    '          </tr>',
+    '        </table>',
+    '      </td>',
+    '    </tr>',
+    '    <tr>',
+    '      <td align="center" style="padding:28px 16px 34px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#8a8f98;text-align:center;">',
+    '        <p style="margin:0 0 4px;font-size:16px;line-height:1.35;font-weight:600;color:#8a8f98;">Copyright &copy; PrivateNote.ai</p>',
+    `        <p style="margin:0 0 18px;font-size:15px;line-height:1.35;color:#8a8f98;">${safeFooter}</p>`,
+    '        <p style="margin:0;font-size:16px;line-height:1.35;color:#8a8f98;">',
+    '          <a href="https://www.privatenote.ai" style="color:#8a8f98;text-decoration:none;">www.privatenote.ai</a>',
+    '          <span style="padding:0 10px;color:#8a8f98;">|</span>',
+    '          <a href="https://www.linkedin.com/company/privatenote" style="color:#8a8f98;text-decoration:none;">LinkedIn</a>',
+    '        </p>',
+    '      </td>',
+    '    </tr>',
+    '  </table>',
     "</div>",
   ].join("\n");
 }
@@ -183,8 +214,10 @@ function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     copy.ignore,
     "",
     "—",
-    "PrivateNote",
+    "PrivateNote.ai",
     copy.footer,
+    "www.privatenote.ai",
+    "LinkedIn: https://www.linkedin.com/company/privatenote",
   ].join("\n");
 }
 
