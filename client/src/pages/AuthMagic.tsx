@@ -20,6 +20,7 @@ import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-r
 let magicLinkTokenCache: string | null = null;
 let magicLinkReturnToCache: string = "/";
 let magicLinkReturnToFromUrlCache = false;
+const AUTH_SIGNED_IN_STORAGE_KEY = "privatenote:auth:signed-in";
 
 function takeMagicLinkContextOnce(): {
   token: string | null;
@@ -60,10 +61,45 @@ export default function AuthMagic() {
   const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [dismissedNudge, setDismissedNudge] = useState(false);
+  const [emailCodeAvailable, setEmailCodeAvailable] = useState(false);
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
+  const [oneTapAllowed, setOneTapAllowed] = useState(false);
   const [emailCode, setEmailCode] = useState("");
   const [returnTo, setReturnTo] = useState("/");
   const [returnToFromUrl, setReturnToFromUrl] = useState(false);
+
+  const announceSignedIn = () => {
+    try {
+      window.localStorage.setItem(AUTH_SIGNED_IN_STORAGE_KEY, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const completeSignedInState = async () => {
+    setPhase("success");
+    setFriendlyMessage("You're signed in.");
+    announceSignedIn();
+    // Retry: D1 read-after-write lag can briefly return authenticated:false.
+    await refreshUntilAuthenticated();
+    if (returnToFromUrl) {
+      window.location.href = returnTo;
+      return;
+    }
+    const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
+    if (me && typeof me.hasPasskeys === "boolean") {
+      setHasPasskeys(me.hasPasskeys);
+    }
+  };
+
+  const refreshIfAlreadySignedIn = async (): Promise<boolean> => {
+    const session = await apiRequest<{ authenticated?: boolean }>("/api/auth/session", "GET").catch(() => null);
+    if (session?.authenticated) {
+      await completeSignedInState();
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
@@ -81,15 +117,27 @@ export default function AuthMagic() {
       try {
         const prep = await apiRequest<{
           ok?: boolean;
+          emailCodeAvailable?: boolean;
           emailCodeRequired?: boolean;
+          oneTapAllowed?: boolean;
           riskLevel?: string;
         }>("/api/auth/magic/prepare", "POST", { token: t });
 
+        const canUseCode = prep?.emailCodeAvailable === true || prep?.emailCodeRequired === true;
         const needCode = prep?.emailCodeRequired === true;
+        const canUseOneTap = prep?.oneTapAllowed === true;
+        setEmailCodeAvailable(canUseCode);
         setEmailCodeRequired(needCode);
+        setOneTapAllowed(canUseOneTap);
         if (needCode) {
           setFriendlyMessage(
-            "Your network or browser looks different from when the link was sent. We emailed a 6-digit code — enter it below, then continue. For security, finish in the same browser where you opened the link.",
+            prep?.riskLevel === "medium"
+              ? "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link."
+              : "Enter the 6-digit code from your sign-in email, then continue. For security, finish sign-in in the same browser where you opened the link.",
+          );
+        } else if (canUseOneTap && canUseCode) {
+          setFriendlyMessage(
+            "You can log in with this link, or enter the 6-digit code from the same email.",
           );
         } else {
           setFriendlyMessage(
@@ -127,9 +175,20 @@ export default function AuthMagic() {
     })();
   }, []);
 
-  const runConsume = async () => {
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === AUTH_SIGNED_IN_STORAGE_KEY) {
+        void refreshIfAlreadySignedIn();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [returnTo, returnToFromUrl]);
+
+  const runConsume = async (options: { useEmailCode?: boolean } = {}) => {
     if (!token) return;
-    if (emailCodeRequired) {
+    const useEmailCode = options.useEmailCode === true || emailCodeRequired;
+    if (useEmailCode) {
       const digits = emailCode.replace(/\D/g, "");
       if (digits.length !== 6) {
         toast({
@@ -145,7 +204,7 @@ export default function AuthMagic() {
 
     try {
       const payload: { token: string; emailCode?: string } = { token };
-      if (emailCodeRequired) {
+      if (useEmailCode) {
         payload.emailCode = emailCode.replace(/\D/g, "").slice(0, 6);
       }
       const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
@@ -160,24 +219,16 @@ export default function AuthMagic() {
         return;
       }
 
-      setPhase("success");
-      setFriendlyMessage("You're signed in.");
-      // Retry: D1 read-after-write lag can briefly return authenticated:false.
-      await refreshUntilAuthenticated();
-      if (returnToFromUrl) {
-        window.location.href = returnTo;
-        return;
-      }
-      const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
-      if (me && typeof me.hasPasskeys === "boolean") {
-        setHasPasskeys(me.hasPasskeys);
-      }
+      await completeSignedInState();
     } catch (error) {
       setPhase("error");
       if (error instanceof ApiRequestError) {
         try {
           const body = JSON.parse(error.bodyText) as { code?: string };
           if (body.code === "magic_bind_required" || body.code === "magic_email_otp_exhausted") {
+            if (body.code === "magic_bind_required" && await refreshIfAlreadySignedIn()) {
+              return;
+            }
             setFriendlyMessage(
               body.code === "magic_email_otp_exhausted"
                 ? "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code."
@@ -186,6 +237,7 @@ export default function AuthMagic() {
             return;
           }
           if (body.code === "magic_email_code_required" || body.code === "magic_email_code_invalid") {
+            setEmailCodeRequired(true);
             setPhase("confirm");
             setFriendlyMessage(
               body.code === "magic_email_code_invalid"
@@ -252,7 +304,7 @@ export default function AuthMagic() {
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              {emailCodeRequired && (
+              {emailCodeAvailable && (
                 <div className="w-full max-w-xs space-y-2">
                   <label htmlFor="magic-email-code" className="text-sm font-medium text-center block">
                     6-digit code from email
@@ -267,12 +319,38 @@ export default function AuthMagic() {
                     value={emailCode}
                     onChange={(e) => setEmailCode(e.target.value)}
                     className="text-center text-lg tracking-widest"
+                    autoFocus
                   />
                 </div>
               )}
-              <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
-                Continue sign in
-              </Button>
+              <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
+                {oneTapAllowed && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="flex-1"
+                    onClick={() => void runConsume({ useEmailCode: false })}
+                  >
+                    Log in with this link
+                  </Button>
+                )}
+                {emailCodeAvailable && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant={oneTapAllowed ? "outline" : "default"}
+                    className="flex-1"
+                    onClick={() => void runConsume({ useEmailCode: true })}
+                  >
+                    Log in with code
+                  </Button>
+                )}
+                {!oneTapAllowed && !emailCodeAvailable && (
+                  <Button type="button" size="lg" className="flex-1" onClick={() => void runConsume()}>
+                    Continue sign in
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground text-center max-w-md">
                 Opening the link only loads this page. Your session starts after you confirm here — not from the link
                 alone.

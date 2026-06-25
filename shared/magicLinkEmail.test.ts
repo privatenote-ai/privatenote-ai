@@ -6,39 +6,45 @@ import {
 } from "./magicLinkEmail.ts";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "./sanitizeAuthReturnTo.ts";
 
+const SAMPLE_CODE = "238242";
+const SAMPLE_URL = "https://premium.privatenote-ai.pages.dev/magic?t=abc";
+
 describe("magicLinkEmail", () => {
-  it("uses distinct title and CTA for default sign-in", () => {
+  it("uses Cloudflare-style code + link fallback for default sign-in", () => {
     const { subject, html, text } = buildMagicLinkEmailContent({
-      magicUrl: "https://privatenote.ai/magic?t=abc",
+      magicUrl: SAMPLE_URL,
+      signInCode: SAMPLE_CODE,
       locale: "en",
       purpose: "default",
     });
-    assert.equal(subject, "Finish signing in to PrivateNote");
-    assert.match(html, /Finish signing in/);
-    assert.match(html, /Sign in securely/);
-    assert.doesNotMatch(html, /Continue to PrivateNote/);
-    assert.match(text, /10 minutes/);
-    assert.match(html, /paste this link into your browser/i);
-    assert.match(html, /privatenote\.ai\/magic\?t=abc/);
+    assert.equal(subject, "Your PrivateNote sign-in code");
+    assert.match(html, /Your PrivateNote sign-in code/);
+    assert.match(html, />238242</);
+    assert.match(html, /Prefer not to use the code\?/);
+    assert.match(html, /Finish logging in to premium\.privatenote-ai\.pages\.dev below/);
+    assert.match(html, />Log in</);
+    assert.match(html, /10 minutes or if you request a new code/);
+    assert.match(html, /background:#ff7a1a/);
+    assert.match(text, /238242/);
+    assert.match(text, /Prefer not to use the code\?/);
+    assert.match(text, /premium\.privatenote-ai\.pages\.dev/);
   });
 
-  it("uses compact file-attach copy with linked fallback only in HTML", () => {
+  it("uses file-attach copy with the same code layout", () => {
     const magicUrl = "https://privatenote.ai/magic?t=abc&returnTo=%2F";
     const { subject, html, text } = buildMagicLinkEmailContent({
       magicUrl,
+      signInCode: SAMPLE_CODE,
       locale: "en",
       purpose: "file_attach",
     });
-    assert.equal(subject, "Attach encrypted files");
-    assert.match(html, /Attach encrypted files/);
-    assert.match(html, /bring you back automatically/i);
-    assert.match(html, /Sign in and attach files/);
-    assert.match(html, /Button not working\?/);
-    assert.match(html, /Use this sign-in link/);
-    assert.match(html, /This link expires in 10 minutes/);
+    assert.equal(subject, "Your PrivateNote sign-in code");
+    assert.match(html, /Return to attach encrypted files on privatenote\.ai below/);
+    assert.match(html, />238242</);
+    assert.match(html, /Prefer not to use the code\?/);
     assert.match(html, /End-to-end encrypted notes and file sharing/);
-    assert.doesNotMatch(html, /word-break: break-all/);
     assert.ok(text.includes(magicUrl));
+    assert.match(text, /238242/);
   });
 
   it("normalizes email purpose", () => {

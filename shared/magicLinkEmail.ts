@@ -32,208 +32,170 @@ type MagicLinkCopy = {
   subject: string;
   preheader: string;
   title: string;
-  intro: string;
-  securityExpiry: string;
+  codeExpiry: string;
+  linkAlternativeHeading: string;
+  linkAlternativeBody: string;
   cta: string;
-  urlFallbackPrompt: string;
-  urlFallbackLinkLabel: string;
-  hideRawUrlInHtml: boolean;
   ignore: string;
   footer: string;
-  compact: boolean;
+  community: string;
 };
 
 const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>> = {
   default: {
     en: {
-      subject: "Finish signing in to PrivateNote",
-      preheader: "Your secure sign-in link expires in 10 minutes.",
-      title: "Finish signing in",
-      intro: "You asked to sign in to PrivateNote. Tap the button below to continue securely.",
-      securityExpiry:
-        "Open this link in the same browser you used to request it. It expires in 10 minutes and works only once.",
-      cta: "Sign in securely",
-      urlFallbackPrompt: "Or paste this link into your browser:",
-      urlFallbackLinkLabel: "Open sign-in link",
-      hideRawUrlInHtml: false,
+      subject: "Your PrivateNote sign-in code",
+      preheader: "Your sign-in code expires in 10 minutes.",
+      title: "Your PrivateNote sign-in code",
+      codeExpiry: "This code expires after 10 minutes or if you request a new code.",
+      linkAlternativeHeading: "Prefer not to use the code?",
+      linkAlternativeBody: "Finish logging in to {host} below.",
+      cta: "Log in",
       ignore: "If you did not request this email, you can safely ignore it.",
       footer: "End-to-end encrypted private notes — only you and your recipients can read them.",
-      compact: false,
+      community: "Community",
     },
     de: {
-      subject: "Anmeldung bei PrivateNote abschliessen",
-      preheader: "Ihr sicherer Anmeldelink laeuft in 10 Minuten ab.",
-      title: "Anmeldung abschliessen",
-      intro: "Sie moechten sich bei PrivateNote anmelden. Tippen Sie unten, um sicher fortzufahren.",
-      securityExpiry:
-        "Oeffnen Sie diesen Link im selben Browser, in dem Sie ihn angefordert haben. Er laeuft in 10 Minuten ab und funktioniert nur einmal.",
-      cta: "Sicher anmelden",
-      urlFallbackPrompt: "Oder fuegen Sie diesen Link in Ihren Browser ein:",
-      urlFallbackLinkLabel: "Anmeldelink oeffnen",
-      hideRawUrlInHtml: false,
+      subject: "Ihr PrivateNote-Anmeldecode",
+      preheader: "Ihr Anmeldecode laeuft in 10 Minuten ab.",
+      title: "Ihr PrivateNote-Anmeldecode",
+      codeExpiry: "Dieser Code laeuft nach 10 Minuten ab oder wenn Sie einen neuen Code anfordern.",
+      linkAlternativeHeading: "Moechten Sie den Code nicht verwenden?",
+      linkAlternativeBody: "Schliessen Sie die Anmeldung bei {host} unten ab.",
+      cta: "Anmelden",
       ignore: "Wenn Sie diese E-Mail nicht angefordert haben, koennen Sie sie getrost ignorieren.",
       footer: "Ende-zu-Ende verschluesselte private Notizen — nur Sie und Ihre Empfaenger koennen sie lesen.",
-      compact: false,
+      community: "Community",
     },
     fr: {
-      subject: "Terminez votre connexion a PrivateNote",
-      preheader: "Votre lien de connexion securise expire dans 10 minutes.",
-      title: "Terminez votre connexion",
-      intro: "Vous avez demande a vous connecter a PrivateNote. Appuyez ci-dessous pour continuer en toute securite.",
-      securityExpiry:
-        "Ouvrez ce lien dans le meme navigateur que celui utilise pour la demande. Il expire dans 10 minutes et ne fonctionne qu une seule fois.",
-      cta: "Se connecter en toute securite",
-      urlFallbackPrompt: "Ou collez ce lien dans votre navigateur :",
-      urlFallbackLinkLabel: "Ouvrir le lien de connexion",
-      hideRawUrlInHtml: false,
+      subject: "Votre code de connexion PrivateNote",
+      preheader: "Votre code expire dans 10 minutes.",
+      title: "Votre code de connexion PrivateNote",
+      codeExpiry: "Ce code expire apres 10 minutes ou si vous demandez un nouveau code.",
+      linkAlternativeHeading: "Vous preferez ne pas utiliser le code ?",
+      linkAlternativeBody: "Terminez la connexion sur {host} ci-dessous.",
+      cta: "Se connecter",
       ignore: "Si vous n avez pas demande cet e-mail, vous pouvez l ignorer en toute securite.",
       footer: "Notes privees chiffrees de bout en bout — seuls vous et vos destinataires pouvez les lire.",
-      compact: false,
+      community: "Communaute",
     },
     es: {
-      subject: "Termina tu inicio de sesion en PrivateNote",
-      preheader: "Tu enlace seguro de inicio de sesion caduca en 10 minutos.",
-      title: "Termina tu inicio de sesion",
-      intro: "Pediste iniciar sesion en PrivateNote. Pulsa el boton de abajo para continuar de forma segura.",
-      securityExpiry:
-        "Abre este enlace en el mismo navegador donde lo solicitaste. Caduca en 10 minutos y solo funciona una vez.",
-      cta: "Iniciar sesion de forma segura",
-      urlFallbackPrompt: "O pega este enlace en tu navegador:",
-      urlFallbackLinkLabel: "Abrir enlace de inicio de sesion",
-      hideRawUrlInHtml: false,
+      subject: "Tu codigo de inicio de sesion de PrivateNote",
+      preheader: "Tu codigo caduca en 10 minutos.",
+      title: "Tu codigo de inicio de sesion de PrivateNote",
+      codeExpiry: "Este codigo caduca a los 10 minutos o si solicitas uno nuevo.",
+      linkAlternativeHeading: "Prefieres no usar el codigo?",
+      linkAlternativeBody: "Termina el inicio de sesion en {host} abajo.",
+      cta: "Iniciar sesion",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
       footer: "Notas privadas cifradas de extremo a extremo — solo tu y tus destinatarios pueden leerlas.",
-      compact: false,
+      community: "Comunidad",
     },
   },
   file_attach: {
     en: {
-      subject: "Attach encrypted files",
-      preheader: "Sign in to return and attach encrypted files.",
-      title: "Attach encrypted files",
-      intro:
-        "Sign in to continue attaching encrypted files to your PrivateNote. We'll bring you back automatically.",
-      securityExpiry: "This link expires in 10 minutes and can only be used once.",
-      cta: "Sign in and attach files",
-      urlFallbackPrompt: "Button not working?",
-      urlFallbackLinkLabel: "Use this sign-in link",
-      hideRawUrlInHtml: true,
+      subject: "Your PrivateNote sign-in code",
+      preheader: "Sign in to attach encrypted files. Your code expires in 10 minutes.",
+      title: "Your PrivateNote sign-in code",
+      codeExpiry: "This code expires after 10 minutes or if you request a new code.",
+      linkAlternativeHeading: "Prefer not to use the code?",
+      linkAlternativeBody: "Return to attach encrypted files on {host} below.",
+      cta: "Log in",
       ignore: "If you did not request this email, you can safely ignore it.",
       footer: "End-to-end encrypted notes and file sharing.",
-      compact: true,
+      community: "Community",
     },
     de: {
-      subject: "Verschluesselte Dateien anhaengen",
+      subject: "Ihr PrivateNote-Anmeldecode",
       preheader: "Melden Sie sich an, um verschluesselte Dateien anzuhaengen.",
-      title: "Verschluesselte Dateien anhaengen",
-      intro:
-        "Melden Sie sich an, um verschluesselte Dateien an Ihre PrivateNote anzuhaengen. Wir bringen Sie automatisch zurueck.",
-      securityExpiry: "Dieser Link laeuft in 10 Minuten ab und kann nur einmal verwendet werden.",
-      cta: "Anmelden und Dateien anhaengen",
-      urlFallbackPrompt: "Button funktioniert nicht?",
-      urlFallbackLinkLabel: "Diesen Anmeldelink verwenden",
-      hideRawUrlInHtml: true,
+      title: "Ihr PrivateNote-Anmeldecode",
+      codeExpiry: "Dieser Code laeuft nach 10 Minuten ab oder wenn Sie einen neuen Code anfordern.",
+      linkAlternativeHeading: "Moechten Sie den Code nicht verwenden?",
+      linkAlternativeBody: "Kehren Sie zu {host} zurueck, um verschluesselte Dateien anzuhaengen.",
+      cta: "Anmelden",
       ignore: "Wenn Sie diese E-Mail nicht angefordert haben, koennen Sie sie getrost ignorieren.",
       footer: "Ende-zu-Ende verschluesselte Notizen und Dateifreigabe.",
-      compact: true,
+      community: "Community",
     },
     fr: {
-      subject: "Joindre des fichiers chiffres",
+      subject: "Votre code de connexion PrivateNote",
       preheader: "Connectez-vous pour joindre des fichiers chiffres.",
-      title: "Joindre des fichiers chiffres",
-      intro:
-        "Connectez-vous pour continuer a joindre des fichiers chiffres a votre PrivateNote. Nous vous ramenerons automatiquement.",
-      securityExpiry: "Ce lien expire dans 10 minutes et ne peut etre utilise qu une seule fois.",
-      cta: "Se connecter et joindre des fichiers",
-      urlFallbackPrompt: "Le bouton ne fonctionne pas ?",
-      urlFallbackLinkLabel: "Utiliser ce lien de connexion",
-      hideRawUrlInHtml: true,
+      title: "Votre code de connexion PrivateNote",
+      codeExpiry: "Ce code expire apres 10 minutes ou si vous demandez un nouveau code.",
+      linkAlternativeHeading: "Vous preferez ne pas utiliser le code ?",
+      linkAlternativeBody: "Revenez sur {host} pour joindre des fichiers chiffres.",
+      cta: "Se connecter",
       ignore: "Si vous n avez pas demande cet e-mail, vous pouvez l ignorer en toute securite.",
       footer: "Notes chiffrees de bout en bout et partage de fichiers.",
-      compact: true,
+      community: "Communaute",
     },
     es: {
-      subject: "Adjuntar archivos cifrados",
+      subject: "Tu codigo de inicio de sesion de PrivateNote",
       preheader: "Inicia sesion para adjuntar archivos cifrados.",
-      title: "Adjuntar archivos cifrados",
-      intro:
-        "Inicia sesion para seguir adjuntando archivos cifrados a tu PrivateNote. Te devolveremos automaticamente.",
-      securityExpiry: "Este enlace caduca en 10 minutos y solo puede usarse una vez.",
-      cta: "Iniciar sesion y adjuntar archivos",
-      urlFallbackPrompt: "El boton no funciona?",
-      urlFallbackLinkLabel: "Usar este enlace de inicio de sesion",
-      hideRawUrlInHtml: true,
+      title: "Tu codigo de inicio de sesion de PrivateNote",
+      codeExpiry: "Este codigo caduca a los 10 minutos o si solicitas uno nuevo.",
+      linkAlternativeHeading: "Prefieres no usar el codigo?",
+      linkAlternativeBody: "Vuelve a {host} para adjuntar archivos cifrados.",
+      cta: "Iniciar sesion",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
       footer: "Notas cifradas de extremo a extremo y archivos compartidos.",
-      compact: true,
+      community: "Comunidad",
     },
   },
 };
 
-function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string): string {
-  const safeUrl = escapeHtml(magicUrl);
-  const pad = copy.compact ? "24px 20px 20px" : "32px 24px 28px";
-  const titleMb = copy.compact ? "10px" : "16px";
-  const introMb = copy.compact ? "18px" : "24px";
-  const ctaMb = copy.compact ? "16px" : "24px";
-  const fallbackMb = copy.compact ? "14px" : "24px";
-  const securityMb = copy.compact ? "12px" : "16px";
-  const hrMargin = copy.compact ? "20px 0 12px" : "28px 0 16px";
-  const titleSize = copy.compact ? "21px" : "22px";
-  const introSize = copy.compact ? "15px" : "16px";
+function substituteHost(template: string, hostLabel: string): string {
+  return template.replace(/\{host\}/g, hostLabel);
+}
 
-  const fallbackHtml = copy.hideRawUrlInHtml
-    ? [
-        `  <p style="margin: 0 0 4px; color: #6B7280; font-size: 13px; line-height: 1.45;">${escapeHtml(copy.urlFallbackPrompt)}</p>`,
-        "  <p style=\"margin: 0 0 " + fallbackMb + ";\">",
-        "  <a href=\"" +
-          safeUrl +
-          `" referrerpolicy="no-referrer" style="color: #0066FF; font-size: 14px; font-weight: 500; text-decoration: underline;">${escapeHtml(copy.urlFallbackLinkLabel)}</a>`,
-        "  </p>",
-      ].join("\n")
-    : [
-        `  <p style="margin: 0 0 6px; color: #6B7280; font-size: 13px; line-height: 1.45;">${escapeHtml(copy.urlFallbackPrompt)}</p>`,
-        `  <p style="margin: 0 0 ${fallbackMb}; color: #374151; font-size: 13px; line-height: 1.45; word-break: break-all;">${safeUrl}</p>`,
-      ].join("\n");
+function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: string, hostLabel: string): string {
+  const safeUrl = escapeHtml(magicUrl);
+  const safeCode = escapeHtml(signInCode);
+  const altBody = escapeHtml(substituteHost(copy.linkAlternativeBody, hostLabel));
 
   return [
-    "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 600px; margin: 0 auto; padding: " +
-      pad +
-      '; text-align: left; -webkit-text-size-adjust: 100%; box-sizing: border-box;">',
+    '<div style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#000000;-webkit-text-size-adjust:100%;">',
     `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
-    `  <h1 style="margin: 0 0 ${titleMb}; font-size: ${titleSize}; font-weight: 700; line-height: 1.3; color: #111827;">${escapeHtml(copy.title)}</h1>`,
-    `  <p style="margin: 0 0 ${introMb}; color: #374151; font-size: ${introSize}; line-height: 1.5;">${escapeHtml(copy.intro)}</p>`,
-    "  <p style=\"margin: 0 0 " + ctaMb + ";\">",
-    "  <a href=\"" +
+    '  <div style="max-width:650px;margin:0 auto;background:#ffffff;">',
+    '    <div style="height:10px;background:#ff7a1a;line-height:10px;font-size:10px;">&nbsp;</div>',
+    '    <div style="padding:48px 40px 56px;">',
+    '      <div style="margin:0 0 76px;font-size:34px;line-height:1;font-weight:800;letter-spacing:0;color:#111827;">',
+    '        <span style="display:inline-block;color:#ff7a1a;font-size:30px;line-height:1;vertical-align:middle;margin-right:12px;">&#9679;</span><span style="vertical-align:middle;">PrivateNote</span>',
+    '      </div>',
+    `      <h1 style="margin:0 0 44px;font-size:28px;line-height:1.2;font-weight:700;color:#000000;">${escapeHtml(copy.title)}</h1>`,
+    `      <div style="margin:0 0 44px;font-size:40px;line-height:1.2;font-weight:400;letter-spacing:0.06em;color:#000000;font-variant-numeric:tabular-nums;">${safeCode}</div>`,
+    `      <p style="margin:0 0 56px;font-size:21px;line-height:1.35;color:#000000;">${escapeHtml(copy.codeExpiry)}</p>`,
+    `      <h2 style="margin:0 0 10px;font-size:28px;line-height:1.2;font-weight:700;color:#000000;">${escapeHtml(copy.linkAlternativeHeading)}</h2>`,
+    `      <p style="margin:0 0 28px;font-size:21px;line-height:1.35;color:#000000;">${altBody}</p>`,
+    '      <a href="' +
       safeUrl +
-      `" referrerpolicy="no-referrer" style="display: inline-block; max-width: 100%; box-sizing: border-box; background: #0066FF; color: #FFFFFF; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 16px; line-height: 1.3; text-align: center;">${escapeHtml(copy.cta)}</a>`,
-    "  </p>",
-    fallbackHtml,
-    `  <p style="margin: 0 0 ${securityMb}; color: #6B7280; font-size: 13px; line-height: 1.45;">${escapeHtml(copy.securityExpiry)}</p>`,
-    `  <p style="margin: 0; color: #9CA3AF; font-size: 12px; line-height: 1.45;">${escapeHtml(copy.ignore)}</p>`,
-    `  <hr style="border: 0; border-top: 1px solid #E5E7EB; margin: ${hrMargin};" />`,
-    `  <p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.35;">PrivateNote</p>`,
-    `  <p style="margin: 6px 0 0; color: #6B7280; font-size: 13px; line-height: 1.45;">${escapeHtml(copy.footer)}</p>`,
+      `" referrerpolicy="no-referrer" style="display:inline-block;background:#ff5f33;color:#000000;text-decoration:none;border-radius:10px;padding:16px 34px;font-size:20px;line-height:1.2;font-weight:400;">${escapeHtml(copy.cta)}</a>`,
+    `      <p style="margin:36px 0 0;color:#6b7280;font-size:13px;line-height:1.45;">${escapeHtml(copy.ignore)}</p>`,
+    "    </div>",
+    "  </div>",
+    '  <div style="max-width:650px;margin:24px auto 0;text-align:center;color:#8a8a8a;font-size:18px;line-height:1.35;padding:0 24px 28px;">',
+    "    <div>Copyright &copy; PrivateNote</div>",
+    `    <div style="margin-top:8px;">${escapeHtml(copy.footer)}</div>`,
+    `    <div style="margin-top:20px;">privatenote.ai&nbsp;&nbsp;|&nbsp;&nbsp;${escapeHtml(copy.community)}</div>`,
+    "  </div>",
     "</div>",
   ].join("\n");
 }
 
-function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string): string {
-  const fallbackLines = copy.hideRawUrlInHtml
-    ? [copy.urlFallbackPrompt, copy.urlFallbackLinkLabel + ": " + magicUrl]
-    : [copy.urlFallbackPrompt, magicUrl];
-
+function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string, signInCode: string, hostLabel: string): string {
+  const altBody = substituteHost(copy.linkAlternativeBody, hostLabel);
   return [
     copy.title,
     "",
-    copy.intro,
+    signInCode,
+    "",
+    copy.codeExpiry,
+    "",
+    copy.linkAlternativeHeading,
+    altBody,
     "",
     copy.cta + ":",
     magicUrl,
-    "",
-    ...fallbackLines,
-    "",
-    copy.securityExpiry,
     "",
     copy.ignore,
     "",
@@ -245,17 +207,25 @@ function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string): string {
 
 export function buildMagicLinkEmailContent(options: {
   magicUrl: string;
+  signInCode: string;
+  hostLabel?: string;
   locale?: AuthEmailLocale;
   purpose?: MagicLinkEmailPurpose;
 }): { subject: string; preheader: string; text: string; html: string } {
   const locale = options.locale ?? "en";
   const purpose = options.purpose ?? "default";
   const copy = COPY[purpose][locale];
+  let hostLabel = options.hostLabel?.trim() || "PrivateNote";
+  try {
+    hostLabel = new URL(options.magicUrl).host || hostLabel;
+  } catch {
+    /* keep hostLabel */
+  }
 
   return {
     subject: copy.subject,
     preheader: copy.preheader,
-    text: buildMagicLinkText(copy, options.magicUrl),
-    html: buildMagicLinkHtml(copy, options.magicUrl),
+    text: buildMagicLinkText(copy, options.magicUrl, options.signInCode, hostLabel),
+    html: buildMagicLinkHtml(copy, options.magicUrl, options.signInCode, hostLabel),
   };
 }
