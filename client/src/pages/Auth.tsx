@@ -177,7 +177,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
         title: tx("authCheckEmailTitle", "Check your email"),
         description: tx(
           "authEmailCodeUnavailableDesc",
-          "Open the Log in link in the email to finish. This tab could not be bound for direct code entry.",
+          "Use the Log in button in the email to finish without typing the code.",
         ),
       });
       return;
@@ -595,7 +595,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx(
                       "authCheckEmailCodeHint",
-                      "Enter the 6-digit code here, or open the Log in link in that email.",
+                      "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
                     )}
                   </p>
                 </div>
@@ -638,14 +638,6 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                       tx("authContinueWithCode", "Continue with code")
                     )}
                   </Button>
-                  {!signInToken ? (
-                    <p className="mt-3 text-center text-xs text-muted-foreground">
-                      {tx(
-                        "authEmailCodeUnavailableHint",
-                        "If this button does not complete sign-in, use the Log in link in the same email.",
-                      )}
-                    </p>
-                  ) : null}
                 </form>
                 <Button
                   variant="outline"
