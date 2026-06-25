@@ -588,11 +588,9 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
-                  </p>
-                </div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 text-center">
+                  {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
+                </p>
                 {signInToken ? (
                   <form
                     className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
