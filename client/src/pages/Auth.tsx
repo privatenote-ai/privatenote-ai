@@ -120,7 +120,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const [signInToken, setSignInToken] = useState<string | null>(null);
   const [signInCode, setSignInCode] = useState("");
   const [isCompletingMagic, setIsCompletingMagic] = useState(false);
-  const [view, setView] = useState<"form" | "code" | "sent">("form");
+  const [view, setView] = useState<"form" | "sent">("form");
   const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
@@ -172,7 +172,16 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isCompletingMagic;
 
   const completeMagicFromAuthPage = async (emailCode: string) => {
-    if (!signInToken) return;
+    if (!signInToken) {
+      toast({
+        title: tx("authCheckEmailTitle", "Check your email"),
+        description: tx(
+          "authEmailCodeUnavailableDesc",
+          "Open the Log in link in the email to finish. This tab could not be bound for direct code entry.",
+        ),
+      });
+      return;
+    }
     setIsCompletingMagic(true);
     try {
       const digits = emailCode.replace(/\D/g, "");
@@ -308,14 +317,12 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       }
       if (typeof response.signInToken === "string" && response.signInToken.length > 0) {
         setSignInToken(response.signInToken);
-        setView("code");
-      } else {
-        setView("sent");
-        toast({
-          title: tx("authCheckEmailTitle", "Check your email"),
-          description: tx("authCheckEmailDesc", "We sent a sign-in code and link if the address is valid."),
-        });
       }
+      setView("sent");
+      toast({
+        title: tx("authCheckEmailTitle", "Check your email"),
+        description: tx("authCheckEmailDesc", "We sent a sign-in code and link if the address is valid."),
+      });
     } catch {
       toast({
         title: tx("authMagicLinkFailedTitle", "Magic link failed"),
@@ -562,71 +569,6 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                 </p>
               </CardContent>
             </Card>
-          ) : view === "code" ? (
-            <Card className="border-2">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl leading-snug">
-                  {tx("authSignInCodeTitle", "Your PrivateNote sign-in code")}
-                </CardTitle>
-                <CardDescription className="mt-2 text-base leading-relaxed">
-                  {tx("authSignInCodeSubtitle", "We emailed a 6-digit code to")}{" "}
-                  <strong>{email.trim()}</strong>.
-                  {import.meta.env.DEV && debugSignInCode ? (
-                    <span className="block mt-2 font-mono tracking-widest text-foreground">
-                      Dev code: {debugSignInCode}
-                    </span>
-                  ) : null}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="w-full max-w-xs mx-auto space-y-2">
-                  <label htmlFor="auth-sign-in-code" className="text-sm font-medium text-center block">
-                    {tx("authSignInCodeLabel", "6-digit code")}
-                  </label>
-                  <Input
-                    id="auth-sign-in-code"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={12}
-                    placeholder="000000"
-                    value={signInCode}
-                    onChange={(e) => setSignInCode(e.target.value)}
-                    className="text-center text-lg tracking-widest"
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  type="button"
-                  className="w-full"
-                  size="lg"
-                  disabled={isCompletingMagic}
-                  onClick={() => void completeMagicFromAuthPage(signInCode)}
-                >
-                  {isCompletingMagic ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {tx("authSigningIn", "Signing in…")}
-                    </>
-                  ) : (
-                    tx("authContinueWithCode", "Continue with code")
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    resetAuthTurnstile();
-                    setSignInToken(null);
-                    setSignInCode("");
-                    setView("form");
-                  }}
-                  className="w-full"
-                  size="sm"
-                >
-                  {tx("authDidntReceive", "Didn't receive an email? Try again")}
-                </Button>
-              </CardContent>
-            </Card>
           ) : (
             /* Sent State Card */
             <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
@@ -653,14 +595,64 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx(
                       "authCheckEmailCodeHint",
-                      "Open the Log in link in that email, then enter your 6-digit code on the next screen.",
+                      "Enter the 6-digit code here, or open the Log in link in that email.",
                     )}
                   </p>
                 </div>
+                <form
+                  className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void completeMagicFromAuthPage(signInCode);
+                  }}
+                >
+                  <div className="space-y-2">
+                    <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {tx("authSignInCodeLabel", "6-digit code")}
+                    </label>
+                    <Input
+                      id="auth-sign-in-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={12}
+                      placeholder="000000"
+                      value={signInCode}
+                      onChange={(e) => setSignInCode(e.target.value)}
+                      className="text-center text-lg tracking-widest"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="mt-3 w-full"
+                    size="lg"
+                    disabled={isCompletingMagic}
+                  >
+                    {isCompletingMagic ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {tx("authSigningIn", "Signing in…")}
+                      </>
+                    ) : (
+                      tx("authContinueWithCode", "Continue with code")
+                    )}
+                  </Button>
+                  {!signInToken ? (
+                    <p className="mt-3 text-center text-xs text-muted-foreground">
+                      {tx(
+                        "authEmailCodeUnavailableHint",
+                        "If this button does not complete sign-in, use the Log in link in the same email.",
+                      )}
+                    </p>
+                  ) : null}
+                </form>
                 <Button
                   variant="outline"
                   onClick={() => {
                     resetAuthTurnstile();
+                    setSignInToken(null);
+                    setSignInCode("");
                     setView("form");
                   }}
                   className="w-full"
