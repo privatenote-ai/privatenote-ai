@@ -256,7 +256,7 @@ export default function AuthMagic() {
           /* ignore */
         }
       }
-      const raw = error instanceof Error ? error.message : "Magic link failed.";
+      const raw = error instanceof Error ? error.message : "Email sign-in failed.";
       if (typeof raw === "string" && raw.toLowerCase().includes("expired")) {
         setFriendlyMessage("This link has expired. Please request a new sign‑in link.");
       } else if (typeof raw === "string" && raw.toLowerCase().includes("invalid")) {
@@ -300,10 +300,15 @@ export default function AuthMagic() {
         {phase === "confirm" && (
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl">Continue sign in</CardTitle>
+              <CardTitle className="text-2xl">Continue email sign-in</CardTitle>
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
+              <p className="text-sm font-medium text-muted-foreground text-center max-w-md">
+                {oneTapAllowed
+                  ? "For this sign-in, link-only login is available. You can still use the code."
+                  : "For your security, enter the code from your email."}
+              </p>
               {emailCodeAvailable && (
                 <div className="w-full max-w-xs space-y-2">
                   <label htmlFor="magic-email-code" className="text-sm font-medium text-center block">
@@ -398,7 +403,7 @@ export default function AuthMagic() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
-                    Magic Link
+                    Email sign-in
                   </p>
                   <CardTitle className="text-3xl text-gray-900 dark:text-white">
                     Success
@@ -489,7 +494,7 @@ export default function AuthMagic() {
               </div>
               <div className="space-y-2">
                 <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
-                  Magic Link
+                  Email sign-in
                 </p>
                 <CardTitle className="text-3xl text-gray-900 dark:text-white">
                   Link Problem
@@ -510,7 +515,7 @@ export default function AuthMagic() {
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
                 <p className="text-sm text-red-800 dark:text-red-300 text-center">
-                  <strong>Security note:</strong> Magic links expire after a short time (about ten minutes) and can only be used once.
+                  <strong>Security note:</strong> Email sign-in links expire after a short time (about ten minutes) and can only be used once.
                 </p>
               </div>
             </CardContent>

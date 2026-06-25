@@ -111,6 +111,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
+  const [debugSignInCode, setDebugSignInCode] = useState<string | null>(null);
   const [view, setView] = useState<"form" | "sent">("form");
   const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -238,8 +239,9 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     setEmail(trimmedEmail);
     setIsSendingMagicLink(true);
     setDebugMagicLink(null);
+    setDebugSignInCode(null);
     try {
-      const response = await apiRequest<{ debugMagicLink?: string }>(
+      const response = await apiRequest<{ debugMagicLink?: string; debugSignInCode?: string }>(
         "/api/auth/magic/send",
         "POST",
         {
@@ -253,14 +255,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
       }
+      if (import.meta.env.DEV && response.debugSignInCode) {
+        setDebugSignInCode(response.debugSignInCode);
+      }
       setView("sent");
       toast({
         title: tx("authCheckEmailTitle", "Check your email"),
-        description: tx("authCheckEmailDesc", "We sent a sign-in link if the address is valid."),
+        description: tx("authCheckEmailDesc", "We sent a sign-in code and link if the address is valid."),
       });
     } catch {
       toast({
-        title: tx("authMagicLinkFailedTitle", "Magic link failed"),
+        title: tx("authMagicLinkFailedTitle", "Email sign-in failed"),
         description: tx("authMagicLinkFailedDesc", "We couldn't send the link. Please try again."),
         variant: "destructive",
       });
@@ -529,9 +534,15 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4">
+                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 space-y-2">
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
+                    {tx(
+                      "authCheckEmailCodeHint",
+                      "Open the Log in link in that email. You may be asked for the 6-digit code.",
+                    )}
                   </p>
                 </div>
                 <Button
@@ -546,13 +557,28 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   {tx("authDidntReceive", "Didn't receive an email? Try again")}
                 </Button>
                 {showDebugMagicLinkUi && (
-                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                      {tx("authDevelopmentLink", "Development link:")}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 break-all font-mono">
-                      {debugMagicLink}
-                    </p>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                        {tx("authDevelopmentLink", "Development link:")}
+                      </p>
+                      <Button asChild variant="secondary" size="sm" className="w-full mb-2">
+                        <a href={debugMagicLink ?? "#"}>Open sign-in page</a>
+                      </Button>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 break-all font-mono">
+                        {debugMagicLink}
+                      </p>
+                    </div>
+                    {debugSignInCode && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Development code:
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 font-mono tracking-widest">
+                          {debugSignInCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

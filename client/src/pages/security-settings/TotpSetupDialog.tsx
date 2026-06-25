@@ -136,7 +136,7 @@ export function TotpSetupDialog({
               <div>
                 <p className="text-sm font-medium text-green-800 dark:text-green-200">{t.authSecAuthenticatorVerified || "Authenticator app verified"}</p>
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  {t.authSecCodeRequiredAfterSignIn || "A code will be required after magic link sign-in."}
+                  {t.authSecCodeRequiredAfterSignIn || "A code may be required after email sign-in."}
                 </p>
               </div>
             </div>
