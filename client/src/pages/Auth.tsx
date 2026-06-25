@@ -645,19 +645,18 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     </p>
                   </div>
                 )}
-                <Button
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => {
                     resetAuthTurnstile();
                     setSignInToken(null);
                     setSignInCode("");
                     setView("form");
                   }}
-                  className="w-full"
-                  size="lg"
+                  className="mx-auto block text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                 >
                   {tx("authDidntReceive", "Didn't receive an email? Try again")}
-                </Button>
+                </button>
                 {showDebugMagicLinkUi && (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 space-y-3">
                     <div>
