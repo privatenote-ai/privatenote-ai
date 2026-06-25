@@ -599,46 +599,57 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     )}
                   </p>
                 </div>
-                <form
-                  className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void completeMagicFromAuthPage(signInCode);
-                  }}
-                >
-                  <div className="space-y-2">
-                    <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {tx("authSignInCodeLabel", "6-digit code")}
-                    </label>
-                    <Input
-                      id="auth-sign-in-code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={12}
-                      placeholder="000000"
-                      value={signInCode}
-                      onChange={(e) => setSignInCode(e.target.value)}
-                      className="text-center text-lg tracking-widest"
-                      autoFocus
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="mt-3 w-full"
-                    size="lg"
-                    disabled={isCompletingMagic}
+                {signInToken ? (
+                  <form
+                    className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void completeMagicFromAuthPage(signInCode);
+                    }}
                   >
-                    {isCompletingMagic ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {tx("authSigningIn", "Signing in…")}
-                      </>
-                    ) : (
-                      tx("authContinueWithCode", "Continue with code")
-                    )}
-                  </Button>
-                </form>
+                    <div className="space-y-2">
+                      <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {tx("authSignInCodeLabel", "6-digit code")}
+                      </label>
+                      <Input
+                        id="auth-sign-in-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={12}
+                        placeholder="000000"
+                        value={signInCode}
+                        onChange={(e) => setSignInCode(e.target.value)}
+                        className="text-center text-lg tracking-widest"
+                        autoFocus
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="mt-3 w-full"
+                      size="lg"
+                      disabled={isCompletingMagic}
+                    >
+                      {isCompletingMagic ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {tx("authSigningIn", "Signing in…")}
+                        </>
+                      ) : (
+                        tx("authContinueWithCode", "Continue with code")
+                      )}
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-900">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {tx(
+                        "authEmailCodeUnavailableInline",
+                        "Use the Log in button in the email to finish. Direct code entry is unavailable for this request.",
+                      )}
+                    </p>
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => {

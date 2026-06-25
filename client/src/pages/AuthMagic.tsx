@@ -10,6 +10,7 @@ import {
   registerPasskeyWithRetry,
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 
@@ -54,6 +55,8 @@ export default function AuthMagic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const [phase, setPhase] = useState<Phase>("initial");
   const [token, setToken] = useState<string | null>(null);
   const [friendlyMessage, setFriendlyMessage] = useState<string>("");
@@ -73,7 +76,7 @@ export default function AuthMagic() {
     setReturnToFromUrl(nextReturnToFromUrl);
     if (!t) {
       setPhase("error");
-      setFriendlyMessage("Open the sign-in link from your email on this device, or request a new link.");
+      setFriendlyMessage(tx("authMagicMissingLinkDesc", "Open the sign-in link from your email on this device, or request a new link."));
       return;
     }
     setToken(t);
@@ -93,11 +96,14 @@ export default function AuthMagic() {
         setOneTapAllowed(canOneTap);
         if (needCode) {
           setFriendlyMessage(
-            "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
+            tx(
+              "authMagicMediumRiskDesc",
+              "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
+            ),
           );
         } else {
           setFriendlyMessage(
-            "You opened the sign-in link from your email. Press Log in below to finish in this browser.",
+            tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Log in below to finish in this browser."),
           );
         }
         setPhase("confirm");
@@ -108,14 +114,20 @@ export default function AuthMagic() {
             if (body.code === "context_high_risk") {
               setPhase("error");
               setFriendlyMessage(
-                "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
+                tx(
+                  "authMagicHighRiskDesc",
+                  "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
+                ),
               );
               return;
             }
             if (body.code === "origin_required") {
               setPhase("error");
               setFriendlyMessage(
-                "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+                tx(
+                  "authMagicOriginRequiredDesc",
+                  "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+                ),
               );
               return;
             }
@@ -125,11 +137,11 @@ export default function AuthMagic() {
         }
         setPhase("error");
         setFriendlyMessage(
-          "We couldn’t verify that sign-in link. Open it from your email again, or request a new link.",
+          tx("authMagicVerifyFailedDesc", "We couldn’t verify that sign-in link. Open it from your email again, or request a new link."),
         );
       }
     })();
-  }, []);
+  }, [t]);
 
   const runConsume = async () => {
     if (!token) return;
@@ -137,15 +149,15 @@ export default function AuthMagic() {
       const digits = emailCode.replace(/\D/g, "");
       if (digits.length !== 6) {
         toast({
-          title: "Enter the code",
-          description: "Use the 6-digit code from the email we just sent.",
+          title: tx("authMagicEnterCodeTitle", "Enter the code"),
+          description: tx("authMagicEnterCodeDesc", "Use the 6-digit code from the email we just sent."),
           variant: "destructive",
         });
         return;
       }
     }
     setPhase("loading");
-    setFriendlyMessage("Completing sign-in…");
+    setFriendlyMessage(tx("authMagicCompletingDesc", "Completing sign-in…"));
 
     try {
       const payload: { token: string; emailCode?: string } = { token };
@@ -165,7 +177,7 @@ export default function AuthMagic() {
       }
 
       setPhase("success");
-      setFriendlyMessage("You're signed in.");
+      setFriendlyMessage(tx("authMagicSignedInDesc", "You're signed in."));
       // Retry: D1 read-after-write lag can briefly return authenticated:false.
       await refreshUntilAuthenticated();
       if (returnToFromUrl) {
@@ -184,8 +196,14 @@ export default function AuthMagic() {
           if (body.code === "magic_bind_required" || body.code === "magic_email_otp_exhausted") {
             setFriendlyMessage(
               body.code === "magic_email_otp_exhausted"
-                ? "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code."
-                : "This confirmation step expired. Open the link from your email again so we can verify your browser, then press Continue.",
+                ? tx(
+                    "authMagicOtpExhaustedDesc",
+                    "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code.",
+                  )
+                : tx(
+                    "authMagicBindExpiredDesc",
+                    "This confirmation step expired. Open the link from your email again so we can verify your browser, then press Continue.",
+                  ),
             );
             return;
           }
@@ -194,14 +212,17 @@ export default function AuthMagic() {
             setPhase("confirm");
             setFriendlyMessage(
               body.code === "magic_email_code_invalid"
-                ? "That code doesn’t match. Check the latest email and try again."
-                : "Enter the 6-digit code from your email, then press Continue sign in.",
+                ? tx("authMagicCodeInvalidDesc", "That code doesn’t match. Check the latest email and try again.")
+                : tx("authMagicCodeRequiredDesc", "Enter the 6-digit code from your email, then press Continue sign in."),
             );
             return;
           }
           if (body.code === "origin_required") {
             setFriendlyMessage(
-              "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+              tx(
+                "authMagicOriginRequiredDesc",
+                "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+              ),
             );
             return;
           }
@@ -211,11 +232,11 @@ export default function AuthMagic() {
       }
       const raw = error instanceof Error ? error.message : "Magic link failed.";
       if (typeof raw === "string" && raw.toLowerCase().includes("expired")) {
-        setFriendlyMessage("This link has expired. Please request a new sign‑in link.");
+        setFriendlyMessage(tx("authMagicExpiredDesc", "This link has expired. Please request a new sign-in link."));
       } else if (typeof raw === "string" && raw.toLowerCase().includes("invalid")) {
-        setFriendlyMessage("This sign‑in link is no longer valid. Please request a new one.");
+        setFriendlyMessage(tx("authMagicInvalidDesc", "This sign-in link is no longer valid. Please request a new one."));
       } else {
-        setFriendlyMessage("We couldn’t verify that link. Please request a new sign‑in link.");
+        setFriendlyMessage(tx("authMagicVerifyGenericDesc", "We couldn’t verify that link. Please request a new sign-in link."));
       }
     } finally {
       magicLinkTokenCache = null;
@@ -224,7 +245,10 @@ export default function AuthMagic() {
 
   const handleRegisterPasskey = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
-      toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
+      toast({
+        title: tx("authPasskeysNotSupportedTitle", "Passkeys not supported"),
+        description: tx("authPasskeysNotSupportedDesc", "This browser does not support passkeys."),
+      });
       return;
     }
     setIsRegistering(true);
@@ -232,12 +256,12 @@ export default function AuthMagic() {
       await registerPasskeyWithRetry();
       setHasPasskeys(true);
       toast({
-        title: "Passkey added",
-        description: "You can sign in with this passkey on this device.",
+        title: tx("authMagicPasskeyAddedTitle", "Passkey added"),
+        description: tx("authMagicPasskeyAddedDesc", "You can sign in with this passkey on this device."),
       });
     } catch (error) {
       toast({
-        title: "Passkey registration failed",
+        title: tx("authMagicPasskeyFailedTitle", "Passkey registration failed"),
         description: passkeyRegistrationErrorMessage(error),
         variant: "destructive",
       });
@@ -253,14 +277,14 @@ export default function AuthMagic() {
         {phase === "confirm" && (
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl">Continue sign in</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicContinueTitle", "Continue sign in")}</CardTitle>
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               {emailCodeRequired && (
                 <div className="w-full max-w-xs space-y-2">
                   <label htmlFor="magic-email-code" className="text-sm font-medium text-center block">
-                    6-digit code from email
+                    {tx("authMagicEmailCodeLabel", "6-digit code from email")}
                   </label>
                   <Input
                     id="magic-email-code"
@@ -277,11 +301,13 @@ export default function AuthMagic() {
                 </div>
               )}
               <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
-                {oneTapAllowed && !emailCodeRequired ? "Log in" : "Continue sign in"}
+                {oneTapAllowed && !emailCodeRequired
+                  ? tx("authMagicLoginButton", "Log in")
+                  : tx("authMagicContinueButton", "Continue sign in")}
               </Button>
               {oneTapAllowed && !emailCodeRequired ? (
                 <p className="text-xs text-muted-foreground text-center max-w-md">
-                  Your session starts after you confirm here — not from the link alone.
+                  {tx("authMagicSessionStartsAfterConfirm", "Your session starts after you confirm here, not from the link alone.")}
                 </p>
               ) : null}
             </CardContent>
@@ -292,9 +318,12 @@ export default function AuthMagic() {
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto mb-2" />
-              <CardTitle className="text-2xl">Checking your sign-in link…</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicCheckingTitle", "Checking your sign-in link…")}</CardTitle>
               <CardDescription className="text-base mt-2">
-                Validating the link and binding this browser. No session is created until you continue.
+                {tx(
+                  "authMagicCheckingDesc",
+                  "Validating the link and binding this browser. No session is created until you continue.",
+                )}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -309,7 +338,7 @@ export default function AuthMagic() {
                   <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1 animate-pulse" />
                 </div>
               </div>
-              <CardTitle className="text-2xl">Signing you in…</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicSigningInTitle", "Signing you in…")}</CardTitle>
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
           </Card>
@@ -327,13 +356,13 @@ export default function AuthMagic() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
-                    Magic Link
+                    {tx("authMagicLabel", "Magic Link")}
                   </p>
                   <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                    Success
+                    {tx("authMagicSuccessTitle", "Success")}
                   </CardTitle>
                   <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
-                    You're signed in.
+                    {tx("authMagicSignedInDesc", "You're signed in.")}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -345,7 +374,9 @@ export default function AuthMagic() {
                     size="lg"
                     className="min-w-[140px]"
                   >
-                    {returnTo === "/" ? "Continue to Home" : "Continue"}
+                    {returnTo === "/"
+                      ? tx("authMagicContinueHome", "Continue to Home")
+                      : tx("authContinue", "Continue")}
                   </Button>
                 </div>
               </CardContent>
@@ -360,10 +391,10 @@ export default function AuthMagic() {
                     </div>
                     <div className="flex-1 space-y-1">
                       <CardTitle className="text-xl text-gray-900 dark:text-white">
-                        Secure your account with a passkey
+                        {tx("authMagicPasskeyNudgeTitle", "Secure your account with a passkey")}
                       </CardTitle>
                       <CardDescription className="text-base">
-                        Faster sign-in. No emails. No passwords.
+                        {tx("authMagicPasskeyNudgeDesc", "Faster sign-in. No emails. No passwords.")}
                       </CardDescription>
                     </div>
                   </div>
@@ -379,12 +410,12 @@ export default function AuthMagic() {
                       {isRegistering ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Setting up...
+                          {tx("authMagicPasskeySettingUp", "Setting up...")}
                         </>
                       ) : (
                         <>
                           <KeyRound className="mr-2 h-4 w-4" />
-                          Add passkey
+                          {tx("authMagicPasskeyAdd", "Add passkey")}
                         </>
                       )}
                     </Button>
@@ -395,11 +426,14 @@ export default function AuthMagic() {
                       className="flex-1"
                       size="lg"
                     >
-                      Maybe later
+                      {tx("authMagicMaybeLater", "Maybe later")}
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                    Passkeys use biometric authentication for secure, passwordless sign-in
+                    {tx(
+                      "authMagicPasskeyNudgeFootnote",
+                      "Passkeys use biometric authentication for secure, passwordless sign-in.",
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -418,10 +452,10 @@ export default function AuthMagic() {
               </div>
               <div className="space-y-2">
                 <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
-                  Magic Link
+                  {tx("authMagicLabel", "Magic Link")}
                 </p>
                 <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                  Link Problem
+                  {tx("authMagicProblemTitle", "Link Problem")}
                 </CardTitle>
                 <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
                   {friendlyMessage}
@@ -431,15 +465,19 @@ export default function AuthMagic() {
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1" size="lg">
-                  <a href="/auth/sign-in">Get a new link</a>
+                  <a href="/auth/sign-in">{tx("authMagicGetNewLink", "Get a new link")}</a>
                 </Button>
                 <Button variant="outline" asChild className="flex-1" size="lg">
-                  <a href="/auth/sign-in">Try again</a>
+                  <a href="/auth/sign-in">{tx("authRetry", "Retry")}</a>
                 </Button>
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
                 <p className="text-sm text-red-800 dark:text-red-300 text-center">
-                  <strong>Security note:</strong> Magic links expire after a short time (about ten minutes) and can only be used once.
+                  <strong>{tx("authMagicSecurityNoteTitle", "Security note:")}</strong>{" "}
+                  {tx(
+                    "authMagicSecurityNoteDesc",
+                    "Magic links expire after a short time (about ten minutes) and can only be used once.",
+                  )}
                 </p>
               </div>
             </CardContent>
