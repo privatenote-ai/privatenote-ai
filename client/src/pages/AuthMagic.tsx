@@ -89,7 +89,9 @@ export default function AuthMagic() {
         setEmailCodeRequired(needCode);
         if (needCode) {
           setFriendlyMessage(
-            "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link.",
+            prep?.riskLevel === "medium"
+              ? "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link."
+              : "Enter the 6-digit code from your sign-in email, then continue. For security, finish sign-in in the same browser where you opened the link.",
           );
         } else {
           setFriendlyMessage(
@@ -186,6 +188,7 @@ export default function AuthMagic() {
             return;
           }
           if (body.code === "magic_email_code_required" || body.code === "magic_email_code_invalid") {
+            setEmailCodeRequired(true);
             setPhase("confirm");
             setFriendlyMessage(
               body.code === "magic_email_code_invalid"
@@ -267,6 +270,7 @@ export default function AuthMagic() {
                     value={emailCode}
                     onChange={(e) => setEmailCode(e.target.value)}
                     className="text-center text-lg tracking-widest"
+                    autoFocus
                   />
                 </div>
               )}

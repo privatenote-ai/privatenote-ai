@@ -45,6 +45,7 @@ export const en: Translations = {
   authByContinuing: "By continuing, you acknowledge that you understand and agree to the",
   authCheckEmailTitle: "Check your email",
   authCheckEmailDesc: "We sent a sign-in code and link if the address is valid.",
+  authCheckEmailCodeHint: "Open the Log in link in that email, then enter your 6-digit code on the next screen.",
   authSignUpSentText: "If this email address is valid, a secure link is on its way to",
   authSignInSentText: "If an account can use this address, a secure sign-in link is on its way to",
   authCheckInboxHint: "Check your inbox (and spam folder). It may take a minute to arrive.",

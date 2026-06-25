@@ -2103,7 +2103,6 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
     );
   }
 
-  let otpHash: string | undefined;
   const storedOtpHash = typeof payload.otpHash === "string" ? payload.otpHash : undefined;
 
   if (policy.risk === "medium") {
@@ -2120,11 +2119,12 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
     });
-    if (!storedOtpHash) {
-      return jsonResponse({ message: "Invalid link data" }, 400, request);
-    }
-    otpHash = storedOtpHash;
   }
+
+  if (!storedOtpHash) {
+    return jsonResponse({ message: "Invalid link data" }, 400, request);
+  }
+  const otpHash = storedOtpHash;
 
   const nonce = await issueMagicPrepareNonce(
     env,
@@ -2159,7 +2159,7 @@ async function respondToMagicLinkPrepare(env: Env, request: Request, token: stri
     JSON.stringify({
       ok: true,
       riskLevel: policy.risk,
-      emailCodeRequired: policy.risk === "medium",
+      emailCodeRequired: true,
     }),
     { status: 200, headers },
   );
@@ -2199,7 +2199,7 @@ async function respondToMagicLinkConsume(
 
   const { nonceKey, record } = bindCheck;
 
-  if (record.risk === "medium" && record.otpHash) {
+  if (record.otpHash) {
     const normalized = normalizeMagicEmailCode(emailCode);
     if (!normalized) {
       return jsonResponse(

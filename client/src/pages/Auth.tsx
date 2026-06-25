@@ -526,9 +526,15 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4">
+                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 space-y-2">
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
+                    {tx(
+                      "authCheckEmailCodeHint",
+                      "Open the Log in link in that email, then enter your 6-digit code on the next screen.",
+                    )}
                   </p>
                 </div>
                 <Button
@@ -545,9 +551,12 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                 {showDebugMagicLinkUi && (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 space-y-3">
                     <div>
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
                         {tx("authDevelopmentLink", "Development link:")}
                       </p>
+                      <Button asChild variant="secondary" size="sm" className="w-full mb-2">
+                        <a href={debugMagicLink ?? "#"}>Open sign-in page</a>
+                      </Button>
                       <p className="text-xs text-gray-600 dark:text-gray-300 break-all font-mono">
                         {debugMagicLink}
                       </p>
