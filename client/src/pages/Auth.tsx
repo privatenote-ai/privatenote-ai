@@ -592,12 +592,6 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
                     {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    {tx(
-                      "authCheckEmailCodeHint",
-                      "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
-                    )}
-                  </p>
                 </div>
                 {signInToken ? (
                   <form
@@ -609,7 +603,10 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   >
                     <div className="space-y-2">
                       <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {tx("authSignInCodeLabel", "6-digit code")}
+                        {tx(
+                          "authCheckEmailCodeHint",
+                          "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
+                        )}
                       </label>
                       <Input
                         id="auth-sign-in-code"
