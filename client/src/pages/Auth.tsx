@@ -23,11 +23,12 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
+import { LANGUAGE_OPTIONS, type SupportedLanguage } from "@/utils/translation";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
-import { Loader2 } from "lucide-react";
+import { Globe2, Loader2 } from "lucide-react";
 
 const PASSKEY_FAIL_GENERIC =
   "Sign-in could not be completed. Try again or use a different sign-in method.";
@@ -110,7 +111,7 @@ function normalizeSignInPurpose(raw: unknown): "default" | "cloud_assist" {
 export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
-  const { language, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const tx = (key: string, fallback: string) => t[key] || fallback;
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
@@ -170,6 +171,8 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   };
 
   const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isCompletingMagic;
+  const currentLanguageLabel =
+    LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
 
   const completeMagicFromAuthPage = async (emailCode: string) => {
     if (!signInToken) {
@@ -422,99 +425,75 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   }, [view, shouldShowTurnstile, turnstileSiteKey, resetAuthTurnstile]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Fixed Logo in Top-Left */}
-      <div className="fixed top-0 left-0 z-40 p-4 sm:p-6">
-        <a href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
-          <span className="font-bold text-2xl text-primary">
-            privateNote
-            <span className="text-xs text-primary align-super ml-0.5">.ai</span>
-          </span>
-        </a>
-      </div>
-
-      {/* Main Content */}
-      <div className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
-        <div className="space-y-6">
-          {/* Header Section */}
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              {isCloudAssistSignIn
-                ? tx("authCloudAssistTitle", "Sign in to use Cloud Assist")
-                : tx("authContinueTitle", "Continue to PrivateNote")}
-            </h1>
-            <p className="text-base text-gray-600 dark:text-gray-300">
-              {isCloudAssistSignIn
-                ? tx(
-                    "authCloudAssistSubtitle",
-                    "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
-                  )
-                : tx("authUnifiedSubtitle", "Enter your email to continue. If you're new, we'll create your account.")}
-            </p>
-          </div>
-
-          {/* Form Card */}
+    <div className="min-h-screen bg-white text-gray-950 dark:bg-gray-950 dark:text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-[760px] flex-col px-6 pb-24 pt-20 sm:px-10 sm:pt-28">
+        <main className="flex flex-1 flex-col justify-center">
           {view === "form" ? (
-            <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="text-xl">
-                  {tx("authGetStarted", "Get started")}
-                </CardTitle>
-                <CardDescription>
-                  {tx("authUnifiedCardDesc", "Use a secure email link, or sign in faster with a passkey already saved on this device.")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="mx-auto w-full max-w-[520px]">
+              <div className="mb-14 text-center">
+                <a href={localizedPath("/", language)} className="mb-9 inline-flex items-center justify-center">
+                  <img
+                    src="/brand/privateNote-logo-mark.png"
+                    alt="PrivateNote"
+                    className="h-12 w-12"
+                    width={48}
+                    height={48}
+                  />
+                </a>
+                <h1 className="text-[34px] font-semibold leading-tight tracking-normal text-gray-950 dark:text-white sm:text-[42px]">
+                  {isCloudAssistSignIn
+                    ? tx("authCloudAssistHeroTitle", "Secure AI for private notes.")
+                    : tx("authPrivateNoteHeroTitle", "Private notes, securely shared.")}
+                </h1>
+                <p className="mt-2 text-[28px] font-semibold leading-tight tracking-normal text-gray-400 dark:text-gray-500 sm:text-[34px]">
+                  {tx("authPrivateNoteAccountTitle", "Log in or sign up to your PrivateNote account")}
+                </p>
+                {isCloudAssistSignIn && (
+                  <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                    {tx(
+                      "authCloudAssistSubtitle",
+                      "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
+                    )}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-5">
                 <form
-                  className="space-y-4"
+                  className="space-y-5"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void sendMagicLinkRequest();
                   }}
                 >
                   <div className="space-y-2">
-                    <label htmlFor="email-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {tx("authEmailAddress", "Email address")}
+                    <label htmlFor="email-input" className="text-[15px] font-semibold text-gray-700 dark:text-gray-300">
+                      {tx("authEmailAddressShort", "Email")}
                     </label>
                     <Input
                       id="email-input"
                       type="email"
                       name="email"
                       autoComplete="email"
-                      placeholder="you@domain.com"
+                      placeholder={tx("authEmailPlaceholder", "Enter your email address...")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full"
+                      className="h-16 rounded-xl border-gray-200 px-5 text-[22px] shadow-sm placeholder:text-gray-400 focus-visible:ring-primary/30 dark:border-gray-800 dark:bg-gray-900"
                     />
+                    <p className="text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">
+                      {tx("authEmailSecureHint", "We’ll send a secure sign-in code and link to this address.")}
+                    </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      type="submit"
-                      disabled={isAnyAuthBusy}
-                      className="flex-1 min-h-12 sm:min-h-0"
-                      size="lg"
-                    >
-                      {isSendingMagicLink ? (
-                        <>{tx("authSendingLink", "Sending link...")}</>
-                      ) : (
-                        tx("authContinueWithEmail", "Continue with email")
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleLoginPasskey()}
-                      disabled={isAnyAuthBusy || !passkeySupported}
-                      className="flex-1 min-h-12 sm:min-h-0"
-                      size="lg"
-                    >
-                      {isUsingPasskey
-                        ? tx("authSigningIn", "Signing in...")
-                        : tx("authUsePasskey", "Use passkey")}
-                    </Button>
-                  </div>
+                  <Button
+                    type="submit"
+                    disabled={isAnyAuthBusy}
+                    className="h-16 w-full rounded-xl text-[20px] font-semibold shadow-sm"
+                    size="lg"
+                  >
+                    {isSendingMagicLink ? tx("authSendingLink", "Sending link...") : tx("authContinue", "Continue")}
+                  </Button>
 
                   {shouldShowTurnstile && (
                     <div className="space-y-2">
@@ -531,11 +510,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   )}
                 </form>
 
-                <div className="text-center pt-2">
-                  <a
-                    href="/auth/recovery"
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => void handleLoginPasskey()}
+                    disabled={isAnyAuthBusy || !passkeySupported}
+                    className="font-medium text-gray-700 underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 dark:text-gray-300 dark:disabled:text-gray-600"
                   >
+                    {isUsingPasskey ? tx("authSigningIn", "Signing in...") : tx("authUsePasskey", "Use passkey")}
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-700">|</span>
+                  <a href="/auth/recovery" className="font-medium text-gray-700 underline-offset-4 hover:underline dark:text-gray-300">
                     {tx("authUseRecoveryCode", "Use a recovery code")}
                   </a>
                 </div>
@@ -546,13 +531,13 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   </p>
                 )}
 
-                <p className="text-xs text-gray-500 text-center leading-relaxed">
+                <p className="mx-auto max-w-[640px] text-center text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">
                   {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
                   <a
                     href={localizedPath("/terms", language)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-gray-600 underline underline-offset-2 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                   >
                     {tx("authTermsAndConditions", "Terms & Conditions")}
                   </a>{" "}
@@ -561,17 +546,17 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     href={localizedPath("/privacy", language)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-gray-600 underline underline-offset-2 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                   >
                     {tx("privacyPolicy", "Privacy Policy")}
                   </a>
                   .
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
             /* Sent State Card */
-            <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
+            <Card className="mx-auto w-full max-w-2xl border-2 border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20">
               <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
                   <div className="relative">
@@ -685,6 +670,27 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
               </CardContent>
             </Card>
           )}
+        </main>
+
+        <div className="mt-10 flex justify-center">
+          <label className="relative inline-flex items-center gap-2 text-[18px] text-gray-500 dark:text-gray-400">
+            <Globe2 className="h-5 w-5" aria-hidden="true" />
+            <span>{tx("authLanguageLabel", "Language")}:</span>
+            <select
+              aria-label={tx("authLanguageLabel", "Language")}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}
+              className="appearance-none bg-transparent py-1 pr-7 text-[18px] text-gray-500 outline-none hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.code === "en" ? `${option.nativeName} (US)` : option.nativeName}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-gray-400">⌄</span>
+            <span className="sr-only">{currentLanguageLabel}</span>
+          </label>
         </div>
       </div>
 
