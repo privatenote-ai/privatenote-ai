@@ -14,18 +14,13 @@ import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost
 import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
 import { PrivateNoteForDevelopersPost } from '@/components/blog/PrivateNoteForDevelopersPost';
 import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
+import { AgentSecurityPost } from '@/components/blog/AgentSecurityPost';
+import { OneTimeSecretLinksPost } from '@/components/blog/OneTimeSecretLinksPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
 
-const STATIC_BLOG_SLUGS = [
-  'privacy-tools',
-  'myth-good-enough-security',
-  'how-we-generate-passwords',
-  'workplace-texts-private-note',
-  'privatenote-for-developers',
-  'privatenote-codex',
-] as const;
+import { STATIC_BLOG_SLUGS } from '@/utils/staticBlogPosts';
 
 export default function BlogPostPage() {
   const { language, t } = useLanguage();
@@ -86,6 +81,12 @@ export default function BlogPostPage() {
   }
   if (slug === 'privatenote-codex') {
     return <PrivateNoteCodexPost />;
+  }
+  if (slug === 'securing-ai-agents-like-employees') {
+    return <AgentSecurityPost />;
+  }
+  if (slug === 'one-time-secret-links') {
+    return <OneTimeSecretLinksPost />;
   }
 
   if (error) {

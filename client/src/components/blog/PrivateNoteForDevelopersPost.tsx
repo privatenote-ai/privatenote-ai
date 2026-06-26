@@ -13,7 +13,7 @@ type ArticleCopy = {
   ctaButton: string;
 };
 
-const copy: Record<SupportedLanguage, ArticleCopy> = {
+const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
     intro: [
       "You need to send a password to a colleague. Maybe it's the staging database. Maybe it's a Stripe key that's about to go into production. Maybe it's an SSH credential for a server that only you and two other people are supposed to touch.",
@@ -192,7 +192,7 @@ const copy: Record<SupportedLanguage, ArticleCopy> = {
 
 export const PrivateNoteForDevelopersPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
   const blogPath = localizedPath("/blog", language);
   const homePath = localizedPath("/", language);
 

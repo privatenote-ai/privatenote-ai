@@ -25,11 +25,11 @@ export async function onRequest(context: {
     return Response.redirect(url.toString(), 301);
   }
 
-  // Locale home routes are stored as /de/index.html, /fr/index.html, /es/index.html
-  // (directory form). Their canonical URLs keep the trailing slash (/fr/, /de/, /es/).
+  // Locale home routes are stored as /de/index.html, /fr/index.html, etc.
+  // (directory form). Their canonical URLs keep the trailing slash (/fr/, /de/, /es/, etc.).
   // Exempting them here prevents a loop with Cloudflare Pages' own directory redirect
   // (308 /fr → /fr/) which would otherwise bounce back and forth with our 301 /fr/ → /fr.
-  const LOCALE_HOME_WITH_SLASH = new Set(["/de/", "/fr/", "/es/"]);
+  const LOCALE_HOME_WITH_SLASH = new Set(["/de/", "/fr/", "/es/", "/it/", "/nl/"]);
 
   // Trailing-slash URLs 404 on static Pages when only `path.html` exists (not `path/index.html`).
   // Canonicals and sitemap use slashless paths; redirect legacy/crawler URLs to the 200 shape.

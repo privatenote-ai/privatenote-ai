@@ -10,7 +10,7 @@ const SAMPLE_CODE = "238242";
 const SAMPLE_URL = "https://premium.privatenote-ai.pages.dev/magic?t=abc";
 
 describe("magicLinkEmail", () => {
-  it("uses Cloudflare-style code + link fallback for default sign-in", () => {
+  it("uses Cloudflare-style code + one-tap link for default sign-in", () => {
     const { subject, html, text } = buildMagicLinkEmailContent({
       magicUrl: SAMPLE_URL,
       signInCode: SAMPLE_CODE,
@@ -20,13 +20,12 @@ describe("magicLinkEmail", () => {
     assert.equal(subject, "Your PrivateNote sign-in code");
     assert.match(html, /Your PrivateNote sign-in code/);
     assert.match(html, />238242</);
-    assert.match(html, /Prefer not to use the code\?/);
-    assert.match(html, /Finish logging in to premium\.privatenote-ai\.pages\.dev below/);
+    assert.match(html, /Or sign in with one tap/);
+    assert.match(html, /Finish signing in to premium\.privatenote-ai\.pages\.dev below/);
     assert.match(html, />Log in</);
     assert.match(html, /10 minutes or if you request a new code/);
-    assert.match(html, /background:#ff7a1a/);
     assert.match(text, /238242/);
-    assert.match(text, /Prefer not to use the code\?/);
+    assert.match(text, /Or sign in with one tap/);
     assert.match(text, /premium\.privatenote-ai\.pages\.dev/);
   });
 
@@ -41,7 +40,7 @@ describe("magicLinkEmail", () => {
     assert.equal(subject, "Your PrivateNote sign-in code");
     assert.match(html, /Return to attach encrypted files on privatenote\.ai below/);
     assert.match(html, />238242</);
-    assert.match(html, /Prefer not to use the code\?/);
+    assert.match(html, /Or sign in with one tap/);
     assert.match(html, /End-to-end encrypted notes and file sharing/);
     assert.ok(text.includes(magicUrl));
     assert.match(text, /238242/);

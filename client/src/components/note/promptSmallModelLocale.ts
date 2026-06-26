@@ -12,6 +12,8 @@ type PromptEnhancementType = "improve" | "summarize" | "secure" | "ask";
 /** Matches sentence-length chip ids used when resolving output length. */
 type AiSentenceLengthPresetId = "auto" | "1-2" | "2-3" | "4-6" | "7-10";
 
+type LocalizedString = Partial<Record<SupportedLanguage, string>> & { en: string };
+
 export type AskAnythingIntentRoute =
   | "message"
   | "explain"
@@ -19,7 +21,7 @@ export type AskAnythingIntentRoute =
   | "rewrite"
   | "default";
 
-function L<T extends Record<SupportedLanguage, string>>(row: T, lang: SupportedLanguage): string {
+function L<T extends LocalizedString>(row: T, lang: SupportedLanguage): string {
   return row[lang] ?? row.en;
 }
 
@@ -134,7 +136,7 @@ export function classifyAskAnythingIntentEnglishOnly(userInput: string): AskAnyt
   return classifyAskAnythingIntentEnglish(u);
 }
 
-const ASK_INTENT: Record<AskAnythingIntentRoute, Record<SupportedLanguage, string>> = {
+const ASK_INTENT: Record<AskAnythingIntentRoute, LocalizedString> = {
   message: {
     en: "Intent: write a message or email.\n- Output only the finished message.\n- No meta advice.",
     de: "Absicht: Nachricht oder E-Mail schreiben.\n- Nur den fertigen Text ausgeben.\n- Keine Meta-Hinweise.",
@@ -176,7 +178,7 @@ export function getLocalizedAskAnythingIntentSection(
 
 // ── Medium tier extra line ──────────────────────────────────────────────────
 
-const MEDIUM_STRAIGHTFORWARD: Record<SupportedLanguage, string> = {
+const MEDIUM_STRAIGHTFORWARD: LocalizedString = {
   en: "Keep sentences straightforward.",
   de: "Halte die Sätze sachlich und verständlich.",
   fr: "Garde des phrases simples et directes.",
@@ -435,7 +437,7 @@ export function getLocalizedUltraSmallOutputLengthLines(
 
 // ── Small instruction scaffolds ───────────────────────────────────────────
 
-const SCAFFOLD_DEFAULT: Record<SupportedLanguage, string> = {
+const SCAFFOLD_DEFAULT: LocalizedString = {
   en: [
     "How to write it:",
     "- Start naturally.",
@@ -466,7 +468,7 @@ const SCAFFOLD_DEFAULT: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_ASK: Record<SupportedLanguage, string> = {
+const SCAFFOLD_ASK: LocalizedString = {
   en: [
     "How to write it:",
     "- Follow the exact user request.",
@@ -497,7 +499,7 @@ const SCAFFOLD_ASK: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_THANK: Record<SupportedLanguage, string> = {
+const SCAFFOLD_THANK: LocalizedString = {
   en: [
     "How to write it:",
     "- Address the person exactly as the user described them.",
@@ -524,7 +526,7 @@ const SCAFFOLD_THANK: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_MEETING: Record<SupportedLanguage, string> = {
+const SCAFFOLD_MEETING: LocalizedString = {
   en: [
     "How to write it:",
     "- Greet the person with the exact name or title from the user request.",
@@ -555,7 +557,7 @@ const SCAFFOLD_MEETING: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_BIRTHDAY: Record<SupportedLanguage, string> = {
+const SCAFFOLD_BIRTHDAY: LocalizedString = {
   en: [
     "How to write it:",
     "- Start with a birthday wish.",
@@ -582,7 +584,7 @@ const SCAFFOLD_BIRTHDAY: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_APOLOGY: Record<SupportedLanguage, string> = {
+const SCAFFOLD_APOLOGY: LocalizedString = {
   en: [
     "How to write it:",
     "- Apologize clearly for the exact issue the user described.",
@@ -609,7 +611,7 @@ const SCAFFOLD_APOLOGY: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_LOVE: Record<SupportedLanguage, string> = {
+const SCAFFOLD_LOVE: LocalizedString = {
   en: [
     "How to write it:",
     "- Keep it warm and personal.",
@@ -636,7 +638,7 @@ const SCAFFOLD_LOVE: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_CONGRATS: Record<SupportedLanguage, string> = {
+const SCAFFOLD_CONGRATS: LocalizedString = {
   en: [
     "How to write it:",
     "- Congratulate the person on the exact achievement named by the user.",
@@ -659,7 +661,7 @@ const SCAFFOLD_CONGRATS: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_FAREWELL: Record<SupportedLanguage, string> = {
+const SCAFFOLD_FAREWELL: LocalizedString = {
   en: [
     "How to write it:",
     "- Thank the person or group for what the user actually mentioned.",
@@ -686,7 +688,7 @@ const SCAFFOLD_FAREWELL: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_INVITE: Record<SupportedLanguage, string> = {
+const SCAFFOLD_INVITE: LocalizedString = {
   en: [
     "How to write it:",
     "- State the event clearly.",
@@ -713,7 +715,7 @@ const SCAFFOLD_INVITE: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_CONDOLENCE: Record<SupportedLanguage, string> = {
+const SCAFFOLD_CONDOLENCE: LocalizedString = {
   en: [
     "How to write it:",
     "- Be gentle and simple.",
@@ -740,7 +742,7 @@ const SCAFFOLD_CONDOLENCE: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_REMINDER: Record<SupportedLanguage, string> = {
+const SCAFFOLD_REMINDER: LocalizedString = {
   en: [
     "How to write it:",
     "- Say what the reminder is about in plain words.",
@@ -767,7 +769,7 @@ const SCAFFOLD_REMINDER: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_SUMMARY: Record<SupportedLanguage, string> = {
+const SCAFFOLD_SUMMARY: LocalizedString = {
   en: [
     "How to summarize:",
     "- Use plain bullets only.",
@@ -798,7 +800,7 @@ const SCAFFOLD_SUMMARY: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_PRIVACY: Record<SupportedLanguage, string> = {
+const SCAFFOLD_PRIVACY: LocalizedString = {
   en: [
     "How to redact:",
     "- Keep the original wording and order.",
@@ -829,7 +831,7 @@ const SCAFFOLD_PRIVACY: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const SCAFFOLD_BY_ID: Record<string, Record<SupportedLanguage, string>> = {
+const SCAFFOLD_BY_ID: Record<string, LocalizedString> = {
   "ask-anything": SCAFFOLD_ASK,
   "thank-you": SCAFFOLD_THANK,
   "meeting-request": SCAFFOLD_MEETING,
@@ -863,14 +865,14 @@ export function getLocalizedSmallInstructionScaffold(
 
 // ── Parsed cues (structured hints) ───────────────────────────────────────────
 
-const PARSED_CUES_PREFIX: Record<SupportedLanguage, string> = {
+const PARSED_CUES_PREFIX: LocalizedString = {
   en: "Parsed cues (verify against USER REQUEST; ignore these lines if they disagree):\n",
   de: "Geparste Hinweise (mit NUTZERANFRAGE abgleichen; bei Widerspruch diese Zeilen ignorieren):\n",
   fr: "Indices analysés (vérifie avec la DEMANDE ; ignore ces lignes si elles ne correspondent pas) :\n",
   es: "Pistas analizadas (coteja con la SOLICITUD; ignora estas líneas si no coinciden):\n",
 };
 
-const RECIPIENT_LABEL: Record<SupportedLanguage, string> = {
+const RECIPIENT_LABEL: LocalizedString = {
   en: "Recipient",
   de: "Empfänger",
   fr: "Destinataire",
@@ -884,7 +886,7 @@ export type StructuredSecondLabelKey =
   | "achievement"
   | "topic";
 
-const SECOND_LABEL: Record<StructuredSecondLabelKey, Record<SupportedLanguage, string>> = {
+const SECOND_LABEL: Record<StructuredSecondLabelKey, LocalizedString> = {
   purpose_topic: {
     en: "Purpose / topic",
     de: "Zweck / Thema",
@@ -932,21 +934,21 @@ export function getStructuredSecondLabel(
   return SECOND_LABEL[key][language] ?? SECOND_LABEL[key].en;
 }
 
-const MEETING_HINT_INTRO: Record<SupportedLanguage, string> = {
+const MEETING_HINT_INTRO: LocalizedString = {
   en: "Best-effort cues (auto-parsed; if anything does not match the USER REQUEST, ignore these lines and use the request only):\n",
   de: "Best-effort-Hinweise (automatisch erkannt; wenn etwas nicht zur NUTZERANFRAGE passt, diese Zeilen ignorieren und nur die Anfrage nutzen):\n",
   fr: "Indices approximatifs (auto-analysés ; si quelque chose ne correspond pas à la DEMANDE, ignore ces lignes et utilise seulement la demande) :\n",
   es: "Pistas aproximadas (auto-analizadas; si algo no coincide con la SOLICITUD, ignora estas líneas y usa solo la petición):\n",
 };
 
-const MEETING_RECIPIENT_LINE: Record<SupportedLanguage, string> = {
+const MEETING_RECIPIENT_LINE: LocalizedString = {
   en: "- Recipient (from user): ",
   de: "- Empfänger (vom Nutzer): ",
   fr: "- Destinataire (fourni par l’utilisateur) : ",
   es: "- Destinatario (según el usuario): ",
 };
 
-const MEETING_TOPIC_LINE: Record<SupportedLanguage, string> = {
+const MEETING_TOPIC_LINE: LocalizedString = {
   en: "- Purpose / topic (from user): ",
   de: "- Zweck / Thema (vom Nutzer): ",
   fr: "- Objet / sujet (fourni par l’utilisateur) : ",

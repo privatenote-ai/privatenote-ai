@@ -63,6 +63,10 @@ const AuditLogs = lazy(() => import("@/pages/AuditLogs"));
 const TestClientLLM = lazy(() => import("@/pages/TestClientLLM"));
 const LlmUi = lazy(() => import("@/pages/LlmUi"));
 
+const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter(
+  (language): language is Exclude<SupportedLanguage, "en"> => language !== "en",
+);
+
 function LazyPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
@@ -184,13 +188,13 @@ function Router() {
       <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
-          <Route path="/de" component={() => <HomeRoute language="de" />} />
-          <Route path="/de/" component={() => <HomeRoute language="de" />} />
-          <Route path="/fr" component={() => <HomeRoute language="fr" />} />
-          <Route path="/fr/" component={() => <HomeRoute language="fr" />} />
-          <Route path="/es" component={() => <HomeRoute language="es" />} />
-          <Route path="/es/" component={() => <HomeRoute language="es" />} />
-          {(["de", "fr", "es"] as const).map((language) => (
+          {NON_ENGLISH_LANGUAGES.map((language) => (
+            <Fragment key={`${language}-home`}>
+              <Route path={`/${language}`} component={() => <HomeRoute language={language} />} />
+              <Route path={`/${language}/`} component={() => <HomeRoute language={language} />} />
+            </Fragment>
+          ))}
+          {NON_ENGLISH_LANGUAGES.map((language) => (
             <Fragment key={language}>
               <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
               <Route path={`/${language}/secure-file-transfer`} component={() => <LocalizedRoute language={language} component={SecureFileTransfer} />} />

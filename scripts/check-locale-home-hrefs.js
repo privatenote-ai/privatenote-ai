@@ -11,6 +11,8 @@ const HOME_FILES = [
   { file: "de/index.html", language: "de" },
   { file: "fr/index.html", language: "fr" },
   { file: "es/index.html", language: "es" },
+  { file: "it/index.html", language: "it" },
+  { file: "nl/index.html", language: "nl" },
 ];
 
 const REQUIRED_HREFLANG = [
@@ -18,12 +20,14 @@ const REQUIRED_HREFLANG = [
   { hrefLang: "de", href: `${ORIGIN}/de/` },
   { hrefLang: "fr", href: `${ORIGIN}/fr/` },
   { hrefLang: "es", href: `${ORIGIN}/es/` },
+  { hrefLang: "it", href: `${ORIGIN}/it/` },
+  { hrefLang: "nl", href: `${ORIGIN}/nl/` },
   { hrefLang: "x-default", href: `${ORIGIN}/` },
 ];
 
 /** In <link> tags only — avoids matching route strings buried in bundled JS */
 const BAD_REL_LOCALE_ROOT =
-  /<link\b[^>]*\bhref=(["'])\/(de|fr|es)\1[^>]*>/gi;
+  /<link\b[^>]*\bhref=(["'])\/(de|fr|es|it|nl)\1[^>]*>/gi;
 
 const BAD_REL_ROOT_CANONICAL = /<link\b[^>]*\brel=["']canonical["'][^>]*\bhref=(["'])\/\1/i;
 

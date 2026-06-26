@@ -362,7 +362,7 @@ export const Navbar: React.FC = () => {
           {/* Auth — sits just outside the right edge of the editor column */}
           {authCluster && (
             <div
-              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center gap-2.5 2xl:gap-3"
+              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center"
               ref={user?.email ? profileRef : undefined}
             >
               {authCluster}
@@ -505,8 +505,6 @@ export const Navbar: React.FC = () => {
               <Info className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.about}</span>
             </NavLink>
-
-            <div className="my-2 mx-3 h-px bg-gray-100 dark:bg-gray-800" role="separator" />
 
             {authLoading ? null : user?.email || isAuthRoute ? null : (
               <>

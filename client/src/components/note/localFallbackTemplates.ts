@@ -39,6 +39,8 @@ const GUIDED_BY_LANG: Record<
   de: GUIDED_WRITING_TEMPLATES_DE,
   fr: GUIDED_WRITING_TEMPLATES_FR,
   es: GUIDED_WRITING_TEMPLATES_ES,
+  it: GUIDED_WRITING_TEMPLATES_EN,
+  nl: GUIDED_WRITING_TEMPLATES_EN,
 };
 
 export const GUIDED_WRITING_PLACEHOLDER_LABELS = {
@@ -90,6 +92,8 @@ const PLACEHOLDER_LABELS_BY_LANG: Record<
   Record<GuidedWritingPlaceholder, string>
 > = {
   en: GUIDED_WRITING_PLACEHOLDER_LABELS,
+  it: GUIDED_WRITING_PLACEHOLDER_LABELS,
+  nl: GUIDED_WRITING_PLACEHOLDER_LABELS,
   de: {
     recipientName: "Empfängername",
     groupName: "Person oder Gruppe",

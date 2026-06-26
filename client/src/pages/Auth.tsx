@@ -24,10 +24,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
-import { normalizeMagicLinkEmailPurpose } from "@shared/magicLinkEmail";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
+import { Loader2 } from "lucide-react";
 
 const PASSKEY_FAIL_GENERIC =
   "Sign-in could not be completed. Try again or use a different sign-in method.";
@@ -102,6 +102,11 @@ function passkeyFailureDescription(error: unknown): string {
 
 type AuthMode = "sign-in" | "sign-up";
 
+function normalizeSignInPurpose(raw: unknown): "default" | "cloud_assist" {
+  if (typeof raw !== "string") return "default";
+  return raw.trim().toLowerCase() === "cloud_assist" ? "cloud_assist" : "default";
+}
+
 export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
@@ -110,11 +115,11 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   const [email, setEmail] = useState("");
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isUsingPasskey, setIsUsingPasskey] = useState(false);
-  const [isVerifyingEmailCode, setIsVerifyingEmailCode] = useState(false);
   const [debugMagicLink, setDebugMagicLink] = useState<string | null>(null);
   const [debugSignInCode, setDebugSignInCode] = useState<string | null>(null);
   const [signInToken, setSignInToken] = useState<string | null>(null);
-  const [emailCode, setEmailCode] = useState("");
+  const [signInCode, setSignInCode] = useState("");
+  const [isCompletingMagic, setIsCompletingMagic] = useState(false);
   const [view, setView] = useState<"form" | "sent">("form");
   const [typoDialogOpen, setTypoDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -130,11 +135,11 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     }
     const params = new URLSearchParams(window.location.search);
     return {
-      purpose: normalizeMagicLinkEmailPurpose(params.get("purpose")),
+      purpose: normalizeSignInPurpose(params.get("purpose")),
       returnTo: sanitizeAuthReturnTo(params.get("returnTo")) ?? "/",
     };
   }, []);
-  const isFileAttachSignIn = signInContext.purpose === "file_attach";
+  const isCloudAssistSignIn = signInContext.purpose === "cloud_assist";
 
   const resetAuthTurnstile = useCallback(() => {
     setTurnstileToken(null);
@@ -164,7 +169,56 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     return LIKELY_TYPO_EMAIL_DOMAINS.has(domain);
   };
 
-  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isVerifyingEmailCode;
+  const isAnyAuthBusy = isSendingMagicLink || isUsingPasskey || isCompletingMagic;
+
+  const completeMagicFromAuthPage = async (emailCode: string) => {
+    if (!signInToken) {
+      toast({
+        title: tx("authCheckEmailTitle", "Check your email"),
+        description: tx(
+          "authEmailCodeUnavailableDesc",
+          "Use the Log in button in the email to finish without typing the code.",
+        ),
+      });
+      return;
+    }
+    setIsCompletingMagic(true);
+    try {
+      const digits = emailCode.replace(/\D/g, "");
+      if (digits.length !== 6) {
+        toast({
+          title: tx("authSignInCodeRequiredTitle", "Enter your code"),
+          description: tx(
+            "authSignInCodeRequiredDesc",
+            "Use the 6-digit code from the email we just sent.",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+      const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
+        "/api/auth/magic/consume",
+        "POST",
+        { token: signInToken, emailCode: digits },
+      );
+      if (result?.totpRequired) {
+        window.location.href = "/auth/totp";
+        return;
+      }
+      await refreshUntilAuthenticated();
+      window.location.href = signInContext.returnTo;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Sign-in could not be completed. Try again.";
+      toast({
+        title: tx("authMagicLinkFailedTitle", "Sign-in failed"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompletingMagic(false);
+    }
+  };
 
   const handleLoginPasskey = async () => {
     if (!passkeySupported) {
@@ -241,10 +295,10 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     }
     setEmail(trimmedEmail);
     setIsSendingMagicLink(true);
+    setSignInToken(null);
+    setSignInCode("");
     setDebugMagicLink(null);
     setDebugSignInCode(null);
-    setSignInToken(null);
-    setEmailCode("");
     try {
       const response = await apiRequest<{
         debugMagicLink?: string;
@@ -253,13 +307,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       }>(
         "/api/auth/magic/send",
         "POST",
-        {
-          email: trimmedEmail,
-          turnstileToken,
-          locale: language,
-          emailPurpose: signInContext.purpose,
-          returnTo: signInContext.returnTo,
-        }
+        { email: trimmedEmail, turnstileToken, locale: language, returnTo: signInContext.returnTo },
       );
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
@@ -277,68 +325,13 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       });
     } catch {
       toast({
-        title: tx("authMagicLinkFailedTitle", "Email sign-in failed"),
+        title: tx("authMagicLinkFailedTitle", "Magic link failed"),
         description: tx("authMagicLinkFailedDesc", "We couldn't send the link. Please try again."),
         variant: "destructive",
       });
     } finally {
       resetAuthTurnstile();
       setIsSendingMagicLink(false);
-    }
-  };
-
-  const handleEmailCodeLogin = async () => {
-    if (!signInToken) return;
-    const digits = emailCode.replace(/\D/g, "");
-    if (digits.length !== 6) {
-      toast({
-        title: tx("authEmailCodeRequiredTitle", "Enter the code"),
-        description: tx("authEmailCodeRequiredDesc", "Use the 6-digit code from the email we just sent."),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsVerifyingEmailCode(true);
-    try {
-      const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
-        "/api/auth/magic/consume",
-        "POST",
-        { token: signInToken, emailCode: digits },
-      );
-      if (result?.totpRequired) {
-        window.location.href = "/auth/totp";
-        return;
-      }
-      await refreshUntilAuthenticated();
-      window.location.href = signInContext.returnTo;
-    } catch (error) {
-      let description = tx("authEmailCodeInvalidDesc", "That code doesn’t match. Check the latest email and try again.");
-      if (error instanceof ApiRequestError) {
-        try {
-          const body = JSON.parse(error.bodyText) as { code?: string };
-          if (body.code === "magic_bind_required") {
-            description = tx(
-              "authEmailCodeExpiredDesc",
-              "This code entry expired. Open the link in your email or request a new code.",
-            );
-          } else if (body.code === "magic_email_otp_exhausted") {
-            description = tx(
-              "authEmailCodeExhaustedDesc",
-              "Too many incorrect codes. Request a new email to continue.",
-            );
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-      toast({
-        title: tx("authEmailCodeFailedTitle", "Code sign-in failed"),
-        description,
-        variant: "destructive",
-      });
-    } finally {
-      setIsVerifyingEmailCode(false);
     }
   };
 
@@ -444,31 +437,31 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       <div className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
         <div className="space-y-6">
           {/* Header Section */}
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl font-bold leading-tight text-gray-900 dark:text-white sm:text-4xl">
-              {isFileAttachSignIn
-                ? tx("authFileAttachTitle", "Sign in to attach files")
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+              {isCloudAssistSignIn
+                ? tx("authCloudAssistTitle", "Sign in to use Cloud Assist")
                 : tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
-            <p className="mx-auto max-w-md text-base leading-relaxed text-gray-600 dark:text-gray-300">
-              {isFileAttachSignIn
+            <p className="text-base text-gray-600 dark:text-gray-300">
+              {isCloudAssistSignIn
                 ? tx(
-                    "authFileAttachSubtitle",
-                    "Enter your email to sign in. You’ll return to your note to attach encrypted files.",
+                    "authCloudAssistSubtitle",
+                    "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
                   )
-                : tx("authUnifiedSubtitle", "Enter your email to continue. If you’re new, we’ll create your account.")}
+                : tx("authUnifiedSubtitle", "Enter your email to continue. If you're new, we'll create your account.")}
             </p>
           </div>
 
           {/* Form Card */}
           {view === "form" ? (
             <Card className="border-2">
-              <CardHeader className="space-y-2.5 text-center">
-                <CardTitle className="text-xl leading-snug">
+              <CardHeader>
+                <CardTitle className="text-xl">
                   {tx("authGetStarted", "Get started")}
                 </CardTitle>
-                <CardDescription className="mx-auto max-w-sm leading-relaxed">
-                  {tx("authUnifiedCardDesc", "Use a secure email link or a passkey on this device.")}
+                <CardDescription>
+                  {tx("authUnifiedCardDesc", "Use a secure email link, or sign in faster with a passkey already saved on this device.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -553,14 +546,8 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   </p>
                 )}
 
-                <p className="mx-auto max-w-xs text-center text-xs leading-relaxed text-gray-500">
-                  {tx(
-                    "authByContinuingLine1",
-                    "By continuing, you acknowledge that you understand and",
-                  )}
-                  <br />
-                  {tx("authByContinuingLine2Prefix", "agree to the")}
-                  {" "}
+                <p className="text-xs text-gray-500 text-center leading-relaxed">
+                  {tx("authByContinuing", "By continuing, you acknowledge that you understand and agree to the")}{" "}
                   <a
                     href={localizedPath("/terms", language)}
                     target="_blank"
@@ -578,7 +565,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                   >
                     {tx("privacyPolicy", "Privacy Policy")}
                   </a>
-                  {tx("authByContinuingLine2Suffix", ".")}
+                  .
                 </p>
               </CardContent>
             </Card>
@@ -594,73 +581,82 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     </div>
                   </div>
                 </div>
-                <CardTitle className="text-2xl leading-snug">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
-                <CardDescription className="mt-2 text-base leading-relaxed">
+                <CardTitle className="text-2xl">{tx("authCheckEmailTitle", "Check your email")}</CardTitle>
+                <CardDescription className="text-base mt-2">
                   {tx("authUnifiedSentText", "If this address can receive PrivateNote email, a secure link is on its way to")}{" "}
                   <strong>{email.trim()}</strong>.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center">
-                    {tx(
-                      "authCheckEmailCodeHint",
-                      "Enter the 6-digit code here, or open the Log in link in that email.",
-                    )}
-                  </p>
-                </div>
-                {signInToken && (
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 text-center">
+                  {tx("authCheckInboxHint", "Check your inbox (and spam folder). It may take a minute to arrive.")}
+                </p>
+                {signInToken ? (
                   <form
                     className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      void handleEmailCodeLogin();
+                      void completeMagicFromAuthPage(signInCode);
                     }}
                   >
                     <div className="space-y-2">
-                      <label htmlFor="email-code-input" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {tx("authEmailCodeLabel", "6-digit code")}
+                      <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {tx(
+                          "authCheckEmailCodeHint",
+                          "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
+                        )}
                       </label>
                       <Input
-                        id="email-code-input"
+                        id="auth-sign-in-code"
                         type="text"
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={12}
                         placeholder="000000"
-                        value={emailCode}
-                        onChange={(event) => setEmailCode(event.target.value)}
+                        value={signInCode}
+                        onChange={(e) => setSignInCode(e.target.value)}
                         className="text-center text-lg tracking-widest"
+                        autoFocus
                       />
                     </div>
                     <Button
                       type="submit"
-                      disabled={isVerifyingEmailCode}
                       className="mt-3 w-full"
                       size="lg"
+                      disabled={isCompletingMagic}
                     >
-                      {isVerifyingEmailCode
-                        ? tx("authEmailCodeSigningIn", "Signing in...")
-                        : tx("authEmailCodeSubmit", "Log in with code")}
+                      {isCompletingMagic ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {tx("authSigningIn", "Signing in…")}
+                        </>
+                      ) : (
+                        tx("authContinueWithCode", "Continue with code")
+                      )}
                     </Button>
                   </form>
+                ) : (
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 text-center dark:border-gray-700 dark:bg-gray-900">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {tx(
+                        "authEmailCodeUnavailableInline",
+                        "Use the Log in button in the email to finish. Direct code entry is unavailable for this request.",
+                      )}
+                    </p>
+                  </div>
                 )}
-                <Button
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => {
                     resetAuthTurnstile();
                     setSignInToken(null);
-                    setEmailCode("");
+                    setSignInCode("");
                     setView("form");
                   }}
-                  className="w-full"
-                  size="lg"
+                  className="mx-auto block text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                 >
                   {tx("authDidntReceive", "Didn't receive an email? Try again")}
-                </Button>
+                </button>
                 {showDebugMagicLinkUi && (
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 space-y-3">
                     <div>

@@ -6,6 +6,8 @@ import type {
   LocalLlmValidationIssue,
 } from "./promptTemplates";
 
+type Localized<T> = Partial<Record<SupportedLanguage, T>> & { en: T };
+
 const AI_SENTENCE_LENGTH_LABELS: Record<Exclude<AiSentenceLengthId, "auto">, string> = {
   "1-2": "1 - 2",
   "2-3": "2 - 3",
@@ -578,7 +580,7 @@ export function mergePromptTemplatesForLanguage(
   return base.map((t) => ({ ...t, ...(ov[t.id] ?? {}) }));
 }
 
-const SENTENCE_SUFFIX: Record<SupportedLanguage, (label: string) => string> = {
+const SENTENCE_SUFFIX: Localized<(label: string) => string> = {
   en: (label) => ` Write (${label}) of sentences.`,
   de: (label) => ` Schreibe (${label}) Sätze.`,
   fr: (label) => ` Écris (${label}) phrases.`,
@@ -612,7 +614,7 @@ export function applySentenceLengthToUserPrompt(
   return base + formatSentenceLengthUserSuffix(preset, language);
 }
 
-const USER_REQUEST_LABEL: Record<SupportedLanguage, string> = {
+const USER_REQUEST_LABEL: Localized<string> = {
   en: "User request:",
   de: "Nutzeranfrage:",
   fr: "Demande de l’utilisateur :",
@@ -623,7 +625,7 @@ export function getLocalizedUserRequestLabel(language: SupportedLanguage): strin
   return USER_REQUEST_LABEL[language] ?? USER_REQUEST_LABEL.en;
 }
 
-const BASE_INSTRUCTION_LOC: Record<SupportedLanguage, string> = {
+const BASE_INSTRUCTION_LOC: Localized<string> = {
   en: `Write like a real person.
 Keep it concise, clear, and natural.
 Avoid clichés, filler, and generic phrases.
@@ -650,7 +652,7 @@ Sin explicaciones antes ni después del mensaje.
 Sigue la indicación de longitud de abajo.`,
 };
 
-const BASE_INSTRUCTION_SMALL_LOC: Record<SupportedLanguage, string> = {
+const BASE_INSTRUCTION_SMALL_LOC: Localized<string> = {
   en: [
     "Use simple, natural wording.",
     "Keep it short and clear.",
@@ -685,14 +687,14 @@ const BASE_INSTRUCTION_SMALL_LOC: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const PLACEHOLDER_BRACE_RULE_LOC: Record<SupportedLanguage, string> = {
+const PLACEHOLDER_BRACE_RULE_LOC: Localized<string> = {
   en: "Hard rule: Never output {{ or }} in your answer. Use only real names and facts from the USER REQUEST and parsed cues when present.",
   de: "Strikte Regel: Gib niemals {{ oder }} in der Antwort aus. Nur echte Namen und Fakten aus der NUTZERANFRAGE und geparsten Hinweisen.",
   fr: "Règle stricte : n’affiche jamais {{ ou }} dans ta réponse. Utilise uniquement les noms et faits réels de la DEMANDE et des indices fournis.",
   es: "Regla estricta: nunca escribas {{ ni }} en tu respuesta. Solo nombres y hechos reales de la SOLICITUD y pistas analizadas.",
 };
 
-const GROUNDING_RULES_SMALL_LOC: Record<SupportedLanguage, string> = {
+const GROUNDING_RULES_SMALL_LOC: Localized<string> = {
   en: [
     "Grounding (must follow):",
     "- Use ONLY names, titles, organizations, dates, topics, and facts from the USER REQUEST below.",
@@ -731,21 +733,21 @@ const GROUNDING_RULES_SMALL_LOC: Record<SupportedLanguage, string> = {
   ].join("\n"),
 };
 
-const EXAMPLE_SHAPE_PREFIX: Record<SupportedLanguage, string> = {
+const EXAMPLE_SHAPE_PREFIX: Localized<string> = {
   en: "Example output shape only. Sample names and details are fictional. Use facts from the USER REQUEST only; do not copy sample names or wording:",
   de: "Nur Beispielform. Beispielnamen sind frei erfunden. Nutze nur Fakten aus der NUTZERANFRAGE; kopiere keine Beispielnamen oder Formulierungen:",
   fr: "Forme d’exemple uniquement. Noms et détails fictifs. Utilise uniquement les faits de la DEMANDE ; ne copie pas les exemples :",
   es: "Solo forma de ejemplo. Nombres y detalles ficticios. Usa solo hechos de la SOLICITUD; no copies los ejemplos:",
 };
 
-const ULTRA_SMALL_NOTE: Record<SupportedLanguage, string> = {
+const ULTRA_SMALL_NOTE: Localized<string> = {
   en: 'On-device model is very small: one tight paragraph when possible. No preamble (“Sure”, “Here is”). Jump straight into the requested text.',
   de: "On-Device-Modell ist sehr klein: wenn möglich ein kompakter Absatz. Kein Vorwort („Klar“, „Hier ist“). Direkt in den gewünschten Text.",
   fr: "Le modèle local est très petit : un paragraphe serré si possible. Pas d’intro (« Bien sûr », « Voici »). Va droit au texte demandé.",
   es: "El modelo local es muy pequeño: un párrafo compacto si se puede. Sin preámbulo (« Claro », « Aquí tienes »). Ve directo al texto pedido.",
 };
 
-const EXTRA_SMALL_LINES: Record<SupportedLanguage, [string, string]> = {
+const EXTRA_SMALL_LINES: Localized<[string, string]> = {
   en: ["Use simple words.", "Do not add a title."],
   de: ["Einfache Wörter.", "Keinen Titel hinzufügen."],
   fr: ["Mots simples.", "Pas de titre."],
@@ -786,13 +788,13 @@ export function buildOutputRepairAdditionLocalized(
   issues: LocalLlmValidationIssue[],
   language: SupportedLanguage = "en",
 ): string {
-  const hdr: Record<SupportedLanguage, string> = {
+  const hdr: Localized<string> = {
     en: "---\nREGENERATE (your last answer failed checks). Use the same USER REQUEST above.\nRules for this attempt:",
     de: "---\nNEU GENERIEREN (letzte Antwort hat Prüfungen nicht bestanden). Nutze dieselbe NUTZERANFRAGE wie oben.\nRegeln für diesen Versuch:",
     fr: "---\nREGÉNÈRE (ta dernière réponse a échoué aux contrôles). Utilise la même DEMANDE ci-dessus.\nRègles pour cette tentative :",
     es: "---\nREGENERA (tu última respuesta no pasó las comprobaciones). Usa la misma SOLICITUD de arriba.\nReglas para este intento:",
   };
-  const lines: Record<SupportedLanguage, string[]> = {
+  const lines: Localized<string[]> = {
     en: [
       "- Output only the final text. No preamble like “Here is” or “Sure”.",
       "- No {{ or }} and no placeholder tokens.",
@@ -814,25 +816,25 @@ export function buildOutputRepairAdditionLocalized(
       "- Sin « Nota final: » ni etiquetas de razonamiento.",
     ],
   };
-  const meeting: Record<SupportedLanguage, string> = {
+  const meeting: Localized<string> = {
     en: "- Greet or address the person using the exact name or title from the USER REQUEST.",
     de: "- Grüße oder sprich die Person mit exaktem Namen oder Titel aus der NUTZERANFRAGE an.",
     fr: "- Salue la personne avec le nom ou titre exact de la DEMANDE.",
     es: "- Saluda a la persona con el nombre o cargo exacto de la SOLICITUD.",
   };
-  const bullets: Record<SupportedLanguage, string> = {
+  const bullets: Localized<string> = {
     en: "- Use at most 4 bullet points. One idea per bullet.",
     de: "- Höchstens 4 Stichpunkte. Eine Idee pro Punkt.",
     fr: "- Au plus 4 puces. Une idée par puce.",
     es: "- Como máximo 4 viñetas. Una idea por viñeta.",
   };
-  const thinking: Record<SupportedLanguage, string> = {
+  const thinking: Localized<string> = {
     en: "- Do not output <think>, <think>, or any XML-style reasoning tags.",
     de: "- Keine <think>- oder XML-ähnlichen Denk-Tags ausgeben.",
     fr: "- N’affiche pas de balises <think> ni de raisonnement XML.",
     es: "- No emitas <think> ni etiquetas XML de razonamiento.",
   };
-  const end: Record<SupportedLanguage, string> = {
+  const end: Localized<string> = {
     en: "Throw away the bad patterns above and write the correct version now.",
     de: "Ignoriere die fehlerhaften Muster oben und schreibe jetzt die richtige Version.",
     fr: "Oublie les mauvais schémas ci-dessus et écris la version correcte maintenant.",

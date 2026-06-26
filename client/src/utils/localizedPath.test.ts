@@ -23,6 +23,8 @@ describe("localizedPath", () => {
   it("localizes without trailing slash", () => {
     assert.equal(localizedPath("/about", "en"), "/about");
     assert.equal(localizedPath("/about", "de"), "/de/about");
+    assert.equal(localizedPath("/about", "it"), "/it/about");
+    assert.equal(localizedPath("/about", "nl"), "/nl/about");
     assert.equal(localizedPath("/developers", "de"), "/de/developers");
   });
 

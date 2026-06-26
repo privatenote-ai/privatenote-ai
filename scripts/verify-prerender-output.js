@@ -24,13 +24,17 @@ const REQUIRED_FLAT_HTML = [
   "fr/about.html",
   "es/index.html",
   "es/about.html",
+  "it/index.html",
+  "it/about.html",
+  "nl/index.html",
+  "nl/about.html",
   "de/terms.html",
 ];
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
-/** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/) */
+/** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/, /it/, /nl/) */
 const BAD_CANONICAL_TRAILING_SLASH_RE =
-  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/(?!(de|fr|es)\/["'])[^"']+\/["']/i;
+  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/(?!(de|fr|es|it|nl)\/["'])[^"']+\/["']/i;
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
@@ -57,7 +61,7 @@ function htmlFilesForRoute(route, dir) {
   if (!rel) {
     return [path.join(dir, "index.html")];
   }
-  const isLocaleHome = /^(de|fr|es)$/.test(rel);
+  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
   const files = [path.join(dir, rel, "index.html")];
   if (!isLocaleHome) {
     files.unshift(path.join(dir, `${rel}.html`));

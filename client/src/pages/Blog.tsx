@@ -11,90 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/LanguageContext';
 import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
+import { buildFeaturedBlogPost, buildStaticBlogPosts } from '@/utils/staticBlogPosts';
 
 export default function Blog() {
   const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
-  const featuredPost = {
-    title: t.blogWorkplaceTextsTitle,
-    excerpt: t.blogWorkplaceTextsExcerpt,
-    author: 'PrivateNote.ai',
-    slug: 'workplace-texts-private-note',
-    publishedAt: new Date().toISOString(),
-    tags: [t.blogTagPrivacy, t.blogTagWorkplace, t.blogTagSecurity],
-  };
-  const staticPosts: BlogPost[] = [
-    {
-      id: -6,
-      title: t.blogCodexTitle,
-      excerpt: t.blogCodexExcerpt,
-      author: 'PrivateNote.ai',
-      slug: 'privatenote-codex',
-      publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagDeveloper, t.blogTagMcp, t.blogTagIntegration, t.blogTagSecurity]),
-      content: '',
-      coverImage: null,
-      published: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: -5,
-      title: t.blogDevelopersTitle,
-      excerpt: t.blogDevelopersExcerpt,
-      author: 'PrivateNote.ai',
-      slug: 'privatenote-for-developers',
-      publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagDeveloper, t.blogTagIntegration, t.blogTagSecurity]),
-      content: '',
-      coverImage: null,
-      published: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: -4,
-      title: t.blogPrivacyTitle,
-      excerpt: t.blogPrivacyExcerpt,
-      author: 'PrivateNote.ai',
-      slug: 'privacy-tools',
-      publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagTools, t.blogTagSecurity]),
-      content: '',
-      coverImage: null,
-      published: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: -1,
-      title: t.blogGoodEnoughTitle,
-      excerpt: t.blogGoodEnoughExcerpt,
-      author: 'PrivateNote.ai',
-      slug: 'myth-good-enough-security',
-      publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagAuthentication]),
-      content: '',
-      coverImage: null,
-      published: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: -2,
-      title: t.blogPasswordTitle,
-      excerpt: t.blogPasswordExcerpt,
-      author: 'PrivateNote.ai',
-      slug: 'how-we-generate-passwords',
-      publishedAt: new Date(),
-      tags: JSON.stringify([t.blogTagPasswords, t.blogTagSecurity, t.blogTagCryptography]),
-      content: '',
-      coverImage: null,
-      published: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ];
+  const featuredPost = buildFeaturedBlogPost(t);
+  const staticPosts = buildStaticBlogPosts(t);
 
   const {
     data: posts,

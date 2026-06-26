@@ -9,7 +9,7 @@ type CardCopy = { title: string; body: string; icon: React.ComponentType<{ class
 type SectionCopy = { title: string; icon: React.ComponentType<{ className?: string }>; paragraphs: string[]; notes?: { title: string; body: string }[]; bullets?: { title: string; body: string }[] };
 type PasswordPostCopy = { intro: string; lead: string; cards: CardCopy[]; sections: SectionCopy[]; bestPracticesTitle: string; bestPractices: { title: string; body: string }[] };
 
-const copy: Record<SupportedLanguage, PasswordPostCopy> = {
+const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: PasswordPostCopy } = {
   en: {
     intro: "Creating a strong password is more than combining random characters. At PrivateNote.ai, our generator is built around three principles:",
     lead: "Here is how each component works to keep your accounts secure.",
@@ -246,7 +246,7 @@ const copy: Record<SupportedLanguage, PasswordPostCopy> = {
 
 export const PasswordGenerationPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language];
+  const article = copy[language] ?? copy.en;
   const passwordPath = localizedPath("/password-generator", language);
   const blogPath = localizedPath("/blog", language);
 

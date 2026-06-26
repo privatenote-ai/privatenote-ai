@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import {
   registerPasskeyWithRetry,
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 
@@ -20,7 +21,6 @@ import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-r
 let magicLinkTokenCache: string | null = null;
 let magicLinkReturnToCache: string = "/";
 let magicLinkReturnToFromUrlCache = false;
-const AUTH_SIGNED_IN_STORAGE_KEY = "privatenote:auth:signed-in";
 
 function takeMagicLinkContextOnce(): {
   token: string | null;
@@ -55,157 +55,54 @@ export default function AuthMagic() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const [phase, setPhase] = useState<Phase>("initial");
   const [token, setToken] = useState<string | null>(null);
   const [friendlyMessage, setFriendlyMessage] = useState<string>("");
   const [hasPasskeys, setHasPasskeys] = useState<boolean | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [dismissedNudge, setDismissedNudge] = useState(false);
-  const [emailCodeAvailable, setEmailCodeAvailable] = useState(false);
   const [emailCodeRequired, setEmailCodeRequired] = useState(false);
   const [oneTapAllowed, setOneTapAllowed] = useState(false);
   const [emailCode, setEmailCode] = useState("");
   const [returnTo, setReturnTo] = useState("/");
   const [returnToFromUrl, setReturnToFromUrl] = useState(false);
+  const autoConsumeTokenRef = useRef<string | null>(null);
 
-  const announceSignedIn = () => {
-    try {
-      window.localStorage.setItem(AUTH_SIGNED_IN_STORAGE_KEY, String(Date.now()));
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const completeSignedInState = async () => {
-    setPhase("success");
-    setFriendlyMessage("You're signed in.");
-    announceSignedIn();
-    // Retry: D1 read-after-write lag can briefly return authenticated:false.
-    await refreshUntilAuthenticated();
-    if (returnToFromUrl) {
-      window.location.href = returnTo;
-      return;
-    }
-    const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
-    if (me && typeof me.hasPasskeys === "boolean") {
-      setHasPasskeys(me.hasPasskeys);
-    }
-  };
-
-  const refreshIfAlreadySignedIn = async (): Promise<boolean> => {
-    const session = await apiRequest<{ authenticated?: boolean }>("/api/auth/session", "GET").catch(() => null);
-    if (session?.authenticated) {
-      await completeSignedInState();
-      return true;
-    }
-    return false;
-  };
-
-  useEffect(() => {
-    const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
-      takeMagicLinkContextOnce();
-    setReturnTo(nextReturnTo);
-    setReturnToFromUrl(nextReturnToFromUrl);
-    if (!t) {
-      setPhase("error");
-      setFriendlyMessage("Open the sign-in link from your email on this device, or request a new link.");
-      return;
-    }
-    setToken(t);
-
-    void (async () => {
-      try {
-        const prep = await apiRequest<{
-          ok?: boolean;
-          emailCodeAvailable?: boolean;
-          emailCodeRequired?: boolean;
-          oneTapAllowed?: boolean;
-          riskLevel?: string;
-        }>("/api/auth/magic/prepare", "POST", { token: t });
-
-        const canUseCode = prep?.emailCodeAvailable === true || prep?.emailCodeRequired === true;
-        const needCode = prep?.emailCodeRequired === true;
-        const canUseOneTap = prep?.oneTapAllowed === true;
-        setEmailCodeAvailable(canUseCode);
-        setEmailCodeRequired(needCode);
-        setOneTapAllowed(canUseOneTap);
-        if (needCode) {
-          setFriendlyMessage(
-            prep?.riskLevel === "medium"
-              ? "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue. For security, finish in the same browser where you opened the link."
-              : "Enter the 6-digit code from your sign-in email, then continue. For security, finish sign-in in the same browser where you opened the link.",
-          );
-        } else if (canUseOneTap && canUseCode) {
-          setFriendlyMessage(
-            "You can log in with this link, or enter the 6-digit code from the same email.",
-          );
-        } else {
-          setFriendlyMessage(
-            "This page only prepares sign-in in your browser. Your session starts after you confirm. For security, finish sign-in in the same browser where you opened the link.",
-          );
-        }
-        setPhase("confirm");
-      } catch (err) {
-        if (err instanceof ApiRequestError && err.status === 403) {
-          try {
-            const body = JSON.parse(err.bodyText) as { code?: string };
-            if (body.code === "context_high_risk") {
-              setPhase("error");
-              setFriendlyMessage(
-                "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
-              );
-              return;
-            }
-            if (body.code === "origin_required") {
-              setPhase("error");
-              setFriendlyMessage(
-                "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
-              );
-              return;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        setPhase("error");
-        setFriendlyMessage(
-          "We couldn’t verify that sign-in link. Open it from your email again, or request a new link.",
-        );
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === AUTH_SIGNED_IN_STORAGE_KEY) {
-        void refreshIfAlreadySignedIn();
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [returnTo, returnToFromUrl]);
-
-  const runConsume = async (options: { useEmailCode?: boolean } = {}) => {
-    if (!token) return;
-    const useEmailCode = options.useEmailCode === true || emailCodeRequired;
-    if (useEmailCode) {
-      const digits = emailCode.replace(/\D/g, "");
+  const runConsume = async (
+    options: {
+      token?: string;
+      emailCodeRequired?: boolean;
+      emailCode?: string;
+      returnTo?: string;
+      returnToFromUrl?: boolean;
+    } = {},
+  ) => {
+    const activeToken = options.token ?? token;
+    const requiresCode = options.emailCodeRequired ?? emailCodeRequired;
+    const activeEmailCode = options.emailCode ?? emailCode;
+    const nextReturnTo = options.returnTo ?? returnTo;
+    const nextReturnToFromUrl = options.returnToFromUrl ?? returnToFromUrl;
+    if (!activeToken) return;
+    if (requiresCode) {
+      const digits = activeEmailCode.replace(/\D/g, "");
       if (digits.length !== 6) {
         toast({
-          title: "Enter the code",
-          description: "Use the 6-digit code from the email we just sent.",
+          title: tx("authMagicEnterCodeTitle", "Enter the code"),
+          description: tx("authMagicEnterCodeDesc", "Use the 6-digit code from the email we just sent."),
           variant: "destructive",
         });
         return;
       }
     }
     setPhase("loading");
-    setFriendlyMessage("Completing sign-in…");
+    setFriendlyMessage(tx("authMagicCompletingDesc", "Completing sign-in…"));
 
     try {
-      const payload: { token: string; emailCode?: string } = { token };
-      if (useEmailCode) {
-        payload.emailCode = emailCode.replace(/\D/g, "").slice(0, 6);
+      const payload: { token: string; emailCode?: string } = { token: activeToken };
+      if (requiresCode) {
+        payload.emailCode = activeEmailCode.replace(/\D/g, "").slice(0, 6);
       }
       const result = await apiRequest<{ ok: boolean; totpRequired?: boolean }>(
         "/api/auth/magic/consume",
@@ -219,20 +116,34 @@ export default function AuthMagic() {
         return;
       }
 
-      await completeSignedInState();
+      setPhase("success");
+      setFriendlyMessage(tx("authMagicSignedInDesc", "You're signed in."));
+      // Retry: D1 read-after-write lag can briefly return authenticated:false.
+      await refreshUntilAuthenticated();
+      if (nextReturnToFromUrl) {
+        window.location.href = nextReturnTo;
+        return;
+      }
+      const me = await apiRequest<{ hasPasskeys: boolean }>("/api/auth/me", "GET").catch(() => undefined);
+      if (me && typeof me.hasPasskeys === "boolean") {
+        setHasPasskeys(me.hasPasskeys);
+      }
     } catch (error) {
       setPhase("error");
       if (error instanceof ApiRequestError) {
         try {
           const body = JSON.parse(error.bodyText) as { code?: string };
           if (body.code === "magic_bind_required" || body.code === "magic_email_otp_exhausted") {
-            if (body.code === "magic_bind_required" && await refreshIfAlreadySignedIn()) {
-              return;
-            }
             setFriendlyMessage(
               body.code === "magic_email_otp_exhausted"
-                ? "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code."
-                : "This confirmation step expired. Open the link from your email again so we can verify your browser, then press Continue.",
+                ? tx(
+                    "authMagicOtpExhaustedDesc",
+                    "Too many incorrect codes. Open the sign-in link from your email again to start over with a new code.",
+                  )
+                : tx(
+                    "authMagicBindExpiredDesc",
+                    "This confirmation step expired. Open the link from your email again so we can verify your browser, then press Continue.",
+                  ),
             );
             return;
           }
@@ -241,14 +152,17 @@ export default function AuthMagic() {
             setPhase("confirm");
             setFriendlyMessage(
               body.code === "magic_email_code_invalid"
-                ? "That code doesn’t match. Check the latest email and try again."
-                : "Enter the 6-digit code from your email, then press Continue sign in.",
+                ? tx("authMagicCodeInvalidDesc", "That code doesn’t match. Check the latest email and try again.")
+                : tx("authMagicCodeRequiredDesc", "Enter the 6-digit code from your email, then press Continue sign in."),
             );
             return;
           }
           if (body.code === "origin_required") {
             setFriendlyMessage(
-              "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+              tx(
+                "authMagicOriginRequiredDesc",
+                "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+              ),
             );
             return;
           }
@@ -256,22 +170,110 @@ export default function AuthMagic() {
           /* ignore */
         }
       }
-      const raw = error instanceof Error ? error.message : "Email sign-in failed.";
+      const raw = error instanceof Error ? error.message : "Magic link failed.";
       if (typeof raw === "string" && raw.toLowerCase().includes("expired")) {
-        setFriendlyMessage("This link has expired. Please request a new sign‑in link.");
+        setFriendlyMessage(tx("authMagicExpiredDesc", "This link has expired. Please request a new sign-in link."));
       } else if (typeof raw === "string" && raw.toLowerCase().includes("invalid")) {
-        setFriendlyMessage("This sign‑in link is no longer valid. Please request a new one.");
+        setFriendlyMessage(tx("authMagicInvalidDesc", "This sign-in link is no longer valid. Please request a new one."));
       } else {
-        setFriendlyMessage("We couldn’t verify that link. Please request a new sign‑in link.");
+        setFriendlyMessage(tx("authMagicVerifyGenericDesc", "We couldn’t verify that link. Please request a new sign-in link."));
       }
     } finally {
       magicLinkTokenCache = null;
     }
   };
 
+  useEffect(() => {
+    const { token: t, returnTo: nextReturnTo, returnToFromUrl: nextReturnToFromUrl } =
+      takeMagicLinkContextOnce();
+    setReturnTo(nextReturnTo);
+    setReturnToFromUrl(nextReturnToFromUrl);
+    if (!t) {
+      setPhase("error");
+      setFriendlyMessage(tx("authMagicMissingLinkDesc", "Open the sign-in link from your email on this device, or request a new link."));
+      return;
+    }
+    setToken(t);
+
+    void (async () => {
+      try {
+        const prep = await apiRequest<{
+          ok?: boolean;
+          emailCodeRequired?: boolean;
+          oneTapAllowed?: boolean;
+          riskLevel?: string;
+        }>("/api/auth/magic/prepare", "POST", { token: t });
+
+        const needCode = prep?.emailCodeRequired === true;
+        const canOneTap = prep?.oneTapAllowed === true;
+        setEmailCodeRequired(needCode);
+        setOneTapAllowed(canOneTap);
+        if (needCode) {
+          setFriendlyMessage(
+            tx(
+              "authMagicMediumRiskDesc",
+              "Your network or browser looks different from when the link was sent. Enter the 6-digit code from the same email, then continue.",
+            ),
+          );
+          setPhase("confirm");
+          return;
+        }
+        if (canOneTap && autoConsumeTokenRef.current !== t) {
+          autoConsumeTokenRef.current = t;
+          await runConsume({
+            token: t,
+            emailCodeRequired: false,
+            returnTo: nextReturnTo,
+            returnToFromUrl: nextReturnToFromUrl,
+          });
+          return;
+        }
+        setFriendlyMessage(
+          tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Log in below to finish in this browser."),
+        );
+        setPhase("confirm");
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 403) {
+          try {
+            const body = JSON.parse(err.bodyText) as { code?: string };
+            if (body.code === "context_high_risk") {
+              setPhase("error");
+              setFriendlyMessage(
+                tx(
+                  "authMagicHighRiskDesc",
+                  "This link doesn’t match this device or network closely enough. Request a new sign-in link and open it here.",
+                ),
+              );
+              return;
+            }
+            if (body.code === "origin_required") {
+              setPhase("error");
+              setFriendlyMessage(
+                tx(
+                  "authMagicOriginRequiredDesc",
+                  "Sign-in must continue from the site in your browser. Open the link in this tab again or request a new link.",
+                ),
+              );
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setPhase("error");
+        setFriendlyMessage(
+          tx("authMagicVerifyFailedDesc", "We couldn’t verify that sign-in link. Open it from your email again, or request a new link."),
+        );
+      }
+    })();
+  }, []);
+
   const handleRegisterPasskey = async () => {
     if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
-      toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
+      toast({
+        title: tx("authPasskeysNotSupportedTitle", "Passkeys not supported"),
+        description: tx("authPasskeysNotSupportedDesc", "This browser does not support passkeys."),
+      });
       return;
     }
     setIsRegistering(true);
@@ -279,12 +281,12 @@ export default function AuthMagic() {
       await registerPasskeyWithRetry();
       setHasPasskeys(true);
       toast({
-        title: "Passkey added",
-        description: "You can sign in with this passkey on this device.",
+        title: tx("authMagicPasskeyAddedTitle", "Passkey added"),
+        description: tx("authMagicPasskeyAddedDesc", "You can sign in with this passkey on this device."),
       });
     } catch (error) {
       toast({
-        title: "Passkey registration failed",
+        title: tx("authMagicPasskeyFailedTitle", "Passkey registration failed"),
         description: passkeyRegistrationErrorMessage(error),
         variant: "destructive",
       });
@@ -300,19 +302,14 @@ export default function AuthMagic() {
         {phase === "confirm" && (
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl">Continue email sign-in</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicContinueTitle", "Continue sign in")}</CardTitle>
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              <p className="text-sm font-medium text-muted-foreground text-center max-w-md">
-                {oneTapAllowed
-                  ? "For this sign-in, link-only login is available. You can still use the code."
-                  : "For your security, enter the code from your email."}
-              </p>
-              {emailCodeAvailable && (
+              {emailCodeRequired && (
                 <div className="w-full max-w-xs space-y-2">
                   <label htmlFor="magic-email-code" className="text-sm font-medium text-center block">
-                    6-digit code from email
+                    {tx("authMagicEmailCodeLabel", "6-digit code from email")}
                   </label>
                   <Input
                     id="magic-email-code"
@@ -328,38 +325,16 @@ export default function AuthMagic() {
                   />
                 </div>
               )}
-              <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-                {oneTapAllowed && (
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="flex-1"
-                    onClick={() => void runConsume({ useEmailCode: false })}
-                  >
-                    Log in with this link
-                  </Button>
-                )}
-                {emailCodeAvailable && (
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant={oneTapAllowed ? "outline" : "default"}
-                    className="flex-1"
-                    onClick={() => void runConsume({ useEmailCode: true })}
-                  >
-                    Log in with code
-                  </Button>
-                )}
-                {!oneTapAllowed && !emailCodeAvailable && (
-                  <Button type="button" size="lg" className="flex-1" onClick={() => void runConsume()}>
-                    Continue sign in
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                Opening the link only loads this page. Your session starts after you confirm here — not from the link
-                alone.
-              </p>
+              <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
+                {oneTapAllowed && !emailCodeRequired
+                  ? tx("authMagicLoginButton", "Log in")
+                  : tx("authMagicContinueButton", "Continue sign in")}
+              </Button>
+              {oneTapAllowed && !emailCodeRequired ? (
+                <p className="text-xs text-muted-foreground text-center max-w-md">
+                  {tx("authMagicSessionStartsAfterConfirm", "Your session starts after you confirm here, not from the link alone.")}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         )}
@@ -368,9 +343,12 @@ export default function AuthMagic() {
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto mb-2" />
-              <CardTitle className="text-2xl">Checking your sign-in link…</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicCheckingTitle", "Checking your sign-in link…")}</CardTitle>
               <CardDescription className="text-base mt-2">
-                Validating the link and binding this browser. No session is created until you continue.
+                {tx(
+                  "authMagicCheckingDesc",
+                  "Validating the link and binding this browser. No session is created until you continue.",
+                )}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -385,7 +363,7 @@ export default function AuthMagic() {
                   <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1 animate-pulse" />
                 </div>
               </div>
-              <CardTitle className="text-2xl">Signing you in…</CardTitle>
+              <CardTitle className="text-2xl">{tx("authMagicSigningInTitle", "Signing you in…")}</CardTitle>
               <CardDescription className="text-base mt-2">{friendlyMessage}</CardDescription>
             </CardHeader>
           </Card>
@@ -403,13 +381,13 @@ export default function AuthMagic() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
-                    Email sign-in
+                    {tx("authMagicLabel", "Magic Link")}
                   </p>
                   <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                    Success
+                    {tx("authMagicSuccessTitle", "Success")}
                   </CardTitle>
                   <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
-                    You're signed in.
+                    {tx("authMagicSignedInDesc", "You're signed in.")}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -421,7 +399,9 @@ export default function AuthMagic() {
                     size="lg"
                     className="min-w-[140px]"
                   >
-                    {returnTo === "/" ? "Continue to Home" : "Continue"}
+                    {returnTo === "/"
+                      ? tx("authMagicContinueHome", "Continue to Home")
+                      : tx("authContinue", "Continue")}
                   </Button>
                 </div>
               </CardContent>
@@ -436,10 +416,10 @@ export default function AuthMagic() {
                     </div>
                     <div className="flex-1 space-y-1">
                       <CardTitle className="text-xl text-gray-900 dark:text-white">
-                        Secure your account with a passkey
+                        {tx("authMagicPasskeyNudgeTitle", "Secure your account with a passkey")}
                       </CardTitle>
                       <CardDescription className="text-base">
-                        Faster sign-in. No emails. No passwords.
+                        {tx("authMagicPasskeyNudgeDesc", "Faster sign-in. No emails. No passwords.")}
                       </CardDescription>
                     </div>
                   </div>
@@ -455,12 +435,12 @@ export default function AuthMagic() {
                       {isRegistering ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Setting up...
+                          {tx("authMagicPasskeySettingUp", "Setting up...")}
                         </>
                       ) : (
                         <>
                           <KeyRound className="mr-2 h-4 w-4" />
-                          Add passkey
+                          {tx("authMagicPasskeyAdd", "Add passkey")}
                         </>
                       )}
                     </Button>
@@ -471,11 +451,14 @@ export default function AuthMagic() {
                       className="flex-1"
                       size="lg"
                     >
-                      Maybe later
+                      {tx("authMagicMaybeLater", "Maybe later")}
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                    Passkeys use biometric authentication for secure, passwordless sign-in
+                    {tx(
+                      "authMagicPasskeyNudgeFootnote",
+                      "Passkeys use biometric authentication for secure, passwordless sign-in.",
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -494,10 +477,10 @@ export default function AuthMagic() {
               </div>
               <div className="space-y-2">
                 <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
-                  Email sign-in
+                  {tx("authMagicLabel", "Magic Link")}
                 </p>
                 <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                  Link Problem
+                  {tx("authMagicProblemTitle", "Link Problem")}
                 </CardTitle>
                 <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
                   {friendlyMessage}
@@ -507,15 +490,19 @@ export default function AuthMagic() {
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button asChild className="flex-1" size="lg">
-                  <a href="/auth/sign-in">Get a new link</a>
+                  <a href="/auth/sign-in">{tx("authMagicGetNewLink", "Get a new link")}</a>
                 </Button>
                 <Button variant="outline" asChild className="flex-1" size="lg">
-                  <a href="/auth/sign-in">Try again</a>
+                  <a href="/auth/sign-in">{tx("authRetry", "Retry")}</a>
                 </Button>
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
                 <p className="text-sm text-red-800 dark:text-red-300 text-center">
-                  <strong>Security note:</strong> Email sign-in links expire after a short time (about ten minutes) and can only be used once.
+                  <strong>{tx("authMagicSecurityNoteTitle", "Security note:")}</strong>{" "}
+                  {tx(
+                    "authMagicSecurityNoteDesc",
+                    "Magic links expire after a short time (about ten minutes) and can only be used once.",
+                  )}
                 </p>
               </div>
             </CardContent>

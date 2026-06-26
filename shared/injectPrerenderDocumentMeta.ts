@@ -7,20 +7,24 @@ import { en } from "../client/src/utils/translations/en.ts";
 import { de } from "../client/src/utils/translations/de.ts";
 import { fr } from "../client/src/utils/translations/fr.ts";
 import { es } from "../client/src/utils/translations/es.ts";
+import { it } from "../client/src/utils/translations/it.ts";
+import { nl } from "../client/src/utils/translations/nl.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { isLocaleHomeRoute } from "./homeSeoLinks.ts";
 
-const LOCALE_TRANSLATIONS: Record<"de" | "fr" | "es", Translations> = {
+const LOCALE_TRANSLATIONS: Record<"de" | "fr" | "es" | "it" | "nl", Translations> = {
   de: { ...en, ...de },
   fr: { ...en, ...fr },
   es: { ...en, ...es },
+  it: { ...en, ...it },
+  nl: { ...en, ...nl },
 };
 
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
 function translationsForRoute(route: string): Translations {
   const first = route.split("/").filter(Boolean)[0];
-  if (first === "de" || first === "fr" || first === "es") {
+  if (first === "de" || first === "fr" || first === "es" || first === "it" || first === "nl") {
     return LOCALE_TRANSLATIONS[first];
   }
   return en;
@@ -28,7 +32,7 @@ function translationsForRoute(route: string): Translations {
 
 function htmlLangForRoute(route: string): string {
   const first = route.split("/").filter(Boolean)[0];
-  if (first === "de" || first === "fr" || first === "es") return first;
+  if (first === "de" || first === "fr" || first === "es" || first === "it" || first === "nl") return first;
   return "en";
 }
 
@@ -83,7 +87,17 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = replaceMetaContent(out, "name", "twitter:description", description);
 
   const ogLocale =
-    lang === "de" ? "de_DE" : lang === "fr" ? "fr_FR" : lang === "es" ? "es_ES" : "en_US";
+    lang === "de"
+      ? "de_DE"
+      : lang === "fr"
+        ? "fr_FR"
+        : lang === "es"
+          ? "es_ES"
+          : lang === "it"
+            ? "it_IT"
+            : lang === "nl"
+              ? "nl_NL"
+              : "en_US";
   out = replaceMetaContent(out, "property", "og:locale", ogLocale);
 
   return out;
