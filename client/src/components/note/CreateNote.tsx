@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState, useCallback } from "react";
+import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
 import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
@@ -408,6 +408,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
+  const [folderInputMounted, setFolderInputMounted] = useState(false);
+  const fileTransferFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
@@ -480,6 +482,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
       window.location.href = attachFileSignInHref;
+      return;
+    }
+    if (!folderInputMounted) {
+      setFolderInputMounted(true);
+      requestAnimationFrame(() => folderInputRef.current?.click());
       return;
     }
     folderInputRef.current?.click();
@@ -1962,8 +1969,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   // ── Create form ───────────────────────────────────────────────────────────
   return (
     <section className="mx-auto w-full min-w-0 max-w-full">
-      <div className="pt-4">
-        {/* Mode toggle */}
+      <div className={isFileTransferMode ? "pt-0" : "pt-4"}>
+        {!isFileTransferMode ? (
         <div className="mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
             <button
@@ -2002,6 +2009,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             </button>
           </div>
         </div>
+        ) : null}
 
         <form onSubmit={(e) => void handleSubmit(e)} className="mb-4">
           {/* Honeypot: visually hidden, never filled by real users */}
@@ -2095,7 +2103,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             </div>
           )}
 
-          {!isAiMode ? (
+          {!isAiMode && !isFileTransferMode ? (
             <div className="mb-4">
               <PrefillPartnerBanner
                 visible={showPrefillBanner}
@@ -2123,15 +2131,58 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 }
                 rows={6}
                 className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                placeholder={isFileTransferMode ? "Optional message for this secure file transfer" : t.typeHere}
-                required={!selectedFile && !isFileTransferMode}
+                placeholder={t.typeHere}
+                required={!selectedFile}
               />
+            </div>
+          ) : null}
+
+          {!isAiMode && isFileTransferMode && selectedFile ? (
+            <div className="mb-4 space-y-4">
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
+                <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {selectedFile.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                  aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
+              <div>
+                <label
+                  htmlFor="file-transfer-message"
+                  className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Optional message
+                </label>
+                <textarea
+                  id="file-transfer-message"
+                  value={noteContent}
+                  onChange={(e) =>
+                    applyNoteContentInput(
+                      e,
+                      MAX_NOTE_PLAINTEXT_UTF8_BYTES,
+                      t.notesLimitTrimmed,
+                    )
+                  }
+                  rows={2}
+                  className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  placeholder="Add a short note for the recipient (optional)"
+                />
+              </div>
             </div>
           ) : null}
 
           <div className="mt-[-0.5rem]" />
 
-          {(!isAiMode || aiDraftAccepted) && !customizeSheetExperiment && (
+          {(!isAiMode || aiDraftAccepted) &&
+            !customizeSheetExperiment &&
+            (!isFileTransferMode || selectedFile) && (
             <Suspense
               fallback={
                 <div
@@ -2179,6 +2230,131 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}
           {!isAiMode || (noteContent && isAiMode && !showPrompt && aiDraftAccepted) ? (
             <div className="space-y-3 mt-1">
+              {isFileTransferMode && !selectedFile ? (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    id={canAttachFiles ? fileTransferFileInputId : undefined}
+                    type="file"
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden
+                    onChange={handleAttachFileSelected}
+                  />
+                  {folderInputMounted ? (
+                    <input
+                      ref={folderInputRef}
+                      type="file"
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-hidden
+                      multiple
+                      onChange={handleAttachFolderSelected}
+                      {...({
+                        webkitdirectory: "",
+                        directory: "",
+                      } as React.InputHTMLAttributes<HTMLInputElement> & {
+                        webkitdirectory: string;
+                        directory: string;
+                      })}
+                    />
+                  ) : null}
+                  <div
+                    className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/80 px-6 py-10 text-center dark:border-gray-600 dark:bg-gray-900/40"
+                    role="region"
+                    aria-label="Attach a file or folder"
+                  >
+                    <div className="mx-auto flex max-w-md flex-col items-center">
+                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                        <FolderArchive className="h-7 w-7 text-primary" aria-hidden />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Attach a file or folder
+                      </h2>
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        Encrypted in your browser before upload.
+                      </p>
+                      <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row">
+                        {canAttachFiles ? (
+                          <label
+                            htmlFor={fileTransferFileInputId}
+                            className="flex min-h-14 flex-1 cursor-pointer items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/50"
+                          >
+                            Attach file
+                          </label>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleAttachFileClick}
+                            className="flex min-h-14 flex-1 items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          >
+                            Attach file
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleAttachFolderClick}
+                          disabled={isPreparingFolder}
+                          className={`${secondaryActionButtonClass} min-h-14 flex-1 px-6 text-sm`}
+                        >
+                          {isPreparingFolder ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                              Zipping folder...
+                            </>
+                          ) : (
+                            "Attach folder"
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : isFileTransferMode && selectedFile ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customizeSheetExperiment) {
+                        setCustomizeSheetOpen(true);
+                      } else {
+                        setShowAdvancedOptions(!showAdvancedOptions);
+                      }
+                    }}
+                    className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 sm:flex-none sm:px-5`}
+                  >
+                    {customizeSheetExperiment || !showAdvancedOptions ? (
+                      <>
+                        <Settings className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{t.customize}</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{t.hideOptions}</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+                        {t.creatingSecureNote}
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="mr-1.5 h-4 w-4" />
+                        {t.sharePrivateNote}
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -2187,24 +2363,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 aria-hidden
                 onChange={handleAttachFileSelected}
               />
-              {isFileTransferMode ? (
-                <input
-                  ref={folderInputRef}
-                  type="file"
-                  className="sr-only"
-                  tabIndex={-1}
-                  aria-hidden
-                  multiple
-                  onChange={handleAttachFolderSelected}
-                  {...({
-                    webkitdirectory: "",
-                    directory: "",
-                  } as React.InputHTMLAttributes<HTMLInputElement> & {
-                    webkitdirectory: string;
-                    directory: string;
-                  })}
-                />
-              ) : null}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex w-full items-center gap-2 sm:w-auto">
                   <button
@@ -2245,21 +2403,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="truncate">{attachFileButtonLabel}</span>
                     </button>
-                    {isFileTransferMode && !selectedFile ? (
-                      <button
-                        type="button"
-                        onClick={handleAttachFolderClick}
-                        disabled={isPreparingFolder}
-                        className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
-                      >
-                        {isPreparingFolder ? (
-                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
-                        ) : (
-                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                        )}
-                        <span className="truncate">{isPreparingFolder ? "Zipping folder..." : "Attach folder"}</span>
-                      </button>
-                    ) : null}
                     {selectedFile ? (
                       <button
                         type="button"
@@ -2310,12 +2453,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   )}
                 </button>
               </div>
+                </>
+              )}
             </div>
           ) : null}
         </form>
       </div>
 
-      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) ? (
+      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) && (!isFileTransferMode || selectedFile) ? (
         <Suspense fallback={null}>
           <CustomizeSettingsOverlay
             open={customizeSheetOpen}

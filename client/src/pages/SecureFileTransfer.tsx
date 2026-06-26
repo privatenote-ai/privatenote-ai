@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import { Archive, Bell, FileLock2, FolderArchive, ShieldCheck } from "lucide-react";
+import { Bell, FileLock2, FolderArchive, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
@@ -63,15 +63,11 @@ const SecureFileTransfer: React.FC = () => {
     <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 max-w-full overflow-x-clip pb-24`}>
       {!isCreateSuccessView ? (
         <section className="relative isolate mx-auto max-w-4xl px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-            <Archive className="h-3.5 w-3.5" aria-hidden />
-            Premium secure file transfer
-          </div>
-          <h1 className="page-title mt-5 text-gray-900 dark:text-white">
-            Share encrypted files and folders
+          <h1 className="page-title text-gray-900 dark:text-white">
+            The private way to share files
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl">
-            Attach a file or choose a folder. Folder uploads are zipped locally, then encrypted and uploaded with PrivateNote.
+            No file scanning. No access to your data. Encryption happens in your browser.
           </p>
           <p className="mx-auto mt-3 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
             Need higher file limits? <Link href={localizedPath("/premium", language)} className="font-medium text-primary hover:underline">Premium includes 1 GB encrypted file transfers and 20 GB total encrypted storage.</Link>
