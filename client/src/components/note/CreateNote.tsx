@@ -2260,25 +2260,25 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     />
                   ) : null}
                   <div
-                    className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/80 px-6 py-10 text-center dark:border-gray-600 dark:bg-gray-900/40"
+                    className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-5 py-7 text-center dark:border-gray-600 dark:bg-gray-900/40"
                     role="region"
                     aria-label="Attach a file or folder"
                   >
-                    <div className="mx-auto flex max-w-md flex-col items-center">
-                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                        <FolderArchive className="h-7 w-7 text-primary" aria-hidden />
+                    <div className="mx-auto flex max-w-sm flex-col items-center">
+                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+                        <FolderArchive className="h-5 w-5 text-primary" aria-hidden />
                       </div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                         Attach a file or folder
                       </h2>
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                      <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
                         Encrypted in your browser before upload.
                       </p>
-                      <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row">
+                      <div className="mt-4 flex w-full flex-col gap-2.5 sm:flex-row">
                         {canAttachFiles ? (
                           <label
                             htmlFor={fileTransferFileInputId}
-                            className="flex min-h-14 flex-1 cursor-pointer items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/50"
+                            className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/50"
                           >
                             Attach file
                           </label>
@@ -2286,7 +2286,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           <button
                             type="button"
                             onClick={handleAttachFileClick}
-                            className="flex min-h-14 flex-1 items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
                           >
                             Attach file
                           </button>
@@ -2295,7 +2295,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           type="button"
                           onClick={handleAttachFolderClick}
                           disabled={isPreparingFolder}
-                          className={`${secondaryActionButtonClass} min-h-14 flex-1 px-6 text-sm`}
+                          className={`${secondaryActionButtonClass} min-h-11 flex-1 px-5 text-sm`}
                         >
                           {isPreparingFolder ? (
                             <>
@@ -2309,6 +2309,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       </div>
                     </div>
                   </div>
+                  <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                    Need higher file limits?{" "}
+                    <a
+                      href={localizedPath("/premium", language)}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Premium includes 1 GB encrypted file transfers and 20 GB total encrypted storage.
+                    </a>
+                  </p>
                 </>
               ) : isFileTransferMode && selectedFile ? (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

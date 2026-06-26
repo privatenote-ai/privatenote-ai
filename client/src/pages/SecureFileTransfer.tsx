@@ -1,8 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Bell, FileLock2, FolderArchive, ShieldCheck } from "lucide-react";
-import { Link } from "wouter";
-import { useLanguage } from "@/context/LanguageContext";
-import { localizedPath } from "@/utils/localizedPath";
 
 const CreateNote = lazy(() =>
   import("@/components/note/CreateNote").then((m) => ({ default: m.CreateNote })),
@@ -38,7 +35,6 @@ const features = [
 const SecureFileTransfer: React.FC = () => {
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const [mountCreateNote, setMountCreateNote] = useState(false);
-  const { language } = useLanguage();
 
   useEffect(() => {
     let cancelled = false;
@@ -69,13 +65,10 @@ const SecureFileTransfer: React.FC = () => {
           <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl">
             No file scanning. No access to your data. Encryption happens in your browser.
           </p>
-          <p className="mx-auto mt-3 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
-            Need higher file limits? <Link href={localizedPath("/premium", language)} className="font-medium text-primary hover:underline">Premium includes 1 GB encrypted file transfers and 20 GB total encrypted storage.</Link>
-          </p>
         </section>
       ) : null}
 
-      <div className={`${isCreateSuccessView ? "mt-0" : "mt-10 md:mt-12"} px-4 py-4 pb-14 sm:px-6 lg:px-8`}>
+      <div className={`${isCreateSuccessView ? "mt-0" : "mt-8 md:mt-10"} px-4 py-4 pb-14 sm:px-6 lg:px-8`}>
         <div className="mx-auto min-w-0 max-w-4xl">
           {mountCreateNote ? (
             <Suspense fallback={<CreateNoteMountPlaceholder />}>
