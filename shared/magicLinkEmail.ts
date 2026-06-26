@@ -139,6 +139,39 @@ function substituteHost(template: string, hostLabel: string): string {
   return template.replace(/\{host\}/g, hostLabel);
 }
 
+/** Same origin as the magic link so logo assets resolve on prod, premium, and preview hosts. */
+export function resolveMagicLinkEmailWebOrigin(magicUrl: string): string {
+  try {
+    return new URL(magicUrl).origin;
+  } catch {
+    return "https://privatenote.ai";
+  }
+}
+
+/** Navbar-style header: mark tile + privateNote.ai wordmark (matches site upper-left). */
+function buildNavbarLogoEmailHtml(webOrigin: string): string {
+  const origin = escapeHtml(webOrigin.replace(/\/$/, ""));
+  const markUrl = `${origin}/brand/privateNote-logo-mark.png`;
+
+  return [
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 40px;">',
+    "  <tr>",
+    '    <td valign="middle" style="padding:0;">',
+    `      <a href="${origin}" style="text-decoration:none;">`,
+    `        <img src="${markUrl}" alt="" width="30" height="30" border="0" style="display:block;width:30px;height:30px;border:0;outline:none;" />`,
+    "      </a>",
+    "    </td>",
+    `    <td valign="middle" style="padding:0 0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">`,
+    `      <a href="${origin}" style="text-decoration:none;color:#0000ff;">`,
+    '        <span style="font-size:22px;line-height:1;font-weight:700;color:#0000ff;">privateNote</span>',
+    '        <sup style="font-size:11px;line-height:0;font-weight:700;color:#0000ff;vertical-align:super;">.ai</sup>',
+    "      </a>",
+    "    </td>",
+    "  </tr>",
+    "</table>",
+  ].join("\n");
+}
+
 function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: string, hostLabel: string): string {
   const safeUrl = escapeHtml(magicUrl);
   const safeCode = escapeHtml(signInCode);
@@ -149,6 +182,7 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
   const safeCta = escapeHtml(copy.cta);
   const safeIgnore = escapeHtml(copy.ignore);
   const safeFooter = escapeHtml(copy.footer);
+  const logoHtml = buildNavbarLogoEmailHtml(resolveMagicLinkEmailWebOrigin(magicUrl));
 
   return [
     '<!doctype html>',
@@ -163,7 +197,7 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     '          <tr><td style="height:10px;background:#0000ff;font-size:0;line-height:0;">&nbsp;</td></tr>',
     '          <tr>',
     '            <td style="padding:42px 40px 36px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#050816;text-align:left;">',
-    '              <img src="https://www.privatenote.ai/brand/privateNote-logo-lockup.png" alt="PrivateNote" width="200" border="0" style="display:block;width:200px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;margin:0 0 48px;" />',
+    `              ${logoHtml}`,
     `              <h1 style="margin:0 0 24px;font-size:22px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
     `              <p style="margin:0 0 28px;font-size:34px;line-height:1.15;letter-spacing:0.08em;font-weight:500;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
     `              <p style="margin:0 0 30px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeCodeExpiry}</p>`,

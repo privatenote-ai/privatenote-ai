@@ -22,6 +22,8 @@ describe("magicLinkEmail", () => {
     assert.match(html, />238242</);
     assert.match(html, /Or sign in with one tap/);
     assert.match(html, /Finish signing in to premium\.privatenote-ai\.pages\.dev below/);
+    assert.match(html, /brand\/privateNote-logo-mark\.png/);
+    assert.match(html, />privateNote</);
     assert.match(html, />Log in</);
     assert.match(html, /10 minutes or if you request a new code/);
     assert.match(text, /238242/);
