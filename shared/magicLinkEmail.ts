@@ -151,16 +151,19 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
   const safeFooter = escapeHtml(copy.footer);
 
   return [
-    '<div style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;text-size-adjust:100%;">',
+    '<!doctype html>',
+    '<html>',
+    '<body style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;text-size-adjust:100%;">',
+    '<div style="margin:0;padding:0;min-width:100%;background:#f3f4f6;">',
     `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
-    '  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:#f3f4f6;margin:0;padding:0;">',
+    '  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="#f3f4f6" style="border-collapse:collapse;width:100%;min-width:100%;background:#f3f4f6;margin:0;padding:0;">',
     '    <tr>',
-    '      <td align="center" style="padding:24px 16px 0;">',
+    '      <td align="center" bgcolor="#f3f4f6" style="background:#f3f4f6;padding:24px 16px 0;">',
     '        <table role="presentation" cellpadding="0" cellspacing="0" width="640" style="border-collapse:collapse;width:100%;max-width:640px;background:#ffffff;">',
     '          <tr><td style="height:10px;background:#0000ff;font-size:0;line-height:0;">&nbsp;</td></tr>',
     '          <tr>',
     '            <td style="padding:42px 40px 36px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#050816;text-align:left;">',
-    '              <img src="https://www.privatenote.ai/brand/privateNote-logo-lockup.png" alt="PrivateNote" width="180" border="0" style="display:block;width:180px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;margin:0 0 48px;" />',
+    '              <img src="https://www.privatenote.ai/brand/privateNote-logo-lockup.png" alt="PrivateNote" width="200" border="0" style="display:block;width:200px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;margin:0 0 48px;" />',
     `              <h1 style="margin:0 0 24px;font-size:22px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
     `              <p style="margin:0 0 28px;font-size:34px;line-height:1.15;letter-spacing:0.08em;font-weight:500;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
     `              <p style="margin:0 0 30px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeCodeExpiry}</p>`,
@@ -176,7 +179,7 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     '      </td>',
     '    </tr>',
     '    <tr>',
-    '      <td align="center" style="padding:28px 16px 34px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#8a8f98;text-align:center;">',
+    '      <td align="center" bgcolor="#f3f4f6" style="background:#f3f4f6;padding:28px 16px 34px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#8a8f98;text-align:center;">',
     '        <p style="margin:0 0 4px;font-size:13px;line-height:1.35;font-weight:600;color:#8a8f98;">Copyright &copy; PrivateNote.ai</p>',
     `        <p style="margin:0 0 16px;font-size:12px;line-height:1.35;color:#8a8f98;">${safeFooter}</p>`,
     '        <p style="margin:0;font-size:13px;line-height:1.35;color:#8a8f98;">',
@@ -188,6 +191,8 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     '    </tr>',
     '  </table>',
     "</div>",
+    "</body>",
+    "</html>",
   ].join("\n");
 }
 
