@@ -2077,6 +2077,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
+                onPreferHostedCloudChange={setPreferHostedCloudAfterLocalFailure}
                 onWriteWithoutAi={() => setIsAiMode(false)}
                 />
               </Suspense>

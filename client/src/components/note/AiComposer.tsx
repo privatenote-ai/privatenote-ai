@@ -11,6 +11,7 @@ import {
   Info,
   Sparkles,
   RefreshCw,
+  Cloud,
 } from "lucide-react";
 import {
   getPromptTemplatesForLanguage,
@@ -34,6 +35,18 @@ import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function templateChipClass(active: boolean): string {
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
@@ -119,6 +132,7 @@ export type AiComposerProps = {
   onAcceptDraft: () => void;
   /** After a failed on-device load/generate, show hosted cloud UI even when WebGPU is present. */
   preferHostedCloudAfterLocalFailure?: boolean;
+  onPreferHostedCloudChange?: (prefer: boolean) => void;
   /** Exit AI mode entirely and return to plain note writing. */
   onWriteWithoutAi: () => void;
 };
@@ -158,18 +172,40 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   aiDraftAccepted,
   onAcceptDraft,
   preferHostedCloudAfterLocalFailure = false,
+  onPreferHostedCloudChange,
   onWriteWithoutAi,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
   const [showHostedCloudNotice, setShowHostedCloudNotice] = useState(true);
+  const [cloudAssistSwitchConfirmOpen, setCloudAssistSwitchConfirmOpen] = useState(false);
 
   const skipPromptGlowRef = useRef(true);
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const localAiSupported = isLocalAiSupported();
   const showLocalOnDeviceUi = localAiSupported && !preferHostedCloudAfterLocalFailure;
   const showHostedCloudUi = !localAiSupported || preferHostedCloudAfterLocalFailure;
-  const { t } = useLanguage();
-  const tx = (key: string, fallback: string) => t[key] || fallback;
+  const choseCloudAssistVoluntarily = localAiSupported && preferHostedCloudAfterLocalFailure;
+  const cloudAssistPopoverBody = choseCloudAssistVoluntarily
+    ? tx(
+        "aiComposerCloudAssistBodyVoluntary",
+        "You chose hosted drafting. The template and length you choose above are sent to Cloudflare Workers AI.",
+      )
+    : t.aiComposerCloudAssistBody;
+
+  const handleCloudAssistSwitchChange = (checked: boolean) => {
+    if (checked) {
+      setCloudAssistSwitchConfirmOpen(true);
+      return;
+    }
+    onPreferHostedCloudChange?.(false);
+  };
+
+  const confirmCloudAssistSwitch = () => {
+    setCloudAssistSwitchConfirmOpen(false);
+    onPreferHostedCloudChange?.(true);
+  };
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;
@@ -209,8 +245,56 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
               <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
             </p>
+            {onPreferHostedCloudChange ? (
+              <div className="mt-3 flex items-start justify-between gap-4 border-t border-primary/15 pt-3">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Cloud className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                    <Label htmlFor="prefer-cloud-assist" className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {tx("aiComposerSwitchToCloudAssist", "Use Cloud Assist instead")}
+                    </Label>
+                  </div>
+                  <p id="prefer-cloud-assist-hint" className="text-xs text-gray-600 dark:text-gray-400">
+                    {tx(
+                      "aiComposerSwitchToCloudAssistHint",
+                      "Hosted drafting on Cloudflare Workers AI. Not fully private — your prompt leaves this device.",
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  id="prefer-cloud-assist"
+                  checked={false}
+                  onCheckedChange={handleCloudAssistSwitchChange}
+                  aria-describedby="prefer-cloud-assist-hint"
+                />
+              </div>
+            ) : null}
           </div>
-        ) : showHostedCloudUi && showHostedCloudNotice ? (
+        ) : choseCloudAssistVoluntarily ? (
+          <div className="mb-4 rounded-xl border border-amber-300/80 bg-amber-50/90 px-4 py-3 dark:border-amber-800/70 dark:bg-amber-950/35">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                  {tx("aiComposerUsingCloudAssistTitle", "Using Cloud Assist")}
+                </p>
+                <p className="text-sm leading-relaxed text-amber-900/90 dark:text-amber-100/90">
+                  {tx(
+                    "aiComposerUsingCloudAssistBody",
+                    "Your prompt is sent to Cloudflare Workers AI. This is not fully private.",
+                  )}
+                </p>
+              </div>
+              {onPreferHostedCloudChange ? (
+                <Switch
+                  id="prefer-cloud-assist-active"
+                  checked
+                  onCheckedChange={handleCloudAssistSwitchChange}
+                  aria-label={tx("aiComposerSwitchBackToPrivateAi", "Use Private AI instead")}
+                />
+              ) : null}
+            </div>
+          </div>
+        ) : showHostedCloudUi && !localAiSupported && showHostedCloudNotice ? (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 dark:border-red-900/70 dark:bg-red-950/35">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -457,7 +541,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-72 text-xs leading-relaxed text-gray-700 dark:text-gray-200">
-                      {t.aiComposerCloudAssistBody}
+                      {cloudAssistPopoverBody}
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -679,6 +763,31 @@ export const AiComposer: React.FC<AiComposerProps> = ({
           </div>
         ) : null}
       </div>
+
+      <AlertDialog open={cloudAssistSwitchConfirmOpen} onOpenChange={setCloudAssistSwitchConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tx("aiComposerSwitchToCloudAssistWarningTitle", "Switch to Cloud Assist?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tx(
+                "aiComposerSwitchToCloudAssistWarningBody",
+                "Cloud Assist sends your prompt to Cloudflare Workers AI (Meta Llama 3.2 3B). It is not fully private — your text is processed in the cloud before you encrypt the note.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel>{tx("aiComposerSwitchToCloudAssistCancel", "Keep Private AI")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+              onClick={confirmCloudAssistSwitch}
+            >
+              {tx("aiComposerSwitchToCloudAssistConfirm", "Use Cloud Assist (not fully private)")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
