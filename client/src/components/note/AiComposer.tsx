@@ -107,8 +107,8 @@ export type AiComposerProps = {
   }) => void;
   hostedCloudAiRemaining: number | null;
   hostedCloudAiLimit: number;
-  nonPrivateSessionAcknowledged: boolean;
-  onNonPrivateSessionAcknowledgedChange: (ack: boolean) => void;
+  cloudAssistConsentGiven?: boolean;
+  onCloudAssistConsentChange: (consent: boolean) => void;
   onImprove: () => void;
   onSummarize: () => void;
   onSimplify: () => void;
@@ -128,7 +128,6 @@ export type AiComposerProps = {
   /** After a failed on-device load/generate, show hosted cloud UI even when WebGPU is present. */
   preferHostedCloudAfterLocalFailure?: boolean;
   onPreferHostedCloudChange?: (prefer: boolean) => void;
-  cloudAssistConsentGiven?: boolean;
   /** Exit AI mode entirely and return to plain note writing. */
   onWriteWithoutAi: () => void;
 };
@@ -151,8 +150,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onHostedCloudGenerate,
   hostedCloudAiRemaining,
   hostedCloudAiLimit,
-  nonPrivateSessionAcknowledged,
-  onNonPrivateSessionAcknowledgedChange,
+  cloudAssistConsentGiven = false,
+  onCloudAssistConsentChange,
   onImprove,
   onSummarize,
   onSimplify,
@@ -166,7 +165,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onAcceptDraft,
   preferHostedCloudAfterLocalFailure = false,
   onPreferHostedCloudChange,
-  cloudAssistConsentGiven = false,
   onWriteWithoutAi,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
@@ -516,8 +514,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                   aiPrompt={aiPrompt}
                   setAiPrompt={setAiPrompt}
                   requiresSessionAck={requiresCloudAssistAck}
-                  sessionAcknowledged={nonPrivateSessionAcknowledged}
-                  onSessionAcknowledgedChange={onNonPrivateSessionAcknowledgedChange}
+                  sessionAcknowledged={cloudAssistConsentGiven}
+                  onSessionAcknowledgedChange={onCloudAssistConsentChange}
                   isGeneratingContent={isGeneratingContent}
                   hasPromptText={hasPromptText}
                   hostedCloudAiRemaining={hostedCloudAiRemaining}

@@ -365,7 +365,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [hostedCloudAiLimit, setHostedCloudAiLimit] = useState(3);
   const [hostedCloudAiStatusText, setHostedCloudAiStatusText] = useState<string | null>(null);
   const [allowHostedAi, setAllowHostedAi] = useState(() => readLocalHostedAiAllowed());
-  const [nonPrivateSessionAcknowledged, setNonPrivateSessionAcknowledged] = useState(false);
   const [cloudAssistConsentGiven, setCloudAssistConsentGiven] = useState(false);
   const hostedAiPrefHydratedRef = useRef(false);
 
@@ -1579,9 +1578,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     async (allowed: boolean): Promise<boolean> => {
       setAllowHostedAi(allowed);
       writeLocalHostedAiAllowed(allowed);
-      if (!allowed) {
-        setNonPrivateSessionAcknowledged(false);
-      }
       if (!user) {
         return allowed;
       }
@@ -1591,9 +1587,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       } catch {
         setAllowHostedAi(!allowed);
         writeLocalHostedAiAllowed(!allowed);
-        if (allowed) {
-          setNonPrivateSessionAcknowledged(false);
-        }
         toast({
           title: "Could not save hosted AI preference",
           description: "Try again from Account → Preferences.",
@@ -1609,18 +1602,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setPreferHostedCloudAfterLocalFailure(prefer);
     if (prefer) {
       setCloudAssistConsentGiven(true);
-      setNonPrivateSessionAcknowledged(true);
     } else {
       setCloudAssistConsentGiven(false);
-      setNonPrivateSessionAcknowledged(false);
     }
   }, []);
 
-  const handleNonPrivateSessionAcknowledgedChange = useCallback((ack: boolean) => {
-    setNonPrivateSessionAcknowledged(ack);
-    if (ack) {
-      setCloudAssistConsentGiven(true);
-    }
+  const handleCloudAssistConsentChange = useCallback((consent: boolean) => {
+    setCloudAssistConsentGiven(consent);
   }, []);
 
   useEffect(() => {
@@ -1661,7 +1649,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (!nonPrivateSessionAcknowledged) {
+    if (!cloudAssistConsentGiven) {
       toast({
         title: "Confirmation required",
         description: "Confirm you understand prompts leave this device before generating.",
@@ -2002,7 +1990,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowTemplateOfferPrompt(false);
     setPreferHostedCloudAfterLocalFailure(true);
     setCloudAssistConsentGiven(true);
-    setNonPrivateSessionAcknowledged(true);
     setIsAiMode(true);
     setShowPrompt(true);
     aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2126,8 +2113,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onHostedCloudGenerate={(override) => void handleHostedCloudGenerate(override)}
                 hostedCloudAiRemaining={hostedCloudAiRemaining}
                 hostedCloudAiLimit={hostedCloudAiLimit}
-                nonPrivateSessionAcknowledged={nonPrivateSessionAcknowledged}
-                onNonPrivateSessionAcknowledgedChange={handleNonPrivateSessionAcknowledgedChange}
+                cloudAssistConsentGiven={cloudAssistConsentGiven}
+                onCloudAssistConsentChange={handleCloudAssistConsentChange}
                 onImprove={() => void handleImprove()}
                 onSummarize={() => void handleSummarize()}
                 onSimplify={() => void handleSimplify()}
@@ -2141,7 +2128,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onAcceptDraft={() => setAiDraftAccepted(true)}
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
                 onPreferHostedCloudChange={handlePreferHostedCloudChange}
-                cloudAssistConsentGiven={cloudAssistConsentGiven}
                 onWriteWithoutAi={() => setIsAiMode(false)}
                 />
               </Suspense>
