@@ -371,6 +371,8 @@ export const en: Translations = {
   aiComposerRunsLocallyTitle: "Runs locally in your browser.",
   aiComposerRunsLocallyBody: "Your text never leaves your device. No servers, no tracking, no external storage.",
   aiComposerSwitchToCloudAssist: "Cloud Assist",
+  aiComposerCloudAssistOptionalLabel: "Optional",
+  aiComposerCloudAssistOptionalHint: "Use hosted drafting instead of on-device Private AI.",
   aiComposerSwitchToCloudAssistHint:
     "Hosted drafting on Cloudflare Workers AI. Not fully private — your prompt leaves this device.",
   aiComposerShowDetails: "Show details",

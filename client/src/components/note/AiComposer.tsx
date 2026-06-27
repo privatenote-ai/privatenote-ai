@@ -228,52 +228,68 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     <div className="space-y-8 mb-4">
       <div>
         {showLocalOnDeviceUi ? (
-          <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-3">
-            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
-            </p>
-            {isAiModelLoading && aiModelProgress ? (
-              <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-white/70 p-3 dark:border-primary/30 dark:bg-gray-900/50">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {aiModelProgress.text}
-                  </span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                    {Math.round(aiModelProgress.progress)}%
-                  </span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-primary/15 dark:bg-primary/25">
-                  <div
-                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${aiModelProgress.progress}%` }}
-                  />
-                </div>
-                {aiModelProgress.detail ? (
-                  <p className="break-words text-xs text-gray-600 dark:text-gray-400">
-                    {aiModelProgress.detail}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            {onPreferHostedCloudChange ? (
-              <div className="flex items-start justify-between gap-4 border-t border-primary/15 pt-3">
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Cloud className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-                    <Label htmlFor="prefer-cloud-assist" className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {tx("aiComposerSwitchToCloudAssist", "Cloud Assist")}
-                    </Label>
-                    <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                      {t.aiComposerCloudAssistNotFullyPrivate}
+          <div className="mb-4 space-y-3">
+            <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-3">
+              <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
+              </p>
+              {isAiModelLoading && aiModelProgress ? (
+                <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-white/70 p-3 dark:border-primary/30 dark:bg-gray-900/50">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {aiModelProgress.text}
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {Math.round(aiModelProgress.progress)}%
                     </span>
                   </div>
-                  <CloudAssistPrivacyDetails tx={tx} />
+                  <div className="h-1.5 w-full rounded-full bg-primary/15 dark:bg-primary/25">
+                    <div
+                      className="h-1.5 rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${aiModelProgress.progress}%` }}
+                    />
+                  </div>
+                  {aiModelProgress.detail ? (
+                    <p className="break-words text-xs text-gray-600 dark:text-gray-400">
+                      {aiModelProgress.detail}
+                    </p>
+                  ) : null}
                 </div>
-                <Switch
-                  id="prefer-cloud-assist"
-                  checked={false}
-                  onCheckedChange={handleCloudAssistSwitchChange}
-                />
+              ) : null}
+            </div>
+            {onPreferHostedCloudChange ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/80 px-4 py-3 dark:border-gray-600 dark:bg-gray-900/40">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {tx("aiComposerCloudAssistOptionalLabel", "Optional")}
+                </p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Cloud className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                      <Label
+                        htmlFor="prefer-cloud-assist"
+                        className="text-sm font-medium text-gray-800 dark:text-gray-200"
+                      >
+                        {tx("aiComposerSwitchToCloudAssist", "Cloud Assist")}
+                      </Label>
+                      <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                        {t.aiComposerCloudAssistNotFullyPrivate}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {tx(
+                        "aiComposerCloudAssistOptionalHint",
+                        "Use hosted drafting instead of on-device Private AI.",
+                      )}
+                    </p>
+                    <CloudAssistPrivacyDetails tx={tx} />
+                  </div>
+                  <Switch
+                    id="prefer-cloud-assist"
+                    checked={false}
+                    onCheckedChange={handleCloudAssistSwitchChange}
+                  />
+                </div>
               </div>
             ) : null}
           </div>
