@@ -788,7 +788,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     try {
       await ensureFreeLocalModel((progress) => setAiModelProgress(progress));
       setAiModelProgress(null);
-      setPreferHostedCloudAfterLocalFailure(false);
     } catch (error) {
       console.warn("[AI] Failed to preload free model:", error);
       await clearLocalAiDownloadStateSilently();
@@ -1606,30 +1605,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     [user, toast],
   );
 
-  const handlePreferHostedCloudChange = useCallback(
-    (prefer: boolean) => {
-      setPreferHostedCloudAfterLocalFailure(prefer);
-      if (prefer) {
-        setCloudAssistConsentGiven(true);
-        setNonPrivateSessionAcknowledged(true);
-        void persistHostedAiPreference(true);
-      } else {
-        setNonPrivateSessionAcknowledged(false);
-      }
-    },
-    [persistHostedAiPreference],
-  );
+  const handlePreferHostedCloudChange = useCallback((prefer: boolean) => {
+    setPreferHostedCloudAfterLocalFailure(prefer);
+    if (prefer) {
+      setCloudAssistConsentGiven(true);
+      setNonPrivateSessionAcknowledged(true);
+    } else {
+      setCloudAssistConsentGiven(false);
+      setNonPrivateSessionAcknowledged(false);
+    }
+  }, []);
 
-  const handleNonPrivateSessionAcknowledgedChange = useCallback(
-    (ack: boolean) => {
-      setNonPrivateSessionAcknowledged(ack);
-      if (ack) {
-        setCloudAssistConsentGiven(true);
-        void persistHostedAiPreference(true);
-      }
-    },
-    [persistHostedAiPreference],
-  );
+  const handleNonPrivateSessionAcknowledgedChange = useCallback((ack: boolean) => {
+    setNonPrivateSessionAcknowledged(ack);
+    if (ack) {
+      setCloudAssistConsentGiven(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -1647,10 +1639,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         if (!cancelled && data.ok && typeof data.allowHostedAi === "boolean") {
           setAllowHostedAi(data.allowHostedAi);
           writeLocalHostedAiAllowed(data.allowHostedAi);
-          if (data.allowHostedAi) {
-            setCloudAssistConsentGiven(true);
-            setNonPrivateSessionAcknowledged(true);
-          }
           hostedAiPrefHydratedRef.current = true;
         }
       } catch {
@@ -2015,11 +2003,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setPreferHostedCloudAfterLocalFailure(true);
     setCloudAssistConsentGiven(true);
     setNonPrivateSessionAcknowledged(true);
-    void persistHostedAiPreference(true);
     setIsAiMode(true);
     setShowPrompt(true);
     aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [persistHostedAiPreference]);
+  }, []);
 
   // ── Success page ──────────────────────────────────────────────────────────
   if (createdNote) {
