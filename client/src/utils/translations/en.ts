@@ -370,9 +370,15 @@ export const en: Translations = {
   customize: "Customize",
   aiComposerRunsLocallyTitle: "Runs locally in your browser.",
   aiComposerRunsLocallyBody: "Your text never leaves your device. No servers, no tracking, no external storage.",
-  aiComposerSwitchToCloudAssist: "Use Cloud Assist instead",
+  aiComposerSwitchToCloudAssist: "Cloud Assist",
   aiComposerSwitchToCloudAssistHint:
     "Hosted drafting on Cloudflare Workers AI. Not fully private — your prompt leaves this device.",
+  aiComposerShowDetails: "Show details",
+  aiComposerHideDetails: "Hide details",
+  aiComposerCloudAssistDetailLead:
+    "Cloud Assist sends your prompt to Cloudflare Workers AI (Meta Llama 3.2 3B). It is not fully private.",
+  aiComposerUsingCloudAssistBodyShort: "Hosted drafting — your prompt leaves this device.",
+  aiComposerNonPrivateAckShort: "I understand my prompt will be sent to Cloudflare Workers AI.",
   aiComposerSwitchToCloudAssistWarningTitle: "Switch to Cloud Assist?",
   aiComposerSwitchToCloudAssistWarningBody:
     "Cloud Assist sends your prompt to Cloudflare Workers AI (Meta Llama 3.2 3B). It is not fully private — your text is processed in the cloud before you encrypt the note.",
