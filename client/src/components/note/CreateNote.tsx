@@ -198,6 +198,7 @@ type AccountType = "free" | "personal_premium" | "business_premium";
 
 const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
 const CREATE_NOTE_AUTH_DRAFT_TTL_MS = 30 * 60 * 1000;
+const CLOUD_ASSIST_MODE_SESSION_KEY = "privatenote:cloud-assist-mode-session:v1";
 
 type CreateNoteAuthDraft = {
   v: 1;
@@ -216,7 +217,39 @@ type CreateNoteAuthDraft = {
   expiryValue: NoteExpiryPresetId;
   readCount: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  preferHostedCloudAfterLocalFailure: boolean;
+  cloudAssistConsentGiven: boolean;
 };
+
+type CloudAssistModeSession = {
+  preferHosted: boolean;
+  consentGiven: boolean;
+};
+
+function readCloudAssistModeSession(): CloudAssistModeSession {
+  try {
+    const raw = window.sessionStorage.getItem(CLOUD_ASSIST_MODE_SESSION_KEY);
+    if (!raw) return { preferHosted: false, consentGiven: false };
+    const parsed = JSON.parse(raw) as Partial<CloudAssistModeSession>;
+    return {
+      preferHosted: parsed.preferHosted === true,
+      consentGiven: parsed.consentGiven === true,
+    };
+  } catch {
+    return { preferHosted: false, consentGiven: false };
+  }
+}
+
+function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolean): void {
+  try {
+    window.sessionStorage.setItem(
+      CLOUD_ASSIST_MODE_SESSION_KEY,
+      JSON.stringify({ preferHosted, consentGiven } satisfies CloudAssistModeSession),
+    );
+  } catch {
+    /* private mode */
+  }
+}
 
 function normalizeAccountType(value: unknown): AccountType {
   if (value === "personal_premium" || value === "pro" || value === "premium") return "personal_premium";
@@ -299,6 +332,8 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
         parsed.fileAccessWindowSeconds === 60 * 60
           ? (parsed.fileAccessWindowSeconds as NoteFileAccessWindowSeconds)
           : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
+      cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
   } catch {
     return null;
@@ -352,7 +387,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     detail?: string;
   } | null>(null);
   const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
-  const [preferHostedCloudAfterLocalFailure, setPreferHostedCloudAfterLocalFailure] = useState(false);
+  const [preferHostedCloudAfterLocalFailure, setPreferHostedCloudAfterLocalFailure] = useState(
+    () => readCloudAssistModeSession().preferHosted,
+  );
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
   const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("auto");
@@ -365,8 +402,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [hostedCloudAiLimit, setHostedCloudAiLimit] = useState(3);
   const [hostedCloudAiStatusText, setHostedCloudAiStatusText] = useState<string | null>(null);
   const [allowHostedAi, setAllowHostedAi] = useState(() => readLocalHostedAiAllowed());
-  const [cloudAssistConsentGiven, setCloudAssistConsentGiven] = useState(false);
+  const [cloudAssistConsentGiven, setCloudAssistConsentGiven] = useState(
+    () => readCloudAssistModeSession().consentGiven,
+  );
   const hostedAiPrefHydratedRef = useRef(false);
+  /** User chose Cloud Assist in this tab; account prefs must not override that until a new visit. */
+  const cloudAssistModeTouchedInSessionRef = useRef(readCloudAssistModeSession().preferHosted);
 
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
@@ -430,46 +471,67 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
 
-  const saveAuthRedirectDraft = useCallback(() => {
-    try {
-      const draft: CreateNoteAuthDraft = {
-        v: 1,
-        expiresAt: Date.now() + CREATE_NOTE_AUTH_DRAFT_TTL_MS,
-        noteContent,
-        isAiMode,
-        aiPrompt,
-        aiEnhancementType,
-        showPrompt,
-        originalPrompt,
-        userPromptHistory,
-        transformHistory,
-        aiDraftAccepted,
-        selectedTemplateId,
-        aiSentenceLength,
-        expiryValue,
-        readCount,
-        fileAccessWindowSeconds,
-      };
-      window.sessionStorage.setItem(CREATE_NOTE_AUTH_DRAFT_KEY, JSON.stringify(draft));
-    } catch {
-      /* Best effort: navigation should still work if storage is unavailable. */
-    }
-  }, [
-    aiDraftAccepted,
-    aiEnhancementType,
-    aiPrompt,
-    aiSentenceLength,
-    expiryValue,
-    fileAccessWindowSeconds,
-    isAiMode,
-    noteContent,
-    originalPrompt,
-    readCount,
-    selectedTemplateId,
-    showPrompt,
-    transformHistory,
-    userPromptHistory,
-  ]);
+  const saveAuthRedirectDraft = useCallback(
+    (overrides?: Partial<CreateNoteAuthDraft>) => {
+      try {
+        const draft: CreateNoteAuthDraft = {
+          v: 1,
+          expiresAt: Date.now() + CREATE_NOTE_AUTH_DRAFT_TTL_MS,
+          noteContent,
+          isAiMode,
+          aiPrompt,
+          aiEnhancementType,
+          showPrompt,
+          originalPrompt,
+          userPromptHistory,
+          transformHistory,
+          aiDraftAccepted,
+          selectedTemplateId,
+          aiSentenceLength,
+          expiryValue,
+          readCount,
+          fileAccessWindowSeconds,
+          preferHostedCloudAfterLocalFailure,
+          cloudAssistConsentGiven,
+          ...overrides,
+        };
+        window.sessionStorage.setItem(CREATE_NOTE_AUTH_DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        /* Best effort: navigation should still work if storage is unavailable. */
+      }
+    },
+    [
+      aiDraftAccepted,
+      aiEnhancementType,
+      aiPrompt,
+      aiSentenceLength,
+      cloudAssistConsentGiven,
+      expiryValue,
+      fileAccessWindowSeconds,
+      isAiMode,
+      noteContent,
+      originalPrompt,
+      preferHostedCloudAfterLocalFailure,
+      readCount,
+      selectedTemplateId,
+      showPrompt,
+      transformHistory,
+      userPromptHistory,
+    ],
+  );
+
+  const redirectToCloudAssistSignIn = useCallback(
+    (overrides?: Partial<CreateNoteAuthDraft>) => {
+      saveAuthRedirectDraft({
+        isAiMode: true,
+        preferHostedCloudAfterLocalFailure: true,
+        cloudAssistConsentGiven: true,
+        ...overrides,
+      });
+      window.location.href = cloudAssistSignInHref;
+    },
+    [cloudAssistSignInHref, saveAuthRedirectDraft],
+  );
 
   const handleAttachFileClick = () => {
     if (!canAttachFiles) {
@@ -605,6 +667,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setExpiryValue(draft.expiryValue);
     setReadCount(draft.readCount);
     setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
+    if (draft.preferHostedCloudAfterLocalFailure) {
+      setPreferHostedCloudAfterLocalFailure(true);
+      setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
+      cloudAssistModeTouchedInSessionRef.current = true;
+      writeCloudAssistModeSession(true, draft.cloudAssistConsentGiven);
+    }
   }, [prefillText]);
 
   useEffect(() => {
@@ -1598,22 +1666,35 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     [user, toast],
   );
 
-  const handlePreferHostedCloudChange = useCallback((prefer: boolean) => {
-    setPreferHostedCloudAfterLocalFailure(prefer);
-    if (prefer) {
-      setCloudAssistConsentGiven(true);
-    } else {
-      setCloudAssistConsentGiven(false);
-    }
-  }, []);
+  const handlePreferHostedCloudChange = useCallback(
+    (prefer: boolean) => {
+      cloudAssistModeTouchedInSessionRef.current = true;
+      setPreferHostedCloudAfterLocalFailure(prefer);
+      if (prefer) {
+        setCloudAssistConsentGiven(true);
+        writeCloudAssistModeSession(true, true);
+        if (!user) {
+          redirectToCloudAssistSignIn();
+          return;
+        }
+      } else {
+        setCloudAssistConsentGiven(false);
+        writeCloudAssistModeSession(false, false);
+      }
+    },
+    [redirectToCloudAssistSignIn, user],
+  );
 
   const handleCloudAssistConsentChange = useCallback((consent: boolean) => {
+    cloudAssistModeTouchedInSessionRef.current = true;
     setCloudAssistConsentGiven(consent);
-  }, []);
+    writeCloudAssistModeSession(preferHostedCloudAfterLocalFailure, consent);
+  }, [preferHostedCloudAfterLocalFailure]);
 
   useEffect(() => {
     if (!user) {
       hostedAiPrefHydratedRef.current = false;
+      cloudAssistModeTouchedInSessionRef.current = readCloudAssistModeSession().preferHosted;
       return;
     }
     if (hostedAiPrefHydratedRef.current) return;
@@ -1625,8 +1706,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           "GET",
         );
         if (!cancelled && data.ok && typeof data.allowHostedAi === "boolean") {
-          setAllowHostedAi(data.allowHostedAi);
-          writeLocalHostedAiAllowed(data.allowHostedAi);
+          if (!cloudAssistModeTouchedInSessionRef.current) {
+            setAllowHostedAi(data.allowHostedAi);
+            writeLocalHostedAiAllowed(data.allowHostedAi);
+          }
           hostedAiPrefHydratedRef.current = true;
         }
       } catch {
@@ -1659,8 +1742,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     if (!user) {
-      saveAuthRedirectDraft();
-      window.location.href = cloudAssistSignInHref;
+      redirectToCloudAssistSignIn();
       return;
     }
 
@@ -1736,8 +1818,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_auth_required") {
-        saveAuthRedirectDraft();
-        window.location.href = cloudAssistSignInHref;
+        redirectToCloudAssistSignIn();
       } else if (parsed.code === "hosted_ai_not_enabled" || parsed.code === "hosted_ai_consent_required") {
         toast({
           title: "Non-private hosted AI is off",
@@ -1988,12 +2069,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
+    cloudAssistModeTouchedInSessionRef.current = true;
     setPreferHostedCloudAfterLocalFailure(true);
     setCloudAssistConsentGiven(true);
+    writeCloudAssistModeSession(true, true);
     setIsAiMode(true);
     setShowPrompt(true);
+    if (!user) {
+      redirectToCloudAssistSignIn();
+      return;
+    }
     aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [redirectToCloudAssistSignIn, user]);
 
   // ── Success page ──────────────────────────────────────────────────────────
   if (createdNote) {
