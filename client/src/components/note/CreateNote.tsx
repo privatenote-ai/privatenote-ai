@@ -63,6 +63,10 @@ import {
   generateHostedCloudDraft,
   parseHostedCloudAiError,
 } from "@/utils/hostedCloudAi";
+import {
+  readLocalHostedAiAllowed,
+  writeLocalHostedAiAllowed,
+} from "@/utils/hostedAiPreference";
 
 type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
 let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
@@ -95,10 +99,11 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   return expiryValue;
 }
 
-const CLOUD_ASSIST_DRAFT_KEY = "privatenote:cloud-assist-draft:v1";
-const CLOUD_ASSIST_DRAFT_TTL_MS = 30 * 60 * 1000;
+const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
+const CREATE_NOTE_AUTH_DRAFT_TTL_MS = 30 * 60 * 1000;
+const CLOUD_ASSIST_MODE_SESSION_KEY = "privatenote:cloud-assist-mode-session:v1";
 
-type CloudAssistDraft = {
+type CreateNoteAuthDraft = {
   v: 1;
   expiresAt: number;
   noteContent: string;
@@ -106,18 +111,55 @@ type CloudAssistDraft = {
   aiPrompt: string;
   aiEnhancementType: "improve" | "summarize" | "secure" | "ask";
   showPrompt: boolean;
+  originalPrompt: string;
+  userPromptHistory: string[];
+  transformHistory: AiPostGenTransform[];
+  aiDraftAccepted: boolean;
   selectedTemplateId: string | null;
   aiSentenceLength: AiSentenceLengthId;
+  expiryValue: NoteExpiryPresetId;
+  preferHostedCloudAfterLocalFailure: boolean;
+  cloudAssistConsentGiven: boolean;
 };
 
-function readCloudAssistDraft(): CloudAssistDraft | null {
+type CloudAssistModeSession = {
+  preferHosted: boolean;
+  consentGiven: boolean;
+};
+
+function readCloudAssistModeSession(): CloudAssistModeSession {
   try {
-    const raw = window.sessionStorage.getItem(CLOUD_ASSIST_DRAFT_KEY);
+    const raw = window.sessionStorage.getItem(CLOUD_ASSIST_MODE_SESSION_KEY);
+    if (!raw) return { preferHosted: false, consentGiven: false };
+    const parsed = JSON.parse(raw) as Partial<CloudAssistModeSession>;
+    return {
+      preferHosted: parsed.preferHosted === true,
+      consentGiven: parsed.consentGiven === true,
+    };
+  } catch {
+    return { preferHosted: false, consentGiven: false };
+  }
+}
+
+function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolean): void {
+  try {
+    window.sessionStorage.setItem(
+      CLOUD_ASSIST_MODE_SESSION_KEY,
+      JSON.stringify({ preferHosted, consentGiven } satisfies CloudAssistModeSession),
+    );
+  } catch {
+    /* private mode */
+  }
+}
+
+function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(CREATE_NOTE_AUTH_DRAFT_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CloudAssistDraft>;
+    const parsed = JSON.parse(raw) as Partial<CreateNoteAuthDraft>;
     if (parsed.v !== 1 || typeof parsed.expiresAt !== "number") return null;
     if (Date.now() > parsed.expiresAt) {
-      window.sessionStorage.removeItem(CLOUD_ASSIST_DRAFT_KEY);
+      window.sessionStorage.removeItem(CREATE_NOTE_AUTH_DRAFT_KEY);
       return null;
     }
     if (typeof parsed.noteContent !== "string") return null;
@@ -135,6 +177,20 @@ function readCloudAssistDraft(): CloudAssistDraft | null {
           ? parsed.aiEnhancementType
           : "ask",
       showPrompt: parsed.showPrompt !== false,
+      originalPrompt: typeof parsed.originalPrompt === "string" ? parsed.originalPrompt : "",
+      userPromptHistory: Array.isArray(parsed.userPromptHistory)
+        ? parsed.userPromptHistory.filter((item): item is string => typeof item === "string")
+        : [],
+      transformHistory: Array.isArray(parsed.transformHistory)
+        ? parsed.transformHistory.filter(
+            (item): item is AiPostGenTransform =>
+              Boolean(item) &&
+              typeof item === "object" &&
+              typeof (item as AiPostGenTransform).kind === "string" &&
+              typeof (item as AiPostGenTransform).contentBefore === "string",
+          )
+        : [],
+      aiDraftAccepted: parsed.aiDraftAccepted === true,
       selectedTemplateId:
         typeof parsed.selectedTemplateId === "string" || parsed.selectedTemplateId === null
           ? parsed.selectedTemplateId
@@ -147,15 +203,29 @@ function readCloudAssistDraft(): CloudAssistDraft | null {
         parsed.aiSentenceLength === "7-10"
           ? parsed.aiSentenceLength
           : "auto",
+      expiryValue:
+        parsed.expiryValue === "5m" ||
+        parsed.expiryValue === "10m" ||
+        parsed.expiryValue === "30m" ||
+        parsed.expiryValue === "1h" ||
+        parsed.expiryValue === "2h" ||
+        parsed.expiryValue === "8h" ||
+        parsed.expiryValue === "1d" ||
+        parsed.expiryValue === "3d" ||
+        parsed.expiryValue === "7d"
+          ? (parsed.expiryValue as NoteExpiryPresetId)
+          : NOTE_EXPIRY_DEFAULT_PRESET_ID,
+      preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
+      cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
   } catch {
     return null;
   }
 }
 
-function clearCloudAssistDraft(): void {
+function clearCreateNoteAuthDraft(): void {
   try {
-    window.sessionStorage.removeItem(CLOUD_ASSIST_DRAFT_KEY);
+    window.sessionStorage.removeItem(CREATE_NOTE_AUTH_DRAFT_KEY);
   } catch {
     /* ignore */
   }
@@ -203,7 +273,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     detail?: string;
   } | null>(null);
   const [showTemplateOfferPrompt, setShowTemplateOfferPrompt] = useState(false);
-  const [preferHostedCloudAfterLocalFailure, setPreferHostedCloudAfterLocalFailure] = useState(false);
+  const [preferHostedCloudAfterLocalFailure, setPreferHostedCloudAfterLocalFailure] = useState(
+    () => readCloudAssistModeSession().preferHosted,
+  );
   const [cellularPreloadConfirmOpen, setCellularPreloadConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>("ask-anything");
   const [aiSentenceLength, setAiSentenceLength] = useState<AiSentenceLengthId>("auto");
@@ -215,6 +287,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const [hostedCloudAiRemaining, setHostedCloudAiRemaining] = useState<number | null>(null);
   const [hostedCloudAiLimit, setHostedCloudAiLimit] = useState(3);
   const [hostedCloudAiStatusText, setHostedCloudAiStatusText] = useState<string | null>(null);
+  const [allowHostedAi, setAllowHostedAi] = useState(() => readLocalHostedAiAllowed());
+  const [cloudAssistConsentGiven, setCloudAssistConsentGiven] = useState(
+    () => readCloudAssistModeSession().consentGiven,
+  );
+  const hostedAiPrefHydratedRef = useRef(false);
+  const cloudAssistModeTouchedInSessionRef = useRef(readCloudAssistModeSession().preferHosted);
 
   const turnstileSiteKey = getTurnstileSiteKeyForClient();
   /** True when server KV says this client must pass Turnstile (adaptive — rate limit or high AI-note volume). */
@@ -250,33 +328,63 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       : `${window.location.pathname}${window.location.search}` || localizedPath("/", language);
   const cloudAssistSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=cloud_assist&returnTo=${encodeURIComponent(cloudAssistReturnTo)}`;
 
-  const saveCloudAssistDraft = useCallback(
-    (overrides?: Partial<CloudAssistDraft>) => {
+  const saveAuthRedirectDraft = useCallback(
+    (overrides?: Partial<CreateNoteAuthDraft>) => {
       try {
-        const draft: CloudAssistDraft = {
+        const draft: CreateNoteAuthDraft = {
           v: 1,
-          expiresAt: Date.now() + CLOUD_ASSIST_DRAFT_TTL_MS,
+          expiresAt: Date.now() + CREATE_NOTE_AUTH_DRAFT_TTL_MS,
           noteContent,
           isAiMode,
           aiPrompt,
           aiEnhancementType,
           showPrompt,
+          originalPrompt,
+          userPromptHistory,
+          transformHistory,
+          aiDraftAccepted,
           selectedTemplateId,
           aiSentenceLength,
+          expiryValue,
+          preferHostedCloudAfterLocalFailure,
+          cloudAssistConsentGiven,
           ...overrides,
         };
-        window.sessionStorage.setItem(CLOUD_ASSIST_DRAFT_KEY, JSON.stringify(draft));
+        window.sessionStorage.setItem(CREATE_NOTE_AUTH_DRAFT_KEY, JSON.stringify(draft));
       } catch {
         /* Best effort */
       }
     },
-    [aiEnhancementType, aiPrompt, aiSentenceLength, isAiMode, noteContent, selectedTemplateId, showPrompt],
+    [
+      aiDraftAccepted,
+      aiEnhancementType,
+      aiPrompt,
+      aiSentenceLength,
+      cloudAssistConsentGiven,
+      expiryValue,
+      isAiMode,
+      noteContent,
+      originalPrompt,
+      preferHostedCloudAfterLocalFailure,
+      selectedTemplateId,
+      showPrompt,
+      transformHistory,
+      userPromptHistory,
+    ],
   );
 
-  const handleCloudAssistSignInRedirect = useCallback(() => {
-    saveCloudAssistDraft({ isAiMode: true, showPrompt: true });
-    window.location.href = cloudAssistSignInHref;
-  }, [cloudAssistSignInHref, saveCloudAssistDraft]);
+  const redirectToCloudAssistSignIn = useCallback(
+    (overrides?: Partial<CreateNoteAuthDraft>) => {
+      saveAuthRedirectDraft({
+        isAiMode: true,
+        preferHostedCloudAfterLocalFailure: true,
+        cloudAssistConsentGiven: true,
+        ...overrides,
+      });
+      window.location.href = cloudAssistSignInHref;
+    },
+    [cloudAssistSignInHref, saveAuthRedirectDraft],
+  );
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -307,13 +415,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
   }, [prefillText]);
 
-  const cloudAssistDraftRestoredRef = useRef(false);
+  const authDraftRestoredRef = useRef(false);
   useEffect(() => {
-    if (cloudAssistDraftRestoredRef.current || prefillText) return;
-    cloudAssistDraftRestoredRef.current = true;
-    const draft = readCloudAssistDraft();
+    if (authDraftRestoredRef.current || prefillText) return;
+    authDraftRestoredRef.current = true;
+    const draft = readCreateNoteAuthDraft();
     if (!draft) return;
-    clearCloudAssistDraft();
+    clearCreateNoteAuthDraft();
 
     const { text } = truncateUtf8StringToMaxBytes(
       draft.noteContent,
@@ -324,8 +432,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setAiPrompt(draft.aiPrompt);
     setAiEnhancementType(draft.aiEnhancementType);
     setShowPrompt(draft.showPrompt);
+    setOriginalPrompt(draft.originalPrompt);
+    setUserPromptHistory(draft.userPromptHistory);
+    setTransformHistory(draft.transformHistory);
+    setAiDraftAccepted(draft.aiDraftAccepted);
     setSelectedTemplateId(draft.selectedTemplateId);
     setAiSentenceLength(draft.aiSentenceLength);
+    setExpiryValue(draft.expiryValue);
+    if (draft.preferHostedCloudAfterLocalFailure) {
+      setPreferHostedCloudAfterLocalFailure(true);
+      setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
+      cloudAssistModeTouchedInSessionRef.current = true;
+      writeCloudAssistModeSession(true, draft.cloudAssistConsentGiven);
+    }
   }, [prefillText]);
 
   // ── Content helpers ───────────────────────────────────────────────────────
@@ -972,6 +1091,95 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setAiDraftAccepted(false);
   }, [setNoteContentFromAiOutput]);
 
+  const persistHostedAiPreference = useCallback(
+    async (allowed: boolean): Promise<boolean> => {
+      setAllowHostedAi(allowed);
+      writeLocalHostedAiAllowed(allowed);
+      if (!user) {
+        return allowed;
+      }
+      try {
+        await apiRequest("/api/auth/account/preferences", "PATCH", { allowHostedAi: allowed });
+        return true;
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 503) {
+          try {
+            const body = JSON.parse(error.bodyText) as { message?: string };
+            if (body.message?.includes("Hosted AI preference migration is required")) {
+              return true;
+            }
+          } catch {
+            /* fall through */
+          }
+        }
+        setAllowHostedAi(!allowed);
+        writeLocalHostedAiAllowed(!allowed);
+        toast({
+          title: "Could not save hosted AI preference",
+          description: "Try again from Account → Preferences.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [user, toast],
+  );
+
+  const handlePreferHostedCloudChange = useCallback(
+    (prefer: boolean) => {
+      cloudAssistModeTouchedInSessionRef.current = true;
+      setPreferHostedCloudAfterLocalFailure(prefer);
+      if (prefer) {
+        setCloudAssistConsentGiven(true);
+        writeCloudAssistModeSession(true, true);
+        if (!user) {
+          redirectToCloudAssistSignIn();
+          return;
+        }
+      } else {
+        setCloudAssistConsentGiven(false);
+        writeCloudAssistModeSession(false, false);
+      }
+    },
+    [redirectToCloudAssistSignIn, user],
+  );
+
+  const handleCloudAssistConsentChange = useCallback((consent: boolean) => {
+    cloudAssistModeTouchedInSessionRef.current = true;
+    setCloudAssistConsentGiven(consent);
+    writeCloudAssistModeSession(preferHostedCloudAfterLocalFailure, consent);
+  }, [preferHostedCloudAfterLocalFailure]);
+
+  useEffect(() => {
+    if (!user) {
+      hostedAiPrefHydratedRef.current = false;
+      cloudAssistModeTouchedInSessionRef.current = readCloudAssistModeSession().preferHosted;
+      return;
+    }
+    if (hostedAiPrefHydratedRef.current) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiRequest<{ ok: boolean; allowHostedAi?: boolean }>(
+          "/api/auth/account/summary",
+          "GET",
+        );
+        if (!cancelled && data.ok && typeof data.allowHostedAi === "boolean") {
+          if (!cloudAssistModeTouchedInSessionRef.current) {
+            setAllowHostedAi(data.allowHostedAi);
+            writeLocalHostedAiAllowed(data.allowHostedAi);
+          }
+          hostedAiPrefHydratedRef.current = true;
+        }
+      } catch {
+        /* non-critical */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleHostedCloudGenerate = async (override?: {
     prompt?: string;
     enhancementType?: "improve" | "summarize" | "secure" | "ask";
@@ -983,8 +1191,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return;
     }
 
+    if (!cloudAssistConsentGiven) {
+      toast({
+        title: "Confirmation required",
+        description: "Confirm you understand prompts leave this device before generating.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!user) {
-      handleCloudAssistSignInRedirect();
+      redirectToCloudAssistSignIn();
       return;
     }
 
@@ -998,13 +1215,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       return prev;
     });
 
-    try {
-      const response = await generateHostedCloudDraft({
+    const requestDraft = () =>
+      generateHostedCloudDraft({
         prompt: promptToUse,
         enhancementType: enhancementTypeToUse,
         language,
         sentenceLength: aiSentenceLength,
       });
+
+    const applyDraftResponse = (response: Awaited<ReturnType<typeof generateHostedCloudDraft>>) => {
       setHostedCloudAiLimit(response.limit);
       setHostedCloudAiRemaining(response.remaining);
       setNoteContentFromAiOutput(response.text);
@@ -1015,8 +1234,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
         title: "Cloud draft created",
         description: `${response.remaining} of ${response.limit} free hosted drafts left today.`,
       });
+    };
+
+    try {
+      const saved = await persistHostedAiPreference(true);
+      if (!saved) return;
+
+      const response = await requestDraft();
+      applyDraftResponse(response);
     } catch (error) {
-      const parsed = parseHostedCloudAiError(error);
+      let parsed = parseHostedCloudAiError(error);
+      if (parsed.code === "hosted_ai_not_enabled") {
+        const saved = await persistHostedAiPreference(true);
+        if (saved) {
+          try {
+            const response = await requestDraft();
+            applyDraftResponse(response);
+            return;
+          } catch (retryError) {
+            parsed = parseHostedCloudAiError(retryError);
+          }
+        }
+      }
+
       if (parsed.code === "hosted_ai_quota_exhausted") {
         setHostedCloudAiRemaining(0);
         toast({
@@ -1037,12 +1277,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_auth_required") {
-        handleCloudAssistSignInRedirect();
-        return;
+        redirectToCloudAssistSignIn();
+      } else if (parsed.code === "hosted_ai_not_enabled" || parsed.code === "hosted_ai_consent_required") {
+        toast({
+          title: "Non-private hosted AI is off",
+          description:
+            parsed.message ??
+            "Enable it in Account → Preferences and confirm you understand prompts leave this device.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "hosted_ai_unavailable" || parsed.code === "hosted_ai_auth_unavailable") {
+        toast({
+          title: "Cloud assist unavailable",
+          description: parsed.message ?? "Hosted AI is not configured for this deployment.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "hosted_ai_cost_guard_unavailable") {
+        toast({
+          title: "Cloud assist temporarily unavailable",
+          description: parsed.message ?? "Usage tracking is being updated. Try again shortly.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Cloud assist unavailable",
-          description: "Use the offline templates, or try hosted generation again later.",
+          description: parsed.message ?? "Use the offline templates, or try hosted generation again later.",
           variant: "destructive",
         });
       }
@@ -1281,11 +1540,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
+    cloudAssistModeTouchedInSessionRef.current = true;
     setPreferHostedCloudAfterLocalFailure(true);
+    setCloudAssistConsentGiven(true);
+    writeCloudAssistModeSession(true, true);
     setIsAiMode(true);
     setShowPrompt(true);
+    if (!user) {
+      redirectToCloudAssistSignIn();
+      return;
+    }
     aiComposerAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [redirectToCloudAssistSignIn, user]);
 
   // ── Success page ──────────────────────────────────────────────────────────
   if (createdNote) {
@@ -1404,8 +1670,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 onHostedCloudGenerate={(override) => void handleHostedCloudGenerate(override)}
                 hostedCloudAiRemaining={hostedCloudAiRemaining}
                 hostedCloudAiLimit={hostedCloudAiLimit}
-                isSignedIn={Boolean(user)}
-                onSignInRequired={handleCloudAssistSignInRedirect}
+                cloudAssistConsentGiven={cloudAssistConsentGiven}
+                onCloudAssistConsentChange={handleCloudAssistConsentChange}
                 onImprove={() => void handleImprove()}
                 onSummarize={() => void handleSummarize()}
                 onSimplify={() => void handleSimplify()}
@@ -1418,6 +1684,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
                 aiDraftAccepted={aiDraftAccepted}
                 onAcceptDraft={() => setAiDraftAccepted(true)}
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
+                onPreferHostedCloudChange={handlePreferHostedCloudChange}
                 onWriteWithoutAi={() => setIsAiMode(false)}
                 />
               </Suspense>

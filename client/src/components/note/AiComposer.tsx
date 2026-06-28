@@ -4,14 +4,12 @@ import {
   ChevronUp,
   ArrowLeft,
   ArrowUp,
-  X,
   Zap,
   ZoomIn,
   FileText,
-  Info,
-  LogIn,
   Sparkles,
   RefreshCw,
+  Cloud,
 } from "lucide-react";
 import {
   getPromptTemplatesForLanguage,
@@ -28,12 +26,25 @@ import {
   noteHasUnresolvedGuidedPlaceholders,
 } from "@/components/note/localFallbackTemplates";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
+import { NonPrivateAiPanel } from "@/components/note/NonPrivateAiPanel";
+import { CloudAssistPrivacyDetails } from "@/components/note/CloudAssistPrivacyDetails";
 import { getLocalAiGenerationGlyph } from "@/utils/localAiUxText";
 import { MAX_NOTE_AI_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function templateChipClass(active: boolean): string {
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
@@ -96,8 +107,8 @@ export type AiComposerProps = {
   }) => void;
   hostedCloudAiRemaining: number | null;
   hostedCloudAiLimit: number;
-  isSignedIn?: boolean;
-  onSignInRequired?: () => void;
+  cloudAssistConsentGiven?: boolean;
+  onCloudAssistConsentChange: (consent: boolean) => void;
   onImprove: () => void;
   onSummarize: () => void;
   onSimplify: () => void;
@@ -116,6 +127,7 @@ export type AiComposerProps = {
   onAcceptDraft: () => void;
   /** After a failed on-device load/generate, show hosted cloud UI even when WebGPU is present. */
   preferHostedCloudAfterLocalFailure?: boolean;
+  onPreferHostedCloudChange?: (prefer: boolean) => void;
   /** Exit AI mode entirely and return to plain note writing. */
   onWriteWithoutAi: () => void;
 };
@@ -138,8 +150,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   onHostedCloudGenerate,
   hostedCloudAiRemaining,
   hostedCloudAiLimit,
-  isSignedIn = true,
-  onSignInRequired,
+  cloudAssistConsentGiven = false,
+  onCloudAssistConsentChange,
   onImprove,
   onSummarize,
   onSimplify,
@@ -152,17 +164,33 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   aiDraftAccepted,
   onAcceptDraft,
   preferHostedCloudAfterLocalFailure = false,
+  onPreferHostedCloudChange,
   onWriteWithoutAi,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
-  const [showHostedCloudNotice, setShowHostedCloudNotice] = useState(true);
+  const [cloudAssistSwitchConfirmOpen, setCloudAssistSwitchConfirmOpen] = useState(false);
 
   const skipPromptGlowRef = useRef(true);
+  const { t } = useLanguage();
+  const tx = (key: string, fallback: string) => t[key] || fallback;
   const localAiSupported = isLocalAiSupported();
   const showLocalOnDeviceUi = localAiSupported && !preferHostedCloudAfterLocalFailure;
   const showHostedCloudUi = !localAiSupported || preferHostedCloudAfterLocalFailure;
-  const { t } = useLanguage();
+  const requiresCloudAssistAck = showHostedCloudUi && !cloudAssistConsentGiven;
+
+  const handleCloudAssistSwitchChange = (checked: boolean) => {
+    if (checked) {
+      setCloudAssistSwitchConfirmOpen(true);
+      return;
+    }
+    onPreferHostedCloudChange?.(false);
+  };
+
+  const confirmCloudAssistSwitch = () => {
+    setCloudAssistSwitchConfirmOpen(false);
+    onPreferHostedCloudChange?.(true);
+  };
   const promptTemplates = useMemo(() => getPromptTemplatesForLanguage(language), [language]);
   const activePromptTemplate = getPromptTemplateById(selectedTemplateId, language);
   const hasPromptText = aiPrompt.trim().length > 0;
@@ -198,54 +226,98 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     <div className="space-y-8 mb-4">
       <div>
         {showLocalOnDeviceUi ? (
-          <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
-            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
-            </p>
-          </div>
-        ) : showHostedCloudUi && showHostedCloudNotice ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 dark:border-red-900/70 dark:bg-red-950/35">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
-                  {t.aiComposerLocalAiUnavailableTitle}
-                </p>
-                <p className="text-sm leading-relaxed text-red-800 dark:text-red-100/90">
-                  {t.aiComposerNoLocalAiOptions}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowHostedCloudNotice(false)}
-                aria-label="Dismiss Cloud Assist privacy notice"
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-700 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-200 dark:hover:bg-red-900/50"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {showLocalOnDeviceUi && isAiModelLoading && aiModelProgress ? (
           <div className="mb-4 space-y-3">
-            <div className="flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  {aiModelProgress.text}
-                </span>
-                <span className="text-xs text-blue-700 dark:text-blue-300">
-                  {Math.round(aiModelProgress.progress)}%
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-blue-200 dark:bg-blue-800">
-                <div
-                  className="h-2 rounded-full bg-blue-600 transition-all duration-300 dark:bg-blue-400"
-                  style={{ width: `${aiModelProgress.progress}%` }}
-                />
-              </div>
-              {aiModelProgress.detail ? (
-                <p className="break-words text-xs text-blue-800/95 dark:text-blue-200/90">
-                  {aiModelProgress.detail}
+            <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-3">
+              <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                <strong>{t.aiComposerRunsLocallyTitle}</strong> {t.aiComposerRunsLocallyBody}
+              </p>
+              {isAiModelLoading && aiModelProgress ? (
+                <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-white/70 p-3 dark:border-primary/30 dark:bg-gray-900/50">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {aiModelProgress.text}
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {Math.round(aiModelProgress.progress)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-primary/15 dark:bg-primary/25">
+                    <div
+                      className="h-1.5 rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${aiModelProgress.progress}%` }}
+                    />
+                  </div>
+                  {aiModelProgress.detail ? (
+                    <p className="break-words text-xs text-gray-600 dark:text-gray-400">
+                      {aiModelProgress.detail}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            {onPreferHostedCloudChange ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/80 px-4 py-3 dark:border-gray-600 dark:bg-gray-900/40">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  {tx("aiComposerCloudAssistOptionalLabel", "Optional")}
                 </p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Cloud className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                      <Label
+                        htmlFor="prefer-cloud-assist"
+                        className="text-sm font-medium text-gray-800 dark:text-gray-200"
+                      >
+                        {tx("aiComposerSwitchToCloudAssist", "Cloud Assist")}
+                      </Label>
+                      <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                        {t.aiComposerCloudAssistNotFullyPrivate}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {tx(
+                        "aiComposerCloudAssistOptionalHint",
+                        "Use hosted drafting instead of on-device Private AI.",
+                      )}
+                    </p>
+                    <CloudAssistPrivacyDetails tx={tx} />
+                  </div>
+                  <Switch
+                    id="prefer-cloud-assist"
+                    checked={false}
+                    onCheckedChange={handleCloudAssistSwitchChange}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : showHostedCloudUi ? (
+          <div className="mb-4 rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 dark:border-amber-800/60 dark:bg-amber-950/30">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                    {tx("aiComposerUsingCloudAssistTitle", "Cloud Assist")}
+                  </p>
+                  <span className="rounded-full border border-amber-400/80 bg-white/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200">
+                    {t.aiComposerCloudAssistNotFullyPrivate}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900/85 dark:text-amber-100/85">
+                  {tx(
+                    "aiComposerUsingCloudAssistBodyShort",
+                    "Hosted drafting — your prompt leaves this device.",
+                  )}
+                </p>
+                <CloudAssistPrivacyDetails tx={tx} />
+              </div>
+              {onPreferHostedCloudChange && localAiSupported ? (
+                <Switch
+                  id="prefer-cloud-assist-active"
+                  checked
+                  onCheckedChange={handleCloudAssistSwitchChange}
+                  aria-label={tx("aiComposerSwitchBackToPrivateAi", "Use Private AI instead")}
+                />
               ) : null}
             </div>
           </div>
@@ -331,9 +403,12 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             {showLocalOnDeviceUi ? (
               <div>
                 <StepRow step={3} label={t.aiComposerWriteWithAi} />
-                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
                   {t.aiComposerWhatDoYouWantToSay}
                 </h3>
+                <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  {tx("aiComposerPrivateAiBadge", "Private AI — runs on this device")}
+                </p>
 
                 <div className="relative min-w-0">
                   <div
@@ -429,104 +504,24 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             ) : (
               <div>
                 <StepRow step={3} label={t.aiComposerWriteWithAi} />
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-                    {t.aiComposerCloudAssistTitle}
-                  </h3>
-                  <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-                    {t.aiComposerCloudAssistNotFullyPrivate}
-                  </span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Why Cloud Assist is not fully private"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:bg-gray-950 dark:text-red-300 dark:hover:bg-red-950/40"
-                      >
-                        <Info className="h-4 w-4" aria-hidden />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-72 text-xs leading-relaxed text-gray-700 dark:text-gray-200">
-                      {t.aiComposerCloudAssistBody}
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
+                  {t.aiComposerWhatDoYouWantToSay}
+                </h3>
 
-                {!isSignedIn ? (
-                  <div className="rounded-xl border border-amber-300/70 bg-white px-4 py-4 dark:border-amber-800/60 dark:bg-gray-900">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {t.signInToUseCloudAssistHint ??
-                        "Sign in to generate a hosted draft with Cloud Assist."}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onSignInRequired?.()}
-                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 sm:w-auto"
-                    >
-                      <LogIn className="h-4 w-4 shrink-0" aria-hidden />
-                      {t.signInToUseCloudAssist ?? "Sign in to use Cloud Assist"}
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                <div className="mb-3 flex items-center justify-end gap-3">
-                  <span className="shrink-0 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200">
-                    {hostedCloudAiRemaining === null
-                      ? t.aiComposerCloudAssistIncluded.replace("{count}", String(hostedCloudAiLimit))
-                      : t.aiComposerCloudAssistRemaining
-                          .replace("{remaining}", String(hostedCloudAiRemaining))
-                          .replace("{limit}", String(hostedCloudAiLimit))}
-                  </span>
-                </div>
-
-                <div className="relative min-w-0">
-                  <div
-                    className={[
-                      "min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50",
-                      heroTypingGlow ? "ai-prompt-hero--typing" : "",
-                      hasPromptText
-                        ? "ring-2 ring-primary/25 dark:ring-primary/35 shadow-lg shadow-primary/10"
-                        : "",
-                    ].join(" ")}
-                  >
-                    <textarea
-                      id="hosted-ai-prompt"
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return;
-                        e.preventDefault();
-                        if (isGeneratingContent || !aiPrompt.trim() || hostedCloudAiRemaining === 0) return;
-                        onHostedCloudGenerate();
-                      }}
-                      rows={6}
-                      className="min-h-[11rem] w-full resize-y bg-transparent py-4 pl-5 pr-20 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
-                      placeholder={
-                        activePromptTemplate?.promptPlaceholder ??
-                        (aiEnhancementType === "summarize"
-                          ? t.aiComposerPlaceholderSummarize
-                          : aiEnhancementType === "secure"
-                            ? t.aiComposerPlaceholderSecure
-                            : t.aiComposerCloudAssistPlaceholder)
-                      }
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => onHostedCloudGenerate()}
-                    disabled={isGeneratingContent || !hasPromptText || hostedCloudAiRemaining === 0}
-                    title={t.aiComposerCloudAssistButton}
-                    aria-label={t.aiComposerCloudAssistButton}
-                    className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-white/90 dark:ring-gray-900/90 hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 disabled:pointer-events-none disabled:opacity-40 transition-colors"
-                  >
-                    {isGeneratingContent ? (
-                      <WritingPencilIcon sizeClassName="h-5 w-5" tone="onPrimary" />
-                    ) : (
-                      <ArrowUp className="h-5 w-5" aria-hidden strokeWidth={2.25} />
-                    )}
-                  </button>
-                </div>
+                <NonPrivateAiPanel
+                  t={t}
+                  tx={tx}
+                  aiPrompt={aiPrompt}
+                  setAiPrompt={setAiPrompt}
+                  requiresSessionAck={requiresCloudAssistAck}
+                  sessionAcknowledged={cloudAssistConsentGiven}
+                  onSessionAcknowledgedChange={onCloudAssistConsentChange}
+                  isGeneratingContent={isGeneratingContent}
+                  hasPromptText={hasPromptText}
+                  hostedCloudAiRemaining={hostedCloudAiRemaining}
+                  hostedCloudAiLimit={hostedCloudAiLimit}
+                  onGenerate={() => onHostedCloudGenerate()}
+                />
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[1.25rem]">
                   {isGeneratingContent ? (
@@ -559,8 +554,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                           : t.aiComposerCloudAssistPlaceholder}
                   </span>
                 </div>
-                  </>
-                )}
 
                 <button
                   type="button"
@@ -641,6 +634,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 />
               </div>
             </div>
+            {aiDraftAccepted ? (
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                {privacyBannerItems}
+              </div>
+            ) : null}
             <textarea
               value={noteContent}
               onChange={(e) =>
@@ -666,12 +664,6 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {unresolvedPlaceholderLabels.map((label) => `[${label}]`).join(", ")}
                   </p>
                 ) : null}
-              </div>
-            ) : null}
-
-            {aiDraftAccepted ? (
-              <div className="mt-2 hidden md:flex flex-nowrap items-center gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
-                {privacyBannerItems}
               </div>
             ) : null}
 
@@ -731,6 +723,31 @@ export const AiComposer: React.FC<AiComposerProps> = ({
           </div>
         ) : null}
       </div>
+
+      <AlertDialog open={cloudAssistSwitchConfirmOpen} onOpenChange={setCloudAssistSwitchConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tx("aiComposerSwitchToCloudAssistWarningTitle", "Switch to Cloud Assist?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tx(
+                "aiComposerSwitchToCloudAssistWarningBody",
+                "Cloud Assist sends your prompt to Cloudflare Workers AI (Meta Llama 3.2 3B). It is not fully private — your text is processed in the cloud before you encrypt the note.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel>{tx("aiComposerSwitchToCloudAssistCancel", "Keep Private AI")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+              onClick={confirmCloudAssistSwitch}
+            >
+              {tx("aiComposerSwitchToCloudAssistConfirm", "Use Cloud Assist (not fully private)")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

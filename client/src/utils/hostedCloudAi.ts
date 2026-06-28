@@ -22,6 +22,7 @@ export type HostedCloudAiErrorCode =
   | "hosted_ai_quota_exhausted"
   | "hosted_ai_unavailable"
   | "hosted_ai_generation_failed"
+  | "hosted_ai_not_enabled"
   | "hosted_ai_consent_required"
   | "hosted_ai_auth_required"
   | "hosted_ai_auth_unavailable"

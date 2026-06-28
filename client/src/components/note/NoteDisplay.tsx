@@ -643,9 +643,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           className="note-read-panel mt-8 sm:mt-10 text-left"
           aria-label="Note content"
         >
-          <div className="note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[0.97rem] sm:text-base md:text-[1.03rem] leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
+          <span className="note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[0.97rem] sm:text-base md:text-[1.03rem] leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
             {noteContent.trimEnd()}
-          </div>
+          </span>
         </div>
 
         <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">

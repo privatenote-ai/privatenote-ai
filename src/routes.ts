@@ -6453,12 +6453,21 @@ async function getHostedAiMonthlyCostUsd(
     throw new Error("Auth database is not configured");
   }
 
-  const row = await env.AUTH_DB.prepare(
-    "SELECT COALESCE(SUM(cost_usd), 0) AS total_cost_usd FROM token_usage_logs WHERE user_id = ? AND billing_month = ?",
-  )
-    .bind(userId, billingMonth)
-    .first<{ total_cost_usd: number | null }>();
-  return Number(row?.total_cost_usd ?? 0);
+  try {
+    const row = await env.AUTH_DB.prepare(
+      "SELECT COALESCE(SUM(cost_usd), 0) AS total_cost_usd FROM token_usage_logs WHERE user_id = ? AND billing_month = ?",
+    )
+      .bind(userId, billingMonth)
+      .first<{ total_cost_usd: number | null }>();
+    return Number(row?.total_cost_usd ?? 0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/no such table: token_usage_logs/i.test(message)) {
+      console.warn("[HOSTED_AI] token_usage_logs missing; skipping fair-use cost guard");
+      return 0;
+    }
+    throw error;
+  }
 }
 
 async function assertHostedAiFairUseBudget(
@@ -6504,29 +6513,38 @@ async function logHostedAiTokenUsage(
   },
 ): Promise<void> {
   if (!env.AUTH_DB) return;
-  await env.AUTH_DB.prepare(
-    `INSERT INTO token_usage_logs (
-      id,
-      user_id,
-      model,
-      prompt_tokens,
-      completion_tokens,
-      cost_usd,
-      billing_month,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      crypto.randomUUID(),
-      args.userId,
-      args.model,
-      args.promptTokens,
-      args.completionTokens,
-      args.costUsd,
-      getHostedAiBillingMonth(),
-      new Date().toISOString(),
+  try {
+    await env.AUTH_DB.prepare(
+      `INSERT INTO token_usage_logs (
+        id,
+        user_id,
+        model,
+        prompt_tokens,
+        completion_tokens,
+        cost_usd,
+        billing_month,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run();
+      .bind(
+        crypto.randomUUID(),
+        args.userId,
+        args.model,
+        args.promptTokens,
+        args.completionTokens,
+        args.costUsd,
+        getHostedAiBillingMonth(),
+        new Date().toISOString(),
+      )
+      .run();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/no such table: token_usage_logs/i.test(message)) {
+      console.warn("[HOSTED_AI] token_usage_logs missing; skipping usage log");
+      return;
+    }
+    throw error;
+  }
 }
 
 async function handleHostedAiDraft(request: Request, env: Env): Promise<Response> {
