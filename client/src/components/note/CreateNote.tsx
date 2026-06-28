@@ -1652,7 +1652,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       try {
         await apiRequest("/api/auth/account/preferences", "PATCH", { allowHostedAi: allowed });
         return true;
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 503) {
+          try {
+            const body = JSON.parse(error.bodyText) as { message?: string };
+            if (body.message?.includes("Hosted AI preference migration is required")) {
+              return true;
+            }
+          } catch {
+            /* fall through */
+          }
+        }
         setAllowHostedAi(!allowed);
         writeLocalHostedAiAllowed(!allowed);
         toast({
@@ -1827,10 +1837,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             "Enable it in Account → Preferences and confirm you understand prompts leave this device.",
           variant: "destructive",
         });
+      } else if (parsed.code === "hosted_ai_unavailable" || parsed.code === "hosted_ai_auth_unavailable") {
+        toast({
+          title: "Cloud assist unavailable",
+          description: parsed.message ?? "Hosted AI is not configured for this deployment.",
+          variant: "destructive",
+        });
+      } else if (parsed.code === "hosted_ai_cost_guard_unavailable") {
+        toast({
+          title: "Cloud assist temporarily unavailable",
+          description: parsed.message ?? "Usage tracking is being updated. Try again shortly.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Cloud assist unavailable",
-          description: "Use the offline templates, or try hosted generation again later.",
+          description: parsed.message ?? "Use the offline templates, or try hosted generation again later.",
           variant: "destructive",
         });
       }

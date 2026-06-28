@@ -22,8 +22,8 @@
     "self-host:clean": "docker compose --env-file .env.self-host down -v",
     "test:unit": "tsx --test shared/homeSeoLinks.test.ts shared/publicMarketingPaths.test.ts shared/noteFileUploadAuth.test.ts shared/clientRequestIdentity.test.ts shared/pageContentSecurityPolicy.test.ts client/src/utils/documentMeta.test.ts client/src/utils/encryption.crypto.test.ts client/src/utils/libsodiumFileAttachment.test.ts client/src/utils/localizedPath.test.ts client/src/utils/meetingRequestStructuredHint.test.ts client/src/utils/templateStructuredHint.test.ts client/src/components/note/promptTemplates.test.ts client/src/components/note/localFallbackTemplates.test.ts client/src/pages/account/NotificationCenter.test.ts shared/analyticsMetrics.test.ts shared/kdfParamsV2.test.ts shared/noteExpiry.test.ts shared/noteFileAccess.test.ts shared/noteFileLimits.test.ts shared/noteAad.test.ts shared/noteCryptoWire.test.ts shared/noteId.test.ts shared/urlFragmentKey.test.ts shared/noteMetaEligibility.test.ts shared/storedNotePayload.test.ts src/durable_objects/secure_note_storage.test.ts src/noteFileStorageAccounting.test.ts src/sentNotesService.test.ts src/trustedOrigins.test.ts",
     "db:push": "drizzle-kit push",
-    "db:auth:migrate:local": "wrangler d1 migrations apply privatenote-auth --local",
-    "db:auth:migrate:remote": "wrangler d1 migrations apply privatenote-auth --remote"
+    "db:auth:migrate:local": "wrangler d1 migrations apply privatenote-auth-eu --local",
+    "db:auth:migrate:remote": "wrangler d1 migrations apply privatenote-auth-eu --remote"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
