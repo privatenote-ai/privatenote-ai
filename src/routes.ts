@@ -6339,6 +6339,9 @@ function hostedAiTaskInstruction(raw: unknown): string {
   if (raw === "improve") {
     return "Improve the user's draft into a natural, clear message that is ready to send.";
   }
+  if (raw === "simplify") {
+    return "Simplify the user's text into plain, easy-to-read language that is ready to send.";
+  }
   return "Write a natural message from the user's request that is ready to send.";
 }
 

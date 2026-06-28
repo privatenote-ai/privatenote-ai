@@ -669,7 +669,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
 
             {!aiDraftAccepted ? (
               <div className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                {showLocalOnDeviceUi ? (
+                {(showLocalOnDeviceUi || showHostedCloudUi) ? (
                   <div className="flex flex-wrap items-center justify-start gap-2">
                     <button
                       type="button"

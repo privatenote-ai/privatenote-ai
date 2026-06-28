@@ -1180,10 +1180,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     };
   }, [user]);
 
-  const handleHostedCloudGenerate = async (override?: {
-    prompt?: string;
-    enhancementType?: "improve" | "summarize" | "secure" | "ask";
-  }) => {
+  const usesHostedCloudAi = preferHostedCloudAfterLocalFailure || !isLocalAiSupported();
+
+  const handleHostedCloudGenerate = async (
+    override?: {
+      prompt?: string;
+      enhancementType?: "improve" | "summarize" | "secure" | "ask" | "simplify";
+    },
+    options?: {
+      preserveTransformHistory?: boolean;
+      skipPromptHistoryUpdate?: boolean;
+      successToast?: { title: string; description: string };
+    },
+  ) => {
     const promptToUse = override?.prompt ?? aiPrompt;
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse.trim()) {
@@ -1208,12 +1217,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     setIsGeneratingContent(true);
     setHostedCloudAiStatusText("Cloud assist is writing with Llama 3.2 3B...");
     if (!originalPrompt) setOriginalPrompt(promptToUse);
-    setUserPromptHistory((prev) => {
-      if (prev.length === 0 || prev[prev.length - 1] !== promptToUse) {
-        return [...prev, promptToUse];
-      }
-      return prev;
-    });
+    if (!options?.skipPromptHistoryUpdate) {
+      setUserPromptHistory((prev) => {
+        if (prev.length === 0 || prev[prev.length - 1] !== promptToUse) {
+          return [...prev, promptToUse];
+        }
+        return prev;
+      });
+    }
 
     const requestDraft = () =>
       generateHostedCloudDraft({
@@ -1227,13 +1238,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
       setHostedCloudAiLimit(response.limit);
       setHostedCloudAiRemaining(response.remaining);
       setNoteContentFromAiOutput(response.text);
-      setTransformHistory([]);
+      if (!options?.preserveTransformHistory) {
+        setTransformHistory([]);
+      }
       setShowPrompt(false);
       setAiDraftAccepted(false);
-      toast({
-        title: "Cloud draft created",
-        description: `${response.remaining} of ${response.limit} free hosted drafts left today.`,
-      });
+      toast(
+        options?.successToast ?? {
+          title: "Cloud draft created",
+          description: `${response.remaining} of ${response.limit} free hosted drafts left today.`,
+        },
+      );
     };
 
     try {
@@ -1404,6 +1419,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const handleImprove = async () => {
     if (!noteContent) return;
     setTransformHistory((prev) => [...prev, { kind: "improve", contentBefore: noteContent }]);
+    if (usesHostedCloudAi) {
+      await handleHostedCloudGenerate(
+        { prompt: noteContent, enhancementType: "improve" },
+        {
+          preserveTransformHistory: true,
+          skipPromptHistoryUpdate: true,
+          successToast: {
+            title: "Content Improved",
+            description: "The AI has refined your content for better clarity and style.",
+          },
+        },
+      );
+      return;
+    }
     setIsGeneratingContent(true);
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
@@ -1427,6 +1456,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const handleSummarize = async () => {
     if (!noteContent) return;
     setTransformHistory((prev) => [...prev, { kind: "summarize", contentBefore: noteContent }]);
+    if (usesHostedCloudAi) {
+      await handleHostedCloudGenerate(
+        { prompt: noteContent, enhancementType: "summarize" },
+        {
+          preserveTransformHistory: true,
+          skipPromptHistoryUpdate: true,
+          successToast: {
+            title: "Content Summarized",
+            description: "The AI has summarized your content to its key points.",
+          },
+        },
+      );
+      return;
+    }
     setIsGeneratingContent(true);
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
@@ -1450,6 +1493,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
   const handleSimplify = async () => {
     if (!noteContent) return;
     setTransformHistory((prev) => [...prev, { kind: "simplify", contentBefore: noteContent }]);
+    if (usesHostedCloudAi) {
+      await handleHostedCloudGenerate(
+        { prompt: noteContent, enhancementType: "simplify" },
+        {
+          preserveTransformHistory: true,
+          skipPromptHistoryUpdate: true,
+          successToast: {
+            title: "Content Simplified",
+            description: "The AI has simplified your content for easier reading.",
+          },
+        },
+      );
+      return;
+    }
     setIsGeneratingContent(true);
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
@@ -1478,6 +1535,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse) return;
     setTransformHistory((prev) => [...prev, { kind: "regenerate", contentBefore: noteContent }]);
+    if (usesHostedCloudAi) {
+      await handleHostedCloudGenerate(
+        { prompt: promptToUse, enhancementType: enhancementTypeToUse },
+        {
+          preserveTransformHistory: true,
+          skipPromptHistoryUpdate: true,
+          successToast: {
+            title: "Content Regenerated",
+            description: "The AI has created a new version based on your original prompt.",
+          },
+        },
+      );
+      return;
+    }
     setIsGeneratingContent(true);
     setAiProgress({ progress: 0, text: "Initializing AI..." });
     try {
