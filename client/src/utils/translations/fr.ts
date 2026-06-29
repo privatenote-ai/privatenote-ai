@@ -347,8 +347,8 @@ export const fr: Translations = {
   aiComposerLocalAiUnavailableBody2:
     "Nous développons une application native pour apporter l’IA locale à davantage d’appareils.",
   aiComposerNoLocalAiOptions:
-    "Cloud Assist utilise Llama 3.2 3B lorsque l’IA locale privée n’est pas disponible. Pas entièrement privé : votre prompt est envoyé à Cloudflare Workers AI.",
-  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+    "Cloud Assist utilise Gemma 4 26B lorsque l’IA locale privée n’est pas disponible. Pas entièrement privé : votre prompt est envoyé à Cloudflare Workers AI.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Gemma 4 26B",
   aiComposerCloudAssistBody:
     "Utilisez jusqu’à 3 brouillons hébergés lorsque l’IA locale privée n’est pas disponible. Le modèle et la longueur choisis ci-dessus sont envoyés à Cloudflare Workers AI.",
   aiComposerCloudAssistNotFullyPrivate: "Pas entièrement privé",
@@ -493,7 +493,7 @@ export const fr: Translations = {
   securityAiCloudTitle: "Cloud Assist (hébergé)",
   securityAiCloudPrivacyLabel: "Confidentialité",
   securityAiCloudPrivacyBody:
-    "**S’exécute sur Cloudflare Workers AI** (**Meta Llama 3.2 3B Instruct**). **Consentement requis**—le **clair du brouillon quitte votre appareil**. Rien n’est envoyé tant que vous n’avez pas confirmé Cloud Assist.",
+    "**S’exécute sur Cloudflare Workers AI** (**Meta Gemma 4 26B Instruct**). **Consentement requis**—le **clair du brouillon quitte votre appareil**. Rien n’est envoyé tant que vous n’avez pas confirmé Cloud Assist.",
   securityAiCloudUploadLabel: "Après enregistrement",
   securityAiCloudUploadBody:
     "Seule la **note chiffrée** est envoyée. Lors de la rédaction, votre invite transite par le **Worker PrivateNote.ai** en clair—nous ne la **stockons pas**, mais notre edge la traite pour cette requête avant Cloudflare.",

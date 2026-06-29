@@ -1215,7 +1215,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
     }
 
     setIsGeneratingContent(true);
-    setHostedCloudAiStatusText("Cloud assist is writing with Llama 3.2 3B...");
+    setHostedCloudAiStatusText("Cloud Assist is writing with Gemma 4 26B...");
     if (!originalPrompt) setOriginalPrompt(promptToUse);
     if (!options?.skipPromptHistoryUpdate) {
       setUserPromptHistory((prev) => {
@@ -1910,7 +1910,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange }) 
           <CreateNoteDeferredDialogs
             aiProgress={aiProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
-            isGeneratingContent={isGeneratingContent}
+            isGeneratingContent={isGeneratingContent && !usesHostedCloudAi}
             onStartFreeModelDownload={() => {
               void startFreeModelDownload();
             }}

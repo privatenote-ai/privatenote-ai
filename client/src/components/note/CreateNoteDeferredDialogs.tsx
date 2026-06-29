@@ -130,31 +130,30 @@ export function CreateNoteDeferredDialogs({
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Local AI not supported on this device</AlertDialogTitle>
-            <AlertDialogDescription>
-              On-device private AI couldn't start, so the incomplete local download was cleared
-              automatically. You can write without AI, or use Cloud Assist. Cloud Assist is{" "}
-              <span className="font-semibold text-red-600 dark:text-red-400">not fully private</span>
-              {" "}because your prompt is sent to Cloudflare Workers AI.
+            <AlertDialogTitle>Private AI isn't available on this device</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  On-device AI couldn't start on this device. You can use{" "}
+                  <span className="font-semibold text-foreground">Cloud Assist</span> instead —
+                  it runs on <span className="font-semibold text-foreground">Google Gemma 4 26B</span> via Cloudflare Workers AI.
+                </p>
+                <p>
+                  <span className="font-semibold text-red-600 dark:text-red-400">Not fully private:</span>{" "}
+                  your prompt is sent to the cloud for processing.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setShowTemplateOfferPrompt(false);
-                onWriteWithoutAi();
-              }}
-            >
-              Write without AI (fully private)
-            </Button>
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Not now
+            </AlertDialogCancel>
             <AlertDialogAction
-              className="w-full bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 sm:w-auto"
+              className="w-full bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-600 sm:w-auto"
               onClick={onUseCloudAssist}
             >
-              Use Cloud Assist (not fully private)
+              Enable Cloud Assist ›
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

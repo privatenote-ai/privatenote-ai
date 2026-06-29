@@ -346,8 +346,8 @@ export const de: Translations = {
   aiComposerLocalAiUnavailableBody2:
     "Wir entwickeln eine native App, um lokale KI auf mehr Geräte zu bringen.",
   aiComposerNoLocalAiOptions:
-    "Cloud Assist verwendet Llama 3.2 3B, wenn private lokale KI nicht verfügbar ist. Nicht vollständig privat: Ihr Prompt wird an Cloudflare Workers AI gesendet.",
-  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+    "Cloud Assist verwendet Gemma 4 26B, wenn private lokale KI nicht verfügbar ist. Nicht vollständig privat: Ihr Prompt wird an Cloudflare Workers AI gesendet.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Gemma 4 26B",
   aiComposerCloudAssistBody:
     "Verwenden Sie bis zu 3 gehostete Entwürfe, wenn private lokale KI nicht verfügbar ist. Vorlage und Länge oben werden an Cloudflare Workers AI gesendet.",
   aiComposerCloudAssistNotFullyPrivate: "Nicht vollständig privat",
@@ -489,7 +489,7 @@ export const de: Translations = {
   securityAiCloudTitle: "Cloud Assist (gehostet)",
   securityAiCloudPrivacyLabel: "Datenschutz",
   securityAiCloudPrivacyBody:
-    "**Läuft auf Cloudflare Workers AI** (**Meta Llama 3.2 3B Instruct**). **Opt-in** nötig—Entwurfs-**Klartext verlässt Ihr Gerät**. Es wird nichts gesendet, bis Sie Cloud Assist bestätigen.",
+    "**Läuft auf Cloudflare Workers AI** (**Meta Gemma 4 26B Instruct**). **Opt-in** nötig—Entwurfs-**Klartext verlässt Ihr Gerät**. Es wird nichts gesendet, bis Sie Cloud Assist bestätigen.",
   securityAiCloudUploadLabel: "Nach dem Speichern",
   securityAiCloudUploadBody:
     "Nur die **verschlüsselte Notiz** wird hochgeladen. Beim Entwerfen durchläuft Ihr Prompt den **PrivateNote.ai-Worker** im Klartext—wir **speichern** ihn **nicht**, aber unser Edge verarbeitet ihn für diese Anfrage, bevor Cloudflare ihn verarbeitet.",

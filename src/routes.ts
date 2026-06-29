@@ -71,19 +71,21 @@ const AI_VERIFICATION = {
 };
 
 const HOSTED_AI_DRAFT = {
-  MODEL: "@cf/meta/llama-3.2-3b-instruct",
-  MODEL_LABEL: "Llama 3.2 3B",
+  MODEL: "@cf/google/gemma-4-26b-a4b-it",
+  MODEL_LABEL: "Gemma 4 26B",
   FREE_USES: 3,
   WINDOW_SECONDS: 24 * 60 * 60,
   KEY_PREFIX: "hosted_ai_draft:",
   MAX_PROMPT_CHARS: 2500,
-  MAX_OUTPUT_TOKENS: 260,
+  MAX_OUTPUT_TOKENS: 2048,
 };
 
 const HOSTED_AI_COST_GUARD = {
-  FAIR_USE_LIMIT_USD: 1.5,
-  INPUT_USD_PER_MILLION_TOKENS: 0.051,
-  OUTPUT_USD_PER_MILLION_TOKENS: 0.34,
+  // Monthly per-user abuse guard. At ~$0.00065/request (Gemma 4 26B @ 2048 max tokens)
+  // $1.00 allows ~1,500 requests/month before blocking — far above any legitimate use.
+  FAIR_USE_LIMIT_USD: 1.0,
+  INPUT_USD_PER_MILLION_TOKENS: 0.100,
+  OUTPUT_USD_PER_MILLION_TOKENS: 0.300,
 };
 
 /** When set (KV), AI paths require a fresh Turnstile token until verification succeeds. */
@@ -756,8 +758,14 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
   });
 }
 
-const getEuSecureNotesNamespace = (env: Env): DurableObjectNamespace =>
-  env.SECURE_NOTES.jurisdiction("eu");
+const getEuSecureNotesNamespace = (env: Env): DurableObjectNamespace => {
+  // jurisdiction() is not supported in local workerd/Miniflare — fall back to plain namespace
+  try {
+    return env.SECURE_NOTES.jurisdiction("eu");
+  } catch {
+    return env.SECURE_NOTES;
+  }
+};
 
 // EU storage migration fallback: keep legacy global namespace reads until 2026-07-03
 // so pre-migration notes with the maximum 30-day expiry can still be opened.
@@ -6358,13 +6366,17 @@ function extractHostedAiText(result: unknown): string {
   if (result && typeof result === "object") {
     const record = result as Record<string, unknown>;
     candidates.push(record.response, record.result, record.text, record.output_text);
-    if (Array.isArray(record.choices)) {
+      if (Array.isArray(record.choices)) {
       for (const choice of record.choices) {
         if (choice && typeof choice === "object") {
           const c = choice as Record<string, unknown>;
           candidates.push(c.text);
           if (c.message && typeof c.message === "object") {
-            candidates.push((c.message as Record<string, unknown>).content);
+            const msg = c.message as Record<string, unknown>;
+            candidates.push(msg.content);
+            // Gemma 4 and other thinking models surface chain-of-thought in `reasoning`
+            // when content is null (e.g. token budget exhausted before output phase)
+            candidates.push(msg.reasoning);
           }
         }
       }

@@ -32,6 +32,9 @@ migrations_dir = "src/auth/d1-migrations"
 
 [ai]
 binding = "AI"
+# Route AI calls to the real Cloudflare Workers AI service during local dev so that
+# models not simulated by Miniflare (e.g. @cf/google/gemma-4-26b-a4b-it) work correctly.
+experimental_remote = true
 #
 # [[durable_objects.bindings]]
 # name = "AUTH_TOKENS"
@@ -44,6 +47,10 @@ class_name = "AuthTokenStore"
 [[migrations]]
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
+
+[[migrations]]
+tag = "v5-secure-notes-sqlite"
+new_sqlite_classes = ["SecureNoteStorageSql"]
 
 # SecureNoteStorageSql uses the Durable Object SQL API (`state.storage.sql`). Local `wrangler dev`
 # (Miniflare) only enables SQL if the class was first registered with `new_sqlite_classes` — otherwise
