@@ -347,8 +347,8 @@ export const es: Translations = {
   aiComposerLocalAiUnavailableBody2:
     "Estamos creando una app nativa para llevar la IA local a más dispositivos.",
   aiComposerNoLocalAiOptions:
-    "Cloud Assist usa Llama 3.2 3B cuando la IA local privada no está disponible. No es totalmente privado: tu prompt se envía a Cloudflare Workers AI.",
-  aiComposerCloudAssistTitle: "Cloud Assist — Llama 3.2 3B",
+    "Cloud Assist usa Gemma 4 26B cuando la IA local privada no está disponible. No es totalmente privado: tu prompt se envía a Cloudflare Workers AI.",
+  aiComposerCloudAssistTitle: "Cloud Assist — Gemma 4 26B",
   aiComposerCloudAssistBody:
     "Usa hasta 3 borradores alojados cuando la IA local privada no esté disponible. La plantilla y la longitud elegidas arriba se envían a Cloudflare Workers AI.",
   aiComposerCloudAssistNotFullyPrivate: "No totalmente privado",
@@ -494,7 +494,7 @@ export const es: Translations = {
   securityAiCloudTitle: "Cloud Assist (alojado)",
   securityAiCloudPrivacyLabel: "Privacidad",
   securityAiCloudPrivacyBody:
-    "**Se ejecuta en Cloudflare Workers AI** (**Meta Llama 3.2 3B Instruct**). Debe **aceptar**—el **texto claro del borrador sale de su dispositivo**. No se envía nada hasta que confirme Cloud Assist.",
+    "**Se ejecuta en Cloudflare Workers AI** (**Meta Gemma 4 26B Instruct**). Debe **aceptar**—el **texto claro del borrador sale de su dispositivo**. No se envía nada hasta que confirme Cloud Assist.",
   securityAiCloudUploadLabel: "Después de guardar",
   securityAiCloudUploadBody:
     "Solo se sube la **nota cifrada**. Al redactar, su prompt pasa por el **Worker de PrivateNote.ai** en texto claro—**no lo almacenamos**, pero nuestro edge lo maneja en esa solicitud antes de Cloudflare.",

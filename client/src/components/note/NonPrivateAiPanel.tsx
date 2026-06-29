@@ -14,6 +14,7 @@ type NonPrivateAiPanelProps = {
   hostedCloudAiRemaining: number | null;
   hostedCloudAiLimit: number;
   onGenerate: () => void;
+  submitHint?: string;
 };
 
 export function NonPrivateAiPanel({
@@ -29,6 +30,7 @@ export function NonPrivateAiPanel({
   hostedCloudAiRemaining,
   hostedCloudAiLimit,
   onGenerate,
+  submitHint,
 }: NonPrivateAiPanelProps) {
   const quotaExhausted = hostedCloudAiRemaining === 0;
   const canGenerate =
@@ -57,7 +59,7 @@ export function NonPrivateAiPanel({
       ) : null}
 
       <div className="relative min-w-0">
-        <div className="min-w-0 rounded-xl border border-amber-200/80 bg-white dark:border-amber-900/50 dark:bg-gray-900">
+        <div className="min-w-0 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 transition-shadow duration-300 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/40">
           <textarea
             id="non-private-ai-prompt"
             value={aiPrompt}
@@ -105,6 +107,12 @@ export function NonPrivateAiPanel({
           <Lock className="h-3.5 w-3.5 opacity-70" aria-hidden />
           {tx("aiComposerNonPrivateNotPrivateBadge", "Not private")}
         </span>
+        {submitHint ? (
+          <>
+            <span className="text-gray-300 dark:text-gray-600" aria-hidden>·</span>
+            <span className="text-gray-500 dark:text-gray-400">{submitHint}</span>
+          </>
+        ) : null}
       </div>
 
       {requiresSessionAck && !sessionAcknowledged ? (

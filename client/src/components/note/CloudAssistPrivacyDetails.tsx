@@ -28,14 +28,14 @@ export function CloudAssistPrivacyDetails({ tx }: CloudAssistPrivacyDetailsProps
         <p>
           {tx(
             "aiComposerCloudAssistDetailLead",
-            "Cloud Assist sends your prompt to Cloudflare Workers AI (Meta Llama 3.2 3B). It is not fully private.",
+            "Cloud Assist sends your prompt to Cloudflare Workers AI (Google Gemma 4 26B). It is not fully private.",
           )}
         </p>
         <ul className="list-disc space-y-1 pl-4">
           <li>
             {tx(
               "aiComposerNonPrivateBullet1",
-              "Your prompt is sent to Cloudflare Workers AI (Meta Llama) to generate a draft.",
+              "Your prompt is sent to Cloudflare Workers AI (Google Gemma 4 26B) to generate a draft.",
             )}
           </li>
           <li>

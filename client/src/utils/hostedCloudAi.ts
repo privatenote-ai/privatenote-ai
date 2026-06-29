@@ -4,7 +4,7 @@ import type { SupportedLanguage } from "@/utils/translation";
 
 export type HostedCloudAiDraftParams = {
   prompt: string;
-  enhancementType: "improve" | "summarize" | "secure" | "ask";
+  enhancementType: "improve" | "summarize" | "secure" | "ask" | "simplify";
   language: SupportedLanguage;
   sentenceLength: AiSentenceLengthId;
 };
