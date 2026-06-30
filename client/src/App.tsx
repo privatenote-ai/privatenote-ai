@@ -31,6 +31,7 @@ import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
+const SecureFileTransfer = lazy(() => import("@/pages/SecureFileTransfer"));
 const SecurityResources = lazy(() => import("@/pages/SecurityResources"));
 const PrivacyTools = lazy(() => import("@/pages/PrivacyTools"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -194,6 +195,7 @@ function Router() {
           {NON_ENGLISH_LANGUAGES.map((language) => (
             <Fragment key={language}>
               <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
+              <Route path={`/${language}/secure-file-transfer`} component={() => <LocalizedRoute language={language} component={SecureFileTransfer} />} />
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
@@ -208,6 +210,7 @@ function Router() {
           ))}
           <Route path="/note/:id" component={() => <LazyRoute component={ViewNote} />} />
           <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
+          <Route path="/secure-file-transfer" component={() => <LazyRoute component={SecureFileTransfer} />} />
           <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
           <Route path="/security-resources" component={() => <LazyRoute component={SecurityResources} />} />
           <Route path="/security-guides/:topicId" component={() => <LazyRoute component={SecurityGuideDetail} />} />

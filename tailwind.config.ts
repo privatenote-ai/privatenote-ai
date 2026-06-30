@@ -85,26 +85,14 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-            opacity: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-            opacity: "1",
-          },
+          from: { height: "0", opacity: "0" },
+          to: { height: "var(--radix-accordion-content-height)", opacity: "1" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-            opacity: "1",
-          },
-          to: {
-            height: "0",
-            opacity: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)", opacity: "1" },
+          to: { height: "0", opacity: "0" },
         },
-        /** Synapse-style pulse for on-device AI “thinking” affordance */
+        /** Synapse-style pulse for on-device AI "thinking" affordance */
         "neuron-pulse": {
           "0%, 100%": { opacity: "0.15", transform: "scale(0.65)" },
           "35%": { opacity: "1", transform: "scale(1.25)" },
@@ -115,13 +103,24 @@ export default {
           "0%, 100%": { opacity: "0.82", filter: "brightness(0.95)" },
           "45%": { opacity: "1", filter: "brightness(1.08)" },
         },
-        /** Hand-writing motion for streaming / “Writing…” phase */
+        /** Hand-writing motion for streaming / "Writing…" phase */
         "pencil-write": {
           "0%, 100%": { transform: "rotate(-12deg) translate(0, 0)" },
           "22%": { transform: "rotate(7deg) translate(3px, -2px)" },
           "45%": { transform: "rotate(-5deg) translate(-2px, 2px)" },
           "68%": { transform: "rotate(9deg) translate(2px, 1px)" },
           "85%": { transform: "rotate(-4deg) translate(-1px, -1px)" },
+        },
+        /** Gravity drop zone — expanding ripple ring */
+        "gravity-ring": {
+          "0%": { opacity: "0.55", transform: "translate(-50%, -50%) scale(0.2)" },
+          "70%": { opacity: "0.15" },
+          "100%": { opacity: "0", transform: "translate(-50%, -50%) scale(1)" },
+        },
+        /** Gravity drop zone — concentric static ring breathe */
+        "ring-breathe": {
+          "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
+          "50%": { opacity: "0.9", transform: "scale(1.06)" },
         },
       },
       animation: {
@@ -130,6 +129,8 @@ export default {
         "neuron-pulse": "neuron-pulse 2.8s ease-in-out infinite",
         "brain-think": "brain-think 2.8s ease-in-out infinite",
         "pencil-write": "pencil-write 1.15s ease-in-out infinite",
+        "gravity-ring": "gravity-ring 2.4s ease-out forwards",
+        "ring-breathe": "ring-breathe 3.5s ease-in-out infinite",
       },
     },
   },

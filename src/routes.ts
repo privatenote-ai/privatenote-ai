@@ -2,6 +2,18 @@ import { CompositeStorage } from "./storage";
 import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_AES_GCM_TAG_BYTES,
+  noteFileLimitBytesForAccount,
+  noteFileTotalStorageBytesForAccount,
+} from "@shared/noteFileLimits";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  NOTE_FILE_ACCESS_WINDOW_OPTIONS,
+  isNoteFileAccessWindowSeconds,
+  parseNoteFileAccessWindowFromBody,
+} from "@shared/noteFileAccess";
 import { isValidNoteId } from "@shared/noteId";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { DurableObjectNamespace, DurableObjectStub, KVNamespace } from "@cloudflare/workers-types";
@@ -28,10 +40,33 @@ import {
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import {
+  type NoteReservationRecord,
+  type NoteReserveAttachmentBinding,
+  NOTE_UPLOAD_QUERY_PARAM,
+  isValidAttachmentContentHash,
+  parseNoteReserveAttachmentBinding,
+  parseNoteUploadBearerToken,
+  noteReservationUploadClientMatches,
+  uploadedChunkHashKey,
+} from "@shared/noteFileUploadAuth";
+import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
+import {
+  getRecipientGateStatus,
+  insertSentNote,
+  isRecipientVerified,
+  noteRequiresRecipientVerification,
+  processExpiredSentNotes,
+  recipientVerifiedCookieHeader,
+  recordSentNoteOpened,
+  recordSentNoteAttachmentDownloaded,
+  verifyRecipientAccess,
+} from "./sentNotesService";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -62,6 +97,18 @@ const RATE_LIMIT_REVEAL = {
   MAX_REQUESTS: 12,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:reveal:",
+};
+
+const RATE_LIMIT_RECIPIENT_VERIFY = {
+  MAX_REQUESTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:recipient-verify:",
+};
+
+const RATE_LIMIT_FILE_CHUNK_PUT = {
+  MAX_REQUESTS: 120,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:put:file-chunk:",
 };
 
 const AI_VERIFICATION = {
@@ -97,8 +144,21 @@ const TURNSTILE_CHALLENGE = {
 };
 
 const NOTE_RESERVATION = {
-  TTL_SECONDS: 5 * 60,
+  TTL_SECONDS: 30 * 60,
+  ATTACHMENT_TTL_SECONDS: 15 * 60,
   KEY_PREFIX: "note_reserve:",
+};
+
+const NOTE_FILE_ACCESS = {
+  KEY_PREFIX: "note_file_access:",
+};
+
+const NOTE_FILE_STORAGE_CLEANUP = {
+  BATCH_SIZE: 200,
+  ABANDONED_RESERVED_AFTER_SECONDS: 2 * 60 * 60,
+  DOWNLOAD_WINDOW_GRACE_SECONDS: 15 * 60,
+  ACTIVE_RECHECK_SECONDS: 6 * 60 * 60,
+  RELEASED_ROW_RETENTION_DAYS: 30,
 };
 
 const SESSION_POLICY = {
@@ -191,7 +251,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Headers": resolveAccessControlAllowHeaders(request),
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -524,6 +584,25 @@ async function sendMagicSignInOtpEmail(
   return sendEmail(env, { to, subject, text, html });
 }
 
+function maskEmailForLog(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  const at = normalized.indexOf("@");
+  if (at <= 0 || at === normalized.length - 1) return "[invalid-email]";
+  const local = normalized.slice(0, at);
+  const domain = normalized.slice(at + 1);
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
+  const localHint =
+    local.length <= 2
+      ? `${local[0] ?? ""}*`
+      : `${local.slice(0, 2)}***${local.slice(-1)}`;
+  const domainHint =
+    domainName.length <= 2
+      ? `${domainName[0] ?? ""}*`
+      : `${domainName[0]}***${domainName.slice(-1)}`;
+  return `${localHint}@${domainHint}${tld}`;
+}
+
 async function sendMagicLinkEmail(
   env: Env,
   to: string,
@@ -656,8 +735,8 @@ async function sendMagicLinkEmail(
   });
 
   if (!res.ok) {
-    const message = (await res.text()) || res.statusText;
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    await res.text().catch(() => "");
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   return { ok: true };
@@ -687,7 +766,9 @@ async function sendEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  console.log(`[EMAIL] Sending email via Resend: to=${options.to}, subject=${options.subject}`);
+  console.log(
+    `[EMAIL] Sending email via Resend: to=${maskEmailForLog(options.to)}, subject=${options.subject}`,
+  );
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -705,22 +786,111 @@ async function sendEmail(
   });
 
   const responseText = await res.text();
-  console.log(`[EMAIL] Resend API response: status=${res.status}, body=${responseText}`);
+  console.log(`[EMAIL] Resend API response: status=${res.status}`);
 
   if (!res.ok) {
-    const message = responseText || res.statusText;
-    console.error(`[EMAIL] Resend API error: ${res.status} ${message}`);
-    return { ok: false, error: `Resend error: ${res.status} ${message}` };
+    console.error(`[EMAIL] Resend API error: status=${res.status}`);
+    return { ok: false, error: `Resend error: ${res.status}` };
   }
 
   try {
     const responseJson = JSON.parse(responseText);
-    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || 'unknown'}`);
+    console.log(`[EMAIL] Resend email sent successfully: id=${responseJson.id || "unknown"}`);
   } catch (e) {
     console.log(`[EMAIL] Resend email sent successfully (response not JSON)`);
   }
 
   return { ok: true };
+}
+
+function isPremiumAccountType(accountType: unknown, plan: unknown): boolean {
+  return (
+    accountType === "personal_premium" ||
+    accountType === "business_premium" ||
+    plan === "personal_premium" ||
+    plan === "business_premium" ||
+    plan === "premium"
+  );
+}
+
+async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id || !env.AUTH_DB) return false;
+  try {
+    const user = await env.AUTH_DB.prepare(
+      "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{ account_type: string | null; plan: string | null }>();
+    if (!user) return false;
+    return isPremiumAccountType(user.account_type, user.plan);
+  } catch {
+    return false;
+  }
+}
+
+function noteReadNotificationDeviceLabel(request: Request): string {
+  const userAgent = request.headers.get("User-Agent") || "";
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return "iOS device";
+  if (/Android/i.test(userAgent)) return "Android device";
+  if (/Macintosh|Mac OS X/i.test(userAgent)) return "Mac";
+  if (/Windows/i.test(userAgent)) return "Windows device";
+  if (/Linux/i.test(userAgent)) return "Linux device";
+  return "unknown device";
+}
+
+async function registerPremiumSentNote(
+  env: Env,
+  request: Request,
+  noteId: string,
+  input: {
+    notifyOnOpen?: boolean;
+    notifyOnDestroyed?: boolean;
+    restrictRecipientEmail?: boolean;
+    requireRecipientVerification?: boolean;
+    recipientEmail?: string | null;
+    label?: string | null;
+    expiresAt?: string | null;
+  },
+): Promise<{ recipientVerificationCode?: string } | undefined> {
+  const notifyOnOpen = input.notifyOnOpen === true;
+  const notifyOnDestroyed = input.notifyOnDestroyed === true;
+  const restrictRecipientEmail = input.restrictRecipientEmail === true;
+  const requireRecipientVerification = input.requireRecipientVerification === true;
+  if (
+    !notifyOnOpen &&
+    !notifyOnDestroyed &&
+    !restrictRecipientEmail &&
+    !requireRecipientVerification
+  ) {
+    return undefined;
+  }
+  if (!env.AUTH_DB) return undefined;
+
+  try {
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) return undefined;
+    const recipientEmail =
+      typeof input.recipientEmail === "string" ? input.recipientEmail.trim() : null;
+    const result = await insertSentNote(env, {
+      userId: session.id,
+      noteId,
+      label: input.label,
+      recipientEmail,
+      notifyOnOpen,
+      notifyOnDestroyed,
+      restrictRecipientEmail,
+      requireRecipientVerification,
+      expiresAt: input.expiresAt,
+      proofEnabled: true,
+    });
+    return result.verificationCode
+      ? { recipientVerificationCode: result.verificationCode }
+      : undefined;
+  } catch (error) {
+    console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
+    return undefined;
+  }
 }
 
 // Helper to create JSON response with CORS headers
@@ -733,7 +903,7 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
         ...SECURITY_HEADERS,
         "Access-Control-Allow-Origin": DEFAULT_CORS_ORIGIN,
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+        "Access-Control-Allow-Headers": "Content-Type, x-admin-token, x-file-access-token",
         "Content-Security-Policy": getApiContentSecurityPolicy(),
       }),
   };
@@ -1735,6 +1905,9 @@ type AuditEventType =
   | "magic_consume_success"
   | "magic_consume_replay_blocked"
   | "magic_email_otp_exhausted"
+  | "recipient_verification_failed"
+  | "recipient_verification_rate_limited"
+  | "recipient_verification_success"
   | "rate_limit_exceeded"
   | "ip_mismatch"
   | "step_up_required"
@@ -3083,6 +3256,124 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
 
   if (!pathname.startsWith("/api/auth/")) {
     return null;
+  }
+
+  if (pathname === "/api/auth/account/summary" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    const user = await env.AUTH_DB.prepare(
+      `SELECT id, email, account_type, plan, email_notifications, preferred_language
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{
+        id: string;
+        email: string | null;
+        account_type: string | null;
+        plan: string | null;
+        email_notifications: number | null;
+        preferred_language: string | null;
+      }>();
+
+    if (!user) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    let allowHostedAi = false;
+    try {
+      const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+      const hasAllowHostedAiColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+      if (hasAllowHostedAiColumn) {
+        const hostedAiPref = await env.AUTH_DB.prepare(
+          "SELECT allow_hosted_ai FROM users WHERE id = ? LIMIT 1",
+        )
+          .bind(session.id)
+          .first<{ allow_hosted_ai: number | null }>();
+        allowHostedAi = hostedAiPref?.allow_hosted_ai === 1;
+      }
+    } catch (error) {
+      console.warn("[AUTH] Failed to load hosted AI preference:", error);
+    }
+
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        email: user.email,
+        accountType: user.account_type ?? "free",
+        plan: user.plan ?? "free",
+        emailNotifications: user.email_notifications !== 0,
+        preferredLanguage: user.preferred_language ?? null,
+        allowHostedAi,
+      }),
+      { status: 200, headers },
+    );
+  }
+
+  if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+
+    let body: {
+      emailNotifications?: unknown;
+      preferredLanguage?: unknown;
+      allowHostedAi?: unknown;
+    };
+    try {
+      body = await readJsonBody(request) as typeof body;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+
+    const updates: string[] = [];
+    const bindings: unknown[] = [];
+    if (typeof body.emailNotifications === "boolean") {
+      updates.push("email_notifications = ?");
+      bindings.push(body.emailNotifications ? 1 : 0);
+    }
+    if (typeof body.preferredLanguage === "string") {
+      const preferredLanguage = body.preferredLanguage.trim().toLowerCase();
+      if (!["en", "de", "fr", "es"].includes(preferredLanguage)) {
+        return jsonResponse({ message: "Unsupported language" }, 400, request);
+      }
+      updates.push("preferred_language = ?");
+      bindings.push(preferredLanguage);
+    }
+    if (typeof body.allowHostedAi === "boolean") {
+      const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+      const hasAllowHostedAiColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+      if (!hasAllowHostedAiColumn) {
+        return jsonResponse({ message: "Hosted AI preference migration is required" }, 503, request);
+      }
+      updates.push("allow_hosted_ai = ?");
+      bindings.push(body.allowHostedAi ? 1 : 0);
+    }
+    if (updates.length === 0) {
+      return jsonResponse({ message: "At least one preference is required" }, 400, request);
+    }
+
+    updates.push("updated_at = ?");
+    bindings.push(new Date().toISOString(), session.id);
+    await env.AUTH_DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`)
+      .bind(...bindings)
+      .run();
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
@@ -5177,7 +5468,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       },
     }[locale];
 
-    console.log(`[AUTH] Email change request: userId=${session.id}, currentEmail=${normalizedCurrentEmail}, newEmail=${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change request: userId=${session.id}, currentEmail=${maskEmailForLog(normalizedCurrentEmail)}, newEmail=${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     const emailResult = await sendEmail(env, {
       to: normalizedNewEmail,
@@ -5216,7 +5509,9 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       return jsonResponse({ message: "Failed to send verification email" }, 500, request);
     }
 
-    console.log(`[AUTH] Email change verification email sent successfully to ${normalizedNewEmail}`);
+    console.log(
+      `[AUTH] Email change verification email sent successfully to ${maskEmailForLog(normalizedNewEmail)}`,
+    );
 
     await logAuditEvent(env, {
       userId: session.id,
@@ -6268,6 +6563,12 @@ async function checkRateLimit(
   }
 }
 
+async function recipientVerificationFailureDelay(usedAttempts: number): Promise<void> {
+  const boundedAttempts = Math.max(1, Math.min(usedAttempts, RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS));
+  const delayMs = Math.min(4000, 500 * 2 ** (boundedAttempts - 1));
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
 type HostedAiQuota = {
   count: number;
   windowStart: number;
@@ -6581,11 +6882,12 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     return jsonResponse({ error: "invalid_json", message: "Invalid JSON" }, 400, request);
   }
 
-  if (body?.consentToHostedAi !== true) {
+  if (body?.consentToHostedAi !== true || body?.acknowledgeNonPrivateAi !== true) {
     return jsonResponse(
       {
         error: "hosted_ai_consent_required",
-        message: "Hosted AI requires consent because the prompt is sent to Cloudflare Workers AI.",
+        message:
+          "Non-private hosted AI requires explicit acknowledgment that your prompt is sent to Cloudflare Workers AI.",
       },
       400,
       request,
@@ -6613,6 +6915,31 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
       401,
       request,
     );
+  }
+
+  try {
+    const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+    const hasAllowColumn = (info.results ?? []).some((row) => row.name === "allow_hosted_ai");
+    if (hasAllowColumn) {
+      const userRow = await env.AUTH_DB.prepare(
+        "SELECT allow_hosted_ai FROM users WHERE id = ? LIMIT 1",
+      )
+        .bind(session.id)
+        .first<{ allow_hosted_ai?: number | null }>();
+      if ((userRow?.allow_hosted_ai ?? 0) !== 1) {
+        return jsonResponse(
+          {
+            error: "hosted_ai_not_enabled",
+            message:
+              "Non-private hosted AI is disabled for your account. Enable it in Account → Preferences.",
+          },
+          403,
+          request,
+        );
+      }
+    }
+  } catch (e) {
+    console.warn("[HOSTED_AI] allow_hosted_ai check failed:", e);
   }
 
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
@@ -6651,7 +6978,7 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     {
       role: "system",
       content: [
-        "You are PrivateNote cloud assist.",
+        "You are a hosted (non-private) writing assistant for PrivateNote.",
         "Output only the final note/message the user can send.",
         "Do not explain your choices, do not add placeholders, and do not mention AI, Cloudflare, or PrivateNote.",
         `Write in ${language}.`,
@@ -6716,15 +7043,594 @@ function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
 
-async function reserveNoteId(env: Env, clientId: string): Promise<string> {
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function sha256HexBytes(bytes: Uint8Array): string {
+  return [...sha256(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
+  const expiresIn = record.fileStorageUserId
+    ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
+    : NOTE_RESERVATION.TTL_SECONDS;
+  await env.NOTES_KV.put(getReservationKey(noteId), JSON.stringify(record), {
+    expirationTtl: expiresIn,
+  });
+}
+
+async function computeUploadedAttachmentContentHash(
+  env: Env,
+  noteId: string,
+  totalChunks: number,
+): Promise<string | null> {
+  if (!env.NOTE_FILES_R2) return null;
+  const hasher = sha256.create();
+  for (let index = 0; index < totalChunks; index += 1) {
+    const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(noteId, index));
+    if (!object) return null;
+    hasher.update(new Uint8Array(await object.arrayBuffer()));
+  }
+  return bytesToHex(hasher.digest());
+}
+
+async function authorizeNoteFileChunkUpload(
+  env: Env,
+  request: Request,
+  noteId: string,
+): Promise<
+  | { ok: true; premiumUserId: string | null; record: NoteReservationRecord }
+  | { ok: false; response: Response }
+> {
+  const raw = await env.NOTES_KV.get(getReservationKey(noteId));
+  if (!raw) {
+    return {
+      ok: false,
+      response: jsonResponse({ error: "Note ID reservation expired or missing" }, 403, request),
+    };
+  }
+
+  let record: NoteReservationRecord;
+  try {
+    record = JSON.parse(raw) as NoteReservationRecord;
+  } catch {
+    return { ok: false, response: jsonResponse({ error: "Invalid note reservation" }, 403, request) };
+  }
+
+  const bearer = parseNoteUploadBearerToken(request.headers.get("Authorization"));
+  const queryToken = new URL(request.url).searchParams.get(NOTE_UPLOAD_QUERY_PARAM)?.trim() || null;
+  const uploadToken = bearer || queryToken;
+  if (!uploadToken) {
+    return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
+  }
+  if (!record.uploadTokenHash) {
+    return {
+      ok: false,
+      response: jsonResponse({ error: "Reservation invalid or expired" }, 403, request),
+    };
+  }
+
+  const tokenHash = await sha256Hex(uploadToken);
+  if (tokenHash !== record.uploadTokenHash) {
+    return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
+  }
+
+  if (!noteReservationUploadClientMatches(
+    record,
+    getClientIdentifier(request),
+    readClientIpFromRequestHeaders(request.headers),
+  )) {
+    return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
+  }
+
+  return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
+}
+
+function noteFileChunkObjectKey(id: string, chunkIndex: number): string {
+  return `note-files/${id}/chunks/${chunkIndex}`;
+}
+
+function noteFileChunkObjectPrefix(id: string): string {
+  return `note-files/${id}/chunks/`;
+}
+
+let accountFileStorageSchemaReady = false;
+
+async function ensureAccountFileStorageSchema(env: Env): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  if (accountFileStorageSchemaReady) return true;
+  await env.AUTH_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS account_file_storage_usage (
+      user_id TEXT PRIMARY KEY,
+      used_bytes INTEGER NOT NULL DEFAULT 0 CHECK (used_bytes >= 0),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  ).run();
+  await env.AUTH_DB.prepare(
+    `CREATE TABLE IF NOT EXISTS account_file_storage_reservations (
+      note_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      encrypted_size INTEGER NOT NULL CHECK (encrypted_size >= 0),
+      total_chunks INTEGER,
+      max_reads INTEGER,
+      file_access_window_seconds INTEGER NOT NULL DEFAULT ${NOTE_FILE_ACCESS_DEFAULT_SECONDS},
+      expires_at TEXT,
+      last_checked_at TEXT,
+      status TEXT NOT NULL DEFAULT 'reserved'
+        CHECK (status IN ('reserved', 'active', 'released')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      activated_at TEXT,
+      released_at TEXT,
+      release_reason TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  ).run();
+  await env.AUTH_DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_account_file_storage_reservations_user_status ON account_file_storage_reservations(user_id, status)",
+  ).run();
+  const columns = await env.AUTH_DB.prepare("PRAGMA table_info(account_file_storage_reservations)").all<{
+    name: string;
+  }>();
+  const hasFileAccessWindowColumn = (columns.results ?? []).some(
+    (column) => column.name === "file_access_window_seconds",
+  );
+  const hasExpiresAtColumn = (columns.results ?? []).some((column) => column.name === "expires_at");
+  const hasLastCheckedAtColumn = (columns.results ?? []).some((column) => column.name === "last_checked_at");
+  if (!hasFileAccessWindowColumn) {
+    await env.AUTH_DB.prepare(
+      `ALTER TABLE account_file_storage_reservations
+         ADD COLUMN file_access_window_seconds INTEGER NOT NULL DEFAULT ${NOTE_FILE_ACCESS_DEFAULT_SECONDS}`,
+    ).run();
+  }
+  if (!hasExpiresAtColumn) {
+    await env.AUTH_DB.prepare("ALTER TABLE account_file_storage_reservations ADD COLUMN expires_at TEXT").run();
+  }
+  if (!hasLastCheckedAtColumn) {
+    await env.AUTH_DB.prepare("ALTER TABLE account_file_storage_reservations ADD COLUMN last_checked_at TEXT").run();
+  }
+  accountFileStorageSchemaReady = true;
+  return true;
+}
+
+async function getAuthenticatedAccountForNoteFiles(
+  env: Env,
+  request: Request,
+): Promise<{ userId: string; isPremium: boolean } | null> {
+  if (!env.AUTH_DB) return null;
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id) return null;
+  const user = await env.AUTH_DB.prepare(
+    "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
+  )
+    .bind(session.id)
+    .first<{ account_type: string | null; plan: string | null }>();
+  if (!user) return null;
+  return {
+    userId: session.id,
+    isPremium: isPremiumAccountType(user.account_type, user.plan),
+  };
+}
+
+export async function reserveAccountFileStorageBytes(
+  env: Env,
+  userId: string,
+  noteId: string,
+  encryptedSize: number,
+  storageLimitBytes: number,
+): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
+    return {
+      ok: false,
+      status: 503,
+      body: {
+        error: "file_storage_quota_unavailable",
+        message: "File storage quota is not configured.",
+      },
+    };
+  }
+
+  const abandoned = await env.AUTH_DB.prepare(
+    `SELECT note_id
+       FROM account_file_storage_reservations
+      WHERE user_id = ?
+        AND status = 'reserved'
+        AND created_at < datetime('now', '-2 hours')
+      LIMIT 20`,
+  )
+    .bind(userId)
+    .all<{ note_id: string }>();
+  for (const row of abandoned.results ?? []) {
+    await cleanupNoteFileChunks(env, row.note_id, "abandoned attachment reservation");
+  }
+
+  const existing = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (existing) {
+    if (existing.user_id !== userId || existing.status === "released" || existing.encrypted_size !== encryptedSize) {
+      return {
+        ok: false,
+        status: 409,
+        body: { error: "Attachment storage reservation conflict" },
+      };
+    }
+    return { ok: true };
+  }
+
+  await env.AUTH_DB.prepare(
+    "INSERT OR IGNORE INTO account_file_storage_usage (user_id, used_bytes, updated_at) VALUES (?, 0, datetime('now'))",
+  )
+    .bind(userId)
+    .run();
+  const usageUpdate = await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_usage
+       SET used_bytes = used_bytes + ?, updated_at = datetime('now')
+     WHERE user_id = ? AND used_bytes + ? <= ?`,
+  )
+    .bind(encryptedSize, userId, encryptedSize, storageLimitBytes)
+    .run();
+  const changed = Number((usageUpdate as any).meta?.changes ?? 0);
+  if (changed !== 1) {
+    const usage = await env.AUTH_DB.prepare(
+      "SELECT used_bytes FROM account_file_storage_usage WHERE user_id = ? LIMIT 1",
+    )
+      .bind(userId)
+      .first<{ used_bytes: number }>();
+    return {
+      ok: false,
+      status: 413,
+      body: {
+        error: "account_file_storage_quota_exceeded",
+        message: "Encrypted file storage limit reached.",
+        limitBytes: storageLimitBytes,
+        usedBytes: Math.max(0, Number(usage?.used_bytes ?? 0)),
+      },
+    };
+  }
+
+  try {
+    await env.AUTH_DB.prepare(
+      `INSERT INTO account_file_storage_reservations
+        (note_id, user_id, encrypted_size, status, created_at)
+       VALUES (?, ?, ?, 'reserved', datetime('now'))`,
+    )
+      .bind(noteId, userId, encryptedSize)
+      .run();
+  } catch (error) {
+    await env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    )
+      .bind(encryptedSize, userId)
+      .run();
+    throw error;
+  }
+
+  return { ok: true };
+}
+
+export async function activateAccountFileStorageReservation(
+  env: Env,
+  noteId: string,
+  encryptedSize: number,
+  totalChunks: number,
+  maxReads: number,
+  fileAccessWindowSeconds: number,
+  expiresAt: string | null,
+): Promise<void> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) return;
+  const reservation = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (!reservation || reservation.status === "released") return;
+
+  const previousSize = Math.max(0, Number(reservation.encrypted_size ?? 0));
+  const nextSize = Math.max(0, encryptedSize);
+  const delta = nextSize - previousSize;
+  if (delta !== 0) {
+    await env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes + ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    )
+      .bind(delta, reservation.user_id)
+      .run();
+  }
+  await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_reservations
+       SET encrypted_size = ?,
+           total_chunks = ?,
+           max_reads = ?,
+           file_access_window_seconds = ?,
+           expires_at = ?,
+           last_checked_at = NULL,
+           status = 'active',
+           activated_at = datetime('now')
+     WHERE note_id = ? AND status != 'released'`,
+  )
+    .bind(
+      nextSize,
+      totalChunks,
+      maxReads,
+      isNoteFileAccessWindowSeconds(fileAccessWindowSeconds)
+        ? fileAccessWindowSeconds
+        : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      expiresAt,
+      noteId,
+    )
+    .run();
+}
+
+async function releaseAccountFileStorageReservation(
+  env: Env,
+  noteId: string,
+  reason: string,
+): Promise<void> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) return;
+  const reservation = await env.AUTH_DB.prepare(
+    "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+  )
+    .bind(noteId)
+    .first<{ user_id: string; encrypted_size: number; status: string }>();
+  if (!reservation || reservation.status === "released") return;
+  const bytes = Math.max(0, Number(reservation.encrypted_size ?? 0));
+  await env.AUTH_DB.batch([
+    env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_usage
+         SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+       WHERE user_id = ?`,
+    ).bind(bytes, reservation.user_id),
+    env.AUTH_DB.prepare(
+      `UPDATE account_file_storage_reservations
+         SET status = 'released', released_at = datetime('now'), release_reason = ?
+       WHERE note_id = ? AND status != 'released'`,
+    ).bind(reason, noteId),
+  ]);
+}
+
+async function cleanupNoteFileChunks(env: Env, noteId: string, reason: string): Promise<void> {
+  if (env.NOTE_FILES_R2) {
+    try {
+      const prefix = noteFileChunkObjectPrefix(noteId);
+      let cursor: string | undefined;
+      do {
+        const listed = await env.NOTE_FILES_R2.list({ prefix, cursor });
+        const keys = listed.objects.map((object) => object.key);
+        if (keys.length > 0) {
+          await Promise.all(keys.map((key) => env.NOTE_FILES_R2!.delete(key)));
+        }
+        cursor = listed.truncated ? listed.cursor : undefined;
+      } while (cursor);
+    } catch (error) {
+      console.warn(`[NOTE_FILES] Failed to clean attachment chunks for ${noteId} after ${reason}:`, error);
+    }
+  }
+  try {
+    await releaseAccountFileStorageReservation(env, noteId, reason);
+  } catch (error) {
+    console.warn(`[NOTE_FILES] Failed to release attachment quota for ${noteId} after ${reason}:`, error);
+  }
+}
+
+function maxNoteFileAccessWindowSeconds(): number {
+  return NOTE_FILE_ACCESS_WINDOW_OPTIONS.reduce((max, seconds) => Math.max(max, seconds), 0);
+}
+
+async function markAccountFileStorageReservationChecked(env: Env, noteId: string): Promise<void> {
+  if (!env.AUTH_DB) return;
+  await env.AUTH_DB.prepare(
+    `UPDATE account_file_storage_reservations
+        SET last_checked_at = datetime('now')
+      WHERE note_id = ? AND status = 'active'`,
+  )
+    .bind(noteId)
+    .run();
+}
+
+export async function cleanupExpiredNoteFileStorage(
+  env: Env,
+): Promise<{ checked: number; released: number; abandoned: number; pruned: number; error?: string }> {
+  if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
+    return { checked: 0, released: 0, abandoned: 0, pruned: 0, error: "AUTH_DB not configured" };
+  }
+
+  let checked = 0;
+  let released = 0;
+  let abandoned = 0;
+  let pruned = 0;
+
+  try {
+    const abandonedRows = await env.AUTH_DB.prepare(
+      `SELECT note_id
+         FROM account_file_storage_reservations
+        WHERE status = 'reserved'
+          AND created_at < datetime('now', ?)
+        ORDER BY created_at ASC
+        LIMIT ?`,
+    )
+      .bind(
+        `-${NOTE_FILE_STORAGE_CLEANUP.ABANDONED_RESERVED_AFTER_SECONDS} seconds`,
+        NOTE_FILE_STORAGE_CLEANUP.BATCH_SIZE,
+      )
+      .all<{ note_id: string }>();
+
+    for (const row of abandonedRows.results ?? []) {
+      await cleanupNoteFileChunks(env, row.note_id, "scheduled abandoned attachment cleanup");
+      abandoned += 1;
+    }
+
+    const maxWindowSeconds =
+      maxNoteFileAccessWindowSeconds() + NOTE_FILE_STORAGE_CLEANUP.DOWNLOAD_WINDOW_GRACE_SECONDS;
+    const activeRows = await env.AUTH_DB.prepare(
+      `SELECT note_id, file_access_window_seconds
+         FROM account_file_storage_reservations
+        WHERE status = 'active'
+          AND datetime(COALESCE(activated_at, created_at), ?) <= datetime('now')
+          AND (
+            last_checked_at IS NULL
+            OR last_checked_at < datetime('now', ?)
+            OR (expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now'))
+          )
+        ORDER BY
+          CASE WHEN expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now') THEN 0 ELSE 1 END,
+          COALESCE(last_checked_at, '1970-01-01T00:00:00Z') ASC,
+          COALESCE(activated_at, created_at) ASC
+        LIMIT ?`,
+    )
+      .bind(
+        `+${maxWindowSeconds} seconds`,
+        `-${NOTE_FILE_STORAGE_CLEANUP.ACTIVE_RECHECK_SECONDS} seconds`,
+        NOTE_FILE_STORAGE_CLEANUP.BATCH_SIZE,
+      )
+      .all<{ note_id: string; file_access_window_seconds: number | null }>();
+
+    for (const row of activeRows.results ?? []) {
+      const noteId = row.note_id;
+      checked += 1;
+      const doUrl = new URL(`https://internal.privatenote.invalid/api/notes/${noteId}`);
+      const request = new Request(doUrl.toString(), { method: "GET" });
+      const stub = getSecureNoteStub(env, noteId, true);
+      let response = await stub.fetch(request as any);
+
+      if (response.status === 404) {
+        const legacyStub = getSecureNoteStub(env, noteId, false);
+        response = await legacyStub.fetch(request as any);
+      }
+
+      if (response.status === 404) {
+        await cleanupNoteFileChunks(env, noteId, "scheduled expired or destroyed attachment cleanup");
+        released += 1;
+      } else {
+        if (!response.ok) {
+          console.warn(`[NOTE_FILES] Scheduled cleanup meta check returned ${response.status} for ${noteId}`);
+        }
+        await markAccountFileStorageReservationChecked(env, noteId);
+      }
+    }
+
+    const prunedResult = await env.AUTH_DB.prepare(
+      `DELETE FROM account_file_storage_reservations
+        WHERE status = 'released'
+          AND released_at IS NOT NULL
+          AND released_at < datetime('now', ?)`,
+    )
+      .bind(`-${NOTE_FILE_STORAGE_CLEANUP.RELEASED_ROW_RETENTION_DAYS} days`)
+      .run();
+    pruned = Number((prunedResult as any).meta?.changes ?? 0);
+
+    return { checked, released, abandoned, pruned };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[NOTE_FILES] Scheduled storage cleanup failed:", error);
+    return { checked, released, abandoned, pruned, error: message };
+  }
+}
+
+function noteFileAccessKey(noteId: string, token: string): string {
+  return `${NOTE_FILE_ACCESS.KEY_PREFIX}${noteId}:${token}`;
+}
+
+function randomUrlToken(bytes = 32): string {
+  const value = new Uint8Array(bytes);
+  crypto.getRandomValues(value);
+  let binary = "";
+  for (const byte of value) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function issueNoteFileAccessToken(
+  env: Env,
+  noteId: string,
+  ttlSeconds = NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+): Promise<string> {
+  const token = randomUrlToken();
+  await env.NOTES_KV.put(
+    noteFileAccessKey(noteId, token),
+    JSON.stringify({ noteId, issuedAt: new Date().toISOString() }),
+    { expirationTtl: ttlSeconds },
+  );
+  return token;
+}
+
+function getNoteFileAccessTokenFromRequest(request: Request): string | null {
+  const header = request.headers.get("x-file-access-token");
+  if (header?.trim()) return header.trim();
+  return null;
+}
+
+function readUploadInteger(request: Request, headerName: string, queryName: string): number {
+  const url = new URL(request.url);
+  return Number(request.headers.get(headerName) ?? url.searchParams.get(queryName) ?? NaN);
+}
+
+async function requireNoteFileAccess(env: Env, request: Request, noteId: string): Promise<Response | null> {
+  const token = getNoteFileAccessTokenFromRequest(request);
+  if (!token || token.length > 256) {
+    return jsonResponse({ error: "file_access_required", message: "Reveal the note before downloading its attachment." }, 403, request);
+  }
+  const marker = await env.NOTES_KV.get(noteFileAccessKey(noteId, token));
+  if (!marker) {
+    return jsonResponse({ error: "file_access_expired", message: "Attachment access expired. Reveal the note again if it is still available." }, 403, request);
+  }
+  return null;
+}
+
+async function reserveNoteId(
+  env: Env,
+  clientId: string,
+  fileAccount: { userId: string; isPremium: boolean } | null,
+  attachmentBinding: NoteReserveAttachmentBinding | null,
+  clientIp?: string,
+): Promise<{ id: string; uploadToken: string; expiresIn: number }> {
   const id = crypto.randomUUID();
+  const uploadToken = randomUrlToken(32);
+  const uploadTokenHash = await sha256Hex(uploadToken);
+  const normalizedClientIp = clientIp?.trim() || undefined;
+  const expiresIn = attachmentBinding
+    ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
+    : NOTE_RESERVATION.TTL_SECONDS;
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
-    JSON.stringify({ clientId, createdAt: new Date().toISOString() }),
-    { expirationTtl: NOTE_RESERVATION.TTL_SECONDS },
+    JSON.stringify({
+      clientId,
+      ...(normalizedClientIp ? { clientIp: normalizedClientIp } : {}),
+      createdAt: new Date().toISOString(),
+      uploadTokenHash,
+      fileStorageUserId: attachmentBinding ? fileAccount?.userId ?? null : null,
+      premiumUserId: attachmentBinding && fileAccount?.isPremium ? fileAccount.userId : null,
+      ...(attachmentBinding ?? {}),
+    } satisfies NoteReservationRecord),
+    { expirationTtl: expiresIn },
   );
-  return id;
+  return { id, uploadToken, expiresIn };
+}
+
+async function getNoteReservationRecord(
+  env: Env,
+  noteId: string,
+): Promise<NoteReservationRecord | null> {
+  const raw = await env.NOTES_KV.get(getReservationKey(noteId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as NoteReservationRecord;
+  } catch {
+    return null;
+  }
 }
 
 async function hasReservation(env: Env, id: string): Promise<boolean> {
@@ -6747,12 +7653,12 @@ function getClientIdentifier(request: Request): string {
   const cookieMatch = cookieHeader.match(/(?:^|;\s*)pn_client_id=([^;]+)/);
   const cookieId = cookieMatch?.[1]?.trim();
 
-  const cfConnectingIp = request.headers.get("CF-Connecting-IP");
-  if (cfConnectingIp && cookieId) {
-    return `ip:${cfConnectingIp}|cid:${cookieId}`;
+  const clientIp = readClientIpFromRequestHeaders(request.headers);
+  if (clientIp && cookieId) {
+    return `ip:${clientIp}|cid:${cookieId}`;
   }
-  if (cfConnectingIp) {
-    return `ip:${cfConnectingIp}`;
+  if (clientIp) {
+    return `ip:${clientIp}`;
   }
   if (cookieId) {
     return `cookie:${cookieId}`;
@@ -7126,18 +8032,240 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes/reserve" && method === "POST") {
     try {
       const clientId = getClientIdentifier(request);
-      const id = await reserveNoteId(env, clientId);
-      return jsonResponse({ id, expiresIn: NOTE_RESERVATION.TTL_SECONDS }, 200, request);
+      let reserveBody: unknown = null;
+      try {
+        reserveBody = await request.json();
+      } catch {
+        reserveBody = null;
+      }
+      const attachmentBinding = parseNoteReserveAttachmentBinding(reserveBody);
+      const fileAccount = attachmentBinding
+        ? await getAuthenticatedAccountForNoteFiles(env, request)
+        : null;
+      if (attachmentBinding && !fileAccount) {
+        return jsonResponse(
+          {
+            error: "file_upload_auth_required",
+            message: "Sign in to attach encrypted files.",
+          },
+          401,
+          request,
+        );
+      }
+      const { id, uploadToken, expiresIn } = await reserveNoteId(
+        env,
+        clientId,
+        fileAccount,
+        attachmentBinding,
+        readClientIpFromRequestHeaders(request.headers) ?? undefined,
+      );
+      return jsonResponse(
+        { id, uploadToken, expiresIn },
+        200,
+        request,
+      );
     } catch (error) {
       console.error("[ROUTES] Failed to reserve note ID:", error);
       return jsonResponse({ error: "Failed to reserve note ID" }, 500, request);
     }
   }
 
+  const noteFileChunkParams = parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
+  if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
+    const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
+    const chunkIndex = Number(chunkIndexRaw);
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+      return jsonResponse({ error: "Invalid file chunk" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
+    if (!uploadAuth.ok) {
+      return uploadAuth.response;
+    }
+
+    const clientId = getClientIdentifier(request);
+    const chunkRateLimit = await checkRateLimit(
+      env,
+      `${clientId}:file-chunk:${id}`,
+      RATE_LIMIT_FILE_CHUNK_PUT,
+    );
+    if (!chunkRateLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "Rate limit exceeded",
+          message: `Too many attachment chunk uploads. Please try again in ${chunkRateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: chunkRateLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    const premiumUserId = uploadAuth.premiumUserId;
+    const isPremium = premiumUserId !== null;
+    const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
+    const reservation = uploadAuth.record;
+    if (
+      !fileStorageUserId ||
+      reservation.attachmentPlaintextSize == null ||
+      reservation.attachmentEncryptedSize == null
+    ) {
+      return jsonResponse(
+        { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+        401,
+        request,
+      );
+    }
+    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const plaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
+    if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
+      return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
+    }
+    if (plaintextSize > plaintextLimit) {
+      return jsonResponse(
+        {
+          error: "file_too_large",
+          message: `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+        },
+        413,
+        request,
+      );
+    }
+    if (
+      reservation.attachmentPlaintextSize != null &&
+      plaintextSize !== reservation.attachmentPlaintextSize
+    ) {
+      return jsonResponse({ error: "Attachment plaintext size mismatch" }, 400, request);
+    }
+
+    const encryptedTotalSize = readUploadInteger(request, "x-file-encrypted-size", "encryptedSize");
+    if (!Number.isInteger(encryptedTotalSize) || encryptedTotalSize <= 0) {
+      return jsonResponse({ error: "Missing or invalid x-file-encrypted-size" }, 400, request);
+    }
+    if (
+      reservation.attachmentEncryptedSize != null &&
+      encryptedTotalSize !== reservation.attachmentEncryptedSize
+    ) {
+      return jsonResponse({ error: "Attachment encrypted size mismatch" }, 400, request);
+    }
+    const encryptedTotalLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES * 1000 + 24;
+    if (encryptedTotalSize > encryptedTotalLimit) {
+      return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
+    }
+    if (fileStorageUserId) {
+      const quotaReservation = await reserveAccountFileStorageBytes(
+        env,
+        fileStorageUserId,
+        id,
+        encryptedTotalSize,
+        noteFileTotalStorageBytesForAccount(isPremium),
+      );
+      if (!quotaReservation.ok) {
+        return jsonResponse(quotaReservation.body, quotaReservation.status, request);
+      }
+    }
+
+    const encryptedChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
+    if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
+      return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
+    }
+    const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
+    if (Number.isFinite(contentLength) && contentLength !== encryptedChunkSize) {
+      return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
+    }
+
+    const encryptedBytes = await request.arrayBuffer();
+    if (encryptedBytes.byteLength !== encryptedChunkSize) {
+      return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
+    }
+
+    const chunkSha256Hex = sha256HexBytes(new Uint8Array(encryptedBytes));
+    const chunkKey = uploadedChunkHashKey(chunkIndex);
+    const existingHash = reservation.uploadedChunkHashes?.[chunkKey];
+    if (existingHash) {
+      if (existingHash !== chunkSha256Hex) {
+        return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+      }
+      const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
+      if (
+        existingObject &&
+        existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
+        Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
+      ) {
+        return jsonResponse(
+          { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
+          200,
+          request,
+        );
+      }
+    }
+
+    await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
+      httpMetadata: { contentType: "application/octet-stream" },
+      customMetadata: {
+        encryptedSize: String(encryptedTotalSize),
+        chunkIndex: String(chunkIndex),
+        chunkEncryptedSize: String(encryptedBytes.byteLength),
+        chunkSha256: chunkSha256Hex,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    await persistNoteReservation(env, id, {
+      ...reservation,
+      uploadedChunkHashes: {
+        ...(reservation.uploadedChunkHashes ?? {}),
+        [chunkKey]: chunkSha256Hex,
+      },
+    });
+
+    return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
+  }
+
+  if (noteFileChunkParams && method === "GET") {
+    const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
+    const chunkIndex = Number(chunkIndexRaw);
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+      return jsonResponse({ error: "Invalid file chunk" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    const accessError = await requireNoteFileAccess(env, request, id);
+    if (accessError) return accessError;
+    if (chunkIndex === 0) {
+      try {
+        await recordSentNoteAttachmentDownloaded(env, id);
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to record attachment download:", error);
+      }
+    }
+    const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(id, chunkIndex));
+    if (!object) {
+      return jsonResponse({ error: "File chunk not found" }, 404, request);
+    }
+    const headers = new Headers({
+      "Content-Type": "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+    return applyCorsHeaders(new Response(object.body as unknown as BodyInit, { status: 200, headers }), request);
+  }
+
   // Notes API routes (Durable Object authority)
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
     let noteForAnalytics: Note | null = null;
+    const noteCreationIsPremium = await noteCreationAllowsPremiumExpiry(env, request);
     try {
       requestBody = await request.clone().json();
 
@@ -7148,16 +8276,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         // Silently return a fake 200 so bots don't know they were blocked
         return jsonResponse({ id: crypto.randomUUID() }, 200, request);
       }
-      const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds);
-      const maxReads = Number(requestBody?.maxReads ?? 1);
-      if (requestBody?.content && requestBody?.iv && expiryParsed.ok) {
+      const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
+        isPremium: noteCreationIsPremium,
+      });
+      const maxReadsParsed = parseMaxReadsFromBody(requestBody?.maxReads, {
+        isPremium: noteCreationIsPremium,
+      });
+      if (requestBody?.content && requestBody?.iv && expiryParsed.ok && maxReadsParsed.ok) {
         noteForAnalytics = {
           id: "pending",
           content: requestBody.content,
           iv: requestBody.iv,
           aad: requestBody?.aad ?? null,
           expiresAt: new Date(Date.now() + expiryParsed.seconds * 1000),
-          maxReads,
+          maxReads: maxReadsParsed.maxReads,
           currentReads: 0,
           createdAt: new Date(),
           isPasswordProtected: !!requestBody?.isPasswordProtected,
@@ -7218,7 +8350,120 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
+    if (requestedId && requestBody?.attachment != null) {
+      const reservation = await getNoteReservationRecord(env, requestedId);
+      if (!reservation?.attachmentEncryptedSize || reservation.attachmentPlaintextSize == null) {
+        return jsonResponse({ error: "Attachment upload was not initialized" }, 400, request);
+      }
+      if (!reservation.fileStorageUserId && !reservation.premiumUserId) {
+        return jsonResponse(
+          { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+          401,
+          request,
+        );
+      }
+      const attachmentEncryptedSize = Number(requestBody.attachment.encryptedSize);
+      if (
+        !Number.isInteger(attachmentEncryptedSize) ||
+        attachmentEncryptedSize <= 0 ||
+        attachmentEncryptedSize > reservation.attachmentEncryptedSize
+      ) {
+        return jsonResponse({ error: "Attachment encrypted size is invalid" }, 400, request);
+      }
+    }
+
+    const expiryForCreate = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
+      isPremium: noteCreationIsPremium,
+    });
+    if (!expiryForCreate.ok) {
+      return jsonResponse({ error: expiryForCreate.message }, 400, request);
+    }
+
+    const maxReadsForCreate = parseMaxReadsFromBody(requestBody?.maxReads, {
+      isPremium: noteCreationIsPremium,
+    });
+    if (!maxReadsForCreate.ok) {
+      return jsonResponse({ error: maxReadsForCreate.message }, 400, request);
+    }
+
+    const fileAccessWindowForCreate = parseNoteFileAccessWindowFromBody(
+      requestBody?.fileAccessWindowSeconds,
+      { isPremium: noteCreationIsPremium },
+    );
+    if (!fileAccessWindowForCreate.ok) {
+      return jsonResponse({ error: fileAccessWindowForCreate.message }, 400, request);
+    }
+
     const id = requestedId || crypto.randomUUID();
+
+    if (requestBody?.attachment != null) {
+      if (!env.NOTE_FILES_R2) {
+        return jsonResponse(
+          { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+          503,
+          request,
+        );
+      }
+      if (requestBody.attachment?.v !== 2) {
+        await cleanupNoteFileChunks(env, id, "unsupported attachment version");
+        return jsonResponse({ error: "Attachment version is unsupported" }, 400, request);
+      }
+      const chunks = Array.isArray(requestBody.attachment.chunks) ? requestBody.attachment.chunks : [];
+      const totalChunks = Number(requestBody.attachment.totalChunks);
+      if (!Number.isInteger(totalChunks) || totalChunks <= 0 || chunks.length !== totalChunks) {
+        await cleanupNoteFileChunks(env, id, "invalid attachment chunks");
+        return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
+      }
+      let uploadedEncryptedSize = 0;
+      const reservation = requestedId ? await getNoteReservationRecord(env, requestedId) : null;
+      for (let index = 0; index < chunks.length; index += 1) {
+        const chunk = chunks[index];
+        if (
+          !chunk ||
+          chunk.index !== index ||
+          !Number.isInteger(chunk.encryptedSize) ||
+          chunk.encryptedSize <= 0
+        ) {
+          await cleanupNoteFileChunks(env, id, "invalid attachment chunk metadata");
+          return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
+        }
+        const expectedChunkHash = reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)];
+        if (!expectedChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from reservation");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
+        if (!uploadedChunk) {
+          await cleanupNoteFileChunks(env, id, "missing attachment upload");
+          return jsonResponse({ error: "Attachment upload missing" }, 400, request);
+        }
+        const uploadedChunkSize = Number(uploadedChunk.customMetadata?.chunkEncryptedSize ?? NaN);
+        if (uploadedChunkSize !== chunk.encryptedSize) {
+          await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        if (uploadedChunk.customMetadata?.chunkSha256 !== expectedChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash mismatch");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        uploadedEncryptedSize += chunk.encryptedSize;
+      }
+      if (uploadedEncryptedSize !== requestBody.attachment.encryptedSize) {
+        await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
+        return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+      }
+      const attachmentContentHash = requestBody.attachmentContentHash;
+      if (!isValidAttachmentContentHash(attachmentContentHash)) {
+        await cleanupNoteFileChunks(env, id, "missing attachment content hash");
+        return jsonResponse({ error: "Attachment content hash is required" }, 400, request);
+      }
+      const computedContentHash = await computeUploadedAttachmentContentHash(env, id, totalChunks);
+      if (!computedContentHash || computedContentHash !== attachmentContentHash.toLowerCase()) {
+        await cleanupNoteFileChunks(env, id, "attachment content hash mismatch");
+        return jsonResponse({ error: "Attachment content hash mismatch" }, 400, request);
+      }
+    }
+
     const stub = getSecureNoteStub(env, id, true);
     const doUrl = new URL(request.url);
     doUrl.pathname = `/api/notes/${id}`;
@@ -7231,8 +8476,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }) as any,
     );
 
-    if (doResponse.ok && noteForAnalytics) {
-      noteForAnalytics.id = id;
+	    if (doResponse.ok && noteForAnalytics) {
+	      noteForAnalytics.id = id;
       const rawReferrer = typeof requestBody?.referrer === "string" ? requestBody.referrer : null;
       const sanitizedReferrer = rawReferrer
         ? rawReferrer.replace(/[^a-zA-Z0-9.\-_ ]/g, "").slice(0, 60).trim() || null
@@ -7253,18 +8498,163 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         referrer: sanitizedReferrer,
         country: country ?? null,
         language: sanitizedLang,
+	      });
+	    }
+
+	    if (doResponse.ok && requestBody?.attachment != null) {
+	      await activateAccountFileStorageReservation(
+	        env,
+	        id,
+	        Number(requestBody.attachment.encryptedSize),
+	        Number(requestBody.attachment.totalChunks),
+	        maxReadsForCreate.maxReads,
+	        fileAccessWindowForCreate.seconds,
+	        new Date(Date.now() + expiryForCreate.seconds * 1000).toISOString(),
+	      );
+	    }
+
+	    if (doResponse.ok && aiMode) {
+	      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
+    }
+
+    let premiumSentNoteExtras: { recipientVerificationCode?: string } | undefined;
+    if (doResponse.ok) {
+      premiumSentNoteExtras = await registerPremiumSentNote(env, request, id, {
+        notifyOnOpen: requestBody?.notifyOnOpen === true,
+        notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+        restrictRecipientEmail: requestBody?.restrictRecipientEmail === true,
+        requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        recipientEmail:
+          typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
+        label: typeof requestBody?.label === "string" ? requestBody.label : null,
+        expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
     }
 
-    if (doResponse.ok && aiMode) {
-      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
+	    if (doResponse.ok && requestedId) {
+	      await clearReservation(env, requestedId);
+	    }
+
+	    if (!doResponse.ok && requestBody?.attachment != null) {
+	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
+	    }
+
+      if (doResponse.ok && premiumSentNoteExtras?.recipientVerificationCode) {
+        try {
+          const created = (await doResponse.clone().json()) as Record<string, unknown>;
+          return jsonResponse(
+            {
+              ...created,
+              recipientVerificationCode: premiumSentNoteExtras.recipientVerificationCode,
+            },
+            doResponse.status,
+            request,
+          );
+        } catch {
+          // fall through to raw DO response
+        }
+      }
+
+	    return applyCorsHeaders(doResponse as unknown as Response, request);
+	  }
+
+  const recipientGateParams = parsePathParams(pathname, "/api/notes/:id/recipient-gate");
+  if (recipientGateParams && method === "GET") {
+    const { id } = recipientGateParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const status = await getRecipientGateStatus(env, id);
+    const verified = status.required ? await isRecipientVerified(env, id, request) : true;
+    return jsonResponse({ ...status, verified }, 200, request);
+  }
+
+  const recipientVerifyParams = parsePathParams(pathname, "/api/notes/:id/recipient-verify");
+  if (recipientVerifyParams && method === "POST") {
+    const { id } = recipientVerifyParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    let body: { code?: unknown; email?: unknown } = {};
+    try {
+      body = (await request.json()) as { code?: unknown; email?: unknown };
+    } catch {
+      return jsonResponse({ error: "Invalid JSON" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const verifyLimit = await checkRateLimit(
+      env,
+      `${id}:${clientId}`,
+      RATE_LIMIT_RECIPIENT_VERIFY,
+    );
+    if (!verifyLimit.allowed) {
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "recipient_verification_rate_limited",
+        status: "warning",
+        details: {
+          noteId: id,
+          resetAt: verifyLimit.resetAt,
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      return jsonResponse(
+        {
+          error: "recipient_verification_rate_limited",
+          message: `Too many verification attempts. Please try again in ${verifyLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: verifyLimit.resetAt,
+        },
+        429,
+        request,
+      );
     }
 
-    if (doResponse.ok && requestedId) {
-      await clearReservation(env, requestedId);
+    const result = await verifyRecipientAccess(env, id, {
+      code: typeof body.code === "string" ? body.code : undefined,
+      email: typeof body.email === "string" ? body.email : undefined,
+    });
+    if (!result.ok) {
+      const usedAttempts = RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS - verifyLimit.remaining;
+      await logAuditEvent(env, {
+        userId: null,
+        eventType: "recipient_verification_failed",
+        status: "failure",
+        details: {
+          noteId: id,
+          reason: result.error,
+          attemptsRemaining: verifyLimit.remaining,
+        },
+        ip: getRequestIp(request),
+        userAgent: request.headers.get("User-Agent"),
+      });
+      await recipientVerificationFailureDelay(usedAttempts);
+      const message =
+        result.error === "invalid_code"
+          ? "Invalid verification code."
+          : result.error === "invalid_email"
+            ? "This email does not match the intended recipient."
+            : result.error === "email_required"
+              ? "Recipient email is required."
+              : result.error === "code_required"
+                ? "Verification code is required."
+                : "Recipient verification is not available for this note.";
+      return jsonResponse({ error: result.error, message }, 400, request);
     }
-
-    return applyCorsHeaders(doResponse as unknown as Response, request);
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "recipient_verification_success",
+      status: "success",
+      details: { noteId: id },
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("User-Agent"),
+    });
+    const response = jsonResponse({ ok: true }, 200, request);
+    response.headers.append(
+      "Set-Cookie",
+      recipientVerifiedCookieHeader(id, result.setCookie, request),
+    );
+    return response;
   }
 
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
@@ -7282,6 +8672,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         message: `Too many reveal attempts. Please try again in ${revealLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
         resetAt: revealLimit.resetAt,
       }, 429, request);
+    }
+
+    if (await noteRequiresRecipientVerification(env, id)) {
+      const verified = await isRecipientVerified(env, id, request);
+      if (!verified) {
+        return jsonResponse(
+          {
+            error: "recipient_verification_required",
+            message: "Recipient verification is required before this note can be revealed.",
+          },
+          403,
+          request,
+        );
+      }
     }
 
     const stub = getSecureNoteStub(env, id, true);
@@ -7310,11 +8714,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (doResponse.ok) {
+      let noteDestroyed = false;
       try {
         type RevealJson = {
           content?: string;
           iv?: string;
           aad?: string | null;
+          attachment?: unknown;
           expiresAt?: string;
           maxReads?: number;
           readCount?: number;
@@ -7327,6 +8733,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         const maxReads = data.maxReads ?? 0;
         const readCount = data.readCount ?? 0;
         const destroyed = maxReads > 0 && readCount >= maxReads;
+        noteDestroyed = destroyed;
         const noteForAnalytics: Note = {
           id,
           content: data.content ?? "",
@@ -7348,8 +8755,47 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } catch (error) {
         console.warn("[ROUTES] Skipping analytics for note reveal:", error);
       }
+      try {
+        await recordSentNoteOpened(
+          env,
+          id,
+          request,
+          async (to, subject, text, html) => {
+            const result = await sendEmail(env, { to, subject, text, html });
+            if (!result.ok) throw new Error(result.error ?? "Email send failed");
+            return result;
+          },
+          noteDestroyed,
+        );
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
+      }
+      try {
+        const data = (await doResponse.clone().json()) as {
+          attachment?: unknown;
+          fileAccessWindowSeconds?: unknown;
+        };
+        if (data.attachment != null) {
+          const fileAccessTokenExpiresIn = isNoteFileAccessWindowSeconds(data.fileAccessWindowSeconds)
+            ? data.fileAccessWindowSeconds
+            : NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+          const fileAccessToken = await issueNoteFileAccessToken(env, id, fileAccessTokenExpiresIn);
+          doResponse = jsonResponse(
+            {
+              ...data,
+              fileAccessToken,
+              fileAccessTokenExpiresIn,
+            },
+            doResponse.status,
+            request,
+          ) as unknown as typeof doResponse;
+        }
+      } catch (error) {
+        console.warn("[ROUTES] Failed to issue file access token:", error);
+      }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed
+      await cleanupNoteFileChunks(env, id, "reveal returned 404");
       storage.trackNoteRevealFailed().catch(() => {});
     }
 
@@ -7365,6 +8811,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (doResponse.status === 404) {
       const legacyStub = getSecureNoteStub(env, id, false);
       doResponse = await legacyStub.fetch(request as any);
+    }
+    if (method === "DELETE" && (doResponse.ok || doResponse.status === 404)) {
+      await cleanupNoteFileChunks(env, id, `note delete returned ${doResponse.status}`);
     }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }
@@ -8199,6 +9648,16 @@ export async function processPendingAccountDeletions(
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return { finalized: 0, error: errorMessage };
   }
+}
+
+export async function processExpiredSentNoteNotifications(
+  env: Env,
+): Promise<{ processed: number; notified: number; error?: string }> {
+  return processExpiredSentNotes(env, async (to, subject, text, html) => {
+    const result = await sendEmail(env, { to, subject, text, html });
+    if (!result.ok) throw new Error(result.error ?? "Email send failed");
+    return result;
+  });
 }
 
 /**
