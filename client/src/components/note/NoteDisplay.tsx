@@ -338,6 +338,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const [isViewingFile, setIsViewingFile] = useState(false);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
+  const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const [recipientGateLoading, setRecipientGateLoading] = useState(true);
   const [recipientGateRequired, setRecipientGateRequired] = useState(false);
@@ -806,7 +808,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       // Revoke any previous preview URL before replacing
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
       setPreviewObjectUrl(objectUrl);
-      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      setPreviewMimeType(mimeType);
+      setShowInlinePreview(false);
+      const tab = window.open(objectUrl, "_blank", "noopener,noreferrer");
+      if (!tab) {
+        // Popup was blocked — show inline instead
+        setShowInlinePreview(true);
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Attachment preview/decrypt failed:", error);
@@ -1058,58 +1066,92 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         </div>
 
         {noteData?.attachment ? (
-          <div className="mx-auto mt-4 max-w-2xl rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950 md:p-5">
-            <div className="flex flex-col items-center gap-3 text-center md:gap-4">
-              <div className="flex min-w-0 max-w-full items-center justify-center gap-2">
-                <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {attachmentMetadata?.name || "Encrypted attachment"}
-                </p>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Encrypted attachment
-                  {attachmentMetadata?.size != null
-                    ? ` · ${formatNoteFileSize(attachmentMetadata.size)}`
-                    : ""}
-                </p>
-                {fileAccessRemainingSeconds != null && (
-                  <p
-                    className={`text-xs font-medium ${
-                      fileAccessExpired
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-amber-700 dark:text-amber-300"
-                    }`}
-                  >
-                    {fileAccessExpired
-                      ? "Attachment access expired. Reveal again if the note is still available."
-                      : `Download access expires in ${formatFileAccessRemaining(fileAccessRemainingSeconds)}`}
+          <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
+            {/* File row: icon + name/meta on left, actions on right */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              {/* Left: icon + name + size */}
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {attachmentMetadata?.name || "Encrypted attachment"}
                   </p>
-                )}
+                  {attachmentMetadata?.size != null && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {formatNoteFileSize(attachmentMetadata.size)}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex w-full max-w-xs flex-col gap-2">
+
+              {/* Right: action buttons */}
+              <div className="flex shrink-0 items-center gap-2">
                 {isPreviewableType(attachmentMetadata?.type) && (
                   <button
                     type="button"
                     onClick={() => void handlePreviewAttachment()}
                     disabled={isViewingFile || isDownloadingFile || !contentKey || fileAccessExpired}
-                    className="inline-flex w-full items-center justify-center rounded-md border border-primary bg-white px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-950 dark:hover:bg-primary/10"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/30 dark:bg-primary/10 dark:hover:bg-primary/20"
                   >
-                    <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
-                    {isViewingFile ? "Decrypting…" : attachmentMetadata?.type === "application/pdf" ? "Open PDF" : "View image"}
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    {isViewingFile ? "Decrypting…" : attachmentMetadata?.type === "application/pdf" ? "Open PDF" : "View"}
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => void handleDownloadAttachment()}
                   disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
-                  className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Download className="mr-2 h-4 w-4" aria-hidden />
-                  {isDownloadingFile ? "Decrypting…" : "Download file"}
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  {isDownloadingFile ? "Decrypting…" : "Download"}
                 </button>
               </div>
             </div>
+
+            {/* Access expiry warning — shown below the row when relevant */}
+            {fileAccessRemainingSeconds != null && (
+              <p className={`mt-2 text-xs font-medium ${
+                fileAccessExpired
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-amber-700 dark:text-amber-300"
+              }`}>
+                {fileAccessExpired
+                  ? "Attachment access expired. Reveal again if the note is still available."
+                  : `Download access expires in ${formatFileAccessRemaining(fileAccessRemainingSeconds)}`}
+              </p>
+            )}
+
+            {/* Inline fallback when popup is blocked */}
+            {showInlinePreview && previewObjectUrl && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Popup blocked — showing inline
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlinePreview(false)}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+                  >
+                    Close ✕
+                  </button>
+                </div>
+                {previewMimeType?.startsWith("image/") ? (
+                  <img
+                    src={previewObjectUrl}
+                    alt={attachmentMetadata?.name || "Attachment preview"}
+                    className="max-h-[70vh] w-full rounded-lg object-contain"
+                  />
+                ) : (
+                  <iframe
+                    src={previewObjectUrl}
+                    title={attachmentMetadata?.name || "PDF preview"}
+                    className="h-[70vh] w-full rounded-lg border border-gray-200 dark:border-gray-700"
+                  />
+                )}
+              </div>
+            )}
           </div>
         ) : null}
 
