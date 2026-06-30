@@ -11,6 +11,7 @@ import {
 } from "@/pages/security-settings/registerPasskeyWithRetry";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { markJustSignedIn } from "@/utils/authPrefetch";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { CheckCircle2, Loader2, AlertCircle, KeyRound, Sparkles } from "lucide-react";
 
@@ -121,6 +122,7 @@ export default function AuthMagic() {
       // Retry: D1 read-after-write lag can briefly return authenticated:false.
       await refreshUntilAuthenticated();
       if (nextReturnToFromUrl) {
+        markJustSignedIn();
         window.location.href = nextReturnTo;
         return;
       }

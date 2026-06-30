@@ -1,9 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { fetchAndApplyAccountPreferredLanguage } from "@/utils/accountPreferredLanguage";
-import { shouldEagerPrefetchAuth } from "@/utils/authPrefetch";
+import {
+  clearAuthHint,
+  consumeJustSignedIn,
+  readAuthHint,
+  shouldEagerPrefetchAuth,
+  writeAuthHint,
+} from "@/utils/authPrefetch";
 import { scheduleAuthSessionCheck } from "@/utils/scheduleDeferred";
 
 type AuthUser = {
@@ -28,7 +34,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { language, setLanguage } = useLanguage();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  // Seed from the last-known signed-in hint so a cold reload renders the profile
+  // immediately instead of flashing "Sign in" before the deferred session check
+  // resolves. The real session check below confirms or clears this.
+  const [user, setUser] = useState<AuthUser | null>(() => readAuthHint());
   // Start as true on pages that check auth eagerly so components don't briefly
   // flash the "sign in" state before the first session API call resolves.
   const [loading, setLoading] = useState(() => {
@@ -49,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data?.authenticated && data.user) {
         const next: AuthUser = { email: data.user.email ?? null };
         setUser(next);
+        writeAuthHint(next.email);
         if (!appliedDbLangRef.current) {
           appliedDbLangRef.current = true;
           void fetchAndApplyAccountPreferredLanguage(setLanguage);
@@ -56,11 +66,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return next;
       }
       setUser(null);
+      clearAuthHint();
       // Reset so the next sign-in re-applies the DB language preference.
       appliedDbLangRef.current = false;
       return null;
-    } catch {
-      setUser(null);
+    } catch (error) {
+      // Only treat a real server response (e.g. 401) as a definitive logout. On a
+      // transient network error keep the optimistic hint so a flaky connection
+      // doesn't visually sign the user out.
+      if (error instanceof ApiRequestError) {
+        setUser(null);
+        clearAuthHint();
+        appliedDbLangRef.current = false;
+      }
       return null;
     } finally {
       setLoading(false);
@@ -89,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiRequest("/api/auth/logout", "POST");
     } finally {
       setUser(null);
+      clearAuthHint();
       if (typeof window !== "undefined" && window.location.pathname.startsWith("/account")) {
         window.location.assign(localizedPath("/", language));
       }
@@ -97,7 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (shouldEagerPrefetchAuth(window.location.pathname)) {
+    // After a sign-in redirect (full page reload), check the session immediately so the
+    // navbar reflects the signed-in state on first paint instead of waiting for the first
+    // user interaction (the deferred check below is an LCP optimization for cold loads).
+    if (shouldEagerPrefetchAuth(window.location.pathname) || consumeJustSignedIn()) {
       void refresh();
       return;
     }
