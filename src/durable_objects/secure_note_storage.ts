@@ -10,8 +10,14 @@ import {
   validateNoteKdfSaltWire,
 } from "@shared/noteCryptoWire";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  isNoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
 import { isValidNoteId } from "@shared/noteId";
 import {
+  NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
+  parseStoredNoteAttachmentForNote,
   parseStoredNoteCiphertextForReveal,
   STORED_NOTE_CIPHER_ALG,
   STORED_NOTE_PAYLOAD_VERSION,
@@ -198,6 +204,9 @@ export class SecureNoteStorageSql {
       encryptedKeyIv = null,
       aad: aadRaw = undefined,
       kdfParams = undefined,
+      keyDerivation = undefined,
+      attachment: attachmentRaw = undefined,
+      fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
     } = body || {};
 
     const ippField = body?.isPasswordProtected;
@@ -251,6 +260,12 @@ export class SecureNoteStorageSql {
     }
 
     let normalizedKdfParams: KdfParamsV2 | undefined;
+    if (keyDerivation != null && keyDerivation !== NOTE_KEY_DERIVATION_HKDF_ROOT_V2) {
+      return new Response(JSON.stringify({ error: "Unsupported keyDerivation" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (isPasswordProtected) {
       const kdfParsed = tryParseKdfParamsV2Object(kdfParams);
@@ -276,12 +291,21 @@ export class SecureNoteStorageSql {
           headers: { "Content-Type": "application/json" },
         });
       }
-      const encKeyCheck = validateNoteEncryptedKeyWire(encryptedKey);
-      if (!encKeyCheck.ok) {
-        return new Response(JSON.stringify({ error: encKeyCheck.message }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+      if (keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2) {
+        if (encryptedKey != null) {
+          return new Response(JSON.stringify({ error: "encryptedKey must not be stored for hkdf-root-v2 notes" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        const encKeyCheck = validateNoteEncryptedKeyWire(encryptedKey);
+        if (!encKeyCheck.ok) {
+          return new Response(JSON.stringify({ error: encKeyCheck.message }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
       }
     } else if (passwordWireFieldsPresent(body)) {
       return new Response(
@@ -294,6 +318,11 @@ export class SecureNoteStorageSql {
           headers: { "Content-Type": "application/json" },
         },
       );
+    } else if (keyDerivation != null && keyDerivation !== NOTE_KEY_DERIVATION_HKDF_ROOT_V2) {
+      return new Response(JSON.stringify({ error: "Unsupported keyDerivation" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     } else if (kdfParams != null) {
       return new Response(
         JSON.stringify({
@@ -355,6 +384,23 @@ export class SecureNoteStorageSql {
 
     const contentTrimmed = content.trim();
     const ivTrimmed = iv.trim();
+    const attachment = parseStoredNoteAttachmentForNote(attachmentRaw, noteId);
+    if (attachmentRaw != null && !attachment) {
+      return new Response(JSON.stringify({ error: "Invalid attachment metadata" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const fileAccessWindowSeconds =
+      fileAccessWindowSecondsRaw == null
+        ? NOTE_FILE_ACCESS_DEFAULT_SECONDS
+        : fileAccessWindowSecondsRaw;
+    if (!isNoteFileAccessWindowSeconds(fileAccessWindowSeconds)) {
+      return new Response(JSON.stringify({ error: "Invalid attachment access window" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const ciphertext: StoredCiphertext = {
       v: STORED_NOTE_PAYLOAD_VERSION,
@@ -366,18 +412,28 @@ export class SecureNoteStorageSql {
       salt: null,
       encryptedKey: null,
       encryptedKeyIv: null,
+      ...(attachment ? { attachment } : {}),
+      ...(attachment ? { fileAccessWindowSeconds } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
+      ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+        ? { keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2 }
+        : {}),
     };
 
     if (isPasswordProtected) {
-      if (typeof salt !== "string" || typeof encryptedKey !== "string" || typeof encryptedKeyIv !== "string") {
-        return new Response(JSON.stringify({ error: "salt, encryptedKey, and encryptedKeyIv must be strings" }), {
+      if (typeof salt !== "string" || typeof encryptedKeyIv !== "string") {
+        return new Response(JSON.stringify({ error: "salt and encryptedKeyIv must be strings" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
       }
       ciphertext.salt = salt.trim();
-      ciphertext.encryptedKey = encryptedKey.trim().length > 0 ? encryptedKey.trim() : null;
+      ciphertext.encryptedKey =
+        keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+          ? null
+          : typeof encryptedKey === "string" && encryptedKey.trim().length > 0
+            ? encryptedKey.trim()
+            : null;
       ciphertext.encryptedKeyIv = encryptedKeyIv.trim();
     }
 
@@ -467,7 +523,7 @@ export class SecureNoteStorageSql {
           return { ok: false };
         }
 
-        const ciphertext = parseStoredNoteCiphertextForReveal(raw);
+        const ciphertext = parseStoredNoteCiphertextForReveal(raw, noteId);
         if (!ciphertext) {
           this.purgeNoteRowsSync(noteId);
           return { ok: false };
@@ -495,6 +551,14 @@ export class SecureNoteStorageSql {
           isPasswordProtected: ciphertext.isPasswordProtected,
           ...(typeof ciphertext.aad === "string" && ciphertext.aad ? { aad: ciphertext.aad } : {}),
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
+          ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
+          ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
+          ...(ciphertext.attachment
+            ? {
+                fileAccessWindowSeconds:
+                  ciphertext.fileAccessWindowSeconds ?? NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+              }
+            : {}),
           ...(ciphertext.isPasswordProtected && {
             salt: ciphertext.salt,
             ...(ciphertext.encryptedKey ? { encryptedKey: ciphertext.encryptedKey } : {}),

@@ -9,16 +9,22 @@ import {
   ShieldCheck,
   Trash2,
   UserX,
+  Download,
+  Paperclip,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
+  deriveNoteRootKeysFromUrlFragment,
   importAesGcmKeyFromUrlFragment,
-  decryptWithPassword,
   base64ToArrayBuffer,
   deserializeEncryptedPayload,
+  NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
+  unwrapContentKeyWithPassword,
+  unwrapRootKeyWithPassword,
 } from '@/utils/encryption';
+import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -57,7 +63,44 @@ interface NoteData {
   kdfVersion?: number; // Key Derivation Function version
   kdfIterations?: number; // KDF iteration count
   kdfPolicyTag?: string; // KDF policy/profile tag (e.g. argon2id-m65536-p1)
+  keyDerivation?: string;
+  fileAccessToken?: string;
+  fileAccessTokenExpiresIn?: number;
+  fileAccessTokenExpiresAtMs?: number;
+  attachment?: NoteAttachment;
 }
+
+interface NoteAttachmentV2 {
+  v: 2;
+  alg: "libsodium-secretstream-xchacha20poly1305";
+  encryptedSize: number;
+  chunkSize: number;
+  totalChunks: number;
+  header: string;
+  aad: string;
+  encryptedMetadata: {
+    alg: "AES-GCM";
+    iv: string;
+    aad: string;
+    ciphertext: string;
+  };
+  wrappedKey: {
+    alg: "AES-GCM";
+    iv: string;
+    aad: string;
+    encryptedKey: string;
+  };
+  chunks: Array<{ index: number; encryptedSize: number }>;
+  encryptedContentSha256: string;
+}
+
+type NoteAttachment = NoteAttachmentV2;
+
+type AttachmentDisplayMetadata = {
+  name: string;
+  type: string;
+  size: number;
+};
 
 interface RevealHeroProps {
   isRevealing: boolean;
@@ -108,6 +151,28 @@ const getBrandingLine = (branding?: RevealBranding): string | null => {
   if (company) return `Shared by ${company}`;
   return null;
 };
+
+function withFileAccessDeadline<T extends NoteData>(data: T): T {
+  if (!data.fileAccessToken || typeof data.fileAccessTokenExpiresIn !== "number") {
+    return data;
+  }
+  return {
+    ...data,
+    fileAccessTokenExpiresAtMs: Date.now() + data.fileAccessTokenExpiresIn * 1000,
+  };
+}
+
+function formatFileAccessRemaining(totalSeconds: number): string {
+  const seconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}:${String(remainingMinutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
 
 const NoteAccessProblem: React.FC<{
   variant: NoteAccessProblemVariant;
@@ -267,6 +332,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [hasRevealed, setHasRevealed] = useState(false);
   const [isRevealButtonReady, setIsRevealButtonReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
+  const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
+  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
+  const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
+  const [recipientGateLoading, setRecipientGateLoading] = useState(true);
+  const [recipientGateRequired, setRecipientGateRequired] = useState(false);
+  const [recipientGateEmailRequired, setRecipientGateEmailRequired] = useState(false);
+  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
+  const [recipientGateVerified, setRecipientGateVerified] = useState(false);
+  const [recipientEmailInput, setRecipientEmailInput] = useState("");
+  const [recipientCodeInput, setRecipientCodeInput] = useState("");
+  const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
+  const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
   const { toast } = useToast();
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
@@ -288,6 +366,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (isDecryptKeyFailureMessage(message)) {
       return "This link's key doesn't match this note. Copy the full URL—including everything after #—or ask the sender for a new link.";
     }
+    if (message.includes("recipient_verification_required")) {
+      return "Recipient verification is required before this note can be revealed.";
+    }
     return message;
   };
 
@@ -296,8 +377,72 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setError('Invalid note ID');
       setKeyMismatchError(false);
       setIsLoading(false);
+      setRecipientGateLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setRecipientGateLoading(true);
+    void (async () => {
+      try {
+        const status = await apiRequest<{
+          required?: boolean;
+          emailRequired?: boolean;
+          codeRequired?: boolean;
+          verified?: boolean;
+        }>(`/api/notes/${id}/recipient-gate`, "GET");
+        if (cancelled) return;
+        setRecipientGateRequired(status.required === true);
+        setRecipientGateEmailRequired(status.emailRequired === true);
+        setRecipientGateCodeRequired(status.codeRequired === true);
+        setRecipientGateVerified(status.required !== true || status.verified === true);
+      } catch {
+        if (!cancelled) {
+          setRecipientGateRequired(false);
+          setRecipientGateVerified(true);
+        }
+      } finally {
+        if (!cancelled) setRecipientGateLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  const handleRecipientGateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setRecipientGateSubmitting(true);
+    setRecipientGateError(null);
+    try {
+      await apiRequest(`/api/notes/${id}/recipient-verify`, "POST", {
+        ...(recipientGateEmailRequired ? { email: recipientEmailInput.trim() } : {}),
+        ...(recipientGateCodeRequired ? { code: recipientCodeInput.trim() } : {}),
+      });
+      setRecipientGateVerified(true);
+      toast({
+        title: t.recipientGateVerifiedTitle ?? "Verified",
+        description:
+          t.recipientGateVerifiedDescription ?? "You can now reveal the note.",
+      });
+    } catch (error) {
+      let message =
+        t.recipientGateVerifyFailed ?? "Verification failed. Check the details and try again.";
+      if (error instanceof ApiRequestError) {
+        try {
+          const body = JSON.parse(error.bodyText) as { message?: string };
+          if (body.message) message = body.message;
+        } catch {
+          /* ignore */
+        }
+      }
+      setRecipientGateError(message);
+    } finally {
+      setRecipientGateSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     setIsRevealButtonReady(false);
@@ -306,6 +451,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }, 300);
     return () => window.clearTimeout(timer);
   }, [id]);
+
+  useEffect(() => {
+    if (!noteData?.fileAccessTokenExpiresAtMs) return;
+    setFileAccessNowMs(Date.now());
+    const interval = window.setInterval(() => setFileAccessNowMs(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [noteData?.fileAccessTokenExpiresAtMs]);
 
   const decryptWithKey = async (data: NoteData, key: string) => {
     try {
@@ -318,22 +470,36 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         aad: data.aad,
       });
 
-      console.log("Importing key:", key);
-      const cryptoKey = await importAesGcmKeyFromUrlFragment(key);
+      const { noteTextKey, fileWrapKey, metadataKey } =
+        data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+          ? await deriveNoteRootKeysFromUrlFragment(key)
+          : {
+              noteTextKey: await importAesGcmKeyFromUrlFragment(key),
+              fileWrapKey: await importAesGcmKeyFromUrlFragment(key),
+              metadataKey: await importAesGcmKeyFromUrlFragment(key),
+            };
+      setContentKey(fileWrapKey);
+      if (data.attachment?.v === 2) {
+        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
+        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(data.attachment, metadataKey, id));
+      } else {
+        setAttachmentMetadata(null);
+      }
 
       // Decrypt the note with AAD for context validation
       // Fixed: Added AAD support
-      console.log("Decrypting content with key");
       const decryptedContent = await decryptNote(
         payloadBytes.encryptedData,
-        cryptoKey,
+        noteTextKey,
         payloadBytes.iv,
         payloadBytes.aadBytes,
       );
       setNoteContent(decryptedContent);
       reportNoteOpenedIfSignedIn(id);
     } catch (cryptoError) {
-      console.error("Crypto error:", cryptoError);
+      if (import.meta.env.DEV) {
+        console.error("Crypto error:", cryptoError);
+      }
       throw new Error("Failed to decrypt the note. The encryption key may be invalid or the data may have been tampered with.");
     } finally {
       setIsLoading(false);
@@ -358,7 +524,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const data = await apiRequest(`/api/notes/${id}/reveal`, "POST");
 
       setIsPasswordProtected(data.isPasswordProtected || false);
-      setNoteData(data);
+      setNoteData(withFileAccessDeadline(data));
       setHasRevealed(true);
 
       if (data.isPasswordProtected) {
@@ -441,23 +607,70 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const encryptedKeyIv = base64ToArrayBuffer(noteData.encryptedKeyIv!);
       const salt = base64ToArrayBuffer(noteData.salt!);
 
-      // Decrypt using password with AAD and KDF parameter validation
-      // Fixed: Added AAD and KDF parameter support
-      const decryptedContent = await decryptWithPassword(
+      const { noteTextKey, fileWrapKey, metadataKey } =
+        noteData.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+          ? await unwrapRootKeyWithPassword(
+              encryptedKey,
+              new Uint8Array(encryptedKeyIv),
+              new Uint8Array(salt),
+              password,
+              payloadBytes.aadBytes,
+              noteData.kdfParams,
+              noteData.kdfVersion,
+              noteData.kdfIterations,
+              noteData.kdfPolicyTag,
+            )
+          : {
+              noteTextKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
+              fileWrapKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
+              metadataKey: await unwrapContentKeyWithPassword(
+                encryptedKey,
+                new Uint8Array(encryptedKeyIv),
+                new Uint8Array(salt),
+                password,
+                payloadBytes.aadBytes,
+                noteData.kdfParams,
+                noteData.kdfVersion,
+                noteData.kdfIterations,
+                noteData.kdfPolicyTag,
+              ),
+            };
+
+      const decryptedContent = await decryptNote(
         payloadBytes.encryptedData,
+        noteTextKey,
         payloadBytes.iv,
-        encryptedKey,
-        new Uint8Array(encryptedKeyIv),
-        new Uint8Array(salt),
-        password,
         payloadBytes.aadBytes,
-        noteData.kdfParams,
-        noteData.kdfVersion,
-        noteData.kdfIterations,
-        noteData.kdfPolicyTag,
       );
 
       setNoteContent(decryptedContent);
+      setContentKey(fileWrapKey);
+      if (noteData.attachment?.v === 2) {
+        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
+        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(noteData.attachment, metadataKey, id));
+      } else {
+        setAttachmentMetadata(null);
+      }
       reportNoteOpenedIfSignedIn(id);
 
       // Hide password input after successful decryption
@@ -468,7 +681,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         description: "Note decrypted successfully",
       });
     } catch (error) {
-      console.error("Password decryption error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Password decryption error:", error);
+      }
       setPasswordDecryptError(
         "That password didn\u2019t unlock this note. Check for typos or ask the sender.",
       );
@@ -488,11 +703,71 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     });
   };
 
+  const handleDownloadAttachment = async () => {
+    if (!noteData?.attachment || !contentKey) return;
+    if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
+      toast({
+        title: "File access expired",
+        description: "Reveal the note again if it is still available.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
+      ? { "x-file-access-token": noteData.fileAccessToken }
+      : {};
+    setIsDownloadingFile(true);
+    try {
+      let decryptedParts: BlobPart[];
+      const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
+      decryptedParts = await decryptSodiumAttachmentChunks(
+        noteData.attachment,
+        contentKey,
+        async (index) => {
+          const encryptedChunkBlob = await apiBlobRequest(
+            `/api/notes/${id}/file/chunks/${index}`,
+            "GET",
+            fileAccessHeaders,
+          );
+          return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
+        },
+      );
+      const blob = new Blob(decryptedParts, {
+        type: attachmentMetadata?.type || "application/octet-stream",
+      });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = attachmentMetadata?.name || "privatenote-file";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Attachment download/decrypt failed:", error);
+      }
+      toast({
+        title: "File download failed",
+        description: "The encrypted file could not be downloaded or decrypted.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingFile(false);
+    }
+  };
+
+  const fileAccessRemainingSeconds =
+    noteData?.fileAccessTokenExpiresAtMs != null
+      ? Math.max(0, Math.ceil((noteData.fileAccessTokenExpiresAtMs - fileAccessNowMs) / 1000))
+      : null;
+  const fileAccessExpired = fileAccessRemainingSeconds === 0;
+
   const handleCreateNew = () => {
     window.location.href = '/';
   };
 
-  if (isLoading) {
+  if (isLoading || recipientGateLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -513,6 +788,76 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }
 
   if (!hasRevealed) {
+    if (recipientGateRequired && !recipientGateVerified) {
+      return (
+        <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
+          <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+            <div className="mx-auto max-w-md text-center">
+              <div className="mb-4 flex justify-center text-primary">
+                <ShieldCheck className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
+              </div>
+              <h1 className="page-title text-gray-900 dark:text-white">
+                {t.recipientGateTitle ?? "Verify before opening"}
+              </h1>
+              <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                {t.recipientGateDescription ??
+                  "The sender restricted who can open this note. Confirm your details to continue."}
+              </p>
+              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
+                {recipientGateEmailRequired ? (
+                  <div>
+                    <label htmlFor="recipient-gate-email" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {t.recipientGateEmail ?? "Your email"}
+                    </label>
+                    <input
+                      id="recipient-gate-email"
+                      type="email"
+                      autoComplete="email"
+                      value={recipientEmailInput}
+                      onChange={(event) => setRecipientEmailInput(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                ) : null}
+                {recipientGateCodeRequired ? (
+                  <div>
+                    <label htmlFor="recipient-gate-code" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {t.recipientGateCode ?? "Verification code"}
+                    </label>
+                    <input
+                      id="recipient-gate-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      value={recipientCodeInput}
+                      onChange={(event) => setRecipientCodeInput(event.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                ) : null}
+                {recipientGateError ? (
+                  <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                    {recipientGateError}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={recipientGateSubmitting}
+                  className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {recipientGateSubmitting
+                    ? (t.recipientGateSubmitting ?? "Verifying…")
+                    : (t.recipientGateSubmit ?? "Continue")}
+                </button>
+              </form>
+            </div>
+          </section>
+        </section>
+      );
+    }
+
     return (
       <RevealHero
         isRevealing={isRevealing}
@@ -647,6 +992,49 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             {noteContent.trimEnd()}
           </span>
         </div>
+
+        {noteData?.attachment ? (
+          <div className="mx-auto mt-4 max-w-2xl rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950 md:p-5">
+            <div className="flex flex-col items-center gap-3 text-center md:gap-4">
+              <div className="flex min-w-0 max-w-full items-center justify-center gap-2">
+                <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {attachmentMetadata?.name || "Encrypted attachment"}
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Encrypted attachment
+                  {attachmentMetadata?.size != null
+                    ? ` · ${formatNoteFileSize(attachmentMetadata.size)}`
+                    : ""}
+                </p>
+                {fileAccessRemainingSeconds != null && (
+                  <p
+                    className={`text-xs font-medium ${
+                      fileAccessExpired
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-amber-700 dark:text-amber-300"
+                    }`}
+                  >
+                    {fileAccessExpired
+                      ? "Attachment access expired. Reveal again if the note is still available."
+                      : `Download access expires in ${formatFileAccessRemaining(fileAccessRemainingSeconds)}`}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleDownloadAttachment()}
+                disabled={isDownloadingFile || !contentKey || fileAccessExpired}
+                className="inline-flex w-full max-w-xs items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download className="mr-2 h-4 w-4" aria-hidden />
+                {isDownloadingFile ? "Decrypting..." : "Download file"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <button
