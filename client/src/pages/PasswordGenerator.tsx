@@ -274,6 +274,10 @@ const PasswordGenerator: React.FC = () => {
   };
 
   useEffect(() => {
+    apiRequest("/api/analytics/event", "POST", { page: "password-share" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     setShowSuccessQr(false);
     setShowSuccessHelp(false);
     setShowQrHelp(false);
@@ -598,6 +602,7 @@ const PasswordGenerator: React.FC = () => {
                           {showQrHelp && (
                             <div className="w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/35 px-3 py-3 text-sm leading-snug text-blue-900 dark:text-blue-100">
                               <ul className="list-disc pl-4 space-y-1.5">
+                                <li>{t.scanToOpenMobile}</li>
                                 <li>{t.anyoneWithCodeCanViewPassword}</li>
                                 <li>{t.codeCannotBeRecovered}</li>
                               </ul>

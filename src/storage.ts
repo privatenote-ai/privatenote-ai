@@ -73,6 +73,7 @@ export interface IStorage {
   trackAccountSignup(): Promise<void>;
   trackAccountLogin(): Promise<void>;
   trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void>;
+  trackPageView(page: 'file-share' | 'password-share'): Promise<void>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
   getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult>;
 }
@@ -384,6 +385,7 @@ class MemStorage {
   async trackAccountSignup(): Promise<void> { /* MemStorage no-op */ }
   async trackAccountLogin(): Promise<void> { /* MemStorage no-op */ }
   async trackClientEvent(_event: 'wrong_password' | 'qr_share'): Promise<void> { /* MemStorage no-op */ }
+  async trackPageView(_page: 'file-share' | 'password-share'): Promise<void> { /* MemStorage no-op */ }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     return Array.from(this.analytics.values()).filter(data => {
@@ -619,6 +621,17 @@ class KVAnalyticsStorage {
     await this.saveDailyMetrics(today, metrics);
   }
 
+  async trackPageView(page: "file-share" | "password-share"): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    if (page === "file-share") {
+      metrics.fileSharePageViews = (metrics.fileSharePageViews ?? 0) + 1;
+    } else {
+      metrics.passwordSharePageViews = (metrics.passwordSharePageViews ?? 0) + 1;
+    }
+    await this.saveDailyMetrics(today, metrics);
+  }
+
   async trackAccountSignup(): Promise<void> {
     const today = new Date();
     const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
@@ -805,6 +818,10 @@ export class CompositeStorage implements IStorage {
 
   async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
     return this.analyticsStorage.trackClientEvent(event);
+  }
+
+  async trackPageView(page: 'file-share' | 'password-share'): Promise<void> {
+    return this.analyticsStorage.trackPageView(page);
   }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {

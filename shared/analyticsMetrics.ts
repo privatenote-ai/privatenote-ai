@@ -42,6 +42,8 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     cloudAiUsed: 0,
     countryDistribution: {},
     languageDistribution: {},
+    fileSharePageViews: 0,
+    passwordSharePageViews: 0,
     notesWithFileAttachment: 0,
     fileSizeBucketDistribution: {
       under5mb: 0,
@@ -76,6 +78,8 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
       ...base.contentLengthDistribution,
       ...(metrics.contentLengthDistribution || {}),
     },
+    fileSharePageViews: metrics.fileSharePageViews ?? 0,
+    passwordSharePageViews: metrics.passwordSharePageViews ?? 0,
     notesWithFileAttachment: metrics.notesWithFileAttachment ?? 0,
     fileSizeBucketDistribution: {
       ...base.fileSizeBucketDistribution!,
@@ -128,6 +132,8 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
       medium: base.contentLengthDistribution.medium + add.contentLengthDistribution.medium,
       long: base.contentLengthDistribution.long + add.contentLengthDistribution.long,
     },
+    fileSharePageViews: (base.fileSharePageViews ?? 0) + (add.fileSharePageViews ?? 0),
+    passwordSharePageViews: (base.passwordSharePageViews ?? 0) + (add.passwordSharePageViews ?? 0),
     notesWithFileAttachment: (base.notesWithFileAttachment ?? 0) + (add.notesWithFileAttachment ?? 0),
     fileSizeBucketDistribution: {
       under5mb: (base.fileSizeBucketDistribution?.under5mb ?? 0) + (add.fileSizeBucketDistribution?.under5mb ?? 0),

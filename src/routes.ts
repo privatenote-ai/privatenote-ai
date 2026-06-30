@@ -8868,17 +8868,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // No auth required — only accepts a fixed allow-list of event types.
   if (pathname === "/api/analytics/event" && method === "POST") {
     try {
-      const body = await request.json().catch(() => ({})) as { event?: unknown };
+      const body = await request.json().catch(() => ({})) as { event?: unknown; page?: unknown };
       const allowed = ["wrong_password", "qr_share"] as const;
       type AllowedEvent = typeof allowed[number];
       const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
         ? (body.event as AllowedEvent)
         : null;
-      if (!event) {
-        return jsonResponse({ message: "Invalid event type" }, 400, request);
+      if (event) {
+        storage.trackClientEvent(event).catch(() => {});
+        return jsonResponse({ ok: true }, 200, request);
       }
-      storage.trackClientEvent(event).catch(() => {});
-      return jsonResponse({ ok: true }, 200, request);
+      const pageAllowed = ["file-share", "password-share"] as const;
+      type AllowedPage = typeof pageAllowed[number];
+      const page = typeof body?.page === "string" && (pageAllowed as readonly string[]).includes(body.page)
+        ? (body.page as AllowedPage)
+        : null;
+      if (page) {
+        storage.trackPageView(page).catch(() => {});
+        return jsonResponse({ ok: true }, 200, request);
+      }
+      return jsonResponse({ message: "Invalid event type" }, 400, request);
     } catch {
       return jsonResponse({ message: "Bad request" }, 400, request);
     }

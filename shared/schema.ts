@@ -141,6 +141,18 @@ export interface DailyMetrics {
   /** UI language active at note-creation time → count. */
   languageDistribution: Record<string, number>;
 
+  // --- Feature page views ---
+  /**
+   * Unique-ish daily visits to the "Share a file" page (`/secure-file-transfer`).
+   * Incremented once per page load (client fires a lightweight beacon). Not
+   * deduplicated per user — serves as a relative engagement signal only.
+   */
+  fileSharePageViews?: number;
+  /**
+   * Unique-ish daily visits to the "Share a password" page (`/password-generator`).
+   */
+  passwordSharePageViews?: number;
+
   // --- File attachments ---
   /** Notes created that included an encrypted file attachment. */
   notesWithFileAttachment?: number;

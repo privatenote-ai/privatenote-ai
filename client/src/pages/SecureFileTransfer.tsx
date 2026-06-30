@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useLanguage } from "@/context/LanguageContext";
+import { apiRequest } from "@/lib/queryClient";
 
 const CreateNote = lazy(() =>
   import("@/components/note/CreateNote").then((m) => ({ default: m.CreateNote })),
@@ -36,6 +37,10 @@ const SecureFileTransfer: React.FC = () => {
     { q: t.sftFaq5Q, a: t.sftFaq5A },
     { q: t.sftFaq6Q, a: t.sftFaq6A },
   ];
+
+  useEffect(() => {
+    apiRequest("/api/analytics/event", "POST", { page: "file-share" }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
