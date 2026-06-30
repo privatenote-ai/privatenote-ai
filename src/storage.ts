@@ -26,6 +26,8 @@ interface AnalyticsContext {
   referrer?: string | null;
   country?: string | null;
   language?: string | null;
+  /** Plaintext file size in bytes when a file attachment is included. Null/undefined = no attachment. */
+  attachmentPlaintextBytes?: number | null;
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
@@ -568,6 +570,26 @@ class KVAnalyticsStorage {
       metrics.contentLengthDistribution.medium++;
     } else {
       metrics.contentLengthDistribution.long++;
+    }
+
+    if (context?.attachmentPlaintextBytes != null) {
+      metrics.notesWithFileAttachment = (metrics.notesWithFileAttachment ?? 0) + 1;
+      const buckets = (metrics.fileSizeBucketDistribution ??= {
+        under5mb: 0,
+        from5to15mb: 0,
+        from15to25mb: 0,
+        over25mb: 0,
+      });
+      const mb = context.attachmentPlaintextBytes / (1024 * 1024);
+      if (mb < 5) {
+        buckets.under5mb++;
+      } else if (mb < 15) {
+        buckets.from5to15mb++;
+      } else if (mb < 25) {
+        buckets.from15to25mb++;
+      } else {
+        buckets.over25mb++;
+      }
     }
 
     await this.saveDailyMetrics(today, metrics);

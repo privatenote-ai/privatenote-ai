@@ -140,6 +140,20 @@ export interface DailyMetrics {
   countryDistribution: Record<string, number>;
   /** UI language active at note-creation time → count. */
   languageDistribution: Record<string, number>;
+
+  // --- File attachments ---
+  /** Notes created that included an encrypted file attachment. */
+  notesWithFileAttachment?: number;
+  /**
+   * Coarse plaintext file-size buckets (no exact sizes stored).
+   * Buckets match the free-tier limit (25 MB) for easy capacity analysis.
+   */
+  fileSizeBucketDistribution?: {
+    under5mb: number;    // < 5 MB
+    from5to15mb: number; // 5 MB – 14.99 MB
+    from15to25mb: number; // 15 MB – 24.99 MB
+    over25mb: number;    // ≥ 25 MB (premium)
+  };
 }
 
 export const insertAnalyticsSchema = createInsertSchema(analyticsData).omit({

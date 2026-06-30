@@ -8350,11 +8350,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
+    let attachmentPlaintextBytes: number | null = null;
+
     if (requestedId && requestBody?.attachment != null) {
       const reservation = await getNoteReservationRecord(env, requestedId);
       if (!reservation?.attachmentEncryptedSize || reservation.attachmentPlaintextSize == null) {
         return jsonResponse({ error: "Attachment upload was not initialized" }, 400, request);
       }
+      attachmentPlaintextBytes = reservation.attachmentPlaintextSize;
       if (!reservation.fileStorageUserId && !reservation.premiumUserId) {
         return jsonResponse(
           { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
@@ -8498,6 +8501,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         referrer: sanitizedReferrer,
         country: country ?? null,
         language: sanitizedLang,
+        attachmentPlaintextBytes,
 	      });
 	    }
 

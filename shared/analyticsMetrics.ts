@@ -42,6 +42,13 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     cloudAiUsed: 0,
     countryDistribution: {},
     languageDistribution: {},
+    notesWithFileAttachment: 0,
+    fileSizeBucketDistribution: {
+      under5mb: 0,
+      from5to15mb: 0,
+      from15to25mb: 0,
+      over25mb: 0,
+    },
   };
 }
 
@@ -68,6 +75,11 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     contentLengthDistribution: {
       ...base.contentLengthDistribution,
       ...(metrics.contentLengthDistribution || {}),
+    },
+    notesWithFileAttachment: metrics.notesWithFileAttachment ?? 0,
+    fileSizeBucketDistribution: {
+      ...base.fileSizeBucketDistribution!,
+      ...(metrics.fileSizeBucketDistribution || {}),
     },
   };
 }
@@ -115,6 +127,13 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
       short: base.contentLengthDistribution.short + add.contentLengthDistribution.short,
       medium: base.contentLengthDistribution.medium + add.contentLengthDistribution.medium,
       long: base.contentLengthDistribution.long + add.contentLengthDistribution.long,
+    },
+    notesWithFileAttachment: (base.notesWithFileAttachment ?? 0) + (add.notesWithFileAttachment ?? 0),
+    fileSizeBucketDistribution: {
+      under5mb: (base.fileSizeBucketDistribution?.under5mb ?? 0) + (add.fileSizeBucketDistribution?.under5mb ?? 0),
+      from5to15mb: (base.fileSizeBucketDistribution?.from5to15mb ?? 0) + (add.fileSizeBucketDistribution?.from5to15mb ?? 0),
+      from15to25mb: (base.fileSizeBucketDistribution?.from15to25mb ?? 0) + (add.fileSizeBucketDistribution?.from15to25mb ?? 0),
+      over25mb: (base.fileSizeBucketDistribution?.over25mb ?? 0) + (add.fileSizeBucketDistribution?.over25mb ?? 0),
     },
   };
 
