@@ -7,6 +7,7 @@ const LOCALIZED_LANGUAGE_CODES = ["de", "fr", "es", "it", "nl"] as const;
 const LOCALIZED_MARKETING_PATHS = [
   "",
   "/password-generator",
+  "/secure-file-transfer",
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",

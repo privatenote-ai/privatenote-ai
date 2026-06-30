@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useLanguage } from "@/context/LanguageContext";
 
 const CreateNote = lazy(() =>
   import("@/components/note/CreateNote").then((m) => ({ default: m.CreateNote })),
@@ -15,59 +16,26 @@ function CreateNoteMountPlaceholder() {
   return <div className="min-h-[28rem] w-full" aria-hidden />;
 }
 
-const features = [
-  {
-    icon: FileLock2,
-    title: "Browser-side encryption",
-    text: "Files are encrypted on this device before upload. PrivateNote stores only ciphertext — never readable file contents.",
-  },
-  {
-    icon: FolderArchive,
-    title: "Folder transfer",
-    text: "Choose a folder and PrivateNote prepares a local zip first, then encrypts that archive before it leaves your device.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Controlled access",
-    text: "Set expiry, view limits, and file access windows so the transfer disappears after the recipient opens it.",
-  },
-  {
-    icon: FileCheck,
-    title: "Sign in to send",
-    text: "Sending requires a free PrivateNote account (up to 25 MB per file, 250 MB total storage). Recipients never need an account to open the link.",
-  },
-];
-
-const faqs = [
-  {
-    q: "Are my files visible to PrivateNote?",
-    a: "No. Files are encrypted in your browser before upload using AES-256-GCM. PrivateNote stores only ciphertext — the server never has access to readable file contents or the encryption key.",
-  },
-  {
-    q: "Do I need an account to send files?",
-    a: "Yes, sending requires a free PrivateNote account so we can enforce per-user storage limits and keep the service abuse-free. Recipients do not need an account — anyone with the link can open the transfer.",
-  },
-  {
-    q: "Can I send a whole folder?",
-    a: "Yes. Choose a folder and PrivateNote prepares a local zip first, then encrypts that archive before it leaves your device. The recipient downloads and decrypts the zip automatically.",
-  },
-  {
-    q: "What are the file size limits?",
-    a: "Signed-in users can attach up to 25 MB per file and 250 MB total encrypted storage. If you need to send a folder, use the built-in folder picker — PrivateNote zips and encrypts it automatically.",
-  },
-  {
-    q: "What happens after the recipient opens the transfer?",
-    a: "The transfer follows the same disappearing model as PrivateNote messages. Depending on your settings, access expires after the first view, after a set time limit, or when the file access window ends.",
-  },
-  {
-    q: "Is this different from cloud drive sharing?",
-    a: "Yes. PrivateNote is built for temporary, encrypted one-time delivery — not long-term collaboration. Files are never stored in a readable form on the server and the link stops working once the conditions you set are met.",
-  },
-];
-
 const SecureFileTransfer: React.FC = () => {
+  const { t } = useLanguage();
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const [mountCreateNote, setMountCreateNote] = useState(false);
+
+  const features = [
+    { icon: FileLock2, title: t.sftFeatureEncryptionTitle, text: t.sftFeatureEncryptionText },
+    { icon: FolderArchive, title: t.sftFeatureFolderTitle, text: t.sftFeatureFolderText },
+    { icon: ShieldCheck, title: t.sftFeatureAccessTitle, text: t.sftFeatureAccessText },
+    { icon: FileCheck, title: t.sftFeatureSignInTitle, text: t.sftFeatureSignInText },
+  ];
+
+  const faqs = [
+    { q: t.sftFaq1Q, a: t.sftFaq1A },
+    { q: t.sftFaq2Q, a: t.sftFaq2A },
+    { q: t.sftFaq3Q, a: t.sftFaq3A },
+    { q: t.sftFaq4Q, a: t.sftFaq4A },
+    { q: t.sftFaq5Q, a: t.sftFaq5A },
+    { q: t.sftFaq6Q, a: t.sftFaq6A },
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -93,10 +61,10 @@ const SecureFileTransfer: React.FC = () => {
       {!isCreateSuccessView ? (
         <section className="relative isolate mx-auto max-w-4xl px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
           <h1 className="page-title text-gray-900 dark:text-white">
-            The <span className="text-primary">private way</span> to share files
+            {t.sftHeroPrefix} <span className="text-primary">{t.sftHeroAccent}</span> {t.sftHeroSuffix}
           </h1>
           <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl">
-            No file scanning. No access to your data. Encryption happens in your browser.
+            {t.sftHeroSubtitle}
           </p>
         </section>
       ) : null}
@@ -119,10 +87,10 @@ const SecureFileTransfer: React.FC = () => {
             <div className="mx-auto max-w-4xl">
               <div className="mb-10 text-center sm:mb-14">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Key features
+                  {t.sftFeaturesHeading}
                 </h2>
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Secure file transfer uses the same disappearing note model, with attachment-first controls for files and folders.
+                  {t.sftFeaturesSubtitle}
                 </p>
               </div>
 
@@ -180,10 +148,10 @@ const SecureFileTransfer: React.FC = () => {
               <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl">
-                    FAQ
+                    {t.sftFaqHeading}
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-                    Practical details about encrypted file and folder sharing with PrivateNote.
+                    {t.sftFaqSubtitle}
                   </p>
                 </div>
               </div>

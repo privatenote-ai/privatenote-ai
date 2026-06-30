@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, Info, Mail, Key, LogOut, Code2, ChevronDown, Crown, Paperclip } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown, Crown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -305,7 +305,7 @@ export const Navbar: React.FC = () => {
               {t.writeNote}
             </NavLink>
             <NavLink href={lp("/secure-file-transfer")} closeMenu={closeMenu} className={desktopLink}>
-              Share a file
+              {t.shareFile}
             </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
@@ -472,8 +472,8 @@ export const Navbar: React.FC = () => {
               <span>{t.writeNote}</span>
             </NavLink>
             <NavLink href={lp("/secure-file-transfer")} closeMenu={closeMenu} className={mobileItemClass}>
-              <Paperclip className="h-4 w-4 shrink-0 opacity-80" />
-              <span>Share a file</span>
+              <FileLock2 className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.shareFile}</span>
             </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={mobileItemClass}>
               <Key className="h-4 w-4 shrink-0 opacity-80" />

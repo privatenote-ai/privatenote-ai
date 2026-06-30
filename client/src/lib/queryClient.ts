@@ -115,23 +115,35 @@ function getBinaryUploadAttempts(
     uploadRoute: "direct-worker",
     credentials: "omit",
   };
-  if (options.uploadToken) {
-    if (isSafariBrowser()) {
-      return [{
-        ...directWorker,
-        method: "POST",
-        tokenInQuery: true,
-        metadataInQuery: true,
-      }];
-    }
-    return [directWorker];
-  }
 
+  // Same-origin upload through the Pages /api proxy. Token rides in the Authorization
+  // header and metadata stays in headers, so this stays valid as a fallback for the
+  // token path when a cross-origin direct-worker request is blocked by the browser
+  // (e.g. Safari/WebKit "Load failed" on cross-site XHR).
   const sameOrigin: BinaryUploadAttempt = {
     url: getApiUrl(url),
     uploadRoute: "same-origin",
     credentials: "include",
   };
+
+  if (options.uploadToken) {
+    if (isSafariBrowser()) {
+      // Safari/WebKit cross-origin XHR to the Worker origin consistently fails
+      // ("Load failed" / "network connection lost") in some environments, so prefer
+      // the same-origin Pages proxy first and keep direct-worker only as a fallback.
+      // This avoids a guaranteed failed attempt (and console noise) on every chunk.
+      return [
+        sameOrigin,
+        {
+          ...directWorker,
+          method: "POST",
+          tokenInQuery: true,
+          metadataInQuery: true,
+        },
+      ];
+    }
+    return [directWorker, sameOrigin];
+  }
 
   return [directWorker, sameOrigin];
 }

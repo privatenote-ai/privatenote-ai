@@ -22,6 +22,7 @@ import {
 } from "@/utils/webauthn";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { markJustSignedIn } from "@/utils/authPrefetch";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
@@ -206,6 +207,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
         return;
       }
       await refreshUntilAuthenticated();
+      markJustSignedIn();
       window.location.href = signInContext.returnTo;
     } catch (error) {
       const message =
@@ -253,6 +255,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       // Retry: D1 read-after-write lag can briefly return authenticated:false
       // even though the verify endpoint just created the session.
       await refreshUntilAuthenticated();
+      markJustSignedIn();
       window.location.href = signInContext.returnTo;
     } catch (error) {
       toast({
