@@ -248,12 +248,6 @@ export const Navbar: React.FC = () => {
 
   const resourceLinks = [
     {
-      href: lp("/secure-file-transfer"),
-      label: t.shareFile,
-      description: t.navShareFileDesc,
-      icon: FileLock2,
-    },
-    {
       href: lp("/how-it-works"),
       label: t.howItWorks,
       description: t.navHowItWorksDesc,
@@ -309,6 +303,9 @@ export const Navbar: React.FC = () => {
           >
             <NavLink href={lp("/")} closeMenu={closeMenu} className={desktopLink}>
               {t.writeNote}
+            </NavLink>
+            <NavLink href={lp("/secure-file-transfer")} closeMenu={closeMenu} className={desktopLink}>
+              {t.shareFile}
             </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
@@ -471,15 +468,15 @@ export const Navbar: React.FC = () => {
               <Lock className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.writeNote}</span>
             </NavLink>
+            <NavLink href={lp("/secure-file-transfer")} closeMenu={closeMenu} className={mobileItemClass}>
+              <FileLock2 className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.shareFile}</span>
+            </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={mobileItemClass}>
               <Key className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.sharePassword}</span>
             </NavLink>
 
-            <NavLink href={lp("/secure-file-transfer")} closeMenu={closeMenu} className={mobileItemClass}>
-              <FileLock2 className="h-4 w-4 shrink-0 opacity-80" />
-              <span>{t.shareFile}</span>
-            </NavLink>
             <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={mobileItemClass}>
               <Shield className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.howItWorks}</span>

@@ -11,7 +11,6 @@ export const en: Translations = {
   security: "Security",
   blog: "Blog",
   about: "About",
-  navShareFileDesc: "Encrypted file and folder transfer",
   navHowItWorksDesc: "Encryption, expiry, and key handling",
   navSecurityDesc: "Guides and privacy recommendations",
   navDevelopersDesc: "Extension, MCP, and self-hosting",
