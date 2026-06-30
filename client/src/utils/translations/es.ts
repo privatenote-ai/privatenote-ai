@@ -4,6 +4,7 @@ export const es: Translations = {
   language: "Idioma",
   writeNote: "Escribir una nota",
   sharePassword: "Compartir contraseña",
+  shareFile: "Compartir un archivo",
   howItWorks: "Cómo funciona",
   resources: "Recursos",
   developers: "Desarrolladores",

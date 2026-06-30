@@ -4,6 +4,7 @@ export const nl: Translations = {
   language: "Taal",
   writeNote: "Schrijf een notitie",
   sharePassword: "Deel een wachtwoord",
+  shareFile: "Deel een bestand",
   howItWorks: "Hoe het werkt",
   resources: "Bronnen",
   developers: "Ontwikkelaars",

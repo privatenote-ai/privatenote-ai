@@ -74,6 +74,12 @@ export const Footer: React.FC = () => {
               {t.passwordGenerator}
             </Link>
             <Link 
+              href={lp("/secure-file-transfer")} 
+              className="hover:text-white transition-colors"
+            >
+              {t.shareFile}
+            </Link>
+            <Link 
               href={lp("/blog")} 
               className="hover:text-white transition-colors"
             >
