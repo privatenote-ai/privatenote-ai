@@ -52,10 +52,11 @@ function templateChipClass(active: boolean, variant: "primary" | "amber" = "prim
     variant === "amber"
       ? "font-semibold bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-2 border-orange-500 dark:border-orange-600 shadow-md shadow-orange-200/30 ring-1 ring-orange-300/40"
       : "font-semibold bg-primary/18 dark:bg-primary/28 text-primary border-2 border-primary shadow-md shadow-primary/15 ring-1 ring-primary/20";
-  return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${active
+  return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
+    active
       ? activeClass
       : "font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700/80"
-    }`;
+  }`;
 }
 
 function StepRow({ step, label, variant = "primary" }: { step: number; label: string; variant?: "primary" | "amber" }) {
@@ -224,7 +225,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   }, [localAiSupported, isAiModelLoading]);
 
   const privateAiBadgeLabel = recommendedModelLabel
-    ? `${tx("aiComposerPrivateAiHeading", "Private AI — {model}").replace("{model}", recommendedModelLabel)} (${tx("aiComposerModelRecommended", "Recommended")})`
+    ? tx("aiComposerPrivateAiHeading", "Private AI — {model}").replace("{model}", recommendedModelLabel)
     : tx("aiComposerPrivateAiBadge", "Private AI — runs on this device");
 
   const confirmCloudAssistSwitch = () => {
@@ -464,11 +465,11 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                       isGeneratingContent
                         ? "text-[13px] font-medium leading-snug text-foreground/90 dark:text-gray-100 sm:text-sm"
                         : [
-                          "text-xs font-medium",
-                          hasPromptText && !isAiModelLoading
-                            ? "text-primary dark:text-blue-300"
-                            : "text-gray-500 dark:text-gray-400",
-                        ].join(" ")
+                            "text-xs font-medium",
+                            hasPromptText && !isAiModelLoading
+                              ? "text-primary dark:text-blue-300"
+                              : "text-gray-500 dark:text-gray-400",
+                          ].join(" ")
                     }
                   >
                     {isGeneratingContent
@@ -594,21 +595,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             ) : null}
 
             {!aiDraftAccepted ? (
-              <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-                {/* Accept — full-width CTA on mobile, pushed right on desktop */}
-                <button
-                  type="button"
-                  onClick={onAcceptDraft}
-                  disabled={noteHasPlaceholderBrackets}
-                  title={noteHasPlaceholderBrackets ? t.aiComposerReplacePlaceholdersHint : undefined}
-                  className="flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 md:ml-auto md:w-auto md:py-2 md:min-w-[10rem]"
-                >
-                  {t.aiComposerAcceptNote}
-                </button>
-
-                {/* Secondary row: Back + refine actions */}
-                <div className="flex items-center gap-2 overflow-x-auto md:contents">
-                  {/* Back / Undo */}
+              <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:items-stretch md:gap-2">
+                {/* Back + refine — left on desktop, second row on mobile */}
+                <div className="flex items-center gap-2 overflow-x-auto md:order-1 md:shrink-0 md:overflow-visible">
                   <button
                     type="button"
                     onClick={onBack}
@@ -625,10 +614,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
                   </button>
 
-                  {/* Divider */}
                   <span className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-600" aria-hidden />
 
-                  {/* Refine actions */}
                   {(showLocalOnDeviceUi || showHostedCloudUi) ? (
                     <>
                       <button
@@ -670,6 +657,17 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     </>
                   ) : null}
                 </div>
+
+                {/* Accept — full-width CTA on mobile, stretches to fill remaining row on desktop */}
+                <button
+                  type="button"
+                  onClick={onAcceptDraft}
+                  disabled={noteHasPlaceholderBrackets}
+                  title={noteHasPlaceholderBrackets ? t.aiComposerReplacePlaceholdersHint : undefined}
+                  className="order-first flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 md:order-2 md:flex-1 md:min-w-[10rem] md:py-2"
+                >
+                  {t.aiComposerAcceptNote}
+                </button>
               </div>
             ) : null}
 
