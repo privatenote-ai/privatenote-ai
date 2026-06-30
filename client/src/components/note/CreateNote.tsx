@@ -2375,7 +2375,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 referrer={prefillReferrer}
                 onDismiss={dismissPrefillBanner}
               />
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <div className="mb-2 hidden md:flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
                   {privacyBannerItems}
                 </div>
