@@ -128,14 +128,18 @@ function getBinaryUploadAttempts(
 
   if (options.uploadToken) {
     if (isSafariBrowser()) {
+      // Safari/WebKit cross-origin XHR to the Worker origin consistently fails
+      // ("Load failed" / "network connection lost") in some environments, so prefer
+      // the same-origin Pages proxy first and keep direct-worker only as a fallback.
+      // This avoids a guaranteed failed attempt (and console noise) on every chunk.
       return [
+        sameOrigin,
         {
           ...directWorker,
           method: "POST",
           tokenInQuery: true,
           metadataInQuery: true,
         },
-        sameOrigin,
       ];
     }
     return [directWorker, sameOrigin];
