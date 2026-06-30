@@ -293,7 +293,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               <CloudAssistActiveBanner
                 t={t}
                 tx={tx}
-                showSwitchBack={Boolean(onPreferHostedCloudChange)}
+                showSwitchBack={localAiSupported && Boolean(onPreferHostedCloudChange)}
                 onSwitchBackToPrivate={() => onPreferHostedCloudChange?.(false)}
               />
             ) : null}
@@ -562,7 +562,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
               />
             </div>
             {aiDraftAccepted ? (
-              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+              <div className="mb-2 hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
                 {privacyBannerItems}
               </div>
             ) : null}
