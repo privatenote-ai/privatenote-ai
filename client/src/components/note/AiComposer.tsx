@@ -595,79 +595,82 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             ) : null}
 
             {!aiDraftAccepted ? (
-              <div className="mt-3 flex w-full flex-wrap items-center gap-2">
-                {/* Back / Undo */}
-                <button
-                  type="button"
-                  onClick={onBack}
-                  aria-label={
-                    aiDraftAccepted
-                      ? t.aiComposerAriaReturnToEditing
-                      : transformHistory.length > 0
-                        ? t.aiComposerAriaUndoLastChange
-                        : t.aiComposerAriaBackToPrompt
-                  }
-                  className="flex items-center px-3 py-2 rounded-md border-2 border-blue-500 bg-white text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-400 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-950/40 focus:outline-none"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5 mr-1 shrink-0" aria-hidden strokeWidth={2.5} />
-                  {transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
-                </button>
-
-                {/* Divider */}
-                <span className="h-5 w-px bg-gray-200 dark:bg-gray-600 shrink-0" aria-hidden />
-
-                {/* Refine actions */}
-                {(showLocalOnDeviceUi || showHostedCloudUi) ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={onImprove}
-                      disabled={isGeneratingContent}
-                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                    >
-                      <Zap className="h-3.5 w-3.5 mr-1 text-yellow-500 shrink-0" />
-                      {t.aiComposerImprove}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onSummarize}
-                      disabled={isGeneratingContent}
-                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                    >
-                      <ZoomIn className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
-                      {t.aiComposerSummarize}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onSimplify}
-                      disabled={isGeneratingContent}
-                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                    >
-                      <FileText className="h-3.5 w-3.5 mr-1 text-purple-500 shrink-0" />
-                      {t.aiComposerSimplify}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRegenerate()}
-                      disabled={isGeneratingContent}
-                      className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-1 text-green-500 shrink-0" />
-                      {t.aiComposerRegenerate}
-                    </button>
-                  </>
-                ) : null}
-
-                {/* Accept — pushed to the right */}
+              <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+                {/* Accept — full-width CTA on mobile, pushed right on desktop */}
                 <button
                   type="button"
                   onClick={onAcceptDraft}
                   disabled={noteHasPlaceholderBrackets}
                   title={noteHasPlaceholderBrackets ? t.aiComposerReplacePlaceholdersHint : undefined}
-                  className="ml-auto flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 sm:min-w-[10rem]"
+                  className="flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 md:ml-auto md:w-auto md:py-2 md:min-w-[10rem]"
                 >
                   {t.aiComposerAcceptNote}
                 </button>
+
+                {/* Secondary row: Back + refine actions */}
+                <div className="flex items-center gap-2 overflow-x-auto md:contents">
+                  {/* Back / Undo */}
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    aria-label={
+                      aiDraftAccepted
+                        ? t.aiComposerAriaReturnToEditing
+                        : transformHistory.length > 0
+                          ? t.aiComposerAriaUndoLastChange
+                          : t.aiComposerAriaBackToPrompt
+                    }
+                    className="flex shrink-0 items-center px-3 py-2 rounded-md border-2 border-blue-500 bg-white text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-400 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-blue-950/40 focus:outline-none"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5 mr-1 shrink-0" aria-hidden strokeWidth={2.5} />
+                    {transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
+                  </button>
+
+                  {/* Divider */}
+                  <span className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-600" aria-hidden />
+
+                  {/* Refine actions */}
+                  {(showLocalOnDeviceUi || showHostedCloudUi) ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={onImprove}
+                        disabled={isGeneratingContent}
+                        className="flex shrink-0 items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                      >
+                        <Zap className="h-3.5 w-3.5 mr-1 text-yellow-500 shrink-0" />
+                        {t.aiComposerImprove}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onSummarize}
+                        disabled={isGeneratingContent}
+                        className="flex shrink-0 items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                      >
+                        <ZoomIn className="h-3.5 w-3.5 mr-1 text-blue-500 shrink-0" />
+                        {t.aiComposerSummarize}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onSimplify}
+                        disabled={isGeneratingContent}
+                        className="flex shrink-0 items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1 text-purple-500 shrink-0" />
+                        {t.aiComposerSimplify}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRegenerate()}
+                        disabled={isGeneratingContent}
+                        className="flex shrink-0 items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50/80 dark:hover:bg-gray-600/80 focus:outline-none disabled:opacity-50"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-1 text-green-500 shrink-0" />
+                        {t.aiComposerRegenerate}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
