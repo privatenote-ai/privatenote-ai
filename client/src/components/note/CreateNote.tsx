@@ -2564,12 +2564,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     Need higher file limits?{" "}
-                    <a
-                      href={localizedPath("/premium", language)}
-                      className="font-medium text-primary hover:underline"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toast({
+                          title: "Premium — coming soon",
+                          description:
+                            "Premium will include 1 GB file transfers and 20 GB total storage. We'll notify you when it launches.",
+                        })
+                      }
+                      className="font-medium text-primary hover:underline focus:outline-none"
                     >
                       Premium includes 1 GB encrypted file transfers and 20 GB total encrypted storage.
-                    </a>
+                    </button>
                   </p>
                 </>
               ) : isFileTransferMode && selectedFile ? (
