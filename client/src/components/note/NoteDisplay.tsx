@@ -11,6 +11,7 @@ import {
   UserX,
   Download,
   Paperclip,
+  ExternalLink,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
@@ -335,6 +336,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
   const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
+  const [isViewingFile, setIsViewingFile] = useState(false);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const [recipientGateLoading, setRecipientGateLoading] = useState(true);
   const [recipientGateRequired, setRecipientGateRequired] = useState(false);
@@ -458,6 +461,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     const interval = window.setInterval(() => setFileAccessNowMs(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, [noteData?.fileAccessTokenExpiresAtMs]);
+
+  // Revoke any blob preview URL when the component unmounts to free memory.
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    };
+  }, [previewObjectUrl]);
 
   const decryptWithKey = async (data: NoteData, key: string) => {
     try {
@@ -757,6 +767,60 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
   };
 
+  const isPreviewableType = (mimeType: string | undefined): boolean => {
+    if (!mimeType) return false;
+    return mimeType.startsWith("image/") || mimeType === "application/pdf";
+  };
+
+  const handlePreviewAttachment = async () => {
+    if (!noteData?.attachment || !contentKey) return;
+    if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
+      toast({
+        title: "File access expired",
+        description: "Reveal the note again if it is still available.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
+      ? { "x-file-access-token": noteData.fileAccessToken }
+      : {};
+    setIsViewingFile(true);
+    try {
+      const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
+      const decryptedParts = await decryptSodiumAttachmentChunks(
+        noteData.attachment,
+        contentKey,
+        async (index) => {
+          const encryptedChunkBlob = await apiBlobRequest(
+            `/api/notes/${id}/file/chunks/${index}`,
+            "GET",
+            fileAccessHeaders,
+          );
+          return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
+        },
+      );
+      const mimeType = attachmentMetadata?.type || "application/octet-stream";
+      const blob = new Blob(decryptedParts as BlobPart[], { type: mimeType });
+      const objectUrl = URL.createObjectURL(blob);
+      // Revoke any previous preview URL before replacing
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      setPreviewObjectUrl(objectUrl);
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Attachment preview/decrypt failed:", error);
+      }
+      toast({
+        title: "Preview failed",
+        description: "The file could not be decrypted for preview.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsViewingFile(false);
+    }
+  };
+
   const fileAccessRemainingSeconds =
     noteData?.fileAccessTokenExpiresAtMs != null
       ? Math.max(0, Math.ceil((noteData.fileAccessTokenExpiresAtMs - fileAccessNowMs) / 1000))
@@ -1023,15 +1087,28 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => void handleDownloadAttachment()}
-                disabled={isDownloadingFile || !contentKey || fileAccessExpired}
-                className="inline-flex w-full max-w-xs items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Download className="mr-2 h-4 w-4" aria-hidden />
-                {isDownloadingFile ? "Decrypting..." : "Download file"}
-              </button>
+              <div className="flex w-full max-w-xs flex-col gap-2">
+                {isPreviewableType(attachmentMetadata?.type) && (
+                  <button
+                    type="button"
+                    onClick={() => void handlePreviewAttachment()}
+                    disabled={isViewingFile || isDownloadingFile || !contentKey || fileAccessExpired}
+                    className="inline-flex w-full items-center justify-center rounded-md border border-primary bg-white px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-950 dark:hover:bg-primary/10"
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+                    {isViewingFile ? "Decrypting…" : attachmentMetadata?.type === "application/pdf" ? "Open PDF" : "View image"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadAttachment()}
+                  disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
+                  className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden />
+                  {isDownloadingFile ? "Decrypting…" : "Download file"}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
