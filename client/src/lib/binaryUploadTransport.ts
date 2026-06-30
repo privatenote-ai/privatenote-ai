@@ -1,0 +1,109 @@
+/**
+ * Binary PUT transport — Safari fetch() can drop upload bodies and Blob-backed
+ * XHR uploads can fail on WebKit. XHR with an ArrayBuffer body uses the most
+ * reliable WebKit path for encrypted attachment chunks.
+ */
+
+const BROWSER_FORBIDDEN_REQUEST_HEADERS = new Set([
+  "accept-charset",
+  "access-control-request-headers",
+  "access-control-request-method",
+  "connection",
+  "content-length",
+  "cookie",
+  "cookie2",
+  "date",
+  "dnt",
+  "expect",
+  "host",
+  "keep-alive",
+  "origin",
+  "referer",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "via",
+]);
+
+export function isSafariBrowser(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+  const ua = navigator.userAgent;
+  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
+}
+
+function filterBrowserUploadHeaders(headers: Record<string, string>): Record<string, string> {
+  const filtered: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (BROWSER_FORBIDDEN_REQUEST_HEADERS.has(name.toLowerCase())) {
+      continue;
+    }
+    filtered[name] = value;
+  }
+  return filtered;
+}
+
+function xhrBinaryRequest(
+  url: string,
+  method: string,
+  body: XMLHttpRequestBodyInit,
+  headers: Record<string, string>,
+  credentials: RequestCredentials,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.withCredentials = credentials === "include";
+    xhr.responseType = "text";
+    for (const [name, value] of Object.entries(filterBrowserUploadHeaders(headers))) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.onload = () => {
+      resolve(
+        new Response(xhr.responseText ?? "", {
+          status: xhr.status,
+          statusText: xhr.statusText,
+        }),
+      );
+    };
+    xhr.onerror = () => reject(new TypeError("Load failed"));
+    xhr.onabort = () => reject(new TypeError("Load failed"));
+    xhr.send(body);
+  });
+}
+
+export async function sendBinaryHttpRequest(
+  url: string,
+  method: string,
+  body: Blob,
+  headers: Record<string, string>,
+  credentials: RequestCredentials,
+): Promise<Response> {
+  const safeHeaders = filterBrowserUploadHeaders(headers);
+  if (isSafariBrowser() && (method === "PUT" || method === "POST")) {
+    return xhrBinaryRequest(url, method, await body.arrayBuffer(), safeHeaders, credentials);
+  }
+  return fetch(url, {
+    method,
+    headers: safeHeaders,
+    body,
+    credentials,
+  });
+}
+
+export function bodyInitToUploadBlob(body: BodyInit): Blob | null {
+  if (body instanceof Blob) {
+    return body;
+  }
+  if (body instanceof ArrayBuffer) {
+    return new Blob([body], { type: "application/octet-stream" });
+  }
+  if (ArrayBuffer.isView(body)) {
+    const copy = new Uint8Array(body.byteLength);
+    copy.set(new Uint8Array(body.buffer, body.byteOffset, body.byteLength));
+    return new Blob([copy.buffer], { type: "application/octet-stream" });
+  }
+  return null;
+}
