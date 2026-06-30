@@ -12,9 +12,21 @@ export const NOTE_EXPIRY_PRESETS = [
   { id: "1d", seconds: 24 * 60 * 60, label: "1 day" },
   { id: "3d", seconds: 3 * 24 * 60 * 60, label: "3 days" },
   { id: "7d", seconds: 7 * 24 * 60 * 60, label: "7 days" },
+  { id: "14d", seconds: 14 * 24 * 60 * 60, label: "14 days" },
+  { id: "30d", seconds: 30 * 24 * 60 * 60, label: "30 days" },
 ] as const;
 
 export type NoteExpiryPresetId = (typeof NOTE_EXPIRY_PRESETS)[number]["id"];
+
+/** Free accounts may not exceed this lifetime (3 days). */
+export const NOTE_EXPIRY_FREE_MAX_SECONDS = 3 * 24 * 60 * 60;
+
+/** Premium-only preset ids (7d, 14d, 30d). */
+export const NOTE_EXPIRY_PREMIUM_PRESET_IDS: ReadonlySet<NoteExpiryPresetId> = new Set([
+  "7d",
+  "14d",
+  "30d",
+]);
 
 const SECONDS_SET: ReadonlySet<number> = new Set(
   NOTE_EXPIRY_PRESETS.map((p) => p.seconds),
@@ -46,9 +58,41 @@ export function noteExpiryPresetDisplayLabel(presetId: string): string {
   return row.label;
 }
 
+export function isPremiumNoteExpiryPresetId(presetId: string): boolean {
+  return NOTE_EXPIRY_PREMIUM_PRESET_IDS.has(presetId as NoteExpiryPresetId);
+}
+
+export function isNoteExpirySecondsAllowedForAccount(
+  seconds: number,
+  isPremium: boolean,
+): boolean {
+  if (!SECONDS_SET.has(seconds)) return false;
+  if (isPremium) return true;
+  return seconds <= NOTE_EXPIRY_FREE_MAX_SECONDS;
+}
+
+/** Presets shown in the expiry dropdown for the current account tier. */
+export function noteExpiryPresetsForAccount(isPremium: boolean) {
+  if (isPremium) return NOTE_EXPIRY_PRESETS;
+  return NOTE_EXPIRY_PRESETS.filter((p) => !NOTE_EXPIRY_PREMIUM_PRESET_IDS.has(p.id));
+}
+
+export function clampNoteExpiryPresetForAccount(
+  presetId: NoteExpiryPresetId,
+  isPremium: boolean,
+): NoteExpiryPresetId {
+  if (isPremium || !isPremiumNoteExpiryPresetId(presetId)) return presetId;
+  return "3d";
+}
+
 export type NoteExpiryParseResult =
   | { ok: true; seconds: number }
   | { ok: false; message: string };
+
+export type NoteExpiryParseOptions = {
+  /** When false (default), 14d and 30d presets are rejected. */
+  isPremium?: boolean;
+};
 
 /**
  * Validates `expirySeconds` from the create-note API body.
@@ -56,7 +100,10 @@ export type NoteExpiryParseResult =
  */
 export function parseNoteExpirySecondsFromBody(
   expirySeconds: unknown,
+  options?: NoteExpiryParseOptions,
 ): NoteExpiryParseResult {
+  const isPremium = options?.isPremium === true;
+
   if (expirySeconds === undefined || expirySeconds === null) {
     return { ok: false, message: "expirySeconds is required" };
   }
@@ -70,6 +117,12 @@ export function parseNoteExpirySecondsFromBody(
   }
   if (!SECONDS_SET.has(asInt)) {
     return { ok: false, message: "expirySeconds is not an allowed note expiry value" };
+  }
+  if (!isNoteExpirySecondsAllowedForAccount(asInt, isPremium)) {
+    return {
+      ok: false,
+      message: "Longer expirations (7, 14, or 30 days) require a Premium plan",
+    };
   }
   return { ok: true, seconds: asInt };
 }

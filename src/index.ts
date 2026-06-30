@@ -4,11 +4,13 @@ import {
   registerRoutes,
   cleanupAuditLogs,
   cleanupExpiredSessions,
+  cleanupExpiredNoteFileStorage,
+  processExpiredSentNoteNotifications,
   processPendingAccountDeletions,
 } from "./routes";
 import type { Env } from "./types";
 import { getAllowedOriginFromRequest } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
 
 // Export both for migration compatibility
 // SecureNoteStorage is deleted in v3 migration but needed for migration history
@@ -20,7 +22,7 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-admin-token",
+    "Access-Control-Allow-Headers": resolveAccessControlAllowHeaders(request),
     "Access-Control-Allow-Credentials": "true",
     "Content-Security-Policy": getApiContentSecurityPolicy(),
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -127,6 +129,17 @@ export default {
       // Cleanup expired/revoked sessions
       const sessionResult = await cleanupExpiredSessions(env);
       console.log(`[CRON] Session cleanup: deleted ${sessionResult.deleted} entries${sessionResult.error ? `, error: ${sessionResult.error}` : ''}`);
+
+      const sentNoteResult = await processExpiredSentNoteNotifications(env);
+      console.log(
+        `[CRON] Sent-note expiry notifications: processed ${sentNoteResult.processed}, notified ${sentNoteResult.notified}${sentNoteResult.error ? `, error: ${sentNoteResult.error}` : ''}`,
+      );
+
+      const noteFileStorageResult = await cleanupExpiredNoteFileStorage(env);
+      console.log(
+        `[CRON] Note file storage cleanup: checked ${noteFileStorageResult.checked}, released ${noteFileStorageResult.released}, abandoned ${noteFileStorageResult.abandoned}, pruned ${noteFileStorageResult.pruned}` +
+          `${noteFileStorageResult.error ? `, error: ${noteFileStorageResult.error}` : ""}`,
+      );
 
       const pendingDeleteResult = await processPendingAccountDeletions(env);
       console.log(

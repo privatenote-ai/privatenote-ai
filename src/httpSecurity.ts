@@ -1,17 +1,17 @@
+import { PAGE_CSP_CONNECT_SRC } from "@shared/pageContentSecurityPolicy";
+
 /**
  * Security headers for Worker responses. CSP here applies to API JSON responses;
- * the browser enforces CSP for HTML documents from `client/public/_headers` on Pages.
- *
- * Note: Nonce-based `strict-dynamic` script CSP needs per-response HTML rewriting; not used yet.
+ * HTML documents get nonce-based CSP from Pages middleware.
  */
 
 export function getApiContentSecurityPolicy(): string {
   return [
     "default-src 'self'",
-    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'",
+    "script-src 'self' https://challenges.cloudflare.com 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://privatenote.ai https://*.privatenote.ai https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net",
+    `connect-src ${PAGE_CSP_CONNECT_SRC}`,
     "img-src 'self' data: https:",
     "frame-src https://challenges.cloudflare.com",
     "base-uri 'none'",
@@ -42,3 +42,13 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
     "publickey-credentials-create=(self)",
   ].join(", "),
 };
+
+/** Default CORS allowlist; preflight may request Content-Length for binary PUT uploads. */
+export const API_CORS_ALLOW_HEADERS_DEFAULT =
+  "Content-Type, Authorization, Content-Length, x-admin-token, x-file-plaintext-size, x-file-encrypted-size, x-file-chunk-encrypted-size, x-file-access-token";
+
+/** Echo browser preflight requested headers when present (encrypt.lu relay pattern). */
+export function resolveAccessControlAllowHeaders(request: Request): string {
+  const requested = request.headers.get("Access-Control-Request-Headers")?.trim();
+  return requested || API_CORS_ALLOW_HEADERS_DEFAULT;
+}

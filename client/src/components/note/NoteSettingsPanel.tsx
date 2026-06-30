@@ -1,10 +1,27 @@
 import React from "react";
-import { Lock, User, Shield } from "lucide-react";
 import {
-  NOTE_EXPIRY_PRESETS,
+  Crown,
+  Eye,
+  Lock,
+  Timer,
+  Shield,
+  User,
+} from "lucide-react";
+import {
   isNoteExpiryPresetId,
+  noteExpiryPresetsForAccount,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
+import {
+  NOTE_READ_LIMIT_OPTIONS,
+  isPremiumNoteReadLimit,
+  type NoteReadLimit,
+} from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_ACCESS_WINDOW_OPTIONS,
+  formatNoteFileAccessWindow,
+  type NoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
 import {
   DEFAULT_STRONG_PASSWORD_LENGTH,
   TRANSPORT_SAFE_STRONG_PASSWORD_CHARSET,
@@ -14,7 +31,93 @@ import {
   SIMPLE_PASSWORD_NOUNS,
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
+import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
+import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const SELECT_CHEVRON_STYLE = {
+  backgroundImage:
+    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+  backgroundRepeat: "no-repeat" as const,
+  backgroundPosition: "right 0.75rem center",
+  backgroundSize: "0.75em",
+};
+
+function SettingsFieldHelper({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">{children}</p>
+  );
+}
+
+function SettingsInfoTooltip({
+  text,
+  children,
+}: {
+  text?: string;
+  children: React.ReactElement;
+}) {
+  if (!text) return children;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SettingsFieldLabel({
+  htmlFor,
+  icon,
+  iconToneClassName,
+  label,
+  info,
+}: {
+  htmlFor?: string;
+  icon: React.ReactNode;
+  iconToneClassName: string;
+  label: string;
+  info?: string;
+}) {
+  const content = (
+    <>
+      <SettingsInfoTooltip text={info}>
+        <span
+          className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
+          tabIndex={info ? 0 : undefined}
+          aria-label={info}
+        >
+          {icon}
+        </span>
+      </SettingsInfoTooltip>
+      <span className="min-w-0">{label}</span>
+    </>
+  );
+  const className = "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300";
+  if (htmlFor) {
+    return (
+      <label htmlFor={htmlFor} className={className}>
+        {content}
+      </label>
+    );
+  }
+  return <div className={className}>{content}</div>;
+}
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
@@ -26,7 +129,16 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "1d") return t.expiry1d;
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
+  if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
+}
+
+function translatedReadLimitLabel(limit: NoteReadLimit, t: Record<string, string>): string {
+  if (limit === 1) return t.viewLimitOnce ?? "Once (read-once)";
+  if (limit === 2) return t.viewLimitTwice ?? "2 views";
+  if (limit === 3) return t.viewLimitThree ?? "3 views";
+  return t.viewLimitFive ?? "5 views";
 }
 
 function translatedStrengthLabel(
@@ -81,7 +193,119 @@ export const generateStrongPassword = (): string => {
   return password;
 };
 
+type PremiumFeature = {
+  title: string;
+  description: string;
+};
+
+function SectionHeading({
+  title,
+  id,
+  showPremiumBadge,
+  premiumLabel,
+}: {
+  title: string;
+  id?: string;
+  showPremiumBadge?: boolean;
+  premiumLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-1 pt-2">
+      <h3 id={id} className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+        {title}
+      </h3>
+      {showPremiumBadge ? (
+        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-700/50 dark:bg-amber-900/20 dark:text-amber-300">
+          <Crown className="mr-1 h-3 w-3" aria-hidden />
+          {premiumLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SettingsOptionList({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
+      {children}
+    </div>
+  );
+}
+
+function SettingsToggleRow({
+  id,
+  title,
+  info,
+  checked,
+  locked,
+  onCheckedChange,
+  onLockedClick,
+}: {
+  id?: string;
+  title: string;
+  info: string;
+  checked?: boolean;
+  locked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  onLockedClick?: () => void;
+}) {
+  const titleContent = (
+    <SettingsInfoTooltip text={info}>
+      <span
+        className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
+        tabIndex={0}
+        aria-label={info}
+      >
+        <span className="truncate">{title}</span>
+      </span>
+    </SettingsInfoTooltip>
+  );
+
+  if (locked) {
+    const className =
+      "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/30 dark:hover:bg-gray-900/40";
+    if (onLockedClick) {
+      return (
+        <button type="button" onClick={onLockedClick} className={className}>
+          <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+          {titleContent}
+        </button>
+      );
+    }
+    return (
+      <div className={className} aria-disabled="true">
+        <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+        {titleContent}
+      </div>
+    );
+  }
+
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40"
+    >
+      <input
+        id={id}
+        type="checkbox"
+        className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+        checked={checked}
+        onChange={(event) => onCheckedChange?.(event.target.checked)}
+      />
+      {titleContent}
+    </label>
+  );
+}
+
+function PremiumSectionFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">{children}</p>
+  );
+}
+
 export type NoteSettingsPanelProps = {
+  /** inline = accordion on create page; overlay = inside sheet/modal experiment */
+  presentation?: "inline" | "overlay";
   showAdvancedOptions: boolean;
   password: string;
   setPassword: (p: string) => void;
@@ -94,9 +318,29 @@ export type NoteSettingsPanelProps = {
   breachCount: number | null;
   expiryValue: NoteExpiryPresetId;
   setExpiryValue: (v: NoteExpiryPresetId) => void;
+  notifyOnOpen: boolean;
+  setNotifyOnOpen: (v: boolean) => void;
+  notifyOnDestroyed: boolean;
+  setNotifyOnDestroyed: (v: boolean) => void;
+  canNotifyOnOpen: boolean;
+  noteLabel: string;
+  setNoteLabel: (v: string) => void;
+  isPremiumUser: boolean;
+  premiumStatusLoading: boolean;
+  restrictRecipientEmail: boolean;
+  setRestrictRecipientEmail: (v: boolean) => void;
+  requireRecipientVerification: boolean;
+  setRequireRecipientVerification: (v: boolean) => void;
+  recipientEmail: string;
+  setRecipientEmail: (v: string) => void;
+  readCount: NoteReadLimit;
+  setReadCount: (value: NoteReadLimit) => void;
+  fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
+  presentation = "inline",
   showAdvancedOptions,
   password,
   setPassword,
@@ -109,35 +353,64 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   breachCount,
   expiryValue,
   setExpiryValue,
+  notifyOnOpen,
+  setNotifyOnOpen,
+  notifyOnDestroyed,
+  setNotifyOnDestroyed,
+  canNotifyOnOpen,
+  noteLabel,
+  setNoteLabel,
+  isPremiumUser,
+  premiumStatusLoading,
+  restrictRecipientEmail,
+  setRestrictRecipientEmail,
+  requireRecipientVerification,
+  setRequireRecipientVerification,
+  recipientEmail,
+  setRecipientEmail,
+  readCount,
+  setReadCount,
+  fileAccessWindowSeconds,
+  setFileAccessWindowSeconds,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const premiumUpgradeHref = localizedPath("/premium", language);
+  const preferencesHref = localizedPath("/account/preferences", language);
+  const [selectedPremiumFeature, setSelectedPremiumFeature] =
+    React.useState<PremiumFeature | null>(null);
 
-  return (
-    <div
-      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
-        showAdvancedOptions ? "mb-3 grid-rows-[1fr] opacity-100" : "mb-0 grid-rows-[0fr] opacity-0"
-      }`}
-    >
-      <div className="overflow-hidden">
-        <div className="w-full min-w-0">
-        {/* Password protection */}
-        <div className="mt-2 grid grid-cols-1 items-start gap-2 px-1 py-2 mb-3 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
-          <div>
-            <div className="flex flex-col">
-              <label
-                htmlFor="note-password"
-                className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 pt-0.5"
-              >
-                <span className="bg-green-50 dark:bg-green-900/30 p-1 rounded mr-2">
-                  <Lock className="w-4 h-4 text-green-500 dark:text-green-400" />
-                </span>
-                <span className="block">{t.password}</span>
-              </label>
-            </div>
+  const brandedRevealFeature = React.useMemo<PremiumFeature>(
+    () => ({
+      title: t.settingsDeliveryBrandedReveal ?? "Branded reveal page",
+      description:
+        t.settingsDeliveryBrandedRevealInfo ??
+        "Show your brand on the page where the recipient opens the note.",
+    }),
+    [t],
+  );
+
+  const settingsBody = (
+    <TooltipProvider delayDuration={200}>
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
+            <section
+              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-access-controls-heading"
+            >
+              <SectionHeading id="note-access-controls-heading" title="Access Controls" />
+
+              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
+                <div className="sm:col-span-1">
+            <SettingsFieldLabel
+              htmlFor="note-password"
+              icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
+              iconToneClassName="bg-green-50 dark:bg-green-900/30"
+              label={t.password}
+              info={t.settingsPasswordInfo}
+            />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 sm:col-span-2">
             <div className="relative min-w-0">
-              <div className="flex min-w-0 max-w-xl flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
+              <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
                 <div className="flex min-w-0 flex-1">
                 <input
                   id="note-password"
@@ -148,7 +421,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setPasswordSource("manual");
                   }}
                   placeholder={t.passwordPlaceholder}
-                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                 />
                 <button
                   type="button"
@@ -222,28 +495,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-1 flex max-w-xl flex-col gap-1 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span>{t.passwordRecipientsNeedToDecrypt}</span>
-                <span className="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-gray-400">
-                  {t.poweredBy}{" "}
-                  <a
-                    href="https://passwords.lu"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-2 hover:opacity-90"
-                  >
-                    passwords.lu
-                  </a>
-                  <span aria-hidden="true">&amp;</span>
-                  <a
-                    href="https://haveibeenpwned.com/Passwords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-2 hover:opacity-90"
-                  >
-                    HIBP
-                  </a>
-                </span>
+              <div className="mt-2">
+                <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
               </div>
               {password.trim() && (
                 <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -271,20 +524,18 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
           </div>
         </div>
 
-        {/* Expiry and view limit */}
-        <div className="mt-3 flex flex-col space-y-2">
-          <div className="grid grid-cols-1 items-center gap-2 px-1 py-2 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
-            <div>
-              <label
+              <div className="flex flex-col space-y-2">
+                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+                  <div className="sm:col-span-1">
+              <SettingsFieldLabel
                 htmlFor="expiry-value"
-                className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                <span className="bg-blue-50 dark:bg-blue-900/30 p-1 rounded mr-2">
+                icon={
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 text-blue-500 dark:text-blue-400"
                     viewBox="0 0 20 20"
                     fill="currentColor"
+                    aria-hidden
                   >
                     <path
                       fillRule="evenodd"
@@ -292,11 +543,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       clipRule="evenodd"
                     />
                   </svg>
-                </span>
-                {t.expiration}
-              </label>
+                }
+                iconToneClassName="bg-blue-50 dark:bg-blue-900/30"
+                label={t.settingsNoteLifetime ?? t.expiration}
+                info={t.settingsNoteLifetimeInfo}
+              />
             </div>
-            <div className="min-w-0">
+                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <select
                 id="expiry-value"
                 value={expiryValue}
@@ -304,54 +557,332 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   const v = e.target.value;
                   if (isNoteExpiryPresetId(v)) setExpiryValue(v);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer sm:max-w-[220px]"
-                style={{
-                  backgroundImage:
-                    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.75rem center",
-                  backgroundSize: "0.75em",
-                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
               >
-                {NOTE_EXPIRY_PRESETS.map((p) => (
+                {noteExpiryPresetsForAccount(isPremiumUser).map((p) => (
                   <option key={p.id} value={p.id}>
                     {translatedExpiryLabel(p.id, t)}
                   </option>
                 ))}
               </select>
+              <SettingsFieldHelper>
+                {t.settingsNoteLifetimeHint ?? "When the link stops working if never opened."}
+              </SettingsFieldHelper>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+                  <div className="sm:col-span-1">
+                    <SettingsFieldLabel
+                      htmlFor="note-read-limit"
+                      icon={<Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                      iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
+                      label={t.settingsOpenLimit ?? t.viewLimit}
+                      info={t.settingsOpenLimitInfo}
+                    />
+            </div>
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+              <select
+                id="note-read-limit"
+                value={readCount}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) {
+                    setReadCount(next as NoteReadLimit);
+                  }
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
+                  const premiumOnly = isPremiumNoteReadLimit(limit);
+                  const locked = premiumOnly && !isPremiumUser;
+                  return (
+                    <option key={limit} value={limit} disabled={locked}>
+                      {translatedReadLimitLabel(limit, t)}
+                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <SettingsFieldHelper>
+                {isPremiumUser
+                  ? (t.settingsOpenLimitHint ?? t.viewLimitPremiumHint)
+                  : (t.viewLimitFreeDescription ?? "Free accounts use read-once.")}
+              </SettingsFieldHelper>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 items-center gap-2 px-1 py-2 transition-colors sm:grid-cols-[180px_minmax(0,520px)] lg:grid-cols-[200px_minmax(0,560px)]">
-            <div>
-              <div className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                <span className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded mr-2">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-purple-500 dark:text-purple-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path
-                      fillRule="evenodd"
-                      d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                {t.viewLimit}
-              </div>
+          <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+            <div className="sm:col-span-1">
+              <SettingsFieldLabel
+                htmlFor="note-file-access-window"
+                icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                label={t.settingsFileDownloads ?? "File downloads"}
+                info={t.settingsFileDownloadsInfo}
+              />
             </div>
-            <div className="min-w-0">
-              <div className="max-w-md text-sm text-gray-600 dark:text-gray-400">
-                {t.viewLimitDescription}
-              </div>
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+              <select
+                id="note-file-access-window"
+                value={fileAccessWindowSeconds}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
+                    setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
+                  }
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                  const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
+                  return (
+                    <option key={seconds} value={seconds} disabled={locked}>
+                      {formatNoteFileAccessWindow(seconds)}
+                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <SettingsFieldHelper>
+                {t.settingsFileDownloadsHint ??
+                  "How long attachments stay downloadable after the note is opened."}
+              </SettingsFieldHelper>
             </div>
           </div>
+
         </div>
-        </div>
+            </section>
+
+            <section
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-email-alerts-heading"
+            >
+              <SectionHeading
+                id="note-email-alerts-heading"
+                title={t.settingsEmailAlerts ?? "Email alerts"}
+                showPremiumBadge={!canNotifyOnOpen && !isPremiumUser}
+                premiumLabel={t.premium ?? "Premium"}
+              />
+              <SettingsOptionList>
+                <SettingsToggleRow
+                  id="notify-on-open"
+                  locked={!canNotifyOnOpen}
+                  checked={notifyOnOpen}
+                  onCheckedChange={setNotifyOnOpen}
+                  title={t.settingsEmailAlertOnOpen ?? "When this note is opened"}
+                  info={
+                    t.settingsEmailAlertOnOpenInfo ??
+                    "One email when the link is accessed. Message content is never included."
+                  }
+                />
+                <SettingsToggleRow
+                  id="notify-on-destroyed"
+                  locked={!canNotifyOnOpen}
+                  checked={notifyOnDestroyed}
+                  onCheckedChange={setNotifyOnDestroyed}
+                  title={t.settingsEmailAlertOnDestroyed ?? "When this note is destroyed"}
+                  info={
+                    t.settingsEmailAlertOnDestroyedInfo ??
+                    "One email when the note can no longer be opened."
+                  }
+                />
+              </SettingsOptionList>
+              {isPremiumUser ? (
+                <div className="px-1 pt-2">
+                  <label
+                    htmlFor="note-label"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsNoteLabel ?? "Note label"}
+                  </label>
+                  <input
+                    id="note-label"
+                    type="text"
+                    maxLength={NOTE_LABEL_MAX_LENGTH}
+                    value={noteLabel}
+                    onChange={(event) => setNoteLabel(event.target.value)}
+                    placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsNoteLabelHint ??
+                      "Optional. Shown only in your Notification Center on this device — never sent with the note."}
+                  </p>
+                </div>
+              ) : null}
+              {!canNotifyOnOpen && !premiumStatusLoading ? (
+                <PremiumSectionFooter>
+                  {isPremiumUser ? (
+                    <>
+                      {t.settingsEmailAlertsPrefsHintPrefix ??
+                        "Turn on email notifications in"}{" "}
+                      <Link
+                        href={preferencesHref}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t.settingsEmailAlertsPrefsLink ?? "Account → Preferences"}
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                      <a
+                        href={premiumUpgradeHref}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t.settingsEmailAlertsUpgradeLink ?? "Upgrade to unlock email alerts"}
+                      </a>
+                    </>
+                  )}
+                </PremiumSectionFooter>
+              ) : null}
+            </section>
+
+            <section
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              aria-labelledby="note-delivery-verification-heading"
+            >
+              <SectionHeading
+                id="note-delivery-verification-heading"
+                title={t.settingsDeliveryVerification ?? "Delivery & verification"}
+                showPremiumBadge={!isPremiumUser}
+                premiumLabel={t.premium ?? "Premium"}
+              />
+              <SettingsOptionList>
+                <SettingsToggleRow
+                  id="restrict-recipient-email"
+                  locked={!isPremiumUser}
+                  checked={restrictRecipientEmail}
+                  onCheckedChange={(checked) => {
+                    setRestrictRecipientEmail(checked);
+                    if (!checked) setRecipientEmail("");
+                  }}
+                  title={t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email"}
+                  info={
+                    t.settingsDeliveryRestrictEmailInfo ??
+                    "Only the intended recipient can reveal the note."
+                  }
+                  onLockedClick={
+                    isPremiumUser ? undefined : () =>
+                      setSelectedPremiumFeature({
+                        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
+                        description:
+                          t.settingsDeliveryRestrictEmailInfo ??
+                          "Only the intended recipient can reveal the note.",
+                      })
+                  }
+                />
+                <SettingsToggleRow
+                  id="require-recipient-verification"
+                  locked={!isPremiumUser}
+                  checked={requireRecipientVerification}
+                  onCheckedChange={setRequireRecipientVerification}
+                  title={t.settingsDeliveryVerifyEmail ?? "Require email verification"}
+                  info={
+                    t.settingsDeliveryVerifyEmailInfo ??
+                    "Verify the recipient before the note is shown."
+                  }
+                  onLockedClick={
+                    isPremiumUser ? undefined : () =>
+                      setSelectedPremiumFeature({
+                        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
+                        description:
+                          t.settingsDeliveryVerifyEmailInfo ??
+                          "Verify the recipient before the note is shown.",
+                      })
+                  }
+                />
+                <SettingsToggleRow
+                  locked
+                  title={brandedRevealFeature.title}
+                  info={brandedRevealFeature.description}
+                  onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
+                />
+              </SettingsOptionList>
+              {isPremiumUser && restrictRecipientEmail ? (
+                <div className="px-1 pt-1">
+                  <label
+                    htmlFor="recipient-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="recipient-email"
+                    type="email"
+                    autoComplete="email"
+                    value={recipientEmail}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
+                    placeholder={t.settingsRecipientEmailPlaceholder ?? "recipient@example.com"}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsRecipientEmailHint ??
+                      "The recipient must enter this email before the note can be revealed."}
+                  </p>
+                </div>
+              ) : null}
+              {!isPremiumUser ? (
+                <PremiumSectionFooter>
+                  {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                  <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
+                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                  </a>
+                </PremiumSectionFooter>
+              ) : null}
+            </section>
+          </div>
+    </TooltipProvider>
+  );
+
+  const settingsShell =
+    presentation === "overlay" ? (
+      settingsBody
+    ) : (
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+          showAdvancedOptions ? "mb-3 grid-rows-[1fr] opacity-100" : "mb-0 grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">{settingsBody}</div>
       </div>
-    </div>
+    );
+
+  return (
+    <>
+      {settingsShell}
+      <Dialog
+        open={selectedPremiumFeature !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPremiumFeature(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Premium Feature</DialogTitle>
+            <DialogDescription>
+              {selectedPremiumFeature?.description ??
+                "Upgrade to Premium to unlock delivery and verification controls."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
+            {selectedPremiumFeature?.title ?? "Delivery & Verification"} is part of Premium.
+          </div>
+          <a
+            href={premiumUpgradeHref}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {t.settingsUpgradeToPremium ?? "Upgrade to Premium"}
+          </a>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
