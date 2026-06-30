@@ -53,10 +53,6 @@ class_name = "AuthTokenStore"
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
-[[migrations]]
-tag = "v5-secure-notes-sqlite"
-new_sqlite_classes = ["SecureNoteStorageSql"]
-
 # SecureNoteStorageSql uses the Durable Object SQL API (`state.storage.sql`). Local `wrangler dev`
 # (Miniflare) only enables SQL if the class was first registered with `new_sqlite_classes` — otherwise
 # note create returns: "SQL is not enabled for this Durable Object class". After local DO changes,
