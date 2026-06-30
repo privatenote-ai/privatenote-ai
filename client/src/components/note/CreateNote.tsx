@@ -77,6 +77,7 @@ const CustomizeSettingsOverlay = lazy(() =>
 );
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
+import { GravityDropZone } from "./GravityDropZone";
 import { useLanguage } from "@/context/LanguageContext";
 import type { SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
@@ -451,6 +452,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
   const fileTransferFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -604,6 +606,38 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     } finally {
       setIsPreparingFolder(false);
     }
+  };
+
+  const handleDropZoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsFileDragOver(true);
+  };
+  const handleDropZoneDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsFileDragOver(false);
+    }
+  };
+  const handleDropZoneDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsFileDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!canAttachFiles) {
+      saveAuthRedirectDraft();
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    if (file.size > fileLimitBytes) {
+      toast({
+        title: t.fileTooLarge ?? "File too large",
+        description: (
+          t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
+        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedFile(file);
   };
 
   const attachFileButtonLabel = selectedFile
@@ -2490,56 +2524,44 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       })}
                     />
                   ) : null}
-                  <div
-                    className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/80 px-5 py-7 text-center dark:border-gray-600 dark:bg-gray-900/40"
-                    role="region"
-                    aria-label="Attach a file or folder"
+                  <GravityDropZone
+                    isDragOver={isFileDragOver}
+                    onDragOver={handleDropZoneDragOver}
+                    onDragLeave={handleDropZoneDragLeave}
+                    onDrop={handleDropZoneDrop}
                   >
-                    <div className="mx-auto flex max-w-sm flex-col items-center">
-                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-                        <FolderArchive className="h-5 w-5 text-primary" aria-hidden />
-                      </div>
-                      <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                        Attach a file or folder
-                      </h2>
-                      <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
-                        Encrypted in your browser before upload.
-                      </p>
-                      <div className="mt-4 flex w-full flex-col gap-2.5 sm:flex-row">
-                        {canAttachFiles ? (
-                          <label
-                            htmlFor={fileTransferFileInputId}
-                            className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/50"
-                          >
-                            Attach file
-                          </label>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleAttachFileClick}
-                            className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          >
-                            Attach file
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleAttachFolderClick}
-                          disabled={isPreparingFolder}
-                          className={`${secondaryActionButtonClass} min-h-11 flex-1 px-5 text-sm`}
-                        >
-                          {isPreparingFolder ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
-                              Zipping folder...
-                            </>
-                          ) : (
-                            "Attach folder"
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    {canAttachFiles ? (
+                      <label
+                        htmlFor={fileTransferFileInputId}
+                        className="flex h-9 w-36 cursor-pointer items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                      >
+                        Select file
+                      </label>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAttachFileClick}
+                        className="flex h-9 w-36 items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                      >
+                        Select file
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAttachFolderClick}
+                      disabled={isPreparingFolder}
+                      className="flex h-9 w-36 items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 dark:bg-transparent dark:hover:bg-primary/10"
+                    >
+                      {isPreparingFolder ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                          Zipping...
+                        </>
+                      ) : (
+                        "Select folder"
+                      )}
+                    </button>
+                  </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     Need higher file limits?{" "}
                     <a
