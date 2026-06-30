@@ -12,6 +12,11 @@ id = "f19b8957a39b422486311962ca759563"
 binding = "ANALYTICS_KV"
 id = "af52edc654a844ae999cc4fc35ba5a38"
 
+# Encrypted note attachments.
+[[r2_buckets]]
+binding = "NOTE_FILES_R2"
+bucket_name = "privatenote-files-eu"
+
 # Durable Objects binding
 [[durable_objects.bindings]]
 name = "SECURE_NOTES"
@@ -69,7 +74,10 @@ AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
 # Optional: primary HTTPS origin for magic / email-change links when Origin is missing (must match trustedOrigins allowlist). Example: "https://privatenote.ai"
 # PUBLIC_WEB_APP_ORIGIN = "https://privatenote.ai"
-# Production: set AUTH_SECRET_KEY via `wrangler secret put AUTH_SECRET_KEY`. Local wrangler dev on localhost may omit it; other hosts need secrets or AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 (never in prod).
+# Production: set AUTH_SECRET_KEY via `wrangler secret put AUTH_SECRET_KEY`.
+# It protects magic-link KV integrity and recipient email gate HMACs. Local wrangler dev on localhost may omit it only when those features are unused.
+# Billing launch: set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` via `wrangler secret put`.
+# The Premium page also needs `VITE_STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK` and/or `VITE_STRIPE_PREMIUM_YEARLY_PAYMENT_LINK` at frontend build time.
 # Uncomment while debugging WebAuthn / auth: API returns { debug, route, phase } on failures; see `wrangler tail`.
 # AUTH_DEBUG = "1"
 
@@ -77,9 +85,9 @@ AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
 command = "npm run build"
 
 # Cron triggers for scheduled maintenance tasks
-# Runs daily at 3:00 AM UTC for audit log cleanup (GDPR compliance)
+# Runs hourly so expired/destroyed attachment storage is released promptly.
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["0 * * * *"]
 
 [observability]
 enabled = false
