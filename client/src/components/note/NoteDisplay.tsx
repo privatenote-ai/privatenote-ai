@@ -103,6 +103,60 @@ type AttachmentDisplayMetadata = {
   size: number;
 };
 
+type AttachmentPreviewKind = "image" | "pdf";
+
+const IMAGE_FILE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "heic",
+  "heif",
+]);
+
+function getFileExtension(fileName: string | undefined): string | null {
+  if (!fileName) return null;
+  const dot = fileName.lastIndexOf(".");
+  if (dot < 0 || dot === fileName.length - 1) return null;
+  return fileName.slice(dot + 1).toLowerCase();
+}
+
+function getAttachmentPreviewKind(
+  mimeType: string | undefined,
+  fileName?: string,
+): AttachmentPreviewKind | null {
+  const normalizedMime = mimeType?.trim().toLowerCase();
+  if (normalizedMime?.startsWith("image/")) return "image";
+  if (normalizedMime === "application/pdf") return "pdf";
+
+  const ext = getFileExtension(fileName);
+  if (ext && IMAGE_FILE_EXTENSIONS.has(ext)) return "image";
+  if (ext === "pdf") return "pdf";
+  return null;
+}
+
+function getAttachmentBlobMimeType(
+  mimeType: string | undefined,
+  previewKind: AttachmentPreviewKind,
+  fileName?: string,
+): string {
+  const normalizedMime = mimeType?.trim();
+  if (normalizedMime) return normalizedMime;
+  if (previewKind === "pdf") return "application/pdf";
+
+  const ext = getFileExtension(fileName);
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "heic") return "image/heic";
+  if (ext === "heif") return "image/heif";
+  return previewKind === "image" ? "image/jpeg" : "application/octet-stream";
+}
+
 interface RevealHeroProps {
   isRevealing: boolean;
   isRevealButtonReady: boolean;
@@ -769,13 +823,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
   };
 
-  const isPreviewableType = (mimeType: string | undefined): boolean => {
-    if (!mimeType) return false;
-    return mimeType.startsWith("image/") || mimeType === "application/pdf";
-  };
+  const attachmentPreviewKind = getAttachmentPreviewKind(
+    attachmentMetadata?.type,
+    attachmentMetadata?.name,
+  );
 
   const handlePreviewAttachment = async () => {
-    if (!noteData?.attachment || !contentKey) return;
+    if (!noteData?.attachment || !contentKey || !attachmentPreviewKind) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
         title: "File access expired",
@@ -784,6 +838,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       });
       return;
     }
+
+    if (showInlinePreview && previewObjectUrl) {
+      setShowInlinePreview(false);
+      return;
+    }
+    if (previewObjectUrl) {
+      setShowInlinePreview(true);
+      return;
+    }
+
     const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
       ? { "x-file-access-token": noteData.fileAccessToken }
       : {};
@@ -802,19 +866,18 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
         },
       );
-      const mimeType = attachmentMetadata?.type || "application/octet-stream";
+      const mimeType = getAttachmentBlobMimeType(
+        attachmentMetadata?.type,
+        attachmentPreviewKind,
+        attachmentMetadata?.name,
+      );
       const blob = new Blob(decryptedParts as BlobPart[], { type: mimeType });
       const objectUrl = URL.createObjectURL(blob);
       // Revoke any previous preview URL before replacing
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
       setPreviewObjectUrl(objectUrl);
       setPreviewMimeType(mimeType);
-      setShowInlinePreview(false);
-      const tab = window.open(objectUrl, "_blank", "noopener,noreferrer");
-      if (!tab) {
-        // Popup was blocked — show inline instead
-        setShowInlinePreview(true);
-      }
+      setShowInlinePreview(true);
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Attachment preview/decrypt failed:", error);
@@ -1067,41 +1130,41 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
         {noteData?.attachment ? (
           <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
-            {/* File row: icon + name/meta on left, actions on right */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-              {/* Left: icon + name + size */}
-              <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {attachmentMetadata?.name || "Encrypted attachment"}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {attachmentMetadata?.name || "Encrypted attachment"}
+                </p>
+                {attachmentMetadata?.size != null && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {formatNoteFileSize(attachmentMetadata.size)}
                   </p>
-                  {attachmentMetadata?.size != null && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {formatNoteFileSize(attachmentMetadata.size)}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
-
-              {/* Right: action buttons */}
-              <div className="flex shrink-0 items-center gap-2">
-                {isPreviewableType(attachmentMetadata?.type) && (
+              <div className="flex items-center gap-1.5">
+                {attachmentPreviewKind && (
                   <button
                     type="button"
                     onClick={() => void handlePreviewAttachment()}
                     disabled={isViewingFile || isDownloadingFile || !contentKey || fileAccessExpired}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/30 dark:bg-primary/10 dark:hover:bg-primary/20"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/30 dark:bg-primary/10 dark:hover:bg-primary/20"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                    {isViewingFile ? "Decrypting…" : attachmentMetadata?.type === "application/pdf" ? "Open PDF" : "View"}
+                    <Eye className="h-3.5 w-3.5" aria-hidden />
+                    {isViewingFile
+                      ? "Decrypting…"
+                      : showInlinePreview
+                        ? "Hide"
+                        : attachmentPreviewKind === "pdf"
+                          ? "View PDF"
+                          : "View"}
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => void handleDownloadAttachment()}
                   disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden />
                   {isDownloadingFile ? "Decrypting…" : "Download"}
@@ -1109,7 +1172,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               </div>
             </div>
 
-            {/* Access expiry warning — shown below the row when relevant */}
             {fileAccessRemainingSeconds != null && (
               <p className={`mt-2 text-xs font-medium ${
                 fileAccessExpired
@@ -1122,34 +1184,45 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               </p>
             )}
 
-            {/* Inline fallback when popup is blocked */}
             {showInlinePreview && previewObjectUrl && (
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Popup blocked — showing inline
+              <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
+                <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+                  <p className="min-w-0 truncate text-xs font-medium text-gray-600 dark:text-gray-300">
+                    {attachmentMetadata?.name || "Attachment preview"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowInlinePreview(false)}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
-                  >
-                    Close ✕
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.open(previewObjectUrl, "_blank", "noopener,noreferrer")}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 focus:outline-none"
+                    >
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                      New tab
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowInlinePreview(false)}
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
-                {previewMimeType?.startsWith("image/") ? (
-                  <img
-                    src={previewObjectUrl}
-                    alt={attachmentMetadata?.name || "Attachment preview"}
-                    className="max-h-[70vh] w-full rounded-lg object-contain"
-                  />
-                ) : (
-                  <iframe
-                    src={previewObjectUrl}
-                    title={attachmentMetadata?.name || "PDF preview"}
-                    className="h-[70vh] w-full rounded-lg border border-gray-200 dark:border-gray-700"
-                  />
-                )}
+                <div className="flex items-center justify-center p-3 sm:p-4">
+                  {getAttachmentPreviewKind(previewMimeType ?? attachmentMetadata?.type, attachmentMetadata?.name) === "image" ? (
+                    <img
+                      src={previewObjectUrl}
+                      alt={attachmentMetadata?.name || "Attachment preview"}
+                      className="mx-auto block max-h-[min(70vh,720px)] max-w-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      src={previewObjectUrl}
+                      title={attachmentMetadata?.name || "PDF preview"}
+                      className="h-[min(70vh,720px)] w-full bg-white dark:bg-gray-950"
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
