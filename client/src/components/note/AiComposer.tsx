@@ -595,21 +595,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
             ) : null}
 
             {!aiDraftAccepted ? (
-              <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-                {/* Accept — full-width CTA on mobile, pushed right on desktop */}
-                <button
-                  type="button"
-                  onClick={onAcceptDraft}
-                  disabled={noteHasPlaceholderBrackets}
-                  title={noteHasPlaceholderBrackets ? t.aiComposerReplacePlaceholdersHint : undefined}
-                  className="flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 md:ml-auto md:w-auto md:py-2 md:min-w-[10rem]"
-                >
-                  {t.aiComposerAcceptNote}
-                </button>
-
-                {/* Secondary row: Back + refine actions */}
-                <div className="flex items-center gap-2 overflow-x-auto md:contents">
-                  {/* Back / Undo */}
+              <div className="mt-3 flex w-full flex-col gap-2 md:flex-row md:items-stretch md:gap-2">
+                {/* Back + refine — left on desktop, second row on mobile */}
+                <div className="flex items-center gap-2 overflow-x-auto md:order-1 md:shrink-0 md:overflow-visible">
                   <button
                     type="button"
                     onClick={onBack}
@@ -626,10 +614,8 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     {transformHistory.length > 0 ? t.aiComposerUndo : t.aiComposerBack}
                   </button>
 
-                  {/* Divider */}
                   <span className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-600" aria-hidden />
 
-                  {/* Refine actions */}
                   {(showLocalOnDeviceUi || showHostedCloudUi) ? (
                     <>
                       <button
@@ -671,6 +657,17 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     </>
                   ) : null}
                 </div>
+
+                {/* Accept — full-width CTA on mobile, stretches to fill remaining row on desktop */}
+                <button
+                  type="button"
+                  onClick={onAcceptDraft}
+                  disabled={noteHasPlaceholderBrackets}
+                  title={noteHasPlaceholderBrackets ? t.aiComposerReplacePlaceholdersHint : undefined}
+                  className="order-first flex w-full shrink-0 items-center justify-center rounded-lg border border-transparent bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 md:order-2 md:flex-1 md:min-w-[10rem] md:py-2"
+                >
+                  {t.aiComposerAcceptNote}
+                </button>
               </div>
             ) : null}
 
