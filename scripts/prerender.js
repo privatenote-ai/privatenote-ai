@@ -17,8 +17,16 @@ import {
 } from "../shared/homeSeoLinks.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
 import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
+import {
+  getChangedFiles,
+  restoreHtmlCache,
+  saveHtmlCache,
+  selectRoutesToPrerender,
+} from "./prerenderIncremental.js";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
+const HTML_CACHE_DIR = process.env.PRERENDER_HTML_CACHE_DIR || "";
+const INCREMENTAL = process.env.PRERENDER_INCREMENTAL === "1";
 const BUILD_DIR = path.resolve("dist");
 const DIST_DIR = path.resolve(OUTPUT_DIR);
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://127.0.0.1:4173";
@@ -158,6 +166,15 @@ async function prepareOutputDir() {
 
   await fs.rm(DIST_DIR, { recursive: true, force: true });
   await fs.cp(BUILD_DIR, DIST_DIR, { recursive: true });
+
+  if (INCREMENTAL && HTML_CACHE_DIR) {
+    const restored = await restoreHtmlCache(HTML_CACHE_DIR, DIST_DIR);
+    if (restored > 0) {
+      console.log(`📦 Restored ${restored} cached HTML file(s) from ${HTML_CACHE_DIR}`);
+    } else {
+      console.log(`📦 No cached HTML in ${HTML_CACHE_DIR} — first incremental run will prerender all routes.`);
+    }
+  }
 }
 
 function routeOutDir(route) {
@@ -433,7 +450,28 @@ async function main() {
     };
 
     const routes = await discoverRoutesFromSitemapOrFallback();
-    for (const route of routes) {
+
+    const baseSha = process.env.PRERENDER_BASE_SHA || process.env.GITHUB_EVENT_BEFORE || "";
+    const headSha = process.env.PRERENDER_HEAD_SHA || process.env.GITHUB_SHA || "HEAD";
+    const changedFiles = INCREMENTAL ? getChangedFiles(baseSha, headSha) : null;
+
+    const selection = INCREMENTAL
+      ? await selectRoutesToPrerender(routes, changedFiles, HTML_CACHE_DIR)
+      : { mode: "full", routes, skipped: 0 };
+
+    if (INCREMENTAL) {
+      if (changedFiles === null) {
+        console.log("📋 Incremental: no git base (or force full) — prerendering all routes.");
+      } else {
+        console.log(`📋 Incremental: ${changedFiles.length} changed file(s) in git diff.`);
+      }
+      console.log(
+        `📋 Prerender mode: ${selection.mode}; Playwright ${selection.routes.length}/${routes.length} route(s)` +
+          (selection.skipped ? ` (${selection.skipped} reused from cache)` : ""),
+      );
+    }
+
+    for (const route of selection.routes) {
       const url = `${PREVIEW_URL}${route}`;
       console.log(`→ prerendering ${url}`);
       try {
@@ -449,6 +487,11 @@ async function main() {
 
     await syncEntryScriptRefs(canonicalEntryScript);
     await verifyPrerenderAssetRefs();
+
+    if (INCREMENTAL && HTML_CACHE_DIR) {
+      const saved = await saveHtmlCache(DIST_DIR, HTML_CACHE_DIR);
+      console.log(`💾 Saved ${saved} HTML file(s) to cache ${HTML_CACHE_DIR}`);
+    }
   } finally {
     if (browser) {
       try {

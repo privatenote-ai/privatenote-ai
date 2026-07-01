@@ -9,6 +9,7 @@ dist
 .wrangler
 .codex-history/
 prerender
+.prerender-html-cache
 
 # Large model files - downloaded from HuggingFace at runtime
 r2_upload/models/

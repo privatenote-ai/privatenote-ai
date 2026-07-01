@@ -19,6 +19,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore prerender HTML cache
+        uses: actions/cache/restore@v4
+        id: prerender-html-cache
+        with:
+          path: .prerender-html-cache
+          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            prerender-html-${{ github.ref_name }}-
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,6 +47,18 @@ jobs:
 
       - name: Build and prerender
         run: npm run build:prerender
+        env:
+          PRERENDER_INCREMENTAL: "1"
+          PRERENDER_HTML_CACHE_DIR: .prerender-html-cache
+          PRERENDER_BASE_SHA: ${{ github.event.before }}
+          PRERENDER_HEAD_SHA: ${{ github.sha }}
+
+      - name: Save prerender HTML cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: .prerender-html-cache
+          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy prerender --project-name "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch "${{ github.ref_name }}"
