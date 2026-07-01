@@ -17,6 +17,8 @@ export const nl: Translations = {
   sftFeatureAccessText: "Stel vervaldatum, weergavelimieten en toegangsvensters voor bestanden in zodat de overdracht verdwijnt nadat de ontvanger deze heeft geopend.",
   sftFeatureSignInTitle: "Meld je aan om te verzenden",
   sftFeatureSignInText: "Verzenden vereist een gratis PrivateNote-account (tot 25 MB per bestand, 250 MB totale opslag). Ontvangers hebben nooit een account nodig om de link te openen.",
+  sftFeatureNoScanTitle: "Geen bestandsscan",
+  sftFeatureNoScanText: "We kunnen je bestanden niet scannen of gebruiken om een AI-model te trainen — versleuteling gebeurt vóór het uploaden.",
   sftFeaturesHeading: "Belangrijkste functies",
   sftFeaturesSubtitle: "Veilige bestandsoverdracht gebruikt hetzelfde model van de verdwijnende notitie, met op bijlagen gerichte instellingen voor bestanden en mappen.",
   sftFaqHeading: "FAQ",
@@ -33,6 +35,8 @@ export const nl: Translations = {
   sftFaq5A: "De overdracht volgt hetzelfde verdwijnende model als PrivateNote-berichten. Afhankelijk van je instellingen verloopt de toegang na de eerste weergave, na een ingestelde tijdslimiet of wanneer het toegangsvenster voor bestanden eindigt.",
   sftFaq6Q: "Is dit anders dan delen via clouddrives?",
   sftFaq6A: "Ja. PrivateNote is gebouwd voor tijdelijke, versleutelde eenmalige bezorging, niet voor langdurige samenwerking. Bestanden worden nooit in leesbare vorm op de server opgeslagen en de link werkt niet meer zodra aan de door jou ingestelde voorwaarden is voldaan.",
+  sftFaq7Q: "Hoe lang kunnen bestanden worden gedownload nadat de notitie is geopend?",
+  sftFaq7A: "Nadat de notitie is geopend, blijven bestanden 15 minuten downloadbaar.",
   sftDropZoneTitle: "Sleep een bestand of map",
   sftDropZoneTitleDragging: "Loslaten om te versleutelen en bij te voegen",
   sftDropZoneSubtitle: "Versleuteld in uw browser vóór upload",
@@ -1057,6 +1061,13 @@ export const nl: Translations = {
   blogOneTimeLinksExcerpt: "E-mail, Slack en sms-berichten zijn gebouwd om berichten voor altijd te bewaren. Het was nooit de bedoeling dat sommige geheimen zouden blijven bestaan. Hier leest u hoe eenmalige gecodeerde links werken, wanneer u ze moet gebruiken en waarom branden na het lezen een beveiligingsfunctie is en geen gimmick.",
   blogOneTimeLinksMetaTitle: "Eenmalige geheime links uitgelegd",
   blogOneTimeLinksMetaDescription: "Ontdek hoe gecodeerde links na het lezen werken, wanneer u ze moet gebruiken in plaats van e-mail of Slack, en waarom kortstondigheid het risico na levering vermindert.",
+  blogEncryptedFileSharingTitle:
+    "Versleuteld vs. veilig bestanden delen: wat is het verschil?",
+  blogEncryptedFileSharingExcerpt:
+    "TLS en browserversleuteling worden allebei «veilig bestanden delen» genoemd. Dat is niet hetzelfde. Waar versleuteling plaatsvindt en waarom dat ertoe doet.",
+  blogEncryptedFileSharingMetaTitle: "Versleuteld vs. veilig delen uitgelegd",
+  blogEncryptedFileSharingMetaDescription:
+    "Transportversleuteling vs. browserversleuteling: wat elk beschermt, waartoe providers nog toegang hebben en hoe u kiest.",
   blogAgentSecurityTitle: "AI-agenten worden werknemers. We moeten beginnen ze te beveiligen als werknemers.",
   blogAgentSecurityExcerpt: "Prompt-injectie is niet langer het hele verhaal. Naarmate AI-agenten tools, geheugen en autonomie krijgen, moet beveiliging het hele systeem sturen, niet alleen het model.",
   blogTagDeveloper: "ontwikkelaar",

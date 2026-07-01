@@ -3,6 +3,7 @@ import type { Translations } from "@/utils/translations/types";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "encrypted-vs-secure-file-sharing": "2026-07-01T12:00:00.000Z",
   "one-time-secret-links": "2026-06-06T12:00:00.000Z",
   "privacy-tools": "2026-01-11T12:00:00.000Z",
   "myth-good-enough-security": "2026-01-21T12:00:00.000Z",
@@ -23,6 +24,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -9,
+      title: t.blogEncryptedFileSharingTitle,
+      excerpt: t.blogEncryptedFileSharingExcerpt,
+      author: "PrivateNote.ai",
+      slug: "encrypted-vs-secure-file-sharing",
+      publishedAt: at("encrypted-vs-secure-file-sharing"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("encrypted-vs-secure-file-sharing"),
+      updatedAt: at("encrypted-vs-secure-file-sharing"),
+    },
     {
       id: -8,
       title: t.blogOneTimeLinksTitle,

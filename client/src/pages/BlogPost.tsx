@@ -16,6 +16,7 @@ import { PrivateNoteForDevelopersPost } from '@/components/blog/PrivateNoteForDe
 import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
 import { AgentSecurityPost } from '@/components/blog/AgentSecurityPost';
 import { OneTimeSecretLinksPost } from '@/components/blog/OneTimeSecretLinksPost';
+import { EncryptedVsSecureFileSharingPost } from '@/components/blog/EncryptedVsSecureFileSharingPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -87,6 +88,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'one-time-secret-links') {
     return <OneTimeSecretLinksPost />;
+  }
+  if (slug === 'encrypted-vs-secure-file-sharing') {
+    return <EncryptedVsSecureFileSharingPost />;
   }
 
   if (error) {

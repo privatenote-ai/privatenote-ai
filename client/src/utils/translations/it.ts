@@ -17,6 +17,8 @@ export const it: Translations = {
   sftFeatureAccessText: "Imposta scadenza, limiti di visualizzazione e finestre di accesso ai file in modo che il trasferimento scompaia dopo che il destinatario lo ha aperto.",
   sftFeatureSignInTitle: "Accedi per inviare",
   sftFeatureSignInText: "L'invio richiede un account PrivateNote gratuito (fino a 25 MB per file, 250 MB di spazio totale). I destinatari non hanno mai bisogno di un account per aprire il link.",
+  sftFeatureNoScanTitle: "Nessuna scansione dei file",
+  sftFeatureNoScanText: "Non possiamo scansionare i tuoi file né usarli per addestrare un modello di IA — la crittografia avviene prima del caricamento.",
   sftFeaturesHeading: "Funzionalità principali",
   sftFeaturesSubtitle: "Il trasferimento sicuro dei file usa lo stesso modello di nota che scompare, con controlli incentrati sugli allegati per file e cartelle.",
   sftFaqHeading: "FAQ",
@@ -33,6 +35,8 @@ export const it: Translations = {
   sftFaq5A: "Il trasferimento segue lo stesso modello effimero dei messaggi di PrivateNote. A seconda delle tue impostazioni, l'accesso scade dopo la prima visualizzazione, dopo un limite di tempo impostato o al termine della finestra di accesso ai file.",
   sftFaq6Q: "È diverso dalla condivisione su cloud?",
   sftFaq6A: "Sì. PrivateNote è progettato per una consegna unica, temporanea e crittografata, non per la collaborazione a lungo termine. I file non vengono mai memorizzati in forma leggibile sul server e il link smette di funzionare una volta soddisfatte le condizioni che hai impostato.",
+  sftFaq7Q: "Per quanto tempo i file restano scaricabili dopo l'apertura della nota?",
+  sftFaq7A: "Dopo l'apertura della nota, i file restano scaricabili per 15 minuti.",
   sftDropZoneTitle: "Trascina un file o una cartella",
   sftDropZoneTitleDragging: "Rilascia per crittografare e allegare",
   sftDropZoneSubtitle: "Crittografato nel browser prima del caricamento",
@@ -1057,6 +1061,13 @@ export const it: Translations = {
   blogOneTimeLinksExcerpt: "E-mail, Slack e messaggi di testo sono stati creati per conservare i messaggi per sempre. Alcuni segreti non sarebbero mai stati destinati a persistere. Ecco come funzionano i collegamenti crittografati una tantum, quando usarli e perché la masterizzazione dopo la lettura è una funzionalità di sicurezza, non un espediente.",
   blogOneTimeLinksMetaTitle: "Spiegazione dei collegamenti segreti una tantum",
   blogOneTimeLinksMetaDescription: "Scopri come funzionano i collegamenti crittografati masterizzati dopo la lettura, quando utilizzarli al posto della posta elettronica o di Slack e perché la temporaneità riduce i rischi dopo la consegna.",
+  blogEncryptedFileSharingTitle:
+    "Condivisione crittografata vs condivisione sicura dei file: qual è la differenza?",
+  blogEncryptedFileSharingExcerpt:
+    "TLS e crittografia lato browser vengono entrambi presentati come «condivisione sicura». Non sono la stessa cosa. Dove avviene la crittografia e perché conta.",
+  blogEncryptedFileSharingMetaTitle: "Condivisione crittografata vs sicura spiegata",
+  blogEncryptedFileSharingMetaDescription:
+    "Crittografia di trasporto vs crittografia nel browser: cosa protegge ciascuna, a cosa può ancora accedere il provider e come scegliere.",
   blogAgentSecurityTitle: "Gli agenti IA stanno diventando dipendenti. Dobbiamo iniziare a tutelarli come dipendenti.",
   blogAgentSecurityExcerpt: "L'iniezione tempestiva non è più tutta la storia. Man mano che gli agenti di intelligenza artificiale acquisiscono strumenti, memoria e autonomia, la sicurezza deve governare l’intero sistema, non solo il modello.",
   blogTagDeveloper: "sviluppatore",
