@@ -596,11 +596,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setSelectedFile(zippedFolder);
     } catch (error) {
       toast({
-        title: "Folder could not be prepared",
+        title: t.sftFolderPrepareFailedTitle,
         description:
           error instanceof Error && error.message
             ? error.message
-            : "Zip the folder failed. Try a smaller folder or attach a zip file.",
+            : t.sftFolderPrepareFailedDescription,
         variant: "destructive",
       });
     } finally {
@@ -643,8 +643,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const attachFileButtonLabel = selectedFile
     ? selectedFile.name
     : isFileTransferMode
-      ? "Attach file"
-      : (t.attachFile ?? "Attach File");
+      ? t.sftAttachFile
+      : t.attachFile;
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -1161,8 +1161,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (isFileTransferMode && !selectedFile) {
       toast({
-        title: "Attach a file or folder",
-        description: "Choose a file or folder before creating the secure transfer link.",
+        title: t.sftAttachRequiredTitle,
+        description: t.sftAttachRequiredDescription,
         variant: "destructive",
       });
       return;
@@ -2229,6 +2229,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
         successQrSectionRef={successQrSectionRef}
+        variant={isFileTransferMode ? "file-transfer" : "note"}
       />
     );
   }
@@ -2427,7 +2428,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   htmlFor="file-transfer-message"
                   className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
-                  Optional message
+                  {t.sftOptionalMessage}
                 </label>
                 <textarea
                   id="file-transfer-message"
@@ -2441,7 +2442,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   }
                   rows={2}
                   className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                  placeholder="Add a short note for the recipient (optional)"
+                  placeholder={t.sftOptionalMessagePlaceholder}
                 />
               </div>
             </div>
@@ -2533,13 +2534,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     onDragOver={handleDropZoneDragOver}
                     onDragLeave={handleDropZoneDragLeave}
                     onDrop={handleDropZoneDrop}
+                    ariaLabel={t.sftDropZoneAriaLabel}
+                    dropTitle={t.sftDropZoneTitle}
+                    dropTitleDragging={t.sftDropZoneTitleDragging}
+                    subtitle={t.sftDropZoneSubtitle}
                   >
                     {canAttachFiles ? (
                       <label
                         htmlFor={fileTransferFileInputId}
                         className="flex h-9 w-36 cursor-pointer items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
                       >
-                        Select file
+                        {t.sftSelectFile}
                       </label>
                     ) : (
                       <button
@@ -2547,7 +2552,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         onClick={handleAttachFileClick}
                         className="flex h-9 w-36 items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
                       >
-                        Select file
+                        {t.sftSelectFile}
                       </button>
                     )}
                     <button
@@ -2559,27 +2564,26 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       {isPreparingFolder ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
-                          Zipping...
+                          {t.sftZippingFolder}
                         </>
                       ) : (
-                        "Select folder"
+                        t.sftSelectFolder
                       )}
                     </button>
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                    Need higher file limits?{" "}
+                    {t.sftNeedHigherLimits}{" "}
                     <button
                       type="button"
                       onClick={() =>
                         toast({
-                          title: "Premium — coming soon",
-                          description:
-                            "Premium will include 1 GB file transfers and 20 GB total storage. We'll notify you when it launches.",
+                          title: t.sftPremiumComingSoonTitle,
+                          description: t.sftPremiumComingSoonDescription,
                         })
                       }
                       className="font-medium text-primary hover:underline focus:outline-none"
                     >
-                      Premium includes 1 GB encrypted file transfers and 20 GB total encrypted storage.
+                      {t.sftPremiumUpsell}
                     </button>
                   </p>
                 </>

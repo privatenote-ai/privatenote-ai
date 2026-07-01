@@ -32,6 +32,10 @@ type GravityDropZoneProps = {
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
+  ariaLabel: string;
+  dropTitle: string;
+  dropTitleDragging: string;
+  subtitle: string;
 };
 
 const STATIC_RINGS = [240, 200, 160, 120, 84] as const;
@@ -42,6 +46,10 @@ export function GravityDropZone({
   onDragOver,
   onDragLeave,
   onDrop,
+  ariaLabel,
+  dropTitle,
+  dropTitleDragging,
+  subtitle,
 }: GravityDropZoneProps) {
   const { rings, addRing } = useGravityRipples();
 
@@ -69,7 +77,7 @@ export function GravityDropZone({
   return (
     <div
       role="region"
-      aria-label="Attach a file or folder"
+      aria-label={ariaLabel}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -77,11 +85,11 @@ export function GravityDropZone({
     >
       {/* Title + subtitle above the rings */}
       <h2 className="text-3xl font-semibold text-primary dark:text-primary/90">
-        {isDragOver ? "Drop to encrypt & attach" : "Drop file or a folder"}
+        {isDragOver ? dropTitleDragging : dropTitle}
       </h2>
       <p className="mt-1.5 mb-5 flex items-center gap-1.5 text-sm font-medium text-primary dark:text-primary/80">
         <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        Encrypted in your browser before upload
+        {subtitle}
       </p>
 
       {/* Open gravity aperture — no card/box */}

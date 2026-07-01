@@ -19,6 +19,39 @@ import {
   X,
 } from "lucide-react";
 
+function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
+  if (expiryValue === "5m") return t.expiry5m;
+  if (expiryValue === "10m") return t.expiry10m;
+  if (expiryValue === "30m") return t.expiry30m;
+  if (expiryValue === "1h") return t.expiry1h;
+  if (expiryValue === "2h") return t.expiry2h;
+  if (expiryValue === "8h") return t.expiry8h;
+  if (expiryValue === "1d") return t.expiry1d;
+  if (expiryValue === "3d") return t.expiry3d;
+  if (expiryValue === "7d") return t.expiry7d;
+  if (expiryValue === "14d") return t.expiry14d ?? noteExpiryPresetDisplayLabel(expiryValue);
+  if (expiryValue === "30d") return t.expiry30d ?? noteExpiryPresetDisplayLabel(expiryValue);
+  return noteExpiryPresetDisplayLabel(expiryValue);
+}
+
+function deletedAfterMessage(
+  t: Record<string, string>,
+  readCount: number,
+  expiryLabel: string,
+  isFileTransfer: boolean,
+): string {
+  if (readCount === 1) {
+    const key = isFileTransfer
+      ? "successTransferDeletedAfterOneRead"
+      : "successNoteDeletedAfterOneRead";
+    return t[key].replace("{expiry}", expiryLabel);
+  }
+  const key = isFileTransfer
+    ? "successTransferDeletedAfterManyReads"
+    : "successNoteDeletedAfterManyReads";
+  return t[key].replace("{count}", String(readCount)).replace("{expiry}", expiryLabel);
+}
+
 export type CreatedNoteMeta = {
   expiryValue: NoteExpiryPresetId;
   readCount: number;
@@ -49,6 +82,7 @@ export type CreateNoteSuccessProps = {
   onDownloadQrCode: () => Promise<void>;
   onCreateNewNote: () => void;
   successQrSectionRef: RefObject<HTMLDivElement>;
+  variant?: "note" | "file-transfer";
 };
 
 export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
@@ -68,8 +102,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   onDownloadQrCode,
   onCreateNewNote,
   successQrSectionRef,
+  variant = "note",
 }) => {
   const { language, t } = useLanguage();
+  const isFileTransfer = variant === "file-transfer";
   const createdNoteMeta = createdNote.meta;
   if (!createdNoteMeta) {
     return (
@@ -77,7 +113,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         className="max-w-4xl mx-auto py-6 text-center text-gray-600 dark:text-gray-400"
         aria-live="polite"
       >
-        Preparing secure note…
+        {isFileTransfer ? t.preparingSecureTransfer : t.preparingSecureNote}
       </section>
     );
   }
@@ -90,17 +126,29 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     recipientVerificationCode,
   } = createdNoteMeta;
 
+  const expiryLabel = translatedExpiryLabel(createdExpiryValue, t);
+  const anyoneWithLinkMessage = isFileTransfer
+    ? t.anyoneWithLinkCanReadTransfer
+    : t.anyoneWithLinkCanReadNote;
+  const createAnotherLabel = isFileTransfer ? t.createAnotherTransfer : t.createAnotherNote;
+  const linkAriaLabel = isFileTransfer ? t.encryptedTransferLink : t.encryptedNoteLink;
+  const headingPrefix = isFileTransfer ? t.yourSecureTransferIs : t.yourSecureNoteIs;
+  const subtitleLine = isFileTransfer ? t.transferEncryptedInBrowser : t.noteEncryptedInBrowser;
+  const qrViewMessage = isFileTransfer
+    ? t.anyoneWithCodeCanViewTransfer
+    : t.anyoneWithCodeCanViewNote;
+
   return (
     <section className="w-full max-w-4xl mx-auto py-4 sm:py-6">
       <div className="space-y-6 sm:space-y-7">
         <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
-              Your secure note is <span className="text-primary italic">ready</span>
+              {headingPrefix} <span className="text-primary italic">{t.ready}</span>
             </h1>
             <div className="mt-3 max-w-4xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-5xl space-y-1 md:space-y-2">
-              <p className="m-0">Your disappearing private note is encrypted in your browser.</p>
-              <p className="m-0">Only someone with this link can read it.</p>
+              <p className="m-0">{subtitleLine}</p>
+              <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
             </div>
           </div>
         </section>
@@ -114,16 +162,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     onClick={() => void onShareLink()}
                     type="button"
                     className="absolute left-0 inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 sm:static"
-                    title="Share link"
+                    title={t.shareLink}
                   >
                     <Share2 className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                    Share
+                    {t.share}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowSuccessHelp((open) => !open)}
                     aria-expanded={showSuccessHelp}
-                    aria-label="Show security tips"
+                    aria-label={t.showSecurityTips}
                     className="absolute right-0 inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 sm:static"
                   >
                     <CircleHelp className="h-5 w-5 text-primary" />
@@ -152,12 +200,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     role="note"
                   >
                     <div className="space-y-2">
-                      <p className="m-0">Anyone with this link can read your note.</p>
-                      <p className="m-0">This link cannot be recovered if lost.</p>
+                      <p className="m-0">{anyoneWithLinkMessage}</p>
+                      <p className="m-0">{t.linkCannotBeRecovered}</p>
                       <p className="m-0">
-                        The note will be deleted after{" "}
-                        {createdReadCount === 1 ? "1 read" : `${createdReadCount} reads`} or{" "}
-                        {noteExpiryPresetDisplayLabel(createdExpiryValue)}.
+                        {deletedAfterMessage(t, createdReadCount, expiryLabel, isFileTransfer)}
                       </p>
                     </div>
                   </div>
@@ -165,7 +211,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
                 <div className="overflow-hidden rounded-lg border-2 border-primary">
                   <div className="bg-primary px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-white">
-                    Secure link
+                    {t.secureLink}
                   </div>
                   <div className="flex items-center bg-white dark:bg-gray-900 p-3 transition-transform active:scale-[1.02]">
                     <input
@@ -173,7 +219,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       readOnly
                       value={successUrl}
                       className="w-full bg-transparent text-sm text-gray-800 dark:text-gray-200 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-sm touch-manipulation"
-                      aria-label="Encrypted note link"
+                      aria-label={linkAriaLabel}
                       onFocus={(event) => event.currentTarget.select()}
                     />
                   </div>
@@ -189,18 +235,18 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                           ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
                           : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
                       }`}
-                      title="Copy link to clipboard"
+                      title={t.copyLinkToClipboard}
                       aria-live="polite"
                     >
                       {successLinkCopied ? (
                         <>
                           <Check className="h-4 w-4 mr-1.5 shrink-0" />
-                          Link copied
+                          {t.linkCopied}
                         </>
                       ) : (
                         <>
                           <Copy className="h-4 w-4 mr-1.5 shrink-0" />
-                          Copy Link
+                          {t.copyLink}
                         </>
                       )}
                     </button>
@@ -211,7 +257,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm py-1"
                     >
                       <QrCode className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                      Share via QR code
+                      {t.shareViaQrCode}
                     </button>
                     <button
                       type="button"
@@ -219,7 +265,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       className="inline-flex w-full items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
                     >
                       <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                      Create Another Note
+                      {createAnotherLabel}
                     </button>
                   </div>
 
@@ -228,11 +274,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       type="button"
                       onClick={() => setShowSuccessQr((open) => !open)}
                       aria-expanded={showSuccessQr}
-                      aria-label={showSuccessQr ? "Hide QR Code" : "Share via QR Code"}
+                      aria-label={showSuccessQr ? t.hideQrCode : t.shareViaQrCode}
                       className="inline-flex shrink-0 items-center justify-center whitespace-nowrap py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
                     >
                       <QrCode className="h-4 w-4 mr-1.5 shrink-0 text-primary" aria-hidden />
-                      Share via QR Code
+                      {t.shareViaQrCode}
                     </button>
                     <button
                       type="button"
@@ -242,18 +288,18 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                           ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
                           : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
                       }`}
-                      title="Copy link to clipboard"
+                      title={t.copyLinkToClipboard}
                       aria-live="polite"
                     >
                       {successLinkCopied ? (
                         <>
                           <Check className="h-4 w-4 mr-1.5 shrink-0" />
-                          Link copied
+                          {t.linkCopied}
                         </>
                       ) : (
                         <>
                           <Copy className="h-4 w-4 mr-1.5 shrink-0" />
-                          Copy Link
+                          {t.copyLink}
                         </>
                       )}
                     </button>
@@ -263,7 +309,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150 whitespace-nowrap"
                     >
                       <RefreshCw className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                      Create Another Note
+                      {createAnotherLabel}
                     </button>
                   </div>
                 </div>
@@ -279,16 +325,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                           onClick={() => void onShareQrCode()}
                           type="button"
                           className="inline-flex items-center justify-center py-2.5 px-6 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
-                          title="Share QR image when supported, otherwise share link"
+                          title={t.shareQrImage}
                         >
                           <Share2 className="h-4 w-4 mr-1.5 shrink-0 text-primary" />
-                          Share
+                          {t.share}
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowQrHelp((open) => !open)}
                           aria-expanded={showQrHelp}
-                          aria-label="Show QR code tips"
+                          aria-label={t.showQrCodeTips}
                           className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-150"
                         >
                           <CircleHelp className="h-5 w-5 text-primary" />
@@ -297,16 +343,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       {showQrHelp && (
                         <div className="w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/35 px-3 py-3 text-sm leading-snug text-blue-900 dark:text-blue-100">
                           <ul className="list-disc pl-4 space-y-1.5">
-                            <li>Scan to open on mobile.</li>
-                            <li>Anyone with this code can view the note.</li>
-                            <li>This code cannot be recovered if lost.</li>
+                            <li>{t.scanToOpenMobile}</li>
+                            <li>{qrViewMessage}</li>
+                            <li>{t.codeCannotBeRecovered}</li>
                           </ul>
                         </div>
                       )}
                       <div className="w-full overflow-hidden rounded-lg border-2 border-primary/70 dark:border-primary/70">
                         <div className="bg-primary/70 px-3 py-1.5">
                           <div className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-white text-center leading-tight">
-                            QR Code
+                            {t.qrCode}
                           </div>
                         </div>
                         <div
@@ -321,10 +367,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                           onClick={() => void onDownloadQrCode()}
                           type="button"
                           className="inline-flex items-center justify-center px-3 py-2.5 text-sm font-semibold bg-primary/70 text-white rounded-md transition-colors hover:bg-primary/80 shadow-sm"
-                          title="Download QR code as SVG image"
+                          title={t.downloadQrCodeAsSvg}
                         >
                           <FileText className="h-4 w-4 mr-1.5 shrink-0" />
-                          Download QR Code
+                          {t.downloadQrCode}
                         </button>
                       </div>
                     </div>
@@ -338,12 +384,9 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         {createdPasswordProtected && (
           <div className="my-8 sm:my-10 mx-4 sm:mx-0 rounded-lg p-4 text-sm border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
             <p>
-              <strong>Password protection enabled.</strong> This note requires both the link and
-              your password to decrypt.
+              <strong>{t.passwordProtectionEnabledTitle}</strong> {t.passwordProtectionEnabledBody}
             </p>
-            <p className="mt-1">
-              For best security, send the password separately from the link.
-            </p>
+            <p className="mt-1">{t.passwordProtectionSendSeparately}</p>
           </div>
         )}
 
@@ -372,21 +415,21 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   strokeWidth={2.4}
                   aria-hidden
                 />
-                Do&apos;s
+                {t.successDosTitle}
               </h3>
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside marker:text-emerald-600/45 dark:marker:text-emerald-500/40">
-                <li>Store this link somewhere secure</li>
-                <li>Use password protection for sensitive notes</li>
+                <li>{t.successDoStoreLink}</li>
+                <li>{t.successDoUsePassword}</li>
                 <li>
-                  Use{" "}
+                  {t.successDoUsePrefix}{" "}
                   <Link
                     href={localizedPath("/password-generator", language)}
                     className="text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    our password generator
+                    {t.successOurPasswordGenerator}
                   </Link>{" "}
-                  for strong passwords
+                  {t.successDoStrongPasswordsSuffix}
                 </li>
               </ul>
             </div>
@@ -413,12 +456,12 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   strokeWidth={2.4}
                   aria-hidden
                 />
-                Don&apos;ts
+                {t.successDontsTitle}
               </h3>
               <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside marker:text-rose-600/45 dark:marker:text-rose-500/40">
-                <li>Share over unsecured channels</li>
-                <li>Assume links are recoverable if lost</li>
-                <li>Delay sharing before the expiry window</li>
+                <li>{t.successDontShareUnsecured}</li>
+                <li>{t.successDontAssumeRecoverable}</li>
+                <li>{t.successDontDelaySharing}</li>
               </ul>
             </div>
           </div>
