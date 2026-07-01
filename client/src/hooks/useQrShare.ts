@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import type { RefObject } from "react";
 import { createQrPngFileFromSvgData, getQrSvgDataFromDom } from "@/utils/qrPngFile";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
 import { fireAnalyticsEvent } from "@/utils/analyticsEvent";
 
 interface UseQrShareOptions {
@@ -13,6 +14,7 @@ interface UseQrShareOptions {
 export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQrShareOptions) {
   const qrSharePngRef = useRef<File | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   /** Prefetch PNG as soon as the QR section renders so share() has the file ready immediately. */
   useEffect(() => {
@@ -66,14 +68,14 @@ export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQ
       fireAnalyticsEvent("qr_share");
 
       toast({
-        title: "QR Code Downloaded",
-        description: "Attach the file manually in your email.",
+        title: t.qrCodeDownloaded,
+        description: t.attachFileManually,
       });
     } catch (error) {
       console.error("Error downloading QR code:", error);
       toast({
-        title: "Error",
-        description: "Could not download QR code. Try using the link instead.",
+        title: t.error,
+        description: t.toastQrDownloadFailedAlt,
         variant: "destructive",
       });
     }
@@ -113,8 +115,8 @@ export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQ
           new ClipboardItem({ "image/png": pngFile, "text/plain": textBlob }),
         ]);
         toast({
-          title: "QR and link copied",
-          description: "Paste into Mail or another app.",
+          title: t.qrAndLinkCopied,
+          description: t.pasteIntoMail,
         });
         return;
       } catch {
@@ -125,13 +127,13 @@ export function useQrShare({ noteUrl, showSuccessQr, successQrSectionRef }: UseQ
     try {
       await navigator.clipboard.writeText(noteUrl);
       toast({
-        title: "Link copied",
-        description: "Use Copy Link or Download QR Code to share the image.",
+        title: t.linkCopied,
+        description: t.toastQrShareLinkCopiedDesc,
       });
     } catch {
       toast({
-        title: "Sharing unavailable",
-        description: "Use Copy Link or Download QR Code below.",
+        title: t.toastSharingUnavailable,
+        description: t.toastSharingUnavailableDesc,
         variant: "destructive",
       });
     }

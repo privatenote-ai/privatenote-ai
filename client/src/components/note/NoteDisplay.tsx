@@ -523,8 +523,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
     if (e.nativeEvent.isTrusted) return true;
     toast({
-      title: "Interaction required",
-      description: "Please use a direct click or key press in your browser to continue.",
+      title: t.toastInteractionRequired,
+      description: t.toastInteractionRequiredDesc,
     });
     return false;
   };
@@ -596,9 +596,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       });
       setRecipientGateVerified(true);
       toast({
-        title: t.recipientGateVerifiedTitle ?? "Verified",
-        description:
-          t.recipientGateVerifiedDescription ?? "You can now reveal the note.",
+        title: t.recipientGateVerifiedTitle,
+        description: t.recipientGateVerifiedDescription,
       });
     } catch (error) {
       let message =
@@ -742,8 +741,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (!password.trim()) {
       setPasswordDecryptError(null);
       toast({
-        title: "Error",
-        description: "Please enter the password",
+        title: t.error,
+        description: t.toastEnterPassword,
         variant: "destructive",
       });
       return;
@@ -751,8 +750,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
     if (!noteData) {
       toast({
-        title: "Error",
-        description: "Missing note data",
+        title: t.error,
+        description: t.toastMissingNoteData,
         variant: "destructive",
       });
       return;
@@ -763,8 +762,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     // Check if we have all the required fields for password decryption
     if (!wrappedKey || !noteData.encryptedKeyIv || !noteData.salt) {
       toast({
-        title: "Error",
-        description: "This note is missing required password protection fields",
+        title: t.error,
+        description: t.toastMissingPasswordFields,
         variant: "destructive",
       });
       return;
@@ -857,8 +856,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setIsPasswordProtected(false);
 
       toast({
-        title: "Success",
-        description: "Note decrypted successfully",
+        title: t.toastSuccess,
+        description: t.toastNoteDecryptedSuccess,
       });
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -878,8 +877,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
     toast({
-      title: "Copied!",
-      description: "Note content copied to clipboard",
+      title: t.copied,
+      description: t.toastNoteContentCopied,
     });
   };
 
@@ -887,8 +886,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (!noteData?.attachment || !contentKey) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
-        title: "File access expired",
-        description: "Reveal the note again if it is still available.",
+        title: t.toastFileAccessExpired,
+        description: t.toastFileAccessExpiredDesc,
         variant: "destructive",
       });
       return;
@@ -928,8 +927,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         console.error("Attachment download/decrypt failed:", error);
       }
       toast({
-        title: "File download failed",
-        description: "The encrypted file could not be downloaded or decrypted.",
+        title: t.toastFileDownloadFailed,
+        description: t.toastFileDownloadFailedDesc,
         variant: "destructive",
       });
     } finally {
@@ -941,8 +940,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (!noteData?.attachment || !contentKey || !attachmentPreviewKind) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
-        title: "File access expired",
-        description: "Reveal the note again if it is still available.",
+        title: t.toastFileAccessExpired,
+        description: t.toastFileAccessExpiredDesc,
         variant: "destructive",
       });
       return;
@@ -970,8 +969,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         console.error("Attachment preview/decrypt failed:", error);
       }
       toast({
-        title: "Preview failed",
-        description: "The file could not be decrypted for preview.",
+        title: t.toastPreviewFailed,
+        description: t.toastPreviewFailedDesc,
         variant: "destructive",
       });
     } finally {
