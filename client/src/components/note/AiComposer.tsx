@@ -225,7 +225,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   }, [localAiSupported, isAiModelLoading]);
 
   const privateAiBadgeLabel = recommendedModelLabel
-    ? `${tx("aiComposerPrivateAiHeading", "Private AI — {model}").replace("{model}", recommendedModelLabel)} (${tx("aiComposerModelRecommended", "Recommended")})`
+    ? tx("aiComposerPrivateAiHeading", "Private AI — {model}").replace("{model}", recommendedModelLabel)
     : tx("aiComposerPrivateAiBadge", "Private AI — runs on this device");
 
   const confirmCloudAssistSwitch = () => {

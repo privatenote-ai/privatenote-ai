@@ -130,7 +130,7 @@ export function CreateNoteDeferredDialogs({
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Private AI isn't available on this device</AlertDialogTitle>
+            <AlertDialogTitle>Private AI isn&apos;t available on this device</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>

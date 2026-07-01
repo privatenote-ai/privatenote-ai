@@ -2270,8 +2270,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             >
               <div className="flex items-center justify-center">
                 <Sparkles className="h-4 w-4 mr-2" />
-                <span className="inline md:hidden">{t.privateAiShort}</span>
-                <span className="hidden md:inline">{t.writeWithPrivateAi}</span>
+                <span className="inline md:hidden">
+                  {usesHostedCloudAi ? (t.cloudAssistShort ?? "Cloud Assist") : t.privateAiShort}
+                </span>
+                <span className="hidden md:inline">
+                  {usesHostedCloudAi ? (t.writeWithCloudAssist ?? "Write with Cloud Assist") : t.writeWithPrivateAi}
+                </span>
               </div>
             </button>
           </div>
