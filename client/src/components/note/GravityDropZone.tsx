@@ -140,7 +140,7 @@ export function GravityDropZone({
       </div>
 
       {/* Action buttons */}
-      <div className="mt-4 flex w-full justify-center gap-4 sm:flex-row">{children}</div>
+      <div className="mt-4 flex w-full max-w-md flex-col items-center gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">{children}</div>
     </div>
   );
 }

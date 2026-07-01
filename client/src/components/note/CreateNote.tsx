@@ -564,9 +564,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!file) return;
     if (file.size > fileLimitBytes) {
       toast({
-        title: t.fileTooLarge ?? "File too large",
+        title: t.fileTooLarge,
         description: (
-          t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
+          t.fileTooLargeDescription
         ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
         variant: "destructive",
       });
@@ -585,10 +585,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const zippedFolder = await createStoredZipFromFiles(files);
       if (zippedFolder.size > fileLimitBytes) {
         toast({
-          title: t.fileTooLarge ?? "File too large",
-          description: (
-            t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
-          ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
+          title: t.fileTooLarge,
+          description: t.fileTooLargeDescription.replace(
+            "{limit}",
+            formatNoteFileSize(fileLimitBytes),
+          ),
           variant: "destructive",
         });
         return;
@@ -629,9 +630,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
     if (file.size > fileLimitBytes) {
       toast({
-        title: t.fileTooLarge ?? "File too large",
+        title: t.fileTooLarge,
         description: (
-          t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account."
+          t.fileTooLargeDescription
         ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
         variant: "destructive",
       });
@@ -808,13 +809,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const { text, truncated } = truncateUtf8StringToMaxBytes(raw, MAX_NOTE_PLAINTEXT_UTF8_BYTES);
       if (truncated) {
         toast({
-          title: "Content trimmed",
-          description: `AI output exceeded the ${String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024)} KB UTF-8 limit for AI mode and was shortened.`,
+          title: t.toastContentTrimmedTitle,
+          description: t.toastAiOutputTrimmedDesc.replace(
+            "{limit}",
+            String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024),
+          ),
         });
       }
       setNoteContent(text);
     },
-    [toast],
+    [toast, t],
   );
 
   const applyNoteContentInput = useCallback(
@@ -829,7 +833,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       if (!truncated) return;
       const inputType = (e.nativeEvent as InputEvent).inputType ?? "";
       if (inputType === "insertFromPaste" || inputType === "insertFromDrop") {
-        toast({ title: "Content trimmed", description: trimDescription });
+        toast({ title: t.toastContentTrimmedTitle, description: trimDescription });
       }
     },
     [toast],
@@ -1170,8 +1174,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (!noteContent.trim() && !selectedFile) {
       toast({
-        title: "Error",
-        description: "Add note content or attach a file.",
+        title: t.error,
+        description: t.toastAddContentOrFile,
         variant: "destructive",
       });
       return;
@@ -1179,8 +1183,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (selectedFile && selectedFile.size > fileLimitBytes) {
       toast({
-        title: t.fileTooLarge ?? "File too large",
-        description: (t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account.").replace(
+        title: t.fileTooLarge,
+        description: t.fileTooLargeDescription.replace(
           "{limit}",
           formatNoteFileSize(fileLimitBytes),
         ),
@@ -1191,9 +1195,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (selectedFile && !canAttachFiles) {
       toast({
-        title: t.signInToAttachFiles ?? "Sign in to attach files",
-        description:
-          t.signInToAttachFilesHint ?? "Sign in to add encrypted file attachments.",
+        title: t.signInToAttachFiles,
+        description: t.signInToAttachFilesHint,
         variant: "destructive",
       });
       return;
@@ -1205,10 +1208,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const trimmedRecipientEmail = recipientEmail.trim();
       if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
         toast({
-          title: t.settingsRecipientEmailInvalid ?? "Recipient email required",
-          description:
-            t.settingsRecipientEmailInvalidHint ??
-            "Enter a valid recipient email when restricting access.",
+          title: t.settingsRecipientEmailInvalid,
+          description: t.settingsRecipientEmailInvalidHint,
           variant: "destructive",
         });
         return;
@@ -1233,8 +1234,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (utf8ByteLength(noteContent) > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
       toast({
-        title: "Note too large",
-        description: `Notes are limited to ${String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024)} KB of UTF-8 text to keep encryption fast and reliable.`,
+        title: t.toastNoteTooLargeTitle,
+        description: t.toastNoteTooLargeDesc.replace(
+          "{limit}",
+          String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024),
+        ),
         variant: "destructive",
       });
       return;
@@ -1242,8 +1246,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     if (isAiMode && shouldShowAiTurnstile && !aiTurnstileToken) {
       toast({
-        title: "Human verification required",
-        description: "Please complete the verification check below before creating the note.",
+        title: t.toastHumanVerificationTitle,
+        description: t.toastHumanVerificationDesc,
         variant: "destructive",
       });
       return;
@@ -1258,8 +1262,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const MIN_PAGE_TIME_MS = 2000;
     if (Date.now() - pageLoadTimeRef.current < MIN_PAGE_TIME_MS) {
       toast({
-        title: "Just a moment…",
-        description: "Please wait a moment before submitting.",
+        title: t.toastJustAMomentTitle,
+        description: t.toastWaitBeforeSubmitDesc,
       });
       return;
     }
@@ -1546,8 +1550,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           if (body.challengeRequired && turnstileSiteKey) {
             setAiTurnstileChallengeRequired(true);
             toast({
-              title: "Verification required",
-              description: "Complete the check below, then try creating the note again.",
+              title: t.toastVerificationRequiredTitle,
+              description: t.toastVerificationRequiredDesc,
               variant: "destructive",
             });
             return;
@@ -1557,20 +1561,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         }
       }
 
-      let errorMessage = "Failed to create encrypted note. Please try again.";
+      let errorMessage = t.toastCreateNoteFailed;
       if (error instanceof Error) {
         const statusMatch = error.message.match(/^(\d+):/);
         if (statusMatch) {
           const status = statusMatch[1];
           errorMessage = import.meta.env.DEV
-            ? `Server error (${status}). Please check the console for details.`
-            : `Server error (${status}). Please try again.`;
+            ? t.toastServerErrorDev.replace("{status}", status)
+            : t.toastServerErrorProd.replace("{status}", status);
         } else {
           errorMessage = import.meta.env.DEV ? error.message || errorMessage : errorMessage;
         }
       }
 
-      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      toast({ title: t.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -1582,11 +1586,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     try {
       await navigator.clipboard.writeText(noteUrl);
       setSuccessLinkCopied(true);
-      toast({ title: "Copied!", description: "Secret note link copied to clipboard" });
+      toast({ title: t.copied, description: t.secretLinkCopied });
     } catch {
       toast({
-        title: "Couldn't copy link",
-        description: "Select the link in the field above and copy it manually.",
+        title: t.toastCouldNotCopyLinkTitle,
+        description: t.toastCouldNotCopyLinkDesc,
         variant: "destructive",
       });
     }
@@ -1700,14 +1704,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         setAllowHostedAi(!allowed);
         writeLocalHostedAiAllowed(!allowed);
         toast({
-          title: "Could not save hosted AI preference",
-          description: "Try again from Account → Preferences.",
+          title: t.toastCouldNotSaveHostedAiPref,
+          description: t.toastTryAgainFromPreferences,
           variant: "destructive",
         });
         return false;
       }
     },
-    [user, toast],
+    [user, toast, t],
   );
 
   const handlePreferHostedCloudChange = useCallback(
@@ -1781,14 +1785,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const promptToUse = override?.prompt ?? aiPrompt;
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse.trim()) {
-      toast({ title: "Error", description: "Please enter a prompt first", variant: "destructive" });
+      toast({ title: t.error, description: t.toastEnterPromptFirst, variant: "destructive" });
       return;
     }
 
     if (!cloudAssistConsentGiven) {
       toast({
-        title: "Confirmation required",
-        description: "Confirm you understand prompts leave this device before generating.",
+        title: t.toastConfirmationRequiredTitle,
+        description: t.toastCloudAssistConfirmDesc,
         variant: "destructive",
       });
       return;
@@ -1830,8 +1834,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setAiDraftAccepted(false);
       toast(
         options?.successToast ?? {
-          title: "Cloud draft created",
-          description: `${response.remaining} of ${response.limit} free hosted drafts left today.`,
+          title: t.toastCloudDraftCreated,
+          description: t.toastCloudDraftRemaining
+            .replace("{remaining}", String(response.remaining))
+            .replace("{limit}", String(response.limit)),
         },
       );
     };
@@ -1860,48 +1866,46 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       if (parsed.code === "hosted_ai_quota_exhausted") {
         setHostedCloudAiRemaining(0);
         toast({
-          title: "Free hosted drafts used",
-          description: "Use the offline templates today, or move to premium when it is available.",
+          title: t.toastFreeHostedDraftsUsed,
+          description: t.toastFreeHostedDraftsUsedDesc,
           variant: "destructive",
         });
       } else if (parsed.code === "prompt_too_long") {
         toast({
-          title: "Prompt is too long",
-          description: parsed.message ?? "Shorten the prompt and try again.",
+          title: t.toastPromptTooLong,
+          description: parsed.message ?? t.toastShortenPrompt,
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_fair_use_limit_reached") {
         toast({
-          title: "Monthly fair-use limit reached",
-          description: parsed.message ?? "Monthly fair-use text processing limit reached.",
+          title: t.toastFairUseLimit,
+          description: parsed.message ?? t.toastFairUseLimitDesc,
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_auth_required") {
         redirectToCloudAssistSignIn();
       } else if (parsed.code === "hosted_ai_not_enabled" || parsed.code === "hosted_ai_consent_required") {
         toast({
-          title: "Non-private hosted AI is off",
-          description:
-            parsed.message ??
-            "Enable it in Account → Preferences and confirm you understand prompts leave this device.",
+          title: t.toastHostedAiOff,
+          description: parsed.message ?? t.toastHostedAiOffDesc,
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_unavailable" || parsed.code === "hosted_ai_auth_unavailable") {
         toast({
-          title: "Cloud assist unavailable",
-          description: parsed.message ?? "Hosted AI is not configured for this deployment.",
+          title: t.toastCloudAssistUnavailable,
+          description: parsed.message ?? t.toastCloudAssistUnavailableDesc,
           variant: "destructive",
         });
       } else if (parsed.code === "hosted_ai_cost_guard_unavailable") {
         toast({
-          title: "Cloud assist temporarily unavailable",
-          description: parsed.message ?? "Usage tracking is being updated. Try again shortly.",
+          title: t.toastCloudAssistTempUnavailable,
+          description: parsed.message ?? t.toastCloudAssistTempUnavailableDesc,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Cloud assist unavailable",
-          description: parsed.message ?? "Use the offline templates, or try hosted generation again later.",
+          title: t.toastCloudAssistUnavailable,
+          description: parsed.message ?? t.toastCloudAssistUnavailableFallback,
           variant: "destructive",
         });
       }
@@ -1938,8 +1942,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         await clearLocalAiDownloadStateSilently();
         offerTemplateFallback();
         toast({
-          title: "Private AI is not available on this device",
-          description: "Use Cloud Assist (not fully private) or write without AI.",
+          title: t.toastPrivateAiUnavailable,
+          description: t.toastPrivateAiUnavailableDesc,
         });
       }
     } finally {
@@ -1954,7 +1958,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const promptToUse = override?.prompt ?? aiPrompt;
     const enhancementTypeToUse = override?.enhancementType ?? aiEnhancementType;
     if (!promptToUse.trim()) {
-      toast({ title: "Error", description: "Please enter a prompt for the AI", variant: "destructive" });
+      toast({ title: t.error, description: t.toastEnterPromptForAi, variant: "destructive" });
       return;
     }
     await executeAiGenerate(promptToUse, enhancementTypeToUse);
@@ -1982,7 +1986,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setAiPrompt(lastUserFacingPrompt);
       setShowPrompt(false);
       setAiDraftAccepted(false);
-      toast({ title: "Previous version restored", description: "Undid the last AI change to your note content." });
+      toast({ title: t.toastPreviousVersionRestored, description: t.toastPreviousVersionRestoredDesc });
       return;
     }
 
@@ -1994,10 +1998,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const previousPrompt = next.pop() || "";
       setUserPromptHistory(next);
       setAiPrompt(previousPrompt);
-      toast({ title: "Previous prompt restored", description: "You can edit this prompt and regenerate content." });
+      toast({ title: t.toastPreviousPromptRestored, description: t.toastPreviousPromptRestoredDesc });
     } else if (originalPrompt) {
       setAiPrompt(originalPrompt);
-      toast({ title: "Original prompt restored", description: "You're back to where you started." });
+      toast({ title: t.toastOriginalPromptRestored, description: t.toastOriginalPromptRestoredDesc });
     }
   };
 
@@ -2011,8 +2015,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           preserveTransformHistory: true,
           skipPromptHistoryUpdate: true,
           successToast: {
-            title: "Content Improved",
-            description: "The AI has refined your content for better clarity and style.",
+            title: t.toastContentImproved,
+            description: t.toastContentImprovedDesc,
           },
         },
       );
@@ -2024,12 +2028,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const content = await runFreeLocalEnhancement(noteContent, "improve");
       setNoteContentFromAiOutput(content);
       setAiDraftAccepted(false);
-      toast({ title: "Content Improved", description: "The AI has refined your content for better clarity and style." });
+      toast({ title: t.toastContentImproved, description: t.toastContentImprovedDesc });
     } catch {
       if (isLocalAiSupported()) {
         toast({
-          title: "No change applied",
-          description: "On-device AI could not refine this pass. Your previous text is still there.",
+          title: t.toastNoChangeApplied,
+          description: t.toastNoChangeImproveDesc,
         });
       }
     } finally {
@@ -2048,8 +2052,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           preserveTransformHistory: true,
           skipPromptHistoryUpdate: true,
           successToast: {
-            title: "Content Summarized",
-            description: "The AI has summarized your content to its key points.",
+            title: t.toastContentSummarized,
+            description: t.toastContentSummarizedDesc,
           },
         },
       );
@@ -2061,12 +2065,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const content = await runFreeLocalEnhancement(noteContent, "summarize");
       setNoteContentFromAiOutput(content);
       setAiDraftAccepted(false);
-      toast({ title: "Content Summarized", description: "The AI has summarized your content to its key points." });
+      toast({ title: t.toastContentSummarized, description: t.toastContentSummarizedDesc });
     } catch {
       if (isLocalAiSupported()) {
         toast({
-          title: "No change applied",
-          description: "On-device AI could not summarize this pass. Your previous text is still there.",
+          title: t.toastNoChangeApplied,
+          description: t.toastNoChangeSummarizeDesc,
         });
       }
     } finally {
@@ -2085,8 +2089,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           preserveTransformHistory: true,
           skipPromptHistoryUpdate: true,
           successToast: {
-            title: "Content Simplified",
-            description: "The AI has simplified your content for easier reading.",
+            title: t.toastContentSimplified,
+            description: t.toastContentSimplifiedDesc,
           },
         },
       );
@@ -2098,12 +2102,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const content = await runFreeLocalEnhancement(noteContent, "simplify");
       setNoteContentFromAiOutput(content);
       setAiDraftAccepted(false);
-      toast({ title: "Content Simplified", description: "The AI has simplified your content for easier reading." });
+      toast({ title: t.toastContentSimplified, description: t.toastContentSimplifiedDesc });
     } catch {
       if (isLocalAiSupported()) {
         toast({
-          title: "No change applied",
-          description: "On-device AI could not simplify this pass. Your previous text is still there.",
+          title: t.toastNoChangeApplied,
+          description: t.toastNoChangeSimplifyDesc,
         });
       }
     } finally {
@@ -2127,8 +2131,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           preserveTransformHistory: true,
           skipPromptHistoryUpdate: true,
           successToast: {
-            title: "Content Regenerated",
-            description: "The AI has created a new version based on your original prompt.",
+            title: t.toastContentRegenerated,
+            description: t.toastContentRegeneratedDesc,
           },
         },
       );
@@ -2143,12 +2147,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       });
       setNoteContentFromAiOutput(content);
       setAiDraftAccepted(false);
-      toast({ title: "Content Regenerated", description: "The AI has created a new version based on your original prompt." });
+      toast({ title: t.toastContentRegenerated, description: t.toastContentRegeneratedDesc });
     } catch {
       if (isLocalAiSupported()) {
         toast({
-          title: "No change applied",
-          description: "On-device AI could not regenerate this pass. Your previous text is still there.",
+          title: t.toastNoChangeApplied,
+          description: t.toastNoChangeRegenerateDesc,
         });
       }
     } finally {
@@ -2542,7 +2546,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     {canAttachFiles ? (
                       <label
                         htmlFor={fileTransferFileInputId}
-                        className="flex h-9 w-36 cursor-pointer items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                        className="inline-flex min-h-9 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
                       >
                         {t.sftSelectFile}
                       </label>
@@ -2550,7 +2554,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       <button
                         type="button"
                         onClick={handleAttachFileClick}
-                        className="flex h-9 w-36 items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                        className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
                       >
                         {t.sftSelectFile}
                       </button>
@@ -2559,7 +2563,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       type="button"
                       onClick={handleAttachFolderClick}
                       disabled={isPreparingFolder}
-                      className="flex h-9 w-36 items-center justify-center rounded-lg border border-primary bg-white px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 dark:bg-transparent dark:hover:bg-primary/10"
+                      className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 dark:bg-transparent dark:hover:bg-primary/10"
                     >
                       {isPreparingFolder ? (
                         <>
