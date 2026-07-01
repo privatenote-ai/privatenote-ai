@@ -17,6 +17,8 @@ export const en: Translations = {
   sftFeatureAccessText: "Set expiry, view limits, and file access windows so the transfer disappears after the recipient opens it.",
   sftFeatureSignInTitle: "Sign in to send",
   sftFeatureSignInText: "Sending requires a free PrivateNote account (up to 25 MB per file, 250 MB total storage). Recipients never need an account to open the link.",
+  sftFeatureNoScanTitle: "No file scanning",
+  sftFeatureNoScanText: "We cannot scan your files or train an AI model on them — encryption happens before upload.",
   sftFeaturesHeading: "Key features",
   sftFeaturesSubtitle: "Secure file transfer uses the same disappearing note model, with attachment-first controls for files and folders.",
   sftFaqHeading: "FAQ",
@@ -33,6 +35,8 @@ export const en: Translations = {
   sftFaq5A: "The transfer follows the same disappearing model as PrivateNote messages. Depending on your settings, access expires after the first view, after a set time limit, or when the file access window ends.",
   sftFaq6Q: "Is this different from cloud drive sharing?",
   sftFaq6A: "Yes. PrivateNote is built for temporary, encrypted one-time delivery — not long-term collaboration. Files are never stored in a readable form on the server and the link stops working once the conditions you set are met.",
+  sftFaq7Q: "How long can files be downloaded after the note is opened?",
+  sftFaq7A: "After the note is opened, files remain downloadable for 15 minutes.",
   sftDropZoneTitle: "Drop file or a folder",
   sftDropZoneTitleDragging: "Drop to encrypt & attach",
   sftDropZoneSubtitle: "Encrypted in your browser before upload",
@@ -1204,6 +1208,13 @@ export const en: Translations = {
   blogOneTimeLinksMetaTitle: "One-time secret links explained",
   blogOneTimeLinksMetaDescription:
     "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
+  blogEncryptedFileSharingTitle:
+    "Encrypted File Sharing vs. Secure File Sharing: What's the Difference?",
+  blogEncryptedFileSharingExcerpt:
+    "TLS and browser-side encryption both get called \"secure file sharing.\" They are not the same. Learn where encryption happens, why it matters, and how to choose.",
+  blogEncryptedFileSharingMetaTitle: "Encrypted vs secure file sharing explained",
+  blogEncryptedFileSharingMetaDescription:
+    "Transport encryption vs browser-side encryption for file sharing: what each protects, what providers can still access, and how to choose the right model.",
   blogAgentSecurityTitle:
     "AI Agents Are Becoming Employees. We Need to Start Securing Them Like Employees.",
   blogAgentSecurityExcerpt:

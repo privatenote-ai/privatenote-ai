@@ -17,6 +17,8 @@ export const fr: Translations = {
   sftFeatureAccessText: "Définissez l'expiration, les limites de consultation et les fenêtres d'accès aux fichiers pour que le transfert disparaisse après son ouverture par le destinataire.",
   sftFeatureSignInTitle: "Connectez-vous pour envoyer",
   sftFeatureSignInText: "L'envoi nécessite un compte PrivateNote gratuit (jusqu'à 25 Mo par fichier, 250 Mo de stockage total). Les destinataires n'ont jamais besoin de compte pour ouvrir le lien.",
+  sftFeatureNoScanTitle: "Aucun scan de fichiers",
+  sftFeatureNoScanText: "Nous ne pouvons pas analyser vos fichiers ni les utiliser pour entraîner un modèle d'IA — le chiffrement a lieu avant l'envoi.",
   sftFeaturesHeading: "Fonctionnalités clés",
   sftFeaturesSubtitle: "Le transfert de fichiers sécurisé utilise le même modèle de note éphémère, avec des contrôles axés sur les pièces jointes pour les fichiers et les dossiers.",
   sftFaqHeading: "FAQ",
@@ -33,6 +35,8 @@ export const fr: Translations = {
   sftFaq5A: "Le transfert suit le même modèle éphémère que les messages PrivateNote. Selon vos paramètres, l'accès expire après la première consultation, après un délai défini ou à la fin de la fenêtre d'accès aux fichiers.",
   sftFaq6Q: "Est-ce différent du partage via un cloud ?",
   sftFaq6A: "Oui. PrivateNote est conçu pour une livraison unique, temporaire et chiffrée, et non pour une collaboration à long terme. Les fichiers ne sont jamais stockés sous une forme lisible sur le serveur et le lien cesse de fonctionner une fois les conditions que vous avez définies remplies.",
+  sftFaq7Q: "Combien de temps les fichiers restent-ils téléchargeables après l'ouverture de la note ?",
+  sftFaq7A: "Après l'ouverture de la note, les fichiers restent téléchargeables pendant 15 minutes.",
   sftDropZoneTitle: "Déposez un fichier ou un dossier",
   sftDropZoneTitleDragging: "Déposez pour chiffrer et joindre",
   sftDropZoneSubtitle: "Chiffré dans votre navigateur avant l'envoi",
@@ -1159,6 +1163,13 @@ export const fr: Translations = {
   blogOneTimeLinksMetaTitle: "Liens secrets à usage unique expliqués",
   blogOneTimeLinksMetaDescription:
     "Découvrez comment fonctionnent les liens chiffrés burn-after-reading, quand les utiliser à la place de l'e-mail ou Slack, et pourquoi l'éphémérité réduit les risques.",
+  blogEncryptedFileSharingTitle:
+    "Partage chiffré vs partage sécurisé de fichiers : quelle différence ?",
+  blogEncryptedFileSharingExcerpt:
+    "TLS et chiffrement côté navigateur sont tous deux présentés comme du « partage sécurisé ». Ce n'est pas la même chose. Où le chiffrement a lieu, et pourquoi cela compte.",
+  blogEncryptedFileSharingMetaTitle: "Partage chiffré vs sécurisé expliqué",
+  blogEncryptedFileSharingMetaDescription:
+    "Chiffrement de transport vs chiffrement dans le navigateur : ce qui est protégé, ce que les hébergeurs peuvent encore voir, et comment choisir.",
   blogAgentSecurityTitle:
     "Les agents IA deviennent des employés. Il faut commencer à les sécuriser comme des employés.",
   blogAgentSecurityExcerpt:

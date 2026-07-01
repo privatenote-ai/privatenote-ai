@@ -122,6 +122,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogOneTimeLinksMetaTitle),
         description: t.blogOneTimeLinksMetaDescription,
       };
+    case "encrypted-vs-secure-file-sharing":
+      return {
+        title: buildDocumentTitle(t.blogEncryptedFileSharingMetaTitle),
+        description: t.blogEncryptedFileSharingMetaDescription,
+      };
     default:
       return null;
   }

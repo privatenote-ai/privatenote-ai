@@ -17,6 +17,8 @@ export const de: Translations = {
   sftFeatureAccessText: "Lege Ablauf, Aufrufbegrenzungen und Dateizugriffsfenster fest, damit die Übertragung verschwindet, nachdem der Empfänger sie geöffnet hat.",
   sftFeatureSignInTitle: "Zum Senden anmelden",
   sftFeatureSignInText: "Zum Senden ist ein kostenloses PrivateNote-Konto erforderlich (bis zu 25 MB pro Datei, 250 MB Gesamtspeicher). Empfänger benötigen nie ein Konto, um den Link zu öffnen.",
+  sftFeatureNoScanTitle: "Kein Dateiscan",
+  sftFeatureNoScanText: "Wir können deine Dateien nicht scannen oder zum Trainieren eines KI-Modells nutzen — die Verschlüsselung erfolgt vor dem Upload.",
   sftFeaturesHeading: "Hauptfunktionen",
   sftFeaturesSubtitle: "Sicherer Dateitransfer nutzt dasselbe Modell der verschwindenden Notiz, mit anhangsorientierten Steuerungen für Dateien und Ordner.",
   sftFaqHeading: "FAQ",
@@ -33,6 +35,8 @@ export const de: Translations = {
   sftFaq5A: "Die Übertragung folgt demselben Verschwinden-Modell wie PrivateNote-Nachrichten. Je nach deinen Einstellungen läuft der Zugriff nach dem ersten Aufruf, nach einem festgelegten Zeitlimit oder am Ende des Dateizugriffsfensters ab.",
   sftFaq6Q: "Ist das anders als das Teilen über einen Cloud-Speicher?",
   sftFaq6A: "Ja. PrivateNote ist für temporäre, verschlüsselte Einmalzustellung gebaut – nicht für langfristige Zusammenarbeit. Dateien werden niemals in lesbarer Form auf dem Server gespeichert, und der Link funktioniert nicht mehr, sobald die von dir festgelegten Bedingungen erfüllt sind.",
+  sftFaq7Q: "Wie lange können Dateien nach dem Öffnen der Notiz heruntergeladen werden?",
+  sftFaq7A: "Nach dem Öffnen der Notiz bleiben Dateien 15 Minuten lang zum Herunterladen verfügbar.",
   sftDropZoneTitle: "Datei oder Ordner ablegen",
   sftDropZoneTitleDragging: "Ablegen zum Verschlüsseln und Anhängen",
   sftDropZoneSubtitle: "In Ihrem Browser verschlüsselt, bevor hochgeladen wird",
@@ -1155,6 +1159,13 @@ export const de: Translations = {
   blogOneTimeLinksMetaTitle: "One-Time-Secret-Links erklärt",
   blogOneTimeLinksMetaDescription:
     "Erfahren Sie, wie Burn-after-Reading-Links funktionieren, wann Sie sie statt E-Mail oder Slack nutzen sollten und warum Ephemerität Risiken reduziert.",
+  blogEncryptedFileSharingTitle:
+    "Verschlüsseltes vs. sicheres Dateiteilen: Was ist der Unterschied?",
+  blogEncryptedFileSharingExcerpt:
+    "TLS und clientseitige Verschlüsselung werden beide als „sicheres Dateiteilen“ beworben. Das ist nicht dasselbe. Erfahren Sie, wo die Verschlüsselung stattfindet und warum das zählt.",
+  blogEncryptedFileSharingMetaTitle: "Verschlüsseltes vs. sicheres Dateiteilen erklärt",
+  blogEncryptedFileSharingMetaDescription:
+    "Transportverschlüsselung vs. Browser-Verschlüsselung beim Dateiteilen: was geschützt ist, worauf Anbieter noch zugreifen können und wie Sie wählen.",
   blogAgentSecurityTitle:
     "KI-Agenten werden zu Mitarbeitern. Wir müssen sie wie Mitarbeiter absichern.",
   blogAgentSecurityExcerpt:
