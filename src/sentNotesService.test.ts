@@ -4,6 +4,7 @@ import {
   clearSentNoteNotifications,
   deleteSentNoteNotification,
   listSentNoteNotificationsForUser,
+  recordSentNoteAttachmentDownloaded,
   type SentNoteRow,
 } from "./sentNotesService.ts";
 import type { Env } from "./types.ts";
@@ -30,12 +31,19 @@ class FakePreparedStatement {
     this.db.alls.push({ sql: this.sql, bindings: this.bindings });
     return { results: this.db.rows as T[] };
   }
+
+  async first<T>(): Promise<T | null> {
+    this.db.firsts.push({ sql: this.sql, bindings: this.bindings });
+    return (this.db.firstRows.shift() as T | undefined) ?? null;
+  }
 }
 
 class FakeD1Database {
   public runs: Array<{ sql: string; bindings: unknown[] }> = [];
   public alls: Array<{ sql: string; bindings: unknown[] }> = [];
+  public firsts: Array<{ sql: string; bindings: unknown[] }> = [];
   public rows: SentNoteRow[] = [];
+  public firstRows: unknown[] = [];
   public nextChanges = 1;
 
   prepare(sql: string): FakePreparedStatement {
@@ -70,6 +78,7 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     open_device_class: null,
     open_browser: null,
     attachment_downloaded_at: null,
+    attachment_downloaded_notified_at: null,
     notification_deleted_at: null,
     ...overrides,
   };
@@ -120,5 +129,65 @@ describe("sent note notification service", () => {
     assert.match(sql, /notification_deleted_at IS NULL/);
     assert.doesNotMatch(sql, /\bDELETE\b/i);
     assert.deepEqual(db.runs[0]?.bindings, ["user-1"]);
+  });
+
+  it("records an attachment download and sends one premium receipt email", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [
+      sentNote({ label: "Quarterly report" }),
+      {
+        email: "sender@example.com",
+        email_verified: 1,
+        email_notifications: 1,
+        account_type: "personal_premium",
+        plan: null,
+      },
+    ];
+    const emails: Array<{ to: string; subject: string; text: string; html: string }> = [];
+    const request = new Request("https://privatenote.ai/api/notes/550e8400-e29b-41d4-a716-446655440000/file/chunks/0", {
+      headers: {
+        "CF-IPCountry": "US",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/125.0 Safari/537.36",
+      },
+    });
+
+    await recordSentNoteAttachmentDownloaded(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      request,
+      async (to, subject, text, html) => {
+        emails.push({ to, subject, text, html });
+      },
+    );
+
+    assert.equal(emails.length, 1);
+    assert.equal(emails[0]?.to, "sender@example.com");
+    assert.equal(emails[0]?.subject, 'PrivateNote: your file "Quarterly report" was downloaded');
+    assert.match(emails[0]?.text ?? "", /encrypted attachment was requested for download/);
+    assert.match(db.runs[0]?.sql ?? "", /attachment_downloaded_at = COALESCE/);
+    assert.match(db.runs[1]?.sql ?? "", /attachment_downloaded_notified_at = \?/);
+  });
+
+  it("does not resend an attachment download receipt after it was claimed", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [
+      sentNote({
+        attachment_downloaded_at: "2026-06-14T10:00:00.000Z",
+        attachment_downloaded_notified_at: "2026-06-14T10:00:01.000Z",
+      }),
+    ];
+    let emailCount = 0;
+
+    await recordSentNoteAttachmentDownloaded(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      undefined,
+      async () => {
+        emailCount += 1;
+      },
+    );
+
+    assert.equal(emailCount, 0);
+    assert.equal(db.runs.length, 1);
   });
 });

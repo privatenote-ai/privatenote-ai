@@ -32,6 +32,7 @@ export type SentNoteRow = {
   open_device_class: string | null;
   open_browser: string | null;
   attachment_downloaded_at: string | null;
+  attachment_downloaded_notified_at: string | null;
   notification_deleted_at: string | null;
 };
 
@@ -325,16 +326,35 @@ export async function clearSentNoteNotifications(env: Env, userId: string): Prom
   return (result?.meta as { changes?: number } | undefined)?.changes ?? 0;
 }
 
-export async function recordSentNoteAttachmentDownloaded(env: Env, noteId: string): Promise<void> {
+export async function recordSentNoteAttachmentDownloaded(
+  env: Env,
+  noteId: string,
+  request?: Request,
+  sendEmailFn?: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+): Promise<void> {
   if (!env.AUTH_DB) return;
-  const eventAt = new Date().toISOString();
-  await env.AUTH_DB.prepare(
+  const row = await getSentNoteByNoteId(env, noteId);
+  if (!row || row.status === "revoked") return;
+
+  const eventAt = row.attachment_downloaded_at ?? new Date().toISOString();
+  const update = await env.AUTH_DB.prepare(
     `UPDATE sent_notes
      SET attachment_downloaded_at = COALESCE(attachment_downloaded_at, ?)
      WHERE note_id = ? AND status IN ('created', 'opened', 'destroyed', 'expired')`,
   )
     .bind(eventAt, noteId)
     .run();
+  const rowsChanged = (update?.meta as { changes?: number } | undefined)?.changes ?? 0;
+  if (rowsChanged < 1 || !sendEmailFn || row.attachment_downloaded_notified_at) return;
+
+  const country = request?.headers.get("CF-IPCountry") || request?.headers.get("cf-ipcountry") || null;
+  const { deviceClass, browser } = parseUserAgent(request?.headers.get("User-Agent") ?? null);
+  await sendSentNoteLifecycleEmail(env, row, noteId, "attachment_downloaded", eventAt, {
+    country,
+    deviceClass,
+    browser,
+    sendEmailFn,
+  });
 }
 
 export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<SentNoteRow | null> {
@@ -347,9 +367,11 @@ export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<Sen
 export async function revokeSentNote(env: Env, userId: string, noteId: string): Promise<boolean> {
   if (!env.AUTH_DB) return false;
   const row = await getSentNoteByNoteId(env, noteId);
-  if (!row || row.user_id !== userId || row.status !== "created") return false;
+  if (!row || row.user_id !== userId || (row.status !== "created" && row.status !== "opened")) return false;
   await env.AUTH_DB.prepare(
-    `UPDATE sent_notes SET status = 'revoked', revoked_at = datetime('now') WHERE note_id = ? AND user_id = ?`,
+    `UPDATE sent_notes
+     SET status = 'revoked', revoked_at = COALESCE(revoked_at, datetime('now'))
+     WHERE note_id = ? AND user_id = ? AND status IN ('created', 'opened')`,
   )
     .bind(noteId, userId)
     .run();
@@ -493,7 +515,7 @@ export async function recordSentNoteOpened(
   }
 }
 
-type SentNoteLifecycleEvent = "opened" | "destroyed" | "opened_destroyed" | "expired";
+type SentNoteLifecycleEvent = "opened" | "destroyed" | "opened_destroyed" | "expired" | "attachment_downloaded";
 
 async function sendSentNoteLifecycleEmail(
   env: Env,
@@ -531,12 +553,16 @@ async function sendSentNoteLifecycleEmail(
       ? "opened_notified_at = ?"
       : event === "opened_destroyed"
         ? "opened_notified_at = ?, destroyed_notified_at = ?"
+        : event === "attachment_downloaded"
+          ? "attachment_downloaded_notified_at = ?"
         : "destroyed_notified_at = ?";
   const whereClause =
     event === "opened"
       ? "opened_notified_at IS NULL"
       : event === "opened_destroyed"
         ? "opened_notified_at IS NULL AND destroyed_notified_at IS NULL"
+        : event === "attachment_downloaded"
+          ? "attachment_downloaded_notified_at IS NULL"
         : "destroyed_notified_at IS NULL";
   const bindValues =
     event === "opened_destroyed" ? [eventAt, eventAt, noteId] : [eventAt, noteId];
@@ -557,20 +583,31 @@ async function sendSentNoteLifecycleEmail(
   const eventLabel =
     event === "opened_destroyed"
       ? "opened and destroyed"
+      : event === "attachment_downloaded"
+        ? "attachment downloaded"
       : event === "expired"
         ? "expired"
         : event;
-  const subject = `PrivateNote: your note "${label}" was ${eventLabel}`;
+  const subject =
+    event === "attachment_downloaded"
+      ? `PrivateNote: your file "${label}" was downloaded`
+      : `PrivateNote: your note "${label}" was ${eventLabel}`;
   const explanatoryLine =
     event === "opened"
       ? "This is proof the link was accessed, not that the recipient read or understood the content."
+      : event === "attachment_downloaded"
+        ? "This confirms the encrypted attachment was requested for download. PrivateNote cannot see the decrypted file contents."
       : event === "expired"
         ? "This means the note can no longer be opened because its expiry time passed."
         : event === "opened_destroyed"
           ? "This means the link was accessed and the note can no longer be opened."
           : "This means the note can no longer be opened because its read limit was reached.";
+  const textIntro =
+    event === "attachment_downloaded"
+      ? `Your encrypted file "${label}" was downloaded.`
+      : `Your secure note "${label}" was ${eventLabel}.`;
   const text = [
-    `Your secure note "${label}" was ${eventLabel}.`,
+    textIntro,
     `Time: ${eventAt}`,
     countryLine,
     deviceLine,
@@ -588,6 +625,8 @@ async function sendSentNoteLifecycleEmail(
         ? "opened_notified_at = NULL"
         : event === "opened_destroyed"
           ? "opened_notified_at = NULL, destroyed_notified_at = NULL"
+          : event === "attachment_downloaded"
+            ? "attachment_downloaded_notified_at = NULL"
           : "destroyed_notified_at = NULL";
     await env.AUTH_DB!.prepare(`UPDATE sent_notes SET ${resetClause} WHERE note_id = ?`)
       .bind(noteId)

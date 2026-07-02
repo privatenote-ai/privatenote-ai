@@ -306,6 +306,7 @@ function PremiumSectionFooter({ children }: { children: React.ReactNode }) {
 export type NoteSettingsPanelProps = {
   /** inline = accordion on create page; overlay = inside sheet/modal experiment */
   presentation?: "inline" | "overlay";
+  variant?: "note" | "file-transfer";
   showAdvancedOptions: boolean;
   password: string;
   setPassword: (p: string) => void;
@@ -341,6 +342,7 @@ export type NoteSettingsPanelProps = {
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   presentation = "inline",
+  variant = "note",
   showAdvancedOptions,
   password,
   setPassword,
@@ -374,6 +376,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setFileAccessWindowSeconds,
 }) => {
   const { t, language } = useLanguage();
+  const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
   const preferencesHref = localizedPath("/account/preferences", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
@@ -388,6 +391,18 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     }),
     [t],
   );
+  const recipientLockTitle = isFileTransfer
+    ? "Only this email can open"
+    : t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email";
+  const recipientLockInfo = isFileTransfer
+    ? "Lock this transfer to one recipient email before the encrypted file can be opened."
+    : t.settingsDeliveryRestrictEmailInfo ?? "Only the intended recipient can reveal the note.";
+  const recipientCodeTitle = isFileTransfer
+    ? "Require recipient code"
+    : t.settingsDeliveryVerifyEmail ?? "Require email verification";
+  const recipientCodeInfo = isFileTransfer
+    ? "Generate a one-time code for the sender to share separately. The recipient must enter it before the file opens."
+    : t.settingsDeliveryVerifyEmailInfo ?? "Verify the recipient before the note is shown.";
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
@@ -751,10 +766,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading
                 id="note-delivery-verification-heading"
-                title={t.settingsDeliveryVerification ?? "Delivery & verification"}
+                title={isFileTransfer ? "Recipient verification" : t.settingsDeliveryVerification ?? "Delivery & verification"}
                 showPremiumBadge={!isPremiumUser}
                 premiumLabel={t.premium ?? "Premium"}
               />
+              {isFileTransfer ? (
+                <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  Make the transfer link less generic: bind it to a recipient email, add a sender-held code, or use both.
+                </p>
+              ) : null}
               <SettingsOptionList>
                 <SettingsToggleRow
                   id="restrict-recipient-email"
@@ -764,18 +784,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setRestrictRecipientEmail(checked);
                     if (!checked) setRecipientEmail("");
                   }}
-                  title={t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email"}
-                  info={
-                    t.settingsDeliveryRestrictEmailInfo ??
-                    "Only the intended recipient can reveal the note."
-                  }
+                  title={recipientLockTitle}
+                  info={recipientLockInfo}
                   onLockedClick={
                     isPremiumUser ? undefined : () =>
                       setSelectedPremiumFeature({
-                        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
-                        description:
-                          t.settingsDeliveryRestrictEmailInfo ??
-                          "Only the intended recipient can reveal the note.",
+                        title: recipientLockTitle,
+                        description: recipientLockInfo,
                       })
                   }
                 />
@@ -784,21 +799,29 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   locked={!isPremiumUser}
                   checked={requireRecipientVerification}
                   onCheckedChange={setRequireRecipientVerification}
-                  title={t.settingsDeliveryVerifyEmail ?? "Require email verification"}
-                  info={
-                    t.settingsDeliveryVerifyEmailInfo ??
-                    "Verify the recipient before the note is shown."
-                  }
+                  title={recipientCodeTitle}
+                  info={recipientCodeInfo}
                   onLockedClick={
                     isPremiumUser ? undefined : () =>
                       setSelectedPremiumFeature({
-                        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
-                        description:
-                          t.settingsDeliveryVerifyEmailInfo ??
-                          "Verify the recipient before the note is shown.",
+                        title: recipientCodeTitle,
+                        description: recipientCodeInfo,
                       })
                   }
                 />
+                {isFileTransfer ? (
+                  <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
+                    <Shield
+                      className={`h-4 w-4 shrink-0 ${requireRecipientVerification ? "text-primary" : "text-gray-400 dark:text-gray-500"}`}
+                      aria-hidden
+                    />
+                    <span className="min-w-0">
+                      {requireRecipientVerification
+                        ? "Verification code will be shown to sender after upload"
+                        : "Enable recipient code to show the sender a verification code after upload"}
+                    </span>
+                  </div>
+                ) : null}
                 <SettingsToggleRow
                   locked
                   title={brandedRevealFeature.title}
@@ -824,8 +847,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                   />
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsRecipientEmailHint ??
-                      "The recipient must enter this email before the note can be revealed."}
+                    {isFileTransfer
+                      ? "The recipient must enter this exact email before the encrypted file can be opened."
+                      : t.settingsRecipientEmailHint ??
+                        "The recipient must enter this email before the note can be revealed."}
                   </p>
                 </div>
               ) : null}

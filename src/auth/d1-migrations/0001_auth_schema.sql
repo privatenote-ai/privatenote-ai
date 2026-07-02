@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS sent_notes (
   open_device_class TEXT,
   open_browser TEXT,
   attachment_downloaded_at TEXT,
+  attachment_downloaded_notified_at TEXT,
   notification_deleted_at TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

@@ -53,11 +53,13 @@ import {
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
 import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
 import {
   getRecipientGateStatus,
+  getSentNoteByNoteId,
   insertSentNote,
   isRecipientVerified,
   noteRequiresRecipientVerification,
@@ -65,6 +67,7 @@ import {
   recipientVerifiedCookieHeader,
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
+  revokeSentNote,
   verifyRecipientAccess,
 } from "./sentNotesService";
 
@@ -3347,8 +3350,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       bindings.push(body.emailNotifications ? 1 : 0);
     }
     if (typeof body.preferredLanguage === "string") {
-      const preferredLanguage = body.preferredLanguage.trim().toLowerCase();
-      if (!["en", "de", "fr", "es"].includes(preferredLanguage)) {
+      const preferredLanguage = body.preferredLanguage.trim().toLowerCase().split("-")[0];
+      if (!isSupportedLanguage(preferredLanguage)) {
         return jsonResponse({ message: "Unsupported language" }, 400, request);
       }
       updates.push("preferred_language = ?");
@@ -8245,7 +8248,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (accessError) return accessError;
     if (chunkIndex === 0) {
       try {
-        await recordSentNoteAttachmentDownloaded(env, id);
+        await recordSentNoteAttachmentDownloaded(
+          env,
+          id,
+          request,
+          async (to, subject, text, html) => {
+            const result = await sendEmail(env, { to, subject, text, html });
+            if (!result.ok) throw new Error(result.error ?? "Email send failed");
+            return result;
+          },
+        );
       } catch (error) {
         console.warn("[SENT_NOTES] Failed to record attachment download:", error);
       }
@@ -8802,6 +8814,42 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }
 
+  const noteSenderStatusParams = parsePathParams(pathname, "/api/notes/:id/sender-status");
+  if (noteSenderStatusParams && method === "GET") {
+    const { id } = noteSenderStatusParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note id" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "sent_note_status_unavailable" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Authentication required" }, 401, request);
+    }
+    const row = await getSentNoteByNoteId(env, id);
+    if (!row || row.user_id !== session.id) {
+      return jsonResponse({ error: "Not found" }, 404, request);
+    }
+    return jsonResponse(
+      {
+        ok: true,
+        status: {
+          noteId: row.note_id,
+          status: row.status,
+          createdAt: row.created_at,
+          openedAt: row.opened_at,
+          attachmentDownloadedAt: row.attachment_downloaded_at,
+          expiresAt: row.expires_at,
+          destroyedAt: row.destroyed_at,
+          revokedAt: row.revoked_at,
+        },
+      },
+      200,
+      request,
+    );
+  }
+
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
   if (noteParams && (method === "GET" || method === "DELETE")) {
     const { id } = noteParams;
@@ -8814,6 +8862,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
     if (method === "DELETE" && (doResponse.ok || doResponse.status === 404)) {
       await cleanupNoteFileChunks(env, id, `note delete returned ${doResponse.status}`);
+      try {
+        const session = await getSessionFromRequest(env, request, { rotate: false });
+        if (session?.id) {
+          await revokeSentNote(env, session.id, id);
+        }
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to revoke sent-note record after delete:", error);
+      }
     }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }

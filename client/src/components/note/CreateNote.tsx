@@ -1515,6 +1515,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           expiryValue,
           readCount,
           isPasswordProtected,
+          localLabel:
+            applyNoteLabel ||
+            (isFileTransferMode && selectedFile ? selectedFile.name.slice(0, 120) : undefined),
+          deliveryTrackingEnabled: tracksDelivery,
           recipientVerificationCode:
             typeof recipientVerificationCode === "string"
               ? recipientVerificationCode
@@ -2466,6 +2470,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               }
             >
               <NoteSettingsPanel
+                variant={isFileTransferMode ? "file-transfer" : "note"}
                 showAdvancedOptions={showAdvancedOptions}
                 password={password}
                 setPassword={setPassword}
@@ -2749,6 +2754,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             isMobile={isMobile}
             settings={{
               password,
+              variant: isFileTransferMode ? "file-transfer" : "note",
               setPassword,
               showPassword,
               setShowPassword,

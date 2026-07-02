@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import { FileCheck, FileLock2, FolderArchive, ShieldCheck } from "lucide-react";
+import { FileCheck, FileLock2, FolderArchive, ShieldCheck, ShieldOff } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -25,7 +25,13 @@ const SecureFileTransfer: React.FC = () => {
     { icon: FileLock2, title: t.sftFeatureEncryptionTitle, text: t.sftFeatureEncryptionText },
     { icon: FolderArchive, title: t.sftFeatureFolderTitle, text: t.sftFeatureFolderText },
     { icon: ShieldCheck, title: t.sftFeatureAccessTitle, text: t.sftFeatureAccessText },
+    {
+      icon: ShieldCheck,
+      title: "Recipient verification",
+      text: "Premium senders can lock a transfer to one email, require a recipient code, and see the generated code after upload.",
+    },
     { icon: FileCheck, title: t.sftFeatureSignInTitle, text: t.sftFeatureSignInText },
+    { icon: ShieldOff, title: t.sftFeatureNoScanTitle, text: t.sftFeatureNoScanText },
   ];
 
   const faqs = [
@@ -35,6 +41,7 @@ const SecureFileTransfer: React.FC = () => {
     { q: t.sftFaq4Q, a: t.sftFaq4A },
     { q: t.sftFaq5Q, a: t.sftFaq5A },
     { q: t.sftFaq6Q, a: t.sftFaq6A },
+    { q: t.sftFaq7Q, a: t.sftFaq7A },
   ];
 
   useEffect(() => {
