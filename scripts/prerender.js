@@ -16,7 +16,7 @@ import {
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
-import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
+import { isPublicMarketingPath } from "../shared/publicMarketingPaths.ts";
 import {
   getChangedFiles,
   restoreHtmlCache,
@@ -137,25 +137,35 @@ function uniq(arr) {
 }
 
 async function discoverRoutesFromSitemapOrFallback() {
+  const marketingRoutes = uniq(FALLBACK_ROUTES);
+  let sitemapRoutes = [];
+
   try {
     const xml = await fetchText(SITEMAP_URL);
-    // Simple loc extraction (no external deps)
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map((m) => m[1].trim());
-
-    const paths = locs
-      .map((loc) => normalizeRoutePath(loc, PREVIEW_URL))
-      .filter(Boolean);
-
-    const unique = uniq(paths);
-    if (unique.length > 0) {
-      console.log(`🧭 Found ${unique.length} route(s) from sitemap.`);
-      return unique;
-    }
-    console.warn("🧭 Found 0 route(s) from sitemap (empty after normalization). Using fallback.");
+    sitemapRoutes = uniq(
+      locs.map((loc) => normalizeRoutePath(loc, PREVIEW_URL)).filter(Boolean),
+    );
   } catch (e) {
-    console.warn(`🧭 Could not read sitemap: ${e?.message || e}. Using fallback.`);
+    console.warn(`🧭 Could not read sitemap: ${e?.message || e}. Using marketing path list only.`);
   }
-  return uniq(FALLBACK_ROUTES);
+
+  const merged = uniq([...sitemapRoutes, ...marketingRoutes]);
+  if (merged.length === 0) return marketingRoutes;
+
+  const addedFromMarketing = marketingRoutes.filter((route) => !sitemapRoutes.includes(route));
+  console.log(
+    `🧭 Prerender routes: ${merged.length} total (${sitemapRoutes.length} sitemap` +
+      `${addedFromMarketing.length ? ` + ${addedFromMarketing.length} from publicMarketingPaths` : ""}).`,
+  );
+  if (addedFromMarketing.length > 0) {
+    console.warn(
+      "🧭 Sitemap is missing marketing routes (update client/public/sitemap.xml):\n" +
+        addedFromMarketing.slice(0, 12).map((route) => `   - ${route}`).join("\n") +
+        (addedFromMarketing.length > 12 ? `\n   … and ${addedFromMarketing.length - 12} more` : ""),
+    );
+  }
+  return merged;
 }
 
 // -------------------------------
@@ -216,14 +226,7 @@ function postProcessHTML(html, route) {
     /(<meta\s+(?:property="og:image"|name="twitter:image")\s+content=")\/([^"]+)"/gi,
     `$1${PUBLIC_SITE_ORIGIN}/$2"`,
   );
-  const isPublicSitemapRoute =
-    route === "/" ||
-    /^\/(de|fr|es|it|nl)(\/|$)/.test(route) ||
-    /^\/(about|blog|contact|developers|how-it-works|password-generator|privacy|privacy-tools|security-resources|terms)(\/|$)/.test(
-      route,
-    ) ||
-    /^\/blog\//.test(route) ||
-    /^\/security-guides\//.test(route);
+  const isPublicSitemapRoute = isPublicMarketingPath(route);
 
   // React may snapshot canonical/og:url with a trailing slash; crawlers need the 200 URL shape.
   out = out.replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/gi, "");

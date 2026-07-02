@@ -44,6 +44,7 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "fr/contact.html", mustContain: "Contact" },
   { file: "de/developers.html", mustContain: "Entwickler" },
   { file: "blog/how-we-generate-passwords.html", mustContain: "password" },
+  { file: "blog/encrypted-vs-secure-file-sharing.html", mustContain: "Encrypted" },
 ];
 
 function exists(p) {

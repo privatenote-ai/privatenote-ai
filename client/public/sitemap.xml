@@ -44,6 +44,7 @@
     <priority>0.9</priority>
   </url>
   <url><loc>https://privatenote.ai/de/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/de/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/de/privacy-tools</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/security-resources</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/how-it-works</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -59,9 +60,11 @@
   <url><loc>https://privatenote.ai/de/blog/workplace-texts-private-note</loc><lastmod>2026-05-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/privatenote-for-developers</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/privatenote-codex</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/de/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/privacy</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/de/terms</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/fr/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/fr/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/fr/privacy-tools</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/security-resources</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/how-it-works</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -77,9 +80,11 @@
   <url><loc>https://privatenote.ai/fr/blog/workplace-texts-private-note</loc><lastmod>2026-05-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/privatenote-for-developers</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/privatenote-codex</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/fr/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/privacy</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/fr/terms</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/es/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/es/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/es/privacy-tools</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/security-resources</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/how-it-works</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -95,9 +100,11 @@
   <url><loc>https://privatenote.ai/es/blog/workplace-texts-private-note</loc><lastmod>2026-05-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/privatenote-for-developers</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/privatenote-codex</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/es/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/privacy</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/es/terms</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/it/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/it/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/it/privacy-tools</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/security-resources</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/how-it-works</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -113,9 +120,11 @@
   <url><loc>https://privatenote.ai/it/blog/workplace-texts-private-note</loc><lastmod>2026-05-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/privatenote-for-developers</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/privatenote-codex</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/it/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/privacy</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/it/terms</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/nl/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://privatenote.ai/nl/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/nl/privacy-tools</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/security-resources</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/how-it-works</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -131,6 +140,7 @@
   <url><loc>https://privatenote.ai/nl/blog/workplace-texts-private-note</loc><lastmod>2026-05-08</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/privatenote-for-developers</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/privatenote-codex</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/nl/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/privacy</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://privatenote.ai/nl/terms</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url>
@@ -172,6 +182,12 @@
   <url>
     <loc>https://privatenote.ai/password-generator</loc>
     <lastmod>2026-04-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://privatenote.ai/secure-file-transfer</loc>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -268,6 +284,12 @@
   <url>
     <loc>https://privatenote.ai/blog/privatenote-codex</loc>
     <lastmod>2026-05-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://privatenote.ai/blog/encrypted-vs-secure-file-sharing</loc>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
