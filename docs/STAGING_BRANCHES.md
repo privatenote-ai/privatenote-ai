@@ -31,7 +31,8 @@ Ephemeral PR previews (`feat--xyz.privatenote-ai.pages.dev`) stay on the **previ
 ## Deploy
 
 1. **GitHub Actions** — push to `premium` or `develop` runs `.github/workflows/deploy-pages-staging.yml` (same build as `main`, deploys to that branch name).
-2. **Cloudflare Pages (optional)** — if the project is connected to Git, enable branch builds for `premium` and `develop` so dashboard deploys match.
+2. **Pull requests** — opening a PR to `main` or `develop` runs `.github/workflows/pr-check.yml` (full `build:prerender` + unit tests, no deploy).
+3. **Cloudflare Pages (optional)** — if the project is connected to Git, enable branch builds for `premium` and `develop` so dashboard deploys match.
 
 ## One-time Cloudflare checklist (required for full auth / Turnstile)
 
@@ -73,5 +74,7 @@ git merge main         # or cherry-pick features
 git push origin develop
 # Wait for GitHub Action → open https://develop.privatenote-ai.pages.dev
 ```
+
+Open a PR to `develop` or `main` to run the PR check workflow before merge.
 
 Merge to `main` only after staging checks pass.
