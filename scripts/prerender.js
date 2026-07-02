@@ -16,7 +16,10 @@ import {
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
-import { isPublicMarketingPath } from "../shared/publicMarketingPaths.ts";
+import {
+  isPublicMarketingPath,
+  PUBLIC_MARKETING_PATHS,
+} from "../shared/publicMarketingPaths.ts";
 import {
   getChangedFiles,
   restoreHtmlCache,
