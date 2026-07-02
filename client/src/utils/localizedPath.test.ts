@@ -34,5 +34,15 @@ describe("localizedPath", () => {
       localizedPath("/blog/how-we-generate-passwords", "de"),
       "/de/blog/how-we-generate-passwords",
     );
+    assert.equal(
+      localizedPath("/blog/encrypted-vs-secure-file-sharing", "it"),
+      "/it/blog/encrypted-vs-secure-file-sharing",
+    );
+  });
+
+  it("localizes secure file transfer", () => {
+    assert.equal(localizedPath("/secure-file-transfer", "en"), "/secure-file-transfer");
+    assert.equal(localizedPath("/secure-file-transfer", "de"), "/de/secure-file-transfer");
+    assert.equal(localizedPath("/secure-file-transfer", "it"), "/it/secure-file-transfer");
   });
 });

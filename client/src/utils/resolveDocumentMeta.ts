@@ -139,6 +139,11 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(t.passwordGenerator),
         description: t.passwordGeneratorSubtitle,
       };
+    case "secure-file-transfer":
+      return {
+        title: buildDocumentTitle(t.shareFile),
+        description: t.sftHeroSubtitle,
+      };
     case "privacy-tools":
       return {
         title: buildDocumentTitle(t.documentMetaPrivacyToolsTitle),

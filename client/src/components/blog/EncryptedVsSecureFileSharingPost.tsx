@@ -34,7 +34,7 @@ type ArticleCopy = {
   relatedReading: string;
 };
 
-const heroImagePath = "/images/blog-encrypted-file-sharing-hero.png";
+const heroImagePath = "/images/blog-encrypted-file-sharing-hero.jpg";
 
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
