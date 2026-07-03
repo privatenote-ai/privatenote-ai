@@ -5,6 +5,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { workplaceTextsHr } from "@/components/blog/locale/workplaceTexts.hr";
+import { workplaceTextsSr } from "@/components/blog/locale/workplaceTexts.sr";
 
 type ArticleCopy = {
   sourceLabel: string;
@@ -269,11 +272,13 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       "Las herramientas de privacidad funcionan mejor cuando se adoptan antes del problema. Usa comunicación efímera para secretos, instrucciones de un solo uso y contexto breve que no debería convertirse en historial laboral permanente.",
     ctaButton: "Escribir una nota privada",
   },
+  hr: workplaceTextsHr,
+  sr: workplaceTextsSr,
 };
 
 export const WorkplaceTextsPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogPath = localizedPath("/blog", language);
   const notePath = localizedPath("/", language);
 

@@ -196,6 +196,30 @@ describe("SecureNoteStorageSql (mock SQLite)", () => {
     assert.equal(store.cipher.size, 0);
   });
 
+  it("stores readerLanguage metadata and returns it on meta GET and reveal", async () => {
+    const store = createMockStorage();
+    const dox = new SecureNoteStorageSql(makeDurableState(store));
+
+    let res = await dox.fetch(
+      new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createBody({ readerLanguage: "fr" })),
+      }),
+    );
+    assert.equal(res.status, 201);
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, { method: "GET" }));
+    assert.equal(res.status, 200);
+    const meta = (await readJson(res)) as { readerLanguage?: string };
+    assert.equal(meta.readerLanguage, "fr");
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}/reveal`, { method: "POST" }));
+    assert.equal(res.status, 200);
+    const reveal = (await readJson(res)) as { readerLanguage?: string };
+    assert.equal(reveal.readerLanguage, "fr");
+  });
+
   it("max_reads 0 allows multiple reveals until expiry", async () => {
     const store = createMockStorage();
     const dox = new SecureNoteStorageSql(makeDurableState(store));

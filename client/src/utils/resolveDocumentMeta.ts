@@ -142,6 +142,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogChatSecretsMetaTitle),
         description: t.blogChatSecretsMetaDescription,
       };
+    case "what-is-end-to-end-encryption":
+      return {
+        title: buildDocumentTitle(t.blogE2eeDefinitionMetaTitle),
+        description: t.blogE2eeDefinitionMetaDescription,
+      };
     default:
       return null;
   }

@@ -4,6 +4,7 @@ import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "what-is-end-to-end-encryption": "2026-07-03T16:00:00.000Z",
   "secrets-never-send-in-chat": "2026-07-03T14:00:00.000Z",
   "send-secret-message-without-account": "2026-07-03T12:00:00.000Z",
   "encrypted-vs-secure-file-sharing": "2026-07-01T12:00:00.000Z",
@@ -20,6 +21,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
 const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "what-is-end-to-end-encryption": 7,
   "secrets-never-send-in-chat": 7,
   "send-secret-message-without-account": 7,
   "encrypted-vs-secure-file-sharing": 6,
@@ -73,6 +75,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -12,
+      title: t.blogE2eeDefinitionTitle,
+      excerpt: t.blogE2eeDefinitionExcerpt,
+      author: "PrivateNote.ai",
+      slug: "what-is-end-to-end-encryption",
+      publishedAt: at("what-is-end-to-end-encryption"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("what-is-end-to-end-encryption"),
+      updatedAt: at("what-is-end-to-end-encryption"),
+    },
     {
       id: -11,
       title: t.blogChatSecretsTitle,

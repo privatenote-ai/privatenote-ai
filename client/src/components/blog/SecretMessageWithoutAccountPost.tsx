@@ -7,6 +7,9 @@ import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { secretMessageWithoutAccountHr } from "@/components/blog/locale/secretMessageWithoutAccount.hr";
+import { secretMessageWithoutAccountSr } from "@/components/blog/locale/secretMessageWithoutAccount.sr";
 
 const heroImagePath = "/images/blog-secret-message-no-account-hero.png";
 const heroArtistUrl =
@@ -343,12 +346,14 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       },
     ],
   },
+  hr: secretMessageWithoutAccountHr,
+  sr: secretMessageWithoutAccountSr,
 };
 
 export const SecretMessageWithoutAccountPost: React.FC = () => {
   const { t, language } = useLanguage();
   const howItWorksPath = localizedPath("/how-it-works", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogHref = (slug: string) => blogPostPath(slug, language);
   const resolveLink = (href: string) => {
     if (href.startsWith("blog:")) {

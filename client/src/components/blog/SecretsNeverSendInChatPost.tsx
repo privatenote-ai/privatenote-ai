@@ -26,60 +26,22 @@ import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { secretsNeverSendInChatHr } from "@/components/blog/locale/secretsNeverSendInChat.hr";
+import { secretsNeverSendInChatSr } from "@/components/blog/locale/secretsNeverSendInChat.sr";
+import type {
+  SecretsNeverSendInChatArticleCopy,
+  SecretsNeverSendInChatCheatSheetRow,
+  SecretsNeverSendInChatFaqEntry,
+  SecretsNeverSendInChatSecretEntry,
+} from "@/components/blog/locale/secretsNeverSendInChat.types";
 
 const chatScreenshotPath = "/images/blog-chat-passwords-in-slack.jpg";
 
-type CheatSheetRow = {
-  neverSend: string;
-  risk: string;
-  better: string;
-};
-
-type SecretEntry = {
-  title: string;
-  paragraphs: string[];
-  bullets?: string[];
-  instead: string;
-};
-
-type FaqEntry = {
-  question: string;
-  answer: string;
-};
-
-type ArticleCopy = {
-  intro: string[];
-  chatScreenshotCaption: string;
-  cheatSheetTitle: string;
-  cheatSheetHeaders: [string, string, string];
-  cheatSheetRows: CheatSheetRow[];
-  whyChatTitle: string;
-  whyChatParagraphs: string[];
-  lifetimeTitle: string;
-  lifetimeIntro: string;
-  chatWorkflowLabel: string;
-  chatWorkflowSteps: string[];
-  chatWorkflowOutcome: string;
-  privateNoteWorkflowLabel: string;
-  privateNoteWorkflowSteps: string[];
-  privateNoteWorkflowOutcome: string;
-  secretsTitle: string;
-  secrets: SecretEntry[];
-  lifespanTitle: string;
-  lifespanParagraphs: string[];
-  lifespanBullets: string[];
-  underHoodTitle: string;
-  underHoodParagraphs: string[];
-  faqTitle: string;
-  faq: FaqEntry[];
-  referencesTitle: string;
-  references: string[];
-  closingTitle: string;
-  closingBody: string[];
-  tagline: string;
-  relatedReading: string;
-  relatedPosts: { slug: string; blurb: string }[];
-};
+type ArticleCopy = SecretsNeverSendInChatArticleCopy;
+type CheatSheetRow = SecretsNeverSendInChatCheatSheetRow;
+type SecretEntry = SecretsNeverSendInChatSecretEntry;
+type FaqEntry = SecretsNeverSendInChatFaqEntry;
 
 const BLOG_TITLE_BY_SLUG: Record<string, (t: Translations) => string> = {
   "send-secret-message-without-account": (t) => t.blogSecretNoAccountTitle,
@@ -234,12 +196,7 @@ function SecretCard({
   );
 }
 
-const CHEAT_SHEET_ROW_ICONS: Record<string, LucideIcon> = {
-  Passwords: KeyRound,
-  "Recovery codes": Shield,
-  "API keys": Code2,
-  Documents: FileText,
-};
+const CHEAT_SHEET_ROW_ICONS: LucideIcon[] = [KeyRound, Shield, Code2, FileText];
 
 function CheatSheetTable({
   title,
@@ -281,8 +238,8 @@ function CheatSheetTable({
       </div>
 
       <div className="divide-y divide-gray-100 dark:divide-gray-800/90">
-        {rows.map((row) => {
-          const RowIcon = CHEAT_SHEET_ROW_ICONS[row.neverSend] ?? KeyRound;
+        {rows.map((row, index) => {
+          const RowIcon = CHEAT_SHEET_ROW_ICONS[index] ?? KeyRound;
 
           return (
             <div
@@ -806,13 +763,15 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       },
     ],
   },
+  hr: secretsNeverSendInChatHr,
+  sr: secretsNeverSendInChatSr,
 };
 
 export const SecretsNeverSendInChatPost: React.FC = () => {
   const { t, language } = useLanguage();
   const howItWorksPath = localizedPath("/how-it-works", language);
   const homePath = localizedPath("/", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogHref = (slug: string) => blogPostPath(slug, language);
   const resolveLink = (href: string) => {
     if (href.startsWith("blog:")) {

@@ -112,6 +112,18 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.equal(p!.kdfParams, undefined);
   });
 
+  it("accepts supported reader language metadata", () => {
+    const raw = JSON.stringify(basePayload({ readerLanguage: "fr" }));
+    const p = parseStoredNoteCiphertextForReveal(raw);
+    assert.ok(p);
+    assert.equal(p!.readerLanguage, "fr");
+  });
+
+  it("rejects unsupported reader language metadata", () => {
+    const raw = JSON.stringify(basePayload({ readerLanguage: "ja" }));
+    assert.equal(parseStoredNoteCiphertextForReveal(raw), null);
+  });
+
   it("accepts password-protected payload with v2 kdfParams", () => {
     const raw = JSON.stringify(
       basePayload({

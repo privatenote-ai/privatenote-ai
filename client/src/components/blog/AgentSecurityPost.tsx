@@ -5,6 +5,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { agentSecurityHr } from "@/components/blog/locale/agentSecurity.hr";
+import { agentSecuritySr } from "@/components/blog/locale/agentSecurity.sr";
 
 type BulletItem = {
   label: string;
@@ -586,12 +589,14 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       body: "En PrivateNote.ai, creemos que proteger el contexto se vuelve tan importante como proteger los datos en sí. A medida que los sistemas de IA acceden a más notas personales, conocimiento empresarial y flujos operativos, la seguridad debe ir más allá del almacenamiento y el cifrado para incluir la información que los agentes consumen, recuerdan y sobre la que actúan.",
     },
   },
+  hr: agentSecurityHr,
+  sr: agentSecuritySr,
 };
 
 export const AgentSecurityPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
 
   return (
     <div className={blogPostPageClass}>

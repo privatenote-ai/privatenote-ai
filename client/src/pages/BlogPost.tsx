@@ -19,6 +19,7 @@ import { OneTimeSecretLinksPost } from '@/components/blog/OneTimeSecretLinksPost
 import { EncryptedVsSecureFileSharingPost } from '@/components/blog/EncryptedVsSecureFileSharingPost';
 import { SecretMessageWithoutAccountPost } from '@/components/blog/SecretMessageWithoutAccountPost';
 import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendInChatPost';
+import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncryptionDefinitionPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -101,6 +102,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'secrets-never-send-in-chat') {
     return <SecretsNeverSendInChatPost />;
+  }
+  if (slug === 'what-is-end-to-end-encryption') {
+    return <EndToEndEncryptionDefinitionPost />;
   }
 
   if (error) {

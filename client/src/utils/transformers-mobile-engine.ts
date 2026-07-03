@@ -7,6 +7,7 @@ import {
   pipeline,
 } from "@huggingface/transformers";
 import type { ModelLoadProgress } from "./clientLLM";
+import { localAiLoadingPrivateLabel, localAiReadyToGenerateLabel } from "./localAiUxText";
 
 type ProgressCallback = (progress: ModelLoadProgress) => void;
 
@@ -201,13 +202,13 @@ function configureTransformersEnv(): void {
 
 function mapTransformersProgress(status: Record<string, unknown>): ModelLoadProgress | null {
   if (status.status === "ready") {
-    return { progress: 100, text: "Ready to generate" };
+    return { progress: 100, text: localAiReadyToGenerateLabel() };
   }
 
   if (typeof status.progress === "number") {
     return {
       progress: Math.round(Math.min(1, Math.max(0, status.progress)) * 100),
-      text: "Loading private AI…",
+      text: localAiLoadingPrivateLabel(),
     };
   }
 
@@ -217,7 +218,7 @@ function mapTransformersProgress(status: Record<string, unknown>): ModelLoadProg
         typeof status.progress === "number"
           ? Math.round(Math.min(1, Math.max(0, status.progress)) * 100)
           : 0,
-      text: "Loading private AI…",
+      text: localAiLoadingPrivateLabel(),
     };
   }
 
@@ -447,13 +448,13 @@ export async function initializeTransformersGemma4Text(
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
   if (gemma4InitInFlight) {
     await gemma4InitInFlight;
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
@@ -526,7 +527,7 @@ export async function initializeTransformersGemma4Text(
           backend: attempt.label,
           note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
         });
-        onProgress?.({ progress: 100, text: "Ready to generate" });
+        onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
         return;
       } catch (error) {
         lastError = error;
@@ -600,7 +601,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
@@ -610,7 +611,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
@@ -678,7 +679,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
           backend: attempt.label,
           note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
         });
-        onProgress?.({ progress: 100, text: "Ready to generate" });
+        onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
         return;
       } catch (error) {
         lastError = error;

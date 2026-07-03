@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@/utils/translation";
+import { getTranslations, type SupportedLanguage } from "@/utils/translation";
 import type { ModelTier } from "@shared/modelTier";
 import type {
   PromptTemplate,
@@ -570,13 +570,67 @@ export const PROMPT_TEMPLATE_FIELD_OVERRIDES: Partial<
   es: ES,
 };
 
+const PROMPT_TEMPLATE_KEY_PREFIX: Record<string, string> = {
+  "ask-anything": "AskAnything",
+  "thank-you": "ThankYou",
+  "meeting-request": "MeetingRequest",
+  birthday: "Birthday",
+  apology: "Apology",
+  love: "Love",
+  congratulations: "Congratulations",
+  farewell: "Farewell",
+  invitation: "Invitation",
+  condolence: "Condolence",
+  reminder: "Reminder",
+  "document-summary": "DocumentSummary",
+  "privacy-check": "PrivacyCheck",
+};
+
+function patchFromTranslationKeys(
+  t: Record<string, string>,
+  prefix: string,
+): PromptTemplateFieldPatch | null {
+  const name = t[`promptTpl${prefix}Name`];
+  if (typeof name !== "string" || !name.trim()) return null;
+  const patch: PromptTemplateFieldPatch = { name };
+  const description = t[`promptTpl${prefix}Description`];
+  if (typeof description === "string" && description.trim()) patch.description = description;
+  const userTemplate = t[`promptTpl${prefix}UserTemplate`];
+  if (typeof userTemplate === "string" && userTemplate.trim()) patch.userTemplate = userTemplate;
+  const modelGuidance = t[`promptTpl${prefix}ModelGuidance`];
+  if (typeof modelGuidance === "string" && modelGuidance.trim()) patch.modelGuidance = modelGuidance;
+  const smallModelGuidance = t[`promptTpl${prefix}SmallModelGuidance`];
+  if (typeof smallModelGuidance === "string" && smallModelGuidance.trim()) {
+    patch.smallModelGuidance = smallModelGuidance;
+  }
+  const promptPlaceholder = t[`promptTpl${prefix}PromptPlaceholder`];
+  if (typeof promptPlaceholder === "string" && promptPlaceholder.trim()) {
+    patch.promptPlaceholder = promptPlaceholder;
+  }
+  return patch;
+}
+
+function buildPromptTemplateOverridesFromTranslations(
+  language: SupportedLanguage,
+): Record<string, PromptTemplateFieldPatch> {
+  const t = getTranslations(language);
+  const out: Record<string, PromptTemplateFieldPatch> = {};
+  for (const [id, prefix] of Object.entries(PROMPT_TEMPLATE_KEY_PREFIX)) {
+    const patch = patchFromTranslationKeys(t, prefix);
+    if (patch) out[id] = patch;
+  }
+  return out;
+}
+
 export function mergePromptTemplatesForLanguage(
   base: readonly PromptTemplate[],
   language: SupportedLanguage,
 ): PromptTemplate[] {
   if (language === "en") return [...base];
-  const ov = PROMPT_TEMPLATE_FIELD_OVERRIDES[language];
-  if (!ov) return [...base];
+  const ov =
+    PROMPT_TEMPLATE_FIELD_OVERRIDES[language] ??
+    buildPromptTemplateOverridesFromTranslations(language);
+  if (Object.keys(ov).length === 0) return [...base];
   return base.map((t) => ({ ...t, ...(ov[t.id] ?? {}) }));
 }
 
@@ -585,11 +639,16 @@ const SENTENCE_SUFFIX: Localized<(label: string) => string> = {
   de: (label) => ` Schreibe (${label}) Sätze.`,
   fr: (label) => ` Écris (${label}) phrases.`,
   es: (label) => ` Escribe (${label}) frases.`,
+  hr: (label) => ` Napišite (${label}) rečenice.`,
+  sr: (label) => ` Napišite (${label}) rečenice.`,
+  pt: (label) => ` Escreva (${label}) frases.`,
+  it: (label) => ` Scrivi (${label}) frasi.`,
+  nl: (label) => ` Schrijf (${label}) zinnen.`,
 };
 
 /** Matches any supported locale’s sentence-length suffix at end of prompt. */
 export const SENTENCE_LENGTH_USER_SUFFIX_ANY_LOCALE =
-  /\s*(?:Write|Schreibe|Écris|Escribe) \([^)]+\) (?:of sentences|Sätze|phrases|frases)\.$/;
+  /\s*(?:Write|Schreibe|Écris|Escribe|Napišite|Scrivi|Schrijf|Escreva) \([^)]+\) (?:of sentences|Sätze|phrases|frases|frasi|zinnen|rečenice)\.$/;
 
 const LEGACY_EN_ONLY = /\s*Use the sentence length I selected\.$/;
 
@@ -619,6 +678,11 @@ const USER_REQUEST_LABEL: Localized<string> = {
   de: "Nutzeranfrage:",
   fr: "Demande de l’utilisateur :",
   es: "Solicitud del usuario:",
+  hr: "Zahtjev korisnika:",
+  sr: "Zahtev korisnika:",
+  pt: "Pedido do utilizador:",
+  it: "Richiesta dell'utente:",
+  nl: "Verzoek van gebruiker:",
 };
 
 export function getLocalizedUserRequestLabel(language: SupportedLanguage): string {
@@ -650,6 +714,36 @@ Evita clichés y relleno.
 Sé concreto cuando puedas.
 Sin explicaciones antes ni después del mensaje.
 Sigue la indicación de longitud de abajo.`,
+  hr: `Pišite kao stvarna osoba.
+Budite sažeti, jasni i prirodni.
+Izbjegavajte klišeje, praznine i generičke fraze.
+Budite konkretni kada je moguće.
+Ne dodavajte objašnjenja prije ili poslije poruke.
+Slijedite upute o duljini ispod.`,
+  sr: `Pišite kao stvarna osoba.
+Budite sažeti, jasni i prirodni.
+Izbegavajte klišeje, praznine i generičke fraze.
+Budite konkretni kada je moguće.
+Ne dodajte objašnjenja pre ili posle poruke.
+Pratite uputstvo o dužini ispod.`,
+  pt: `Escreva como uma pessoa real.
+Seja conciso, claro e natural.
+Evite clichés, enchimentos e frases genéricas.
+Seja específico quando possível.
+Não adicione explicações antes ou depois da mensagem.
+Siga a indicação de comprimento abaixo.`,
+  it: `Scrivi come una persona reale.
+Sii conciso, chiaro e naturale.
+Evita cliché, riempitivi e frasi generiche.
+Sii specifico quando possibile.
+Non aggiungere spiegazioni prima o dopo il messaggio.
+Segui l'indicazione di lunghezza qui sotto.`,
+  nl: `Schrijf als een echt persoon.
+Houd het beknopt, duidelijk en natuurlijk.
+Vermijd clichés, opvulling en generieke zinnen.
+Wees specifiek waar mogelijk.
+Geen uitleg voor of na het bericht.
+Volg de lengte-instructie hieronder.`,
 };
 
 const BASE_INSTRUCTION_SMALL_LOC: Localized<string> = {
@@ -685,6 +779,46 @@ const BASE_INSTRUCTION_SMALL_LOC: Localized<string> = {
     "Sin explicaciones antes ni después del texto principal.",
     "Sigue la indicación de longitud de abajo.",
   ].join("\n"),
+  hr: [
+    "Koristite jednostavan, prirodan jezik.",
+    "Neka bude kratko i jasno.",
+    "Koristite samo činjenice iz zahtjeva korisnika.",
+    "Ne izmišljajte imena, datume, poveznice ili detalje.",
+    "Bez objašnjenja prije ili poslije glavnog teksta.",
+    "Slijedite upute o duljini ispod.",
+  ].join("\n"),
+  sr: [
+    "Koristite jednostavan, prirodan jezik.",
+    "Neka bude kratko i jasno.",
+    "Koristite samo činjenice iz zahteva korisnika.",
+    "Ne izmišljajte imena, datume, linkove ili detalje.",
+    "Bez objašnjenja pre ili posle glavnog teksta.",
+    "Pratite uputstvo o dužini ispod.",
+  ].join("\n"),
+  pt: [
+    "Use linguagem simples e natural.",
+    "Mantenha curto e claro.",
+    "Use apenas factos do pedido do utilizador.",
+    "Não invente nomes, datas, ligações ou detalhes.",
+    "Sem explicações antes ou depois do texto principal.",
+    "Siga a indicação de comprimento abaixo.",
+  ].join("\n"),
+  it: [
+    "Usa un linguaggio semplice e naturale.",
+    "Mantienilo breve e chiaro.",
+    "Usa solo i fatti dalla richiesta dell'utente.",
+    "Non inventare nomi, date, link o dettagli.",
+    "Nessuna spiegazione prima o dopo il testo principale.",
+    "Segui l'indicazione di lunghezza qui sotto.",
+  ].join("\n"),
+  nl: [
+    "Gebruik eenvoudige, natuurlijke bewoording.",
+    "Houd het kort en duidelijk.",
+    "Gebruik alleen feiten uit het gebruikersverzoek.",
+    "Verzin geen namen, datums, links of details.",
+    "Geen uitleg voor of na de hoofdtekst.",
+    "Volg de lengte-instructie hieronder.",
+  ].join("\n"),
 };
 
 const PLACEHOLDER_BRACE_RULE_LOC: Localized<string> = {
@@ -692,6 +826,11 @@ const PLACEHOLDER_BRACE_RULE_LOC: Localized<string> = {
   de: "Strikte Regel: Gib niemals {{ oder }} in der Antwort aus. Nur echte Namen und Fakten aus der NUTZERANFRAGE und geparsten Hinweisen.",
   fr: "Règle stricte : n’affiche jamais {{ ou }} dans ta réponse. Utilise uniquement les noms et faits réels de la DEMANDE et des indices fournis.",
   es: "Regla estricta: nunca escribas {{ ni }} en tu respuesta. Solo nombres y hechos reales de la SOLICITUD y pistas analizadas.",
+  hr: "Strogo pravilo: nikada ne ispisujte {{ ili }} u odgovoru. Koristite samo stvarna imena i činjenice iz ZAHTJEVA KORISNIKA i parsiranih naznaka.",
+  sr: "Strogo pravilo: nikada ne ispisujte {{ ili }} u odgovoru. Koristite samo stvarna imena i činjenice iz ZAHTEVA KORISNIKA i parsiranih naznaka.",
+  pt: "Regra rígida: nunca escreva {{ ou }} na resposta. Use apenas nomes e factos reais do PEDIDO e das pistas analisadas.",
+  it: "Regola rigida: non scrivere mai {{ o }} nella risposta. Usa solo nomi e fatti reali dalla RICHIESTA e dagli indizi analizzati.",
+  nl: "Strikte regel: geef nooit {{ of }} in je antwoord. Gebruik alleen echte namen en feiten uit het VERZOEK en geparste aanwijzingen.",
 };
 
 const GROUNDING_RULES_SMALL_LOC: Localized<string> = {
@@ -731,6 +870,51 @@ const GROUNDING_RULES_SMALL_LOC: Localized<string> = {
     "- Sin sintaxis de plantilla, corchetes ni palabras marcador en la respuesta final.",
     "- Nunca escribas los caracteres {{ ni }}.",
   ].join("\n"),
+  hr: [
+    "Učvršćivanje (obavezno):",
+    "- Koristite SAMO imena, titule, organizacije, datume, teme i činjenice iz ZAHTJEVA KORISNIKA u nastavku.",
+    "- NE izmišljajte ljude ni činjenice.",
+    "- Ako je korisnik dao ime ili titulu, koristite točno taj izraz.",
+    "- Pišite samo normalan gotov tekst.",
+    "- Ne ostavljajte sintaksu predloška, zagrade ili riječi rezervirane mjesto u konačnom odgovoru.",
+    "- Nikada ne ispisujte znakove {{ ili }}.",
+  ].join("\n"),
+  sr: [
+    "Učvršćivanje (obavezno):",
+    "- Koristite SAMO imena, titule, organizacije, datume, teme i činjenice iz ZAHTEVA KORISNIKA u nastavku.",
+    "- NE izmišljajte ljude ni činjenice.",
+    "- Ako je korisnik dao ime ili titulu, koristite tačan izraz.",
+    "- Pišite samo normalan gotov tekst.",
+    "- Ne ostavljajte sintaksu šablona, zagrade ili reči za rezervisana mesta u konačnom odgovoru.",
+    "- Nikada ne ispisujte znakove {{ ili }}.",
+  ].join("\n"),
+  pt: [
+    "Ancoragem (obrigatório):",
+    "- Use APENAS nomes, cargos, organizações, datas, temas e factos do PEDIDO abaixo.",
+    "- NÃO invente pessoas nem factos.",
+    "- Se o utilizador deu um nome ou cargo, use essa redação exacta.",
+    "- Escreva apenas texto final normal.",
+    "- Não deixe sintaxe de modelo, parênteses ou palavras marcador na resposta final.",
+    "- Nunca escreva os caracteres {{ ou }}.",
+  ].join("\n"),
+  it: [
+    "Ancoraggio (obbligatorio):",
+    "- Usa SOLO nomi, titoli, organizzazioni, date, argomenti e fatti dalla RICHIESTA qui sotto.",
+    "- NON inventare persone o fatti.",
+    "- Se l'utente ha dato un nome o titolo, usa quella formulazione esatta.",
+    "- Scrivi solo testo finale normale.",
+    "- Non lasciare sintassi del modello, parentesi o parole segnaposto nella risposta finale.",
+    "- Non scrivere mai i caratteri {{ o }}.",
+  ].join("\n"),
+  nl: [
+    "Verankering (verplicht):",
+    "- Gebruik ALLEEN namen, titels, organisaties, datums, onderwerpen en feiten uit het VERZOEK hieronder.",
+    "- Verzin GEEN personen of feiten.",
+    "- Als de gebruiker een naam of titel gaf, gebruik die exacte formulering.",
+    "- Schrijf alleen normale afgeronde tekst.",
+    "- Laat geen sjabloonsyntax, haakjes of placeholderwoorden in het eindantwoord.",
+    "- Geef nooit de tekens {{ of }} uit.",
+  ].join("\n"),
 };
 
 const EXAMPLE_SHAPE_PREFIX: Localized<string> = {
@@ -738,6 +922,11 @@ const EXAMPLE_SHAPE_PREFIX: Localized<string> = {
   de: "Nur Beispielform. Beispielnamen sind frei erfunden. Nutze nur Fakten aus der NUTZERANFRAGE; kopiere keine Beispielnamen oder Formulierungen:",
   fr: "Forme d’exemple uniquement. Noms et détails fictifs. Utilise uniquement les faits de la DEMANDE ; ne copie pas les exemples :",
   es: "Solo forma de ejemplo. Nombres y detalles ficticios. Usa solo hechos de la SOLICITUD; no copies los ejemplos:",
+  hr: "Samo oblik primjera. Imena i detalji su izmišljeni. Koristite samo činjenice iz ZAHTJEVA KORISNIKA; ne kopirajte primjere:",
+  sr: "Samo oblik primera. Imena i detalji su izmišljeni. Koristite samo činjenice iz ZAHTEVA KORISNIKA; ne kopirajte primere:",
+  pt: "Apenas forma de exemplo. Nomes e detalhes fictícios. Use apenas factos do PEDIDO; não copie os exemplos:",
+  it: "Solo forma di esempio. Nomi e dettagli sono fittizi. Usa solo fatti dalla RICHIESTA; non copiare gli esempi:",
+  nl: "Alleen voorbeeldvorm. Namen en details zijn fictief. Gebruik alleen feiten uit het VERZOEK; kopieer de voorbeelden niet:",
 };
 
 const ULTRA_SMALL_NOTE: Localized<string> = {
@@ -745,6 +934,11 @@ const ULTRA_SMALL_NOTE: Localized<string> = {
   de: "On-Device-Modell ist sehr klein: wenn möglich ein kompakter Absatz. Kein Vorwort („Klar“, „Hier ist“). Direkt in den gewünschten Text.",
   fr: "Le modèle local est très petit : un paragraphe serré si possible. Pas d’intro (« Bien sûr », « Voici »). Va droit au texte demandé.",
   es: "El modelo local es muy pequeño: un párrafo compacto si se puede. Sin preámbulo (« Claro », « Aquí tienes »). Ve directo al texto pedido.",
+  hr: "Lokalni model je vrlo mali: jedan sažet odlomak ako je moguće. Bez uvoda (« Naravno », « Evo »). Odmah pređite na traženi tekst.",
+  sr: "Lokalni model je veoma mali: jedan sažet pasus ako je moguće. Bez uvoda (« Naravno », « Evo »). Odmah pređite na traženi tekst.",
+  pt: "O modelo local é muito pequeno: um parágrafo compacto se possível. Sem prefácio (« Claro », « Aqui está »). Vá direto ao texto pedido.",
+  it: "Il modello locale è molto piccolo: un paragrafo compatto se possibile. Nessun preambolo (« Certo », « Ecco »). Vai dritto al testo richiesto.",
+  nl: "Het lokale model is zeer klein: één compacte alinea indien mogelijk. Geen inleiding (« Natuurlijk », « Hier is »). Ga direct naar de gevraagde tekst.",
 };
 
 const EXTRA_SMALL_LINES: Localized<[string, string]> = {
@@ -752,6 +946,11 @@ const EXTRA_SMALL_LINES: Localized<[string, string]> = {
   de: ["Einfache Wörter.", "Keinen Titel hinzufügen."],
   fr: ["Mots simples.", "Pas de titre."],
   es: ["Palabras simples.", "Sin título."],
+  hr: ["Jednostavne riječi.", "Bez naslova."],
+  sr: ["Jednostavne reči.", "Bez naslova."],
+  pt: ["Palavras simples.", "Não adicione título."],
+  it: ["Parole semplici.", "Nessun titolo."],
+  nl: ["Eenvoudige woorden.", "Geen titel toevoegen."],
 };
 
 export function getLocalizedBaseInstruction(

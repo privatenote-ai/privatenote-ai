@@ -14,6 +14,9 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { encryptedVsSecureFileSharingHr } from "@/components/blog/locale/encryptedVsSecureFileSharing.hr";
+import { encryptedVsSecureFileSharingSr } from "@/components/blog/locale/encryptedVsSecureFileSharing.sr";
 
 type FlowKind = "tls" | "browser";
 
@@ -313,13 +316,15 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     ctaLabel: "Try secure file transfer",
     relatedReading: "Related reading",
   },
+  hr: encryptedVsSecureFileSharingHr,
+  sr: encryptedVsSecureFileSharingSr,
 };
 
 export const EncryptedVsSecureFileSharingPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
   const fileTransferPath = localizedPath("/secure-file-transfer", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
 
   return (
     <div className={cn(blogPostPageClass, "max-w-3xl sm:px-6 mb-24")}>
