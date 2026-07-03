@@ -1,8 +1,11 @@
 import type { BlogPost } from "@shared/schema";
 import type { Translations } from "@/utils/translations/types";
+import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "secrets-never-send-in-chat": "2026-07-03T14:00:00.000Z",
+  "send-secret-message-without-account": "2026-07-03T12:00:00.000Z",
   "encrypted-vs-secure-file-sharing": "2026-07-01T12:00:00.000Z",
   "one-time-secret-links": "2026-06-06T12:00:00.000Z",
   "privacy-tools": "2026-01-11T12:00:00.000Z",
@@ -16,14 +19,88 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
+const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "secrets-never-send-in-chat": 7,
+  "send-secret-message-without-account": 7,
+  "encrypted-vs-secure-file-sharing": 6,
+  "one-time-secret-links": 7,
+  "privacy-tools": 4,
+  "myth-good-enough-security": 5,
+  "how-we-generate-passwords": 6,
+  "workplace-texts-private-note": 6,
+  "privatenote-for-developers": 6,
+  "privatenote-codex": 5,
+  "securing-ai-agents-like-employees": 6,
+};
+
+export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
+  const minutes = STATIC_BLOG_READ_MINUTES[slug];
+  if (!minutes) return undefined;
+  return t[`homeBlogReadTime${minutes}`];
+}
+
 export function staticBlogPublishedAt(slug: string): Date {
   return new Date(STATIC_BLOG_PUBLISHED_AT[slug] ?? STATIC_BLOG_PUBLISHED_AT["privacy-tools"]);
+}
+
+/** Topic badges and publish date for static blog article pages. */
+export function getStaticBlogMeta(
+  slug: string,
+  t: Translations,
+): { publishedAt: Date; tags: string[] } {
+  const post = buildStaticBlogPosts(t).find((entry) => entry.slug === slug);
+  if (post) {
+    return {
+      publishedAt: staticBlogPublishedAt(slug),
+      tags: parseBlogPostTags(post.tags),
+    };
+  }
+
+  if (slug === "workplace-texts-private-note") {
+    return {
+      publishedAt: staticBlogPublishedAt(slug),
+      tags: [t.blogTagPrivacy, t.blogTagSecurity],
+    };
+  }
+
+  return {
+    publishedAt: staticBlogPublishedAt(slug),
+    tags: [t.blogTagSecurity],
+  };
 }
 
 export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -11,
+      title: t.blogChatSecretsTitle,
+      excerpt: t.blogChatSecretsExcerpt,
+      author: "PrivateNote.ai",
+      slug: "secrets-never-send-in-chat",
+      publishedAt: at("secrets-never-send-in-chat"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagWorkplace, t.blogTagPrivacy, t.blogTagPasswords]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("secrets-never-send-in-chat"),
+      updatedAt: at("secrets-never-send-in-chat"),
+    },
+    {
+      id: -10,
+      title: t.blogSecretNoAccountTitle,
+      excerpt: t.blogSecretNoAccountExcerpt,
+      author: "PrivateNote.ai",
+      slug: "send-secret-message-without-account",
+      publishedAt: at("send-secret-message-without-account"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("send-secret-message-without-account"),
+      updatedAt: at("send-secret-message-without-account"),
+    },
     {
       id: -9,
       title: t.blogEncryptedFileSharingTitle,

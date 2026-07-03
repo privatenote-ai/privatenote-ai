@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, User } from 'lucide-react';
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
+import { getStaticBlogReadTime } from '@/utils/staticBlogPosts';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
 import { parseBlogPostTags } from '@/utils/blogPostTags';
 import { escapeHtml } from '@shared/escapeHtml';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
 import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
 import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
@@ -17,9 +17,12 @@ import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
 import { AgentSecurityPost } from '@/components/blog/AgentSecurityPost';
 import { OneTimeSecretLinksPost } from '@/components/blog/OneTimeSecretLinksPost';
 import { EncryptedVsSecureFileSharingPost } from '@/components/blog/EncryptedVsSecureFileSharingPost';
+import { SecretMessageWithoutAccountPost } from '@/components/blog/SecretMessageWithoutAccountPost';
+import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendInChatPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
+import { resolveCanonicalBlogSlug } from '@shared/localizedBlogSlugs';
 
 import { STATIC_BLOG_SLUGS } from '@/utils/staticBlogPosts';
 
@@ -28,7 +31,8 @@ export default function BlogPostPage() {
   const [_, params] = useRoute('/:language/blog/:slug');
   const [, fallbackParams] = useRoute('/blog/:slug');
   const blogPath = localizedPath('/blog', language);
-  const slug = params?.slug ?? fallbackParams?.slug;
+  const urlSlug = params?.slug ?? fallbackParams?.slug;
+  const slug = urlSlug ? resolveCanonicalBlogSlug(urlSlug) ?? urlSlug : undefined;
 
   const isStaticSlug =
     !!slug && (STATIC_BLOG_SLUGS as readonly string[]).includes(slug);
@@ -92,6 +96,12 @@ export default function BlogPostPage() {
   if (slug === 'encrypted-vs-secure-file-sharing') {
     return <EncryptedVsSecureFileSharingPost />;
   }
+  if (slug === 'send-secret-message-without-account') {
+    return <SecretMessageWithoutAccountPost />;
+  }
+  if (slug === 'secrets-never-send-in-chat') {
+    return <SecretsNeverSendInChatPost />;
+  }
 
   if (error) {
     return (
@@ -142,53 +152,28 @@ export default function BlogPostPage() {
     );
   }
 
-  const formattedDate = post.publishedAt
-    ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt))
-    : '';
   const tagList = parseBlogPostTags(post.tags);
+  const readTime = slug ? getStaticBlogReadTime(slug, t) : undefined;
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16 mb-20">
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
       <article>
-        <header className="mb-8">
-          <Link href={blogPath} className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4">
-            {t.blogBackToBlog}
-          </Link>
-          <h1 className="page-title mb-3">{post.title}</h1>
-          {post.excerpt && (
-            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 mb-5">
-              {post.excerpt}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400 gap-4 mb-6">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>{formattedDate}</span>
-            </div>
-            <div className="flex items-center">
-              <User className="h-4 w-4 mr-1" />
-              <span>{post.author}</span>
-            </div>
-          </div>
-
-          {tagList.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {tagList.map((tag, i) => (
-                <Badge key={i} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </header>
+        <BlogPostHeader
+          slug={slug}
+          title={post.title}
+          excerpt={post.excerpt || undefined}
+          publishedAt={post.publishedAt ? new Date(post.publishedAt) : undefined}
+          tags={tagList}
+          readTime={readTime}
+        />
 
         {post.coverImage && (
-          <div className="mb-8 rounded-lg overflow-hidden">
+          <div className="mb-8 overflow-hidden rounded-lg">
             <img
               src={post.coverImage}
               alt={post.title}
-              className="w-full h-auto object-cover"
+              className="h-auto w-full object-cover"
             />
           </div>
         )}

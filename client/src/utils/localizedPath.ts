@@ -1,4 +1,10 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import {
+  isBlogCanonicalSlug,
+  localizedBlogPostPath,
+  localizedBlogSlug,
+  resolveCanonicalBlogSlug,
+} from "@shared/localizedBlogSlugs";
 
 const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter((l): l is Exclude<SupportedLanguage, "en"> => l !== "en");
 
@@ -10,18 +16,10 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/security-resources",
   "/how-it-works",
   "/developers",
+  "/premium",
   "/about",
   "/contact",
   "/blog",
-  "/blog/one-time-secret-links",
-  "/blog/securing-ai-agents-like-employees",
-  "/blog/privacy-tools",
-  "/blog/myth-good-enough-security",
-  "/blog/how-we-generate-passwords",
-  "/blog/workplace-texts-private-note",
-  "/blog/privatenote-for-developers",
-  "/blog/privatenote-codex",
-  "/blog/encrypted-vs-secure-file-sharing",
   "/privacy",
   "/terms",
 ]);
@@ -34,6 +32,24 @@ const NO_TRAILING_SLASH_PREFIXES = [
   "/magic",
   "/admin",
 ] as const;
+
+function translateBlogPath(pathWithoutLanguage: string, language: SupportedLanguage): string {
+  const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
+  if (!blogMatch) return pathWithoutLanguage;
+
+  const canonical = resolveCanonicalBlogSlug(blogMatch[1]!);
+  if (!canonical) return pathWithoutLanguage;
+
+  const slug = localizedBlogSlug(canonical, language);
+  return `/blog/${slug}`;
+}
+
+function isLocalizedPublicPath(pathWithoutLanguage: string): boolean {
+  if (LOCALIZED_PUBLIC_PATHS.has(pathWithoutLanguage)) return true;
+  if (!pathWithoutLanguage.startsWith("/blog/")) return false;
+  const slug = pathWithoutLanguage.slice("/blog/".length);
+  return resolveCanonicalBlogSlug(slug) !== null;
+}
 
 /**
  * Canonical public URL shape (matches `documentMeta`, sitemap, and Pages static routes):
@@ -57,6 +73,14 @@ export function joinPublicPath(...segments: string[]): string {
   return publicSitePath(parts.length ? `/${parts.join("/")}` : "/");
 }
 
+/** Localized href for a static blog post from its canonical English slug. */
+export function blogPostPath(canonicalSlug: string, language: SupportedLanguage): string {
+  if (!isBlogCanonicalSlug(canonicalSlug)) {
+    return joinPublicPath(...localizedPath("/blog", language).split("/").filter(Boolean), canonicalSlug);
+  }
+  return publicSitePath(localizedBlogPostPath(canonicalSlug, language));
+}
+
 function splitLanguagePrefix(pathname: string): {
   language: SupportedLanguage | null;
   pathWithoutLanguage: string;
@@ -77,16 +101,18 @@ function splitLanguagePrefix(pathname: string): {
 
 export function localizedPath(path: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(path);
-  if (!LOCALIZED_PUBLIC_PATHS.has(pathWithoutLanguage)) {
+  const translatedPath = translateBlogPath(pathWithoutLanguage, language);
+
+  if (!isLocalizedPublicPath(translatedPath)) {
     return publicSitePath(pathWithoutLanguage);
   }
   if (language === "en") {
-    return publicSitePath(pathWithoutLanguage);
+    return publicSitePath(translatedPath);
   }
-  if (pathWithoutLanguage === "/") {
+  if (translatedPath === "/") {
     return `/${language}`;
   }
-  return publicSitePath(`/${language}${pathWithoutLanguage}`);
+  return publicSitePath(`/${language}${translatedPath}`);
 }
 
 /** True for paths that are the localized site home (/, /de/, /de, etc.). Used for nav full-reload behavior. */
@@ -99,5 +125,12 @@ export function isLocaleSiteHomeHref(href: string): boolean {
 
 export function switchLanguagePath(pathname: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(pathname);
+  const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
+  if (blogMatch) {
+    const canonical = resolveCanonicalBlogSlug(blogMatch[1]!);
+    if (canonical) {
+      return localizedPath(`/blog/${canonical}`, language);
+    }
+  }
   return localizedPath(pathWithoutLanguage, language);
 }

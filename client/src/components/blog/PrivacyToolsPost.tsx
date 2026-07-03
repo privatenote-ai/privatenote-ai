@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { SecurityEducation } from '@/components/features/SecurityEducation';
 import { useLanguage } from '@/context/LanguageContext';
-import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
+import { blogPostPath, localizedPath } from '@/utils/localizedPath';
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
 
 export const PrivacyToolsPost: React.FC = () => {
   const { language, t } = useLanguage();
@@ -11,22 +12,16 @@ export const PrivacyToolsPost: React.FC = () => {
   const blogPath = localizedPath('/blog', language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
       <article>
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">{t.blogPrivacyTitle}</h1>
-          <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl">
+        <BlogPostHeader slug="privacy-tools" title={t.blogPrivacyTitle} headerClassName="mb-10">
+          <div className="mt-4 space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl">
             <p>{t.blogPrivacyBody1}</p>
             <p>{t.blogPrivacyBody2}</p>
             <p>{t.blogPrivacyBody3}</p>
           </div>
-        </header>
+        </BlogPostHeader>
 
         <section className="mb-10">
           <SecurityEducation />
@@ -75,7 +70,7 @@ export const PrivacyToolsPost: React.FC = () => {
             {t.blogBackToHome}
           </Link>
           <Link
-            href={joinPublicPath(...blogPath.split("/").filter(Boolean), "myth-good-enough-security")}
+            href={blogPostPath("myth-good-enough-security", language)}
             className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
           >
             {t.blogNextArticle}: {t.blogGoodEnoughTitle}

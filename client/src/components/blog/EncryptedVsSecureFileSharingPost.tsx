@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
-import { joinPublicPath, localizedPath } from "@/utils/localizedPath";
+import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type FlowKind = "tls" | "browser";
 
@@ -321,25 +322,17 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
   const article = copy[language] ?? copy.en;
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 mt-16 mb-24 sm:px-6">
-      <Link
-        href={blogPath}
-        className="mb-6 inline-flex items-center text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary"
-      >
-        <ArrowLeft className="mr-1 h-4 w-4" /> {t.blogBackToBlog}
-      </Link>
+    <div className={cn(blogPostPageClass, "max-w-3xl sm:px-6 mb-24")}>
+      <BlogPostBackLink className="mb-6" />
 
       <article>
-        <header className="mb-14">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
-            {t.blogTagSecurity} · {t.blogTagCryptography}
-          </p>
-          <h1 className="mb-5 text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-            {t.blogEncryptedFileSharingTitle}
-          </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400">
-            {t.blogEncryptedFileSharingExcerpt}
-          </p>
+        <BlogPostHeader
+          slug="encrypted-vs-secure-file-sharing"
+          title={t.blogEncryptedFileSharingTitle}
+          excerpt={t.blogEncryptedFileSharingExcerpt}
+          titleClassName="mb-5 text-3xl leading-tight tracking-tight sm:text-4xl"
+          headerClassName="mb-14"
+        >
           <figure className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/80 shadow-sm dark:border-gray-800 dark:bg-gray-900/40">
             <img
               src={heroImagePath}
@@ -348,7 +341,7 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
               loading="lazy"
             />
           </figure>
-        </header>
+        </BlogPostHeader>
 
         <div className="space-y-7">
           {article.intro.map((paragraph, index) => (
@@ -424,7 +417,7 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
           <ul className="space-y-3">
             <li>
               <Link
-                href={joinPublicPath(...blogPath.split("/").filter(Boolean), "one-time-secret-links")}
+                href={blogPostPath("one-time-secret-links", language)}
                 className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
               >
                 {t.blogOneTimeLinksTitle}
@@ -432,7 +425,7 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
             </li>
             <li>
               <Link
-                href={joinPublicPath(...blogPath.split("/").filter(Boolean), "myth-good-enough-security")}
+                href={blogPostPath("myth-good-enough-security", language)}
                 className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
               >
                 {t.blogGoodEnoughTitle}

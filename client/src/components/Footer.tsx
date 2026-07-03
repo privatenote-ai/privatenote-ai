@@ -105,48 +105,28 @@ export const Footer: React.FC = () => {
             </Link>
           </div>
 
-          <div className="hidden flex-wrap items-center justify-center gap-2 rounded-md border border-white/25 bg-white/10 px-3 py-2 text-xs font-medium text-white/85 backdrop-blur-sm sm:inline-flex">
-            <Languages className="h-3.5 w-3.5 text-white/75" aria-hidden />
-            <span>{t.language}</span>
-            <span className="flex flex-wrap items-center justify-center gap-1">
-              {LANGUAGE_OPTIONS.map((option) => (
-                <Link
-                  key={option.code}
-                  href={switchLanguagePath(location, option.code)}
-                  hrefLang={option.code}
-                  lang={option.code}
-                  onClick={() => setLanguage(option.code)}
-                  className={`rounded px-2 py-1 font-semibold transition-colors ${
-                    language === option.code
-                      ? "bg-white text-primary"
-                      : "text-white/85 hover:bg-white/10 hover:text-white"
-                  }`}
-                  aria-current={language === option.code ? "page" : undefined}
-                >
-                  {option.nativeName}
-                </Link>
-              ))}
-            </span>
-          </div>
-
-          <div className="relative sm:hidden" ref={languageMenuRef}>
+          <div className="relative" ref={languageMenuRef}>
             <button
               type="button"
+              id="footer-language-menu-button"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsLanguageMenuOpen((open) => !open);
               }}
-              className="inline-flex min-w-40 items-center justify-between gap-3 rounded-md border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold text-white shadow-none backdrop-blur-sm transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/40"
-              aria-haspopup="menu"
+              className="inline-flex min-w-44 items-center justify-between gap-3 rounded-md border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold text-white shadow-none backdrop-blur-sm transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/40 sm:min-w-52 sm:text-sm"
+              aria-haspopup="listbox"
               aria-expanded={isLanguageMenuOpen}
+              aria-controls="footer-language-menu"
+              aria-label={`${t.language}: ${activeLanguage.nativeName}`}
             >
               <span className="inline-flex items-center gap-2">
-                <Languages className="h-3.5 w-3.5 text-white/75" aria-hidden />
-                {activeLanguage.nativeName}
+                <Languages className="h-3.5 w-3.5 text-white/75 sm:h-4 sm:w-4" aria-hidden />
+                <span className="text-white/80">{t.language}</span>
+                <span>{activeLanguage.nativeName}</span>
               </span>
               <ChevronDown
-                className={`h-4 w-4 text-white/75 transition-transform ${
-                  isLanguageMenuOpen ? 'rotate-180' : ''
+                className={`h-4 w-4 shrink-0 text-white/75 transition-transform ${
+                  isLanguageMenuOpen ? "rotate-180" : ""
                 }`}
                 aria-hidden
               />
@@ -154,8 +134,10 @@ export const Footer: React.FC = () => {
 
             {isLanguageMenuOpen && (
               <div
-                className="absolute bottom-full left-1/2 z-20 mb-2 w-44 -translate-x-1/2 overflow-hidden rounded-md border border-white/20 bg-primary shadow-xl ring-1 ring-black/10"
-                role="menu"
+                id="footer-language-menu"
+                className="absolute bottom-full left-1/2 z-20 mb-2 max-h-64 w-52 -translate-x-1/2 overflow-y-auto rounded-md border border-white/20 bg-primary shadow-xl ring-1 ring-black/10 sm:w-56"
+                role="listbox"
+                aria-labelledby="footer-language-menu-button"
               >
                 {LANGUAGE_OPTIONS.map((option) => (
                   <Link
@@ -169,11 +151,11 @@ export const Footer: React.FC = () => {
                     }}
                     className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
                       language === option.code
-                        ? 'bg-white text-primary'
-                        : 'text-white/90 hover:bg-white/10 hover:text-white'
+                        ? "bg-white text-primary"
+                        : "text-white/90 hover:bg-white/10 hover:text-white"
                     }`}
-                    role="menuitem"
-                    aria-current={language === option.code ? 'page' : undefined}
+                    role="option"
+                    aria-selected={language === option.code}
                   >
                     <span>{option.nativeName}</span>
                     {language === option.code ? <Check className="h-4 w-4" aria-hidden /> : null}

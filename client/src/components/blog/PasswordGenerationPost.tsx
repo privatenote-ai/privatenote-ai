@@ -4,6 +4,7 @@ import { ArrowLeft, Lock, Zap, BarChart3, Shield, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type CardCopy = { title: string; body: string; icon: React.ComponentType<{ className?: string }> };
 type SectionCopy = { title: string; icon: React.ComponentType<{ className?: string }>; paragraphs: string[]; notes?: { title: string; body: string }[]; bullets?: { title: string; body: string }[] };
@@ -251,17 +252,11 @@ export const PasswordGenerationPost: React.FC = () => {
   const blogPath = localizedPath("/blog", language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
       <article>
-        <header className="mb-16">
-          <h1 className="text-3xl font-bold mb-6">{t.blogPasswordTitle}</h1>
-          <div className="space-y-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mb-8">
+        <BlogPostHeader slug="how-we-generate-passwords" title={t.blogPasswordTitle} headerClassName="mb-16">
+          <div className="mt-6 space-y-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mb-8">
             <p className="text-lg">{article.intro}</p>
           </div>
 
@@ -280,7 +275,7 @@ export const PasswordGenerationPost: React.FC = () => {
           <div className="text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl">
             <p>{article.lead}</p>
           </div>
-        </header>
+        </BlogPostHeader>
 
         {article.sections.map(({ icon: Icon, title, paragraphs, notes, bullets }) => (
           <React.Fragment key={title}>

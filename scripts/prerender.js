@@ -20,6 +20,7 @@ import {
   isPublicMarketingPath,
   PUBLIC_MARKETING_PATHS,
 } from "../shared/publicMarketingPaths.ts";
+import { LOCALE_HOME_PATH_PATTERN } from "../shared/supportedLanguages.ts";
 import {
   getChangedFiles,
   restoreHtmlCache,
@@ -361,7 +362,7 @@ async function saveHTML(route, html) {
     return;
   }
 
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(rel);
 
   if (!isLocaleHome) {
     const flatFile = path.join(DIST_DIR, `${rel}.html`);

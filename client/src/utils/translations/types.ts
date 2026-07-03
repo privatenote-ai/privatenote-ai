@@ -1,6 +1,16 @@
-export const SUPPORTED_LANGUAGES = ["en", "de", "fr", "es", "it", "nl"] as const;
+import {
+  NON_ENGLISH_LANGUAGE_CODES,
+  normalizeLanguageCode,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "@shared/supportedLanguages";
 
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export {
+  NON_ENGLISH_LANGUAGE_CODES,
+  normalizeLanguageCode,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "@shared/supportedLanguages";
 
 export type Translations = Record<string, string>;
 
@@ -17,12 +27,10 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: "es", nativeName: "Español", englishName: "Spanish" },
   { code: "it", nativeName: "Italiano", englishName: "Italian" },
   { code: "nl", nativeName: "Nederlands", englishName: "Dutch" },
+  { code: "pt", nativeName: "Português", englishName: "Portuguese" },
+  { code: "sr", nativeName: "Srpski", englishName: "Serbian" },
+  { code: "hr", nativeName: "Hrvatski", englishName: "Croatian" },
 ];
-
-export function normalizeLanguageCode(language: string | null | undefined): SupportedLanguage {
-  const code = language?.trim().toLowerCase().split("-")[0];
-  return SUPPORTED_LANGUAGES.includes(code as SupportedLanguage) ? (code as SupportedLanguage) : "en";
-}
 
 export function getUserLanguage(): SupportedLanguage {
   if (typeof navigator === "undefined") return "en";
