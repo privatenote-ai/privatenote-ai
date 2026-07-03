@@ -9,22 +9,40 @@ import { fr } from "../client/src/utils/translations/fr.ts";
 import { es } from "../client/src/utils/translations/es.ts";
 import { it } from "../client/src/utils/translations/it.ts";
 import { nl } from "../client/src/utils/translations/nl.ts";
+import { pt } from "../client/src/utils/translations/pt.ts";
+import { sr } from "../client/src/utils/translations/sr.ts";
+import { hr } from "../client/src/utils/translations/hr.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { isLocaleHomeRoute } from "./homeSeoLinks.ts";
+import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
 
-const LOCALE_TRANSLATIONS: Record<"de" | "fr" | "es" | "it" | "nl", Translations> = {
+const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations> = {
   de: { ...en, ...de },
   fr: { ...en, ...fr },
   es: { ...en, ...es },
   it: { ...en, ...it },
   nl: { ...en, ...nl },
+  pt: { ...en, ...pt },
+  sr: { ...en, ...sr },
+  hr: { ...en, ...hr },
 };
 
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
+const OG_LOCALE_BY_LANG: Record<string, string> = {
+  de: "de_DE",
+  fr: "fr_FR",
+  es: "es_ES",
+  it: "it_IT",
+  nl: "nl_NL",
+  pt: "pt_PT",
+  sr: "sr_RS",
+  hr: "hr_HR",
+};
+
 function translationsForRoute(route: string): Translations {
   const first = route.split("/").filter(Boolean)[0];
-  if (first === "de" || first === "fr" || first === "es" || first === "it" || first === "nl") {
+  if (isSupportedLanguage(first) && first !== "en") {
     return LOCALE_TRANSLATIONS[first];
   }
   return en;
@@ -32,7 +50,7 @@ function translationsForRoute(route: string): Translations {
 
 function htmlLangForRoute(route: string): string {
   const first = route.split("/").filter(Boolean)[0];
-  if (first === "de" || first === "fr" || first === "es" || first === "it" || first === "nl") return first;
+  if (isSupportedLanguage(first) && first !== "en") return first;
   return "en";
 }
 
@@ -46,10 +64,6 @@ function escapeHtmlAttr(value: string): string {
 
 function replaceMetaContent(html: string, attr: "name" | "property", key: string, content: string): string {
   const escaped = escapeHtmlAttr(content);
-  // Use separate patterns for double-quoted and single-quoted content values.
-  // The combined ["'][^"']*["'] pattern incorrectly treats apostrophes inside
-  // double-quoted values (e.g. "Here's how") as the closing delimiter, causing
-  // the match to fail and a duplicate tag to be appended instead.
   const reDQ = new RegExp(`<meta\\s+${attr}=["']${key}["']\\s+content="[^"]*"\\s*/?>`, "i");
   const reSQ = new RegExp(`<meta\\s+${attr}=["']${key}["']\\s+content='[^']*'\\s*/?>`, "i");
   if (reDQ.test(html)) {
@@ -86,19 +100,7 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = replaceMetaContent(out, "name", "twitter:title", title);
   out = replaceMetaContent(out, "name", "twitter:description", description);
 
-  const ogLocale =
-    lang === "de"
-      ? "de_DE"
-      : lang === "fr"
-        ? "fr_FR"
-        : lang === "es"
-          ? "es_ES"
-          : lang === "it"
-            ? "it_IT"
-            : lang === "nl"
-              ? "nl_NL"
-              : "en_US";
-  out = replaceMetaContent(out, "property", "og:locale", ogLocale);
+  out = replaceMetaContent(out, "property", "og:locale", OG_LOCALE_BY_LANG[lang] ?? "en_US");
 
   return out;
 }

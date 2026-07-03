@@ -4,6 +4,7 @@ import { ArrowLeft, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type BulletItem = {
   label: string;
@@ -593,19 +594,16 @@ export const AgentSecurityPost: React.FC = () => {
   const article = copy[language] ?? copy.en;
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
 
       <article>
-        <header className="mb-12">
-          <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{t.blogAgentSecurityTitle}</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">{t.blogAgentSecurityExcerpt}</p>
-        </header>
+        <BlogPostHeader
+          slug="securing-ai-agents-like-employees"
+          title={t.blogAgentSecurityTitle}
+          excerpt={t.blogAgentSecurityExcerpt}
+          headerClassName="mb-12"
+        />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (

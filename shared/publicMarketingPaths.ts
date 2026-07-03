@@ -2,9 +2,12 @@
  * Public marketing routes that must return 200 for crawlers (sitemap + nav).
  * Single source for prerender fallback list and Pages middleware SPA shell fallback.
  */
-const LOCALIZED_LANGUAGE_CODES = ["de", "fr", "es", "it", "nl"] as const;
+import { allLocalizedBlogMarketingPaths } from "./localizedBlogSlugs.ts";
+import { NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
 
-const LOCALIZED_MARKETING_PATHS = [
+const LOCALIZED_LANGUAGE_CODES = NON_ENGLISH_LANGUAGE_CODES;
+
+const NON_BLOG_LOCALIZED_MARKETING_PATHS = [
   "",
   "/password-generator",
   "/secure-file-transfer",
@@ -15,21 +18,15 @@ const LOCALIZED_MARKETING_PATHS = [
   "/about",
   "/contact",
   "/blog",
-  "/blog/one-time-secret-links",
-  "/blog/securing-ai-agents-like-employees",
-  "/blog/privacy-tools",
-  "/blog/myth-good-enough-security",
-  "/blog/how-we-generate-passwords",
-  "/blog/workplace-texts-private-note",
-  "/blog/privatenote-for-developers",
-  "/blog/privatenote-codex",
-  "/blog/encrypted-vs-secure-file-sharing",
   "/privacy",
   "/terms",
 ] as const;
 
-/** English marketing paths derived from LOCALIZED_MARKETING_PATHS (avoids drift vs localized list). */
-const ENGLISH_MARKETING_PATHS = LOCALIZED_MARKETING_PATHS.map((path) => (path === "" ? "/" : path));
+const ENGLISH_NON_BLOG_PATHS = NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) =>
+  path === "" ? "/" : path,
+);
+
+const ENGLISH_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) => path.startsWith("/blog/"));
 
 /** Routes that are public but not mirrored under /de, /fr, etc. */
 const EXTRA_MARKETING_PATHS = [
@@ -40,11 +37,19 @@ const EXTRA_MARKETING_PATHS = [
   "/security-guides/browser",
 ] as const;
 
+const LOCALIZED_NON_BLOG_PATHS = LOCALIZED_LANGUAGE_CODES.flatMap((language) =>
+  NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) => (path === "" ? `/${language}` : `/${language}${path}`)),
+);
+
+const LOCALIZED_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) =>
+  LOCALIZED_LANGUAGE_CODES.some((language) => path.startsWith(`/${language}/blog/`)),
+);
+
 export const PUBLIC_MARKETING_PATHS = [
-  ...ENGLISH_MARKETING_PATHS,
-  ...LOCALIZED_LANGUAGE_CODES.flatMap((language) =>
-    LOCALIZED_MARKETING_PATHS.map((path) => `/${language}${path}`),
-  ),
+  ...ENGLISH_NON_BLOG_PATHS,
+  ...ENGLISH_BLOG_PATHS,
+  ...LOCALIZED_NON_BLOG_PATHS,
+  ...LOCALIZED_BLOG_PATHS,
   ...EXTRA_MARKETING_PATHS,
 ] as const;
 

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type ArticleCopy = {
   intro: string[];
@@ -197,19 +198,16 @@ export const PrivateNoteForDevelopersPost: React.FC = () => {
   const homePath = localizedPath("/", language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
 
       <article>
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">{t.blogDevelopersTitle}</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl">{t.blogDevelopersExcerpt}</p>
-        </header>
+        <BlogPostHeader
+          slug="privatenote-for-developers"
+          title={t.blogDevelopersTitle}
+          excerpt={t.blogDevelopersExcerpt}
+          headerClassName="mb-10"
+        />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph, i) => (

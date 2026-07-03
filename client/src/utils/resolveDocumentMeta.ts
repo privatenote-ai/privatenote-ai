@@ -1,13 +1,18 @@
 import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
+import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
+import { NON_ENGLISH_LANGUAGE_CODES } from "@shared/supportedLanguages";
 
-const LOCALE_PREFIXES = new Set(["de", "fr", "es", "it", "nl"]);
+const LOCALE_PREFIXES = new Set<string>(NON_ENGLISH_LANGUAGE_CODES);
 const LOCALE_TITLE_LABELS: Record<string, string> = {
   de: "Deutsch",
   fr: "Français",
   es: "Español",
   it: "Italiano",
   nl: "Nederlands",
+  pt: "Português",
+  sr: "Srpski",
+  hr: "Hrvatski",
 };
 
 const SECURITY_GUIDE_META: Record<string, { title: string; description: string }> = {
@@ -127,6 +132,16 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogEncryptedFileSharingMetaTitle),
         description: t.blogEncryptedFileSharingMetaDescription,
       };
+    case "send-secret-message-without-account":
+      return {
+        title: buildDocumentTitle(t.blogSecretNoAccountMetaTitle),
+        description: t.blogSecretNoAccountMetaDescription,
+      };
+    case "secrets-never-send-in-chat":
+      return {
+        title: buildDocumentTitle(t.blogChatSecretsMetaTitle),
+        description: t.blogChatSecretsMetaDescription,
+      };
     default:
       return null;
   }
@@ -163,6 +178,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       return {
         title: buildDocumentTitle(t.documentMetaDevelopersTitle),
         description: t.documentMetaDevelopersDescription,
+      };
+    case "premium":
+      return {
+        title: buildDocumentTitle("Premium"),
+        description:
+          "Upgrade PrivateNote with delivery controls, note-open alerts, recipient checks, longer expirations, and higher hosted AI limits.",
       };
     case "about":
       return {
@@ -204,8 +225,9 @@ function metaForLocalizedRest(rest: string, t: Translations): { title: string; d
     return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
   }
   if (rest.startsWith("blog/")) {
-    const slug = rest.slice("blog/".length);
-    if (!slug || slug.includes("/")) return null;
+    const slugFromUrl = rest.slice("blog/".length);
+    if (!slugFromUrl || slugFromUrl.includes("/")) return null;
+    const slug = resolveCanonicalBlogSlug(slugFromUrl) ?? slugFromUrl;
     return metaForBlogSubpath(slug, t);
   }
   return pageMetaForPublicPage(rest, t);
@@ -293,6 +315,13 @@ function metaForAccountSegments(segments: string[], t: Translations): { title: s
       return {
         title: buildDocumentTitle(t.documentMetaAccountActivityTitle),
         description: t.documentMetaAccountActivityDescription,
+      };
+    case "notifications":
+      return {
+        title: buildDocumentTitle(t.documentMetaNotificationCenterTitle ?? "Notifications"),
+        description:
+          t.documentMetaNotificationCenterDescription ??
+          "Delivery status for your sent notes — no content or previews.",
       };
     case "preferences":
       return {

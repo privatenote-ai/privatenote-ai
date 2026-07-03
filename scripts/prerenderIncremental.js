@@ -3,6 +3,9 @@ import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
+import { LOCALE_HOME_PATH_PATTERN } from "../shared/supportedLanguages.ts";
+
+const LOCALE_HOME_RE = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`);
 
 /** Patterns that require a full Playwright pass for every sitemap route. */
 export const FULL_PRERENDER_PATTERNS = [
@@ -11,6 +14,7 @@ export const FULL_PRERENDER_PATTERNS = [
   /^shared\/injectPrerenderDocumentMeta\.ts$/,
   /^shared\/homeSeoLinks\.ts$/,
   /^shared\/publicMarketingPaths\.ts$/,
+  /^shared\/supportedLanguages\.ts$/,
   /^client\/index\.html$/,
   /^client\/src\/App\.tsx$/,
   /^client\/src\/components\/Navbar\.tsx$/,
@@ -107,7 +111,7 @@ export function expandBasePaths(basePaths) {
   for (const route of PUBLIC_MARKETING_PATHS) {
     for (const base of basePaths) {
       if (base === "/") {
-        if (route === "/" || /^\/(de|fr|es|it|nl)$/.test(route)) set.add(route);
+        if (route === "/" || LOCALE_HOME_RE.test(route.replace(/^\//, ""))) set.add(route);
       } else if (route === base || route.endsWith(base)) {
         set.add(route);
       }
@@ -175,7 +179,7 @@ export async function routeHasCachedHtml(cacheDir, route) {
   if (!cacheDir) return false;
   const trimmed = route.replace(/\/+$/, "");
   const rel = trimmed.replace(/^\//, "");
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = LOCALE_HOME_RE.test(rel);
   const candidates = [];
   if (!rel) {
     candidates.push(path.join(cacheDir, "index.html"));

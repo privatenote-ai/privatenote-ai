@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type SectionLink = { label: string; href: string };
 
@@ -692,38 +693,22 @@ PRIVATENOTE_API_BASE_URL = "https://notes.tu-dominio.com"`,
 };
 
 export function PrivateNoteCodexPost() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
   const c = copy[language] ?? copy.en;
 
   return (
-    <article className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <Link
-        href={lp("/blog")}
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All posts
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
 
-      <header className="mb-10">
-        <div className="mb-3 flex flex-wrap gap-2">
-          {["Developer", "MCP", "Codex", "Security"].map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary dark:bg-primary/20"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">
-          Using PrivateNote with OpenAI Codex
-        </h1>
-        <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
-          PrivateNote.ai · {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-        </p>
-      </header>
+      <article>
+        <BlogPostHeader
+          slug="privatenote-codex"
+          title={t.blogCodexTitle}
+          excerpt={t.blogCodexExcerpt}
+          titleClassName="sm:text-4xl tracking-tight"
+          headerClassName="mb-10"
+        />
 
       <div className="prose prose-gray dark:prose-invert max-w-none">
         {c.intro.map((p, i) => (
@@ -800,6 +785,7 @@ export function PrivateNoteCodexPost() {
           {c.ctaButton}
         </Link>
       </div>
-    </article>
+      </article>
+    </div>
   );
 }

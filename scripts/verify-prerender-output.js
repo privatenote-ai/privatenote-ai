@@ -12,6 +12,7 @@ const REQUIRED_FLAT_HTML = [
   "how-it-works.html",
   "developers.html",
   "password-generator.html",
+  "secure-file-transfer.html",
   "privacy.html",
   "privacy-tools.html",
   "security-resources.html",
@@ -27,13 +28,24 @@ const REQUIRED_FLAT_HTML = [
   "it/about.html",
   "nl/index.html",
   "nl/about.html",
+  "pt/index.html",
+  "pt/about.html",
+  "sr/index.html",
+  "sr/about.html",
+  "hr/index.html",
+  "hr/about.html",
   "de/terms.html",
 ];
+
+const LOCALE_HOME_PATTERN = "de|fr|es|it|nl|pt|sr|hr";
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
 /** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/, /it/, /nl/) */
 const BAD_CANONICAL_TRAILING_SLASH_RE =
-  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/(?!(de|fr|es|it|nl)\/["'])[^"']+\/["']/i;
+  new RegExp(
+    `<link\\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\\/\\/privatenote\\.ai\\/(?!(${LOCALE_HOME_PATTERN})\\/["'])[^"']+\\/["']`,
+    "i",
+  );
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
@@ -42,11 +54,14 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "contact.html", mustContain: "Contact" },
   { file: "fr/contact.html", mustContain: "Contact" },
   { file: "de/developers.html", mustContain: "Entwickler" },
+  { file: "hr/developers.html", mustContain: "Integracije programera" },
   { file: "blog/how-we-generate-passwords.html", mustContain: "password" },
   { file: "blog/encrypted-vs-secure-file-sharing.html", mustContain: "Encrypted" },
   { file: "secure-file-transfer.html", mustContain: "Share" },
   { file: "de/secure-file-transfer.html", mustContain: "Datei" },
   { file: "it/secure-file-transfer.html", mustContain: "Condividi" },
+  { file: "sr/secure-file-transfer.html", mustContain: "Podelite" },
+  { file: "hr/secure-file-transfer.html", mustContain: "Podijelite" },
 ];
 
 function exists(p) {
@@ -64,7 +79,7 @@ function htmlFilesForRoute(route, dir) {
   if (!rel) {
     return [path.join(dir, "index.html")];
   }
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATTERN})$`).test(rel);
   const files = [path.join(dir, rel, "index.html")];
   if (!isLocaleHome) {
     files.unshift(path.join(dir, `${rel}.html`));

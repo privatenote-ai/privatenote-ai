@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/carousel";
 import { useMountWhenInView } from "@/hooks/useMountWhenInView";
 import type { Translations } from "@/utils/translation";
-import { joinPublicPath } from "@/utils/localizedPath";
+import { useLanguage } from "@/context/LanguageContext";
+import { blogPostPath } from "@/utils/localizedPath";
 
 type BlogPostCard = {
   slug: string;
@@ -28,18 +29,18 @@ type HomeBlogCarouselProps = {
 
 function BlogPostLink({
   post,
-  blogPath,
   readLabel,
   className,
 }: {
   post: BlogPostCard;
-  blogPath: string;
   readLabel: string;
   className?: string;
 }) {
+  const { language } = useLanguage();
+
   return (
     <Link
-      href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)}
+      href={blogPostPath(post.slug, language)}
       className={
         className ??
         "group flex h-full min-h-[270px] flex-col rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
@@ -64,11 +65,9 @@ function BlogPostLink({
 /** Native horizontal scroll — same layout as Embla slides without layout measurement. */
 function BlogCarouselStatic({
   blogPosts,
-  blogPath,
   readLabel,
 }: {
   blogPosts: BlogPostCard[];
-  blogPath: string;
   readLabel: string;
 }) {
   return (
@@ -80,7 +79,7 @@ function BlogCarouselStatic({
           key={post.slug}
           className="min-w-0 shrink-0 grow-0 basis-[88%] snap-start pr-3 sm:basis-1/2 sm:pr-4 lg:basis-1/2"
         >
-          <BlogPostLink post={post} blogPath={blogPath} readLabel={readLabel} />
+          <BlogPostLink post={post} readLabel={readLabel} />
         </div>
       ))}
     </div>
@@ -101,7 +100,7 @@ export function HomeBlogCarousel({ t, blogPath, blogPosts }: HomeBlogCarouselPro
           <CarouselContent className="ml-0 gap-3 sm:gap-4">
             {blogPosts.map((post) => (
               <CarouselItem key={post.slug} className="basis-[88%] pl-0 sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(50%-0.5rem)]">
-                <BlogPostLink post={post} blogPath={blogPath} readLabel={t.homeBlogReadArticle} />
+                <BlogPostLink post={post} readLabel={t.homeBlogReadArticle} />
               </CarouselItem>
             ))}
           </CarouselContent>
@@ -117,7 +116,6 @@ export function HomeBlogCarousel({ t, blogPath, blogPosts }: HomeBlogCarouselPro
       ) : (
         <BlogCarouselStatic
           blogPosts={blogPosts}
-          blogPath={blogPath}
           readLabel={t.homeBlogReadArticle}
         />
       )}

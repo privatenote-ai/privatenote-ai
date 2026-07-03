@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 
 type ArticleSection = {
   title: string;
@@ -322,19 +323,16 @@ export const GoodEnoughSecurityPost: React.FC = () => {
   const blogPath = localizedPath("/blog", language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <div className={blogPostPageClass}>
+      <BlogPostBackLink />
 
       <article>
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-3">{t.blogGoodEnoughTitle}</h1>
-          <p className="text-gray-600 dark:text-gray-400">{t.blogGoodEnoughExcerpt}</p>
-        </header>
+        <BlogPostHeader
+          slug="myth-good-enough-security"
+          title={t.blogGoodEnoughTitle}
+          excerpt={t.blogGoodEnoughExcerpt}
+          headerClassName="mb-8"
+        />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph) => (

@@ -1,19 +1,17 @@
 /** Production origin for canonical / hreflang (must match sitemap and deploy host). */
+import { NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
+
 export const PUBLIC_SITE_ORIGIN = "https://privatenote.ai";
 
 // Locale homes are served from de/index.html — canonical/hreflang URLs use the
 // directory form /de/ so crawlers follow the canonical without a redirect.
 export const HOME_HREFLANG_ALTERNATES = [
   { hrefLang: "en", path: "/" },
-  { hrefLang: "de", path: "/de/" },
-  { hrefLang: "fr", path: "/fr/" },
-  { hrefLang: "es", path: "/es/" },
-  { hrefLang: "it", path: "/it/" },
-  { hrefLang: "nl", path: "/nl/" },
+  ...NON_ENGLISH_LANGUAGE_CODES.map((code) => ({ hrefLang: code, path: `/${code}/` as const })),
   { hrefLang: "x-default", path: "/" },
 ] as const;
 
-const LOCALE_HOME_CODES = ["de", "fr", "es", "it", "nl"] as const;
+const LOCALE_HOME_CODES = NON_ENGLISH_LANGUAGE_CODES;
 type HomeLanguage = "en" | (typeof LOCALE_HOME_CODES)[number];
 
 export function absolutePublicUrl(path: string): string {
