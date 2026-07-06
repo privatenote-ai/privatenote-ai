@@ -93,6 +93,11 @@ function blogSlugStaticMeta(
   t: Translations,
 ): { title: string; description: string } | null {
   switch (slug) {
+    case "how-to-share-api-key-securely":
+      return {
+        title: buildDocumentTitle(t.blogApiKeySharingMetaTitle),
+        description: t.blogApiKeySharingMetaDescription,
+      };
     case "privacy-tools":
       return { title: buildDocumentTitle(t.blogPrivacyTitle), description: t.blogPrivacyExcerpt };
     case "myth-good-enough-security":
