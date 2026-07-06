@@ -23,6 +23,7 @@ import {
   STORED_NOTE_PAYLOAD_VERSION,
   type ParsedStoredNoteCiphertext,
 } from "@shared/storedNotePayload";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
 
 type StoredCiphertext = ParsedStoredNoteCiphertext;
 
@@ -207,6 +208,7 @@ export class SecureNoteStorageSql {
       keyDerivation = undefined,
       attachment: attachmentRaw = undefined,
       fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
+      readerLanguage: readerLanguageRaw = undefined,
     } = body || {};
 
     const ippField = body?.isPasswordProtected;
@@ -391,6 +393,16 @@ export class SecureNoteStorageSql {
         headers: { "Content-Type": "application/json" },
       });
     }
+    const readerLanguage =
+      typeof readerLanguageRaw === "string" && isSupportedLanguage(readerLanguageRaw)
+        ? readerLanguageRaw
+        : undefined;
+    if (readerLanguageRaw != null && !readerLanguage) {
+      return new Response(JSON.stringify({ error: "Invalid reader language" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const fileAccessWindowSeconds =
       fileAccessWindowSecondsRaw == null
         ? NOTE_FILE_ACCESS_DEFAULT_SECONDS
@@ -414,6 +426,7 @@ export class SecureNoteStorageSql {
       encryptedKeyIv: null,
       ...(attachment ? { attachment } : {}),
       ...(attachment ? { fileAccessWindowSeconds } : {}),
+      ...(readerLanguage ? { readerLanguage } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
       ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
         ? { keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2 }
@@ -477,11 +490,17 @@ export class SecureNoteStorageSql {
     }
 
     const row = meta as NoteMetaRow;
+    const raw =
+      getOneRowSync<{ payload: string }>(
+        this.state.storage.sql.exec("SELECT payload FROM notes_cipher WHERE note_id = ?", noteId),
+      )?.payload ?? null;
+    const ciphertext = raw ? parseStoredNoteCiphertextForReveal(raw, noteId) : null;
     return new Response(
       JSON.stringify({
         readCount: row.current_reads,
         maxReads: row.max_reads,
         expiresAt: row.expires_at,
+        ...(ciphertext?.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
       }),
       {
         status: 200,
@@ -552,6 +571,7 @@ export class SecureNoteStorageSql {
           ...(typeof ciphertext.aad === "string" && ciphertext.aad ? { aad: ciphertext.aad } : {}),
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
           ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
+          ...(ciphertext.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
           ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
           ...(ciphertext.attachment
             ? {

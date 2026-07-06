@@ -5,10 +5,13 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { passwordGenerationHr } from "@/components/blog/locale/passwordGeneration.hr";
+import type { PasswordPostCopy } from "@/components/blog/locale/passwordGeneration.types";
+import { passwordGenerationSr } from "@/components/blog/locale/passwordGeneration.sr";
 
-type CardCopy = { title: string; body: string; icon: React.ComponentType<{ className?: string }> };
-type SectionCopy = { title: string; icon: React.ComponentType<{ className?: string }>; paragraphs: string[]; notes?: { title: string; body: string }[]; bullets?: { title: string; body: string }[] };
-type PasswordPostCopy = { intro: string; lead: string; cards: CardCopy[]; sections: SectionCopy[]; bestPracticesTitle: string; bestPractices: { title: string; body: string }[] };
+type CardCopy = PasswordPostCopy["cards"][number];
+type SectionCopy = PasswordPostCopy["sections"][number];
 
 const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: PasswordPostCopy } = {
   en: {
@@ -243,11 +246,13 @@ const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: Passwor
       { title: "No compartas contraseñas", body: "Nunca las compartas con alguien que diga ser soporte." },
     ],
   },
+  hr: passwordGenerationHr,
+  sr: passwordGenerationSr,
 };
 
 export const PasswordGenerationPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const passwordPath = localizedPath("/password-generator", language);
   const blogPath = localizedPath("/blog", language);
 

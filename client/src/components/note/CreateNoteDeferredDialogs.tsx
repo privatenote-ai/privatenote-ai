@@ -17,15 +17,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel } from "@/utils/localAiUxText";
+import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel, isLocalAiReadyToGenerateProgress, localAiWorkingLabel } from "@/utils/localAiUxText";
 import type { ModelLoadProgress } from "@/utils/clientLLM";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const text = progress?.text?.trim() ?? "";
-  if (!text) return "Working...";
-  if (text === "Ready to generate") return localAiAnalyzingPromptLabel();
+  if (!text) return localAiWorkingLabel();
+  if (isLocalAiReadyToGenerateProgress(text)) return localAiAnalyzingPromptLabel();
   return text;
 }
 

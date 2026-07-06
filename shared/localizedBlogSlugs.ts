@@ -1,6 +1,7 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 export const BLOG_CANONICAL_SLUGS = [
+  "what-is-end-to-end-encryption",
   "secrets-never-send-in-chat",
   "send-secret-message-without-account",
   "encrypted-vs-secure-file-sharing",
@@ -18,6 +19,17 @@ export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
 
 /** Localized URL slug per language (ASCII, no diacritics). English values match canonical slugs. */
 export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLanguage, string>> = {
+  "what-is-end-to-end-encryption": {
+    en: "what-is-end-to-end-encryption",
+    de: "was-ist-end-to-end-verschluesselung",
+    fr: "definition-du-chiffrement-de-bout-en-bout",
+    es: "que-es-el-cifrado-de-extremo-a-extremo",
+    it: "cos-e-la-crittografia-end-to-end",
+    nl: "wat-is-end-to-end-versleuteling",
+    pt: "o-que-e-criptografia-de-ponta-a-ponta",
+    sr: "sta-je-end-to-end-sifrovanje",
+    hr: "sto-je-end-to-end-sifriranje",
+  },
   "secrets-never-send-in-chat": {
     en: "secrets-never-send-in-chat",
     de: "10-geheimnisse-die-nie-in-den-chat-gehoeren",

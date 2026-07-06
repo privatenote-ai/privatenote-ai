@@ -5,6 +5,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { privateNoteForDevelopersHr } from "@/components/blog/locale/privateNoteForDevelopers.hr";
+import { privateNoteForDevelopersSr } from "@/components/blog/locale/privateNoteForDevelopers.sr";
 
 type ArticleCopy = {
   intro: string[];
@@ -189,11 +192,13 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     ctaBody: "Instala la extensión de VS Code o prueba la aplicación web — no se requiere cuenta para notas de una sola lectura.",
     ctaButton: "Probar PrivateNote →",
   },
+  hr: privateNoteForDevelopersHr,
+  sr: privateNoteForDevelopersSr,
 };
 
 export const PrivateNoteForDevelopersPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogPath = localizedPath("/blog", language);
   const homePath = localizedPath("/", language);
 

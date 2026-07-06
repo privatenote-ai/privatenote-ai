@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { oneTimeSecretLinksHr } from "@/components/blog/locale/oneTimeSecretLinks.hr";
+import { oneTimeSecretLinksSr } from "@/components/blog/locale/oneTimeSecretLinks.sr";
+import type { OneTimeSecretLinksArticleCopy } from "@/components/blog/locale/oneTimeSecretLinks.types";
 
 const heroImagePath = "/images/dieandreart-footprint-2143685.jpg";
 const heroArtistUrl =
@@ -21,54 +25,11 @@ const heroArtistUrl =
 const heroPixabayUrl =
   "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=2143685";
 
-type BulletItem = {
-  label: string;
-  body: string;
-};
-
-type FlowStep = {
-  title: string;
-  step: string;
-  body: string;
-};
-
-type TableRow = {
-  channel: string;
-  encrypted: string;
-  persistent: string;
-  verdict: string;
-};
-
-type ArticleSection = {
-  title: string;
-  paragraphs: string[];
-  bullets?: BulletItem[];
-  callout?: string;
-  beforeFlowSteps?: string;
-  flowSteps?: FlowStep[];
-  afterFlowSteps?: string[];
-  table?: TableRow[];
-  goodFits?: string[];
-  poorFits?: string[];
-};
-
-type ArticleCopy = {
-  intro: string[];
-  sections: ArticleSection[];
-  tableHeaders: {
-    channel: string;
-    encrypted: string;
-    persistent: string;
-    verdict: string;
-  };
-  goodFitsLabel: string;
-  poorFitsLabel: string;
-  closingTitle: string;
-  closingBody: string;
-  encryptLu: string;
-  tagline: string;
-  relatedReading: string;
-};
+type ArticleCopy = OneTimeSecretLinksArticleCopy;
+type ArticleSection = OneTimeSecretLinksArticleCopy["sections"][number];
+type BulletItem = OneTimeSecretLinksArticleCopy["sections"][number]["bullets"] extends (infer B)[] | undefined ? B : never;
+type FlowStep = NonNullable<OneTimeSecretLinksArticleCopy["sections"][number]["flowSteps"]>[number];
+type TableRow = NonNullable<OneTimeSecretLinksArticleCopy["sections"][number]["table"]>[number];
 
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -885,13 +846,15 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       "Garantiza que la vida útil de tus datos sensibles coincida con la del medio por el que viajan. Porque a veces, el mensaje más seguro es el que deja por completo de existir.",
     relatedReading: "Lecturas relacionadas",
   },
+  hr: oneTimeSecretLinksHr,
+  sr: oneTimeSecretLinksSr,
 };
 
 export const OneTimeSecretLinksPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
   const howItWorksPath = localizedPath("/how-it-works", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
 
   return (
     <div className={blogPostPageClass}>

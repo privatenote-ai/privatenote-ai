@@ -66,12 +66,14 @@ import {
 } from "@shared/modelTier";
 import { FEW_SHOT_APPENDIX_COMPACT, FEW_SHOT_APPENDIX_FULL } from "./localLlmFewShots";
 import {
-  publicModelNameForLoadProgress,
   userFacingLocalAiLoadProgress,
   localAiThinkingLabel,
   localAiThinkingDetailHint,
   localAiDraftingLabel,
   localAiFinalizingLabel,
+  localAiReadyToGenerateLabel,
+  localAiResettingDownloadLabel,
+  localAiRetryingDownloadLabel,
 } from "./localAiUxText";
 import { prependBaseInstruction } from "./baseInstruction";
 import type { SupportedLanguage } from "@/utils/translation";
@@ -534,7 +536,7 @@ export async function initializeClientLLM(
   }
 
   if (isTransformersMobileLoaded() && !preferredModelId) {
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return null as unknown as MLCEngineInterface;
   }
 
@@ -605,7 +607,7 @@ export async function initializeClientLLM(
     addLoadProgressSubscriber(onProgress);
     try {
       await initializeTransformersGemma4Text(onProgress, MODEL_GEMMA_4_TRANSFORMER);
-      notifyLoadProgressSubscribers({ progress: 100, text: "Ready to generate" });
+      notifyLoadProgressSubscribers({ progress: 100, text: localAiReadyToGenerateLabel() });
       clearLoadProgressSubscribers();
       return null as unknown as MLCEngineInterface;
     } catch (error: unknown) {
@@ -625,7 +627,7 @@ export async function initializeClientLLM(
   }
 
   if (isLoadedWebLLM() && getLoadedModelIdWebLLM() === modelId) {
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return getWebLLMLEngine()!;
   }
 
@@ -680,12 +682,12 @@ export async function initializeClientLLM(
           console.warn("[AI] Clearing broken local model state and retrying once:", modelId, errorMessage);
           notifyLoadProgressSubscribers({
             progress: 8,
-            text: `Resetting download for ${publicModelNameForLoadProgress(modelId)}…`,
+            text: localAiResettingDownloadLabel(modelId),
           });
           await resetLocalAiLoadState(modelId);
           notifyLoadProgressSubscribers({
             progress: 12,
-            text: `Retrying download for ${publicModelNameForLoadProgress(modelId)}…`,
+            text: localAiRetryingDownloadLabel(modelId),
           });
           await runLoad();
         } else {
@@ -698,7 +700,7 @@ export async function initializeClientLLM(
         throw new Error("WebLLM engine missing after load");
       }
 
-      notifyLoadProgressSubscribers({ progress: 100, text: "Ready to generate" });
+      notifyLoadProgressSubscribers({ progress: 100, text: localAiReadyToGenerateLabel() });
       engineLoadingPromise = null;
       engineLoadingTargetModelId = null;
       clearLoadProgressSubscribers();

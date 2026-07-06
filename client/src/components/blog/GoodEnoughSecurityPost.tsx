@@ -5,18 +5,12 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { goodEnoughSecurityHr } from "@/components/blog/locale/goodEnoughSecurity.hr";
+import { goodEnoughSecuritySr } from "@/components/blog/locale/goodEnoughSecurity.sr";
+import type { GoodEnoughSecurityArticleCopy } from "@/components/blog/locale/goodEnoughSecurity.types";
 
-type ArticleSection = {
-  title: string;
-  paragraphs: string[];
-  bullets?: string[];
-  ordered?: string[];
-};
-
-type ArticleCopy = {
-  intro: string[];
-  sections: ArticleSection[];
-};
+type ArticleCopy = GoodEnoughSecurityArticleCopy;
 
 const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
@@ -315,11 +309,13 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       },
     ],
   },
+  hr: goodEnoughSecurityHr,
+  sr: goodEnoughSecuritySr,
 };
 
 export const GoodEnoughSecurityPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogPath = localizedPath("/blog", language);
 
   return (

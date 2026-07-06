@@ -37,6 +37,8 @@ import {
   localAiAnalyzingPromptLabel,
   localAiAnalyzingDetailHint,
   LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS,
+  isLocalAiReadyToGenerateProgress,
+  localAiWorkingLabel,
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
 import type { PromptTemplate, AiSentenceLengthId } from "@/components/note/promptTemplates";
@@ -79,7 +81,7 @@ import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { GravityDropZone } from "./GravityDropZone";
 import { useLanguage } from "@/context/LanguageContext";
-import type { SupportedLanguage } from "@/utils/translation";
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
 import {
   generateHostedCloudDraft,
@@ -93,6 +95,7 @@ import { useAuth } from "@/context/AuthContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { saveNoteLabel } from "@/utils/noteLabelsStorage";
+import type { ReaderLanguageSetting } from "./NoteSettingsPanel";
 
 type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
 let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
@@ -169,9 +172,9 @@ async function uploadEncryptedAttachmentChunk(
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
-  if (!t) return "Working…";
-  // After load, WebLLM reports "ready"; keep "analyzing" until streaming updates the headline.
-  if (t === "Ready to generate") return localAiAnalyzingPromptLabel();
+  if (!t) return localAiWorkingLabel();
+  // After load, WebLLM reports ready; keep "analyzing" until streaming updates the headline.
+  if (isLocalAiReadyToGenerateProgress(t)) return localAiAnalyzingPromptLabel();
   return t;
 }
 
@@ -218,6 +221,7 @@ type CreateNoteAuthDraft = {
   expiryValue: NoteExpiryPresetId;
   readCount: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  readerLanguage: ReaderLanguageSetting;
   preferHostedCloudAfterLocalFailure: boolean;
   cloudAssistConsentGiven: boolean;
 };
@@ -250,6 +254,10 @@ function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolea
   } catch {
     /* private mode */
   }
+}
+
+function isReaderLanguageSetting(value: unknown): value is ReaderLanguageSetting {
+  return value === "auto" || (typeof value === "string" && SUPPORTED_LANGUAGES.includes(value as SupportedLanguage));
 }
 
 function normalizeAccountType(value: unknown): AccountType {
@@ -333,6 +341,8 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
         parsed.fileAccessWindowSeconds === 60 * 60
           ? (parsed.fileAccessWindowSeconds as NoteFileAccessWindowSeconds)
           : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      readerLanguage:
+        isReaderLanguageSetting(parsed.readerLanguage) ? parsed.readerLanguage : "auto",
       preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
       cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
@@ -449,6 +459,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
+  const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
@@ -493,6 +504,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           expiryValue,
           readCount,
           fileAccessWindowSeconds,
+          readerLanguage,
           preferHostedCloudAfterLocalFailure,
           cloudAssistConsentGiven,
           ...overrides,
@@ -514,6 +526,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       noteContent,
       originalPrompt,
       preferHostedCloudAfterLocalFailure,
+      readerLanguage,
       readCount,
       selectedTemplateId,
       showPrompt,
@@ -702,6 +715,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setExpiryValue(draft.expiryValue);
     setReadCount(draft.readCount);
     setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
+    setReaderLanguage(draft.readerLanguage);
     if (draft.preferHostedCloudAfterLocalFailure) {
       setPreferHostedCloudAfterLocalFailure(true);
       setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
@@ -791,9 +805,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (restrictRecipientEmail) setRestrictRecipientEmail(false);
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
+    if (readerLanguage !== "auto") setReaderLanguage("auto");
   }, [
     isPremiumUser,
     recipientEmail,
+    readerLanguage,
     requireRecipientVerification,
     restrictRecipientEmail,
   ]);
@@ -1217,6 +1233,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
+    const applyReaderLanguage =
+      isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
       (notifyOnOpen && canNotifyOnOpen) ||
       (notifyOnDestroyed && canNotifyOnOpen) ||
@@ -1482,6 +1500,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           ? { requireRecipientVerification: true }
           : {}),
         fileAccessWindowSeconds,
+        ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -2499,6 +2518,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
+                readerLanguage={readerLanguage}
+                setReaderLanguage={setReaderLanguage}
               />
             </Suspense>
           )}
@@ -2780,6 +2801,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setReadCount,
               fileAccessWindowSeconds,
               setFileAccessWindowSeconds,
+              readerLanguage,
+              setReaderLanguage,
             }}
           />
         </Suspense>

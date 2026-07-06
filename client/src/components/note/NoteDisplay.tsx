@@ -31,6 +31,14 @@ import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+  getTranslations,
+  LANGUAGE_OPTIONS,
+  loadTranslations,
+  normalizeLanguageCode,
+  type SupportedLanguage,
+  type Translations,
+} from '@/utils/translation';
 
 type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated';
 
@@ -71,6 +79,7 @@ interface NoteData {
   fileAccessTokenExpiresIn?: number;
   fileAccessTokenExpiresAtMs?: number;
   attachment?: NoteAttachment;
+  readerLanguage?: SupportedLanguage;
 }
 
 interface NoteAttachmentV2 {
@@ -192,10 +201,13 @@ async function createAttachmentPreviewUrl(blob: Blob, previewKind: AttachmentPre
 }
 
 interface RevealHeroProps {
+  noteId: string;
   isRevealing: boolean;
   isRevealButtonReady: boolean;
   onReveal: (e: React.MouseEvent<HTMLButtonElement>) => Promise<void>;
   branding?: RevealBranding;
+  readerLanguageLabel: string;
+  t: Translations;
 }
 
 /** Shared hero subtitle: matches Reveal / Create success rhythm. */
@@ -214,30 +226,34 @@ function isDecryptKeyFailureMessage(message: string): boolean {
   );
 }
 
-const TrustSignals: React.FC = () => (
+const TrustSignals: React.FC<{ t: Translations }> = ({ t }) => (
   <ul className="mt-40 sm:mt-44 flex flex-col items-center gap-2.5 lg:flex-row lg:justify-center lg:gap-6 text-xs sm:text-sm text-gray-600/75 dark:text-gray-300/72">
     <li className="inline-flex items-center gap-1.5">
       <ShieldCheck className="h-4 w-4 text-primary/70" aria-hidden />
-      <span>End-to-end encrypted</span>
+      <span>{t.revealTrustEncrypted ?? "End-to-end encrypted"}</span>
     </li>
     <li className="inline-flex items-center gap-1.5">
       <Trash2 className="h-4 w-4 text-primary/70" aria-hidden />
-      <span>Self-destructs after opening</span>
+      <span>{t.revealTrustSelfDestructs ?? "Self-destructs after opening"}</span>
     </li>
     <li className="inline-flex items-center gap-1.5">
       <UserX className="h-4 w-4 text-primary/70" aria-hidden />
-      <span>No account required</span>
+      <span>{t.revealTrustNoAccount ?? "No account required"}</span>
     </li>
   </ul>
 );
 
-const getBrandingLine = (branding?: RevealBranding): string | null => {
+const getBrandingLine = (branding: RevealBranding | undefined, t: Translations): string | null => {
   if (!branding) return null;
   const sharer = branding.sharerName?.trim();
   const company = branding.companyName?.trim();
-  if (sharer && company) return `${sharer} from ${company} shared a private note`;
-  if (sharer) return `Shared by ${sharer}`;
-  if (company) return `Shared by ${company}`;
+  if (sharer && company) {
+    return (t.revealBrandingSharedByFrom ?? "{sender} from {company} shared a private note")
+      .replace("{sender}", sharer)
+      .replace("{company}", company);
+  }
+  if (sharer) return (t.revealBrandingSharedBy ?? "Shared by {sender}").replace("{sender}", sharer);
+  if (company) return (t.revealBrandingSharedByCompany ?? "Shared by {company}").replace("{company}", company);
   return null;
 };
 
@@ -267,7 +283,8 @@ const NoteAccessProblem: React.FC<{
   variant: NoteAccessProblemVariant;
   /** True when the note was fetched but the URL key could not decrypt (wrong/truncated key, etc.). */
   keyMismatch?: boolean;
-}> = ({ variant, keyMismatch = false }) => {
+  t: Translations;
+}> = ({ variant, keyMismatch = false, t }) => {
   const isIncomplete = variant === 'link_incomplete';
   const isKeyTruncated = variant === 'key_truncated';
   const showKeyMismatch = variant === 'note_gone' && keyMismatch;
@@ -278,30 +295,28 @@ const NoteAccessProblem: React.FC<{
         <div className="text-center">
           {isIncomplete ? (
             <>
-              <h1 className="page-title text-gray-900 dark:text-white">This link looks incomplete</h1>
-              <p className={NOTE_VIEW_HERO_SUBTITLE}>The secret key (after #) is missing.</p>
+              <h1 className="page-title text-gray-900 dark:text-white">{t.revealIncompleteTitle ?? "This link looks incomplete"}</h1>
+              <p className={NOTE_VIEW_HERO_SUBTITLE}>{t.revealIncompleteDescription ?? "The secret key (after #) is missing."}</p>
             </>
           ) : isKeyTruncated ? (
             <>
-              <h1 className="page-title text-gray-900 dark:text-white">This link&apos;s key looks too short</h1>
+              <h1 className="page-title text-gray-900 dark:text-white">{t.revealKeyTooShortTitle ?? "This link's key looks too short"}</h1>
               <p className={NOTE_VIEW_HERO_SUBTITLE}>
-                The secret after the # is shorter than a real note key. It may have been cut off when the link was
-                copied or shared.
+                {t.revealKeyTooShortDescription ?? "The secret after the # is shorter than a real note key. It may have been cut off when the link was copied or shared."}
               </p>
             </>
           ) : showKeyMismatch ? (
             <>
-              <h1 className="page-title text-gray-900 dark:text-white">Couldn&apos;t unlock this note</h1>
+              <h1 className="page-title text-gray-900 dark:text-white">{t.revealCouldNotUnlockTitle ?? "Couldn't unlock this note"}</h1>
               <p className={NOTE_VIEW_HERO_SUBTITLE}>
-                The key in your link doesn&apos;t match this note. It may be wrong, incomplete, or from a different
-                link. Copy the full URL, including everything after the # symbol.
+                {t.revealCouldNotUnlockDescription ?? "The key in your link doesn't match this note. It may be wrong, incomplete, or from a different link. Copy the full URL, including everything after the # symbol."}
               </p>
             </>
           ) : (
             <>
-              <h1 className="page-title text-gray-900 dark:text-white">Note no longer available</h1>
+              <h1 className="page-title text-gray-900 dark:text-white">{t.revealUnavailableTitle ?? "Note no longer available"}</h1>
               <p className={NOTE_VIEW_HERO_SUBTITLE}>
-                It may have already been opened, expired, or the link is incomplete.
+                {t.revealUnavailableDescription ?? "It may have already been opened, expired, or the link is incomplete."}
               </p>
             </>
           )}
@@ -316,7 +331,7 @@ const NoteAccessProblem: React.FC<{
         >
           <div className="text-center space-y-5 sm:space-y-6">
             <p className="m-0 text-lg sm:text-xl md:text-2xl text-gray-700 dark:text-gray-300 leading-snug sm:leading-[1.45]">
-              Try opening the <span className="font-semibold text-gray-900 dark:text-gray-100">original link</span> again.
+              {t.revealTryOriginalPrefix ?? "Try opening the"} <span className="font-semibold text-gray-900 dark:text-gray-100">{t.revealOriginalLink ?? "original link"}</span> {t.revealTryOriginalSuffix ?? "again."}
             </p>
             <div className="flex items-center gap-3 justify-center text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
               <span className="h-px w-10 sm:w-12 bg-blue-200/95 dark:bg-blue-700/80" aria-hidden />
@@ -324,7 +339,7 @@ const NoteAccessProblem: React.FC<{
               <span className="h-px w-10 sm:w-12 bg-blue-200/95 dark:bg-blue-700/80" aria-hidden />
             </div>
             <p className="m-0 text-lg sm:text-xl md:text-2xl text-gray-700 dark:text-gray-300 leading-snug sm:leading-[1.45]">
-              Ask the sender to send a <span className="font-semibold text-gray-900 dark:text-gray-100">new one</span>.
+              {t.revealAskSenderPrefix ?? "Ask the sender to send a"} <span className="font-semibold text-gray-900 dark:text-gray-100">{t.revealNewOne ?? "new one"}</span>.
             </p>
           </div>
         </div>
@@ -333,8 +348,16 @@ const NoteAccessProblem: React.FC<{
   );
 };
 
-const RevealHero: React.FC<RevealHeroProps> = ({ isRevealing, isRevealButtonReady, onReveal, branding }) => {
-  const brandingLine = getBrandingLine(branding);
+const RevealHero: React.FC<RevealHeroProps> = ({
+  noteId,
+  isRevealing,
+  isRevealButtonReady,
+  onReveal,
+  branding,
+  readerLanguageLabel,
+  t,
+}) => {
+  const brandingLine = getBrandingLine(branding, t);
   const hasBranding = Boolean(brandingLine || branding?.logoUrl);
   const buttonStyle = branding?.accentColor ? { backgroundColor: branding.accentColor } : undefined;
 
@@ -360,10 +383,14 @@ const RevealHero: React.FC<RevealHeroProps> = ({ isRevealing, isRevealButtonRead
           )}
 
           <h1 className="page-title text-gray-900 dark:text-white">
-            Reveal <span className="text-primary">Private Note</span>
+            {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
           </h1>
+          <div className="mt-3 text-xs leading-relaxed text-gray-500/85 dark:text-gray-400/85">
+            <p className="m-0 font-medium">{(t.revealPrivateNoteId ?? "Private note #{id}").replace("{id}", noteId)}</p>
+            <p className="m-0">{(t.revealLanguageLine ?? "Language: {language}").replace("{language}", readerLanguageLabel)}</p>
+          </div>
           <p className={NOTE_VIEW_HERO_SUBTITLE}>
-            For your privacy, this note is deleted after it&apos;s opened.
+            {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
           </p>
 
           <div className="mt-24 sm:mt-28 w-full flex justify-center">
@@ -377,22 +404,22 @@ const RevealHero: React.FC<RevealHeroProps> = ({ isRevealing, isRevealButtonRead
               {isRevealing ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2" />
-                  Revealing...
+                  {t.revealing ?? "Revealing..."}
                 </>
               ) : (
                 <>
                   <Unlock className="h-4 w-4 mr-2" />
-                  Reveal Note
+                  {t.revealNote ?? "Reveal Note"}
                 </>
               )}
             </button>
           </div>
 
           <p className="mt-4 sm:mt-5 text-sm text-gray-600/62 dark:text-gray-300/58">
-            ⚠️ Open only when you&apos;re ready — this cannot be undone.
+            {t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
           </p>
 
-          <TrustSignals />
+          <TrustSignals t={t} />
         </div>
       </section>
     </section>
@@ -406,7 +433,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyMissing = false,
   linkKeyTruncated = false,
 }) => {
-  const { t } = useLanguage();
+  const { language } = useLanguage();
+  const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
+  const readerLanguage = senderSelectedLanguage ?? language ?? "en";
+  const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
+    getTranslations(readerLanguage),
+  );
+  const t = readerTranslations;
   const [noteContent, setNoteContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -441,6 +474,42 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
   const { toast } = useToast();
+  const readerLanguageLabel =
+    LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
+
+  useEffect(() => {
+    let cancelled = false;
+    setReaderTranslations(getTranslations(readerLanguage));
+    void loadTranslations(readerLanguage).then((loaded) => {
+      if (!cancelled) setReaderTranslations(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [readerLanguage]);
+
+  useEffect(() => {
+    if (!id) {
+      setSenderSelectedLanguage(null);
+      return;
+    }
+    let cancelled = false;
+    void apiRequest<{ readerLanguage?: string }>(`/api/notes/${id}`, "GET")
+      .then((meta) => {
+        if (cancelled) return;
+        setSenderSelectedLanguage(
+          typeof meta.readerLanguage === "string"
+            ? normalizeLanguageCode(meta.readerLanguage)
+            : null,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setSenderSelectedLanguage(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const attachmentPreviewKind = useMemo(
     () => getAttachmentPreviewKind(attachmentMetadata?.type, attachmentMetadata?.name),
@@ -524,20 +593,20 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (e.nativeEvent.isTrusted) return true;
     toast({
       title: t.toastInteractionRequired,
-      description: t.toastInteractionRequiredDesc,
+            description: t.toastInteractionRequiredDesc,
     });
     return false;
   };
 
   const getUserFriendlyError = (message: string) => {
     if (message.startsWith("404:") || message.includes("Note not found")) {
-      return "This note is unavailable or has already been read.";
+      return t.revealUnavailableToast ?? "This note is unavailable or has already been read.";
     }
     if (message.includes("Note has expired")) {
-      return "This note has expired.";
+      return t.revealExpiredToast ?? "This note has expired.";
     }
     if (isDecryptKeyFailureMessage(message)) {
-      return "This link's key doesn't match this note. Copy the full URL—including everything after #—or ask the sender for a new link.";
+      return t.revealKeyMismatchToast ?? "This link's key doesn't match this note. Copy the full URL, including everything after #, or ask the sender for a new link.";
     }
     if (message.includes("recipient_verification_required")) {
       return "Recipient verification is required before this note can be revealed.";
@@ -703,6 +772,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const data = await apiRequest(`/api/notes/${id}/reveal`, "POST");
 
       setIsPasswordProtected(data.isPasswordProtected || false);
+      if (typeof data.readerLanguage === "string") {
+        setSenderSelectedLanguage(normalizeLanguageCode(data.readerLanguage));
+      }
       setNoteData(withFileAccessDeadline(data));
       setHasRevealed(true);
 
@@ -864,7 +936,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         console.error("Password decryption error:", error);
       }
       setPasswordDecryptError(
-        "That password didn\u2019t unlock this note. Check for typos or ask the sender.",
+        t.revealWrongPassword ??
+          "That password didn't unlock this note. Check for typos or ask the sender.",
       );
       import("@/utils/analyticsEvent").then(({ fireAnalyticsEvent }) => fireAnalyticsEvent("wrong_password")).catch(() => {});
     } finally {
@@ -997,15 +1070,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }
 
   if (error) {
-    return <NoteAccessProblem variant="note_gone" keyMismatch={keyMismatchError} />;
+    return <NoteAccessProblem variant="note_gone" keyMismatch={keyMismatchError} t={t} />;
   }
 
   if (linkKeyMissing && !hasRevealed) {
-    return <NoteAccessProblem variant="link_incomplete" />;
+    return <NoteAccessProblem variant="link_incomplete" t={t} />;
   }
 
   if (linkKeyTruncated && !hasRevealed) {
-    return <NoteAccessProblem variant="key_truncated" />;
+    return <NoteAccessProblem variant="key_truncated" t={t} />;
   }
 
   if (!hasRevealed) {
@@ -1081,10 +1154,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
     return (
       <RevealHero
+        noteId={id}
         isRevealing={isRevealing}
         isRevealButtonReady={isRevealButtonReady}
         onReveal={handleReveal}
         branding={revealBranding}
+        readerLanguageLabel={readerLanguageLabel}
+        t={t}
       />
     );
   }
@@ -1171,7 +1247,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     );
   }
 
-  const brandingLine = getBrandingLine(revealBranding);
+  const brandingLine = getBrandingLine(revealBranding, t);
   const hasBranding = Boolean(brandingLine || revealBranding?.logoUrl);
   const accentStyle = revealBranding?.accentColor ? { backgroundColor: revealBranding.accentColor } : undefined;
 

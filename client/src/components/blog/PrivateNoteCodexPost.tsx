@@ -5,23 +5,12 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { privateNoteCodexHr } from "@/components/blog/locale/privateNoteCodex.hr";
+import { privateNoteCodexSr } from "@/components/blog/locale/privateNoteCodex.sr";
+import type { PrivateNoteCodexArticleCopy } from "@/components/blog/locale/privateNoteCodex.types";
 
-type SectionLink = { label: string; href: string };
-
-type ArticleCopy = {
-  intro: string[];
-  sections: Array<{
-    title: string;
-    body: string[];
-    bullets?: string[];
-    code?: string;
-    codeLabel?: string;
-    links?: SectionLink[];
-  }>;
-  ctaTitle: string;
-  ctaBody: string;
-  ctaButton: string;
-};
+type ArticleCopy = PrivateNoteCodexArticleCopy;
 
 const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
@@ -690,12 +679,14 @@ PRIVATENOTE_API_BASE_URL = "https://notes.tu-dominio.com"`,
     ctaBody: "Un comando o un bloque JSON registra el servidor MCP. Cada sesión siguiente tiene una herramienta de compartición segura integrada.",
     ctaButton: "Probar PrivateNote →",
   },
+  hr: privateNoteCodexHr,
+  sr: privateNoteCodexSr,
 };
 
 export function PrivateNoteCodexPost() {
   const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
-  const c = copy[language] ?? copy.en;
+  const c = getBlogArticleCopy(copy, language);
 
   return (
     <div className={blogPostPageClass}>
