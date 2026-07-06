@@ -245,6 +245,8 @@ const PasswordGenerator: React.FC = () => {
         expirySeconds,
         maxReads,
         aad: wirePayload.aad,
+        creationSource: "web",
+        creationEntryPoint: "password-share",
       });
 
       // Generate the secure note URL

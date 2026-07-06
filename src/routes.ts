@@ -3,6 +3,8 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
+import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
   NOTE_FILE_AES_GCM_TAG_BYTES,
   noteFileLimitBytesForAccount,
@@ -8495,10 +8497,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
         ? "cloud"
         : null;
+      const sanitizedCreationSource = sanitizeNoteCreationSource(requestBody?.creationSource);
+      const sanitizedCreationEntryPoint = sanitizeNoteCreationEntryPoint(requestBody?.creationEntryPoint);
       await storage.trackNoteCreation(noteForAnalytics, {
         aiEnhanced: aiMode,
         aiMode: sanitizedAiMode,
         referrer: sanitizedReferrer,
+        creationSource: sanitizedCreationSource,
+        creationEntryPoint: sanitizedCreationEntryPoint,
         country: country ?? null,
         language: sanitizedLang,
         attachmentPlaintextBytes,

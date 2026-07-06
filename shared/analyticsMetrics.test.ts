@@ -56,12 +56,16 @@ describe("mergeDailyMetrics", () => {
       averageExpirationDays: 1,
       passwordProtectedNotes: 1,
       blogViews: { x: 1 },
+      creationSourceCounts: { web: 1, vscode: 1 },
+      creationEntryPointCounts: { home: 1, "password-share": 1 },
     });
     const b = sampleDay({
       notesCreated: 2,
       notesViewed: 3,
       averageExpirationDays: 2,
       blogViews: { x: 2, y: 1 },
+      creationSourceCounts: { web: 1, cursor: 1 },
+      creationEntryPointCounts: { home: 1, "file-share": 1 },
     });
     const m = mergeDailyMetrics(a, b);
     assert.equal(m.notesCreated, 4);
@@ -69,6 +73,12 @@ describe("mergeDailyMetrics", () => {
     assert.equal(m.passwordProtectedNotes, 1);
     assert.equal(m.blogViews.x, 3);
     assert.equal(m.blogViews.y, 1);
+    assert.equal(m.creationSourceCounts.web, 2);
+    assert.equal(m.creationSourceCounts.vscode, 1);
+    assert.equal(m.creationSourceCounts.cursor, 1);
+    assert.equal(m.creationEntryPointCounts.home, 2);
+    assert.equal(m.creationEntryPointCounts["password-share"], 1);
+    assert.equal(m.creationEntryPointCounts["file-share"], 1);
     assert.ok(Math.abs(m.averageExpirationDays - 1.5) < 1e-9);
   });
 });

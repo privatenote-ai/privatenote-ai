@@ -23,6 +23,8 @@ export interface CreateNoteBody {
   isPasswordProtected: boolean;
   _hp: string;
   aiMode: boolean;
+  creationSource: string;
+  creationEntryPoint: string;
 }
 
 function request(

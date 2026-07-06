@@ -13,6 +13,8 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     aiEnhancedNotes: 0,
     blogViews: {},
     referrerCounts: {},
+    creationSourceCounts: {},
+    creationEntryPointCounts: {},
     averageExpirationDays: 0,
     expiryRangeDistribution: {
       oneHourOrLess: 0,
@@ -64,6 +66,8 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     ...metrics,
     blogViews: metrics.blogViews || {},
     referrerCounts: metrics.referrerCounts || {},
+    creationSourceCounts: metrics.creationSourceCounts || {},
+    creationEntryPointCounts: metrics.creationEntryPointCounts || {},
     countryDistribution: metrics.countryDistribution || {},
     languageDistribution: metrics.languageDistribution || {},
     expiryRangeDistribution: {
@@ -104,6 +108,8 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
     averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
     blogViews: { ...base.blogViews },
     referrerCounts: { ...(base.referrerCounts || {}) },
+    creationSourceCounts: { ...(base.creationSourceCounts || {}) },
+    creationEntryPointCounts: { ...(base.creationEntryPointCounts || {}) },
     countryDistribution: { ...(base.countryDistribution || {}) },
     languageDistribution: { ...(base.languageDistribution || {}) },
     notesFailedToView: base.notesFailedToView + add.notesFailedToView,
@@ -148,6 +154,13 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
   }
   for (const [ref, count] of Object.entries(add.referrerCounts || {})) {
     merged.referrerCounts[ref] = (merged.referrerCounts[ref] || 0) + count;
+  }
+  for (const [source, count] of Object.entries(add.creationSourceCounts || {})) {
+    merged.creationSourceCounts[source] = (merged.creationSourceCounts[source] || 0) + count;
+  }
+  for (const [entryPoint, count] of Object.entries(add.creationEntryPointCounts || {})) {
+    merged.creationEntryPointCounts[entryPoint] =
+      (merged.creationEntryPointCounts[entryPoint] || 0) + count;
   }
   for (const [country, count] of Object.entries(add.countryDistribution || {})) {
     merged.countryDistribution[country] = (merged.countryDistribution[country] || 0) + count;

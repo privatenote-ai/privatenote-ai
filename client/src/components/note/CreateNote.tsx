@@ -1491,6 +1491,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           ? { attachment, attachmentContentHash: attachment.encryptedContentSha256 }
           : {}),
         _hp: honeypotValue,
+        creationSource: "web",
+        creationEntryPoint: isFileTransferMode ? "file-share" : "home",
         ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
         ...(isPasswordProtected && {
