@@ -1,0 +1,23 @@
+{
+  "name": "privatenote",
+  "private": true,
+  "description": "PrivateNote developer tools and shared crypto utilities",
+  "homepage": "https://privatenote.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marjanskrobot/privatenote-ai.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build:chrome": "node packages/privatenote-chrome/build.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^20.19.0",
+    "esbuild": "^0.25.0",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
+  }
+}
