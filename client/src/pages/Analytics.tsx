@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { AnalyticsData, DailyMetrics } from '@shared/schema';
+import { NOTE_CREATION_SOURCE_LABELS, NOTE_CREATION_SOURCES } from '@shared/noteCreationSource';
+import {
+  FILE_SIZE_BUCKET_LABELS,
+  NOTE_CREATION_ENTRY_POINT_LABELS,
+  NOTE_CREATION_ENTRY_POINTS,
+} from '@shared/noteCreationEntryPoint';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +22,8 @@ const EMPTY_DAILY_METRICS: DailyMetrics = {
   aiEnhancedNotes: 0,
   blogViews: {},
   referrerCounts: {},
+  creationSourceCounts: {},
+  creationEntryPointCounts: {},
   averageExpirationDays: 0,
   expiryRangeDistribution: {
     oneHourOrLess: 0,
@@ -45,6 +53,10 @@ const EMPTY_DAILY_METRICS: DailyMetrics = {
   cloudAiUsed: 0,
   countryDistribution: {},
   languageDistribution: {},
+  fileSharePageViews: 0,
+  passwordSharePageViews: 0,
+  notesWithFileAttachment: 0,
+  fileSizeBucketDistribution: { under5mb: 0, from5to15mb: 0, from15to25mb: 0, over25mb: 0 },
 };
 
 const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
@@ -56,6 +68,12 @@ const normalizeMetrics = (metrics?: DailyMetrics | null): DailyMetrics => {
     ...metrics,
     blogViews: metrics.blogViews || {},
     referrerCounts: metrics.referrerCounts || {},
+    creationSourceCounts: metrics.creationSourceCounts || {},
+    creationEntryPointCounts: metrics.creationEntryPointCounts || {},
+    fileSizeBucketDistribution: {
+      ...EMPTY_DAILY_METRICS.fileSizeBucketDistribution!,
+      ...(metrics.fileSizeBucketDistribution || {}),
+    },
     expiryRangeDistribution: {
       ...EMPTY_DAILY_METRICS.expiryRangeDistribution,
       ...(metrics.expiryRangeDistribution || {})
@@ -526,6 +544,169 @@ export default function Analytics() {
                           ))}
                       </tbody>
                     </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {Object.keys(metrics.creationSourceCounts || {}).length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Note Creation Source</CardTitle>
+                  <CardDescription>
+                    Where notes were created: web app vs VS Code / Cursor extension
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={NOTE_CREATION_SOURCES
+                          .map((source) => ({
+                            name: NOTE_CREATION_SOURCE_LABELS[source],
+                            count: metrics.creationSourceCounts?.[source] ?? 0,
+                          }))
+                          .filter(({ count }) => count > 0)}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#6366f1" name="Notes" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {Object.keys(metrics.creationEntryPointCounts || {}).length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Note Entry Point</CardTitle>
+                  <CardDescription>
+                    Which page or flow started the note: home, password share, file share, or extension
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={NOTE_CREATION_ENTRY_POINTS
+                          .map((entryPoint) => ({
+                            name: NOTE_CREATION_ENTRY_POINT_LABELS[entryPoint],
+                            count: metrics.creationEntryPointCounts?.[entryPoint] ?? 0,
+                          }))
+                          .filter(({ count }) => count > 0)}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#14b8a6" name="Notes" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {((metrics.passwordSharePageViews ?? 0) > 0 ||
+              (metrics.fileSharePageViews ?? 0) > 0 ||
+              (metrics.creationEntryPointCounts?.['password-share'] ?? 0) > 0 ||
+              (metrics.creationEntryPointCounts?.['file-share'] ?? 0) > 0) && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Feature Funnel</CardTitle>
+                  <CardDescription>
+                    Page visits vs notes created from Share a password and Share a file
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 pb-4 sm:grid-cols-4">
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{metrics.passwordSharePageViews ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">Password page views</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {metrics.creationEntryPointCounts?.['password-share'] ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Passwords shared</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{metrics.fileSharePageViews ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">File page views</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {metrics.creationEntryPointCounts?.['file-share'] ?? 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">File notes created</p>
+                    </div>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Share a password',
+                            pageViews: metrics.passwordSharePageViews ?? 0,
+                            notesCreated: metrics.creationEntryPointCounts?.['password-share'] ?? 0,
+                          },
+                          {
+                            name: 'Share a file',
+                            pageViews: metrics.fileSharePageViews ?? 0,
+                            notesCreated: metrics.creationEntryPointCounts?.['file-share'] ?? 0,
+                          },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="pageViews" fill="#f59e0b" name="Page views" />
+                        <Bar dataKey="notesCreated" fill="#6366f1" name="Notes created" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {(metrics.notesWithFileAttachment ?? 0) > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>File Attachment Sizes</CardTitle>
+                  <CardDescription>
+                    {metrics.notesWithFileAttachment ?? 0} notes included an encrypted file attachment
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={Object.entries(metrics.fileSizeBucketDistribution ?? {})
+                            .filter(([, count]) => count > 0)
+                            .map(([bucket, value]) => ({
+                              name: FILE_SIZE_BUCKET_LABELS[bucket as keyof typeof FILE_SIZE_BUCKET_LABELS],
+                              value,
+                            }))}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {COLORS.map((color, index) => (
+                            <Cell key={`cell-${index}`} fill={color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>

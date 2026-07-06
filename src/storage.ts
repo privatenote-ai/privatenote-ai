@@ -24,6 +24,8 @@ interface AnalyticsContext {
   aiEnhanced?: boolean;
   aiMode?: 'local' | 'cloud' | null;
   referrer?: string | null;
+  creationSource?: string | null;
+  creationEntryPoint?: string | null;
   country?: string | null;
   language?: string | null;
   /** Plaintext file size in bytes when a file attachment is included. Null/undefined = no attachment. */
@@ -304,6 +306,18 @@ class MemStorage {
       metrics.referrerCounts[context.referrer] =
         (metrics.referrerCounts[context.referrer] ?? 0) + 1;
     }
+
+    if (context?.creationSource) {
+      if (!metrics.creationSourceCounts) metrics.creationSourceCounts = {};
+      metrics.creationSourceCounts[context.creationSource] =
+        (metrics.creationSourceCounts[context.creationSource] ?? 0) + 1;
+    }
+
+    if (context?.creationEntryPoint) {
+      if (!metrics.creationEntryPointCounts) metrics.creationEntryPointCounts = {};
+      metrics.creationEntryPointCounts[context.creationEntryPoint] =
+        (metrics.creationEntryPointCounts[context.creationEntryPoint] ?? 0) + 1;
+    }
     
     // Track expiration days
     const expirationDate = new Date(note.expiresAt);
@@ -514,6 +528,18 @@ class KVAnalyticsStorage {
       if (!metrics.referrerCounts) metrics.referrerCounts = {};
       metrics.referrerCounts[context.referrer] =
         (metrics.referrerCounts[context.referrer] ?? 0) + 1;
+    }
+
+    if (context?.creationSource) {
+      if (!metrics.creationSourceCounts) metrics.creationSourceCounts = {};
+      metrics.creationSourceCounts[context.creationSource] =
+        (metrics.creationSourceCounts[context.creationSource] ?? 0) + 1;
+    }
+
+    if (context?.creationEntryPoint) {
+      if (!metrics.creationEntryPointCounts) metrics.creationEntryPointCounts = {};
+      metrics.creationEntryPointCounts[context.creationEntryPoint] =
+        (metrics.creationEntryPointCounts[context.creationEntryPoint] ?? 0) + 1;
     }
 
     if (context?.country) {

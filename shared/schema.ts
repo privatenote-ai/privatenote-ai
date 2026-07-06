@@ -93,6 +93,10 @@ export interface DailyMetrics {
   aiEnhancedNotes: number;
   blogViews: Record<string, number>; // slug -> views
   referrerCounts: Record<string, number>; // sanitized referrer name -> note count
+  /** Client that created the note (web app, VS Code extension, Cursor extension). */
+  creationSourceCounts: Record<string, number>;
+  /** Page or flow where the note was started (home, password share, file share, extension). */
+  creationEntryPointCounts: Record<string, number>;
   averageExpirationDays: number;
   expiryRangeDistribution: {
     oneHourOrLess: number;
