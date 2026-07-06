@@ -113,7 +113,7 @@ export const encryptedVsSecureFileSharingHr: EncryptedFileSharingArticleCopy = {
       bullets: [
         "**Bez skeniranja zlonamjernog softvera na poslužitelju** — jer poslužitelj ne može pročitati datoteku, ne može je skenirati. Vjerujte pošiljatelju.",
         "**Bez pregleda generiranih na poslužitelju** — sličice i pregledi dokumenata renderiraju se lokalno u pregledniku primatelja nakon dešifriranja, ne na poslužitelju.",
-        "**Bez oporavka lozinke ili ključa** — ako izgubite link ili ključ, pružatelj ne može oporaviti datoteku. Nema „Zaboravljene lozinke" za podatke kojima domaćin ne može pristupiti.",
+        "**Bez oporavka lozinke ili ključa** — ako izgubite link ili ključ, pružatelj ne može oporaviti datoteku. Nema „Zaboravljene lozinke” za podatke kojima domaćin ne može pristupiti.",
       ],
     },
     {

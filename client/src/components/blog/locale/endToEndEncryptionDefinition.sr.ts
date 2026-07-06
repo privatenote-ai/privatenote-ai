@@ -87,7 +87,7 @@ export const endToEndEncryptionDefinitionSr: E2eeDefinitionArticleCopy = {
   continueReadingTitle: "Nastavite čitati",
   referencesTitle: "Reference",
   references: [
-    { label: "Matthew Green, „Does Zoom use end-to-end encryption?"", href: "https://blog.cryptographyengineering.com/2020/04/03/does-zoom-use-end-to-end-encryption/" },
+    { label: "Matthew Green, „Does Zoom use end-to-end encryption?”", href: "https://blog.cryptographyengineering.com/2020/04/03/does-zoom-use-end-to-end-encryption/" },
     { label: "Signal, The X3DH Key Agreement Protocol", href: "https://signal.org/docs/specifications/x3dh/" },
     { label: "IETF RFC 9420, The Messaging Layer Security Protocol", href: "https://www.rfc-editor.org/rfc/rfc9420.html" },
     { label: "Unger et al., SoK: Secure Messaging", href: "https://www.ieee-security.org/TC/SP2015/papers-archived/6949a232.pdf" },

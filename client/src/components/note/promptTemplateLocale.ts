@@ -587,23 +587,23 @@ const PROMPT_TEMPLATE_KEY_PREFIX: Record<string, string> = {
 };
 
 function patchFromTranslationKeys(
-  t: Record<string, string>,
+  translations: Record<string, string>,
   prefix: string,
 ): PromptTemplateFieldPatch | null {
-  const name = t[`promptTpl${prefix}Name`];
+  const name = translations[`promptTpl${prefix}Name`];
   if (typeof name !== "string" || !name.trim()) return null;
   const patch: PromptTemplateFieldPatch = { name };
-  const description = t[`promptTpl${prefix}Description`];
+  const description = translations[`promptTpl${prefix}Description`];
   if (typeof description === "string" && description.trim()) patch.description = description;
-  const userTemplate = t[`promptTpl${prefix}UserTemplate`];
+  const userTemplate = translations[`promptTpl${prefix}UserTemplate`];
   if (typeof userTemplate === "string" && userTemplate.trim()) patch.userTemplate = userTemplate;
-  const modelGuidance = t[`promptTpl${prefix}ModelGuidance`];
+  const modelGuidance = translations[`promptTpl${prefix}ModelGuidance`];
   if (typeof modelGuidance === "string" && modelGuidance.trim()) patch.modelGuidance = modelGuidance;
-  const smallModelGuidance = t[`promptTpl${prefix}SmallModelGuidance`];
+  const smallModelGuidance = translations[`promptTpl${prefix}SmallModelGuidance`];
   if (typeof smallModelGuidance === "string" && smallModelGuidance.trim()) {
     patch.smallModelGuidance = smallModelGuidance;
   }
-  const promptPlaceholder = t[`promptTpl${prefix}PromptPlaceholder`];
+  const promptPlaceholder = translations[`promptTpl${prefix}PromptPlaceholder`];
   if (typeof promptPlaceholder === "string" && promptPlaceholder.trim()) {
     patch.promptPlaceholder = promptPlaceholder;
   }
@@ -611,12 +611,11 @@ function patchFromTranslationKeys(
 }
 
 function buildPromptTemplateOverridesFromTranslations(
-  language: SupportedLanguage,
+  translations: Record<string, string>,
 ): Record<string, PromptTemplateFieldPatch> {
-  const t = getTranslations(language);
   const out: Record<string, PromptTemplateFieldPatch> = {};
   for (const [id, prefix] of Object.entries(PROMPT_TEMPLATE_KEY_PREFIX)) {
-    const patch = patchFromTranslationKeys(t, prefix);
+    const patch = patchFromTranslationKeys(translations, prefix);
     if (patch) out[id] = patch;
   }
   return out;
@@ -625,11 +624,14 @@ function buildPromptTemplateOverridesFromTranslations(
 export function mergePromptTemplatesForLanguage(
   base: readonly PromptTemplate[],
   language: SupportedLanguage,
+  translations?: Record<string, string>,
 ): PromptTemplate[] {
   if (language === "en") return [...base];
-  const ov =
-    PROMPT_TEMPLATE_FIELD_OVERRIDES[language] ??
-    buildPromptTemplateOverridesFromTranslations(language);
+  const translated = buildPromptTemplateOverridesFromTranslations(
+    translations ?? getTranslations(language),
+  );
+  const legacy = PROMPT_TEMPLATE_FIELD_OVERRIDES[language];
+  const ov = legacy ? { ...translated, ...legacy } : translated;
   if (Object.keys(ov).length === 0) return [...base];
   return base.map((t) => ({ ...t, ...(ov[t.id] ?? {}) }));
 }
