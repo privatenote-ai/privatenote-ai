@@ -1,0 +1,31 @@
+@import url("popup.css");
+
+body {
+  width: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.page h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 1.25rem;
+}
+
+.checkbox-row {
+  margin-bottom: 1rem;
+}
+
+.checkbox-row label {
+  display: inline;
+  margin: 0;
+  color: var(--fg);
+  font-size: 0.88rem;
+}
