@@ -21,6 +21,7 @@ import { SecretMessageWithoutAccountPost } from '@/components/blog/SecretMessage
 import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendInChatPost';
 import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncryptionDefinitionPost';
 import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPost';
+import { ChatControlCryptographersPost } from '@/components/blog/ChatControlCryptographersPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -76,6 +77,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'how-to-share-api-key-securely') {
     return <ShareApiKeySecurelyPost />;
+  }
+  if (slug === 'chat-control-europe-cryptographers') {
+    return <ChatControlCryptographersPost />;
   }
   if (slug === 'myth-good-enough-security') {
     return <GoodEnoughSecurityPost />;
