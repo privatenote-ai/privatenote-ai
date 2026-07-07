@@ -1257,7 +1257,7 @@ export const pt: Translations = {
   blogCodexTitle: "Usando PrivateNote com OpenAI Codex",
   blogCodexExcerpt: "Um comando conecta o servidor PrivateNote MCP a cada sessão do Codex. Veja exatamente como configurá-lo, o que o Codex pode fazer com ele e como manter totalmente os segredos fora do prompt do agente.",
   blogOneTimeLinksTitle: "Links secretos únicos: como compartilhar informações confidenciais sem deixar um registro permanente",
-  blogOneTimeLinksExcerpt: "Email, Slack e mensagens de texto foram criados para manter as mensagens para sempre. Alguns segredos nunca foram feitos para persistir. Veja como funcionam os links criptografados únicos, quando usá-los e por que gravar após a leitura é um recurso de segurança - não um artifício.",
+  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger e Slack foram feitos para guardar mensagens para sempre. Alguns segredos nunca deveriam persistir. Veja como funcionam links criptografados de uso único, quando usá-los e por que queimar após a leitura é um recurso de segurança—não um artifício.",
   blogOneTimeLinksMetaTitle: "Links secretos únicos explicados",
   blogOneTimeLinksMetaDescription: "Saiba como funcionam os links criptografados de gravação após leitura, quando usá-los em vez de e-mail ou Slack e por que a efemeridade reduz o risco após a entrega.",
   blogEncryptedFileSharingTitle: "Compartilhamento de arquivos criptografados versus compartilhamento seguro de arquivos: qual é a diferença?",

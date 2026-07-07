@@ -1291,7 +1291,7 @@ export const fr: Translations = {
   blogCodexTitle: "Utiliser PrivateNote avec OpenAI Codex",
   blogCodexExcerpt: "Une seule commande connecte le serveur MCP PrivateNote à chaque session Codex. Voici comment le configurer, ce que Codex peut faire et comment garder les secrets hors du prompt de l'agent.",
   blogOneTimeLinksTitle: "Liens secrets à usage unique : partager des informations sensibles sans laisser de trace permanente",
-  blogOneTimeLinksExcerpt: "E-mail, Slack et SMS conservent les messages indéfiniment. Certains secrets ne devraient pas persister. Voici comment fonctionnent les liens chiffrés à usage unique, quand les utiliser et pourquoi brûler après lecture est une fonctionnalité de sécurité.",
+  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger et Slack sont faits pour conserver les messages indéfiniment. Certains secrets ne devraient pas persister. Voici comment fonctionnent les liens chiffrés à usage unique, quand les utiliser et pourquoi brûler après lecture est une fonctionnalité de sécurité.",
   blogOneTimeLinksMetaTitle: "Liens secrets à usage unique expliqués",
   blogOneTimeLinksMetaDescription: "Découvrez comment fonctionnent les liens chiffrés burn-after-reading, quand les utiliser à la place de l'e-mail ou Slack, et pourquoi l'éphémérité réduit les risques.",
   blogEncryptedFileSharingTitle: "Partage chiffré vs partage sécurisé de fichiers : quelle différence ?",

@@ -1257,7 +1257,7 @@ export const nl: Translations = {
   blogCodexTitle: "PrivateNote gebruiken met OpenAI Codex",
   blogCodexExcerpt: "Eén opdracht verbindt de PrivateNote MCP-server met elke Codex-sessie. Hier leest u precies hoe u het instelt, wat Codex ermee kan doen en hoe u geheimen volledig buiten de agentprompt kunt houden.",
   blogOneTimeLinksTitle: "Eenmalige geheime links: gevoelige informatie delen zonder een permanent record achter te laten",
-  blogOneTimeLinksExcerpt: "E-mail, Slack en sms-berichten zijn gebouwd om berichten voor altijd te bewaren. Het was nooit de bedoeling dat sommige geheimen zouden blijven bestaan. Hier leest u hoe eenmalige gecodeerde links werken, wanneer u ze moet gebruiken en waarom branden na het lezen een beveiligingsfunctie is en geen gimmick.",
+  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger en Slack zijn gebouwd om berichten voor altijd te bewaren. Sommige geheimen waren nooit bedoeld om te blijven bestaan. Hier leest u hoe eenmalige versleutelde links werken, wanneer u ze gebruikt en waarom vernietigen na het lezen een beveiligingsfunctie is—geen gimmick.",
   blogOneTimeLinksMetaTitle: "Eenmalige geheime links uitgelegd",
   blogOneTimeLinksMetaDescription: "Ontdek hoe gecodeerde links na het lezen werken, wanneer u ze moet gebruiken in plaats van e-mail of Slack, en waarom kortstondigheid het risico na levering vermindert.",
   blogEncryptedFileSharingTitle: "Versleuteld vs. veilig bestanden delen: wat is het verschil?",

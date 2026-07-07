@@ -1291,7 +1291,7 @@ export const de: Translations = {
   blogCodexTitle: "PrivateNote mit OpenAI Codex verwenden",
   blogCodexExcerpt: "Ein Befehl verbindet den PrivateNote-MCP-Server mit jeder Codex-Sitzung. Hier erfahren Sie, wie Sie ihn einrichten, was Codex damit tun kann und wie Geheimnisse vollständig aus dem Agent-Prompt herausbleiben.",
   blogOneTimeLinksTitle: "One-Time-Secret-Links: Sensible Informationen teilen, ohne dauerhafte Spuren zu hinterlassen",
-  blogOneTimeLinksExcerpt: "E-Mail, Slack und SMS speichern Nachrichten für immer. Manche Geheimnisse sind nicht dafür gedacht. So funktionieren einmalige verschlüsselte Links, wann Sie sie nutzen sollten und warum Burn-after-Reading ein Sicherheitsfeature ist.",
+  blogOneTimeLinksExcerpt: "E-Mail, WhatsApp, Facebook Messenger und viele andere Chat-Apps speichern Nachrichten für immer. Manche Geheimnisse sind nicht dafür gedacht. So funktionieren einmalige verschlüsselte Links, wann Sie sie nutzen sollten und warum Burn-after-Reading ein Sicherheitsfeature ist.",
   blogOneTimeLinksMetaTitle: "One-Time-Secret-Links erklärt",
   blogOneTimeLinksMetaDescription: "Erfahren Sie, wie Burn-after-Reading-Links funktionieren, wann Sie sie statt E-Mail oder Slack nutzen sollten und warum Ephemerität Risiken reduziert.",
   blogEncryptedFileSharingTitle: "Verschlüsseltes vs. sicheres Dateiteilen: Was ist der Unterschied?",

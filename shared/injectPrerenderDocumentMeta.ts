@@ -14,6 +14,10 @@ import { sr } from "../client/src/utils/translations/sr.ts";
 import { hr } from "../client/src/utils/translations/hr.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { isLocaleHomeRoute } from "./homeSeoLinks.ts";
+import {
+  buildPasswordGeneratorFaqSchema,
+  isPasswordGeneratorRoute,
+} from "./passwordGeneratorStructuredData.ts";
 import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
 
 const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations> = {
@@ -62,6 +66,10 @@ function escapeHtmlAttr(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function serializeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
 function replaceMetaContent(html: string, attr: "name" | "property", key: string, content: string): string {
   const escaped = escapeHtmlAttr(content);
   const reDQ = new RegExp(`<meta\\s+${attr}=["']${key}["']\\s+content="[^"]*"\\s*/?>`, "i");
@@ -84,10 +92,23 @@ function stripHomePrerenderHero(html: string, route: string): string {
   );
 }
 
+function injectPasswordGeneratorFaqSchema(html: string, route: string, t: Translations): string {
+  if (!isPasswordGeneratorRoute(route)) return html;
+
+  const schema = buildPasswordGeneratorFaqSchema(t);
+  const script = `<script type="application/ld+json" data-structured-data-id="password-generator-faq">${serializeJsonLd(schema)}</script>`;
+
+  const withoutExisting = html.replace(
+    /\s*<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*\bdata-structured-data-id=["']password-generator-faq["'][^>]*>[\s\S]*?<\/script>/gi,
+    "",
+  );
+  return withoutExisting.replace("</head>", `${script}\n</head>`);
+}
+
 export function injectPrerenderDocumentMeta(html: string, route: string): string {
   const t = translationsForRoute(route);
   const { title, description } = resolveDocumentMeta(route, t);
-  const lang = htmlLangForRoute(route);
+  const lang = htmlLangForRoute(route) as SupportedLanguage;
 
   let out = stripHomePrerenderHero(html, route);
 
@@ -101,6 +122,7 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = replaceMetaContent(out, "name", "twitter:description", description);
 
   out = replaceMetaContent(out, "property", "og:locale", OG_LOCALE_BY_LANG[lang] ?? "en_US");
+  out = injectPasswordGeneratorFaqSchema(out, route, t);
 
   return out;
 }

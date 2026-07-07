@@ -93,6 +93,32 @@ function clearArticleOnlyTags(): void {
   removeMetaProperty("article:author");
 }
 
+export function removeStructuredDataScript(id: string): void {
+  document.head.querySelector<HTMLScriptElement>(`script[type="application/ld+json"][data-structured-data-id="${id}"]`)?.remove();
+}
+
+export function setStructuredDataScript(id: string, data: Record<string, unknown> | null): void {
+  if (!data) {
+    removeStructuredDataScript(id);
+    return;
+  }
+
+  let el = document.head.querySelector<HTMLScriptElement>(
+    `script[type="application/ld+json"][data-structured-data-id="${id}"]`,
+  );
+  if (!el) {
+    el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.dataset.structuredDataId = id;
+    const nonce = document.head.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content;
+    if (nonce) {
+      el.nonce = nonce;
+    }
+    document.head.appendChild(el);
+  }
+  el.text = JSON.stringify(data);
+}
+
 function ogLocaleFromDocument(): string {
   const raw = typeof document !== "undefined" ? document.documentElement.lang?.trim().split("-")[0] ?? "en" : "en";
   return OG_LOCALE_BY_LANG[raw] ?? OG_LOCALE_BY_LANG.en;
