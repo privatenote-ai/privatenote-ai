@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { agentSecurityHr } from "@/components/blog/locale/agentSecurity.hr";
 import { agentSecuritySr } from "@/components/blog/locale/agentSecurity.sr";
@@ -650,6 +651,8 @@ export const AgentSecurityPost: React.FC = () => {
             </p>
           </div>
         ) : null}
+
+        <BlogPostCrossLinks slug="securing-ai-agents-like-employees" />
       </article>
     </div>
   );

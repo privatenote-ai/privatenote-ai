@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { passwordGenerationHr } from "@/components/blog/locale/passwordGeneration.hr";
 import type { PasswordPostCopy } from "@/components/blog/locale/passwordGeneration.types";
@@ -348,6 +349,8 @@ export const PasswordGenerationPost: React.FC = () => {
             {t.blogViewAllArticles} →
           </Link>
         </div>
+
+        <BlogPostCrossLinks slug="how-we-generate-passwords" className="mt-10 border-t-0 pt-0" />
       </article>
     </div>
   );

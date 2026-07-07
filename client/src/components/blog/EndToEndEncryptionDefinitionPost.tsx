@@ -1,11 +1,10 @@
 import React from "react";
-import { Link } from "wouter";
-import { ArrowRight, KeyRound, LockKeyhole, Server, ShieldCheck } from "lucide-react";
+import { KeyRound, LockKeyhole, Server, ShieldCheck } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
-import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { endToEndEncryptionDefinitionEn } from "@/components/blog/locale/endToEndEncryptionDefinition.en";
 import { endToEndEncryptionDefinitionHr } from "@/components/blog/locale/endToEndEncryptionDefinition.hr";
@@ -132,9 +131,6 @@ function EndpointFlow({ article }: { article: E2eeDefinitionArticleCopy }) {
 export const EndToEndEncryptionDefinitionPost: React.FC = () => {
   const { t, language } = useLanguage();
   const article = getBlogArticleCopy(copy, language);
-  const howItWorksPath = localizedPath("/how-it-works", language);
-  const securityPath = localizedPath("/security-resources", language);
-  const encryptedFileSharingPath = blogPostPath("encrypted-vs-secure-file-sharing", language);
   const urlFragmentSectionTitle = copy.en.sections[3]?.title ?? "";
 
   return (
@@ -174,35 +170,6 @@ export const EndToEndEncryptionDefinitionPost: React.FC = () => {
           ))}
         </div>
 
-        <section className="mt-14 rounded-3xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-800 dark:bg-gray-900/45 sm:p-7">
-          <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">{article.continueReadingTitle}</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Link
-              href={encryptedFileSharingPath}
-              className="group rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-primary/40 dark:border-gray-800 dark:bg-gray-950"
-            >
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">{t.blogEncryptedFileSharingTitle}</span>
-              <ArrowRight className="mt-3 h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href={securityPath}
-              className="group rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-primary/40 dark:border-gray-800 dark:bg-gray-950"
-            >
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {t.securityHeroPrefix} {t.securityHeroAccent}
-              </span>
-              <ArrowRight className="mt-3 h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-          <Link
-            href={howItWorksPath}
-            className="mt-6 inline-flex items-center gap-2.5 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {t.howItWorks}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </section>
-
         <section className="mt-12 border-t border-gray-200 pt-8 dark:border-gray-800">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{article.referencesTitle}</h2>
           <ul className="space-y-3">
@@ -220,6 +187,8 @@ export const EndToEndEncryptionDefinitionPost: React.FC = () => {
             ))}
           </ul>
         </section>
+
+        <BlogPostCrossLinks slug="what-is-end-to-end-encryption" />
       </article>
     </div>
   );

@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { goodEnoughSecurityHr } from "@/components/blog/locale/goodEnoughSecurity.hr";
 import { goodEnoughSecuritySr } from "@/components/blog/locale/goodEnoughSecurity.sr";
@@ -361,6 +362,8 @@ export const GoodEnoughSecurityPost: React.FC = () => {
             </React.Fragment>
           ))}
         </div>
+
+        <BlogPostCrossLinks slug="myth-good-enough-security" />
       </article>
     </div>
   );

@@ -1,15 +1,15 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { SecurityEducation } from '@/components/features/SecurityEducation';
 import { useLanguage } from '@/context/LanguageContext';
-import { blogPostPath, localizedPath } from '@/utils/localizedPath';
+import { localizedPath } from '@/utils/localizedPath';
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
+import { BlogPostCrossLinks } from '@/components/blog/BlogPostCrossLinks';
 
 export const PrivacyToolsPost: React.FC = () => {
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const homePath = localizedPath('/', language);
-  const blogPath = localizedPath('/blog', language);
 
   return (
     <div className={blogPostPageClass}>
@@ -69,13 +69,9 @@ export const PrivacyToolsPost: React.FC = () => {
           >
             {t.blogBackToHome}
           </Link>
-          <Link
-            href={blogPostPath("myth-good-enough-security", language)}
-            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            {t.blogNextArticle}: {t.blogGoodEnoughTitle}
-          </Link>
         </div>
+
+        <BlogPostCrossLinks slug="privacy-tools" className="mt-10 border-t-0 pt-0" />
 
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
           {t.blogAffiliateDisclosure}

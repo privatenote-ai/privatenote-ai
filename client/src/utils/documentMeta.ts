@@ -201,5 +201,6 @@ export function setDocumentMeta(title: string, description: string, options?: Do
     }
   } else {
     clearArticleOnlyTags();
+    removeStructuredDataScript("blog-article");
   }
 }

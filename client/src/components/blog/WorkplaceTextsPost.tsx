@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { workplaceTextsHr } from "@/components/blog/locale/workplaceTexts.hr";
 import { workplaceTextsSr } from "@/components/blog/locale/workplaceTexts.sr";
@@ -359,6 +360,8 @@ export const WorkplaceTextsPost: React.FC = () => {
             <ExternalLink className="ml-1 h-4 w-4" />
           </a>
         </div>
+
+        <BlogPostCrossLinks slug="workplace-texts-private-note" />
       </article>
     </div>
   );

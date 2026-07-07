@@ -7,6 +7,7 @@ import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { secretMessageWithoutAccountHr } from "@/components/blog/locale/secretMessageWithoutAccount.hr";
 import { secretMessageWithoutAccountSr } from "@/components/blog/locale/secretMessageWithoutAccount.sr";
@@ -41,15 +42,6 @@ type ArticleCopy = {
   tagline: string;
   relatedReading: string;
   relatedPosts: { slug: string; blurb: string }[];
-};
-
-const BLOG_TITLE_BY_SLUG: Record<string, (t: Translations) => string> = {
-  "one-time-secret-links": (t) => t.blogOneTimeLinksTitle,
-  "encrypted-vs-secure-file-sharing": (t) => t.blogEncryptedFileSharingTitle,
-  "how-we-generate-passwords": (t) => t.blogPasswordTitle,
-  "workplace-texts-private-note": (t) => t.blogWorkplaceTextsTitle,
-  "myth-good-enough-security": (t) => t.blogGoodEnoughTitle,
-  "privatenote-for-developers": (t) => t.blogDevelopersTitle,
 };
 
 function RichText({ text }: { text: string }) {
@@ -468,30 +460,7 @@ export const SecretMessageWithoutAccountPost: React.FC = () => {
           </Link>
         </div>
 
-        <div className="mt-12 border-t border-gray-200 pt-8 dark:border-gray-800">
-          <p className="mb-4 text-sm font-semibold text-gray-500 dark:text-gray-400">{article.relatedReading}</p>
-          <ul className="space-y-4">
-            {article.relatedPosts.map((post) => {
-              const titleFn = BLOG_TITLE_BY_SLUG[post.slug];
-              const title = titleFn ? titleFn(t) : post.slug;
-              return (
-                <li key={post.slug}>
-                  <Link
-                    href={blogHref(post.slug)}
-                    className="group block rounded-lg border border-transparent px-1 py-1 transition-colors hover:border-gray-200 hover:bg-gray-50/80 dark:hover:border-gray-800 dark:hover:bg-gray-900/40"
-                  >
-                    <span className="text-sm font-medium text-primary group-hover:text-primary/80 transition-colors">
-                      {title}
-                    </span>
-                    <span className="mt-0.5 block text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                      {post.blurb}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <BlogPostCrossLinks slug="send-secret-message-without-account" />
       </article>
     </div>
   );

@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { privateNoteCodexHr } from "@/components/blog/locale/privateNoteCodex.hr";
 import { privateNoteCodexSr } from "@/components/blog/locale/privateNoteCodex.sr";
@@ -776,6 +777,8 @@ export function PrivateNoteCodexPost() {
           {c.ctaButton}
         </Link>
       </div>
+
+      <BlogPostCrossLinks slug="privatenote-codex" />
       </article>
     </div>
   );

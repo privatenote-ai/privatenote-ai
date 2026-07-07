@@ -13,6 +13,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 
 const heroImagePath = "/images/blog-api-key-sharing-hero.jpg";
 const heroArtistUrl =
@@ -397,6 +398,8 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
             Create a PrivateNote -&gt;
           </Link>
         </div>
+
+        <BlogPostCrossLinks slug="how-to-share-api-key-securely" />
       </article>
     </div>
   );

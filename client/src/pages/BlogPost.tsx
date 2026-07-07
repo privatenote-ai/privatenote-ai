@@ -24,8 +24,9 @@ import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPo
 import { ChatControlCryptographersPost } from '@/components/blog/ChatControlCryptographersPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
-import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
+import { buildDocumentTitle, setDocumentMeta, setStructuredDataScript } from '@/utils/documentMeta';
 import { resolveCanonicalBlogSlug } from '@shared/localizedBlogSlugs';
+import { buildBlogArticleStructuredData } from '@shared/blogStructuredData';
 
 import { STATIC_BLOG_SLUGS } from '@/utils/staticBlogPosts';
 
@@ -63,6 +64,7 @@ export default function BlogPostPage() {
     }
     const publishedIso = toIsoString(post.publishedAt);
     const modifiedIso = toIsoString(post.updatedAt);
+    const tagList = parseBlogPostTags(post.tags);
     setDocumentMeta(buildDocumentTitle(post.title), post.excerpt || t.blogSubtitle, {
       ogType: "article",
       image: post.coverImage ?? undefined,
@@ -70,7 +72,19 @@ export default function BlogPostPage() {
       articleModifiedTime: modifiedIso,
       articleAuthor: post.author,
     });
-  }, [slug, isStaticSlug, error, isLoading, post, t]);
+    const schema = buildBlogArticleStructuredData({
+      slug,
+      language,
+      title: post.title,
+      description: post.excerpt || t.blogSubtitle,
+      author: post.author,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+      image: post.coverImage,
+      tags: tagList,
+    });
+    setStructuredDataScript("blog-article", schema);
+  }, [slug, language, isStaticSlug, error, isLoading, post, t]);
 
   if (slug === 'privacy-tools') {
     return <PrivacyToolsPost />;
