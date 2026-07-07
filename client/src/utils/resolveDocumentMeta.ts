@@ -171,8 +171,8 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "secure-file-transfer":
       return {
-        title: buildDocumentTitle(t.shareFile),
-        description: t.sftHeroSubtitle,
+        title: buildDocumentTitle(t.documentMetaSecureFileTransferTitle),
+        description: t.documentMetaSecureFileTransferDescription,
       };
     case "privacy-tools":
       return {
