@@ -1257,7 +1257,7 @@ export const sr: Translations = {
   blogCodexTitle: "Korišćenje PrivateNote sa OpenAI Codek-om",
   blogCodexExcerpt: "Jedna komanda povezuje PrivateNote MCP server u svaku Codek sesiju. Evo tačno kako da ga podesite, šta Codek može da uradi sa njim i kako da tajne u potpunosti sačuvate od prompta agenta.",
   blogOneTimeLinksTitle: "Jednokratni tajni linkovi: Kako deliti osetljive informacije bez ostavljanja trajne evidencije",
-  blogOneTimeLinksExcerpt: "E-pošta, Slack i tekstualne poruke su napravljene da čuvaju poruke zauvek. Neke tajne nikada nisu trebalo da opstanu. Evo kako funkcionišu jednokratne šifrovane linkove, kada ih koristiti i zašto je brisanje ili uništavanje nakon čitanja bezbednosna funkcija – a ne trik.",
+  blogOneTimeLinksExcerpt: "E-pošta, WhatsApp, Facebook Messenger i Slack napravljeni su da čuvaju poruke zauvek. Neke tajne nikada nisu trebalo da opstaju. Evo kako funkcionišu jednokratno šifrovani linkovi, kada ih koristiti i zašto je brisanje nakon čitanja bezbednosna funkcija, a ne trik.",
   blogOneTimeLinksMetaTitle: "Objašnjeni jednokratni tajni linkovi",
   blogOneTimeLinksMetaDescription: "Saznajte kako funkcionišu šifrovani linkovi koji se brišu ili uništavaju nakon čitanja, kada ih koristiti umesto e-pošte ili Slack-a i zašto kratkotrajnost smanjuje rizik nakon isporuke.",
   blogEncryptedFileSharingTitle: "Šifrovano deljenje datoteka u odnosu na bezbedno deljenje datoteka: u čemu je razlika?",

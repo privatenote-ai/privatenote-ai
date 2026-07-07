@@ -5,10 +5,18 @@ export const en: Translations = {
   writeNote: "Write a Note",
   sharePassword: "Share a Password",
   shareFile: "Share a File",
+  sftHeroTitle: "Secure file transfer with browser-side encryption",
   sftHeroPrefix: "The",
   sftHeroAccent: "private way",
   sftHeroSuffix: "to share files",
-  sftHeroSubtitle: "No file scanning. No access to your data. Encryption happens in your browser.",
+  sftHeroSubtitle:
+    "No file scanning. No access to your file contents. Encryption happens in your browser before upload.",
+  sftSeoHeading: "Encrypted file sharing without exposing your files",
+  sftSeoBody1:
+    "PrivateNote sends files through expiring encrypted links. Files are encrypted in your browser before upload, so the server stores only ciphertext — never the original contents.",
+  sftSeoBody2:
+    "It's built for temporary transfer, not long-term cloud storage. Recipients can open links without an account; sending uses a free account for limits and abuse prevention.",
+  sftSeoLinksIntro: "See",
   sftFeatureEncryptionTitle: "Browser-side encryption",
   sftFeatureEncryptionText: "Files are encrypted on this device before upload. PrivateNote stores only ciphertext — never readable file contents.",
   sftFeatureFolderTitle: "Folder transfer",
@@ -35,8 +43,16 @@ export const en: Translations = {
   sftFaq5A: "The transfer follows the same disappearing model as PrivateNote messages. Depending on your settings, access expires after the first view, after a set time limit, or when the file access window ends.",
   sftFaq6Q: "Is this different from cloud drive sharing?",
   sftFaq6A: "Yes. PrivateNote is built for temporary, encrypted one-time delivery — not long-term collaboration. Files are never stored in a readable form on the server and the link stops working once the conditions you set are met.",
-  sftFaq7Q: "How long can files be downloaded after the note is opened?",
-  sftFaq7A: "After the note is opened, files remain downloadable for 15 minutes.",
+  sftFaq7Q: "How long can recipients download the files?",
+  sftFaq7A: "After someone opens the transfer, attached files stay downloadable for a limited window — 15 minutes by default. Premium accounts can extend that window to 30 minutes or 1 hour when creating the transfer.",
+  sftFaq8Q: "Can I password-protect a file transfer?",
+  sftFaq8A: "Yes. You can add an optional password when creating the transfer, just like a private note. Share the password separately from the link so only the intended recipient can decrypt the files.",
+  sftFaq9Q: "Does PrivateNote scan my files?",
+  sftFaq9A: "No. Files are encrypted in your browser before upload, so PrivateNote never receives readable file contents to scan. We cannot inspect, index, or train models on your attachments.",
+  sftFaq10Q: "What file types can I send?",
+  sftFaq10A: "Any file type — documents, images, archives, binaries, and more. PrivateNote treats the attachment as encrypted data; the recipient gets back the original file after decryption in their browser.",
+  sftFaq11Q: "Where is the decryption key kept?",
+  sftFaq11A: "The encryption key stays in the URL fragment (#...) and is handled locally in your browser. It is not sent to PrivateNote servers in normal page requests, which is why someone with only the link hostname cannot decrypt your files.",
   sftDropZoneTitle: "Drop file or a folder",
   sftDropZoneTitleDragging: "Drop to encrypt & attach",
   sftDropZoneSubtitle: "Encrypted in your browser before upload",
@@ -399,7 +415,7 @@ export const en: Translations = {
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
   homeHeroSubtitle:
-    "Share encrypted notes that self-destruct after reading. No ads, no profiling, no unnecessary data collection — just private, one-time messages.",
+    "Share encrypted, read-once notes and files that disappear after opening. No ads, no profiling, and no unnecessary data collection.",
   whyPrivateNote: "Why PrivateNote",
   shareSensitiveHeading: "Share sensitive notes with confidence.",
   shareSensitiveBody:
@@ -1145,6 +1161,7 @@ export const en: Translations = {
   generatorTitleWord: "Generator",
   passwordGeneratorSubtitle:
     "Generate strong random passwords in your browser with cryptographic entropy, clear strength feedback, and options for length, symbols, and memorable phrases.",
+  pgToolHeading: "Generate a secure password",
   length: "Length",
   uppercaseLetters: "Uppercase Letters",
   lowercaseLetters: "Lowercase Letters",
@@ -1163,11 +1180,22 @@ export const en: Translations = {
   learnHowWeGeneratePasswords: "Learn more about how we generate passwords",
   howGenerationStaysTrustworthy: "How generation stays trustworthy",
   passwordTrustSubtitle: "The same ideas we use for Key Features—plain language, real cryptography.",
+  pgSeoBadge: "Secure password sharing",
+  pgSeoHeading: "Share passwords without leaving them in chat",
+  pgSeoBody1:
+    "PrivateNote's password generator runs entirely in your browser with cryptographic randomness. Generate a strong password locally, copy it, or share it through a browser-encrypted one-time note link.",
+  pgSeoBody2:
+    "It is built for handing off a newly created password—not for storing every login long-term. Use a password manager to keep accounts and PrivateNote when you need to deliver a secret once. For passphrases or numeric PINs, passwords.lu offers dedicated generators with the same browser-local model.",
+  pgSeoPartnerHeading: "More generators on passwords.lu",
+  pgSeoPrivateNoteLabel: "On PrivateNote",
+  pgPartnerPassphrase: "Passphrase generator",
+  pgPartnerPin: "PIN generator",
+  pgPartnerPasswordGenerator: "Advanced password generator",
   faq: "FAQ",
   passwordFaqSubtitle: "Common questions about password strength, randomness, and secure sharing.",
   passwordFaq_random_question: "Is the password truly random?",
   passwordFaq_random_answer:
-    "Yes. All passwords are generated using the Web Crypto API (`crypto.getRandomValues`), which provides cryptographically secure randomness. No server is involved — the entire generation happens in your browser before anything is displayed.",
+    "Yes. All passwords are generated using the Web Crypto API (`crypto.getRandomValues`), which provides cryptographically secure randomness. PrivateNote also uses rejection sampling so each character in your chosen set has an equal chance of being picked. No server is involved — the entire generation happens in your browser before anything is displayed.",
   passwordFaq_length_question: "How long should my password be?",
   passwordFaq_length_answer:
     "For most accounts, 20 characters is excellent. For high-value targets (banking, email, password manager master password) go to 28–32 characters. Length is the single most important factor: each extra character multiplies the search space exponentially.",
@@ -1176,13 +1204,13 @@ export const en: Translations = {
     "We use a transport-safe symbol set that works reliably across websites, terminals, and APIs. Characters like quotes, backticks, and backslashes can break form fields or shell commands, causing lockouts. The included symbols (`!@#$%^&*-_=+`) give you strong entropy without compatibility headaches.",
   passwordFaq_share_question: "Is it safe to share a password via the encrypted note link?",
   passwordFaq_share_answer:
-    "The password is encrypted in your browser before it leaves your device. Anyone who has the link can read it once — after that the note self-destructs. Treat the link like a one-time key: send it through a trusted channel and use a short expiration.",
+    "The password is encrypted in your browser before it leaves your device. Anyone who has the link can read it once — after that the note self-destructs. Treat the link like a one-time key: send it through a trusted channel, avoid pasting the password itself into chat or email, and use a short expiration.",
   passwordFaq_store_question: "Should I use this to store passwords long-term?",
   passwordFaq_store_answer:
     "No. PrivateNote is designed for one-time secure delivery, not long-term storage. Use a dedicated password manager to store passwords permanently. Use PrivateNote to securely hand off a newly generated password.",
   passwordFaq_entropy_question: "What does the strength score mean?",
   passwordFaq_entropy_answer:
-    "The score estimates entropy — how many guesses an attacker would need to crack your password by brute force. Longer mixed passwords have vastly more possible combinations.",
+    "The score estimates entropy — how many guesses an attacker would need to crack your password by brute force. Longer mixed passwords have vastly more possible combinations. The on-page meter updates as you change length and character options.",
   passwordFaq_memorable_question: "Should I memorise generated passwords?",
   passwordFaq_memorable_answerLead:
     "Generally no. That defeats the purpose of using a password manager.",
@@ -1191,6 +1219,22 @@ export const en: Translations = {
   passwordFaq_memorable_generatorLink: "Use the password generator above",
   passwordFaq_memorable_answerGeneratorTail:
     " to create a long, passphrase-style password (20+ characters with mixed types) for that one secret—not for everyday account passwords.",
+  passwordFaq_passphrase_question: "Should I use a password, passphrase, or PIN?",
+  passwordFaq_passphrase_answer:
+    "Random character passwords work well for most accounts. Passphrases use several random words and suit master secrets you type often. PINs fit short numeric codes for devices or voicemail. This page generates character passwords; passwords.lu also offers",
+  passwordFaq_passphrase_answerSuffix: " with the same browser-local model.",
+  passwordFaq_similar_question: 'What does "exclude similar characters" do?',
+  passwordFaq_similar_answer:
+    "It removes characters that are easy to mix up when reading or typing, such as I, l, 1, O, and 0. That reduces copy-paste mistakes without weakening randomness much when your password is long enough.",
+  passwordFaq_server_question: "Does PrivateNote see my generated password?",
+  passwordFaq_server_answer:
+    "Not during generation — passwords are created locally with Web Crypto. If you use Share as a Note, the password is encrypted in your browser before upload, so the server stores only ciphertext and cannot read the original secret.",
+  passwordFaq_account_question: "Do I need an account to generate or share a password?",
+  passwordFaq_account_answer:
+    "No account is required to generate passwords on this page. Sharing via Share as a Note creates the same kind of browser-encrypted one-time link as a private note, so you can hand off a newly generated password without signing up.",
+  passwordFaq_delivery_question: "What is the safest way to send a shared password link?",
+  passwordFaq_delivery_answer:
+    "Send the encrypted note link through a channel the recipient already trusts, such as a known phone number or verified work chat. Do not paste the password itself into Slack, email, or tickets. If you set a note password, share that separately from the link.",
   howHeroPrefix: "Security by",
   howHeroAccent: "Design",
   howHeroSubtitle:
@@ -1274,6 +1318,7 @@ export const en: Translations = {
   passwordGenerator: "Password Generator",
   contact: "Contact",
   footerTagline: "End-to-end encrypted notes",
+  footerTaglineFileTransfer: "Encrypted notes and secure file sharing",
   blogSubtitle:
     "Read practical guidance on private notes, encryption, password hygiene, secure sharing, and safer communication habits for everyday work and personal use.",
   blogFeatured: "Featured",
@@ -1298,6 +1343,9 @@ export const en: Translations = {
   blogLoadFailedTitle: "Failed to load blog post",
   blogLoadFailedBody: "We encountered an error while loading this article. Please try again later.",
   blogBackToBlog: "Back to Blog",
+  blogCrossLinksHeading: "Explore PrivateNote",
+  blogCrossLinksRelatedLabel: "Related articles",
+  blogCrossLinksTrustLabel: "Trust & security",
   blogNotFoundTitle: "Blog post not found",
   blogNotFoundBody: "The article you're looking for doesn't exist or has been removed.",
   blogPrivacyTitle: "Why Privacy Matters",
@@ -1398,7 +1446,7 @@ export const en: Translations = {
   blogCodexExcerpt: "One command wires the PrivateNote MCP server into every Codex session. Here's exactly how to set it up, what Codex can do with it, and how to keep secrets out of the agent prompt entirely.",
   blogOneTimeLinksTitle: "One-Time Secret Links: How to Share Sensitive Information Without Leaving a Permanent Record",
   blogOneTimeLinksExcerpt:
-    "Email, Slack, and text messages were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
+    "Email, WhatsApp, Facebook Messenger, and Slack were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
   blogOneTimeLinksMetaTitle: "One-time secret links explained",
   blogOneTimeLinksMetaDescription:
     "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
@@ -1532,6 +1580,9 @@ export const en: Translations = {
   documentMetaDevelopersTitle: "Developer integrations",
   documentMetaDevelopersDescription:
     "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and fully private.",
+  documentMetaSecureFileTransferTitle: "Secure File Transfer with Browser-Side Encryption",
+  documentMetaSecureFileTransferDescription:
+    "Send files securely with browser-side encryption. PrivateNote stores only encrypted file data, with expiring links and no account required for recipients.",
   devBadge: "Developer integrations",
   devHeroTitle: "Share secrets from the tools where work actually happens",
   devHeroSubtitle:

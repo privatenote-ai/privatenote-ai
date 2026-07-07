@@ -6,6 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Copy, Check, RefreshCw, Lock, Zap, BarChart3, ArrowRight, Share2, Eye, EyeOff, CircleHelp, FileText, QrCode } from 'lucide-react';
 import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { setStructuredDataScript } from '@/utils/documentMeta';
+import { buildPasswordGeneratorFaqSchema, PASSWORD_GENERATOR_FAQ_IDS } from '@shared/passwordGeneratorStructuredData';
+import { PASSWORDS_LU_PARTNER_URLS } from '@/config/passwordsLuPartner';
+import { PasswordsLuMoreGenerators, PasswordGeneratorPrivateNoteLinks } from '@/components/PasswordsLuPartnerLinks';
 import {
   encryptNote,
   generateContentKey,
@@ -31,21 +35,7 @@ import {
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
-const PASSWORD_FAQ_ITEM_IDS = [
-  'random',
-  'length',
-  'symbols',
-  'share',
-  'store',
-  'entropy',
-  'memorable',
-] as const;
-
-type PasswordFaqItemId = (typeof PASSWORD_FAQ_ITEM_IDS)[number];
-
-const PASSWORD_FAQ_ITEMS: Array<{ id: PasswordFaqItemId }> = PASSWORD_FAQ_ITEM_IDS.map((id) => ({
-  id,
-}));
+const PASSWORD_FAQ_ITEMS = PASSWORD_GENERATOR_FAQ_IDS.map((id) => ({ id }));
 
 const PasswordGenerator: React.FC = () => {
   const { language, t } = useLanguage();
@@ -278,6 +268,11 @@ const PasswordGenerator: React.FC = () => {
   useEffect(() => {
     apiRequest("/api/analytics/event", "POST", { page: "password-share" }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setStructuredDataScript("password-generator-faq", buildPasswordGeneratorFaqSchema(t));
+    return () => setStructuredDataScript("password-generator-faq", null);
+  }, [t]);
 
   useEffect(() => {
     setShowSuccessQr(false);
@@ -643,23 +638,7 @@ const PasswordGenerator: React.FC = () => {
             </div>
 
             <div className="text-center px-4 sm:px-6 lg:px-8 mt-6">
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-                <span>{t.poweredBy}</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <span
-                    className="h-4 w-4 shrink-0 bg-[url('/favicon_passwords.svg')] bg-contain bg-center bg-no-repeat"
-                    aria-hidden="true"
-                  />
-                  <a
-                    href="https://passwords.lu"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-primary hover:text-primary/80 transition-colors"
-                  >
-                    passwords.lu
-                  </a>
-                </span>
-              </p>
+              <PasswordsLuMoreGenerators t={t} />
             </div>
           </div>
         </section>
@@ -685,12 +664,15 @@ const PasswordGenerator: React.FC = () => {
     },
   ];
 
+  const howItWorksPath = localizedPath("/how-it-works", language);
+  const passwordBlogPath = localizedPath("/blog/how-we-generate-passwords", language);
+
   return (
     <div className="pt-24 pb-20">
       <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center">
           <h1 className="page-title text-gray-900 dark:text-white">
-            {t.strongPasswordTitlePrefix} <span className="text-primary italic">{t.passwordTitleWord} </span> {t.generatorTitleWord}
+            {t.strongPasswordTitlePrefix} <span className="text-primary">{t.passwordTitleWord} </span> {t.generatorTitleWord}
           </h1>
           <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
             {t.passwordGeneratorSubtitle}
@@ -698,73 +680,71 @@ const PasswordGenerator: React.FC = () => {
         </div>
       </section>
 
-      <div id="password-generator-tool" className="mt-8 mb-8 py-4 px-4 sm:px-6 lg:px-8 scroll-mt-28">
-        <div className="max-w-4xl mx-auto">
-          <div className="rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-900 p-6 shadow-sm flex flex-col">
-            <div className="mb-4">
+      <div id="password-generator-tool" className="mt-10 mb-6 scroll-mt-28 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-10 text-center text-xl font-semibold tracking-tight text-gray-900 dark:text-white sm:mb-12 sm:text-2xl">
+            {t.pgToolHeading}
+          </h2>
 
-              <div className="pt-5">
-                <div className="flex items-center gap-2 mb-6">
-                  <Label className="block w-24 text-gray-600 dark:text-gray-300 font-medium">{t.length}:</Label>
-                  <Slider
-                    value={[length]}
-                    min={8}
-                    max={64}
-                    step={1}
-                    onValueChange={(vals) => setLength(vals[0])}
-                    className="w-full"
-                  />
-                  <span className="w-12 text-center text-gray-900 dark:text-white font-semibold">{length}</span>
-                </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 mb-6">
+              <Label className="block w-24 shrink-0 text-gray-600 dark:text-gray-300 font-medium">{t.length}:</Label>
+              <Slider
+                value={[length]}
+                min={8}
+                max={64}
+                step={1}
+                onValueChange={(vals) => setLength(vals[0])}
+                className="w-full"
+              />
+              <span className="w-12 shrink-0 text-center text-gray-900 dark:text-white font-semibold">{length}</span>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="uppercase"
-                      checked={useUppercase}
-                      onCheckedChange={(checked) => setUseUppercase(checked as boolean)}
-                    />
-                    <Label htmlFor="uppercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.uppercaseLetters}</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="lowercase"
-                      checked={useLowercase}
-                      onCheckedChange={(checked) => setUseLowercase(checked as boolean)}
-                    />
-                    <Label htmlFor="lowercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.lowercaseLetters}</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="numbers"
-                      checked={useNumbers}
-                      onCheckedChange={(checked) => setUseNumbers(checked as boolean)}
-                    />
-                    <Label htmlFor="numbers" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.numbers}</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="symbols"
-                      checked={useSymbols}
-                      onCheckedChange={(checked) => setUseSymbols(checked as boolean)}
-                    />
-                    <Label htmlFor="symbols" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.symbols}</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2 md:col-span-2">
-                    <Checkbox
-                      id="exclude-similar"
-                      checked={excludeSimilar}
-                      onCheckedChange={(checked) => setExcludeSimilar(checked as boolean)}
-                    />
-                    <Label htmlFor="exclude-similar" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.excludeSimilarCharacters}</Label>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="uppercase"
+                  checked={useUppercase}
+                  onCheckedChange={(checked) => setUseUppercase(checked as boolean)}
+                />
+                <Label htmlFor="uppercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.uppercaseLetters}</Label>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="lowercase"
+                  checked={useLowercase}
+                  onCheckedChange={(checked) => setUseLowercase(checked as boolean)}
+                />
+                <Label htmlFor="lowercase" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.lowercaseLetters}</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="numbers"
+                  checked={useNumbers}
+                  onCheckedChange={(checked) => setUseNumbers(checked as boolean)}
+                />
+                <Label htmlFor="numbers" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.numbers}</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="symbols"
+                  checked={useSymbols}
+                  onCheckedChange={(checked) => setUseSymbols(checked as boolean)}
+                />
+                <Label htmlFor="symbols" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.symbols}</Label>
+              </div>
+
+              <div className="flex items-center space-x-2 md:col-span-2">
+                <Checkbox
+                  id="exclude-similar"
+                  checked={excludeSimilar}
+                  onCheckedChange={(checked) => setExcludeSimilar(checked as boolean)}
+                />
+                <Label htmlFor="exclude-similar" className="text-gray-700 dark:text-gray-300 cursor-pointer">{t.excludeSimilarCharacters}</Label>
+              </div>
             </div>
 
             {password && (
@@ -857,41 +837,22 @@ const PasswordGenerator: React.FC = () => {
                 </div>
               </div>
             )}
-
-            <div className="mt-6 pt-4 border-t border-gray-200/80 dark:border-gray-700/80 flex justify-end">
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-right">
-                <span>{t.poweredBy}</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <span
-                    className="h-4 w-4 shrink-0 bg-[url('/favicon_passwords.svg')] bg-contain bg-center bg-no-repeat"
-                    aria-hidden="true"
-                  />
-                  <a
-                    href="https://passwords.lu"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-primary hover:text-primary/80 transition-colors"
-                  >
-                    passwords.lu
-                  </a>
-                </span>
-              </p>
-            </div>
           </div>
         </div>
+
+        <PasswordsLuMoreGenerators t={t} className="mx-auto mt-8 max-w-2xl text-center" />
       </div>
 
-      <div className="mt-6 flex justify-center px-4 sm:px-6 lg:px-8">
-        <Link
-          href={localizedPath("/blog/how-we-generate-passwords", language)}
-          className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-        >
-          {t.learnHowWeGeneratePasswords}
-          <ArrowRight className="h-4 w-4 ml-1" />
-        </Link>
-      </div>
+      <section
+        ref={featuresSectionRef}
+        className="relative isolate overflow-x-clip border-b border-gray-200/40 bg-gradient-to-b from-background via-gray-50/50 to-gray-50/25 px-4 py-14 dark:border-gray-800/40 dark:from-background dark:via-gray-950/55 dark:to-gray-950/25 sm:px-6 sm:pt-20 sm:pb-16 lg:px-8 lg:pt-24 lg:pb-20"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-20 bg-gradient-to-b from-background to-transparent sm:h-28 dark:from-background"
+        />
 
-      <section ref={featuresSectionRef} className="relative px-4 pt-20 pb-12 sm:px-6 sm:pt-24 lg:px-8 max-w-4xl mx-auto">
+        <div className="relative z-10 mx-auto max-w-4xl">
         <div className="text-center mb-8 sm:mb-12">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{t.howGenerationStaysTrustworthy}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -932,10 +893,33 @@ const PasswordGenerator: React.FC = () => {
             </div>
           ))}
         </div>
+        </div>
+
+        <div className="relative z-10 mx-auto mt-14 max-w-3xl sm:mt-16 lg:mt-20">
+          <div className="border-t border-gray-200/70 pt-10 dark:border-gray-800/70">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-primary dark:bg-primary/15">
+              <Share2 className="h-3.5 w-3.5" aria-hidden />
+              {t.pgSeoBadge}
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+              {t.pgSeoHeading}
+            </h2>
+            <div className="mt-5 space-y-4 text-base leading-relaxed text-gray-600 dark:text-gray-300">
+              <p>{t.pgSeoBody1}</p>
+              <p>{t.pgSeoBody2}</p>
+            </div>
+
+            <PasswordGeneratorPrivateNoteLinks
+              t={t}
+              howItWorksPath={howItWorksPath}
+              passwordBlogPath={passwordBlogPath}
+            />
+          </div>
+        </div>
       </section>
 
       {/* Password FAQ */}
-      <section className="mt-20 border-t border-gray-200/70 dark:border-gray-800/70 bg-gray-50/60 dark:bg-gray-900/40 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-b from-gray-50/25 via-gray-50/60 to-gray-50/40 dark:from-gray-950/25 dark:via-gray-900/40 dark:to-gray-950/30">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-primary/10 blur-[120px]" />
           <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[120px]" />
@@ -983,6 +967,28 @@ const PasswordGenerator: React.FC = () => {
                             {t.passwordFaq_memorable_generatorLink}
                           </a>
                           {t.passwordFaq_memorable_answerGeneratorTail}
+                        </p>
+                      ) : item.id === "passphrase" ? (
+                        <p>
+                          {t.passwordFaq_passphrase_answer}{" "}
+                          <a
+                            href={PASSWORDS_LU_PARTNER_URLS.passphraseGenerator}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:text-primary/80 underline underline-offset-2"
+                          >
+                            {t.pgPartnerPassphrase}
+                          </a>{" "}
+                          and{" "}
+                          <a
+                            href={PASSWORDS_LU_PARTNER_URLS.pinGenerator}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:text-primary/80 underline underline-offset-2"
+                          >
+                            {t.pgPartnerPin}
+                          </a>
+                          {t.passwordFaq_passphrase_answerSuffix}
                         </p>
                       ) : (
                         t[`passwordFaq_${item.id}_answer`]
