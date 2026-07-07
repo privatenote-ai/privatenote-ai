@@ -1376,6 +1376,12 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
+  blogChatControlTitle: "Chat Control Is Back: Why Europe Should Listen to Its Cryptographers",
+  blogChatControlExcerpt:
+    "Today, Tuesday, July 7, Parliament is expected to revisit CSAR. The goal of protecting children is urgent, but mandatory scanning of private communications still collides with encryption, privacy, and technical reality.",
+  blogChatControlMetaTitle: "Chat Control and cryptographers' warnings",
+  blogChatControlMetaDescription:
+    "Why cryptographers warn that mandatory client-side scanning under Chat Control cannot preserve end-to-end encryption or protect privacy at Internet scale.",
   blogApiKeySharingTitle: "How to Share an API Key Securely (Without Exposing Your Secrets)",
   blogApiKeySharingExcerpt:
     "API keys do not belong in Slack, email, tickets, or Git history. Learn the safer workflow: scope the key, encrypt it locally, use a one-time link, and rotate it when the handoff is done.",
