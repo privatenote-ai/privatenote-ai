@@ -15,6 +15,11 @@ import { hr } from "../client/src/utils/translations/hr.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { isLocaleHomeRoute } from "./homeSeoLinks.ts";
 import {
+  buildSecureFileTransferFaqSchema,
+  isSecureFileTransferRoute,
+  stripPrerenderCloudflareAnalyticsBeacons,
+} from "./secureFileTransferStructuredData.ts";
+import {
   buildPasswordGeneratorFaqSchema,
   isPasswordGeneratorRoute,
 } from "./passwordGeneratorStructuredData.ts";
@@ -105,6 +110,19 @@ function injectPasswordGeneratorFaqSchema(html: string, route: string, t: Transl
   return withoutExisting.replace("</head>", `${script}\n</head>`);
 }
 
+function injectSecureFileTransferFaqSchema(html: string, route: string, t: Translations): string {
+  if (!isSecureFileTransferRoute(route)) return html;
+
+  const schema = buildSecureFileTransferFaqSchema(t);
+  const script = `<script type="application/ld+json" data-structured-data-id="secure-file-transfer-faq">${serializeJsonLd(schema)}</script>`;
+
+  const withoutExisting = html.replace(
+    /\s*<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*\bdata-structured-data-id=["']secure-file-transfer-faq["'][^>]*>[\s\S]*?<\/script>/gi,
+    "",
+  );
+  return withoutExisting.replace("</head>", `${script}\n</head>`);
+}
+
 export function injectPrerenderDocumentMeta(html: string, route: string): string {
   const t = translationsForRoute(route);
   const { title, description } = resolveDocumentMeta(route, t);
@@ -123,6 +141,8 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
 
   out = replaceMetaContent(out, "property", "og:locale", OG_LOCALE_BY_LANG[lang] ?? "en_US");
   out = injectPasswordGeneratorFaqSchema(out, route, t);
+  out = injectSecureFileTransferFaqSchema(out, route, t);
+  out = stripPrerenderCloudflareAnalyticsBeacons(out);
 
   return out;
 }
