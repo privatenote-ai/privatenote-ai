@@ -1376,6 +1376,12 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
+  blogApiKeySharingTitle: "How to Share an API Key Securely (Without Exposing Your Secrets)",
+  blogApiKeySharingExcerpt:
+    "API keys do not belong in Slack, email, tickets, or Git history. Learn the safer workflow: scope the key, encrypt it locally, use a one-time link, and rotate it when the handoff is done.",
+  blogApiKeySharingMetaTitle: "How to share an API key securely",
+  blogApiKeySharingMetaDescription:
+    "Learn how API keys leak through chat, email, project tools, and Git, and how browser-encrypted one-time links help developers share secrets safely.",
   blogPasswordTitle: "How We Generate Secure Passwords",
   blogPasswordExcerpt: "Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.",
   blogWorkplaceTextsTitle: "Workplace Texts, Legal Discovery, and the Case for Ephemeral Notes",

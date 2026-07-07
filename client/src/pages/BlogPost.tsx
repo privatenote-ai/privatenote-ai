@@ -20,6 +20,7 @@ import { EncryptedVsSecureFileSharingPost } from '@/components/blog/EncryptedVsS
 import { SecretMessageWithoutAccountPost } from '@/components/blog/SecretMessageWithoutAccountPost';
 import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendInChatPost';
 import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncryptionDefinitionPost';
+import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
@@ -72,6 +73,9 @@ export default function BlogPostPage() {
 
   if (slug === 'privacy-tools') {
     return <PrivacyToolsPost />;
+  }
+  if (slug === 'how-to-share-api-key-securely') {
+    return <ShareApiKeySecurelyPost />;
   }
   if (slug === 'myth-good-enough-security') {
     return <GoodEnoughSecurityPost />;

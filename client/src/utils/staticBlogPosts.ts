@@ -4,6 +4,7 @@ import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "how-to-share-api-key-securely": "2026-07-06T12:00:00.000Z",
   "what-is-end-to-end-encryption": "2026-07-03T16:00:00.000Z",
   "secrets-never-send-in-chat": "2026-07-03T14:00:00.000Z",
   "send-secret-message-without-account": "2026-07-03T12:00:00.000Z",
@@ -21,6 +22,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
 const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "how-to-share-api-key-securely": 7,
   "what-is-end-to-end-encryption": 7,
   "secrets-never-send-in-chat": 7,
   "send-secret-message-without-account": 7,
@@ -75,6 +77,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -13,
+      title: t.blogApiKeySharingTitle,
+      excerpt: t.blogApiKeySharingExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-share-api-key-securely",
+      publishedAt: at("how-to-share-api-key-securely"),
+      tags: JSON.stringify([t.blogTagDeveloper, t.blogTagSecurity, t.blogTagPasswords]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("how-to-share-api-key-securely"),
+      updatedAt: at("how-to-share-api-key-securely"),
+    },
     {
       id: -12,
       title: t.blogE2eeDefinitionTitle,
