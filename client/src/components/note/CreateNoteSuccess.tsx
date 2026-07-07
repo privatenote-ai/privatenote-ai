@@ -18,6 +18,7 @@ import {
   FileText,
   X,
 } from "lucide-react";
+import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
@@ -376,6 +377,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     </div>
                   )}
                 </div>
+
+                <ChromeExtensionOnboardingBanner />
               </div>
             </div>
           </div>
