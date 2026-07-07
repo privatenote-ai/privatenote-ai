@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { privateNoteForDevelopersHr } from "@/components/blog/locale/privateNoteForDevelopers.hr";
 import { privateNoteForDevelopersSr } from "@/components/blog/locale/privateNoteForDevelopers.sr";
@@ -261,6 +262,8 @@ export const PrivateNoteForDevelopersPost: React.FC = () => {
             </a>
           </div>
         </div>
+
+        <BlogPostCrossLinks slug="privatenote-for-developers" />
       </article>
     </div>
   );

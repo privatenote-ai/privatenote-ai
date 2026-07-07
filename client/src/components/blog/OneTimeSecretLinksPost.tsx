@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Hash, Laptop, Server, Shield, Trash2, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Table,
@@ -14,10 +14,12 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { oneTimeSecretLinksHr } from "@/components/blog/locale/oneTimeSecretLinks.hr";
 import { oneTimeSecretLinksSr } from "@/components/blog/locale/oneTimeSecretLinks.sr";
 import type { OneTimeSecretLinksArticleCopy } from "@/components/blog/locale/oneTimeSecretLinks.types";
+import { CHROME_EXTENSION_STORE_URL } from "@/utils/chromeExtensionOnboarding";
 
 const heroImagePath = "/images/dieandreart-footprint-2143685.jpg";
 const heroArtistUrl =
@@ -124,22 +126,62 @@ function BulletList({ items }: { items: BulletItem[] }) {
   );
 }
 
-function FlowStepsList({ steps }: { steps: FlowStep[] }) {
+function ChromeExtensionLink({ label }: { label: string }) {
   return (
-    <ol className="space-y-6">
-      {steps.map((step, index) => (
-        <li className="flex gap-4" key={step.title}>
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">
-            {index + 1}
-          </span>
-          <div className="space-y-1">
-            <p className="font-semibold text-gray-900 dark:text-white">{step.title}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{step.step}</p>
-            <p className="leading-relaxed text-gray-700 dark:text-gray-300">{step.body}</p>
-          </div>
-        </li>
-      ))}
-    </ol>
+    <div className="flex justify-center pt-1">
+      <a
+        href={CHROME_EXTENSION_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90"
+      >
+        {label}
+        <ArrowRight className="h-4 w-4" aria-hidden />
+      </a>
+    </div>
+  );
+}
+
+const ONE_TIME_SECRET_FLOW_ICONS: LucideIcon[] = [Laptop, Server, Hash, Trash2];
+
+function OneTimeSecretFlowDiagram({ steps, caption }: { steps: FlowStep[]; caption?: string }) {
+  return (
+    <figure className="rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-5 dark:border-primary/20 dark:bg-primary/[0.05] sm:px-5 sm:py-6">
+      {caption ? (
+        <figcaption className="mb-4 text-sm font-medium text-gray-800 dark:text-gray-200">
+          <RichText text={caption} />
+        </figcaption>
+      ) : null}
+      <ol className="m-0 list-none space-y-0 p-0">
+        {steps.map((step, index) => {
+          const Icon = ONE_TIME_SECRET_FLOW_ICONS[index] ?? Server;
+          const isLast = index === steps.length - 1;
+
+          return (
+            <li className="relative flex gap-4" key={step.title}>
+              <div className="flex w-8 shrink-0 flex-col items-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-primary/25 dark:bg-gray-950">
+                  <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
+                </div>
+                {!isLast ? (
+                  <div
+                    className="my-1.5 w-px flex-1 min-h-[1.25rem] bg-gradient-to-b from-primary/30 to-gray-200 dark:to-gray-700"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+              <div className={cn("min-w-0 flex-1", isLast ? "pb-0" : "pb-5")}>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/75 dark:text-primary/70">
+                  {step.step}
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-snug text-gray-900 dark:text-white">{step.title}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">{step.body}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </figure>
   );
 }
 
@@ -155,7 +197,7 @@ function VerdictBadge({ verdict }: { verdict: string }) {
         isBad && "whitespace-nowrap bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-800",
         !isGood &&
           !isBad &&
-          "max-w-[12rem] whitespace-normal text-left leading-snug bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800",
+          "max-w-[14rem] whitespace-normal text-left leading-snug bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800",
       )}
     >
       {verdict}
@@ -242,6 +284,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     intro: [
       "Most people share sensitive information the same way they share everything else: paste it into an email, drop it in Slack, or send a text.",
       "That works until you realize what you've actually done. You didn't just deliver a password or API key—you created a **permanent record** in someone else's inbox, your company's chat archive, a cloud backup, a compliance export, or an AI-generated meeting summary you forgot existed.",
+      "When the **Musk v. Altman** trial opened in 2026, prosecutors introduced text messages between Sam Altman and Mira Murati from his November 2023 ouster at OpenAI. Chats that felt private in the moment—hurried updates about board calls and a path back—became federal exhibits. The problem was not interception. It was **retention**.",
       "Some information has a short job to do. A staging password. A recovery code. A one-time access instruction. A contractor credential that expires Friday. These secrets don't need a searchable history. They need to arrive, get used, and disappear.",
       "That's what **one-time secret links** are for.",
     ],
@@ -249,7 +292,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       {
         title: 'The Problem with "Secure Enough" Channels',
         paragraphs: [
-          "Email can be encrypted in transit. Slack can be locked down with single sign-on (SSO). Signal can offer disappearing messages. All of that helps—but it solves a completely different problem.",
+          "Email can be encrypted in transit. Slack can be locked down with single sign-on (SSO). Signal can offer disappearing messages. All of that helps—but it solves a different problem.",
           "The issue isn't always interception. It's **retention**.",
           "When you send a secret through a normal channel, you're betting on a massive chain of assumptions:",
         ],
@@ -281,6 +324,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
           'A one-time secret link (sometimes called a "burn after reading" link or self-destructing note) is a URL meant to deliver sensitive text to one reader, once. After that read, the content should be gone—not archived, not searchable, not lingering in a mailbox or chat history.',
           "A **true one-time secret design** is stricter than an expiry timer. Critically, the **encryption key is generated in your browser**—never on the server—and the plaintext is encrypted there before anything is uploaded.",
         ],
+        chromeExtensionCta: "Get the Chrome extension",
         beforeFlowSteps: "**In practice, the full flow looks like this:**",
         flowSteps: [
           {
@@ -346,6 +390,12 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
             verdict: "Usually cumbersome—often paid, high-friction for quick handoffs",
           },
           {
+            channel: "Signal / WhatsApp (disappearing)",
+            encrypted: "Yes, end-to-end",
+            persistent: "Messages vanish on a timer",
+            verdict: "Good fit—but both sides need accounts",
+          },
+          {
             channel: "One-Time Link",
             encrypted: "Yes, client-side",
             persistent: "Deleted instantly after read",
@@ -394,6 +444,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     intro: [
       "Die meisten Menschen teilen sensible Informationen so, wie sie alles andere teilen: per E-Mail, in Slack oder per SMS.",
       "Das funktioniert, bis man erkennt, was man wirklich getan hat. Man hat nicht nur ein Passwort oder einen API-Schlüssel übermittelt—man hat einen **dauerhaften Datensatz** im Postfach eines anderen, im Chat-Archiv des Unternehmens, in einem Cloud-Backup, in einem Compliance-Export oder in einer KI-generierten Meeting-Zusammenfassung hinterlassen, an die niemand mehr denkt.",
+      "Beim Prozess **Musk v. Altman** 2026 wurden SMS zwischen Sam Altman und Mira Murati aus seiner Entlassung bei OpenAI im November 2023 als Beweismittel vorgelegt. Chats, die sich im Moment privat anfühlten—eilige Updates zu Board-Anrufen und einem Weg zurück—landeten als Gerichtsunterlagen. Das Problem war nicht Abfangen. Es war **Aufbewahrung**.",
       "Manche Informationen haben nur eine kurze Aufgabe. Ein Staging-Passwort. Ein Wiederherstellungscode. Eine einmalige Zugriffsanweisung. Zugangsdaten für einen Auftragnehmer, die am Freitag ablaufen. Diese Geheimnisse brauchen keine durchsuchbare Historie. Sie müssen ankommen, genutzt werden und verschwinden.",
       "Genau dafür sind **One-Time-Secret-Links** da.",
     ],
@@ -401,7 +452,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       {
         title: 'Das Problem mit „sicher genug“-Kanälen',
         paragraphs: [
-          "E-Mail kann während der Übertragung verschlüsselt sein. Slack kann mit Single Sign-On (SSO) abgesichert werden. Signal bietet verschwindende Nachrichten. All das hilft—löst aber ein völlig anderes Problem.",
+          "E-Mail kann während der Übertragung verschlüsselt sein. Slack kann mit Single Sign-On (SSO) abgesichert werden. Signal bietet verschwindende Nachrichten. All das hilft—löst aber ein anderes Problem.",
           "Es geht nicht immer um Abfangen. Es geht um **Aufbewahrung**.",
           "Wenn Sie ein Geheimnis über einen normalen Kanal senden, setzen Sie auf eine lange Kette von Annahmen:",
         ],
@@ -433,6 +484,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
           'Ein One-Time-Secret-Link (manchmal „Burn-after-Reading“-Link oder selbstzerstörende Notiz genannt) ist eine URL, die sensible Texte genau einmal an einen Leser liefern soll. Nach dem Lesen soll der Inhalt weg sein—nicht archiviert, nicht durchsuchbar, nicht in Postfach oder Chatverlauf hängen geblieben.',
           "Ein **wirklich One-Time-Secret-Design** ist strenger als ein Ablauf-Timer. Entscheidend: Der **Verschlüsselungsschlüssel wird in Ihrem Browser erzeugt**—niemals auf dem Server—und der Klartext wird dort verschlüsselt, bevor etwas hochgeladen wird.",
         ],
+        chromeExtensionCta: "Chrome-Erweiterung installieren",
         beforeFlowSteps: "**In der Praxis sieht der Ablauf so aus:**",
         flowSteps: [
           {
@@ -498,6 +550,12 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
             verdict: "Meist umständlich—oft kostenpflichtig, aufwendig für schnelle Übergaben",
           },
           {
+            channel: "Signal / WhatsApp (verschwindende Nachrichten)",
+            encrypted: "Ja, Ende-zu-Ende",
+            persistent: "Nachrichten verschwinden nach Timer",
+            verdict: "Gut geeignet—beide Seiten brauchen Accounts",
+          },
+          {
             channel: "One-Time-Link",
             encrypted: "Ja, clientseitig",
             persistent: "Sofort nach dem Lesen gelöscht",
@@ -546,6 +604,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     intro: [
       "La plupart des gens partagent des informations sensibles comme tout le reste : par e-mail, dans Slack ou par SMS.",
       "Cela fonctionne jusqu'à ce que l'on comprenne ce qu'on a vraiment fait. Vous n'avez pas seulement transmis un mot de passe ou une clé API—vous avez créé un **enregistrement permanent** dans la boîte de quelqu'un d'autre, l'archive de chat de votre entreprise, une sauvegarde cloud, un export de conformité ou un résumé de réunion généré par l'IA que vous aviez oublié.",
+      "Lors du procès **Musk v. Altman** en 2026, des SMS entre Sam Altman et Mira Murati, datant de sa destitution chez OpenAI en novembre 2023, ont été produits comme pièces à conviction. Des échanges qui semblaient privés sur le moment—mises à jour urgentes sur les appels du conseil et un retour—sont devenus des exhibits fédéraux. Le problème n'était pas l'interception. C'était la **rétention**.",
       "Certaines informations n'ont qu'un court rôle à jouer. Un mot de passe de staging. Un code de récupération. Une consigne d'accès à usage unique. Des identifiants de prestataire qui expirent vendredi. Ces secrets n'ont pas besoin d'un historique consultable. Ils doivent arriver, être utilisés et disparaître.",
       "C'est précisément à cela que servent les **liens secrets à usage unique**.",
     ],
@@ -553,7 +612,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       {
         title: 'Le problème des canaux « assez sécurisés »',
         paragraphs: [
-          "L'e-mail peut être chiffré en transit. Slack peut être verrouillé avec l'authentification unique (SSO). Signal peut proposer des messages éphémères. Tout cela aide—mais cela résout un problème complètement différent.",
+          "L'e-mail peut être chiffré en transit. Slack peut être verrouillé avec l'authentification unique (SSO). Signal peut proposer des messages éphémères. Tout cela aide—mais cela résout un problème différent.",
           "Le problème n'est pas toujours l'interception. C'est la **rétention**.",
           "Quand vous envoyez un secret via un canal ordinaire, vous pariez sur une longue chaîne d'hypothèses :",
         ],
@@ -585,6 +644,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
           'Un lien secret à usage unique (parfois appelé lien « brûler après lecture » ou note autodestructible) est une URL destinée à livrer un texte sensible à un seul lecteur, une fois. Après cette lecture, le contenu doit disparaître—pas archivé, pas consultable, pas laissé dans une boîte mail ou un historique de chat.',
           "Un **vrai design de secret à usage unique** est plus strict qu'un simple délai d'expiration. Point crucial : **la clé de chiffrement est générée dans votre navigateur**—jamais sur le serveur—et le texte clair y est chiffré avant tout envoi.",
         ],
+        chromeExtensionCta: "Installer l'extension Chrome",
         beforeFlowSteps: "**En pratique, voici le déroulement complet :**",
         flowSteps: [
           {
@@ -650,6 +710,12 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
             verdict: "Souvent lourd—souvent payant, peu pratique pour une remise rapide",
           },
           {
+            channel: "Signal / WhatsApp (messages éphémères)",
+            encrypted: "Oui, de bout en bout",
+            persistent: "Messages qui disparaissent après délai",
+            verdict: "Bon choix—les deux parties doivent avoir un compte",
+          },
+          {
             channel: "Lien à usage unique",
             encrypted: "Oui, côté client",
             persistent: "Supprimé instantanément après lecture",
@@ -698,6 +764,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     intro: [
       "La mayoría de la gente comparte información sensible igual que todo lo demás: la pega en un correo, la deja en Slack o la envía por SMS.",
       "Eso funciona hasta que te das cuenta de lo que has hecho de verdad. No solo entregaste una contraseña o una clave API—creaste un **registro permanente** en la bandeja de otra persona, el archivo de chat de tu empresa, una copia de seguridad en la nube, una exportación de cumplimiento o un resumen de reunión generado por IA que habías olvidado.",
+      "En el juicio **Musk v. Altman** de 2026, se presentaron como prueba mensajes de texto entre Sam Altman y Mira Murati del despido de Altman en OpenAI en noviembre de 2023. Chats que parecían privados en el momento—actualizaciones urgentes sobre llamadas de la junta y un camino de vuelta—acabaron como pruebas federales. El problema no fue la interceptación. Fue la **retención**.",
       "Alguna información tiene un trabajo breve. Una contraseña de staging. Un código de recuperación. Una instrucción de acceso de un solo uso. Credenciales de un contratista que caducan el viernes. Estos secretos no necesitan un historial buscable. Necesitan llegar, usarse y desaparecer.",
       "Para eso existen los **enlaces secretos de un solo uso**.",
     ],
@@ -705,7 +772,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       {
         title: 'El problema de los canales "suficientemente seguros"',
         paragraphs: [
-          "El correo puede cifrarse en tránsito. Slack puede protegerse con inicio de sesión único (SSO). Signal puede ofrecer mensajes que desaparecen. Todo eso ayuda—pero resuelve un problema completamente distinto.",
+          "El correo puede cifrarse en tránsito. Slack puede protegerse con inicio de sesión único (SSO). Signal puede ofrecer mensajes que desaparecen. Todo eso ayuda—pero resuelve un problema distinto.",
           "El problema no siempre es la interceptación. Es la **retención**.",
           "Cuando envías un secreto por un canal normal, apuestas a una larga cadena de suposiciones:",
         ],
@@ -737,6 +804,7 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
           'Un enlace secreto de un solo uso (a veces llamado enlace "quemar tras leer" o nota autodestructiva) es una URL pensada para entregar texto sensible a un solo lector, una vez. Tras esa lectura, el contenido debe desaparecer—sin archivar, sin buscar, sin quedar en un buzón o historial de chat.',
           "Un **diseño verdaderamente de un solo uso** es más estricto que un temporizador de caducidad. Punto clave: **la clave de cifrado se genera en tu navegador**—nunca en el servidor—y el texto en claro se cifra allí antes de subir nada.",
         ],
+        chromeExtensionCta: "Obtener la extensión de Chrome",
         beforeFlowSteps: "**En la práctica, el flujo completo es este:**",
         flowSteps: [
           {
@@ -800,6 +868,12 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
             encrypted: "Sí",
             persistent: "Diseñado para retención",
             verdict: "A menudo pesado—a menudo de pago, mucha fricción para entregas rápidas",
+          },
+          {
+            channel: "Signal / WhatsApp (mensajes que desaparecen)",
+            encrypted: "Sí, de extremo a extremo",
+            persistent: "Mensajes que desaparecen con temporizador",
+            verdict: "Buena opción—ambas partes necesitan cuenta",
           },
           {
             channel: "Enlace de un solo uso",
@@ -915,15 +989,21 @@ export const OneTimeSecretLinksPost: React.FC = () => {
 
               {section.bullets ? <BulletList items={section.bullets} /> : null}
 
-              {section.beforeFlowSteps ? <ArticleParagraph text={section.beforeFlowSteps} /> : null}
-
               {section.callout ? <CalloutBox text={section.callout} /> : null}
 
-              {section.flowSteps ? <FlowStepsList steps={section.flowSteps} /> : null}
+              {section.flowSteps ? (
+                <OneTimeSecretFlowDiagram steps={section.flowSteps} caption={section.beforeFlowSteps} />
+              ) : section.beforeFlowSteps ? (
+                <ArticleParagraph text={section.beforeFlowSteps} />
+              ) : null}
 
               {section.afterFlowSteps?.map((paragraph) => (
                 <ArticleParagraph key={paragraph} text={paragraph} />
               ))}
+
+              {section.chromeExtensionCta ? (
+                <ChromeExtensionLink label={section.chromeExtensionCta} />
+              ) : null}
 
               {section.table ? (
                 <ComparisonTable headers={article.tableHeaders} rows={section.table} />
@@ -963,27 +1043,7 @@ export const OneTimeSecretLinksPost: React.FC = () => {
           </Link>
         </div>
 
-        <div className="mt-12 border-t border-gray-200 pt-8 dark:border-gray-800">
-          <p className="mb-4 text-sm font-semibold text-gray-500 dark:text-gray-400">{article.relatedReading}</p>
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href={blogPostPath("privatenote-for-developers", language)}
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                {t.blogDevelopersTitle}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={blogPostPath("workplace-texts-private-note", language)}
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                {t.blogWorkplaceTextsTitle}
-              </Link>
-            </li>
-          </ul>
-        </div>
+        <BlogPostCrossLinks slug="one-time-secret-links" />
       </article>
     </div>
   );

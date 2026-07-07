@@ -2,13 +2,35 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { injectPrerenderDocumentMeta } from "./injectPrerenderDocumentMeta.ts";
 
-function extractPasswordGeneratorFaqSchema(html: string): Record<string, unknown> {
+function extractBlogSchema(html: string): Record<string, unknown> {
   const match = html.match(
-    /<script type="application\/ld\+json" data-structured-data-id="password-generator-faq">([\s\S]*?)<\/script>/,
+    /<script type="application\/ld\+json" data-structured-data-id="blog-article">([\s\S]*?)<\/script>/,
   );
-  assert.ok(match, "password generator FAQ schema script should be present");
+  assert.ok(match, "blog article schema script should be present");
   return JSON.parse(match[1]);
 }
+
+test("injectPrerenderDocumentMeta injects Article and Breadcrumb schema for blog posts", () => {
+  const html = [
+    '<html lang="en"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="en_US" />',
+    "</head><body></body></html>",
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/blog/how-to-share-api-key-securely");
+  const schema = extractBlogSchema(out);
+  const graph = schema["@graph"] as Array<Record<string, unknown>>;
+
+  assert.ok(graph.some((entry) => entry["@type"] === "BlogPosting"));
+  assert.ok(graph.some((entry) => entry["@type"] === "BreadcrumbList"));
+  assert.match(out, /<title>How to share an API key securely/);
+});
 
 test("injectPrerenderDocumentMeta injects password generator FAQ schema", () => {
   const html = [
@@ -24,8 +46,9 @@ test("injectPrerenderDocumentMeta injects password generator FAQ schema", () => 
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/password-generator");
-  const schema = extractPasswordGeneratorFaqSchema(out);
-
-  assert.equal(schema["@type"], "FAQPage");
-  assert.match(out, /<title>.*Password Generator/i);
+  const match = out.match(
+    /<script type="application\/ld\+json" data-structured-data-id="password-generator-faq">([\s\S]*?)<\/script>/,
+  );
+  assert.ok(match, "password generator FAQ schema script should be present");
+  assert.equal(JSON.parse(match[1])["@type"], "FAQPage");
 });

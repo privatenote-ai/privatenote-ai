@@ -4,6 +4,7 @@
  */
 import { isPublicMarketingPath } from "../shared/publicMarketingPaths";
 import { NON_ENGLISH_LANGUAGE_CODES } from "../shared/supportedLanguages";
+import { applyHtmlPageSecurity } from "./_shared/applyHtmlPageSecurity";
 import { serveSpaShell, type SpaShellEnv } from "./_shared/serveSpaShell";
 
 type MiddlewareEnv = SpaShellEnv;
@@ -44,7 +45,7 @@ export async function onRequest(context: {
 
   const response = await context.next();
   if (response.status !== 404) {
-    return response;
+    return applyHtmlPageSecurity(response);
   }
 
   const { env } = context;
@@ -78,14 +79,14 @@ export async function onRequest(context: {
       }),
     );
     if (assetResponse.status === 200) {
-      return assetResponse;
+      return applyHtmlPageSecurity(assetResponse);
     }
   }
 
   if (isPublicMarketingPath(pathname) || pathname === "/admin") {
     const shell = await serveSpaShell({ request, env, next: context.next });
     if (shell.status === 200) {
-      return shell;
+      return applyHtmlPageSecurity(shell);
     }
   }
 

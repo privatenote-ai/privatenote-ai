@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { encryptedVsSecureFileSharingHr } from "@/components/blog/locale/encryptedVsSecureFileSharing.hr";
 import { encryptedVsSecureFileSharingSr } from "@/components/blog/locale/encryptedVsSecureFileSharing.sr";
@@ -415,29 +416,7 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
           </Link>
         </div>
 
-        <div className="mt-14 border-t border-gray-200 pt-10 dark:border-gray-800">
-          <p className="mb-5 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {article.relatedReading}
-          </p>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href={blogPostPath("one-time-secret-links", language)}
-                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-              >
-                {t.blogOneTimeLinksTitle}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={blogPostPath("myth-good-enough-security", language)}
-                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-              >
-                {t.blogGoodEnoughTitle}
-              </Link>
-            </li>
-          </ul>
-        </div>
+        <BlogPostCrossLinks slug="encrypted-vs-secure-file-sharing" />
       </article>
     </div>
   );

@@ -13,6 +13,9 @@ export const Footer: React.FC = () => {
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const lp = (path: string) => localizedPath(path, language);
   const activeLanguage = LANGUAGE_OPTIONS.find((option) => option.code === language) ?? LANGUAGE_OPTIONS[0];
+  const footerTagline = location.includes("/secure-file-transfer")
+    ? (t.footerTaglineFileTransfer ?? t.footerTagline)
+    : t.footerTagline;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -167,7 +170,7 @@ export const Footer: React.FC = () => {
           
           <div className="flex items-center gap-2 text-xs text-white/80">
             <Shield className="h-3.5 w-3.5 text-white/70" />
-            <span>&copy; {currentYear} privateNote.ai — {t.footerTagline}</span>
+            <span>&copy; {currentYear} privateNote.ai — {footerTagline}</span>
           </div>
         </div>
       </div>

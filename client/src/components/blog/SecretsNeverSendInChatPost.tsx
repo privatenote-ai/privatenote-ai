@@ -26,6 +26,7 @@ import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { secretsNeverSendInChatHr } from "@/components/blog/locale/secretsNeverSendInChat.hr";
 import { secretsNeverSendInChatSr } from "@/components/blog/locale/secretsNeverSendInChat.sr";
@@ -42,16 +43,6 @@ type ArticleCopy = SecretsNeverSendInChatArticleCopy;
 type CheatSheetRow = SecretsNeverSendInChatCheatSheetRow;
 type SecretEntry = SecretsNeverSendInChatSecretEntry;
 type FaqEntry = SecretsNeverSendInChatFaqEntry;
-
-const BLOG_TITLE_BY_SLUG: Record<string, (t: Translations) => string> = {
-  "send-secret-message-without-account": (t) => t.blogSecretNoAccountTitle,
-  "one-time-secret-links": (t) => t.blogOneTimeLinksTitle,
-  "encrypted-vs-secure-file-sharing": (t) => t.blogEncryptedFileSharingTitle,
-  "how-we-generate-passwords": (t) => t.blogPasswordTitle,
-  "workplace-texts-private-note": (t) => t.blogWorkplaceTextsTitle,
-  "privatenote-for-developers": (t) => t.blogDevelopersTitle,
-  "myth-good-enough-security": (t) => t.blogGoodEnoughTitle,
-};
 
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -949,30 +940,7 @@ export const SecretsNeverSendInChatPost: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-gray-200 pt-8 dark:border-gray-800">
-          <p className="mb-4 text-sm font-semibold text-gray-500 dark:text-gray-400">{article.relatedReading}</p>
-          <ul className="space-y-4">
-            {article.relatedPosts.map((post) => {
-              const titleFn = BLOG_TITLE_BY_SLUG[post.slug];
-              const title = titleFn ? titleFn(t) : post.slug;
-              return (
-                <li key={post.slug}>
-                  <Link
-                    href={blogHref(post.slug)}
-                    className="group block rounded-lg border border-transparent px-1 py-1 transition-colors hover:border-gray-200 hover:bg-gray-50/80 dark:hover:border-gray-800 dark:hover:bg-gray-900/40"
-                  >
-                    <span className="text-sm font-medium text-primary transition-colors group-hover:text-primary/80">
-                      {title}
-                    </span>
-                    <span className="mt-0.5 block text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                      {post.blurb}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <BlogPostCrossLinks slug="secrets-never-send-in-chat" />
       </article>
     </div>
   );

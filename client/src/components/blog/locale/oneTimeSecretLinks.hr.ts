@@ -4,6 +4,7 @@ export const oneTimeSecretLinksHr: OneTimeSecretLinksArticleCopy = {
   intro: [
     "Većina ljudi dijeli osjetljive informacije na isti način kao i sve ostalo: e-poštom, u Slacku ili SMS-om.",
     "To funkcionira dok ne shvatite što ste zapravo učinili. Niste samo prenijeli lozinku ili API ključ — ostavili ste **trajni zapis** u tuđem pretincu e-pošte, arhivi chata tvrtke, cloud sigurnosnoj kopiji, izvozu za usklađenost ili sažetku sastanka generiranom AI-jem na koji više nitko ne misli.",
+    "Na suđenju **Musk protiv Altmana** 2026. kao dokazi su predani SMS-ovi između Sama Altmana i Mire Murati iz njegova odlaska iz OpenAIja u studenom 2023. Razmjene koje su u trenutku djelovale privatno — užurbane poruke o pozivima uprave i povratku — završile su kao sudski prilozi. Problem nije bilo presretanje. Problem je bilo **zadržavanje**.",
     "Neke informacije imaju kratku ulogu. Lozinka za staging. Kod za oporavak. Jednokratna uputa za pristup. Vjerodajnice izvođača koje istječu u petak. Te tajne ne trebaju pretraživu povijest. Moraju stići, biti korištene i nestati.",
     "Upravo za to služe **jednokratne tajne poveznice**.",
   ],
@@ -11,7 +12,7 @@ export const oneTimeSecretLinksHr: OneTimeSecretLinksArticleCopy = {
     {
       title: 'Problem kanala koji su „dovoljno sigurni“',
       paragraphs: [
-        "E-pošta može biti šifrirana u prijenosu. Slack može biti zaštićen jedinstvenom prijavom (SSO). Signal nudi nestajuće poruke. Sve to pomaže — ali rješava potpuno drugi problem.",
+        "E-pošta može biti šifrirana u prijenosu. Slack može biti zaštićen jedinstvenom prijavom (SSO). Signal nudi nestajuće poruke. Sve to pomaže — ali rješava drugi problem.",
         "Problem nije uvijek presretanje. Problem je **zadržavanje**.",
         "Kad pošaljete tajnu običnim kanalom, kladite se na dugačak lanac pretpostavki:",
       ],
@@ -43,6 +44,7 @@ export const oneTimeSecretLinksHr: OneTimeSecretLinksArticleCopy = {
         'Jednokratna tajna poveznica (ponekad se zove poveznica koja se **briše ili uništava nakon čitanja** ili samouništavajuća bilješka) URL je namijenjen isporuci osjetljivog teksta jednom čitatelju, jednom. Nakon tog čitanja sadržaj bi trebao biti nestao — ne arhiviran, ne pretraživ, ne ostavljen u pretincu e-pošte ili povijesti chata.',
         "**Pravi jednokratni dizajn** stroži je od vremena isteka. Ključno: **ključ za šifriranje generira se u vašem pregledniku** — nikada na poslužitelju — a običan tekst se tamo šifrira prije bilo kakvog prijenosa.",
       ],
+      chromeExtensionCta: "Instaliraj Chrome proširenje",
       beforeFlowSteps: "**U praksi, cijeli tijek izgleda ovako:**",
       flowSteps: [
         {
@@ -106,6 +108,12 @@ export const oneTimeSecretLinksHr: OneTimeSecretLinksArticleCopy = {
           encrypted: "Da",
           persistent: "Dizajniran za trajno čuvanje",
           verdict: "Često nezgrapno — često plaćeno, sporo za brzu predaju",
+        },
+        {
+          channel: "Signal / WhatsApp (nestajuće poruke)",
+          encrypted: "Da, end-to-end",
+          persistent: "Poruke nestaju nakon vremena",
+          verdict: "Dobro — obje strane trebaju račun",
         },
         {
           channel: "Jednokratna poveznica",

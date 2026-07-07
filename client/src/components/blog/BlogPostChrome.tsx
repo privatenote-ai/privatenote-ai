@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import { localizedPath } from "@/utils/localizedPath";
-import { getStaticBlogMeta, getStaticBlogReadTime } from "@/utils/staticBlogPosts";
+import { buildStaticBlogPosts, getStaticBlogMeta, getStaticBlogReadTime } from "@/utils/staticBlogPosts";
+import { setStructuredDataScript } from "@/utils/documentMeta";
+import { buildBlogArticleStructuredData } from "@shared/blogStructuredData";
+import { isBlogCanonicalSlug } from "@shared/localizedBlogSlugs";
 
 /** Shared outer padding for static blog article pages. */
 export const blogPostPageClass = "container mx-auto max-w-4xl px-4 pt-24 pb-8 mb-20 sm:px-6 lg:px-8";
@@ -60,12 +63,29 @@ export function BlogPostHeader({
 }) {
   const { language, t } = useLanguage();
   const staticMeta = slug ? getStaticBlogMeta(slug, t) : null;
+  const staticPost = slug ? buildStaticBlogPosts(t).find((post) => post.slug === slug) : null;
   const resolvedDate = publishedAt ?? staticMeta?.publishedAt;
   const resolvedTags = tags ?? staticMeta?.tags ?? [];
   const resolvedReadTime = readTime ?? (slug ? getStaticBlogReadTime(slug, t) : undefined);
   const formattedDate = resolvedDate
     ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(resolvedDate)
     : "";
+
+  useEffect(() => {
+    if (!slug || !isBlogCanonicalSlug(slug)) return;
+    const schema = buildBlogArticleStructuredData({
+      slug,
+      language,
+      title,
+      description: excerpt ?? staticPost?.excerpt,
+      author: staticPost?.author ?? "PrivateNote.ai",
+      publishedAt: resolvedDate,
+      updatedAt: staticPost?.updatedAt ?? resolvedDate,
+      image: staticPost?.coverImage,
+      tags: resolvedTags,
+    });
+    setStructuredDataScript("blog-article", schema);
+  }, [excerpt, language, resolvedDate, resolvedTags, slug, staticPost, title]);
 
   return (
     <header className={cn("mb-12 sm:mb-14", excerpt && "mb-14 sm:mb-16", headerClassName)}>

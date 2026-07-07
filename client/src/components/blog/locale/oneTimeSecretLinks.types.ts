@@ -21,6 +21,7 @@ export type OneTimeSecretLinksSection = {
   paragraphs: string[];
   bullets?: OneTimeSecretLinksBulletItem[];
   callout?: string;
+  chromeExtensionCta?: string;
   beforeFlowSteps?: string;
   flowSteps?: OneTimeSecretLinksFlowStep[];
   afterFlowSteps?: string[];

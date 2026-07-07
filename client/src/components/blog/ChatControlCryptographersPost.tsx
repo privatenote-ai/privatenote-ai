@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Eye, Lock, Scale, ShieldAlert, ShieldCheck
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { cn } from "@/lib/utils";
 
 const heroImagePath = "/images/blog-chat-control-is-back-hero.png";
@@ -362,6 +363,8 @@ export const ChatControlCryptographersPost: React.FC = () => {
             Try PrivateNote -&gt;
           </Link>
         </div>
+
+        <BlogPostCrossLinks slug="chat-control-europe-cryptographers" />
       </article>
     </div>
   );
