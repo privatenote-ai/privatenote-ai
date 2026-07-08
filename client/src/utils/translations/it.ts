@@ -1384,6 +1384,9 @@ export const it: Translations = {
   documentMetaHowItWorksDescription: "Scopri come PrivateNote.ai utilizza la crittografia del browser, le note sicure di breve durata e l'intelligenza artificiale opzionale sul dispositivo mantenendo le chiavi di crittografia sotto il tuo controllo.",
   documentMetaDevelopersTitle: "Integrazioni per sviluppatori",
   documentMetaDevelopersDescription: "Utilizza PrivateNote.ai da VS Code, Cursor, agenti AI e client MCP mantenendo la crittografia delle note locale e completamente privata.",
+  documentMetaSecureFileTransferTitle: "Trasferimento di file sicuro con crittografia nel browser",
+  documentMetaSecureFileTransferDescription:
+    "Invia file in modo sicuro con crittografia nel browser. PrivateNote memorizza solo dati cifrati, con link a scadenza e senza account richiesto per i destinatari.",
   devBadge: "Integrazioni per sviluppatori",
   devHeroTitle: "Condividi i segreti degli strumenti in cui si svolge effettivamente il lavoro",
   devHeroSubtitle: "PrivateNote è utile come sito Web, ma i team di sviluppatori di solito necessitano dello stesso trasferimento crittografato all'interno di editor, agenti IA locali, script e distribuzioni controllate. Questa pagina mappa i punti di ingresso e il confine di fiducia dietro di essi.",

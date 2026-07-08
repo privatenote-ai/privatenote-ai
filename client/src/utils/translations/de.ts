@@ -1384,6 +1384,9 @@ export const de: Translations = {
   documentMetaHowItWorksDescription: "Browser-Verschlüsselung, kurzlebige Notizen und optionale KI-Hilfe—Schlüssel bleiben unter Ihrer Kontrolle.",
   documentMetaDevelopersTitle: "Entwickler-Integrationen",
   documentMetaDevelopersDescription: "Nutzen Sie PrivateNote.ai aus VS Code, Cursor, KI-Agenten und MCP-Clients, während die Verschlüsselung lokal und vollständig privat bleibt.",
+  documentMetaSecureFileTransferTitle: "Sichere Dateiübertragung mit Verschlüsselung im Browser",
+  documentMetaSecureFileTransferDescription:
+    "Senden Sie Dateien sicher mit Verschlüsselung im Browser. PrivateNote speichert nur verschlüsselte Dateidaten – mit ablaufenden Links und ohne Konto für Empfänger.",
   devBadge: "Entwicklerintegrationen",
   devHeroTitle: "Teilen Sie Geheimnisse der Werkzeuge, an denen tatsächlich gearbeitet wird",
   devHeroSubtitle: "PrivateNote ist als Website nützlich, aber Entwicklerteams benötigen normalerweise die gleiche verschlüsselte Übergabe innerhalb von Editoren, lokalen KI-Agenten, Skripten und kontrollierten Bereitstellungen. Auf dieser Seite werden diese Einstiegspunkte und die Vertrauensgrenze dahinter abgebildet.",

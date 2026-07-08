@@ -1350,6 +1350,9 @@ export const nl: Translations = {
   documentMetaHowItWorksDescription: "Ontdek hoe PrivateNote.ai browserversleuteling, kortstondige beveiligde notities en optionele AI op het apparaat gebruikt, terwijl u de versleutelingssleutels onder uw controle houdt.",
   documentMetaDevelopersTitle: "Integraties van ontwikkelaars",
   documentMetaDevelopersDescription: "Gebruik PrivateNote.ai van VS Code, Cursor, AI-agents en MCP-clients terwijl u de notitie-encryptie lokaal en volledig privé houdt.",
+  documentMetaSecureFileTransferTitle: "Veilige bestandsoverdracht met versleuteling in de browser",
+  documentMetaSecureFileTransferDescription:
+    "Verstuur bestanden veilig met versleuteling in de browser. PrivateNote bewaart alleen versleutelde bestandsgegevens, met verlopende links en zonder account voor ontvangers.",
   devBadge: "Integraties van ontwikkelaars",
   devHeroTitle: "Deel geheimen van de tools waar het werk daadwerkelijk gebeurt",
   devHeroSubtitle: "PrivateNote is handig als website, maar ontwikkelaarsteams hebben meestal dezelfde gecodeerde overdracht nodig binnen editors, lokale AI-agents, scripts en gecontroleerde implementaties. Deze pagina brengt die toegangspunten en de vertrouwensgrens daarachter in kaart.",

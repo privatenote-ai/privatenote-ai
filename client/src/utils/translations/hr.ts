@@ -1350,6 +1350,9 @@ export const hr: Translations = {
   documentMetaHowItWorksDescription: "Saznajte kako PrivateNote.ai koristi enkripciju preglednika, kratkotrajne sigurne bilješke i izborne AI na uređaju dok ključeve za enkripciju držite pod svojom kontrolom.",
   documentMetaDevelopersTitle: "Integracije programera",
   documentMetaDevelopersDescription: "Koristite PrivateNote.ai iz VS Codea, Cursora, AI agenata i MCP klijenata dok enkripcija bilješki ostaje lokalna i potpuno privatna.",
+  documentMetaSecureFileTransferTitle: "Siguran prijenos datoteka uz šifriranje u pregledniku",
+  documentMetaSecureFileTransferDescription:
+    "Šaljite datoteke sigurno uz šifriranje u pregledniku. PrivateNote pohranjuje samo šifrirane podatke, s poveznicama koje istječu i bez računa za primatelje.",
   devBadge: "Integracije programera",
   devHeroTitle: "Podijelite tajne s alatima gdje se posao zapravo odvija",
   devHeroSubtitle: "PrivateNote je koristan kao web stranica, ali razvojni timovi obično trebaju isti šifrirani prijenos unutar urednika, lokalnih AI agenata, skripti i kontroliranih implementacija. Ova stranica prikazuje te ulazne točke i granice povjerenja iza njih.",

@@ -58,10 +58,10 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "blog/how-we-generate-passwords.html", mustContain: "password" },
   { file: "blog/encrypted-vs-secure-file-sharing.html", mustContain: "Encrypted" },
   { file: "secure-file-transfer.html", mustContain: "Secure File Transfer with Browser-Side Encryption" },
-  { file: "de/secure-file-transfer.html", mustContain: "Datei" },
-  { file: "it/secure-file-transfer.html", mustContain: "Condividi" },
-  { file: "sr/secure-file-transfer.html", mustContain: "Podelite" },
-  { file: "hr/secure-file-transfer.html", mustContain: "Podijelite" },
+  { file: "de/secure-file-transfer.html", mustContain: "Dateiübertragung" },
+  { file: "it/secure-file-transfer.html", mustContain: "Trasferimento" },
+  { file: "sr/secure-file-transfer.html", mustContain: "prenos datoteka" },
+  { file: "hr/secure-file-transfer.html", mustContain: "prijenos datoteka" },
 ];
 
 function exists(p) {

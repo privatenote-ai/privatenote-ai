@@ -1350,6 +1350,9 @@ export const sr: Translations = {
   documentMetaHowItWorksDescription: "Saznajte kako PrivateNote.ai koristi šifrovanje pregledača, kratkotrajne bezbedne poruke i opcioni AI na uređaju dok ključeve za šifrovanje drži pod vašom kontrolom.",
   documentMetaDevelopersTitle: "Integracije programera",
   documentMetaDevelopersDescription: "Koristite PrivateNote.ai od VS Code, Cursor, AI agenata i MCP klijenata, a da šifrovanje poruka bude lokalno i potpuno privatno.",
+  documentMetaSecureFileTransferTitle: "Bezbedan prenos datoteka uz šifrovanje u pregledaču",
+  documentMetaSecureFileTransferDescription:
+    "Šaljite datoteke bezbedno uz šifrovanje u pregledaču. PrivateNote čuva samo šifrovane podatke, sa linkovima koji ističu i bez naloga za primaoce.",
   devBadge: "Integracije programera",
   devHeroTitle: "Delite tajne iz alata gde se posao zapravo dešava",
   devHeroSubtitle: "__PN_0__ je koristan kao veb lokacija, ali timovima programera obično je potrebna ista šifrovana predaja unutar uređivača, lokalnih AI agenata, skripti i kontrolisanih implementacija. Ova stranica mapira te ulazne tačke i granicu poverenja iza njih.",
