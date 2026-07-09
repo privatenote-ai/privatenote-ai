@@ -4,6 +4,7 @@ import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "chat-control-1-0-vote-explained": "2026-07-09T12:00:00.000Z",
   "chat-control-europe-cryptographers": "2026-07-07T12:00:00.000Z",
   "how-to-share-api-key-securely": "2026-07-06T12:00:00.000Z",
   "what-is-end-to-end-encryption": "2026-07-03T16:00:00.000Z",
@@ -23,6 +24,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
 const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "chat-control-1-0-vote-explained": 6,
   "chat-control-europe-cryptographers": 7,
   "how-to-share-api-key-securely": 7,
   "what-is-end-to-end-encryption": 7,
@@ -79,6 +81,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -15,
+      title: t.blogChatControl10VoteTitle,
+      excerpt: t.blogChatControl10VoteExcerpt,
+      author: "PrivateNote.ai",
+      slug: "chat-control-1-0-vote-explained",
+      publishedAt: at("chat-control-1-0-vote-explained"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("chat-control-1-0-vote-explained"),
+      updatedAt: at("chat-control-1-0-vote-explained"),
+    },
     {
       id: -14,
       title: t.blogChatControlTitle,

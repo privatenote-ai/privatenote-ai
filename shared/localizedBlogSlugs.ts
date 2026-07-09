@@ -1,6 +1,7 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 export const BLOG_CANONICAL_SLUGS = [
+  "chat-control-1-0-vote-explained",
   "chat-control-europe-cryptographers",
   "how-to-share-api-key-securely",
   "what-is-end-to-end-encryption",
@@ -21,6 +22,17 @@ export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
 
 /** Localized URL slug per language (ASCII, no diacritics). English values match canonical slugs. */
 export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLanguage, string>> = {
+  "chat-control-1-0-vote-explained": {
+    en: "chat-control-1-0-vote-explained",
+    de: "chat-control-1-0-abstimmung-erklaert",
+    fr: "chat-control-1-0-vote-explique",
+    es: "chat-control-1-0-voto-explicado",
+    it: "chat-control-1-0-voto-spiegato",
+    nl: "chat-control-1-0-stemming-uitgelegd",
+    pt: "chat-control-1-0-votacao-explicada",
+    sr: "chat-control-1-0-glasanje-objasnjeno",
+    hr: "chat-control-1-0-glasanje-objasnjeno",
+  },
   "chat-control-europe-cryptographers": {
     en: "chat-control-europe-cryptographers",
     de: "chat-control-europa-kryptographen",

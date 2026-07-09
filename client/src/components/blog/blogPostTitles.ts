@@ -3,6 +3,7 @@ import type { BlogCanonicalSlug } from "@shared/localizedBlogSlugs";
 import type { BlogTrustPath } from "@shared/blogPostCrossLinks";
 
 const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
+  "chat-control-1-0-vote-explained": "blogChatControl10VoteTitle",
   "chat-control-europe-cryptographers": "blogChatControlTitle",
   "how-to-share-api-key-securely": "blogApiKeySharingTitle",
   "what-is-end-to-end-encryption": "blogE2eeDefinitionTitle",

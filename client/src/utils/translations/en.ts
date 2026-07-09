@@ -1424,6 +1424,13 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
+  blogChatControl10VoteTitle:
+    "Chat Control 1.0 Passed Despite More “No” Than “Yes” Votes. Here’s What Actually Happened.",
+  blogChatControl10VoteExcerpt:
+    "On 9 July 2026, the European Parliament extended Chat Control 1.0 even though more MEPs voted against it than for it. The reason is parliamentary procedure—not cryptography.",
+  blogChatControl10VoteMetaTitle: "Chat Control 1.0 vote explained",
+  blogChatControl10VoteMetaDescription:
+    "Why Chat Control 1.0 passed with 314 votes against and 276 in favour, what the extension actually does for end-to-end encryption, and what Chat Control 2.0 may bring next.",
   blogChatControlTitle: "Chat Control Is Back: Why Europe Should Listen to Its Cryptographers",
   blogChatControlExcerpt:
     "Today, Tuesday, July 7, Parliament is expected to revisit CSAR. The goal of protecting children is urgent, but mandatory scanning of private communications still collides with encryption, privacy, and technical reality.",

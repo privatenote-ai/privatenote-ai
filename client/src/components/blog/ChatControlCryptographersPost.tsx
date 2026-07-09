@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { AlertTriangle, CheckCircle2, Eye, Lock, Scale, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { localizedPath } from "@/utils/localizedPath";
+import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { cn } from "@/lib/utils";
@@ -123,6 +123,20 @@ export const ChatControlCryptographersPost: React.FC = () => {
             mandatory scanning of private communications can do that without breaking the security guarantees
             everyone else depends on.
           </p>
+
+          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 dark:border-primary/25 dark:bg-primary/[0.08] sm:p-6">
+            <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">
+              <strong className="font-semibold text-gray-900 dark:text-white">Update (9 July 2026):</strong>{" "}
+              Parliament extended Chat Control 1.0 even though more MEPs voted against it than for it.{" "}
+              <Link
+                href={blogPostPath("chat-control-1-0-vote-explained", language)}
+                className="font-semibold text-primary hover:underline"
+              >
+                Read what happened and why
+              </Link>
+              .
+            </p>
+          </div>
 
           <div className="rounded-3xl border border-amber-200 bg-amber-50 p-7 dark:border-amber-900/60 dark:bg-amber-950/20 sm:p-8">
             <div className="flex gap-5">

@@ -22,12 +22,21 @@ const MAX_RELATED_POSTS = 6;
  * Product CTAs live in each post's closing section, so they are not duplicated here.
  */
 export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks> = {
+  "chat-control-1-0-vote-explained": {
+    related: [
+      "chat-control-europe-cryptographers",
+      "what-is-end-to-end-encryption",
+      "secrets-never-send-in-chat",
+      "one-time-secret-links",
+    ],
+    trust: "/security-resources",
+  },
   "chat-control-europe-cryptographers": {
     related: [
+      "chat-control-1-0-vote-explained",
       "what-is-end-to-end-encryption",
       "secrets-never-send-in-chat",
       "privacy-tools",
-      "one-time-secret-links",
     ],
     trust: "/security-resources",
   },
@@ -42,10 +51,11 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "what-is-end-to-end-encryption": {
     related: [
+      "chat-control-1-0-vote-explained",
+      "chat-control-europe-cryptographers",
       "encrypted-vs-secure-file-sharing",
       "one-time-secret-links",
       "send-secret-message-without-account",
-      "secrets-never-send-in-chat",
     ],
     trust: "/security-resources",
   },

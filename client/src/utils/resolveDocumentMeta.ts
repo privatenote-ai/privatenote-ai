@@ -93,6 +93,11 @@ function blogSlugStaticMeta(
   t: Translations,
 ): { title: string; description: string } | null {
   switch (slug) {
+    case "chat-control-1-0-vote-explained":
+      return {
+        title: buildDocumentTitle(t.blogChatControl10VoteMetaTitle),
+        description: t.blogChatControl10VoteMetaDescription,
+      };
     case "chat-control-europe-cryptographers":
       return {
         title: buildDocumentTitle(t.blogChatControlMetaTitle),

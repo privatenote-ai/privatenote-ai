@@ -22,6 +22,7 @@ import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendIn
 import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncryptionDefinitionPost';
 import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPost';
 import { ChatControlCryptographersPost } from '@/components/blog/ChatControlCryptographersPost';
+import { ChatControl10VoteExplainedPost } from '@/components/blog/ChatControl10VoteExplainedPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta, setStructuredDataScript } from '@/utils/documentMeta';
@@ -91,6 +92,9 @@ export default function BlogPostPage() {
   }
   if (slug === 'how-to-share-api-key-securely') {
     return <ShareApiKeySecurelyPost />;
+  }
+  if (slug === 'chat-control-1-0-vote-explained') {
+    return <ChatControl10VoteExplainedPost />;
   }
   if (slug === 'chat-control-europe-cryptographers') {
     return <ChatControlCryptographersPost />;
