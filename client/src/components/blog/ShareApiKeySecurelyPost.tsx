@@ -11,9 +11,11 @@ import {
   XCircle,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { localizedPath } from "@/utils/localizedPath";
+import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { PASSWORDS_LU_PARTNER_URLS } from "@/config/passwordsLuPartner";
+import type { BlogCanonicalSlug } from "@shared/localizedBlogSlugs";
 
 const heroImagePath = "/images/blog-api-key-sharing-hero.jpg";
 const heroArtistUrl =
@@ -112,7 +114,7 @@ const faqs = [
   {
     question: "What is the safest workflow?",
     answer:
-      "Create a narrowly scoped key, send it through a browser-encrypted one-time link, share any optional password through a separate channel, then rotate or revoke the key when the task is done.",
+      "Create a narrowly scoped key, send it through a browser-encrypted one-time link, share any optional password through a separate channel, then rotate or revoke the key when the task is done. For high-risk or long-lived keys, encrypt locally with age or OpenSSL first and upload ciphertext only.",
   },
   {
     question: "Is PrivateNote a secrets manager?",
@@ -123,6 +125,21 @@ const faqs = [
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{children}</h2>;
+}
+
+function BlogInlineLink({
+  slug,
+  children,
+}: {
+  slug: BlogCanonicalSlug;
+  children: React.ReactNode;
+}) {
+  const { language } = useLanguage();
+  return (
+    <Link href={blogPostPath(slug, language)} className="font-semibold text-primary hover:underline">
+      {children}
+    </Link>
+  );
 }
 
 function BoldParagraph({ title, body }: { title: string; body: string }) {
@@ -303,14 +320,87 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
                 <BoldParagraph key={step.title} title={step.title} body={step.body} />
               ))}
             </div>
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-4 dark:border-primary/25 dark:bg-primary/[0.08] sm:px-6 sm:py-5">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Creating a new key?
+              </p>
+              <p className="mt-2 leading-relaxed text-gray-700 dark:text-gray-300">
+                Generate high-entropy credentials locally in your browser — the{" "}
+                <a
+                  href={PASSWORDS_LU_PARTNER_URLS.apiKeyGenerator}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-gray-400 underline-offset-2 transition-colors hover:decoration-primary dark:decoration-gray-600"
+                >
+                  API key generator
+                </a>{" "}
+                on passwords.lu runs client-side; nothing is uploaded.
+              </p>
+            </div>
+          </section>
+
+          <hr className="border-gray-200 dark:border-gray-800" />
+
+          <section className="space-y-4">
+            <SectionHeading>High-risk keys: encrypt locally first</SectionHeading>
+            <p>
+              Most API keys are replaceable: staging tokens, short-lived integration secrets, and narrowly scoped
+              credentials you plan to rotate. For those, browser-encrypted one-time delivery is usually enough.
+            </p>
+            <p>
+              Some keys carry more weight — production admin access, signing keys, root cloud credentials, or
+              anything long-lived that would be painful or impossible to revoke cleanly. Treat those like master
+              secrets:{" "}
+              <strong className="font-semibold text-gray-900 dark:text-white">
+                encrypt locally before any web upload
+              </strong>
+              , then send ciphertext through PrivateNote.
+            </p>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
+              <div className="mb-3 flex items-center gap-2 font-bold text-amber-900 dark:text-amber-100">
+                <Lock className="h-5 w-5" aria-hidden />
+                Local encryption first
+              </div>
+              <ul className="space-y-2 text-sm leading-relaxed text-amber-950 dark:text-amber-100">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+                  <span>
+                    <strong className="font-semibold">age</strong> — simplest defaults for file encryption (
+                    <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-950/50">age -p -o key.txt.age key.txt</code>
+                    )
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+                  <span>
+                    <strong className="font-semibold">OpenSSL</strong> — trusted CLI if you already know the flags
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+                  <span>
+                    Upload the encrypted file with PrivateNote; send the decryption passphrase on a{" "}
+                    <strong className="font-semibold">separate channel</strong> (Signal, phone, in person)
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <p>
+              The same workflow applies to cryptocurrency seed phrases and other irreplaceable master secrets. See{" "}
+              <BlogInlineLink slug="crypto-seed-phrase-one-time-link">
+                crypto seed phrases and one-time links
+              </BlogInlineLink>{" "}
+              for the full age/OpenSSL walkthrough, passphrase tips, and when one-time links are — and are not — the
+              right tool.
+            </p>
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
             <SectionHeading>A safer handoff workflow</SectionHeading>
-            <p className="max-w-2xl">
-              When a human needs the key — not when an app retrieves it at runtime — follow this sequence.
+            <p className="text-pretty">
+              When a human needs the key—not when an app retrieves it at runtime—follow this sequence.
             </p>
             <HandoffFlowDiagram />
           </section>

@@ -22,6 +22,28 @@ const MAX_RELATED_POSTS = 6;
  * Product CTAs live in each post's closing section, so they are not duplicated here.
  */
 export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks> = {
+  "crypto-seed-phrase-one-time-link": {
+    related: [
+      "one-time-secret-links",
+      "how-to-share-api-key-securely",
+      "why-email-is-worst-for-secrets",
+      "what-is-end-to-end-encryption",
+      "send-secret-message-without-account",
+      "secrets-never-send-in-chat",
+    ],
+    trust: "/how-it-works",
+  },
+  "why-email-is-worst-for-secrets": {
+    related: [
+      "crypto-seed-phrase-one-time-link",
+      "one-time-secret-links",
+      "how-to-share-api-key-securely",
+      "secrets-never-send-in-chat",
+      "send-secret-message-without-account",
+      "what-is-end-to-end-encryption",
+    ],
+    trust: "/how-it-works",
+  },
   "chat-control-1-0-vote-explained": {
     related: [
       "chat-control-europe-cryptographers",
@@ -42,10 +64,10 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "how-to-share-api-key-securely": {
     related: [
+      "crypto-seed-phrase-one-time-link",
+      "why-email-is-worst-for-secrets",
       "privatenote-for-developers",
-      "privatenote-codex",
       "one-time-secret-links",
-      "securing-ai-agents-like-employees",
     ],
     trust: "/security-resources",
   },
@@ -61,10 +83,10 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "secrets-never-send-in-chat": {
     related: [
+      "why-email-is-worst-for-secrets",
       "send-secret-message-without-account",
-      "how-we-generate-passwords",
       "one-time-secret-links",
-      "myth-good-enough-security",
+      "how-we-generate-passwords",
     ],
     trust: "/security-resources",
   },
@@ -88,10 +110,10 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "one-time-secret-links": {
     related: [
+      "crypto-seed-phrase-one-time-link",
+      "why-email-is-worst-for-secrets",
       "send-secret-message-without-account",
       "how-to-share-api-key-securely",
-      "secrets-never-send-in-chat",
-      "workplace-texts-private-note",
     ],
     trust: "/how-it-works",
   },

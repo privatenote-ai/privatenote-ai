@@ -4,6 +4,8 @@ import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "crypto-seed-phrase-one-time-link": "2026-07-10T12:00:00.000Z",
+  "why-email-is-worst-for-secrets": "2026-07-09T18:00:00.000Z",
   "chat-control-1-0-vote-explained": "2026-07-09T12:00:00.000Z",
   "chat-control-europe-cryptographers": "2026-07-07T12:00:00.000Z",
   "how-to-share-api-key-securely": "2026-07-06T12:00:00.000Z",
@@ -24,6 +26,8 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
 const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "crypto-seed-phrase-one-time-link": 7,
+  "why-email-is-worst-for-secrets": 6,
   "chat-control-1-0-vote-explained": 6,
   "chat-control-europe-cryptographers": 7,
   "how-to-share-api-key-securely": 7,
@@ -81,6 +85,34 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -17,
+      title: t.blogCryptoSeedTitle,
+      excerpt: t.blogCryptoSeedExcerpt,
+      author: "PrivateNote.ai",
+      slug: "crypto-seed-phrase-one-time-link",
+      publishedAt: at("crypto-seed-phrase-one-time-link"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("crypto-seed-phrase-one-time-link"),
+      updatedAt: at("crypto-seed-phrase-one-time-link"),
+    },
+    {
+      id: -16,
+      title: t.blogEmailSecretsTitle,
+      excerpt: t.blogEmailSecretsExcerpt,
+      author: "PrivateNote.ai",
+      slug: "why-email-is-worst-for-secrets",
+      publishedAt: at("why-email-is-worst-for-secrets"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity, t.blogTagPasswords]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("why-email-is-worst-for-secrets"),
+      updatedAt: at("why-email-is-worst-for-secrets"),
+    },
     {
       id: -15,
       title: t.blogChatControl10VoteTitle,

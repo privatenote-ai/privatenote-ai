@@ -1424,6 +1424,18 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
+  blogCryptoSeedTitle: "Should You Share a Crypto Seed Phrase Through a One-Time Link?",
+  blogCryptoSeedExcerpt:
+    "Usually not. If you absolutely must, encrypt it locally first—never type the mnemonic into a website, including PrivateNote.",
+  blogCryptoSeedMetaTitle: "Crypto seed phrase and one-time links",
+  blogCryptoSeedMetaDescription:
+    "Why you should not enter a seed phrase on a website, how to encrypt locally with age first, and when PrivateNote is appropriate for ciphertext only.",
+  blogEmailSecretsTitle: "Why Email Is the Worst Place to Send Secrets",
+  blogEmailSecretsExcerpt:
+    "Email was built to deliver messages—not to make them disappear. Passwords, API keys, and recovery codes sent by email often live forever in searchable inboxes.",
+  blogEmailSecretsMetaTitle: "Why email is the worst place for secrets",
+  blogEmailSecretsMetaDescription:
+    "Why email is a poor channel for passwords, API keys, and confidential data—and how one-time encrypted links avoid permanent inbox copies.",
   blogChatControl10VoteTitle:
     "Chat Control 1.0 Passed Despite More “No” Than “Yes” Votes. Here’s What Actually Happened.",
   blogChatControl10VoteExcerpt:

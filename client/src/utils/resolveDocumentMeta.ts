@@ -93,6 +93,16 @@ function blogSlugStaticMeta(
   t: Translations,
 ): { title: string; description: string } | null {
   switch (slug) {
+    case "crypto-seed-phrase-one-time-link":
+      return {
+        title: buildDocumentTitle(t.blogCryptoSeedMetaTitle),
+        description: t.blogCryptoSeedMetaDescription,
+      };
+    case "why-email-is-worst-for-secrets":
+      return {
+        title: buildDocumentTitle(t.blogEmailSecretsMetaTitle),
+        description: t.blogEmailSecretsMetaDescription,
+      };
     case "chat-control-1-0-vote-explained":
       return {
         title: buildDocumentTitle(t.blogChatControl10VoteMetaTitle),

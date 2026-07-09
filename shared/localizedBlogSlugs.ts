@@ -1,6 +1,8 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 export const BLOG_CANONICAL_SLUGS = [
+  "crypto-seed-phrase-one-time-link",
+  "why-email-is-worst-for-secrets",
   "chat-control-1-0-vote-explained",
   "chat-control-europe-cryptographers",
   "how-to-share-api-key-securely",
@@ -22,6 +24,28 @@ export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
 
 /** Localized URL slug per language (ASCII, no diacritics). English values match canonical slugs. */
 export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLanguage, string>> = {
+  "crypto-seed-phrase-one-time-link": {
+    en: "crypto-seed-phrase-one-time-link",
+    de: "krypto-seed-phrase-einmal-link",
+    fr: "phrase-seed-crypto-lien-unique",
+    es: "frase-semilla-crypto-enlace-unico",
+    it: "seed-phrase-crypto-link-monouso",
+    nl: "crypto-seed-phrase-eenmalige-link",
+    pt: "frase-semente-crypto-link-unico",
+    sr: "crypto-seed-fraza-jednokratna-veza",
+    hr: "crypto-seed-fraza-jednokratna-poveznica",
+  },
+  "why-email-is-worst-for-secrets": {
+    en: "why-email-is-worst-for-secrets",
+    de: "warum-e-mail-schlecht-fuer-geheimnisse-ist",
+    fr: "pourquoi-l-email-est-mauvais-pour-les-secrets",
+    es: "por-que-el-correo-es-malo-para-secretos",
+    it: "perche-le-email-non-vanno-bene-per-i-segreti",
+    nl: "waarom-e-mail-slecht-is-voor-geheimen",
+    pt: "por-que-o-email-e-ruim-para-segredos",
+    sr: "zasto-je-email-los-za-tajne",
+    hr: "zasto-je-email-los-za-tajne",
+  },
   "chat-control-1-0-vote-explained": {
     en: "chat-control-1-0-vote-explained",
     de: "chat-control-1-0-abstimmung-erklaert",

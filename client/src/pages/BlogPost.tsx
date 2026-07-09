@@ -23,6 +23,8 @@ import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncr
 import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPost';
 import { ChatControlCryptographersPost } from '@/components/blog/ChatControlCryptographersPost';
 import { ChatControl10VoteExplainedPost } from '@/components/blog/ChatControl10VoteExplainedPost';
+import { EmailWorstForSecretsPost } from '@/components/blog/EmailWorstForSecretsPost';
+import { CryptoSeedPhraseOneTimeLinkPost } from '@/components/blog/CryptoSeedPhraseOneTimeLinkPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta, setStructuredDataScript } from '@/utils/documentMeta';
@@ -92,6 +94,12 @@ export default function BlogPostPage() {
   }
   if (slug === 'how-to-share-api-key-securely') {
     return <ShareApiKeySecurelyPost />;
+  }
+  if (slug === 'crypto-seed-phrase-one-time-link') {
+    return <CryptoSeedPhraseOneTimeLinkPost />;
+  }
+  if (slug === 'why-email-is-worst-for-secrets') {
+    return <EmailWorstForSecretsPost />;
   }
   if (slug === 'chat-control-1-0-vote-explained') {
     return <ChatControl10VoteExplainedPost />;
