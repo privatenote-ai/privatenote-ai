@@ -490,7 +490,7 @@ export const de: Translations = {
   aiComposerPrivateAiBullet2: "Ihr Text verlässt Ihr Gerät nie",
   aiComposerPrivateAiBullet3: "Keine Server und kein Tracking",
   aiComposerPrivateAiCon1: "Langsamer als Cloud Assist",
-  aiComposerPrivateAiCon2: "Schwächeres Modell (Gemma 2 2B)",
+  aiComposerPrivateAiCon2: "Schwächeres Modell ({model})",
   aiComposerPrivateAiCon3: "Leistungsfähiges Gerät + Download nötig",
   localAiLoadingModel: "Laden {model}",
   localAiLoadingPrivate: "Private KI wird geladen",

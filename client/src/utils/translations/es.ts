@@ -490,7 +490,7 @@ export const es: Translations = {
   aiComposerPrivateAiBullet2: "Tu texto nunca sale de tu dispositivo",
   aiComposerPrivateAiBullet3: "Sin servidores ni seguimiento",
   aiComposerPrivateAiCon1: "Más lento que Cloud Assist",
-  aiComposerPrivateAiCon2: "Modelo más débil (Gemma 2 2B)",
+  aiComposerPrivateAiCon2: "Modelo más débil ({model})",
   aiComposerPrivateAiCon3: "Requiere un dispositivo capaz + descarga",
   localAiLoadingModel: "Cargando {model}",
   localAiLoadingPrivate: "Cargando IA privada",

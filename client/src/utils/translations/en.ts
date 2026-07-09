@@ -510,7 +510,7 @@ export const en: Translations = {
   aiComposerPrivateAiBullet2: "Your text never leaves your device",
   aiComposerPrivateAiBullet3: "No servers or tracking",
   aiComposerPrivateAiCon1: "Slower than Cloud Assist",
-  aiComposerPrivateAiCon2: "Weaker model (Gemma 2 2B)",
+  aiComposerPrivateAiCon2: "Weaker model ({model})",
   aiComposerPrivateAiCon3: "Needs capable device + download",
   localAiLoadingModel: "Loading {model}",
   localAiLoadingPrivate: "Loading private AI",

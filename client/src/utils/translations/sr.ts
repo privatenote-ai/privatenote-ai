@@ -486,7 +486,7 @@ export const sr: Translations = {
   aiComposerPrivateAiBullet2: "Vaš tekst nikada ne napušta vaš uređaj",
   aiComposerPrivateAiBullet3: "Nema servera ili praćenja",
   aiComposerPrivateAiCon1: "Sporije od Cloud Assist-a",
-  aiComposerPrivateAiCon2: "Slabiji model (Gemma 2 2B)",
+  aiComposerPrivateAiCon2: "Slabiji model ({model})",
   aiComposerPrivateAiCon3: "Potreban je sposoban uređaj + preuzimanje",
   localAiLoadingModel: "Učitavanje {model}",
   localAiLoadingPrivate: "Učitavanje privatne veštačke inteligencije",

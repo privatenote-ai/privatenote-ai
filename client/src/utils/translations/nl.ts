@@ -486,7 +486,7 @@ export const nl: Translations = {
   aiComposerPrivateAiBullet2: "Uw tekst verlaat uw apparaat nooit",
   aiComposerPrivateAiBullet3: "Geen servers of tracking",
   aiComposerPrivateAiCon1: "Langzamer dan Cloud Assist",
-  aiComposerPrivateAiCon2: "Zwakker model (Gemma 2 2B)",
+  aiComposerPrivateAiCon2: "Zwakker model ({model})",
   aiComposerPrivateAiCon3: "Capabel apparaat + download nodig",
   localAiLoadingModel: "Laden {model}",
   localAiLoadingPrivate: "Privé-AI laden",
