@@ -291,17 +291,25 @@ function postProcessHTML(html, route) {
   return out;
 }
 
-const ENTRY_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
+const INDEX_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
+const INDEX_STYLESHEET_RE = /\/assets\/index-[A-Za-z0-9_-]+\.css/g;
 const ASSET_REF_RE = /\/assets\/([A-Za-z0-9_.-]+\.(?:js|css))/g;
 
-function readCanonicalEntryScript() {
+function readCanonicalShellAssets() {
   const shellPath = path.join(BUILD_DIR, "index.html");
   const shell = readFileSync(shellPath, "utf8");
-  const match = shell.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/);
-  if (!match) {
+  const scriptMatch = shell.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/);
+  const stylesheetMatch = shell.match(/href="(\/assets\/index-[A-Za-z0-9_-]+\.css)"/);
+  if (!scriptMatch) {
     throw new Error(`Could not find Vite entry script in ${shellPath}`);
   }
-  return match[1];
+  if (!stylesheetMatch) {
+    throw new Error(`Could not find Vite entry stylesheet in ${shellPath}`);
+  }
+  return {
+    entryScript: scriptMatch[1],
+    entryStylesheet: stylesheetMatch[1],
+  };
 }
 
 async function walkHtmlFiles(dir, out = []) {
@@ -317,20 +325,26 @@ async function walkHtmlFiles(dir, out = []) {
   return out;
 }
 
-/** Align every prerendered page with the current Vite entry (avoids stale hashed JS after redeploy). */
-async function syncEntryScriptRefs(canonicalEntry) {
+/** Align cached prerender HTML with the current Vite shell assets (JS + CSS hashes). */
+async function syncShellAssetRefs({ entryScript, entryStylesheet }) {
   const files = await walkHtmlFiles(DIST_DIR);
-  let updated = 0;
+  let scriptUpdates = 0;
+  let stylesheetUpdates = 0;
   for (const file of files) {
     const html = await fs.readFile(file, "utf8");
-    const next = html.replace(ENTRY_SCRIPT_RE, canonicalEntry);
+    const withScript = html.replace(INDEX_SCRIPT_RE, entryScript);
+    const next = withScript.replace(INDEX_STYLESHEET_RE, entryStylesheet);
     if (next !== html) {
       await fs.writeFile(file, next, "utf8");
-      updated++;
+      if (withScript !== html) scriptUpdates++;
+      if (next !== withScript) stylesheetUpdates++;
     }
   }
-  if (updated > 0) {
-    console.log(`🔧 Synced entry script to ${canonicalEntry} in ${updated} HTML file(s).`);
+  if (scriptUpdates > 0 || stylesheetUpdates > 0) {
+    console.log(
+      `🔧 Synced shell assets to ${entryScript} + ${entryStylesheet}` +
+        ` (${scriptUpdates} script, ${stylesheetUpdates} stylesheet HTML file(s)).`,
+    );
   }
 }
 
@@ -401,7 +415,7 @@ async function main() {
   try {
     await waitForServer(PREVIEW_URL);
     await prepareOutputDir();
-    const canonicalEntryScript = readCanonicalEntryScript();
+    const canonicalShellAssets = readCanonicalShellAssets();
 
     browser = await chromium.launch({
       headless: true,
@@ -494,6 +508,9 @@ async function main() {
       );
     }
 
+    // Establish preview origin before route loop so localStorage writes are allowed.
+    await page.goto(`${PREVIEW_URL}/`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+
     for (const route of selection.routes) {
       const url = `${PREVIEW_URL}${route}`;
       console.log(`→ prerendering ${url}`);
@@ -514,7 +531,7 @@ async function main() {
       }
     }
 
-    await syncEntryScriptRefs(canonicalEntryScript);
+    await syncShellAssetRefs(canonicalShellAssets);
     await verifyPrerenderAssetRefs();
 
     if (INCREMENTAL && HTML_CACHE_DIR) {

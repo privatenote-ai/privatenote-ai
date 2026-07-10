@@ -13,6 +13,7 @@ export const FULL_PRERENDER_PATTERNS = [
   /^scripts\/prerenderIncremental/,
   /^shared\/injectPrerenderDocumentMeta\.ts$/,
   /^shared\/homeSeoLinks\.ts$/,
+  /^shared\/localizedMarketingHreflang\.ts$/,
   /^shared\/publicMarketingPaths\.ts$/,
   /^shared\/supportedLanguages\.ts$/,
   /^client\/index\.html$/,
