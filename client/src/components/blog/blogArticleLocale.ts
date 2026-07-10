@@ -6,6 +6,9 @@ export const BLOG_ARTICLE_LOCALES: readonly SupportedLanguage[] = [
   "de",
   "fr",
   "es",
+  "it",
+  "nl",
+  "pt",
   "hr",
   "sr",
 ];

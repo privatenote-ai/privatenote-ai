@@ -8,6 +8,8 @@ import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/component
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { goodEnoughSecurityHr } from "@/components/blog/locale/goodEnoughSecurity.hr";
+import { goodEnoughSecurityNl } from "@/components/blog/locale/goodEnoughSecurity.nl";
+import { goodEnoughSecurityPt } from "@/components/blog/locale/goodEnoughSecurity.pt";
 import { goodEnoughSecuritySr } from "@/components/blog/locale/goodEnoughSecurity.sr";
 import type { GoodEnoughSecurityArticleCopy } from "@/components/blog/locale/goodEnoughSecurity.types";
 
@@ -310,6 +312,82 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       },
     ],
   },
+  it: {
+    intro: [
+      "Per molto tempo il settore ci ha detto che essere prudenti fosse soprattutto una questione di password complesse e buon senso. Una lunga stringa di caratteri e un dito attento sui clic avrebbero dovuto bastare.",
+      "Non bastano. Gli attacchi moderni sono automatizzati, scalabili e pazienti. Le tue abitudini non competono con una persona: competono con un’infrastruttura.",
+      "La risposta non è la paranoia. È l’architettura: ridurre la fiducia, minimizzare la conservazione dei dati e rimuovere per design i singoli punti di fallimento.",
+    ],
+    sections: [
+      {
+        title: "1. Password: delegare l’entropia alla macchina",
+        paragraphs: [
+          "Gli esseri umani sono pessimi nel generare casualità. Quando proviamo a essere furbi, creiamo pattern che gli strumenti di cracking sono progettati per sfruttare.",
+          "Usa un gestore di password, così ogni account riceve una password unica e ad alta entropia generata dal software invece che dalla memoria.",
+          "L’unico segreto da ricordare dovrebbe essere una passphrase lunga, e il vault dovrebbe usare una funzione moderna di derivazione della chiave come Argon2id.",
+        ],
+      },
+      {
+        title: "2. Autenticazione: legata all’origine, non solo a due fattori",
+        paragraphs: [
+          "I codici a due fattori tradizionali aiutano, ma possono comunque essere vittime di phishing in tempo reale. Gli SMS sono particolarmente fragili perché SIM swap e portabilità fraudolenta dei numeri sono comuni.",
+          "FIDO2 e WebAuthn cambiano il protocollo. Una passkey o una chiave hardware dimostra il possesso di una chiave privata per una specifica origine web, quindi un dominio di phishing non può riutilizzarla.",
+        ],
+        bullets: [
+          "Chiavi di sicurezza e passkey: resistenti al phishing e legate all’origine.",
+          "App di autenticazione: utili, ma ancora vulnerabili al phishing in tempo reale.",
+          "Codici SMS o e-mail: meglio evitarli per account di alto valore.",
+        ],
+      },
+      {
+        title: "3. Messaggistica: la cifratura non è una casella da spuntare",
+        paragraphs: [
+          "La cifratura end-to-end protegge il contenuto, ma i dettagli di progettazione contano. La forward secrecy mantiene più sicure le vecchie conversazioni se una chiave di lunga durata viene compromessa in seguito.",
+          "I messaggi effimeri riducono la quantità di dati lasciati indietro. Dati che non esistono più non possono essere raccolti, richiesti legalmente o trapelare mesi dopo.",
+          "La cifratura non cancella i metadati e non può aiutare se un attaccante controlla il dispositivo sbloccato.",
+        ],
+      },
+      {
+        title: "4. Igiene di rete: il controllo di realtà sui VPN",
+        paragraphs: [
+          "Un VPN non è un mantello dell’invisibilità. Sposta la fiducia dalla rete locale al provider VPN.",
+          "Usalo quando risolve un problema concreto: Wi‑Fi ostile, censura o traffic shaping. Non aspettarti che corregga scarsa igiene del browser o autenticazione debole.",
+          "Protocolli moderni come WireGuard sono interessanti perché hanno un design compatto, verificabile e costruito su primitive crittografiche ben comprese.",
+        ],
+      },
+      {
+        title: "5. Browser: dove molti account cadono davvero",
+        paragraphs: [
+          "Molti furti di account iniziano con cookie di sessione rubati, non con crittografia rotta. Il browser è un ambiente ad alto rischio, pieno di script, estensioni e sessioni di lunga durata.",
+          "Mantieni le estensioni al minimo, blocca aggressivamente gli script di terze parti e separa le identità con profili o container quando possibile.",
+          "Qui l’autenticazione resistente al phishing conta molto: una chiave hardware legata all’origine si rifiuta di partecipare sul dominio sbagliato.",
+        ],
+      },
+      {
+        title: "6. Condivisione sicura: ridurre il raggio d’impatto",
+        paragraphs: [
+          "A volte i segreti devono essere condivisi, ma e-mail e chat aziendali creano debito di sicurezza permanente tramite log, backup, anteprime e metadati.",
+          "Il modello più sicuro è la condivisione effimera con cifratura lato client: cifrare prima dell’upload, evitare chiavi conservate sul server e far scadere rapidamente l’accesso.",
+          "L’effimerità non è un trucco. È minimizzazione dei dati applicata ai flussi di lavoro umani.",
+        ],
+      },
+      {
+        title: "Una base da weekend",
+        paragraphs: [
+          "La sicurezza non è uno stato binario. È attrito incrementale applicato nei punti giusti.",
+          "L’obiettivo non è diventare impossibili da violare. L’obiettivo è rendere il costo dell’attacco più alto del valore dei dati ottenuti.",
+        ],
+        ordered: [
+          "Sposta gli account sensibili su password uniche generate da un gestore.",
+          "Aggiungi autenticazione supportata da hardware alla tua identità principale, soprattutto l’e-mail.",
+          "Controlla e rimuovi le estensioni browser non necessarie.",
+          "Sposta le conversazioni sensibili su un messenger cifrato end-to-end con messaggi effimeri attivati.",
+        ],
+      },
+    ],
+  },
+  nl: goodEnoughSecurityNl,
+  pt: goodEnoughSecurityPt,
   hr: goodEnoughSecurityHr,
   sr: goodEnoughSecuritySr,
 };

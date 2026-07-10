@@ -7,7 +7,7 @@ import {
   pipeline,
 } from "@huggingface/transformers";
 import type { ModelLoadProgress } from "./clientLLM";
-import { localAiLoadingPrivateLabel, localAiReadyToGenerateLabel } from "./localAiUxText";
+import { localAiLoadingPrivateLabel, localAiReadyToGenerateLabel, localAiPreparingPrivateLabel, localAiPreparingPrivateAttemptLabel } from "./localAiUxText";
 
 type ProgressCallback = (progress: ModelLoadProgress) => void;
 
@@ -459,7 +459,7 @@ export async function initializeTransformersGemma4Text(
   }
 
   configureTransformersEnv();
-  onProgress?.({ progress: 0, text: "Preparing private AI…" });
+  onProgress?.({ progress: 0, text: localAiPreparingPrivateLabel() });
 
   gemma4InitInFlight = (async () => {
     const attempts = buildBackendAttempts(TRANSFORMERS_GEMMA4_DTYPE);
@@ -494,7 +494,7 @@ export async function initializeTransformersGemma4Text(
       console.log("[AI] Trying Gemma 4 Transformers backend:", attempt.label);
       onProgress?.({
         progress: 2,
-        text: `Preparing private AI (${attempt.label})…`,
+        text: localAiPreparingPrivateAttemptLabel(attempt.label),
         detail:
           attempt.device === "wasm"
             ? "CPU backend startup can take several minutes on first load for larger models."
@@ -616,7 +616,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
   }
 
   configureTransformersEnv();
-  onProgress?.({ progress: 0, text: "Preparing private AI…" });
+  onProgress?.({ progress: 0, text: localAiPreparingPrivateLabel() });
 
   try {
     const attempts = getPreferredBackendAttempts();
@@ -647,7 +647,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       console.log("[AI] Trying mobile Transformers backend:", attempt.label);
       onProgress?.({
         progress: 2,
-        text: `Preparing private AI (${attempt.label})…`,
+        text: localAiPreparingPrivateAttemptLabel(attempt.label),
         detail:
           attempt.device === "wasm"
             ? TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()

@@ -1,0 +1,30 @@
+<svg width="1400" height="560" viewBox="0 0 1400 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai marquee promo tile</title>
+  <desc id="desc">1400 by 560 marquee promotional tile for Chrome Web Store and partner placements.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="36" x2="0" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="560" fill="#F8FBFF"/>
+  <circle cx="1240" cy="48" r="260" fill="#E0E7FF" opacity=".72"/>
+  <circle cx="72" cy="548" r="220" fill="#DBEAFE" opacity=".66"/>
+
+  <g transform="translate(56 40)">
+    <rect width="64" height="64" rx="16" fill="#0000FF"/>
+    <g transform="translate(0 -6) scale(0.615385)">
+      <path d="M23 45L52 71L81 45V88H23V45Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="1.8"/>
+      <path d="M23 45L52 71L81 45Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M23 45L52 71L81 45" stroke="#0000FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <text x="136" y="78" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="850" fill="#0000FF" letter-spacing="-0.02em">privateNote</text>
+  <text x="292" y="62" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="850" fill="#0000FF">.ai</text>
+
+  <text x="700" y="255" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="850" fill="#0F172A" letter-spacing="-0.02em">Share secrets.</text>
+  <text x="700" y="317" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="850" fill="#0000FF" letter-spacing="-0.02em">Leave no trail.</text>
+
+  <text x="1344" y="516" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500" fill="#475569">Encrypted in browser &#183; Read once &#183; No plaintext on server</text>
+</svg>

@@ -2,39 +2,45 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function AuthBackup() {
   const [location] = useLocation();
+  const { t } = useLanguage();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState<string>("Verifying your backup email...");
+  const [message, setMessage] = useState<string>(t.authBackupVerifyingMessage);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     const token = url.searchParams.get("token");
     if (!token) {
       setStatus("error");
-      setMessage("Missing verification token.");
+      setMessage(t.authBackupMissingToken);
       return;
     }
 
     apiRequest("/api/auth/backup/verify?token=" + encodeURIComponent(token), "GET")
       .then(() => {
         setStatus("success");
-        setMessage("Backup email verified.");
+        setMessage(t.authBackupVerifiedMessage);
       })
       .catch((error) => {
         setStatus("error");
-        setMessage(error instanceof Error ? error.message : "Verification failed.");
+        setMessage(error instanceof Error ? error.message : t.authBackupVerificationFailed);
       });
-  }, [location]);
+  }, [location, t.authBackupMissingToken, t.authBackupVerifiedMessage, t.authBackupVerificationFailed]);
 
   return (
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Backup Email</CardTitle>
+          <CardTitle>{t.authBackupTitle}</CardTitle>
           <CardDescription>
-            {status === "loading" ? "Verifying..." : status === "success" ? "Success" : "Error"}
+            {status === "loading"
+              ? t.authBackupLoading
+              : status === "success"
+                ? t.authBackupSuccess
+                : t.authBackupError}
           </CardDescription>
         </CardHeader>
         <CardContent>

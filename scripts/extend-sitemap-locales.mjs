@@ -58,7 +58,11 @@ ${homeBlock}`,
 
     const localeLines = xml
       .split("\n")
-      .filter((line) => line.includes(`https://privatenote.ai/${TEMPLATE_LOCALE}/`) && line.includes("<loc>"));
+      .filter(
+        (line) =>
+          line.startsWith("  <url><loc>") &&
+          line.includes(`https://privatenote.ai/${TEMPLATE_LOCALE}/`),
+      );
 
     const cloned = localeLines
       .map((line) => line.replaceAll(`/${TEMPLATE_LOCALE}/`, `/${locale}/`))

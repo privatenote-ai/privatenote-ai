@@ -994,6 +994,7 @@ export function buildOutputRepairAdditionLocalized(
     de: "---\nNEU GENERIEREN (letzte Antwort hat Prüfungen nicht bestanden). Nutze dieselbe NUTZERANFRAGE wie oben.\nRegeln für diesen Versuch:",
     fr: "---\nREGÉNÈRE (ta dernière réponse a échoué aux contrôles). Utilise la même DEMANDE ci-dessus.\nRègles pour cette tentative :",
     es: "---\nREGENERA (tu última respuesta no pasó las comprobaciones). Usa la misma SOLICITUD de arriba.\nReglas para este intento:",
+    it: "---\nRIGENERA (l'ultima risposta non ha superato i controlli). Usa la stessa RICHIESTA UTENTE di sopra.\nRegole per questo tentativo:",
   };
   const lines: Localized<string[]> = {
     en: [
@@ -1016,30 +1017,39 @@ export function buildOutputRepairAdditionLocalized(
       "- Sin {{ ni }} ni marcadores.",
       "- Sin « Nota final: » ni etiquetas de razonamiento.",
     ],
+    it: [
+      "- Restituisci solo il testo finale. Nessun preambolo come « Ecco » o « Certo ».",
+      "- Niente {{ o }} e nessun segnaposto.",
+      "- Niente « Nota finale: » e nessun tag di ragionamento.",
+    ],
   };
   const meeting: Localized<string> = {
     en: "- Greet or address the person using the exact name or title from the USER REQUEST.",
     de: "- Grüße oder sprich die Person mit exaktem Namen oder Titel aus der NUTZERANFRAGE an.",
     fr: "- Salue la personne avec le nom ou titre exact de la DEMANDE.",
     es: "- Saluda a la persona con el nombre o cargo exacto de la SOLICITUD.",
+    it: "- Saluta o rivolgiti alla persona usando il nome o titolo esatto dalla RICHIESTA UTENTE.",
   };
   const bullets: Localized<string> = {
     en: "- Use at most 4 bullet points. One idea per bullet.",
     de: "- Höchstens 4 Stichpunkte. Eine Idee pro Punkt.",
     fr: "- Au plus 4 puces. Une idée par puce.",
     es: "- Como máximo 4 viñetas. Una idea por viñeta.",
+    it: "- Usa al massimo 4 punti elenco. Un'idea per punto.",
   };
   const thinking: Localized<string> = {
     en: "- Do not output <think>, <think>, or any XML-style reasoning tags.",
     de: "- Keine <think>- oder XML-ähnlichen Denk-Tags ausgeben.",
     fr: "- N’affiche pas de balises <think> ni de raisonnement XML.",
     es: "- No emitas <think> ni etiquetas XML de razonamiento.",
+    it: "- Non emettere <think> né tag di ragionamento in stile XML.",
   };
   const end: Localized<string> = {
     en: "Throw away the bad patterns above and write the correct version now.",
     de: "Ignoriere die fehlerhaften Muster oben und schreibe jetzt die richtige Version.",
     fr: "Oublie les mauvais schémas ci-dessus et écris la version correcte maintenant.",
     es: "Descarta los patrones incorrectos de arriba y escribe la versión correcta ahora.",
+    it: "Ignora gli schemi errati sopra e scrivi ora la versione corretta.",
   };
 
   const L = lines[language] ?? lines.en;

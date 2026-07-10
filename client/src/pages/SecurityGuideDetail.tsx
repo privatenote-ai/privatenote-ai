@@ -16,9 +16,15 @@ import {
 } from 'lucide-react';
 
 const SecurityGuideDetail: React.FC = () => {
-  const { language, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [, params] = useRoute('/security-guides/:topicId');
   const topicId = params?.topicId || '';
+
+  useEffect(() => {
+    if (language !== "en") {
+      setLanguage("en");
+    }
+  }, [language, setLanguage]);
 
   // Mock content for each guide topic
   const guides: Record<string, {

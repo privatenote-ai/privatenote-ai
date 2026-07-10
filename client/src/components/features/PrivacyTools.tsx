@@ -190,15 +190,17 @@ const freePrivacyTools: PrivacyTool[] = [
 ];
 
 export const PrivacyTools: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const featuredArticlePath = localizedPath("/blog/privacy-tools", language);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Hero section */}
-      <div className="bg-gradient-to-br from-primary/80 to-primary text-white rounded-xl p-8 mb-12">
+      <div className="bg-gradient-to-br from-primary/80 to-primary text-white rounded-xl p-8 mb-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-4">Privacy Tools & Resources</h1>
+          <h1 className="text-4xl font-bold mb-4">{t.documentMetaPrivacyToolsTitle}</h1>
           <p className="text-xl opacity-90 mb-6">
-            Explore our curated collection of guides, tools, and resources to enhance your digital privacy and security
+            {t.documentMetaPrivacyToolsDescription}
           </p>
           <div className="flex justify-center space-x-4">
             <a 
@@ -216,6 +218,19 @@ export const PrivacyTools: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <section className="mb-12 rounded-xl border border-primary/20 bg-primary/5 p-6 dark:border-primary/30 dark:bg-primary/10">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">{t.privacyToolsFeaturedEyebrow}</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t.blogPrivacyTitle}</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-4 max-w-3xl">{t.privacyToolsFeaturedDescription}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 max-w-3xl">{t.privacyToolsDirectoryNote}</p>
+        <Link
+          href={featuredArticlePath}
+          className="inline-flex items-center text-primary font-semibold hover:underline"
+        >
+          {t.privacyToolsFeaturedCta} <ArrowRight className="ml-1 h-4 w-4" />
+        </Link>
+      </section>
 
       {/* Main categories section - Cloudflare Learning Center style */}
       <div id="categories" className="mb-12">

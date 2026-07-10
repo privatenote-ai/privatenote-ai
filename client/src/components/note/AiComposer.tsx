@@ -548,7 +548,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 className="mb-0 shrink-0 text-right"
               />
             </div>
-            {aiDraftAccepted ? (
+            {aiDraftAccepted && privacyBannerItems ? (
               <div className="mb-2 hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
                 {privacyBannerItems}
               </div>

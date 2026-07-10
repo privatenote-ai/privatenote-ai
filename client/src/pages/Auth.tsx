@@ -29,13 +29,7 @@ import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
 import { Loader2 } from "lucide-react";
-
-const PASSKEY_FAIL_GENERIC =
-  "Sign-in could not be completed. Try again or use a different sign-in method.";
-const PASSKEY_FAIL_CANCELLED = "Sign-in was cancelled.";
-const PASSKEY_FAIL_SERVER_BUSY =
-  "Sign-in is temporarily unavailable. Please try again in a moment.";
-const PASSKEY_FAIL_RATE_LIMIT = "Too many attempts. Please wait a moment and try again.";
+import type { Translations } from "@/utils/translations/types";
 
 const LIKELY_TYPO_EMAIL_DOMAINS = new Set([
   "gmial.com",
@@ -80,7 +74,7 @@ function destroyTurnstileWidget(widgetId: string) {
   }
 }
 
-function passkeyFailureDescription(error: unknown): string {
+function passkeyFailureDescription(error: unknown, t: Translations): string {
   const domainHint = describeWebAuthnEffectiveDomainError(error);
   if (domainHint) return domainHint;
 
@@ -88,17 +82,17 @@ function passkeyFailureDescription(error: unknown): string {
     error instanceof DOMException || error instanceof Error ? error.name : undefined;
 
   if (errName === "NotAllowedError" || errName === "AbortError") {
-    return PASSKEY_FAIL_CANCELLED;
+    return t.authPasskeyFailCancelled;
   }
   if (errName === "SecurityError" || errName === "InvalidStateError") {
-    return PASSKEY_FAIL_GENERIC;
+    return t.authPasskeyFailGeneric;
   }
   if (error instanceof ApiRequestError) {
-    if (error.status >= 500) return PASSKEY_FAIL_SERVER_BUSY;
-    if (error.status === 429) return PASSKEY_FAIL_RATE_LIMIT;
-    return PASSKEY_FAIL_GENERIC;
+    if (error.status >= 500) return t.authPasskeyFailServerBusy;
+    if (error.status === 429) return t.authPasskeyFailRateLimit;
+    return t.authPasskeyFailGeneric;
   }
-  return PASSKEY_FAIL_GENERIC;
+  return t.authPasskeyFailGeneric;
 }
 
 type AuthMode = "sign-in" | "sign-up";
@@ -245,7 +239,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       const publicKey = coerceLoginOptions(data.options);
       const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
       if (!credential) {
-        toast({ title: tx("authLoginCancelledTitle", "Login cancelled"), description: PASSKEY_FAIL_CANCELLED });
+        toast({ title: tx("authLoginCancelledTitle", "Login cancelled"), description: t.authPasskeyFailCancelled });
         return;
       }
       await apiRequest("/api/auth/webauthn/login/verify", "POST", {
@@ -260,7 +254,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     } catch (error) {
       toast({
         title: tx("authPasskeyLoginFailedTitle", "Passkey login failed"),
-        description: passkeyFailureDescription(error),
+        description: passkeyFailureDescription(error, t),
         variant: "destructive",
       });
     } finally {
@@ -361,7 +355,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
 
     const siteKey = turnstileSiteKey;
     if (!siteKey) {
-      setTurnstileError("Human verification is not configured.");
+      setTurnstileError(t.authTurnstileNotConfigured);
       setTurnstileMounted(false);
       return;
     }
@@ -391,7 +385,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
           setTurnstileError(null);
         },
         "error-callback": () => {
-          setTurnstileError("Human verification failed. Please try again.");
+          setTurnstileError(t.authTurnstileFailed);
           resetAuthTurnstile();
         },
         "expired-callback": () => {
@@ -406,7 +400,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
         initTurnstile();
       })
       .catch(() => {
-        setTurnstileError("Human verification failed to load. Please try again.");
+        setTurnstileError(t.authTurnstileFailedLoad);
         setTurnstileMounted(false);
       });
 
