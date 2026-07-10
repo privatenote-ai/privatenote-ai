@@ -176,7 +176,7 @@ export default function SecuritySettings() {
       setDeleteVerificationOptions(null);
       toast({
         title: t.authSecCouldNotLoadSettings || "Couldn't load delete verification",
-        description: "Close and try again, or refresh the page.",
+        description: t.authSecToastCouldNotLoadDeleteDesc,
         variant: "destructive",
       });
     } finally {
@@ -196,11 +196,11 @@ export default function SecuritySettings() {
     if (!email) return;
     try {
       await navigator.clipboard.writeText(email);
-      toast({ title: t.authSecCopyEmail || "Email copied", description: "Email address copied to clipboard." });
+      toast({ title: t.authSecCopyEmail || "Email copied", description: t.authSecToastEmailCopiedDesc });
     } catch {
       toast({
         title: t.authCopyFailedTitle || "Copy failed",
-        description: "Failed to copy email to clipboard.",
+        description: t.authSecToastCopyEmailFailedDesc,
         variant: "destructive",
       });
     }
@@ -220,20 +220,20 @@ export default function SecuritySettings() {
       if (passkeys.length > 0) {
         const stepUp = await executeStepUp();
         if (!stepUp.ok) {
-          toastStepUpFailure(toast, stepUp);
+          toastStepUpFailure(toast, stepUp, t);
           return;
         }
       }
-      await registerPasskeyWithRetry();
+      await registerPasskeyWithRetry(t);
       toast({
         title: t.authSecAddPasskey || "Passkey added",
-        description: "You can use it to sign in on this device.",
+        description: t.authSecToastPasskeyAddedDesc,
       });
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Passkey registration failed",
-        description: passkeyRegistrationErrorMessage(error),
+        title: t.authSecToastPasskeyRegFailedTitle,
+        description: passkeyRegistrationErrorMessage(error, t),
         variant: "destructive",
       });
     } finally {
@@ -248,13 +248,13 @@ export default function SecuritySettings() {
         await apiRequest(`/api/auth/passkeys/${passkeyId}`, "PATCH", { displayName });
         toast({
           title: t.authSecSave || "Passkey updated",
-          description: displayName.trim() ? "Passkey name saved." : "Passkey name cleared.",
+          description: displayName.trim() ? t.authSecToastPasskeyNameSaved : t.authSecToastPasskeyNameCleared,
         });
         await refreshAll();
       } catch (error) {
         toast({
-          title: "Rename failed",
-          description: error instanceof Error ? error.message : "Try again.",
+          title: t.authSecToastRenameFailedTitle,
+          description: error instanceof Error ? error.message : t.authSecToastTryAgain,
           variant: "destructive",
         });
         throw error;
@@ -267,17 +267,17 @@ export default function SecuritySettings() {
 
   const handleDeletePasskey = useCallback(
     async (passkeyId: string, label: string) => {
-      const confirmed = window.confirm(`${t.authSecDeletePasskey || "Delete"} ${label}? You may need to verify with a passkey first.`);
+      const confirmed = window.confirm(`${t.authSecDeletePasskey || "Delete"} ${label}? ${t.authSecDeletePasskeyConfirmSuffix}`);
       if (!confirmed) return;
       setDeletingPasskeyId(passkeyId);
       try {
         await withOptionalStepUp(() => apiRequest(`/api/auth/passkeys/${passkeyId}`, "DELETE"), stepUpForRetry);
-        toast({ title: t.authSecDeletePasskey || "Passkey deleted", description: "The selected passkey was removed." });
+        toast({ title: t.authSecDeletePasskey || "Passkey deleted", description: t.authSecToastPasskeyDeletedDesc });
         await refreshAll();
       } catch (error) {
         toast({
-          title: "Delete failed",
-          description: error instanceof Error ? error.message : "Try again.",
+          title: t.authSecToastDeleteFailedTitle,
+          description: error instanceof Error ? error.message : t.authSecToastTryAgain,
           variant: "destructive",
         });
       } finally {
@@ -293,12 +293,12 @@ export default function SecuritySettings() {
     setRevokingAllSessions(true);
     try {
       await apiRequest("/api/auth/sessions/revoke-all", "POST");
-      toast({ title: t.authSecLogOutAllDevices || "All devices logged out", description: "All other sessions have been revoked." });
+      toast({ title: t.authSecLogOutAllDevices || "All devices logged out", description: t.authSecToastAllSessionsRevokedDesc });
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Logout failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastLogoutFailedTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
     } finally {
@@ -322,7 +322,7 @@ export default function SecuritySettings() {
         setRecoveryCodes(response.codes);
         setRecoveryTotpCode("");
         setRecoveryAuthenticatorFallbackOpen(false);
-        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
+        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: t.authSecToastRecoveryCodesStore });
         return;
       }
 
@@ -334,7 +334,7 @@ export default function SecuritySettings() {
         setRecoveryCodes(response.codes);
         setRecoveryTotpCode("");
         setRecoveryAuthenticatorFallbackOpen(false);
-        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
+        toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: t.authSecToastRecoveryCodesStore });
         return;
       } catch (firstError) {
         if (!isForbiddenApiError(firstError)) throw firstError;
@@ -347,23 +347,22 @@ export default function SecuritySettings() {
           setRecoveryCodes(response.codes);
           setRecoveryTotpCode("");
           setRecoveryAuthenticatorFallbackOpen(false);
-          toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: "Store them in a safe place." });
+          toast({ title: t.authSecGenerateRecoveryCodes || "Recovery codes generated", description: t.authSecToastRecoveryCodesStore });
           return;
         }
         if (totpEnabled) {
           setRecoveryAuthenticatorFallbackOpen(true);
           toast({
-            title: "Use your authenticator",
-            description:
-              "Enter the code below. When you have 6 digits, the Generate new codes button above turns on.",
+            title: t.authSecToastUseAuthenticatorTitle,
+            description: t.authSecToastUseAuthenticatorDesc,
           });
         }
         return;
       }
     } catch (error) {
       toast({
-        title: "Recovery codes failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastRecoveryCodesFailedTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
     } finally {
@@ -377,12 +376,12 @@ export default function SecuritySettings() {
       setRevokingSessionId(sessionId);
       try {
         await apiRequest("/api/auth/sessions/revoke", "POST", { sessionId });
-      toast({ title: t.authSecLogOut || "Session revoked", description: "That session has been signed out." });
+      toast({ title: t.authSecLogOut || "Session revoked", description: t.authSecToastSessionRevokedDesc });
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Revoke failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastRevokeFailedTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
       } finally {
@@ -394,7 +393,7 @@ export default function SecuritySettings() {
 
   const handleResetPasskeys = useCallback(() => {
     if (passkeys.length === 0) {
-      toast({ title: t.authSecNoPasskeys || "No passkeys", description: "There are no passkeys to remove." });
+      toast({ title: t.authSecNoPasskeys || "No passkeys", description: t.authSecToastNoPasskeysDesc });
       return;
     }
     setPasskeyResetTotpCode("");
@@ -406,14 +405,14 @@ export default function SecuritySettings() {
     setResettingPasskeys(true);
     try {
       await apiRequest("/api/auth/passkeys/reset", "POST", { totpCode: passkeyResetTotpCode.trim() });
-      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: "All passkeys have been removed from your account." });
+      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: t.authSecToastPasskeysRemovedDesc });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Couldn't remove passkeys",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastCouldNotRemovePasskeysTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
     } finally {
@@ -427,14 +426,14 @@ export default function SecuritySettings() {
       const stepped = await stepUpForRetry();
       if (!stepped) return;
       await apiRequest("/api/auth/passkeys/reset", "POST");
-      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: "All passkeys have been removed from your account." });
+      toast({ title: t.authSecRemoveAllPasskeys || "Passkeys removed", description: t.authSecToastPasskeysRemovedDesc });
       setPasskeys([]);
       closePasskeyResetDialog();
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Couldn't remove passkeys",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastCouldNotRemovePasskeysTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
     } finally {
@@ -450,11 +449,11 @@ export default function SecuritySettings() {
       await apiRequest("/api/auth/account/delete/email-code", "POST", needsFallback ? { fallback: true } : {});
       setDeleteEmailCodeSent(true);
       toast({
-        title: "Confirmation code sent",
-        description: "Check your email for the 6-digit code.",
+        title: t.authSecToastDeleteCodeSentTitle,
+        description: t.authSecToastDeleteCodeSentDesc,
       });
     } catch (error) {
-      let desc = "Could not send the code. Try again.";
+      let desc = t.authSecToastCouldNotSendCodeDefault;
       if (error instanceof ApiRequestError) {
         try {
           const j = JSON.parse(error.bodyText) as { message?: string };
@@ -465,7 +464,7 @@ export default function SecuritySettings() {
       } else if (error instanceof Error) {
         desc = error.message;
       }
-      toast({ title: "Could not send code", description: desc, variant: "destructive" });
+      toast({ title: t.authSecToastCouldNotSendCodeTitle, description: desc, variant: "destructive" });
     } finally {
       setSendingDeleteEmailCode(false);
     }
@@ -479,11 +478,11 @@ export default function SecuritySettings() {
       });
       await refreshDeleteVerificationOptions();
       toast({
-        title: "Email fallback enabled",
-        description: "You can now request a confirmation code by email.",
+        title: t.authSecToastEmailFallbackEnabledTitle,
+        description: t.authSecToastEmailFallbackEnabledDesc,
       });
     } catch (error) {
-      let desc = "Could not enable email fallback.";
+      let desc = t.authSecToastFallbackUnavailableDefault;
       if (error instanceof ApiRequestError) {
         try {
           const j = JSON.parse(error.bodyText) as { message?: string };
@@ -494,7 +493,7 @@ export default function SecuritySettings() {
       } else if (error instanceof Error) {
         desc = error.message;
       }
-      toast({ title: "Fallback unavailable", description: desc, variant: "destructive" });
+      toast({ title: t.authSecToastFallbackUnavailableTitle, description: desc, variant: "destructive" });
     } finally {
       setUnlockingDeleteFallback(false);
     }
@@ -508,8 +507,8 @@ export default function SecuritySettings() {
 
     if (normalizedInput !== normalizedEmail) {
       toast({
-        title: "Email mismatch",
-        description: "The email you entered does not match your account email.",
+        title: t.authSecToastEmailMismatchTitle,
+        description: t.authSecToastEmailMismatchDesc,
         variant: "destructive",
       });
       return;
@@ -517,8 +516,8 @@ export default function SecuritySettings() {
 
     if (!deleteVerificationOptions?.available_methods.length) {
       toast({
-        title: "Verification options unavailable",
-        description: "Close this dialog and open it again.",
+        title: t.authSecToastVerificationUnavailableTitle,
+        description: t.authSecToastVerificationUnavailableDesc,
         variant: "destructive",
       });
       return;
@@ -551,15 +550,15 @@ export default function SecuritySettings() {
           }).catch(() => {});
           await refreshDeleteVerificationOptions();
           toast({
-            title: "Verify it's you",
+            title: t.authSecToastVerifyItsYouTitle,
             description:
               am.includes("totp") && am.includes("email_code")
-                ? "Use your authenticator code or request an email confirmation code below."
+                ? t.authSecToastVerifyItsYouPasskeyTotpEmail
                 : am.includes("totp")
-                  ? "Enter your 6-digit authenticator code below."
+                  ? t.authSecToastVerifyItsYouTotp
                   : am.includes("email_code")
-                    ? "Request an email confirmation code below."
-                    : "Try again or use recovery sign-in.",
+                    ? t.authSecToastVerifyItsYouEmail
+                    : t.authSecToastVerifyItsYouRetry,
             variant: "destructive",
           });
           return;
@@ -574,14 +573,13 @@ export default function SecuritySettings() {
 
       if (deleteResult.scheduled) {
         toast({
-          title: "Deletion scheduled",
-          description:
-            "Deletion is scheduled in 48 hours. Check your email for the cancellation link.",
+          title: t.authSecToastDeletionScheduledTitle,
+          description: t.authSecToastDeletionScheduledDesc,
         });
       } else {
         toast({
-          title: "Account deleted",
-          description: "Your account has been permanently deleted.",
+          title: t.authSecToastAccountDeletedTitle,
+          description: t.authSecToastAccountDeletedDesc,
         });
       }
 
@@ -594,7 +592,7 @@ export default function SecuritySettings() {
       await signOut();
       setLocation("/");
     } catch (error) {
-      let desc = "Failed to delete account. Please try again.";
+      let desc = t.authSecToastDeleteAccountFailedDefault;
       if (error instanceof ApiRequestError) {
         try {
           const j = JSON.parse(error.bodyText) as { message?: string };
@@ -607,13 +605,13 @@ export default function SecuritySettings() {
       }
       if (isForbiddenApiError(error)) {
         toast({
-          title: "Verify it's you",
+          title: t.authSecToastVerifyItsYouTitle,
           description: desc,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Delete failed",
+          title: t.authSecToastDeleteFailedTitle,
           description: desc,
           variant: "destructive",
         });
@@ -637,8 +635,8 @@ export default function SecuritySettings() {
   const handleChangeEmail = useCallback(async () => {
     if (!newEmailInput.trim()) {
       toast({
-        title: "Email required",
-        description: "Please enter a new email address.",
+        title: t.authSecToastEmailRequiredTitle,
+        description: t.authSecToastEmailRequiredDesc,
         variant: "destructive",
       });
       return;
@@ -646,8 +644,8 @@ export default function SecuritySettings() {
 
     if (!isPlausibleEmailFormat(newEmailInput)) {
       toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
+        title: t.authSecToastInvalidEmailTitle,
+        description: t.authSecToastInvalidEmailDesc,
         variant: "destructive",
       });
       return;
@@ -658,8 +656,8 @@ export default function SecuritySettings() {
 
     if (normalizedNew === normalizedCurrent) {
       toast({
-        title: "Same email",
-        description: "New email must be different from your current email.",
+        title: t.authSecToastSameEmailTitle,
+        description: t.authSecToastSameEmailDesc,
         variant: "destructive",
       });
       return;
@@ -673,11 +671,11 @@ export default function SecuritySettings() {
         const r = await executeStepUp();
         if (!r.ok) {
           toast({
-            title: "Verify it's you",
+            title: t.authSecToastVerifyItsYouTitle,
             description:
               totpEnabled && emailChangeTotpCode.trim().length === 0
-                ? "Use a passkey on this device, or enter your 6-digit authenticator code in the form."
-                : "Complete passkey verification to change your email.",
+                ? t.authSecToastVerifyPasskeyOrTotp
+                : t.authSecToastVerifyPasskeyForEmail,
             variant: "destructive",
           });
           return;
@@ -695,11 +693,10 @@ export default function SecuritySettings() {
       setEmailChangeTotpCode("");
       toast({
         title: t.authSecChangeEmailTitle || "Confirmation link sent",
-        description:
-          "We emailed a link to your new address. Your current email stays active until you open it and confirm.",
+        description: t.authSecToastChangeEmailSentDesc,
       });
     } catch (error) {
-      let desc = "Failed to request email change. Please try again.";
+      let desc = t.authSecToastChangeEmailFailedDefault;
       if (error instanceof ApiRequestError) {
         try {
           const j = JSON.parse(error.bodyText) as { message?: string };
@@ -712,13 +709,13 @@ export default function SecuritySettings() {
       }
       if (isForbiddenApiError(error)) {
         toast({
-          title: "Verify it's you",
+          title: t.authSecToastVerifyItsYouTitle,
           description: desc,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Change email failed",
+          title: t.authSecToastChangeEmailFailedTitle,
           description: desc,
           variant: "destructive",
         });
@@ -738,8 +735,8 @@ export default function SecuritySettings() {
       applyTotpSetupPayload(data);
     } catch (error) {
       toast({
-        title: "Setup failed",
-        description: error instanceof Error ? error.message : "Could not start TOTP setup.",
+        title: t.authSecToastTotpSetupFailedTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTotpSetupFailedDefault,
         variant: "destructive",
       });
     } finally {
@@ -762,8 +759,8 @@ export default function SecuritySettings() {
         await refreshAll();
       } catch (error) {
         toast({
-          title: "Invalid code",
-          description: error instanceof Error ? error.message : "Please try again.",
+          title: t.authSecToastInvalidTotpTitle,
+          description: error instanceof Error ? error.message : t.authSecToastTryAgain,
           variant: "destructive",
         });
         setTotpCode("");
@@ -785,8 +782,8 @@ export default function SecuritySettings() {
       await refreshAll();
     } catch (error) {
       toast({
-        title: "Disable failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authSecToastDisableFailedTitle,
+        description: error instanceof Error ? error.message : t.authSecToastTryAgain,
         variant: "destructive",
       });
     } finally {

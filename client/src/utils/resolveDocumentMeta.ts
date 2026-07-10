@@ -177,6 +177,14 @@ function blogSlugStaticMeta(
   }
 }
 
+function titleFromHeroParts(prefix: string, accent: string): string {
+  const accentStartsLowercase =
+    accent.length > 0 && accent[0] === accent[0].toLowerCase() && /[a-z\u00df\u00e0-\u00ff]/i.test(accent[0]!);
+  const prefixEndsWithLinker = /\b(?:de|par|durch|di|por|van)$/i.test(prefix.trim());
+  const compound = accentStartsLowercase && !prefixEndsWithLinker;
+  return buildDocumentTitle(compound ? `${prefix}${accent}` : `${prefix} ${accent}`);
+}
+
 function pageMetaForPublicPage(rest: string, t: Translations): { title: string; description: string } | null {
   switch (rest) {
     case "password-generator":
@@ -196,12 +204,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "security-resources":
       return {
-        title: buildDocumentTitle(`${t.securityHeroPrefix} ${t.securityHeroAccent}`),
+        title: titleFromHeroParts(t.securityHeroPrefix, t.securityHeroAccent),
         description: t.securityHeroSubtitle,
       };
     case "how-it-works":
       return {
-        title: buildDocumentTitle(`${t.howHeroPrefix} ${t.howHeroAccent}`),
+        title: titleFromHeroParts(t.howHeroPrefix, t.howHeroAccent),
         description: t.documentMetaHowItWorksDescription,
       };
     case "developers":

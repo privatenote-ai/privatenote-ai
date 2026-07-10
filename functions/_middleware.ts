@@ -26,6 +26,15 @@ export async function onRequest(context: {
     return Response.redirect(url.toString(), 301);
   }
 
+  // /note without an id is not a route — redirect to home (also in client/public/_redirects).
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    normalizedPath === "/note"
+  ) {
+    url.pathname = "/";
+    return Response.redirect(url.toString(), 301);
+  }
+
   // Locale home routes are stored as /de/index.html, /fr/index.html, etc.
   // (directory form). Their canonical URLs keep the trailing slash (/fr/, /de/, /es/, etc.).
   // Exempting them here prevents a loop with Cloudflare Pages' own directory redirect

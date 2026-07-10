@@ -8,6 +8,8 @@ import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/component
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { passwordGenerationHr } from "@/components/blog/locale/passwordGeneration.hr";
+import { passwordGenerationNl } from "@/components/blog/locale/passwordGeneration.nl";
+import { passwordGenerationPt } from "@/components/blog/locale/passwordGeneration.pt";
 import type { PasswordPostCopy } from "@/components/blog/locale/passwordGeneration.types";
 import { passwordGenerationSr } from "@/components/blog/locale/passwordGeneration.sr";
 
@@ -247,6 +249,66 @@ const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: Passwor
       { title: "No compartas contraseñas", body: "Nunca las compartas con alguien que diga ser soporte." },
     ],
   },
+  it: {
+    intro: "Creare una password forte non significa soltanto combinare caratteri casuali. In PrivateNote.ai il generatore si basa su tre principi:",
+    lead: "Ecco come ogni componente contribuisce a proteggere i tuoi account.",
+    cards: [
+      { icon: Lock, title: "Sicurezza crittografica", body: "Usa la stessa classe di casualità sicura impiegata per chiavi e token." },
+      { icon: Zap, title: "Casualità senza bias", body: "Ogni carattere ha la stessa probabilità di essere selezionato." },
+      { icon: BarChart3, title: "Analisi intelligente della robustezza", body: "Analisi avanzata oltre il semplice controllo della lunghezza." },
+    ],
+    sections: [
+      {
+        icon: Lock,
+        title: "Crypto Web API",
+        paragraphs: [
+          "Il generatore usa la Web Crypto API per ottenere valori casuali crittograficamente sicuri, adatti ad attività critiche per la sicurezza.",
+          "La casualità è alimentata dal sistema operativo ed è progettata in modo che i valori futuri non siano prevedibili nella pratica senza accesso allo stato interno.",
+          "Tutta la generazione avviene nel browser. La password non lascia mai il dispositivo, quindi non può essere registrata, intercettata o esposta dai nostri server.",
+        ],
+        notes: [
+          {
+            title: "Perché è importante",
+            body: "La generazione lato server crea esposizione aggiuntiva tramite transito di rete e log. La generazione locale evita del tutto questi rischi.",
+          },
+        ],
+      },
+      {
+        icon: Zap,
+        title: "Casualità senza bias",
+        paragraphs: [
+          "Usiamo il campionamento per rifiuto, così ogni carattere ha la stessa probabilità di apparire. Questo elimina bias sottili che renderebbero alcuni caratteri più probabili di altri.",
+          "Una semplice selezione modulo può essere distorta quando l’intervallo dei numeri casuali non è divisibile in modo uniforme per la dimensione del set di caratteri. Il campionamento per rifiuto scarta i valori non equi e pesca di nuovo.",
+          "Questo rende le password più difficili da prevedere, perché gli attaccanti non possono sfruttare pattern nella selezione dei caratteri.",
+        ],
+      },
+      {
+        icon: BarChart3,
+        title: "Analisi intelligente della robustezza",
+        paragraphs: [
+          "Un buon indicatore di robustezza deve andare oltre lunghezza e regole sui simboli. Stringhe prevedibili possono sembrare complesse pur restando deboli.",
+          "Usiamo un’analisi in stile zxcvbn per controllare pattern comuni, parole di dizionario, sequenze, caratteri ripetuti, entropia e stime realistiche del tempo di cracking.",
+          "Il risultato è una visione più realistica della robustezza della password rispetto a una semplice checklist.",
+        ],
+        bullets: [
+          { title: "Pattern comuni", body: "percorsi sulla tastiera, sequenze e caratteri ripetuti" },
+          { title: "Attacchi a dizionario", body: "parole comuni, nomi e varianti da password già violate" },
+          { title: "Entropia", body: "quanto della password è davvero imprevedibile" },
+          { title: "Tempo di cracking", body: "quanto tempo servirebbe realisticamente a un attaccante" },
+        ],
+      },
+    ],
+    bestPracticesTitle: "Buone pratiche per le password",
+    bestPractices: [
+      { title: "Usa password uniche", body: "Non riutilizzare mai la stessa password su account diversi." },
+      { title: "Più lunga è meglio", body: "Punta ad almeno 16 caratteri; per account di alto valore, ancora di più." },
+      { title: "Usa un gestore di password", body: "Conserva le password generate in modo sicuro, così non devi ricordarle." },
+      { title: "Attiva l’autenticazione a due fattori", body: "Anche le password forti beneficiano di un livello aggiuntivo." },
+      { title: "Non condividere password", body: "Non condividere mai password con chi sostiene di essere il supporto." },
+    ],
+  },
+  nl: passwordGenerationNl,
+  pt: passwordGenerationPt,
   hr: passwordGenerationHr,
   sr: passwordGenerationSr,
 };

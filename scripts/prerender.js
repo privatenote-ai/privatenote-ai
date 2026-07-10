@@ -15,12 +15,13 @@ import {
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
+import { buildLocalizedMarketingHreflangMarkup } from "../shared/localizedMarketingHreflang.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
 import {
   isPublicMarketingPath,
   PUBLIC_MARKETING_PATHS,
 } from "../shared/publicMarketingPaths.ts";
-import { LOCALE_HOME_PATH_PATTERN } from "../shared/supportedLanguages.ts";
+import { LOCALE_HOME_PATH_PATTERN, SUPPORTED_LANGUAGES } from "../shared/supportedLanguages.ts";
 import {
   getChangedFiles,
   restoreHtmlCache,
@@ -44,6 +45,16 @@ const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 // Fallback routes (public-only; keep in sync with shared/publicMarketingPaths.ts)
 // -------------------------------
 const FALLBACK_ROUTES = [...PUBLIC_MARKETING_PATHS];
+
+const LANGUAGE_STORAGE_KEY = "privatenote.language";
+
+function languageForPrerenderRoute(route) {
+  const first = route.split("/").filter(Boolean)[0];
+  if (first && SUPPORTED_LANGUAGES.includes(first) && first !== "en") {
+    return first;
+  }
+  return "en";
+}
 
 // -------------------------------
 // Preview server helpers
@@ -245,10 +256,15 @@ function postProcessHTML(html, route) {
     out = out.replace("</head>", `${seoBlock}\n</head>`);
   } else if (isPublicSitemapRoute) {
     const pageUrl = canonicalAbsoluteUrlForRoute(route);
-    out = out.replace(
-      "</head>",
-      `<link rel="canonical" href="${pageUrl}" />\n<meta property="og:url" content="${pageUrl}" />\n</head>`,
-    );
+    const hreflang = buildLocalizedMarketingHreflangMarkup(route);
+    const seoExtras = [
+      `<link rel="canonical" href="${pageUrl}" />`,
+      `<meta property="og:url" content="${pageUrl}" />`,
+      hreflang,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    out = out.replace("</head>", `${seoExtras}\n</head>`);
   }
 
   // Strip feature-chunk modulepreload hints baked in by Vite's polyfill at render time.
@@ -482,6 +498,12 @@ async function main() {
       const url = `${PREVIEW_URL}${route}`;
       console.log(`→ prerendering ${url}`);
       try {
+        await page.evaluate(
+          ({ lang, storageKey }) => {
+            localStorage.setItem(storageKey, lang);
+          },
+          { lang: languageForPrerenderRoute(route), storageKey: LANGUAGE_STORAGE_KEY },
+        );
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
         await waitForStableAboveTheFold();
         const html = await page.content();

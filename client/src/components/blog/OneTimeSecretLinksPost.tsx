@@ -17,6 +17,9 @@ import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/component
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { oneTimeSecretLinksHr } from "@/components/blog/locale/oneTimeSecretLinks.hr";
+import { oneTimeSecretLinksIt } from "@/components/blog/locale/oneTimeSecretLinks.it";
+import { oneTimeSecretLinksNl } from "@/components/blog/locale/oneTimeSecretLinks.nl";
+import { oneTimeSecretLinksPt } from "@/components/blog/locale/oneTimeSecretLinks.pt";
 import { oneTimeSecretLinksSr } from "@/components/blog/locale/oneTimeSecretLinks.sr";
 import type { OneTimeSecretLinksArticleCopy } from "@/components/blog/locale/oneTimeSecretLinks.types";
 import { CHROME_EXTENSION_STORE_URL } from "@/utils/chromeExtensionOnboarding";
@@ -920,6 +923,9 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       "Garantiza que la vida útil de tus datos sensibles coincida con la del medio por el que viajan. Porque a veces, el mensaje más seguro es el que deja por completo de existir.",
     relatedReading: "Lecturas relacionadas",
   },
+  nl: oneTimeSecretLinksNl,
+  pt: oneTimeSecretLinksPt,
+  it: oneTimeSecretLinksIt,
   hr: oneTimeSecretLinksHr,
   sr: oneTimeSecretLinksSr,
 };

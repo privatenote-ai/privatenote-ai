@@ -3,6 +3,9 @@
 # Backstop for old nav links and crawler queues. The current auth entrypoint is explicit.
 /auth    /auth/sign-in   301
 
+# Bare /note is not a public page (only /note/:id exists). Avoid duplicate homepage in Search Console.
+/note  /  301
+
 # Explicit SPA shells (wrangler pages deploy may ignore splat redirects — see functions/magic.ts).
 /magic   /index.html   200
 

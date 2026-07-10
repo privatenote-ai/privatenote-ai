@@ -28,7 +28,13 @@ import type { Translations } from "@/utils/translations/types";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { secretsNeverSendInChatDe } from "@/components/blog/locale/secretsNeverSendInChat.de";
+import { secretsNeverSendInChatEs } from "@/components/blog/locale/secretsNeverSendInChat.es";
+import { secretsNeverSendInChatFr } from "@/components/blog/locale/secretsNeverSendInChat.fr";
 import { secretsNeverSendInChatHr } from "@/components/blog/locale/secretsNeverSendInChat.hr";
+import { secretsNeverSendInChatIt } from "@/components/blog/locale/secretsNeverSendInChat.it";
+import { secretsNeverSendInChatNl } from "@/components/blog/locale/secretsNeverSendInChat.nl";
+import { secretsNeverSendInChatPt } from "@/components/blog/locale/secretsNeverSendInChat.pt";
 import { secretsNeverSendInChatSr } from "@/components/blog/locale/secretsNeverSendInChat.sr";
 import type {
   SecretsNeverSendInChatArticleCopy,
@@ -754,7 +760,13 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       },
     ],
   },
+  de: secretsNeverSendInChatDe,
+  es: secretsNeverSendInChatEs,
+  fr: secretsNeverSendInChatFr,
   hr: secretsNeverSendInChatHr,
+  it: secretsNeverSendInChatIt,
+  nl: secretsNeverSendInChatNl,
+  pt: secretsNeverSendInChatPt,
   sr: secretsNeverSendInChatSr,
 };
 

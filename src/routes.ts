@@ -518,11 +518,11 @@ function normalizeMagicEmailCode(raw: unknown): string | null {
   return digits.length === 6 ? digits : null;
 }
 
-type AuthEmailLocale = "en" | "de" | "fr" | "es";
+type AuthEmailLocale = "en" | "de" | "fr" | "es" | "nl";
 function normalizeAuthEmailLocale(raw: unknown): AuthEmailLocale {
   if (typeof raw !== "string") return "en";
   const v = raw.trim().toLowerCase();
-  return v === "de" || v === "fr" || v === "es" ? v : "en";
+  return v === "de" || v === "fr" || v === "es" || v === "nl" ? v : "en";
 }
 
 function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailLocale {
@@ -533,7 +533,15 @@ function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailL
   if (primary.startsWith("de")) return "de";
   if (primary.startsWith("fr")) return "fr";
   if (primary.startsWith("es")) return "es";
+  if (primary.startsWith("nl")) return "nl";
   return normalizedExplicit;
+}
+
+function pickAuthEmailCopy<T>(
+  copy: Partial<Record<AuthEmailLocale, T>> & { en: T },
+  locale: AuthEmailLocale,
+): T {
+  return copy[locale] ?? copy.en;
 }
 
 async function sendMagicSignInOtpEmail(
@@ -542,7 +550,7 @@ async function sendMagicSignInOtpEmail(
   code: string,
   locale: AuthEmailLocale = "en",
 ): Promise<{ ok: boolean; error?: string }> {
-  const copy = {
+  const copy = pickAuthEmailCopy({
     en: {
       subject: "Your PrivateNote sign-in code",
       title: "PrivateNote sign-in code",
@@ -571,7 +579,14 @@ async function sendMagicSignInOtpEmail(
       hint: "Introduce este codigo en la pagina despues de pulsar Continuar inicio de sesion.",
       ignore: "Si no solicitaste esto, puedes ignorar este correo.",
     },
-  }[locale];
+    nl: {
+      subject: "Je PrivateNote-inlogcode",
+      title: "PrivateNote-inlogcode",
+      lead: "Je bevestigingscode is:",
+      hint: "Voer deze code in op de pagina nadat je op Doorgaan met inloggen hebt gedrukt.",
+      ignore: "Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.",
+    },
+  }, locale);
   const subject = copy.subject;
   const text = [copy.title, "", `${copy.lead} ${code}`, "", copy.hint, "", copy.ignore].join("\n");
   const html = [
@@ -625,7 +640,7 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const copy = {
+  const copy = pickAuthEmailCopy({
     en: {
       subject: "Continue to PrivateNote",
       title: "Continue to PrivateNote",
@@ -679,7 +694,19 @@ async function sendMagicLinkEmail(
       footer:
         "Crea, comparte y destruye notas privadas de forma segura — solo el destinatario puede leerlas.",
     },
-  }[locale];
+    nl: {
+      subject: "Doorgaan naar PrivateNote",
+      title: "Doorgaan naar PrivateNote",
+      intro: "Klik op de beveiligde link hieronder om door te gaan:",
+      security:
+        "Log voor de veiligheid in op dezelfde browser en hetzelfde apparaat waar je de link hebt geopend.",
+      expiry: "Deze link verloopt automatisch en kan alleen voor dit inlogverzoek worden gebruikt.",
+      cta: "Doorgaan naar PrivateNote",
+      ignore: "Als je deze e-mail niet hebt aangevraagd, kun je hem negeren.",
+      footer:
+        "Maak, deel en vernietig privénotities veilig — alleen de ontvanger kan ze lezen.",
+    },
+  }, locale);
   const subject = copy.subject;
   const text = [
     copy.title,
@@ -704,7 +731,9 @@ async function sendMagicLinkEmail(
         ? "Aus Sicherheitsgruenden schliessen Sie die Anmeldung im <strong>selben Browser und auf demselben Geraet</strong> ab, auf dem Sie den Link geoeffnet haben."
         : locale === "fr"
           ? "Pour votre securite, terminez la connexion dans le <strong>meme navigateur et sur le meme appareil</strong> que lors de l ouverture du lien."
-          : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
+          : locale === "nl"
+            ? "Log voor de veiligheid in op de <strong>zelfde browser en hetzelfde apparaat</strong> waar je de link hebt geopend."
+            : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${copy.title}</div>`,
@@ -2863,7 +2892,7 @@ async function schedulePendingAccountDeletion(
   const webOrigin = getMagicLinkOrigin(env, request);
   const cancelUrl = `${webOrigin}/api/auth/account/delete/cancel?token=${encodeURIComponent(cancelToken)}`;
   const locale = detectAuthEmailLocale(request);
-  const pendingDeletionCopy = {
+  const pendingDeletionCopy = pickAuthEmailCopy({
     en: {
       subject: "Account deletion scheduled (48 hours) - PrivateNote",
       title: "Account deletion scheduled",
@@ -2900,7 +2929,16 @@ async function schedulePendingAccountDeletion(
       cta: "Revisar cancelacion",
       body4: "Si no haces nada, la eliminacion se completara automaticamente despues del periodo de espera.",
     },
-  }[locale];
+    nl: {
+      subject: "Accountverwijdering gepland (48 uur) - PrivateNote",
+      title: "Accountverwijdering gepland",
+      body1: "De verwijdering van je PrivateNote-account is aangevraagd via een back-up e-mailverificatie.",
+      body2: "Je account staat gepland voor permanente verwijdering over 48 uur.",
+      body3: "Als jij dit niet was, annuleer de verwijdering meteen:",
+      cta: "Annulering bekijken",
+      body4: "Als je niets doet, wordt de verwijdering na de wachttijd automatisch voltooid.",
+    },
+  }, locale);
 
   const emailResult = await sendEmail(env, {
     to: userEmail,
@@ -3675,7 +3713,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       const passkeyDevice = credentialMetadata.deviceInfo || "this device";
       const passkeyType = getPasskeyLabel(transports || null);
       const securityUrl = `${getMagicLinkOrigin(env, request)}/account/security`;
-      const passkeyAddedCopy = {
+      const passkeyAddedCopy = pickAuthEmailCopy({
         en: {
           subject: "Passkey added to your PrivateNote account",
           title: "Passkey added",
@@ -3720,7 +3758,18 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           cta: "Abrir configuracion de seguridad",
           line4: "Si algo parece incorrecto, protege tu cuenta de inmediato y contacta a",
         },
-      }[locale];
+        nl: {
+          subject: "Passkey toegevoegd aan je PrivateNote-account",
+          title: "Passkey toegevoegd",
+          line1: "Er is een nieuwe passkey toegevoegd aan je PrivateNote-account.",
+          typeLabel: "Passkey-type:",
+          deviceLabel: "Apparaat:",
+          line2: "Als jij dit was, hoef je niets te doen.",
+          line3: "Als jij dit niet was, controleer je passkeys in Beveiligingsinstellingen en verwijder wat je niet herkent.",
+          cta: "Beveiligingsinstellingen openen",
+          line4: "Als iets niet klopt, beveilig je account meteen en neem contact op met",
+        },
+      }, locale);
       const emailResult = await sendEmail(env, {
         to: accountEmail,
         subject: passkeyAddedCopy.subject,
@@ -4670,7 +4719,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       const recoveryEmailWebOrigin = getMagicLinkOrigin(env, request);
       const recoveryEmailLogoUrl = `${recoveryEmailWebOrigin}/brand/privateNote-logo-lockup.png`;
       const locale = detectAuthEmailLocale(request);
-      const recoveryCodesCopy = {
+      const recoveryCodesCopy = pickAuthEmailCopy({
         en: {
           subject: "Recovery codes regenerated - PrivateNote",
           title: "Recovery codes regenerated",
@@ -4707,7 +4756,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           li2: "Agrega o verifica tu passkey",
           footer: "Esta es una notificacion de seguridad automatica.",
         },
-      }[locale];
+        nl: {
+          subject: "Herstelcodes opnieuw gegenereerd - PrivateNote",
+          title: "Herstelcodes opnieuw gegenereerd",
+          body1: "Je PrivateNote-herstelcodes zijn opnieuw gegenereerd. Je vorige ongebruikte codes werken niet meer.",
+          body2: "Als jij dit niet was, beveilig je account:",
+          li1: "Herroep andere sessies in Beveiligingsinstellingen",
+          li2: "Voeg een passkey toe of controleer je passkey",
+          footer: "Dit is een automatische beveiligingsmelding.",
+        },
+      }, locale);
       const emailResult = await sendEmail(env, {
         to: userEmail,
         subject: recoveryCodesCopy.subject,
@@ -5427,7 +5485,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const webOrigin = getMagicLinkOrigin(env, request);
     const verifyUrl = `${webOrigin}/auth/email-change?token=${encodeURIComponent(token)}`;
     const locale = detectAuthEmailLocale(request);
-    const verifyEmailCopy = {
+    const verifyEmailCopy = pickAuthEmailCopy({
       en: {
         subject: "Verify your new email address - PrivateNote",
         title: "Verify your new email address",
@@ -5468,7 +5526,17 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expiry: "Este enlace vence en 1 hora.",
         ignore: "Si no solicitaste este cambio, ignora este correo y tu cuenta seguira sin cambios.",
       },
-    }[locale];
+      nl: {
+        subject: "Bevestig je nieuwe e-mailadres - PrivateNote",
+        title: "Bevestig je nieuwe e-mailadres",
+        body1: "Je hebt gevraagd het e-mailadres van je PrivateNote-account te wijzigen.",
+        body2:
+          "Open de link hieronder en druk daarna op Bevestig nieuw e-mailadres om de wijziging door te voeren (zo voorkom je dat geautomatiseerd linkscannen de update voltooit).",
+        cta: "Doorgaan naar verificatie",
+        expiry: "Deze link verloopt over 1 uur.",
+        ignore: "Als je deze wijziging niet hebt aangevraagd, negeer deze e-mail. Je account blijft ongewijzigd.",
+      },
+    }, locale);
 
     console.log(
       `[AUTH] Email change request: userId=${session.id}, currentEmail=${maskEmailForLog(normalizedCurrentEmail)}, newEmail=${maskEmailForLog(normalizedNewEmail)}`,
@@ -5859,7 +5927,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     );
 
     const locale = detectAuthEmailLocale(request);
-    const deleteCodeCopy = {
+    const deleteCodeCopy = pickAuthEmailCopy({
       en: {
         subject: "Your account deletion confirmation code - PrivateNote",
         title: "Account deletion confirmation",
@@ -5892,7 +5960,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expiry: "Este codigo vence en 15 minutos y solo puede usarse una vez.",
         ignore: "Si no solicitaste esto, protege tu cuenta e ignora este correo.",
       },
-    }[locale];
+      nl: {
+        subject: "Je bevestigingscode voor accountverwijdering - PrivateNote",
+        title: "Accountverwijdering bevestigen",
+        body1: "Je hebt gevraagd je PrivateNote-account te verwijderen. Bevestig dat jij het bent door deze code in te voeren waar je de verwijdering bent gestart:",
+        codeLabel: "Bevestigingscode",
+        expiry: "Deze code verloopt over 15 minuten en kan maar een keer worden gebruikt.",
+        ignore: "Als je dit niet hebt aangevraagd, beveilig je account en negeer deze e-mail.",
+      },
+    }, locale);
 
     const emailResult = await sendEmail(env, {
       to: toEmail,

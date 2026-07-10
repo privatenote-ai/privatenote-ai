@@ -906,7 +906,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const llm = await loadClientLLM();
     if (llm.isEngineLoaded() || isAiModelLoading) return;
     setIsAiModelLoading(true);
-    setAiModelProgress({ progress: 0, text: "Preparing private AI…" });
+    setAiModelProgress({ progress: 0, text: t.aiComposerGettingReady });
     try {
       await ensureFreeLocalModel((progress) => setAiModelProgress(progress));
       setAiModelProgress(null);
@@ -975,7 +975,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     enhancementType: "improve" | "summarize" | "secure" | "ask" | "simplify",
     options?: { useBuiltTemplatePrompt?: boolean; promptAnalysisDwellMs?: number },
   ): Promise<string> => {
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       await ensureFreeLocalModel((progress) => setAiProgress(progress));
       const m = await loadPromptTemplatesModule();
@@ -1132,7 +1132,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         },
         "error-callback": () => {
           setAiTurnstileToken(null);
-          setAiTurnstileError("Human verification failed. Please try again.");
+          setAiTurnstileError(t.createNoteTurnstileFailed);
           aiTurnstileWidgetIdRef.current = null;
         },
         "expired-callback": () => {
@@ -1148,7 +1148,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       })
       .catch(() => {
         if (!cancelled) {
-          setAiTurnstileError("Human verification failed to load. Please try again.");
+          setAiTurnstileError(t.createNoteTurnstileFailedLoad);
         }
       });
 
@@ -1827,7 +1827,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsGeneratingContent(true);
-    setHostedCloudAiStatusText("Cloud Assist is writing with Gemma 4 26B...");
+    setHostedCloudAiStatusText(t.aiComposerHostedCloudAiWriting);
     if (!originalPrompt) setOriginalPrompt(promptToUse);
     if (!options?.skipPromptHistoryUpdate) {
       setUserPromptHistory((prev) => {
@@ -2046,7 +2046,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "improve");
       setNoteContentFromAiOutput(content);
@@ -2083,7 +2083,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "summarize");
       setNoteContentFromAiOutput(content);
@@ -2120,7 +2120,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "simplify");
       setNoteContentFromAiOutput(content);
@@ -2162,7 +2162,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(promptToUse, enhancementTypeToUse, {
         useBuiltTemplatePrompt: true,
@@ -2184,39 +2184,40 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
   };
 
-  // ── Privacy banner (passed to AiComposer) ────────────────────────────────
-  const privacyBannerItems = (
-    <>
-      <span className="flex items-center whitespace-nowrap">
-        <Eye className="h-3 w-3 mr-1 text-orange-500" />
-        {t.expiresAfter} {translatedExpiryLabel(expiryValue, t)} {t.orOneRead}
-      </span>
-      {isPasswordProtected && (
-        <>
-          <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-          <span className="flex items-center whitespace-nowrap">
-            <Key className="h-3 w-3 mr-1 text-yellow-500" />
-            {t.passwordProtected}
-          </span>
-        </>
-      )}
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Shield className="h-3 w-3 mr-1 text-green-500" />
-        {t.endToEndEncrypted}
-      </span>
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Lock className="h-3 w-3 mr-1 text-blue-500" />
-        AES-256 GCM
-      </span>
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
-        {t.noTracking}
-      </span>
-    </>
-  );
+  // ── Privacy banner (English desktop only; passed to AiComposer) ───────────
+  const privacyBannerItems =
+    language === "en" && !isMobile ? (
+      <>
+        <span className="flex items-center whitespace-nowrap">
+          <Eye className="h-3 w-3 mr-1 text-orange-500" />
+          {t.expiresAfter} {translatedExpiryLabel(expiryValue, t)} {t.orOneRead}
+        </span>
+        {isPasswordProtected && (
+          <>
+            <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+            <span className="flex items-center whitespace-nowrap">
+              <Key className="h-3 w-3 mr-1 text-yellow-500" />
+              {t.passwordProtected}
+            </span>
+          </>
+        )}
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Shield className="h-3 w-3 mr-1 text-green-500" />
+          {t.endToEndEncrypted}
+        </span>
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Lock className="h-3 w-3 mr-1 text-blue-500" />
+          AES-256 GCM
+        </span>
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
+          {t.noTracking}
+        </span>
+      </>
+    ) : null;
 
   const shouldRenderDeferredDialogs =
     isGeneratingContent || cellularPreloadConfirmOpen || showTemplateOfferPrompt;
@@ -2384,15 +2385,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div
               className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40 px-4 py-4"
               role="region"
-              aria-label="Human verification"
+              aria-label={t.createNoteTurnstileAriaLabel}
             >
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                This check appears only when our systems flag unusual activity (for example many quick requests).
-                Complete it once to keep using AI mode.
+                {t.createNoteTurnstileExplanation}
               </p>
               <div id="create-note-turnstile-container" className="min-h-[65px] flex justify-center" />
               {!aiTurnstileReady && !aiTurnstileError && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">Loading verification…</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">{t.createNoteTurnstileLoading}</p>
               )}
               {aiTurnstileError && (
                 <p className="text-xs text-red-500 text-center mt-2">{aiTurnstileError}</p>
@@ -2407,10 +2407,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 referrer={prefillReferrer}
                 onDismiss={dismissPrefillBanner}
               />
-              <div className="mb-2 hidden md:flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
-                  {privacyBannerItems}
-                </div>
+              <div
+                className={`mb-2 hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 ${privacyBannerItems ? "justify-between" : "justify-end"}`}
+              >
+                {privacyBannerItems ? (
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    {privacyBannerItems}
+                  </div>
+                ) : null}
                 <NotePlaintextUtf8Meter
                   noteContent={noteContent}
                   maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}

@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function AuthRecovery() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"form" | "success">("form");
@@ -14,7 +16,7 @@ export default function AuthRecovery() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !code.trim()) {
-      toast({ title: "Missing info", description: "Enter your email and recovery code." });
+      toast({ title: t.authRecoveryMissingInfoTitle, description: t.authRecoveryMissingInfoDesc });
       return;
     }
     setIsBusy(true);
@@ -26,8 +28,8 @@ export default function AuthRecovery() {
       setStatus("success");
     } catch (error) {
       toast({
-        title: "Recovery failed",
-        description: error instanceof Error ? error.message : "Try again.",
+        title: t.authRecoveryFailedTitle,
+        description: error instanceof Error ? error.message : t.authRecoveryTryAgain,
         variant: "destructive",
       });
     } finally {
@@ -39,9 +41,9 @@ export default function AuthRecovery() {
     <div className="pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Use recovery code</CardTitle>
+          <CardTitle>{t.authRecoveryTitle}</CardTitle>
           <CardDescription>
-            {status === "form" ? "Sign in with a one-time recovery code." : "Signed in"}
+            {status === "form" ? t.authRecoveryDescriptionForm : t.authRecoveryDescriptionSuccess}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -49,28 +51,25 @@ export default function AuthRecovery() {
             <>
               <Input
                 type="email"
-                placeholder="you@domain.com"
+                placeholder={t.authRecoveryEmailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <Input
                 type="text"
-                placeholder="XXXX-XXXX-XXXX"
+                placeholder={t.authRecoveryCodePlaceholder}
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
               />
               <Button onClick={handleSubmit} disabled={isBusy}>
-                Continue
+                {t.authRecoveryContinue}
               </Button>
             </>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                You&apos;re signed in. Open Security settings to <strong>reset passkeys</strong> (remove the old ones)
-                and add a new passkey, or enable 2-step verification as a backup.
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{t.authRecoverySuccessBody}</p>
               <Button asChild>
-                <a href="/account">Go to your account</a>
+                <a href="/account">{t.authRecoveryGoToAccount}</a>
               </Button>
             </div>
           )}

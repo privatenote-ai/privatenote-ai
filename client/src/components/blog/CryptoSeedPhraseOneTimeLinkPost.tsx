@@ -1,52 +1,117 @@
 import React from "react";
 import { Link } from "wouter";
-import { AlertTriangle, CheckCircle2, KeyRound, Lock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, KeyRound, Lock, ShieldAlert, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
+import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
-import { cn } from "@/lib/utils";
-import type { BlogCanonicalSlug } from "@shared/localizedBlogSlugs";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { cryptoSeedPhraseDe } from "@/components/blog/locale/cryptoSeedPhrase.de";
+import { cryptoSeedPhraseEn } from "@/components/blog/locale/cryptoSeedPhrase.en";
+import { cryptoSeedPhraseEs } from "@/components/blog/locale/cryptoSeedPhrase.es";
+import { cryptoSeedPhraseFr } from "@/components/blog/locale/cryptoSeedPhrase.fr";
+import { cryptoSeedPhraseIt } from "@/components/blog/locale/cryptoSeedPhrase.it";
+import { cryptoSeedPhraseHr } from "@/components/blog/locale/cryptoSeedPhrase.hr";
+import { cryptoSeedPhraseNl } from "@/components/blog/locale/cryptoSeedPhrase.nl";
+import { cryptoSeedPhrasePt } from "@/components/blog/locale/cryptoSeedPhrase.pt";
+import { cryptoSeedPhraseSr } from "@/components/blog/locale/cryptoSeedPhrase.sr";
+import type { CryptoSeedArticleCopy } from "@/components/blog/locale/cryptoSeedPhrase.types";
 import { PASSWORDS_LU_PARTNER_URLS } from "@/config/passwordsLuPartner";
+import { cn } from "@/lib/utils";
 
 const heroImagePath = "/images/blog-encrypted-file-sharing-hero.jpg";
 
-const offlineAlternatives = [
-  { label: "Metal backup", body: "stored in a safe or safety deposit box" },
-  { label: "SLIP-39", body: "or similar schemes for inheritance or disaster recovery" },
-  { label: "Hardware wallet transfer", body: "when practical, instead of the recovery phrase" },
-];
+const FLOW_DIAGRAM = `Seed phrase
+     │
+     ▼
+Local encryption (age / GnuPG / OpenSSL)
+     │
+     ▼
+Encrypted ciphertext
+     │
+     ▼
+PrivateNote`;
 
-const seedPhraseTraits = [
-  { label: "Grants full control", body: "over assets" },
-  { label: "Often lasts decades", body: "without rotation" },
-  { label: "Cannot be changed", body: "if compromised" },
-  { label: "Has no vendor recovery", body: "if stolen" },
-];
+const AGE_EXAMPLE = `# Install age (pick your platform)
+# macOS:        brew install age
+# Windows:      winget install FiloSottile.age
+# Linux (apt):  sudo apt install age
 
-const oneTimeLinkFit = [
-  "API keys & temporary passwords",
-  "Wi‑Fi credentials",
-  "MFA recovery codes",
-  "Business messages & legal drafts",
-  "Temporary access tokens",
-];
+age --version
 
-const localEncryptFirst = [
-  "Cryptocurrency seed phrases",
-  "Hardware wallet backups",
-  "CA private keys & signing keys",
-  "Password manager recovery material",
-  "High-value master secrets",
-];
+age -p -o seed.txt.age seed.txt    # encrypt with passphrase
+age -d -o seed.txt seed.txt.age    # decrypt on a trusted machine`;
 
-const philosophySteps = [
-  "avoid transmitting when you can",
-  "encrypt locally",
-  "upload ciphertext only",
-  "erase temporary plaintext",
-  "send the age file passphrase—not the mnemonic—on a separate channel when possible",
-];
+const copy: Partial<Record<SupportedLanguage, CryptoSeedArticleCopy>> & { en: CryptoSeedArticleCopy } = {
+  en: cryptoSeedPhraseEn,
+  de: cryptoSeedPhraseDe,
+  es: cryptoSeedPhraseEs,
+  fr: cryptoSeedPhraseFr,
+  it: cryptoSeedPhraseIt,
+  nl: cryptoSeedPhraseNl,
+  pt: cryptoSeedPhrasePt,
+  hr: cryptoSeedPhraseHr,
+  sr: cryptoSeedPhraseSr,
+};
+
+function RichText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <strong key={index} className="font-semibold text-gray-900 dark:text-white">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return (
+            <code key={index} className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+        return <React.Fragment key={index}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+}
+
+function renderInlineContent(
+  text: string,
+  resolveLink: (href: string) => { to: string; external: boolean },
+): React.ReactNode {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+  return parts.map((part, index) => {
+    const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!match) {
+      return <RichText key={index} text={part} />;
+    }
+    const [, label, href] = match;
+    const { to, external } = resolveLink(href);
+    if (external) {
+      return (
+        <a
+          key={index}
+          href={to}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-primary hover:underline"
+        >
+          {label}
+        </a>
+      );
+    }
+    return (
+      <Link key={index} href={to} className="font-semibold text-primary hover:underline">
+        {label}
+      </Link>
+    );
+  });
+}
 
 function ArticleSection({
   title,
@@ -63,18 +128,26 @@ function ArticleSection({
   );
 }
 
-function BlogInlineLink({
-  slug,
-  children,
+function ArticleParagraph({
+  text,
+  lead = false,
+  resolveLink,
 }: {
-  slug: BlogCanonicalSlug;
-  children: React.ReactNode;
+  text: string;
+  lead?: boolean;
+  resolveLink: (href: string) => { to: string; external: boolean };
 }) {
-  const { language } = useLanguage();
   return (
-    <Link href={blogPostPath(slug, language)} className="font-semibold text-primary hover:underline">
-      {children}
-    </Link>
+    <p
+      className={cn(
+        "leading-[1.85] text-gray-700 dark:text-gray-300 sm:leading-[1.9]",
+        lead
+          ? "text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100 sm:text-[1.35rem] sm:leading-[1.75]"
+          : "text-[1.0625rem]",
+      )}
+    >
+      {renderInlineContent(text, resolveLink)}
+    </p>
   );
 }
 
@@ -97,7 +170,7 @@ function RecommendationColumn({
   subtitle: string;
   items: readonly string[];
   tone: "emerald" | "amber";
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: LucideIcon;
 }) {
   const toneStyles =
     tone === "emerald"
@@ -147,7 +220,20 @@ function RecommendationColumn({
 export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
   const { t, language } = useLanguage();
   const homePath = localizedPath("/", language);
-  const howItWorksPath = localizedPath("/how-it-works", language);
+  const article = getBlogArticleCopy(copy, language);
+  const blogHref = (slug: string) => blogPostPath(slug, language);
+  const resolveLink = (href: string) => {
+    if (href.startsWith("blog:")) {
+      return { to: blogHref(href.slice(5)), external: false };
+    }
+    if (href.startsWith("app:")) {
+      const path = href.slice(4).replace(/^\/+/, "");
+      return { to: localizedPath(`/${path}`, language), external: false };
+    }
+    return { to: href, external: true };
+  };
+
+  const askPrefix = language === "de" ? "Vor der Verschlüsselung fragen: " : "Before encryption, ask: ";
 
   return (
     <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
@@ -163,7 +249,7 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
           <figure className="mt-10 sm:mt-12">
             <img
               src={heroImagePath}
-              alt="Encrypted file sharing concept illustrating local encryption before uploading secrets"
+              alt={article.heroAlt}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
               loading="lazy"
             />
@@ -171,29 +257,9 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
         </BlogPostHeader>
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14 sm:leading-[1.9]">
-          <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100 sm:text-[1.35rem] sm:leading-[1.75]">
-            A cryptocurrency seed phrase is one of the most valuable secrets you will ever own. It usually
-            cannot be reset. There is no &ldquo;Forgot password.&rdquo; Whoever holds it typically controls the
-            wallet and everything in it.
-          </p>
-
-          <p>
-            That may sound odd on the blog of a company that builds encrypted one-time links. Security is not
-            pretending every tool fits every job—it is matching the approach to what you are protecting,
-            including our own limits.
-          </p>
-
-          <p>
-            For <strong className="font-semibold text-gray-900 dark:text-white">replaceable secrets</strong>
-            —such as Wi‑Fi passwords, temporary credentials, MFA recovery codes, many API keys, and confidential
-            business messages—a{" "}
-            <BlogInlineLink slug="one-time-secret-links">encrypted one-time link</BlogInlineLink> is an
-            excellent solution.
-          </p>
-          <p>
-            <strong className="font-semibold text-gray-900 dark:text-white">Long-lived master secrets</strong>
-            , such as cryptocurrency seed phrases, deserve a different approach.
-          </p>
+          {article.intro.map((paragraph, index) => (
+            <ArticleParagraph key={paragraph} text={paragraph} lead={index === 0} resolveLink={resolveLink} />
+          ))}
 
           <div className="rounded-3xl border border-amber-200 bg-amber-50 p-7 dark:border-amber-900/60 dark:bg-amber-950/20 sm:p-8">
             <div className="flex gap-5">
@@ -202,36 +268,26 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
                 aria-hidden
               />
               <div>
-                <h2 className="text-xl font-bold text-amber-950 dark:text-amber-100">Rule #1</h2>
-                <p className="mt-4 text-base leading-relaxed text-amber-950/90 dark:text-amber-100/90">
-                  <strong className="font-semibold">
-                    Do not enter a cryptocurrency seed phrase into a website—including PrivateNote.
-                  </strong>{" "}
-                  If transmission is unavoidable, encrypt locally first and share{" "}
-                  <strong className="font-semibold">only the ciphertext</strong>. PrivateNote is for
-                  transporting pre-encrypted data, not for typing the mnemonic.
-                </p>
-                <p className="mt-4 text-base leading-relaxed text-amber-950/90 dark:text-amber-100/90">
-                  <strong className="font-semibold">
-                    Legitimate hardware wallet vendors do not ask you to enter your recovery phrase on a
-                    website.
-                  </strong>{" "}
-                  If a site requests your seed phrase, treat it as highly suspicious—verify authenticity before
-                  you proceed.
-                </p>
-                <p className="mt-4 text-base leading-relaxed text-amber-950/90 dark:text-amber-100/90">
-                  Avoid entering seed phrases on websites whenever possible.
-                </p>
+                <h2 className="text-xl font-bold text-amber-950 dark:text-amber-100">{article.ruleTitle}</h2>
+                {article.ruleParagraphs.map((paragraph) => (
+                  <p
+                    key={paragraph}
+                    className="mt-4 text-base leading-relaxed text-amber-950/90 dark:text-amber-100/90"
+                  >
+                    {renderInlineContent(paragraph, resolveLink)}
+                  </p>
+                ))}
               </div>
             </div>
           </div>
 
-          <ArticleSection title="Do you need to send it at all?">
+          <ArticleSection title={article.sections.sendAtAll.title}>
             <p>
-              Before encryption, ask: <strong className="font-semibold text-gray-900 dark:text-white">does the phrase need to leave where it is?</strong> Often, no.
+              {askPrefix}
+              {renderInlineContent(article.sections.sendAtAll.question, resolveLink)}
             </p>
             <ul className="space-y-3">
-              {offlineAlternatives.map((item) => (
+              {article.offlineAlternatives.map((item) => (
                 <li key={item.label} className="flex gap-3 text-gray-800 dark:text-gray-200">
                   <KeyRound className="mt-1 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
                   <span>
@@ -242,24 +298,14 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <p>
-              Every transmission adds a chance of disclosure. If you can avoid sending it, do. For other
-              channels that also retain secrets indefinitely, see{" "}
-              <BlogInlineLink slug="why-email-is-worst-for-secrets">
-                why email is the worst place for secrets
-              </BlogInlineLink>
-              .
-            </p>
+            <ArticleParagraph text={article.sections.sendAtAll.outro} resolveLink={resolveLink} />
           </ArticleSection>
 
-          <ArticleSection title="Why seed phrases are different">
-            <p>
-              A seed phrase is the root secret for an entire digital estate—not &ldquo;just another
-              password.&rdquo;
-            </p>
-            <p>Unlike most credentials, it:</p>
+          <ArticleSection title={article.sections.different.title}>
+            <ArticleParagraph text={article.sections.different.p1} resolveLink={resolveLink} />
+            <p>{article.sections.different.listIntro}</p>
             <ul className="space-y-3">
-              {seedPhraseTraits.map((item) => (
+              {article.seedPhraseTraits.map((item) => (
                 <li key={item.label} className="flex gap-3 text-gray-800 dark:text-gray-200">
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" aria-hidden />
                   <span>
@@ -270,132 +316,60 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <p>
-              You are not only defending against today&apos;s attackers—you are making choices that may matter
-              ten or twenty years from now.
-            </p>
+            <ArticleParagraph text={article.sections.different.outro} resolveLink={resolveLink} />
           </ArticleSection>
 
-          <ArticleSection title="Browser encryption is strong—but not magic">
-            <p>
-              PrivateNote encrypts in your browser before upload. Our servers see ciphertext only; the key never
-              reaches us. That is far better than{" "}
-              <BlogInlineLink slug="why-email-is-worst-for-secrets">email</BlogInlineLink>, chat, or cloud
-              docs for everyday secrets—and aligns with a strict{" "}
-              <BlogInlineLink slug="what-is-end-to-end-encryption">end-to-end encryption</BlogInlineLink>{" "}
-              model for the note contents.
-            </p>
-            <p>
-              Every browser crypto app shares one constraint:{" "}
-              <strong className="font-semibold text-gray-900 dark:text-white">
-                plaintext must exist in the browser before encryption.
-              </strong>{" "}
-              Malicious JavaScript—from extensions, supply-chain compromise, injection, or a bad CDN—could
-              theoretically read it first. That is inherent to client-side encryption in the browser, not unique
-              to PrivateNote.
-            </p>
-            <p>
-              For API keys and temp passwords, that trade-off is usually fine. For a seed phrase protecting life
-              savings, you may want to trust fewer systems.
-            </p>
+          <ArticleSection title={article.sections.browserEncryption.title}>
+            {article.sections.browserEncryption.paragraphs.map((paragraph) => (
+              <ArticleParagraph key={paragraph} text={paragraph} resolveLink={resolveLink} />
+            ))}
           </ArticleSection>
 
-          <ArticleSection title="Encrypt before the browser sees it">
-            <p>Encrypt locally, then upload ciphertext only:</p>
-            <CodeBlock>{`Seed phrase
-     │
-     ▼
-Local encryption (age / GnuPG / OpenSSL)
-     │
-     ▼
-Encrypted ciphertext
-     │
-     ▼
-PrivateNote`}</CodeBlock>
-            <p>PrivateNote never receives the mnemonic—only encrypted data.</p>
+          <ArticleSection title={article.sections.encryptLocal.title}>
+            <p>{article.sections.encryptLocal.intro}</p>
+            <CodeBlock>{FLOW_DIAGRAM}</CodeBlock>
+            <ArticleParagraph text={article.sections.encryptLocal.outro} resolveLink={resolveLink} />
             <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-6 dark:border-primary/25 dark:bg-primary/[0.08] sm:p-7">
               <div className="flex gap-4">
                 <Lock className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden />
                 <p className="leading-relaxed">
-                  Local encryption does <strong className="font-semibold text-gray-900 dark:text-white">not</strong>{" "}
-                  stop malware on your machine. It{" "}
-                  <strong className="font-semibold text-gray-900 dark:text-white">
-                    keeps plaintext off web apps, cloud services, and servers
-                  </strong>{" "}
-                  that do not need it. You shrink the trusted computing base; you do not eliminate a compromised
-                  endpoint.
+                  {renderInlineContent(article.sections.encryptLocal.callout, resolveLink)}
                 </p>
               </div>
             </div>
           </ArticleSection>
 
-          <ArticleSection title="Which tool to use">
+          <ArticleSection title={article.sections.whichTool.title}>
             <ul className="space-y-4">
-              <li>
-                <strong className="font-semibold text-gray-900 dark:text-white">age</strong> (recommended for
-                most users): simple file encryption with secure defaults —{" "}
-                <a
-                  href="https://github.com/FiloSottile/age"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-primary hover:underline"
-                >
-                  github.com/FiloSottile/age
-                </a>
-              </li>
-              <li>
-                <strong className="font-semibold text-gray-900 dark:text-white">GnuPG</strong>: excellent if
-                you already use OpenPGP.
-              </li>
-              <li>
-                <strong className="font-semibold text-gray-900 dark:text-white">OpenSSL</strong>: trusted and
-                powerful; low-level CLI—better for experienced users.
-              </li>
+              <li>{renderInlineContent(article.sections.whichTool.age, resolveLink)}</li>
+              <li>{renderInlineContent(article.sections.whichTool.gnupg, resolveLink)}</li>
+              <li>{renderInlineContent(article.sections.whichTool.openssl, resolveLink)}</li>
             </ul>
           </ArticleSection>
 
-          <ArticleSection title="Minimal example (age)">
-            <CodeBlock>{`# Install age (pick your platform)
-# macOS:        brew install age
-# Windows:      winget install FiloSottile.age
-# Linux (apt):  sudo apt install age
-
-age --version
-
-age -p -o seed.txt.age seed.txt    # encrypt with passphrase
-age -d -o seed.txt seed.txt.age    # decrypt on a trusted machine`}</CodeBlock>
+          <ArticleSection title={article.sections.ageExample.title}>
+            <CodeBlock>{AGE_EXAMPLE}</CodeBlock>
             <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-4 dark:border-primary/25 dark:bg-primary/[0.08] sm:px-6 sm:py-5">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                Need a strong passphrase?
+                {article.sections.ageExample.passphraseTitle}
               </p>
               <p className="mt-2 leading-relaxed text-gray-700 dark:text-gray-300">
-                Use a long, unique secret for{" "}
-                <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">age -p</code>. Generate
-                one locally in your browser—the{" "}
+                {renderInlineContent(article.sections.ageExample.passphraseBefore, resolveLink)}{" "}
                 <a
                   href={PASSWORDS_LU_PARTNER_URLS.passphraseGenerator}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline decoration-gray-400 underline-offset-2 transition-colors hover:decoration-primary dark:decoration-gray-600"
                 >
-                  passphrase generator
+                  {article.sections.ageExample.passphraseLink}
                 </a>{" "}
-                on passwords.lu runs client-side; nothing is uploaded.
+                {article.sections.ageExample.passphraseAfter}
               </p>
             </div>
+            <ArticleParagraph text={article.sections.ageExample.p1} resolveLink={resolveLink} />
+            <ArticleParagraph text={article.sections.ageExample.p2} resolveLink={resolveLink} />
             <p>
-              After <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">seed.txt.age</code>{" "}
-              is verified, <strong className="font-semibold text-gray-900 dark:text-white">securely erase plaintext</strong>{" "}
-              on the sender&apos;s device. After the recipient imports into a wallet,{" "}
-              <strong className="font-semibold text-gray-900 dark:text-white">erase their plaintext copy</strong> too.
-            </p>
-            <p>
-              For regular exchange with someone,{" "}
-              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">age -r</code>{" "}
-              (public-key mode) avoids a shared passphrase—worth learning separately.
-            </p>
-            <p>
-              Docs:{" "}
+              {article.sections.ageExample.docsLabel}{" "}
               <a
                 href="https://github.com/FiloSottile/age"
                 target="_blank"
@@ -425,81 +399,46 @@ age -d -o seed.txt seed.txt.age    # decrypt on a trusted machine`}</CodeBlock>
             </p>
           </ArticleSection>
 
-          <ArticleSection title="Use separate channels">
-            <p>
-              Split the encrypted file from the secret that unlocks it. You are separating the{" "}
-              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">.age</code> ciphertext
-              from the <strong className="font-semibold text-gray-900 dark:text-white">age decryption passphrase</strong>
-              —not sending the seed phrase mnemonic through a second channel.
-            </p>
+          <ArticleSection title={article.sections.separateChannels.title}>
+            <ArticleParagraph text={article.sections.separateChannels.intro} resolveLink={resolveLink} />
             <ol className="list-decimal space-y-2 pl-6 text-gray-800 dark:text-gray-200">
-              <li>
-                Upload the <strong className="font-semibold text-gray-900 dark:text-white">encrypted file</strong>{" "}
-                (ciphertext) with PrivateNote
-              </li>
-              <li>
-                Send the <strong className="font-semibold text-gray-900 dark:text-white">age passphrase</strong> that
-                decrypts that file—via Signal, phone, or in person
-              </li>
+              {article.sections.separateChannels.steps.map((step) => (
+                <li key={step}>{renderInlineContent(step, resolveLink)}</li>
+              ))}
             </ol>
-            <p>An attacker must compromise multiple systems—not one link.</p>
+            <ArticleParagraph text={article.sections.separateChannels.outro} resolveLink={resolveLink} />
           </ArticleSection>
 
-          <ArticleSection title="What we recommend">
-            <p className="text-gray-700 dark:text-gray-300">
-              The split is really about <strong className="font-semibold text-gray-900 dark:text-white">replaceable</strong>{" "}
-              versus <strong className="font-semibold text-gray-900 dark:text-white">long-lived master</strong> secrets—not
-              the file format or channel alone.
-            </p>
+          <ArticleSection title={article.sections.recommend.title}>
+            <ArticleParagraph text={article.sections.recommend.intro} resolveLink={resolveLink} />
             <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
               <RecommendationColumn
-                title="Good fit for one-time links"
-                subtitle="Replaceable secrets you can rotate or revoke"
-                items={oneTimeLinkFit}
+                title={article.sections.recommend.oneTimeTitle}
+                subtitle={article.sections.recommend.oneTimeSubtitle}
+                items={article.oneTimeLinkFit}
                 tone="emerald"
                 icon={CheckCircle2}
               />
               <RecommendationColumn
-                title="Encrypt locally first"
-                subtitle="Long-lived master secrets that rarely change"
-                items={localEncryptFirst}
+                title={article.sections.recommend.localTitle}
+                subtitle={article.sections.recommend.localSubtitle}
+                items={article.localEncryptFirst}
                 tone="amber"
                 icon={Lock}
               />
             </div>
-            <p>
-              For API keys specifically, see our guide on{" "}
-              <BlogInlineLink slug="how-to-share-api-key-securely">how to share an API key securely</BlogInlineLink>
-              .
-            </p>
+            <ArticleParagraph text={article.sections.recommend.outro} resolveLink={resolveLink} />
           </ArticleSection>
 
-          <ArticleSection title="Match the tool to the risk">
-            <p>
-              Every approach has trust assumptions—password managers, hardware wallets, offline tools, browser
-              crypto. None is perfect; trade-offs differ. The question is whether they fit the{" "}
-              <strong className="font-semibold text-gray-900 dark:text-white">value</strong> of what you protect.
-            </p>
+          <ArticleSection title={article.sections.matchTool.title}>
+            <ArticleParagraph text={article.sections.matchTool.body} resolveLink={resolveLink} />
           </ArticleSection>
 
-          <ArticleSection title="Our philosophy">
-            <p>
-              We built PrivateNote so encryption happens{" "}
-              <strong className="font-semibold text-gray-900 dark:text-white">before</strong> data reaches our
-              servers. For temporary, replaceable secrets, that beats email, messaging, or cloud storage. You
-              can also{" "}
-              <BlogInlineLink slug="send-secret-message-without-account">
-                send a secret without an account
-              </BlogInlineLink>
-              . Read{" "}
-              <Link href={howItWorksPath} className="font-semibold text-primary hover:underline">
-                how PrivateNote works
-              </Link>{" "}
-              for the full model.
-            </p>
-            <p>For a seed phrase that could be your life savings:</p>
+          <ArticleSection title={article.sections.philosophy.title}>
+            <ArticleParagraph text={article.sections.philosophy.p1} resolveLink={resolveLink} />
+            <p>{article.sections.philosophy.listIntro}</p>
             <ul className="list-disc space-y-2 pl-6 text-gray-800 dark:text-gray-200">
-              {philosophySteps.map((step) => (
+              {article.philosophySteps.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ul>
@@ -507,8 +446,7 @@ age -d -o seed.txt seed.txt.age    # decrypt on a trusted machine`}</CodeBlock>
               <div className="flex gap-4">
                 <ShieldAlert className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden />
                 <p className="text-lg font-medium leading-relaxed text-gray-900 dark:text-white">
-                  Sometimes the best advice is not &ldquo;use our product.&rdquo; It is &ldquo;use the right tool
-                  for the job.&rdquo;
+                  {article.sections.philosophy.closingQuote}
                 </p>
               </div>
             </div>
@@ -516,18 +454,13 @@ age -d -o seed.txt seed.txt.age    # decrypt on a trusted machine`}</CodeBlock>
         </div>
 
         <div className="mt-16 rounded-2xl border border-primary/20 bg-primary/5 p-7 sm:mt-20 sm:p-8">
-          <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-            Share replaceable secrets—not seed phrases—in the browser
-          </h2>
-          <p className="mb-6 text-gray-700 dark:text-gray-300">
-            Create an encrypted one-time note for API keys, passwords, and credentials. For seed phrases, encrypt
-            locally with age first, then share only the ciphertext.
-          </p>
+          <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">{article.ctaTitle}</h2>
+          <p className="mb-6 text-gray-700 dark:text-gray-300">{article.ctaBody}</p>
           <Link
             href={homePath}
             className="inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-primary/90"
           >
-            Try PrivateNote -&gt;
+            {article.ctaButton}
           </Link>
         </div>
 

@@ -24,6 +24,7 @@ import {
   homeLanguageFromRoute,
   isLocaleHomeRoute,
 } from "@shared/homeSeoLinks";
+import { localizedMarketingHreflangAlternates } from "@shared/localizedMarketingHreflang";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
@@ -85,6 +86,27 @@ function removeHomeLocaleSeoLinks() {
   document.head
     .querySelectorAll<HTMLLinkElement>('link[data-privatenote-home-locale="true"]')
     .forEach((link) => link.remove());
+}
+
+function removeLocalizedMarketingSeoLinks() {
+  document.head
+    .querySelectorAll<HTMLLinkElement>('link[data-privatenote-localized-marketing="true"]')
+    .forEach((link) => link.remove());
+}
+
+function setLocalizedMarketingSeoLinks(pathname: string) {
+  removeLocalizedMarketingSeoLinks();
+  const alternates = localizedMarketingHreflangAlternates(pathname);
+  if (!alternates) return;
+
+  alternates.forEach((alternate) => {
+    const link = document.createElement("link");
+    link.rel = "alternate";
+    link.hreflang = alternate.hrefLang;
+    link.href = absolutePublicUrl(alternate.path);
+    link.dataset.privatenoteLocalizedMarketing = "true";
+    document.head.appendChild(link);
+  });
 }
 
 function setHomeSeoLinks(language: SupportedLanguage) {
@@ -157,8 +179,10 @@ function Router() {
     });
     if (onLocaleHome) {
       setHomeSeoLinks(homeLanguageFromRoute(path) as SupportedLanguage);
+      removeLocalizedMarketingSeoLinks();
     } else {
       removeHomeLocaleSeoLinks();
+      setLocalizedMarketingSeoLinks(path);
     }
   }, [location, t]);
 

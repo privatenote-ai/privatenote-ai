@@ -12,10 +12,21 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
+import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { shareApiKeySecurelyDe } from "@/components/blog/locale/shareApiKeySecurely.de";
+import { shareApiKeySecurelyEn } from "@/components/blog/locale/shareApiKeySecurely.en";
+import { shareApiKeySecurelyEs } from "@/components/blog/locale/shareApiKeySecurely.es";
+import { shareApiKeySecurelyFr } from "@/components/blog/locale/shareApiKeySecurely.fr";
+import { shareApiKeySecurelyIt } from "@/components/blog/locale/shareApiKeySecurely.it";
+import { shareApiKeySecurelyHr } from "@/components/blog/locale/shareApiKeySecurely.hr";
+import { shareApiKeySecurelyNl } from "@/components/blog/locale/shareApiKeySecurely.nl";
+import { shareApiKeySecurelyPt } from "@/components/blog/locale/shareApiKeySecurely.pt";
+import { shareApiKeySecurelySr } from "@/components/blog/locale/shareApiKeySecurely.sr";
+import type { ShareApiKeyArticleCopy } from "@/components/blog/locale/shareApiKeySecurely.types";
 import { PASSWORDS_LU_PARTNER_URLS } from "@/config/passwordsLuPartner";
-import type { BlogCanonicalSlug } from "@shared/localizedBlogSlugs";
 
 const heroImagePath = "/images/blog-api-key-sharing-hero.jpg";
 const heroArtistUrl =
@@ -23,123 +34,79 @@ const heroArtistUrl =
 const heroPixabayUrl =
   "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=65044";
 
-const avoidChannels = [
-  "Slack, Microsoft Teams, Discord, or other chat history",
-  "Email, SMS, or forwarded inbox threads",
-  "Jira, Trello, Notion, Confluence, or GitHub issues",
-  "Plain text documents, spreadsheets, and shared cloud folders",
-  "Git commits, pull requests, and code comments",
-];
+const handoffIcons = {
+  scope: KeyRound,
+  encrypt: Lock,
+  send: Link2,
+  revoke: RotateCcw,
+} as const;
 
-const leakSources = [
-  {
-    title: "Email",
-    body:
-      "Email creates long-lived copies. A key can survive in inboxes, archives, backups, mobile sync, forwarded threads, and search indexes long after the task is done.",
-  },
-  {
-    title: "Team chat",
-    body:
-      "Slack and Teams preserve context — which makes them risky for secrets. One pasted key can become searchable by future workspace members or leak through a compromised device.",
-  },
-  {
-    title: "Project tools",
-    body:
-      "Jira, Notion, Confluence, Trello, and GitHub Issues are not credential vaults. Deleted tickets may still exist in exports, backups, audit trails, and AI-assisted search.",
-  },
-  {
-    title: "Git repositories",
-    body:
-      "Git history is sticky. Removing a key in a later commit does not erase earlier commits. Public repos are scanned constantly, and exposed cloud credentials can be abused within minutes.",
-  },
-];
+const copy: Partial<Record<SupportedLanguage, ShareApiKeyArticleCopy>> & { en: ShareApiKeyArticleCopy } = {
+  en: shareApiKeySecurelyEn,
+  de: shareApiKeySecurelyDe,
+  es: shareApiKeySecurelyEs,
+  fr: shareApiKeySecurelyFr,
+  it: shareApiKeySecurelyIt,
+  nl: shareApiKeySecurelyNl,
+  pt: shareApiKeySecurelyPt,
+  hr: shareApiKeySecurelyHr,
+  sr: shareApiKeySecurelySr,
+};
 
-const prepSteps = [
-  {
-    title: "Use the smallest possible scope",
-    body:
-      "Avoid primary production keys. Prefer staging keys, read-only permissions, IP restrictions, short-lived tokens, and integration-specific credentials.",
-  },
-  {
-    title: "Plan to rotate or revoke",
-    body:
-      "Treat shared API keys as temporary. Revoke them when onboarding, testing, a contractor engagement, or a client handoff is finished.",
-  },
-  {
-    title: "Watch usage patterns",
-    body:
-      "Unexpected locations, sudden request spikes, new endpoints, or unusual billing activity are often the first signs that a key has escaped.",
-  },
-  {
-    title: "Deliver through a one-time encrypted link",
-    body:
-      "Encrypt the key locally before it enters any communication channel. Send a short-lived link instead of leaving the raw secret in permanent chat or email history.",
-  },
-];
+function RichText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <strong key={index} className="font-semibold text-gray-900 dark:text-white">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return (
+            <code key={index} className="rounded bg-gray-100 px-1.5 py-0.5 text-sm dark:bg-gray-800">
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+        return <React.Fragment key={index}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+}
 
-const handoffWorkflow = [
-  {
-    icon: KeyRound,
-    label: "Scope the key",
-    detail: "Minimum permissions only",
-  },
-  {
-    icon: Lock,
-    label: "Encrypt locally",
-    detail: "Key never leaves your browser",
-  },
-  {
-    icon: Link2,
-    label: "Send the link",
-    detail: "Not the raw secret",
-  },
-  {
-    icon: RotateCcw,
-    label: "Revoke when done",
-    detail: "Rotate after handoff",
-  },
-] as const;
-
-const faqs = [
-  {
-    question: "Why not just use an environment variable?",
-    answer:
-      "Environment variables are good for running local software. They do not solve the transport problem when you need to hand that value to a teammate, contractor, client, or integration partner.",
-  },
-  {
-    question: "Should API keys always expire?",
-    answer:
-      "Whenever the provider supports it, yes. Short-lived credentials reduce the window of abuse after accidental disclosure and make rotation part of the normal workflow.",
-  },
-  {
-    question: "What is the safest workflow?",
-    answer:
-      "Create a narrowly scoped key, send it through a browser-encrypted one-time link, share any optional password through a separate channel, then rotate or revoke the key when the task is done. For high-risk or long-lived keys, encrypt locally with age or OpenSSL first and upload ciphertext only.",
-  },
-  {
-    question: "Is PrivateNote a secrets manager?",
-    answer:
-      "No. PrivateNote solves secure human-to-human delivery. For machine-to-machine secret storage, use HashiCorp Vault, AWS Secrets Manager, Google Cloud Secret Manager, or Azure Key Vault.",
-  },
-];
+function renderInlineContent(
+  text: string,
+  resolveLink: (href: string) => { to: string; external: boolean },
+): React.ReactNode {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+  return parts.map((part, index) => {
+    const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!match) {
+      return <RichText key={index} text={part} />;
+    }
+    const [, label, href] = match;
+    const { to, external } = resolveLink(href);
+    if (external) {
+      return (
+        <a key={index} href={to} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+          {label}
+        </a>
+      );
+    }
+    return (
+      <Link key={index} href={to} className="font-semibold text-primary hover:underline">
+        {label}
+      </Link>
+    );
+  });
+}
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{children}</h2>;
-}
-
-function BlogInlineLink({
-  slug,
-  children,
-}: {
-  slug: BlogCanonicalSlug;
-  children: React.ReactNode;
-}) {
-  const { language } = useLanguage();
-  return (
-    <Link href={blogPostPath(slug, language)} className="font-semibold text-primary hover:underline">
-      {children}
-    </Link>
-  );
 }
 
 function BoldParagraph({ title, body }: { title: string; body: string }) {
@@ -179,30 +146,17 @@ function HandoffFlowArrow() {
   );
 }
 
-function HandoffFlowDiagram() {
-  return (
-    <figure className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 dark:border-primary/25 dark:bg-primary/[0.07] sm:p-6">
-      <figcaption className="mb-4 text-xs font-semibold uppercase tracking-wider text-primary/80 dark:text-primary/70">
-        Safer handoff at a glance
-      </figcaption>
-      <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch sm:gap-x-1 sm:gap-y-0">
-        {handoffWorkflow.map((step, index) => (
-          <React.Fragment key={step.label}>
-            <HandoffFlowNode icon={step.icon} label={step.label} detail={step.detail} />
-            {index < handoffWorkflow.length - 1 ? <HandoffFlowArrow /> : null}
-          </React.Fragment>
-        ))}
-      </div>
-      <p className="mt-4 text-center text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-        Share any note password through a separate channel — never in the same message as the link.
-      </p>
-    </figure>
-  );
-}
-
 export const ShareApiKeySecurelyPost: React.FC = () => {
   const { t, language } = useLanguage();
   const homePath = localizedPath("/", language);
+  const article = getBlogArticleCopy(copy, language);
+  const blogHref = (slug: string) => blogPostPath(slug, language);
+  const resolveLink = (href: string) => {
+    if (href.startsWith("blog:")) {
+      return { to: blogHref(href.slice(5)), external: false };
+    }
+    return { to: href, external: true };
+  };
 
   return (
     <div className={blogPostPageClass}>
@@ -218,28 +172,28 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
           <figure className="mt-8">
             <img
               src={heroImagePath}
-              alt="Hotel keys hanging in a numbered wooden key rack"
+              alt={article.heroAlt}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
               loading="lazy"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-              Image by{" "}
+              {article.heroCaptionPrefix}{" "}
               <a
                 href={heroArtistUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary underline underline-offset-2 hover:opacity-90"
               >
-                Hans
+                {article.heroArtist}
               </a>{" "}
-              from{" "}
+              {article.heroCaptionMiddle}{" "}
               <a
                 href={heroPixabayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary underline underline-offset-2 hover:opacity-90"
               >
-                Pixabay
+                {article.heroSource}
               </a>
               .
             </figcaption>
@@ -247,42 +201,27 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
         </BlogPostHeader>
 
         <div className="space-y-10 text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
-          <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">
-            Every developer eventually needs to send an API key to someone else — for staging access, a
-            contractor, a webhook integration, or a client handoff. The fastest path is usually also the one
-            that leaves the longest trail.
-          </p>
+          <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">{article.intro}</p>
 
           <section className="space-y-4">
-            <SectionHeading>Treat API keys like production passwords</SectionHeading>
-            <p>
-              An API key is effectively a password for software. Depending on its permissions, a leaked key
-              can expose customer data, consume paid resources, deploy cloud infrastructure, send email through
-              your verified domain, or run up an AI bill.
-            </p>
-            <p>
-              Unlike human passwords, API keys often stay valid for months, sit inside configuration files,
-              and bypass multi-factor authentication entirely. If a key leaks, an attacker can operate as your
-              application — and malicious traffic can blend into ordinary production usage until costs spike or
-              data is already exposed.
-            </p>
+            <SectionHeading>{article.sections.treatLikePasswords.title}</SectionHeading>
+            {article.sections.treatLikePasswords.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>Never paste API keys into permanent systems</SectionHeading>
-            <p>
-              These channels are convenient because they preserve history. That is exactly why they are the
-              wrong place for secrets.
-            </p>
+            <SectionHeading>{article.sections.neverPaste.title}</SectionHeading>
+            <p>{article.sections.neverPaste.intro}</p>
             <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/20">
               <div className="mb-3 flex items-center gap-2 font-bold text-red-800 dark:text-red-200">
                 <AlertTriangle className="h-5 w-5" aria-hidden />
-                Avoid these channels
+                {article.sections.neverPaste.avoidHeading}
               </div>
               <ul className="space-y-2">
-                {avoidChannels.map((item) => (
+                {article.avoidChannels.map((item) => (
                   <li className="flex items-start gap-2 text-sm leading-relaxed text-red-950 dark:text-red-100" key={item}>
                     <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-300" aria-hidden />
                     <span>{item}</span>
@@ -295,13 +234,10 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>Where API keys actually leak</SectionHeading>
-            <p>
-              Most leaks are not sophisticated cryptography breaks. They happen when someone copies a secret
-              into a system built to keep records.
-            </p>
+            <SectionHeading>{article.sections.whereLeak.title}</SectionHeading>
+            <p>{article.sections.whereLeak.intro}</p>
             <div className="space-y-4">
-              {leakSources.map((source) => (
+              {article.leakSources.map((source) => (
                 <BoldParagraph key={source.title} title={source.title} body={source.body} />
               ))}
             </div>
@@ -310,31 +246,28 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>Before you share</SectionHeading>
-            <p>
-              Narrow the blast radius first. How you deliver the key matters — but a tightly scoped key limits
-              the damage if something still goes wrong.
-            </p>
+            <SectionHeading>{article.sections.beforeShare.title}</SectionHeading>
+            <p>{article.sections.beforeShare.intro}</p>
             <div className="space-y-4">
-              {prepSteps.map((step) => (
+              {article.prepSteps.map((step) => (
                 <BoldParagraph key={step.title} title={step.title} body={step.body} />
               ))}
             </div>
             <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-4 dark:border-primary/25 dark:bg-primary/[0.08] sm:px-6 sm:py-5">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                Creating a new key?
+                {article.sections.beforeShare.newKeyTitle}
               </p>
               <p className="mt-2 leading-relaxed text-gray-700 dark:text-gray-300">
-                Generate high-entropy credentials locally in your browser — the{" "}
+                {article.sections.beforeShare.newKeyBefore}{" "}
                 <a
                   href={PASSWORDS_LU_PARTNER_URLS.apiKeyGenerator}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline decoration-gray-400 underline-offset-2 transition-colors hover:decoration-primary dark:decoration-gray-600"
                 >
-                  API key generator
+                  {article.sections.beforeShare.newKeyLink}
                 </a>{" "}
-                on passwords.lu runs client-side; nothing is uploaded.
+                {article.sections.beforeShare.newKeyAfter}
               </p>
             </div>
           </section>
@@ -342,115 +275,93 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>High-risk keys: encrypt locally first</SectionHeading>
-            <p>
-              Most API keys are replaceable: staging tokens, short-lived integration secrets, and narrowly scoped
-              credentials you plan to rotate. For those, browser-encrypted one-time delivery is usually enough.
-            </p>
-            <p>
-              Some keys carry more weight — production admin access, signing keys, root cloud credentials, or
-              anything long-lived that would be painful or impossible to revoke cleanly. Treat those like master
-              secrets:{" "}
-              <strong className="font-semibold text-gray-900 dark:text-white">
-                encrypt locally before any web upload
-              </strong>
-              , then send ciphertext through PrivateNote.
-            </p>
+            <SectionHeading>{article.sections.highRisk.title}</SectionHeading>
+            <p>{article.sections.highRisk.p1}</p>
+            <p>{renderInlineContent(article.sections.highRisk.p2, resolveLink)}</p>
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
               <div className="mb-3 flex items-center gap-2 font-bold text-amber-900 dark:text-amber-100">
                 <Lock className="h-5 w-5" aria-hidden />
-                Local encryption first
+                {article.sections.highRisk.calloutHeading}
               </div>
               <ul className="space-y-2 text-sm leading-relaxed text-amber-950 dark:text-amber-100">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-                  <span>
-                    <strong className="font-semibold">age</strong> — simplest defaults for file encryption (
-                    <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs dark:bg-amber-950/50">age -p -o key.txt.age key.txt</code>
-                    )
-                  </span>
+                  <span>{renderInlineContent(article.sections.highRisk.ageBullet, resolveLink)}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-                  <span>
-                    <strong className="font-semibold">OpenSSL</strong> — trusted CLI if you already know the flags
-                  </span>
+                  <span>{renderInlineContent(article.sections.highRisk.opensslBullet, resolveLink)}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-                  <span>
-                    Upload the encrypted file with PrivateNote; send the decryption passphrase on a{" "}
-                    <strong className="font-semibold">separate channel</strong> (Signal, phone, in person)
-                  </span>
+                  <span>{renderInlineContent(article.sections.highRisk.separateChannelBullet, resolveLink)}</span>
                 </li>
               </ul>
             </div>
-            <p>
-              The same workflow applies to cryptocurrency seed phrases and other irreplaceable master secrets. See{" "}
-              <BlogInlineLink slug="crypto-seed-phrase-one-time-link">
-                crypto seed phrases and one-time links
-              </BlogInlineLink>{" "}
-              for the full age/OpenSSL walkthrough, passphrase tips, and when one-time links are — and are not — the
-              right tool.
-            </p>
+            <p>{renderInlineContent(article.sections.highRisk.outro, resolveLink)}</p>
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>A safer handoff workflow</SectionHeading>
-            <p className="text-pretty">
-              When a human needs the key—not when an app retrieves it at runtime—follow this sequence.
-            </p>
-            <HandoffFlowDiagram />
+            <SectionHeading>{article.sections.handoff.title}</SectionHeading>
+            <p className="text-pretty">{article.sections.handoff.intro}</p>
+            <figure className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 dark:border-primary/25 dark:bg-primary/[0.07] sm:p-6">
+              <figcaption className="mb-4 text-xs font-semibold uppercase tracking-wider text-primary/80 dark:text-primary/70">
+                {article.sections.handoff.diagramCaption}
+              </figcaption>
+              <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch sm:gap-x-1 sm:gap-y-0">
+                {article.handoffSteps.map((step, index) => (
+                  <React.Fragment key={step.key}>
+                    <HandoffFlowNode
+                      icon={handoffIcons[step.key]}
+                      label={step.label}
+                      detail={step.detail}
+                    />
+                    {index < article.handoffSteps.length - 1 ? <HandoffFlowArrow /> : null}
+                  </React.Fragment>
+                ))}
+              </div>
+              <p className="mt-4 text-center text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                {article.sections.handoff.diagramFootnote}
+              </p>
+            </figure>
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>How PrivateNote fits the handoff</SectionHeading>
-            <p>
-              PrivateNote is built for the human-to-human moment: API keys, SSH private keys, database
-              credentials, recovery codes, webhook signing secrets, and temporary passwords that need to reach
-              one person without becoming a permanent record.
-            </p>
-            <p>
-              The secret is encrypted in your browser before upload. PrivateNote stores ciphertext, not
-              plaintext. The decryption key lives in the URL fragment — the part after the <code>#</code> —
-              which browsers do not send to the server when loading the page.
-            </p>
+            <SectionHeading>{article.sections.privateNote.title}</SectionHeading>
+            <p>{article.sections.privateNote.p1}</p>
+            <p>{renderInlineContent(article.sections.privateNote.p2, resolveLink)}</p>
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
               <p className="mb-3 font-mono text-sm text-gray-800 dark:text-gray-100">
-                https://privatenote.ai/note/abc123#kL8mN4...
+                {article.sections.privateNote.urlExample}
               </p>
               <ul className="space-y-2 text-sm">
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
-                  <span>The server receives the note ID and encrypted payload.</span>
+                  <span>{article.sections.privateNote.bullet1}</span>
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
-                  <span>The server does not receive the decryption key.</span>
+                  <span>{article.sections.privateNote.bullet2}</span>
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden />
-                  <span>Burn-after-reading and expiration limit how long the encrypted note exists.</span>
+                  <span>{article.sections.privateNote.bullet3}</span>
                 </li>
               </ul>
             </div>
-            <p>
-              PrivateNote complements dedicated secret stores — it closes the gap when you need to send a
-              Stripe key to an integration partner, share a temporary OpenAI key with a contractor, or give a
-              teammate one-time access to a staging credential.
-            </p>
+            <p>{article.sections.privateNote.p3}</p>
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>Frequently asked questions</SectionHeading>
+            <SectionHeading>{article.sections.faq.title}</SectionHeading>
             <div className="space-y-4">
-              {faqs.map((faq) => (
+              {article.faqs.map((faq) => (
                 <div key={faq.question}>
                   <p>
                     <strong className="font-semibold text-gray-900 dark:text-white">{faq.question}</strong>
@@ -464,28 +375,19 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
           <hr className="border-gray-200 dark:border-gray-800" />
 
           <section className="space-y-4">
-            <SectionHeading>The bottom line</SectionHeading>
-            <p>
-              Most API key leaks do not happen because cryptography failed. They happen because someone copied
-              a secret into a permanent, searchable system out of convenience. Scope keys tightly, share them
-              only when necessary, and avoid leaving a plaintext trail in chat, tickets, email, or Git.
-            </p>
+            <SectionHeading>{article.sections.bottomLine.title}</SectionHeading>
+            <p>{article.sections.bottomLine.body}</p>
           </section>
         </div>
 
         <div className="mt-12 rounded-2xl border border-primary/20 bg-primary/5 p-6">
-          <h2 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-            Share an API key without leaving it in chat
-          </h2>
-          <p className="mb-5 text-gray-700 dark:text-gray-300">
-            Create a browser-encrypted, burn-after-reading PrivateNote link. No account required for one-time
-            notes.
-          </p>
+          <h2 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">{article.ctaTitle}</h2>
+          <p className="mb-5 text-gray-700 dark:text-gray-300">{article.ctaBody}</p>
           <Link
             href={homePath}
             className="inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-primary/90"
           >
-            Create a PrivateNote -&gt;
+            {article.ctaButton}
           </Link>
         </div>
 

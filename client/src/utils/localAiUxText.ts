@@ -79,6 +79,14 @@ export function localAiWorkingLabel(): string {
   return tx().localAiWorking;
 }
 
+export function localAiPreparingPrivateLabel(): string {
+  return tx().localAiPreparingPrivate;
+}
+
+export function localAiPreparingPrivateAttemptLabel(label: string): string {
+  return interpolate(tx().localAiPreparingPrivateAttempt, { label });
+}
+
 export function localAiLoadingPrivateLabel(): string {
   return tx().localAiLoadingPrivate;
 }

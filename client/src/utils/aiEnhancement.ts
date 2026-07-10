@@ -11,7 +11,7 @@ import {
   type ProgressCallback,
   type WebLLMBrowserSupportLevel,
 } from "./clientLLM";
-import { localAiAnalyzingPromptLabel, localAiAnalyzingDetailHint } from "./localAiUxText";
+import { localAiAnalyzingPromptLabel, localAiAnalyzingDetailHint, localAiPreparingPrivateLabel, localAiPreparingPrivateAttemptLabel } from "./localAiUxText";
 
 export interface AiEnhanceResponse {
   content: string;
@@ -53,7 +53,7 @@ export async function enhanceNoteHybrid(
       if (onProgress) {
         onProgress({
           progress: 0,
-          text: "Preparing private AI…",
+          text: localAiPreparingPrivateLabel(),
         });
       }
       await initializeClientLLM(onProgress);

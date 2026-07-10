@@ -5,14 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { CheckCircle2, Loader2, AlertCircle, Mail } from "lucide-react";
+import type { Translations } from "@/utils/translations/types";
 
-/**
- * After we strip ?token= / ?t= from the address bar, the token stays in module memory until
- * verify finishes so Strict Mode remounts still see it. Not persisted to storage (unlike
- * sessionStorage), so other same-origin scripts cannot read it via the Storage API.
- * Cleared after cancel, when verify finishes (success or error, matching AuthMagic consume), or when leaving the flow.
- */
 let emailChangeTokenCache: string | null = null;
 
 function clearEmailChangeTokenCache(): void {
@@ -33,16 +29,16 @@ function takeEmailChangeTokenOnce(): string | null {
   return emailChangeTokenCache;
 }
 
-const EMAIL_CHANGE_ERROR_COPY: Record<string, string> = {
-  email_change_token_missing: "This page needs a verification token from your email. Open the link from your verification message.",
-  email_change_token_invalid:
-    "This verification link has expired or was already used. Please request a new email change from Security settings.",
-  email_change_payload_invalid:
-    "We couldn’t read this verification link (data error). Please request a new email change.",
-  email_change_account_gone: "This account no longer exists, so the email change can’t be completed.",
-  email_change_email_unavailable:
-    "That email address is no longer available on this service. Please start a new change and pick a different address.",
-};
+function emailChangeErrorCopy(t: Translations, code: string): string | undefined {
+  const map: Record<string, string | undefined> = {
+    email_change_token_missing: t.authEmailChangeErrTokenMissing,
+    email_change_token_invalid: t.authEmailChangeErrTokenInvalid,
+    email_change_payload_invalid: t.authEmailChangeErrPayloadInvalid,
+    email_change_account_gone: t.authEmailChangeErrAccountGone,
+    email_change_email_unavailable: t.authEmailChangeErrEmailUnavailable,
+  };
+  return map[code];
+}
 
 type Phase = "pending" | "confirm" | "loading" | "success" | "error";
 
@@ -50,32 +46,32 @@ export default function AuthEmailChange() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { refresh } = useAuth();
+  const { t } = useLanguage();
   const [phase, setPhase] = useState<Phase>("pending");
   const [message, setMessage] = useState<string>("");
   const [newEmail, setNewEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const verifyInFlightRef = useRef(false);
-  /** Drives disabled on Confirm while a request is starting (before phase switches to loading). */
   const [verifyBusy, setVerifyBusy] = useState(false);
 
   useEffect(() => {
-    const t = takeEmailChangeTokenOnce();
-    if (!t) {
+    const tok = takeEmailChangeTokenOnce();
+    if (!tok) {
       setPhase("error");
-      setMessage("Missing verification token. Open the link from your verification email.");
+      setMessage(t.authEmailChangeMissingToken);
       return;
     }
-    setToken(t);
-    setMessage("You requested an email change. Confirm it here to update your account email.");
+    setToken(tok);
+    setMessage(t.authEmailChangeConfirmPrompt);
     setPhase("confirm");
-  }, []);
+  }, [t.authEmailChangeConfirmPrompt, t.authEmailChangeMissingToken]);
 
   const runVerify = async () => {
     if (!token || phase === "loading" || verifyInFlightRef.current) return;
     verifyInFlightRef.current = true;
     setVerifyBusy(true);
     setPhase("loading");
-    setMessage("Updating your email address…");
+    setMessage(t.authEmailChangeUpdatingMessage);
 
     try {
       const response = await apiRequest<{
@@ -86,14 +82,14 @@ export default function AuthEmailChange() {
       }>("/api/auth/email/change/verify", "POST", { token });
       setToken(null);
       setPhase("success");
-      setMessage("Your email address has been updated.");
+      setMessage(t.authEmailChangeSuccessMessage);
       if (response.newEmail) {
         setNewEmail(response.newEmail);
       }
       await refresh();
       toast({
-        title: "Email updated",
-        description: "Your email address has been changed successfully.",
+        title: t.authEmailChangeToastTitle,
+        description: t.authEmailChangeToastDesc,
       });
     } catch (error) {
       setPhase("error");
@@ -103,7 +99,7 @@ export default function AuthEmailChange() {
       if (reqError) {
         try {
           const body = JSON.parse(reqError.bodyText) as { message?: string; code?: string };
-          const byCode = body.code && EMAIL_CHANGE_ERROR_COPY[body.code];
+          const byCode = body.code ? emailChangeErrorCopy(t, body.code) : undefined;
           if (byCode) {
             setMessage(byCode);
             return;
@@ -116,7 +112,7 @@ export default function AuthEmailChange() {
           /* ignore */
         }
       }
-      setMessage("We couldn't verify your new email address. Please try again.");
+      setMessage(t.authEmailChangeVerifyFailed);
     } finally {
       verifyInFlightRef.current = false;
       setVerifyBusy(false);
@@ -138,10 +134,8 @@ export default function AuthEmailChange() {
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto mb-4" />
-              <CardTitle className="text-xl">Loading…</CardTitle>
-              <CardDescription className="text-base mt-2">
-                Checking your verification link and preparing this page.
-              </CardDescription>
+              <CardTitle className="text-xl">{t.authEmailChangeLoadingTitle}</CardTitle>
+              <CardDescription className="text-base mt-2">{t.authEmailChangeLoadingDesc}</CardDescription>
             </CardHeader>
           </Card>
         )}
@@ -150,22 +144,20 @@ export default function AuthEmailChange() {
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
-                <div className="relative">
-                  <Mail className="h-12 w-12 text-primary" />
-                </div>
+                <Mail className="h-12 w-12 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Confirm email change</CardTitle>
+              <CardTitle className="text-2xl">{t.authEmailChangeConfirmTitle}</CardTitle>
               <CardDescription className="text-base mt-2">{message}</CardDescription>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center text-balance max-w-md mt-3">
-                This confirmation step helps prevent automated email scanners from changing your address without you.
+                {t.authEmailChangeConfirmHint}
               </p>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               <Button size="lg" onClick={() => void runVerify()} disabled={confirmSubmitDisabled}>
-                Confirm new email
+                {t.authEmailChangeConfirmButton}
               </Button>
               <Button variant="outline" size="sm" onClick={handleCancel}>
-                Cancel
+                {t.authEmailChangeCancel}
               </Button>
             </CardContent>
           </Card>
@@ -175,12 +167,9 @@ export default function AuthEmailChange() {
           <Card className="border-2">
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
-                <div className="relative">
-                  <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                  <Mail className="h-6 w-6 text-primary absolute -top-1 -right-1 animate-pulse" />
-                </div>
+                <Loader2 className="h-12 w-12 text-primary animate-spin" />
               </div>
-              <CardTitle className="text-2xl">Updating your email…</CardTitle>
+              <CardTitle className="text-2xl">{t.authEmailChangeUpdatingTitle}</CardTitle>
               <CardDescription className="text-base mt-2">{message}</CardDescription>
             </CardHeader>
           </Card>
@@ -189,40 +178,29 @@ export default function AuthEmailChange() {
         {phase === "success" && (
           <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
             <CardHeader className="text-center pb-4">
-              <div className="flex justify-center mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl"></div>
-                  <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-500 relative z-10" />
-                </div>
+              <CheckCircle2 className="h-16 w-16 text-green-600 dark:text-green-500 mx-auto mb-4" />
+              <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
+                {t.authEmailChangeBadge}
+              </p>
+              <CardTitle className="text-3xl text-gray-900 dark:text-white">{t.authEmailChangeSuccessTitle}</CardTitle>
+              <CardDescription className="text-lg text-gray-700 dark:text-gray-300">{message}</CardDescription>
+              <div className="text-base text-gray-600 dark:text-gray-400 text-center pt-2 space-y-2">
+                <p className="text-balance">{t.authEmailChangeSuccessUseEmail}</p>
+                <p className="text-balance">{t.authEmailChangeSuccessOldEmail}</p>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
-                  Email Change
+              {newEmail && (
+                <p className="text-sm font-mono text-gray-600 dark:text-gray-400 mt-2">
+                  {t.authEmailChangeNewEmailLabel} {newEmail}
                 </p>
-                <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                  Email Updated
-                </CardTitle>
-                <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
-                  {message}
-                </CardDescription>
-                <div className="text-base text-gray-600 dark:text-gray-400 text-center pt-2 space-y-2">
-                  <p className="text-balance">Use this email the next time you sign in.</p>
-                  <p className="text-balance">Your previous email is no longer linked to this account.</p>
-                </div>
-                {newEmail && (
-                  <p className="text-sm font-mono text-gray-600 dark:text-gray-400 mt-2">
-                    New email: {newEmail}
-                  </p>
-                )}
-              </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button onClick={() => setLocation("/account")} size="lg">
-                  Go to Security Settings
+                  {t.authEmailChangeGoToSecurity}
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/")} size="lg">
-                  Go to Home
+                  {t.authEmailChangeGoToHome}
                 </Button>
               </div>
             </CardContent>
@@ -232,37 +210,24 @@ export default function AuthEmailChange() {
         {phase === "error" && (
           <Card className="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
             <CardHeader className="text-center pb-4">
-              <div className="flex justify-center mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl"></div>
-                  <AlertCircle className="h-16 w-16 text-red-600 dark:text-red-500 relative z-10" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
-                  Email Change
-                </p>
-                <CardTitle className="text-3xl text-gray-900 dark:text-white">
-                  Verification Failed
-                </CardTitle>
-                <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
-                  {message}
-                </CardDescription>
-              </div>
+              <AlertCircle className="h-16 w-16 text-red-600 dark:text-red-500 mx-auto mb-4" />
+              <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+                {t.authEmailChangeBadge}
+              </p>
+              <CardTitle className="text-3xl text-gray-900 dark:text-white">{t.authEmailChangeFailedTitle}</CardTitle>
+              <CardDescription className="text-lg text-gray-700 dark:text-gray-300">{message}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button onClick={() => setLocation("/account")} size="lg">
-                  Go to Security Settings
+                  {t.authEmailChangeGoToSecurity}
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/")} size="lg">
-                  Go to Home
+                  {t.authEmailChangeGoToHome}
                 </Button>
               </div>
               <div className="rounded-lg bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-                <p className="text-sm text-red-800 dark:text-red-300 text-center">
-                  <strong>Note:</strong> Verification links expire after 1 hour and can only be used once.
-                </p>
+                <p className="text-sm text-red-800 dark:text-red-300 text-center">{t.authEmailChangeExpiryNote}</p>
               </div>
             </CardContent>
           </Card>

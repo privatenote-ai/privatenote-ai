@@ -8,7 +8,7 @@ import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/component
 import { BlogPostCrossLinks } from '@/components/blog/BlogPostCrossLinks';
 
 export const PrivacyToolsPost: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const homePath = localizedPath('/', language);
 
   return (

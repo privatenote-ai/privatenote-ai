@@ -6,14 +6,26 @@ import type { SupportedLanguage } from "@/utils/translation";
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { endToEndEncryptionDefinitionDe } from "@/components/blog/locale/endToEndEncryptionDefinition.de";
 import { endToEndEncryptionDefinitionEn } from "@/components/blog/locale/endToEndEncryptionDefinition.en";
+import { endToEndEncryptionDefinitionEs } from "@/components/blog/locale/endToEndEncryptionDefinition.es";
+import { endToEndEncryptionDefinitionFr } from "@/components/blog/locale/endToEndEncryptionDefinition.fr";
 import { endToEndEncryptionDefinitionHr } from "@/components/blog/locale/endToEndEncryptionDefinition.hr";
+import { endToEndEncryptionDefinitionIt } from "@/components/blog/locale/endToEndEncryptionDefinition.it";
+import { endToEndEncryptionDefinitionNl } from "@/components/blog/locale/endToEndEncryptionDefinition.nl";
+import { endToEndEncryptionDefinitionPt } from "@/components/blog/locale/endToEndEncryptionDefinition.pt";
 import type { E2eeDefinitionArticleCopy } from "@/components/blog/locale/endToEndEncryptionDefinition.types";
 import { endToEndEncryptionDefinitionSr } from "@/components/blog/locale/endToEndEncryptionDefinition.sr";
 
 const copy: Partial<Record<SupportedLanguage, E2eeDefinitionArticleCopy>> & { en: E2eeDefinitionArticleCopy } = {
   en: endToEndEncryptionDefinitionEn,
+  de: endToEndEncryptionDefinitionDe,
+  es: endToEndEncryptionDefinitionEs,
+  fr: endToEndEncryptionDefinitionFr,
   hr: endToEndEncryptionDefinitionHr,
+  it: endToEndEncryptionDefinitionIt,
+  nl: endToEndEncryptionDefinitionNl,
+  pt: endToEndEncryptionDefinitionPt,
   sr: endToEndEncryptionDefinitionSr,
 };
 

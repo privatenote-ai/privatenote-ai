@@ -1,5 +1,6 @@
 import { Info, X } from "lucide-react";
 import { findTrustedPartner } from "@/config/trustedPrefillPartners";
+import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -13,6 +14,8 @@ type Props = {
  * Trusted allowlisted partners can ship branding (logo + Rams palette); others stay neutral amber.
  */
 export function PrefillPartnerBanner({ visible, referrer, onDismiss }: Props) {
+  const { t } = useLanguage();
+
   if (!visible) return null;
 
   const partner = findTrustedPartner(referrer);
@@ -47,23 +50,23 @@ export function PrefillPartnerBanner({ visible, referrer, onDismiss }: Props) {
         <span className="block leading-snug">
           {partner ? (
             <>
-              This note was pre-filled by <strong className="font-semibold">{partner.displayName}</strong>.
-              PrivateNote has not created or shared anything yet.
+              {t.prefillPartnerBodyPrefix}{" "}
+              <strong className="font-semibold">{partner.displayName}</strong>. {t.prefillPartnerBodySuffix}
             </>
           ) : (
-            <>This note was pre-filled from an external website. PrivateNote has not created or shared anything yet.</>
+            <>{t.prefillPartnerBodyNeutral}</>
           )}
         </span>
         {branded ? (
           <span className="mt-1.5 block text-xs leading-snug text-rams-concrete dark:text-rams-steel">
-            Your text stays on this device until you encrypt and create the note.
+            {t.prefillPartnerDeviceHint}
           </span>
         ) : null}
       </span>
 
       <button
         type="button"
-        aria-label="Dismiss pre-fill notice"
+        aria-label={t.prefillDismissAriaLabel}
         onClick={onDismiss}
         className={cn(
           "shrink-0 rounded-md p-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1",

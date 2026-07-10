@@ -23,6 +23,7 @@ function routeListedInSitemap(xml: string, route: string): boolean {
 
 test("normalizeMarketingPathname strips trailing slash", () => {
   assert.equal(normalizeMarketingPathname("/terms/"), "/terms");
+  assert.equal(normalizeMarketingPathname("/de/how-it-works/"), "/de/how-it-works");
   assert.equal(normalizeMarketingPathname("/"), "/");
 });
 
