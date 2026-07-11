@@ -19,7 +19,7 @@ import { chatControlCryptographersSr } from "@/components/blog/locale/chatContro
 import type { ChatControlCryptographersArticleCopy } from "@/components/blog/locale/chatControlCryptographers.types";
 import { cn } from "@/lib/utils";
 
-const heroImagePath = "/images/blog-chat-control-is-back-hero.png";
+const heroImagePath = "/images/blog-chat-control-is-back-hero.jpg";
 const bartPreneelLinkedInPostUrl =
   "https://www.linkedin.com/feed/update/urn:li:activity:7480027993994768384/";
 const scientistOpenLetterSep2025Url = "https://csa-scientist-open-letter.org/Sep2025";
@@ -93,8 +93,9 @@ export const ChatControlCryptographersPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt={article.heroAlt}
+              width={1000}
+              height={562}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
-              loading="lazy"
             />
             <figcaption className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
               {article.heroCaption}

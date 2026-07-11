@@ -4,16 +4,47 @@ import { Link } from 'wouter';
 import { useLanguage } from '@/context/LanguageContext';
 import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
-import { 
-  ChevronLeft, 
-  ExternalLink, 
-  Shield, 
-  Lock, 
-  Globe, 
-  Smartphone, 
+import { VpnServicesGuide } from '@/components/security-guides/VpnServicesGuide';
+import { PasswordManagersGuide } from '@/components/security-guides/PasswordManagersGuide';
+import {
+  ExternalLink,
+  Shield,
+  Lock,
+  Globe,
+  Smartphone,
   Mail,
-  Search
+  Search,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
+
+type GuideProvider = {
+  name: string;
+  tagline: string;
+  description: string;
+  link: string;
+  highlights: string[];
+};
+
+type GuideSection = {
+  title: string;
+  content: string;
+  bullets?: string[];
+  providers?: GuideProvider[];
+  callout?: { tone: 'info' | 'warning'; text: string };
+  link?: string;
+  linkText?: string;
+  plain?: boolean;
+};
+
+type GuideContent = {
+  title: string;
+  icon: React.ReactNode;
+  description: string;
+  sections: GuideSection[];
+  showTitleIcon?: boolean;
+  showBackLink?: boolean;
+};
 
 const SecurityGuideDetail: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -21,64 +52,26 @@ const SecurityGuideDetail: React.FC = () => {
   const topicId = params?.topicId || '';
 
   useEffect(() => {
+    if (topicId === 'vpn' || topicId === 'password') return;
     if (language !== "en") {
       setLanguage("en");
     }
-  }, [language, setLanguage]);
+  }, [language, setLanguage, topicId]);
 
-  // Mock content for each guide topic
-  const guides: Record<string, {
-    title: string;
-    icon: React.ReactNode;
-    description: string;
-    sections: Array<{
-      title: string;
-      content: string;
-      link?: string;
-      linkText?: string;
-    }>;
-  }> = {
+  const guides: Record<string, GuideContent> = {
     vpn: {
       title: 'VPN Services Guide',
       icon: <Globe className="h-8 w-8 text-blue-500" />,
-      description: 'Learn how VPNs protect internet browsing, reduce exposure on public Wi-Fi, hide your IP address, and fit into a practical privacy setup.',
-      sections: [
-        {
-          title: 'What is a VPN?',
-          content: 'A Virtual Private Network (VPN) encrypts your internet connection, hiding your IP address and protecting your online activity from ISPs, hackers, and other third parties.',
-        },
-        {
-          title: 'Why Use a VPN?',
-          content: 'VPNs help protect your privacy on public Wi-Fi, prevent tracking by websites and advertisers, bypass geographical restrictions, and reduce the risk of data theft.',
-        },
-        {
-          title: 'Recommended VPN Providers',
-          content: 'We recommend privacy-focused VPN services that have been independently audited, maintain a strict no-logs policy, and offer strong encryption.',
-          link: 'https://protonvpn.com/',
-          linkText: 'ProtonVPN - Swiss-based privacy-focused VPN',
-        }
-      ],
+      description:
+        'A practical guide to choosing a reputable VPN: what they protect, what they cannot fix, and why providers like Proton VPN, Mullvad, and NymVPN stand out.',
+      sections: [],
     },
     password: {
       title: 'Password Managers Guide',
       icon: <Lock className="h-8 w-8 text-indigo-500" />,
-      description: 'Learn how password managers generate unique passwords, store them safely, reduce reuse, and make stronger account security practical.',
-      sections: [
-        {
-          title: 'Why Password Managers are Essential',
-          content: 'Password managers help you create unique, complex passwords for every site, remember them for you, and automatically fill them in when needed, drastically improving your security.',
-        },
-        {
-          title: 'How Password Managers Work',
-          content: 'Password managers encrypt your password vault with a master password. They can sync across devices, generate random passwords, and autofill credentials on websites and apps.',
-        },
-        {
-          title: 'Recommended Password Managers',
-          content: 'Look for open-source options with robust security features, cross-platform compatibility, and regular security audits.',
-          link: 'https://bitwarden.com/',
-          linkText: 'Bitwarden - Open-source password management',
-        }
-      ],
+      description:
+        'Create, store, and share passwords securely with KeePass, Bitwarden, Apple Passwords, Google Password Manager, Passwords.lu, and PrivateNote.',
+      sections: [],
     },
     messenger: {
       title: 'Secure Messaging Guide',
@@ -158,6 +151,7 @@ const SecurityGuideDetail: React.FC = () => {
   };
 
   useEffect(() => {
+    if (topicId === 'vpn' || topicId === 'password') return;
     const g = guides[topicId];
     if (g) {
       setDocumentMeta(buildDocumentTitle(g.title), g.description);
@@ -169,6 +163,105 @@ const SecurityGuideDetail: React.FC = () => {
     );
   }, [topicId, t]);
 
+  const renderSectionBody = (section: GuideSection) => (
+    <>
+      <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">{section.title}</h2>
+      <p className="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{section.content}</p>
+
+      {section.bullets && section.bullets.length > 0 && (
+        <ul className="space-y-2 mb-5">
+          {section.bullets.map((item) => (
+            <li key={item} className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+              <span className="leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {section.callout && (
+        <div
+          className={`flex items-start gap-3 rounded-2xl border p-4 mb-5 ${
+            section.callout.tone === 'warning'
+              ? 'border-amber-200/80 bg-amber-50/80 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
+              : 'border-blue-200/80 bg-blue-50/80 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100'
+          }`}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <p className="text-sm leading-relaxed">{section.callout.text}</p>
+        </div>
+      )}
+
+      {section.providers && section.providers.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-1">
+          {section.providers.map((provider) => (
+            <div
+              key={provider.name}
+              className="rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-white/70 dark:bg-gray-950/40 p-5 md:p-6"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-3">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{provider.name}</h3>
+                  <p className="text-sm text-primary font-medium mt-1">{provider.tagline}</p>
+                </div>
+                <a
+                  href={provider.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors shrink-0"
+                >
+                  Visit {provider.name}
+                  <ExternalLink className="h-4 w-4 ml-1.5" />
+                </a>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{provider.description}</p>
+              <ul className="space-y-2">
+                {provider.highlights.map((highlight) => (
+                  <li key={highlight} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                    <span>{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {section.link && (
+        section.link.startsWith('http') ? (
+          <a
+            href={section.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-primary hover:underline font-medium"
+          >
+            {section.linkText || 'Learn more'}
+            <ExternalLink className="h-4 w-4 ml-1" />
+          </a>
+        ) : (
+          <Link
+            href={localizedPath(section.link, language)}
+            className="inline-flex items-center text-primary hover:underline font-medium"
+          >
+            {section.linkText || 'Learn more'}
+          </Link>
+        )
+      )}
+    </>
+  );
+
+  const showTitleIcon = rawGuide?.showTitleIcon !== false;
+  const showBackLink = rawGuide?.showBackLink !== false;
+
+  if (topicId === 'vpn') {
+    return <VpnServicesGuide />;
+  }
+
+  if (topicId === 'password') {
+    return <PasswordManagersGuide />;
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24 relative">
       {/* Ambient Background Glows */}
@@ -176,17 +269,18 @@ const SecurityGuideDetail: React.FC = () => {
       <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-blue-500/10 blur-[100px] -z-10" />
 
       <div className="max-w-4xl mx-auto text-center mb-12">
-        <Link
-          href={localizedPath('/security-resources', language)}
-          className="inline-flex items-center text-sm font-semibold text-primary hover:gap-2 transition-all mb-8 group"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Security Resources
-        </Link>
+        {showBackLink && (
+          <Link
+            href={localizedPath('/security-resources', language)}
+            className="inline-flex items-center text-sm font-semibold text-primary hover:gap-2 transition-all mb-8 group"
+          >
+            Back to Security Resources
+          </Link>
+        )}
 
         <div className="flex items-center justify-center mb-4">
-          {guide.icon}
-          <h1 className="page-title ml-3 text-gray-900 dark:text-white">
+          {showTitleIcon && guide.icon}
+          <h1 className={`page-title text-gray-900 dark:text-white ${showTitleIcon ? 'ml-3' : ''}`}>
             {guide.title}
           </h1>
         </div>
@@ -197,27 +291,20 @@ const SecurityGuideDetail: React.FC = () => {
       </div>
 
       <div className="space-y-10 mb-16">
-        {guide.sections.map((section, index) => (
-          <div
-            key={index}
-            className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-200/50 dark:border-gray-800/50 shadow-2xl shadow-gray-200/40 dark:shadow-none p-6 md:p-8"
-          >
-            <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">{section.title}</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">{section.content}</p>
-
-            {section.link && (
-              <a
-                href={section.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-primary hover:underline font-medium"
-              >
-                {section.linkText || 'Learn more'}
-                <ExternalLink className="h-4 w-4 ml-1" />
-              </a>
-            )}
-          </div>
-        ))}
+        {guide.sections.map((section, index) =>
+          section.plain ? (
+            <div key={index} className="max-w-3xl mx-auto">
+              {renderSectionBody(section)}
+            </div>
+          ) : (
+            <div
+              key={index}
+              className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-200/50 dark:border-gray-800/50 shadow-2xl shadow-gray-200/40 dark:shadow-none p-6 md:p-8"
+            >
+              {renderSectionBody(section)}
+            </div>
+          ),
+        )}
       </div>
 
       <div className="bg-white/60 dark:bg-gray-900/40 backdrop-blur-xl rounded-[2rem] border border-gray-200/50 dark:border-gray-800/50 p-6 md:p-8 mb-12">

@@ -1000,6 +1000,621 @@
     }
   }
 
+  /* VPN tunnel diagram (security guide) */
+  @keyframes vpn-tunnel-packet-flow {
+    0% {
+      left: 0%;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.6);
+    }
+    8% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+    92% {
+      opacity: 1;
+    }
+    100% {
+      left: 100%;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.6);
+    }
+  }
+
+  @keyframes vpn-tunnel-packet-open {
+    0% {
+      left: 0%;
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.85;
+    }
+    100% {
+      left: 100%;
+      opacity: 0;
+    }
+  }
+
+  @keyframes vpn-tunnel-glow-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes vpn-tunnel-mesh-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  @keyframes vpn-tunnel-lock-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
+    }
+  }
+
+  .vpn-tunnel-stage {
+    position: relative;
+    margin-inline: auto;
+    width: 100%;
+    max-width: 56rem;
+    border-radius: 1.75rem;
+    padding: 1.25rem 1rem 1.5rem;
+    background: linear-gradient(
+      165deg,
+      hsl(var(--primary) / 0.09) 0%,
+      hsl(217 91% 60% / 0.05) 42%,
+      hsl(var(--background) / 0.4) 100%
+    );
+    border: 1px solid hsl(var(--primary) / 0.18);
+    box-shadow:
+      0 1px 0 hsl(var(--primary) / 0.1) inset,
+      0 22px 48px -36px hsl(var(--primary) / 0.45);
+  }
+
+  .vpn-tunnel-stage__caption {
+    margin: 0 0 1rem;
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(var(--primary));
+  }
+
+  .vpn-tunnel-diagram {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 2.2fr) minmax(0, 1fr) minmax(2.5rem, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .vpn-tunnel-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.35rem;
+  }
+
+  .vpn-tunnel-node__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    background: hsl(var(--background) / 0.85);
+    border: 1px solid hsl(var(--primary) / 0.22);
+    color: hsl(var(--primary));
+    box-shadow: 0 8px 24px -16px hsl(var(--primary) / 0.55);
+  }
+
+  .vpn-tunnel-node__icon--server {
+    border-color: hsl(217 91% 60% / 0.35);
+    color: hsl(217 91% 55%);
+  }
+
+  .vpn-tunnel-node__icon--web {
+    border-color: hsl(160 84% 39% / 0.35);
+    color: hsl(160 84% 35%);
+  }
+
+  .vpn-tunnel-node__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+  }
+
+  .vpn-tunnel-node__meta {
+    font-size: 0.62rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .vpn-tunnel-path {
+    position: relative;
+    min-width: 0;
+  }
+
+  .vpn-tunnel-path__tube {
+    position: relative;
+    height: 2.75rem;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 2px solid hsl(var(--primary) / 0.45);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.08) 0%,
+      hsl(var(--primary) / 0.2) 50%,
+      hsl(var(--primary) / 0.08) 100%
+    );
+    box-shadow:
+      0 0 24px hsl(var(--primary) / 0.15) inset,
+      0 0 18px hsl(var(--primary) / 0.12);
+  }
+
+  .vpn-tunnel-path__tube--open {
+    height: 0.45rem;
+    border-color: hsl(var(--border));
+    background: hsl(var(--muted) / 0.35);
+    box-shadow: none;
+  }
+
+  .vpn-tunnel-path__glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--primary) / 0.35),
+      transparent
+    );
+    animation: vpn-tunnel-glow-pulse 2.8s ease-in-out infinite;
+  }
+
+  .vpn-tunnel-path__mesh {
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      hsl(var(--primary) / 0.12) 6px,
+      hsl(var(--primary) / 0.12) 8px
+    );
+    background-size: 200% 100%;
+    animation: vpn-tunnel-mesh-shift 4s linear infinite;
+  }
+
+  .vpn-tunnel-packet {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.75);
+    animation: vpn-tunnel-packet-flow 2.8s linear infinite;
+  }
+
+  .vpn-tunnel-packet--open {
+    width: 0.4rem;
+    height: 0.4rem;
+    background: hsl(160 84% 39%);
+    box-shadow: 0 0 6px hsl(160 84% 39% / 0.5);
+    animation-name: vpn-tunnel-packet-open;
+    animation-duration: 2.2s;
+  }
+
+  .vpn-tunnel-path__lock {
+    position: absolute;
+    left: 50%;
+    top: -0.65rem;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(var(--primary));
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--primary) / 0.35);
+    animation: vpn-tunnel-lock-pulse 2.8s ease-in-out infinite;
+    white-space: nowrap;
+  }
+
+  .vpn-tunnel-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.1rem;
+  }
+
+  .vpn-tunnel-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .vpn-tunnel-legend__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
+    animation: vpn-tunnel-glow-pulse 2.8s ease-in-out infinite;
+  }
+
+  @media (max-width: 767px) {
+    .vpn-tunnel-diagram {
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+    }
+
+    .vpn-tunnel-path--open {
+      display: none;
+    }
+
+    .vpn-tunnel-node--web {
+      order: 5;
+    }
+
+    .vpn-tunnel-path__tube {
+      height: 2.2rem;
+    }
+
+    .vpn-tunnel-path__lock {
+      position: static;
+      transform: none;
+      margin-top: 0.45rem;
+      justify-content: center;
+      width: fit-content;
+      margin-inline: auto;
+    }
+  }
+
+  /* Password vault diagram (security guide) */
+  @keyframes password-vault-token-in {
+    0% {
+      left: 0%;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.5);
+    }
+    12% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+    88% {
+      opacity: 1;
+    }
+    100% {
+      left: 100%;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.5);
+    }
+  }
+
+  @keyframes password-vault-token-sync {
+    0% {
+      left: 0%;
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.9;
+    }
+    100% {
+      left: 100%;
+      opacity: 0;
+    }
+  }
+
+  @keyframes password-vault-shimmer {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(120%);
+    }
+  }
+
+  @keyframes password-vault-chip-pop {
+    0%,
+    100% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    35%,
+    70% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes password-vault-lock-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+    }
+  }
+
+  .password-vault-stage {
+    position: relative;
+    margin-inline: auto;
+    width: 100%;
+    max-width: 56rem;
+    border-radius: 1.75rem;
+    padding: 1.25rem 1rem 1.5rem;
+    background: linear-gradient(
+      165deg,
+      hsl(262 83% 58% / 0.08) 0%,
+      hsl(var(--primary) / 0.06) 45%,
+      hsl(var(--background) / 0.4) 100%
+    );
+    border: 1px solid hsl(262 83% 58% / 0.2);
+    box-shadow:
+      0 1px 0 hsl(var(--primary) / 0.08) inset,
+      0 22px 48px -36px hsl(262 83% 58% / 0.35);
+  }
+
+  .password-vault-stage__caption {
+    margin: 0 0 1rem;
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(262 83% 58%);
+  }
+
+  .password-vault-diagram {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(2.5rem, 1.2fr) minmax(0, 1.1fr) minmax(2rem, 1fr) minmax(0, 0.85fr);
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .password-vault-node,
+  .password-vault-devices {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.35rem;
+  }
+
+  .password-vault-node__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    background: hsl(var(--background) / 0.85);
+    border: 1px solid hsl(262 83% 58% / 0.28);
+    color: hsl(262 83% 58%);
+  }
+
+  .password-vault-node__label,
+  .password-vault-core__label,
+  .password-vault-devices__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+  }
+
+  .password-vault-node__meta {
+    font-size: 0.62rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .password-vault-path {
+    position: relative;
+    min-width: 0;
+    height: 2.5rem;
+  }
+
+  .password-vault-path__beam {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 0.35rem;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      hsl(262 83% 58% / 0.15),
+      hsl(var(--primary) / 0.35),
+      hsl(262 83% 58% / 0.15)
+    );
+  }
+
+  .password-vault-path__beam--sync {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.2),
+      hsl(160 84% 39% / 0.35),
+      hsl(var(--primary) / 0.2)
+    );
+  }
+
+  .password-vault-token {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 0.15rem;
+    transform: translateY(-50%);
+    background: hsl(262 83% 58%);
+    box-shadow: 0 0 8px hsl(262 83% 58% / 0.65);
+    animation: password-vault-token-in 2.4s linear infinite;
+  }
+
+  .password-vault-token--sync {
+    background: hsl(160 84% 39%);
+    box-shadow: 0 0 8px hsl(160 84% 39% / 0.55);
+    animation-name: password-vault-token-sync;
+    animation-duration: 2s;
+  }
+
+  .password-vault-core {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .password-vault-core__shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 1.35rem;
+    border: 2px solid hsl(var(--primary) / 0.45);
+    background: linear-gradient(
+      145deg,
+      hsl(var(--primary) / 0.12),
+      hsl(262 83% 58% / 0.08)
+    );
+    overflow: hidden;
+    animation: password-vault-lock-pulse 3s ease-in-out infinite;
+  }
+
+  .password-vault-core__shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      hsl(var(--primary) / 0.22) 50%,
+      transparent 65%
+    );
+    animation: password-vault-shimmer 2.8s ease-in-out infinite;
+  }
+
+  .password-vault-core__lock {
+    position: relative;
+    z-index: 1;
+    color: hsl(var(--primary));
+  }
+
+  .password-vault-core__badge {
+    position: absolute;
+    bottom: 0.35rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    font-size: 0.48rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: hsl(var(--primary));
+    white-space: nowrap;
+  }
+
+  .password-vault-chip {
+    position: absolute;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 0.1rem;
+    background: hsl(var(--primary));
+    opacity: 0;
+    animation: password-vault-chip-pop 2.4s ease-in-out infinite;
+  }
+
+  .password-vault-chip:nth-child(4) {
+    top: 1rem;
+    left: 0.85rem;
+  }
+
+  .password-vault-chip:nth-child(5) {
+    top: 1.35rem;
+    right: 0.75rem;
+  }
+
+  .password-vault-chip:nth-child(6) {
+    bottom: 1.1rem;
+    left: 1.2rem;
+  }
+
+  .password-vault-chip:nth-child(7) {
+    bottom: 0.95rem;
+    right: 1rem;
+  }
+
+  .password-vault-devices {
+    gap: 0.5rem;
+  }
+
+  .password-vault-device {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid hsl(160 84% 39% / 0.35);
+    color: hsl(160 84% 35%);
+    background: hsl(var(--background) / 0.85);
+  }
+
+  .password-vault-legend {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.1rem;
+  }
+
+  .password-vault-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  @media (max-width: 767px) {
+    .password-vault-diagram {
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+    }
+
+    .password-vault-path--sync {
+      display: none;
+    }
+
+    .password-vault-devices {
+      flex-direction: row;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .how-visual-float,
     .how-visual-pulse,
@@ -1009,6 +1624,21 @@
     .how-ai-flow-arrow,
     .how-ai-flow-path__marker--animated,
     .how-ai-privacy-ticker__track {
+      animation: none;
+    }
+
+    .vpn-tunnel-packet,
+    .vpn-tunnel-path__glow,
+    .vpn-tunnel-path__mesh,
+    .vpn-tunnel-path__lock,
+    .vpn-tunnel-legend__dot {
+      animation: none;
+    }
+
+    .password-vault-token,
+    .password-vault-core__shimmer,
+    .password-vault-core__shell,
+    .password-vault-chip {
       animation: none;
     }
   }

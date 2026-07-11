@@ -486,8 +486,9 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt="Illustration comparing plaintext cloud upload versus encrypting files in the browser before upload"
+              width={1000}
+              height={666}
               className="mx-auto h-auto w-full object-contain"
-              loading="lazy"
             />
           </figure>
         </BlogPostHeader>

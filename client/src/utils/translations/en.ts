@@ -1444,7 +1444,7 @@ export const en: Translations = {
     "On 9 July 2026, the European Parliament extended Chat Control 1.0 even though more MEPs voted against it than for it. The reason is parliamentary procedure—not cryptography.",
   blogChatControl10VoteMetaTitle: "Chat Control 1.0 vote explained",
   blogChatControl10VoteMetaDescription:
-    "Why Chat Control 1.0 passed with 314 votes against and 276 in favour, what the extension actually does for end-to-end encryption, and what Chat Control 2.0 may bring next.",
+    "Why Chat Control 1.0 passed with more No than Yes votes, what the extension means for end-to-end encryption, and what Chat Control 2.0 may bring.",
   blogChatControlTitle: "Chat Control Is Back: Why Europe Should Listen to Its Cryptographers",
   blogChatControlExcerpt:
     "Today, Tuesday, July 7, Parliament is expected to revisit CSAR. The goal of protecting children is urgent, but mandatory scanning of private communications still collides with encryption, privacy, and technical reality.",
@@ -1461,10 +1461,13 @@ export const en: Translations = {
   blogPasswordExcerpt: "Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.",
   blogWorkplaceTextsTitle: "Workplace Texts, Legal Discovery, and the Case for Ephemeral Notes",
   blogWorkplaceTextsExcerpt: "What the OpenAI text-message controversy teaches about written records, workplace hygiene, and using PrivateNote for sensitive one-time communication.",
+  blogDevelopersMetaTitle: "PrivateNote for Developers",
+  blogGoodEnoughMetaTitle: 'The "Good Enough" Security Myth',
+  blogPasswordMetaTitle: "How We Generate Passwords",
   blogDevelopersTitle: "Stop Pasting Passwords into Slack. Use PrivateNote Instead.",
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
-  blogCodexExcerpt: "One command wires the PrivateNote MCP server into every Codex session. Here's exactly how to set it up, what Codex can do with it, and how to keep secrets out of the agent prompt entirely.",
+  blogCodexExcerpt: "One command wires PrivateNote MCP into every Codex session. Setup steps, what Codex can do, and how to keep secrets out of the agent prompt.",
   blogOneTimeLinksTitle: "One-Time Secret Links: How to Share Sensitive Information Without Leaving a Permanent Record",
   blogOneTimeLinksExcerpt:
     "Email, WhatsApp, Facebook Messenger, and Slack were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
@@ -1601,7 +1604,7 @@ export const en: Translations = {
   documentMetaDevelopersTitle: "Developer integrations",
   documentMetaDevelopersDescription:
     "Use PrivateNote.ai from VS Code, Cursor, AI agents, and MCP clients while keeping note encryption local and fully private.",
-  documentMetaSecureFileTransferTitle: "Secure File Transfer with Browser-Side Encryption",
+  documentMetaSecureFileTransferTitle: "Secure File Transfer",
   documentMetaSecureFileTransferDescription:
     "Send files securely with browser-side encryption. PrivateNote stores only encrypted file data, with expiring links and no account required for recipients.",
   devBadge: "Developer integrations",

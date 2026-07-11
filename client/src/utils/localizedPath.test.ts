@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { joinPublicPath, localizedPath, publicSitePath, blogPostPath } from "./localizedPath.ts";
 
 describe("publicSitePath", () => {
-  it("keeps locale home as slash only", () => {
+  it("keeps locale home trailing slash", () => {
     assert.equal(publicSitePath("/"), "/");
-    assert.equal(publicSitePath("/de/"), "/de");
+    assert.equal(publicSitePath("/de/"), "/de/");
+    assert.equal(publicSitePath("/de"), "/de/");
+    assert.equal(publicSitePath("/fr/"), "/fr/");
   });
 
   it("uses no trailing slash for marketing pages", () => {
@@ -20,9 +22,11 @@ describe("publicSitePath", () => {
 });
 
 describe("localizedPath", () => {
-  it("localizes without trailing slash", () => {
+  it("localizes without trailing slash except locale homes", () => {
     assert.equal(localizedPath("/about", "en"), "/about");
     assert.equal(localizedPath("/about", "de"), "/de/about");
+    assert.equal(localizedPath("/", "de"), "/de/");
+    assert.equal(localizedPath("/", "fr"), "/fr/");
     assert.equal(localizedPath("/about", "it"), "/it/about");
     assert.equal(localizedPath("/about", "nl"), "/nl/about");
     assert.equal(localizedPath("/developers", "de"), "/de/developers");

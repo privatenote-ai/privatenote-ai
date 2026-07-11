@@ -1,7 +1,36 @@
 /** Production origin for canonical / hreflang (must match sitemap and deploy host). */
-import { NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
+import { isLocaleHomeSegment, NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
 
 export const PUBLIC_SITE_ORIGIN = "https://privatenote.ai";
+
+/** App routes that must not get a trailing slash (SPA / dynamic). */
+const NO_TRAILING_SLASH_PREFIXES = [
+  "/note/",
+  "/auth",
+  "/account",
+  "/magic",
+  "/admin",
+] as const;
+
+/**
+ * Canonical public URL path shape for links and meta tags:
+ * - `/` and locale homes (`/de/`) keep trailing slash (matches sitemap + Cloudflare directory URLs)
+ * - all other marketing paths have no trailing slash
+ */
+export function canonicalPublicPath(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  if (normalized === "/") return "/";
+  const trimmed = normalized.replace(/\/+$/, "") || "/";
+  const parts = trimmed.split("/").filter(Boolean);
+  if (parts.length === 1 && isLocaleHomeSegment(parts[0]!)) {
+    return `/${parts[0]}/`;
+  }
+  if (normalized.includes(".")) return normalized;
+  if (NO_TRAILING_SLASH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+    return normalized.replace(/\/+$/, "") || "/";
+  }
+  return normalized.replace(/\/+$/, "") || "/";
+}
 
 // Locale homes are served from de/index.html — canonical/hreflang URLs use the
 // directory form /de/ so crawlers follow the canonical without a redirect.
@@ -16,20 +45,13 @@ type HomeLanguage = "en" | (typeof LOCALE_HOME_CODES)[number];
 
 export function absolutePublicUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  // Preserve trailing slash: locale home directory URLs (/de/, /fr/, /es/, /)
-  // must keep their slash so crawlers receive the canonical form directly.
-  if (normalized === "/" || normalized.endsWith("/")) {
-    return `${PUBLIC_SITE_ORIGIN}${normalized}`;
-  }
-  const pathname = normalized.replace(/\/+$/, "") || "/";
-  return `${PUBLIC_SITE_ORIGIN}${pathname}`;
+  return `${PUBLIC_SITE_ORIGIN}${canonicalPublicPath(normalized)}`;
 }
 
-/** Absolute canonical URL for a prerender route (no trailing slash except site root). */
+/** Absolute canonical URL for a prerender route. */
 export function canonicalAbsoluteUrlForRoute(route: string): string {
-  const r = route.replace(/\/+$/, "") || "/";
-  if (r === "/") return `${PUBLIC_SITE_ORIGIN}/`;
-  return `${PUBLIC_SITE_ORIGIN}${r.startsWith("/") ? r : `/${r}`}`;
+  const path = canonicalPublicPath(route.startsWith("/") ? route : `/${route}`);
+  return `${PUBLIC_SITE_ORIGIN}${path}`;
 }
 
 /** True for `/`, `/de`, `/de/`, etc. — locale marketing homes only. */

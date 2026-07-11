@@ -24,7 +24,7 @@ import {
   homeLanguageFromRoute,
   isLocaleHomeRoute,
 } from "@shared/homeSeoLinks";
-import { localizedMarketingHreflangAlternates } from "@shared/localizedMarketingHreflang";
+import { marketingHreflangAlternatesForRoute } from "@shared/localizedMarketingHreflang";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
@@ -96,7 +96,7 @@ function removeLocalizedMarketingSeoLinks() {
 
 function setLocalizedMarketingSeoLinks(pathname: string) {
   removeLocalizedMarketingSeoLinks();
-  const alternates = localizedMarketingHreflangAlternates(pathname);
+  const alternates = marketingHreflangAlternatesForRoute(pathname);
   if (!alternates) return;
 
   alternates.forEach((alternate) => {
@@ -175,7 +175,9 @@ function Router() {
     const onLocaleHome = isLocaleHomeRoute(path);
     setDocumentMeta(meta.title, meta.description, {
       skipCanonical: onLocaleHome,
-      canonicalPath: onLocaleHome ? undefined : normalizeMarketingPathname(path),
+      canonicalPath: onLocaleHome
+        ? canonicalPathForHomeLanguage(homeLanguageFromRoute(path) as SupportedLanguage)
+        : normalizeMarketingPathname(path),
     });
     if (onLocaleHome) {
       setHomeSeoLinks(homeLanguageFromRoute(path) as SupportedLanguage);
@@ -212,7 +214,9 @@ function Router() {
           <Route path="/" component={() => <HomeRoute />} />
           {NON_ENGLISH_LANGUAGES.map((language) => (
             <Fragment key={`${language}-home`}>
-              <Route path={`/${language}`} component={() => <HomeRoute language={language} />} />
+              <Route path={`/${language}`}>
+                <Redirect to={`/${language}/`} />
+              </Route>
               <Route path={`/${language}/`} component={() => <HomeRoute language={language} />} />
             </Fragment>
           ))}

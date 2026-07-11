@@ -52,3 +52,26 @@ test("injectPrerenderDocumentMeta injects password generator FAQ schema", () => 
   assert.ok(match, "password generator FAQ schema script should be present");
   assert.equal(JSON.parse(match[1])["@type"], "FAQPage");
 });
+
+test("injectPrerenderDocumentMeta injects complete Open Graph tags for locale homes", () => {
+  const html = [
+    '<html lang="en"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="en_US" />',
+    "</head><body></body></html>",
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/de/");
+  assert.match(out, /property="og:title" content="Ihre Nachrichten/);
+  assert.match(out, /property="og:description" content="Ende-zu-Ende/);
+  assert.match(out, /property="og:image" content="https:\/\/privatenote\.ai\/og-image\.png"/);
+  assert.match(out, /property="og:image:width" content="1200"/);
+  assert.match(out, /property="og:image:height" content="630"/);
+  assert.match(out, /property="og:url" content="https:\/\/privatenote\.ai\/de\/"/);
+  assert.match(out, /name="twitter:image" content="https:\/\/privatenote\.ai\/og-image\.png"/);
+});

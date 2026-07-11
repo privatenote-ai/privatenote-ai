@@ -52,6 +52,20 @@ async function main() {
       }
     }
 
+    const ogChecks = [
+      ['property="og:title"', "og:title"],
+      ['property="og:description"', "og:description"],
+      ['property="og:image" content="https://privatenote.ai/og-image.png"', "og:image"],
+      ['property="og:image:width" content="1200"', "og:image:width"],
+      ['property="og:image:height" content="630"', "og:image:height"],
+      [`property="og:url" content="${canonicalHref}"`, "og:url"],
+    ];
+    for (const [needle, label] of ogChecks) {
+      if (!html.includes(needle)) {
+        failures.push(`${file}: missing ${label}`);
+      }
+    }
+
     for (const re of [BAD_REL_LOCALE_ROOT, BAD_REL_ROOT_CANONICAL]) {
       re.lastIndex = 0;
       let m;

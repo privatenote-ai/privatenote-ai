@@ -5,7 +5,6 @@ import { Calendar, ArrowRight, Tag, Clock } from "lucide-react";
 import { getQueryFn } from "@/lib/queryClient";
 import { type BlogPost } from "@shared/schema";
 import { parseBlogPostTags } from "@/utils/blogPostTags";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
@@ -288,28 +287,6 @@ function BlogTagFilter({
   );
 }
 
-function BlogGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div
-          key={i}
-          className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800"
-        >
-          <Skeleton className="h-2 w-full rounded-none" />
-          <div className="space-y-3 p-6">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="mt-4 h-4 w-1/2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function BlogSecondaryCta() {
   const { t, language } = useLanguage();
   const homePath = localizedPath("/", language);
@@ -349,10 +326,7 @@ export default function Blog() {
   const staticPosts = buildStaticBlogPosts(t);
   const [selectedTag, setSelectedTag] = useState<string | null>(() => readTagFromUrl());
 
-  const {
-    data: posts,
-    isLoading,
-  } = useQuery({
+  const { data: posts } = useQuery({
     queryKey: ["/api/blog"],
     queryFn: getQueryFn<BlogPost[]>({ on401: "returnNull" }),
   });
@@ -444,17 +418,13 @@ export default function Blog() {
           {articlesHeading}
         </h2>
 
-        {!isLoading ? (
-          <BlogTagFilter
-            tags={availableTags}
-            selectedTag={selectedTag}
-            onSelectTag={setSelectedTag}
-          />
-        ) : null}
+        <BlogTagFilter
+          tags={availableTags}
+          selectedTag={selectedTag}
+          onSelectTag={setSelectedTag}
+        />
 
-        {isLoading ? (
-          <BlogGridSkeleton />
-        ) : filteredPosts.length > 0 ? (
+        {filteredPosts.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredPosts.map((post) => (
               <BlogPostCard

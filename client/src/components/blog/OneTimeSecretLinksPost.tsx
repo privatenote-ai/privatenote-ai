@@ -951,8 +951,9 @@ export const OneTimeSecretLinksPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt="Footprints in sand fading away, symbolizing ephemeral one-time secret links"
+              width={900}
+              height={505}
               className="mx-auto w-full max-w-2xl max-h-[340px] rounded-2xl border border-gray-200 object-cover dark:border-gray-800"
-              loading="lazy"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               Image by{" "}

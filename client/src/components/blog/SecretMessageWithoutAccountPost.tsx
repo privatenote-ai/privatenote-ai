@@ -16,7 +16,7 @@ import { secretMessageWithoutAccountNl } from "@/components/blog/locale/secretMe
 import { secretMessageWithoutAccountPt } from "@/components/blog/locale/secretMessageWithoutAccount.pt";
 import { secretMessageWithoutAccountSr } from "@/components/blog/locale/secretMessageWithoutAccount.sr";
 
-const heroImagePath = "/images/blog-secret-message-no-account-hero.png";
+const heroImagePath = "/images/blog-secret-message-no-account-hero.jpg";
 const heroArtistUrl =
   "https://pixabay.com/users/alexas_fotos-686414/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=3444212";
 const heroPixabayUrl =
@@ -702,8 +702,9 @@ export const SecretMessageWithoutAccountPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt="Three figures in hear no evil, see no evil, speak no evil poses"
+              width={900}
+              height={654}
               className="mx-auto w-full max-w-2xl rounded-2xl border border-gray-200 dark:border-gray-800"
-              loading="lazy"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               Image by{" "}

@@ -1,4 +1,5 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import { canonicalPublicPath } from "@shared/homeSeoLinks";
 import {
   isBlogCanonicalSlug,
   localizedBlogPostPath,
@@ -24,15 +25,6 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/terms",
 ]);
 
-/** App routes that must not get a trailing slash (SPA / dynamic). */
-const NO_TRAILING_SLASH_PREFIXES = [
-  "/note/",
-  "/auth",
-  "/account",
-  "/magic",
-  "/admin",
-] as const;
-
 function translateBlogPath(pathWithoutLanguage: string, language: SupportedLanguage): string {
   const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
   if (!blogMatch) return pathWithoutLanguage;
@@ -52,17 +44,12 @@ function isLocalizedPublicPath(pathWithoutLanguage: string): boolean {
 }
 
 /**
- * Canonical public URL shape (matches `documentMeta`, sitemap, and Pages static routes):
- * no trailing slash except the site root (`/`).
+ * Canonical public URL shape for in-app links:
+ * - `/` and locale homes (`/de/`) keep trailing slash (matches sitemap + Cloudflare directory URLs)
+ * - all other marketing paths have no trailing slash
  */
 export function publicSitePath(path: string): string {
-  const normalized = path.startsWith("/") ? path : `/${path}`;
-  if (normalized === "/") return "/";
-  if (normalized.includes(".")) return normalized;
-  if (NO_TRAILING_SLASH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
-    return normalized.replace(/\/+$/, "") || "/";
-  }
-  return normalized.replace(/\/+$/, "") || "/";
+  return canonicalPublicPath(path);
 }
 
 /** Join path segments and apply {@link publicSitePath} (e.g. blog + slug → `/blog/foo/`). */
@@ -110,7 +97,7 @@ export function localizedPath(path: string, language: SupportedLanguage): string
     return publicSitePath(translatedPath);
   }
   if (translatedPath === "/") {
-    return `/${language}`;
+    return `/${language}/`;
   }
   return publicSitePath(`/${language}${translatedPath}`);
 }

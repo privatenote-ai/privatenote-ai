@@ -21,10 +21,13 @@ function routeListedInSitemap(xml: string, route: string): boolean {
   return xml.includes(`<loc>${sitemapLocForRoute(route)}</loc>`);
 }
 
-test("normalizeMarketingPathname strips trailing slash", () => {
+test("normalizeMarketingPathname strips trailing slash except locale homes", () => {
   assert.equal(normalizeMarketingPathname("/terms/"), "/terms");
   assert.equal(normalizeMarketingPathname("/de/how-it-works/"), "/de/how-it-works");
   assert.equal(normalizeMarketingPathname("/"), "/");
+  assert.equal(normalizeMarketingPathname("/de"), "/de/");
+  assert.equal(normalizeMarketingPathname("/de/"), "/de/");
+  assert.equal(normalizeMarketingPathname("/fr"), "/fr/");
 });
 
 test("isPublicMarketingPath matches sitemap marketing URLs", () => {
@@ -34,7 +37,7 @@ test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/de/about/"), true);
   assert.equal(isPublicMarketingPath("/it/about/"), true);
   assert.equal(isPublicMarketingPath("/nl/blog/privatenote-met-openai-codex"), true);
-  assert.equal(isPublicMarketingPath("/nl/blog/privatenote-codex"), true);
+  assert.equal(isPublicMarketingPath("/nl/blog/privatenote-codex"), false);
   assert.equal(isPublicMarketingPath("/note/abc"), false);
 });
 

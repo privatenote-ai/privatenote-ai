@@ -15,7 +15,14 @@ import { sr } from "../client/src/utils/translations/sr.ts";
 import { hr } from "../client/src/utils/translations/hr.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { buildBlogArticleStructuredData } from "./blogStructuredData.ts";
-import { isLocaleHomeRoute } from "./homeSeoLinks.ts";
+import {
+  absolutePublicUrl,
+  canonicalAbsoluteUrlForRoute,
+  canonicalPathForHomeLanguage,
+  homeLanguageFromRoute,
+  isLocaleHomeRoute,
+  PUBLIC_SITE_ORIGIN,
+} from "./homeSeoLinks.ts";
 import { resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
 import {
   buildSecureFileTransferFaqSchema,
@@ -40,6 +47,22 @@ const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations
 };
 
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
+
+/** Must match `client/index.html` and {@link DEFAULT_OG_IMAGE_PATH} in documentMeta.ts */
+export const PRERENDER_OG_IMAGE_PATH = "/og-image.png";
+export const PRERENDER_OG_IMAGE_WIDTH = "1200";
+export const PRERENDER_OG_IMAGE_HEIGHT = "630";
+
+function prerenderOgImageUrl(): string {
+  return `${PUBLIC_SITE_ORIGIN}${PRERENDER_OG_IMAGE_PATH}`;
+}
+
+function prerenderOgUrlForRoute(route: string): string {
+  if (isLocaleHomeRoute(route)) {
+    return absolutePublicUrl(canonicalPathForHomeLanguage(homeLanguageFromRoute(route)));
+  }
+  return canonicalAbsoluteUrlForRoute(route);
+}
 
 const OG_LOCALE_BY_LANG: Record<string, string> = {
   de: "de_DE",
@@ -188,6 +211,15 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = replaceMetaContent(out, "property", "og:description", description);
   out = replaceMetaContent(out, "name", "twitter:title", title);
   out = replaceMetaContent(out, "name", "twitter:description", description);
+
+  const ogImageUrl = prerenderOgImageUrl();
+  out = replaceMetaContent(out, "property", "og:url", prerenderOgUrlForRoute(route));
+  out = replaceMetaContent(out, "property", "og:type", "website");
+  out = replaceMetaContent(out, "property", "og:site_name", "PrivateNote.ai");
+  out = replaceMetaContent(out, "property", "og:image", ogImageUrl);
+  out = replaceMetaContent(out, "property", "og:image:width", PRERENDER_OG_IMAGE_WIDTH);
+  out = replaceMetaContent(out, "property", "og:image:height", PRERENDER_OG_IMAGE_HEIGHT);
+  out = replaceMetaContent(out, "name", "twitter:image", ogImageUrl);
 
   out = replaceMetaContent(out, "property", "og:locale", OG_LOCALE_BY_LANG[lang] ?? "en_US");
   out = injectBlogStructuredData(out, route, lang, t);

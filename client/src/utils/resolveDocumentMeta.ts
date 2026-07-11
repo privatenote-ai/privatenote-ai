@@ -4,27 +4,17 @@ import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
 import { NON_ENGLISH_LANGUAGE_CODES } from "@shared/supportedLanguages";
 
 const LOCALE_PREFIXES = new Set<string>(NON_ENGLISH_LANGUAGE_CODES);
-const LOCALE_TITLE_LABELS: Record<string, string> = {
-  de: "Deutsch",
-  fr: "Français",
-  es: "Español",
-  it: "Italiano",
-  nl: "Nederlands",
-  pt: "Português",
-  sr: "Srpski",
-  hr: "Hrvatski",
-};
 
 const SECURITY_GUIDE_META: Record<string, { title: string; description: string }> = {
   vpn: {
     title: "VPN Services Guide",
     description:
-      "Learn how VPNs protect internet browsing, reduce exposure on public Wi-Fi, hide your IP address, and fit into a practical privacy setup.",
+      "Compare Proton VPN, Mullvad, and NymVPN — what VPNs protect, what they cannot fix, and how they fit secure secret sharing.",
   },
   password: {
     title: "Password Managers Guide",
     description:
-      "Learn how password managers generate unique passwords, store them safely, reduce reuse, and make stronger account security practical.",
+      "Compare KeePass, Bitwarden, Apple, and Google for password security — plus PrivateNote for one-time secret sharing.",
   },
   messenger: {
     title: "Secure Messaging Guide",
@@ -71,23 +61,6 @@ function notFoundDocumentMeta(t: Translations): { title: string; description: st
   };
 }
 
-function withLocaleTitleLabel(
-  meta: { title: string; description: string },
-  locale: string | undefined,
-): { title: string; description: string } {
-  const label = locale ? LOCALE_TITLE_LABELS[locale] : undefined;
-  if (!label) return meta;
-
-  const suffix = " · PrivateNote.ai";
-  if (meta.title.endsWith(suffix)) {
-    return {
-      ...meta,
-      title: `${meta.title.slice(0, -suffix.length)} (${label})${suffix}`,
-    };
-  }
-  return { ...meta, title: `${meta.title} (${label})` };
-}
-
 function blogSlugStaticMeta(
   slug: string,
   t: Translations,
@@ -121,10 +94,10 @@ function blogSlugStaticMeta(
     case "privacy-tools":
       return { title: buildDocumentTitle(t.blogPrivacyTitle), description: t.blogPrivacyExcerpt };
     case "myth-good-enough-security":
-      return { title: buildDocumentTitle(t.blogGoodEnoughTitle), description: t.blogGoodEnoughExcerpt };
+      return { title: buildDocumentTitle(t.blogGoodEnoughMetaTitle), description: t.blogGoodEnoughExcerpt };
     case "how-we-generate-passwords":
       return {
-        title: buildDocumentTitle(t.blogPasswordTitle),
+        title: buildDocumentTitle(t.blogPasswordMetaTitle),
         description: t.blogPasswordMetaDescription,
       };
     case "workplace-texts-private-note":
@@ -134,7 +107,7 @@ function blogSlugStaticMeta(
       };
     case "privatenote-for-developers":
       return {
-        title: buildDocumentTitle(t.blogDevelopersTitle),
+        title: buildDocumentTitle(t.blogDevelopersMetaTitle),
         description: t.blogDevelopersExcerpt,
       };
     case "privatenote-codex":
@@ -446,8 +419,8 @@ export function resolveDocumentMeta(
   if (segments.length >= 2 && LOCALE_PREFIXES.has(segments[0])) {
     const rest = segments.slice(1).join("/");
     const localized = metaForLocalizedRest(rest, t);
-    if (localized) return withLocaleTitleLabel(localized, segments[0]);
-    return withLocaleTitleLabel(notFoundDocumentMeta(t), segments[0]);
+    if (localized) return localized;
+    return notFoundDocumentMeta(t);
   }
 
   if (segments.length === 1) {
