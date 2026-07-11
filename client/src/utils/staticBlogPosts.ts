@@ -68,13 +68,6 @@ export function getStaticBlogMeta(
     };
   }
 
-  if (slug === "workplace-texts-private-note") {
-    return {
-      publishedAt: staticBlogPublishedAt(slug),
-      tags: [t.blogTagPrivacy, t.blogTagSecurity],
-    };
-  }
-
   return {
     publishedAt: staticBlogPublishedAt(slug),
     tags: [t.blogTagSecurity],
@@ -266,6 +259,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
       published: true,
       createdAt: at("privatenote-for-developers"),
       updatedAt: at("privatenote-for-developers"),
+    },
+    {
+      id: -3,
+      title: t.blogWorkplaceTextsTitle,
+      excerpt: t.blogWorkplaceTextsExcerpt,
+      author: "PrivateNote.ai",
+      slug: "workplace-texts-private-note",
+      publishedAt: at("workplace-texts-private-note"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("workplace-texts-private-note"),
+      updatedAt: at("workplace-texts-private-note"),
     },
     {
       id: -4,

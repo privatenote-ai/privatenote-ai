@@ -173,8 +173,9 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt={article.heroAlt}
+              width={1000}
+              height={750}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
-              loading="lazy"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               {article.heroCaptionPrefix}{" "}

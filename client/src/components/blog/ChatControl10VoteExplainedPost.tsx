@@ -28,7 +28,7 @@ import { chatControl10VoteExplainedSr } from "@/components/blog/locale/chatContr
 import type { ChatControl10VoteArticleCopy } from "@/components/blog/locale/chatControl10VoteExplained.types";
 import { cn } from "@/lib/utils";
 
-const heroImagePath = "/images/blog-chat-control-is-back-hero.png";
+const heroImagePath = "/images/blog-chat-control-is-back-hero.jpg";
 
 const voteTally = [
   { key: "against" as const, value: 314, tone: "against" as const },
@@ -173,8 +173,9 @@ export const ChatControl10VoteExplainedPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt={article.heroAlt}
+              width={1000}
+              height={562}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
-              loading="lazy"
             />
             <figcaption className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
               {article.heroCaption}

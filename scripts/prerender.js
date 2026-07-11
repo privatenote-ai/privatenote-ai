@@ -9,13 +9,17 @@ import http from "node:http";
 import https from "node:https";
 import { chromium } from "playwright";
 import {
+  absolutePublicUrl,
   buildHomeSeoHeadMarkup,
   canonicalAbsoluteUrlForRoute,
+  canonicalPathForHomeLanguage,
   homeLanguageFromRoute,
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
-import { buildLocalizedMarketingHreflangMarkup } from "../shared/localizedMarketingHreflang.ts";
+import {
+  buildMarketingHreflangMarkup,
+} from "../shared/localizedMarketingHreflang.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
 import {
   isPublicMarketingPath,
@@ -138,8 +142,13 @@ function normalizeRoutePath(input, siteOrigin) {
     // Only keep same-origin paths
     const site = new URL(siteOrigin);
     if (u.origin !== site.origin) return null;
-    // Keep pathname only; strip trailing slash except for root
     let p = u.pathname;
+    const bare = p.replace(/\/+$/, "") || "/";
+    const parts = bare.split("/").filter(Boolean);
+    if (parts.length === 1 && new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(parts[0]!)) {
+      return `/${parts[0]}/`;
+    }
+    // Keep pathname only; strip trailing slash except for root
     if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
     return p || "/";
   } catch {
@@ -252,11 +261,20 @@ function postProcessHTML(html, route) {
       /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
       "",
     );
-    const seoBlock = buildHomeSeoHeadMarkup(homeLanguageFromRoute(route));
+    const language = homeLanguageFromRoute(route);
+    const pageUrl = absolutePublicUrl(canonicalPathForHomeLanguage(language));
+    const seoBlock = [
+      buildHomeSeoHeadMarkup(language),
+      `<meta property="og:url" content="${pageUrl}" />`,
+    ].join("\n");
     out = out.replace("</head>", `${seoBlock}\n</head>`);
   } else if (isPublicSitemapRoute) {
+    out = out.replace(
+      /<link\b[^>]*\bdata-privatenote-localized-marketing=["']true["'][^>]*>/gi,
+      "",
+    );
     const pageUrl = canonicalAbsoluteUrlForRoute(route);
-    const hreflang = buildLocalizedMarketingHreflangMarkup(route);
+    const hreflang = buildMarketingHreflangMarkup(route);
     const seoExtras = [
       `<link rel="canonical" href="${pageUrl}" />`,
       `<meta property="og:url" content="${pageUrl}" />`,
@@ -289,6 +307,40 @@ function postProcessHTML(html, route) {
   );
 
   return out;
+}
+
+/** Re-apply SEO head injection for every marketing route (fixes stale cached HTML snapshots). */
+async function repostProcessAllMarketingHtml(routes) {
+  let updated = 0;
+  for (const route of routes) {
+    const trimmed = route.replace(/\/+$/, "") || "/";
+    const rel = trimmed.replace(/^\//, "");
+    const files = [];
+    if (!rel) {
+      files.push(path.join(DIST_DIR, "index.html"));
+    } else {
+      const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(rel);
+      files.push(path.join(DIST_DIR, rel, "index.html"));
+      if (!isLocaleHome) {
+        files.push(path.join(DIST_DIR, `${rel}.html`));
+      }
+    }
+    for (const file of files) {
+      try {
+        const html = await fs.readFile(file, "utf8");
+        const cleaned = postProcessHTML(html, route);
+        if (cleaned !== html) {
+          await fs.writeFile(file, cleaned, "utf8");
+          updated++;
+        }
+      } catch {
+        /* route file may not exist for every path shape */
+      }
+    }
+  }
+  if (updated > 0) {
+    console.log(`🔁 Re-post-processed SEO markup in ${updated} HTML file(s).`);
+  }
 }
 
 const INDEX_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
@@ -532,6 +584,7 @@ async function main() {
     }
 
     await syncShellAssetRefs(canonicalShellAssets);
+    await repostProcessAllMarketingHtml(routes);
     await verifyPrerenderAssetRefs();
 
     if (INCREMENTAL && HTML_CACHE_DIR) {

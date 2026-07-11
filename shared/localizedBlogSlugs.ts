@@ -242,7 +242,7 @@ export function localizedBlogPostPath(canonical: BlogCanonicalSlug, language: Su
   return `/${language}/blog/${slug}`;
 }
 
-/** All public blog post paths, including legacy English slugs under non-English locales. */
+/** All public blog post paths (canonical English + localized slugs only). */
 export function allLocalizedBlogMarketingPaths(): string[] {
   const paths: string[] = [];
 
@@ -250,13 +250,30 @@ export function allLocalizedBlogMarketingPaths(): string[] {
     paths.push(`/blog/${canonical}`);
     for (const language of SUPPORTED_LANGUAGES) {
       if (language === "en") continue;
-      const localized = localizedBlogSlug(canonical, language);
-      paths.push(`/${language}/blog/${localized}`);
-      if (localized !== canonical) {
-        paths.push(`/${language}/blog/${canonical}`);
-      }
+      paths.push(localizedBlogPostPath(canonical, language));
     }
   }
 
   return paths;
+}
+
+/**
+ * If pathname is a legacy English slug under a non-English locale (e.g. /de/blog/one-time-secret-links),
+ * return the localized canonical path for a 301 redirect.
+ */
+export function resolveLegacyBlogPostRedirect(pathname: string): string | null {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  const match = normalized.match(/^\/([a-z]{2})\/blog\/([^/]+)$/);
+  if (!match) return null;
+
+  const [, languageCode, slugFromUrl] = match;
+  if (languageCode === "en") return null;
+  if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(languageCode)) return null;
+  if (!isBlogCanonicalSlug(slugFromUrl)) return null;
+
+  const language = languageCode as SupportedLanguage;
+  const localized = localizedBlogSlug(slugFromUrl, language);
+  if (localized === slugFromUrl) return null;
+
+  return localizedBlogPostPath(slugFromUrl, language);
 }

@@ -32,7 +32,7 @@ test("resolveDocumentMeta returns unique titles for reported duplicate-title URL
     ["/password-generator", en],
     ["/how-it-works", en],
     ["/fr/password-generator", { ...en, ...fr }],
-    ["/fr/contact", { ...en, ...fr }],
+    ["/fr/privacy", { ...en, ...fr }],
     ["/contact", en],
   ] as const;
 
@@ -49,7 +49,11 @@ test("resolveDocumentMeta returns unique titles for reported duplicate-title URL
   );
   assert.equal(
     resolveDocumentMeta("/fr/contact", { ...en, ...fr }).title,
-    "Contact (Français) · PrivateNote.ai",
+    "Contact · PrivateNote.ai",
+  );
+  assert.equal(
+    resolveDocumentMeta("/fr/privacy", { ...en, ...fr }).title,
+    "Politique de confidentialité · PrivateNote.ai",
   );
 });
 

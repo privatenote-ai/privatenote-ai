@@ -809,9 +809,8 @@ export const SecretsNeverSendInChatPost: React.FC = () => {
               src={chatScreenshotPath}
               alt="Team chat channel showing plaintext passwords shared in message history"
               className="mx-auto w-full max-w-3xl rounded-2xl border border-gray-200 shadow-sm dark:border-gray-800"
-              loading="lazy"
-              width={1024}
-              height={682}
+              width={1000}
+              height={666}
             />
             <figcaption className="mt-2.5 max-w-3xl px-2 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
               {article.chatScreenshotCaption}

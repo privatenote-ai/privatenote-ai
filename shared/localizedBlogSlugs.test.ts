@@ -2,9 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   BLOG_CANONICAL_SLUGS,
+  allLocalizedBlogMarketingPaths,
   localizedBlogPostPath,
   localizedBlogSlug,
   resolveCanonicalBlogSlug,
+  resolveLegacyBlogPostRedirect,
 } from "./localizedBlogSlugs.ts";
 
 describe("localizedBlogSlugs", () => {
@@ -51,5 +53,26 @@ describe("localizedBlogSlugs", () => {
         assert.equal(resolveCanonicalBlogSlug(slug), canonical);
       }
     }
+  });
+
+  it("does not list legacy English slugs under non-English locales", () => {
+    const paths = allLocalizedBlogMarketingPaths();
+    assert.equal(paths.includes("/de/blog/one-time-secret-links"), false);
+    assert.equal(
+      paths.includes(localizedBlogPostPath("one-time-secret-links", "de")),
+      true,
+    );
+  });
+
+  it("redirects legacy English slugs under non-English locales", () => {
+    assert.equal(
+      resolveLegacyBlogPostRedirect("/de/blog/one-time-secret-links"),
+      localizedBlogPostPath("one-time-secret-links", "de"),
+    );
+    assert.equal(
+      resolveLegacyBlogPostRedirect("/de/blog/one-time-geheime-links"),
+      null,
+    );
+    assert.equal(resolveLegacyBlogPostRedirect("/blog/one-time-secret-links"), null);
   });
 });

@@ -8,12 +8,14 @@ import {
 } from "./homeSeoLinks.ts";
 
 test("absolutePublicUrl uses production origin", () => {
-  assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr");
+  assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr/");
   assert.equal(absolutePublicUrl("/fr/"), "https://privatenote.ai/fr/");
 });
 
-test("canonicalAbsoluteUrlForRoute has no trailing slash except root", () => {
+test("canonicalAbsoluteUrlForRoute keeps locale home trailing slash", () => {
   assert.equal(canonicalAbsoluteUrlForRoute("/"), "https://privatenote.ai/");
+  assert.equal(canonicalAbsoluteUrlForRoute("/de/"), "https://privatenote.ai/de/");
+  assert.equal(canonicalAbsoluteUrlForRoute("/de"), "https://privatenote.ai/de/");
   assert.equal(canonicalAbsoluteUrlForRoute("/terms"), "https://privatenote.ai/terms");
   assert.equal(canonicalAbsoluteUrlForRoute("/terms/"), "https://privatenote.ai/terms");
 });

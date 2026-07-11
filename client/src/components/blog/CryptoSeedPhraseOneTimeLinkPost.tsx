@@ -250,8 +250,9 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
             <img
               src={heroImagePath}
               alt={article.heroAlt}
+              width={1000}
+              height={666}
               className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
-              loading="lazy"
             />
           </figure>
         </BlogPostHeader>
