@@ -145,7 +145,7 @@ function normalizeRoutePath(input, siteOrigin) {
     let p = u.pathname;
     const bare = p.replace(/\/+$/, "") || "/";
     const parts = bare.split("/").filter(Boolean);
-    if (parts.length === 1 && new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(parts[0]!)) {
+    if (parts.length === 1 && new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(parts[0])) {
       return `/${parts[0]}/`;
     }
     // Keep pathname only; strip trailing slash except for root
