@@ -3,6 +3,7 @@
  * then the SPA shell for known marketing routes, before returning 404.html.
  */
 import { resolveLegacyBlogPostRedirect } from "../shared/localizedBlogSlugs";
+import { resolveLegacyImageRedirect } from "../shared/legacyImageRedirects";
 import { isPublicMarketingPath } from "../shared/publicMarketingPaths";
 import { isLocaleHomeSegment, NON_ENGLISH_LANGUAGE_CODES } from "../shared/supportedLanguages";
 import { applyHtmlPageSecurity } from "./_shared/applyHtmlPageSecurity";
@@ -42,6 +43,15 @@ export async function onRequest(context: {
     legacyBlogRedirect
   ) {
     url.pathname = legacyBlogRedirect;
+    return Response.redirect(url.toString(), 301);
+  }
+
+  const legacyImageRedirect = resolveLegacyImageRedirect(normalizedPath);
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    legacyImageRedirect
+  ) {
+    url.pathname = legacyImageRedirect;
     return Response.redirect(url.toString(), 301);
   }
 

@@ -1555,6 +1555,18 @@ export const hr: Translations = {
   blogCrossLinksHeading: "Istražite PrivateNote",
   blogCrossLinksRelatedLabel: "Povezani članci",
   blogCrossLinksTrustLabel: "Povjerenje i sigurnost",
+  blogIntroductionPrivateAiTitle: "Uvod u privatnu AI: pokretanje modela lokalno, u pregledniku ili kod kuće",
+  blogIntroductionPrivateAiExcerpt:
+    "Kako se privatna AI razvijala, zašto laboratoriji objavljuju otvorene težine (otvorene koeficiente) i kako pokretati modele s Ollamom, u pregledniku ili na vlastitom GPU-u—uz Gemma 4, Llama, Mistral, Qwen i Write with Private AI u PrivateNoteu.",
+  blogIntroductionPrivateAiMetaTitle: "Uvod u privatnu AI",
+  blogIntroductionPrivateAiMetaDescription:
+    "Privatna AI: otvorene težine (otvoreni koeficienti), Ollama vs preglednik vs kućni GPU, Gemma 4 i Llama, Write with Private AI u pregledniku.",
+  blogMakePrivateNoteTitle: "Kako napraviti privatnu bilješku (i zaista je zadržati privatnom)",
+  blogMakePrivateNoteExcerpt:
+    "Ikona lokota u aplikaciji za bilješke nije isto što i zaista privatna bilješka. Saznajte što privatno zapravo znači, koje postavke su važne i kako stvoriti šifriranu bilješku koja nestaje nakon čitanja—bez otvaranja računa.",
+  blogMakePrivateNoteMetaTitle: "Kako napraviti privatnu bilješku",
+  blogMakePrivateNoteMetaDescription:
+    "Napravite privatnu bilješku: šifriranje u pregledniku, samouništenje nakon čitanja, opcionalna lozinka—bez aplikacije za bilješke.",
   blogCryptoSeedTitle: "Trebate li dijeliti kripto seed frazu putem jednokratne veze?",
   blogCryptoSeedExcerpt:
     "U pravilu ne. Ako morate, prvo šifrirajte lokalno — nikad ne upisujte mnemoničku frazu na web stranicu, ni na PrivateNote.",

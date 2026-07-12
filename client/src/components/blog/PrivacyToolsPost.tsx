@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'wouter';
 import { ExternalLink } from "lucide-react";
 import { SecurityEducation } from '@/components/features/SecurityEducation';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
+import { buildDocumentTitle, setDocumentMeta } from '@/utils/documentMeta';
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
 import { BlogPostCrossLinks } from '@/components/blog/BlogPostCrossLinks';
 
 export const PrivacyToolsPost: React.FC = () => {
   const { t, language } = useLanguage();
   const homePath = localizedPath('/', language);
+
+  useEffect(() => {
+    setDocumentMeta(buildDocumentTitle(t.blogPrivacyTitle), t.blogPrivacyExcerpt, { ogType: "article" });
+  }, [t.blogPrivacyExcerpt, t.blogPrivacyTitle]);
 
   return (
     <div className={blogPostPageClass}>

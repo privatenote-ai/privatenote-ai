@@ -59,6 +59,18 @@ const PAGE_ROUTE_RULES = [
   { test: /client\/src\/pages\/Terms\.tsx$/, bases: ["/terms"] },
   { test: /client\/src\/pages\/SecurityResources\.tsx$/, bases: ["/security-resources"] },
   {
+    test: /client\/src\/components\/security-guides\/locale\//,
+    kind: "security-guides",
+  },
+  {
+    test: /client\/src\/components\/security-guides\/VpnServicesGuide\.tsx$/,
+    kind: "security-guides",
+  },
+  {
+    test: /client\/src\/components\/security-guides\/PasswordManagersGuide\.tsx$/,
+    kind: "security-guides",
+  },
+  {
     test: /client\/src\/pages\/SecurityGuideDetail\.tsx$/,
     kind: "security-guides",
   },
@@ -100,6 +112,7 @@ export function shouldFullPrerender(changedFiles) {
     FULL_PRERENDER_PATTERNS.some((re) => re.test(normalizeChangedFile(file))),
   );
 }
+
 
 function isAppOnlyChange(file) {
   const f = normalizeChangedFile(file);

@@ -4,6 +4,8 @@ import { parseBlogPostTags } from "@/utils/blogPostTags";
 
 /** First commit that wired each static post into the site (git history). */
 export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
+  "introduction-to-private-ai": "2026-07-12T20:00:00.000Z",
+  "how-to-make-a-private-note": "2026-07-12T12:00:00.000Z",
   "crypto-seed-phrase-one-time-link": "2026-07-10T12:00:00.000Z",
   "why-email-is-worst-for-secrets": "2026-07-09T18:00:00.000Z",
   "chat-control-1-0-vote-explained": "2026-07-09T12:00:00.000Z",
@@ -26,6 +28,8 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
 
 const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
+  "introduction-to-private-ai": 7,
+  "how-to-make-a-private-note": 6,
   "crypto-seed-phrase-one-time-link": 7,
   "why-email-is-worst-for-secrets": 6,
   "chat-control-1-0-vote-explained": 6,
@@ -78,6 +82,34 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -19,
+      title: t.blogIntroductionPrivateAiTitle,
+      excerpt: t.blogIntroductionPrivateAiExcerpt,
+      author: "PrivateNote.ai",
+      slug: "introduction-to-private-ai",
+      publishedAt: at("introduction-to-private-ai"),
+      tags: JSON.stringify([t.blogTagAi, t.blogTagPrivacy, t.blogTagTools, t.blogTagSecurity]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("introduction-to-private-ai"),
+      updatedAt: at("introduction-to-private-ai"),
+    },
+    {
+      id: -18,
+      title: t.blogMakePrivateNoteTitle,
+      excerpt: t.blogMakePrivateNoteExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-make-a-private-note",
+      publishedAt: at("how-to-make-a-private-note"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity, t.blogTagCryptography]),
+      content: "",
+      coverImage: "/images/blog-how-to-make-a-private-note-hero.jpg",
+      published: true,
+      createdAt: at("how-to-make-a-private-note"),
+      updatedAt: at("how-to-make-a-private-note"),
+    },
     {
       id: -17,
       title: t.blogCryptoSeedTitle,

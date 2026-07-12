@@ -1,37 +1,49 @@
 import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
+import { localizedSecurityGuideMeta } from "@/components/security-guides/locale";
 import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
-import { NON_ENGLISH_LANGUAGE_CODES } from "@shared/supportedLanguages";
+import { isLocalizedSecurityGuideTopic } from "@shared/localizedSecurityGuides";
+import { isSupportedLanguage, NON_ENGLISH_LANGUAGE_CODES, type SupportedLanguage } from "@shared/supportedLanguages";
 
 const LOCALE_PREFIXES = new Set<string>(NON_ENGLISH_LANGUAGE_CODES);
 
 const SECURITY_GUIDE_META: Record<string, { title: string; description: string }> = {
-  vpn: {
-    title: "VPN Services Guide",
-    description:
-      "Compare Proton VPN, Mullvad, and NymVPN — what VPNs protect, what they cannot fix, and how they fit secure secret sharing.",
-  },
-  password: {
-    title: "Password Managers Guide",
-    description:
-      "Compare KeePass, Bitwarden, Apple, and Google for password security — plus PrivateNote for one-time secret sharing.",
-  },
   messenger: {
     title: "Secure Messaging Guide",
     description:
-      "Compare safer messaging habits for private conversations, including end-to-end encryption, disappearing messages, metadata exposure, and secure sharing limits.",
+      "Signal is our top pick for default E2EE. Understand trade-offs with Telegram, WhatsApp, and Messenger — and when chat is the wrong channel for secrets.",
   },
   email: {
     title: "Secure Email Guide",
     description:
-      "Protect email communications from scanning, surveillance, account takeover, and data mining with encrypted providers and safer handling habits.",
+      "Proton Mail and Tuta offer zero-access encrypted email. Safer habits for aliases, phishing, and why secrets belong in one-time links — not inboxes.",
   },
   browser: {
     title: "Privacy Browsers Guide",
     description:
-      "Browse with less tracking by choosing privacy-focused browsers, blocking invasive trackers, limiting fingerprinting, and controlling cookies.",
+      "Brave blocks trackers by default; Tor Browser maximizes anonymity; Firefox hardens well. Compare privacy browsers and why Chrome and Edge need extra caution.",
   },
 };
+
+function languageFromDocumentPath(pathname: string): SupportedLanguage {
+  const first = normalizeDocumentPath(pathname).split("/").filter(Boolean)[0];
+  if (first && isSupportedLanguage(first) && first !== "en") return first;
+  return "en";
+}
+
+function metaForSecurityGuideTopic(
+  topic: string,
+  pathname: string,
+): { title: string; description: string } | null {
+  if (isLocalizedSecurityGuideTopic(topic)) {
+    const language = languageFromDocumentPath(pathname);
+    const { title, description } = localizedSecurityGuideMeta(topic, language);
+    return { title: buildDocumentTitle(title), description };
+  }
+  const guide = SECURITY_GUIDE_META[topic];
+  if (!guide) return null;
+  return { title: buildDocumentTitle(guide.title), description: guide.description };
+}
 
 const AUTH_META_DESCRIPTIONS = {
   signIn:
@@ -66,6 +78,16 @@ function blogSlugStaticMeta(
   t: Translations,
 ): { title: string; description: string } | null {
   switch (slug) {
+    case "introduction-to-private-ai":
+      return {
+        title: buildDocumentTitle(t.blogIntroductionPrivateAiMetaTitle),
+        description: t.blogIntroductionPrivateAiMetaDescription,
+      };
+    case "how-to-make-a-private-note":
+      return {
+        title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),
+        description: t.blogMakePrivateNoteMetaDescription,
+      };
     case "crypto-seed-phrase-one-time-link":
       return {
         title: buildDocumentTitle(t.blogCryptoSeedMetaTitle),
@@ -231,7 +253,11 @@ function metaForBlogSubpath(slug: string, t: Translations): { title: string; des
 }
 
 /** Inner path after locale prefix, e.g. `password-generator` or `blog/my-slug`. */
-function metaForLocalizedRest(rest: string, t: Translations): { title: string; description: string } | null {
+function metaForLocalizedRest(
+  rest: string,
+  t: Translations,
+  pathname: string,
+): { title: string; description: string } | null {
   if (rest === "blog") {
     return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
   }
@@ -240,6 +266,12 @@ function metaForLocalizedRest(rest: string, t: Translations): { title: string; d
     if (!slugFromUrl || slugFromUrl.includes("/")) return null;
     const slug = resolveCanonicalBlogSlug(slugFromUrl) ?? slugFromUrl;
     return metaForBlogSubpath(slug, t);
+  }
+  if (rest.startsWith("security-guides/")) {
+    const topic = rest.slice("security-guides/".length);
+    if (!topic.includes("/")) {
+      return metaForSecurityGuideTopic(topic, pathname);
+    }
   }
   return pageMetaForPublicPage(rest, t);
 }
@@ -393,13 +425,8 @@ export function resolveDocumentMeta(
   }
 
   if (segments[0] === "security-guides" && segments[1] && segments.length === 2) {
-    const guide = SECURITY_GUIDE_META[segments[1]];
-    if (guide) {
-      return {
-        title: buildDocumentTitle(guide.title),
-        description: guide.description,
-      };
-    }
+    const guideMeta = metaForSecurityGuideTopic(segments[1], p);
+    if (guideMeta) return guideMeta;
     return {
       title: buildDocumentTitle(t.documentMetaSecurityGuideTitle),
       description: t.documentMetaSecurityGuideDescription,
@@ -418,7 +445,7 @@ export function resolveDocumentMeta(
 
   if (segments.length >= 2 && LOCALE_PREFIXES.has(segments[0])) {
     const rest = segments.slice(1).join("/");
-    const localized = metaForLocalizedRest(rest, t);
+    const localized = metaForLocalizedRest(rest, t, p);
     if (localized) return localized;
     return notFoundDocumentMeta(t);
   }

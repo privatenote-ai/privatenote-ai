@@ -521,11 +521,27 @@ async function main() {
       } catch { }
     });
 
-    const waitForStableAboveTheFold = async () => {
-      try {
-        await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
-      } catch {
-        await page.waitForTimeout(200);
+    const isBlogArticleRoute = (route) => {
+      const parts = route.replace(/\/+$/, "").split("/").filter(Boolean);
+      const blogIndex = parts.indexOf("blog");
+      if (blogIndex < 0) return false;
+      const slug = parts[blogIndex + 1];
+      return Boolean(slug) && parts.length === blogIndex + 2;
+    };
+
+    const waitForStableAboveTheFold = async (route) => {
+      if (isBlogArticleRoute(route)) {
+        try {
+          await page.waitForSelector("main h1, #root h1", { timeout: 12_000 });
+        } catch {
+          await page.waitForTimeout(800);
+        }
+      } else {
+        try {
+          await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
+        } catch {
+          await page.waitForTimeout(200);
+        }
       }
       try {
         await page.waitForFunction(
@@ -574,7 +590,7 @@ async function main() {
           { lang: languageForPrerenderRoute(route), storageKey: LANGUAGE_STORAGE_KEY },
         );
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
-        await waitForStableAboveTheFold();
+        await waitForStableAboveTheFold(route);
         const html = await page.content();
         await saveHTML(route, html);
         console.log(`✓ prerendered: ${route}`);

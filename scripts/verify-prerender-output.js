@@ -64,6 +64,18 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "hr/secure-file-transfer.html", mustContain: "prijenos datoteka" },
 ];
 
+const BLOG_H1_CHECKS = [
+  { file: "blog/privacy-tools.html", h1MustContain: "Why Privacy" },
+  { file: "de/blog/datenschutz-tools.html", h1MustContain: "Privatsphäre" },
+  { file: "fr/blog/outils-de-confidentialite.html", h1MustContain: "confidentialité" },
+  { file: "es/blog/herramientas-de-privacidad.html", h1MustContain: "privacidad" },
+  { file: "it/blog/strumenti-per-la-privacy.html", h1MustContain: "privacy" },
+  { file: "nl/blog/privacytools.html", h1MustContain: "privacy" },
+  { file: "pt/blog/ferramentas-de-privacidade.html", h1MustContain: "privacidade" },
+  { file: "sr/blog/alati-za-privatnost.html", h1MustContain: "privatnost" },
+  { file: "hr/blog/alati-za-privatnost.html", h1MustContain: "privatnost" },
+];
+
 function exists(p) {
   try {
     fs.accessSync(p);
@@ -71,6 +83,12 @@ function exists(p) {
   } catch {
     return false;
   }
+}
+
+function firstH1Text(html) {
+  const match = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!match) return "";
+  return match[1].replace(/<[^>]+>/g, "").trim();
 }
 
 function htmlFilesForRoute(route, dir) {
@@ -181,6 +199,27 @@ function main() {
     console.error(
       "Prerender HTML still uses generic shell <title> or wrong page title:\n\n" +
         badTitles.map((r) => `  - ${r}`).join("\n"),
+    );
+    process.exit(1);
+  }
+
+  const badH1 = [];
+  for (const { file, h1MustContain } of BLOG_H1_CHECKS) {
+    const htmlPath = path.join(dir, file);
+    if (!exists(htmlPath)) {
+      badH1.push(`${file} (missing file)`);
+      continue;
+    }
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const h1 = firstH1Text(html);
+    if (!h1 || !h1.toLowerCase().includes(h1MustContain.toLowerCase())) {
+      badH1.push(`${file} (h1: ${h1 || "(missing)"})`);
+    }
+  }
+  if (badH1.length) {
+    console.error(
+      "Prerender HTML is missing a non-empty <h1> on blog article routes:\n\n" +
+        badH1.map((r) => `  - ${r}`).join("\n"),
     );
     process.exit(1);
   }

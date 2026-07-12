@@ -3,6 +3,8 @@ import type { BlogCanonicalSlug } from "@shared/localizedBlogSlugs";
 import type { BlogTrustPath } from "@shared/blogPostCrossLinks";
 
 const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
+  "introduction-to-private-ai": "blogIntroductionPrivateAiTitle",
+  "how-to-make-a-private-note": "blogMakePrivateNoteTitle",
   "crypto-seed-phrase-one-time-link": "blogCryptoSeedTitle",
   "why-email-is-worst-for-secrets": "blogEmailSecretsTitle",
   "chat-control-1-0-vote-explained": "blogChatControl10VoteTitle",

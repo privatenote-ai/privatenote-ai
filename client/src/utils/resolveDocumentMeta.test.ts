@@ -37,6 +37,12 @@ test("resolveDocumentMeta keeps spaced French security-resources hero title", ()
   assert.match(meta.title, /Architecture de sécurité/);
 });
 
+test("resolveDocumentMeta localizes German VPN security guide title", () => {
+  const meta = resolveDocumentMeta("/de/security-guides/vpn", { ...en, ...de });
+  assert.match(meta.title, /VPN-Dienste/);
+  assert.doesNotMatch(meta.title, /VPN Services Guide ·/);
+});
+
 test("resolveDocumentMeta keeps public marketing meta descriptions within SEO length", () => {
   const over: string[] = [];
   for (const route of PUBLIC_MARKETING_PATHS) {

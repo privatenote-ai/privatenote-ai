@@ -1548,6 +1548,18 @@ export const fr: Translations = {
   blogCrossLinksHeading: "Explorer PrivateNote",
   blogCrossLinksRelatedLabel: "Articles associés",
   blogCrossLinksTrustLabel: "Confiance et sécurité",
+  blogIntroductionPrivateAiTitle: "Introduction à l'IA privée : exécuter des modèles localement, dans le navigateur ou chez vous",
+  blogIntroductionPrivateAiExcerpt:
+    "L'évolution de l'IA privée, pourquoi les laboratoires publient des poids ouverts, et comment exécuter des modèles avec Ollama, dans le navigateur ou sur votre propre GPU—plus Gemma 4, Llama, Mistral, Qwen et Write with Private AI dans PrivateNote.",
+  blogIntroductionPrivateAiMetaTitle: "Introduction à l'IA privée",
+  blogIntroductionPrivateAiMetaDescription:
+    "IA privée : poids ouverts, Ollama vs navigateur vs GPU maison, Gemma 4 et Llama, et Write with Private AI dans le navigateur.",
+  blogMakePrivateNoteTitle: "Comment créer une note privée (et la garder vraiment privée)",
+  blogMakePrivateNoteExcerpt:
+    "Une icône de cadenas dans une app de notes n'est pas la même chose qu'une note vraiment privée. Découvrez ce que « privé » signifie vraiment, les réglages qui comptent et comment créer une note chiffrée qui disparaît après lecture—sans créer de compte.",
+  blogMakePrivateNoteMetaTitle: "Comment créer une note privée",
+  blogMakePrivateNoteMetaDescription:
+    "Créez une note privée : chiffrement navigateur, destruction après lecture, mot de passe optionnel—sans app de notes ni compte.",
   blogCryptoSeedTitle: "Faut-il partager une phrase seed crypto via un lien à usage unique ?",
   blogCryptoSeedExcerpt:
     "En général, non. Si vous devez absolument le faire, chiffrez-la d’abord localement ; ne saisissez jamais la phrase mnémonique sur un site web, y compris PrivateNote.",

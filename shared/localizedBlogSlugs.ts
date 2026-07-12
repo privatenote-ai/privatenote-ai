@@ -1,6 +1,8 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 export const BLOG_CANONICAL_SLUGS = [
+  "introduction-to-private-ai",
+  "how-to-make-a-private-note",
   "crypto-seed-phrase-one-time-link",
   "why-email-is-worst-for-secrets",
   "chat-control-1-0-vote-explained",
@@ -24,6 +26,28 @@ export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
 
 /** Localized URL slug per language (ASCII, no diacritics). English values match canonical slugs. */
 export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLanguage, string>> = {
+  "introduction-to-private-ai": {
+    en: "introduction-to-private-ai",
+    de: "einfuehrung-in-private-ki",
+    fr: "introduction-a-l-ia-privee",
+    es: "introduccion-a-la-ia-privada",
+    it: "introduzione-all-ia-privata",
+    nl: "introductie-tot-private-ai",
+    pt: "introducao-a-ia-privada",
+    sr: "uvod-u-privatnu-ai",
+    hr: "uvod-u-privatnu-ai",
+  },
+  "how-to-make-a-private-note": {
+    en: "how-to-make-a-private-note",
+    de: "wie-man-eine-private-notiz-erstellt",
+    fr: "comment-creer-une-note-privee",
+    es: "como-hacer-una-nota-privada",
+    it: "come-creare-una-nota-privata",
+    nl: "hoe-maak-je-een-prive-notitie",
+    pt: "como-fazer-uma-nota-privada",
+    sr: "kako-napraviti-privatnu-belezku",
+    hr: "kako-napraviti-privatnu-biljesku",
+  },
   "crypto-seed-phrase-one-time-link": {
     en: "crypto-seed-phrase-one-time-link",
     de: "krypto-seed-phrase-einmal-link",

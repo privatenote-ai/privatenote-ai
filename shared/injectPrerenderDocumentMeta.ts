@@ -2,6 +2,7 @@
  * Inject per-route <title> and meta descriptions into prerendered HTML snapshots.
  * Crawlers read static HTML; client-side setDocumentMeta runs too late for Ahrefs.
  */
+import { blogPostTitleForSlug } from "../client/src/components/blog/blogPostTitles.ts";
 import { resolveDocumentMeta } from "../client/src/utils/resolveDocumentMeta.ts";
 import { buildStaticBlogPosts } from "../client/src/utils/staticBlogPosts.ts";
 import { en } from "../client/src/utils/translations/en.ts";
@@ -23,7 +24,7 @@ import {
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
 } from "./homeSeoLinks.ts";
-import { resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
+import { isBlogCanonicalSlug, resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
 import {
   buildSecureFileTransferFaqSchema,
   isSecureFileTransferRoute,
@@ -97,6 +98,13 @@ function escapeHtmlAttr(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function serializeJsonLd(data: Record<string, unknown>): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
@@ -138,6 +146,89 @@ function blogSlugFromRoute(route: string): string | null {
   const blogIndex = parts.indexOf("blog");
   if (blogIndex < 0) return null;
   return parts[blogIndex + 1] ?? null;
+}
+
+function hasNonemptyH1(html: string): boolean {
+  for (const match of html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
+    const text = match[1].replace(/<[^>]+>/g, "").trim();
+    if (text) return true;
+  }
+  return false;
+}
+
+function buildPrivacyToolsPrerenderArticle(t: Translations): string {
+  const title = t.blogPrivacyTitle.trim();
+  const paragraphs = [t.blogPrivacyBody1, t.blogPrivacyBody2, t.blogPrivacyBody3];
+  const educationSections = [
+    { title: t.educationNetworkTitle, items: [t.educationNetwork1, t.educationNetwork2, t.educationNetwork3, t.educationNetwork4, t.educationNetwork5] },
+    { title: t.educationMobileTitle, items: [t.educationMobile1, t.educationMobile2, t.educationMobile3, t.educationMobile4, t.educationMobile5, t.educationMobile6] },
+    { title: t.educationBrowsingTitle, items: [t.educationBrowsing1, t.educationBrowsing2, t.educationBrowsing3, t.educationBrowsing4, t.educationBrowsing5, t.educationBrowsing6] },
+    { title: t.educationCommunicationTitle, items: [t.educationCommunication1, t.educationCommunication2, t.educationCommunication3, t.educationCommunication4, t.educationCommunication5, t.educationCommunication6] },
+    { title: t.educationPrivacyTitle, items: [t.educationPrivacy1, t.educationPrivacy2, t.educationPrivacy3, t.educationPrivacy4, t.educationPrivacy5, t.educationPrivacy6] },
+  ];
+  const quickTips = [t.recommendQuick1, t.recommendQuick2, t.recommendQuick3, t.recommendQuick4, t.recommendQuick5];
+
+  const bodyParagraphs = paragraphs
+    .map((paragraph) => `<p>${escapeHtmlText(paragraph)}</p>`)
+    .join("");
+  const educationHtml = educationSections
+    .map(
+      (section) =>
+        `<section><h2>${escapeHtmlText(section.title)}</h2><ul>${section.items
+          .map((item) => `<li>${escapeHtmlText(item)}</li>`)
+          .join("")}</ul></section>`,
+    )
+    .join("");
+  const tipsHtml = quickTips.map((tip) => `<li>${escapeHtmlText(tip)}</li>`).join("");
+
+  return (
+    `<article data-privatenote-prerender-article="privacy-tools">` +
+    `<h1 data-privatenote-prerender-h1="true">${escapeHtmlText(title)}</h1>` +
+    bodyParagraphs +
+    educationHtml +
+    `<section><h2>${escapeHtmlText(t.blogSecurityRecommendations)}</h2>` +
+    `<h3>${escapeHtmlText(t.recommendQuickTitle)}</h3>` +
+    `<ul>${tipsHtml}</ul></section>` +
+    `<section><h2>${escapeHtmlText(t.blogAdditionalResources)}</h2>` +
+    `<ul><li><a href="https://www.eff.org/issues/privacy">Electronic Frontier Foundation - Privacy Resources</a></li></ul>` +
+    `</section></article>`
+  );
+}
+
+/** Ensure blog article snapshots expose crawler-visible content when React did not hydrate in time. */
+function injectBlogPostCrawlerFallback(html: string, route: string, t: Translations): string {
+  const slugFromRoute = blogSlugFromRoute(route);
+  if (!slugFromRoute) return html;
+
+  const canonicalSlug = resolveCanonicalBlogSlug(slugFromRoute);
+  if (!canonicalSlug || !isBlogCanonicalSlug(canonicalSlug)) return html;
+
+  const emptyRoot = /<div\s+id=["']root["']\s*>\s*<\/div>/i;
+  if (canonicalSlug === "privacy-tools" && emptyRoot.test(html)) {
+    const article = buildPrivacyToolsPrerenderArticle(t);
+    return html.replace(emptyRoot, `<div id="root"><main>${article}</main></div>`);
+  }
+
+  if (hasNonemptyH1(html)) return html;
+
+  const title = blogPostTitleForSlug(canonicalSlug, t).trim();
+  if (!title) return html;
+
+  const h1 =
+    `<h1 class="mb-5 max-w-4xl text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 dark:text-white" ` +
+    `data-privatenote-prerender-h1="true">${escapeHtmlAttr(title)}</h1>`;
+
+  if (emptyRoot.test(html)) {
+    return html.replace(emptyRoot, `<div id="root"><main>${h1}</main></div>`);
+  }
+
+  const mainOpen = html.match(/<main\b[^>]*>/i);
+  if (mainOpen) {
+    const idx = html.indexOf(mainOpen[0]) + mainOpen[0].length;
+    return html.slice(0, idx) + h1 + html.slice(idx);
+  }
+
+  return html.replace(/<body[^>]*>/i, (match) => `${match}<main>${h1}</main>`);
 }
 
 function injectBlogStructuredData(html: string, route: string, language: SupportedLanguage, t: Translations): string {
@@ -223,6 +314,7 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
 
   out = replaceMetaContent(out, "property", "og:locale", OG_LOCALE_BY_LANG[lang] ?? "en_US");
   out = injectBlogStructuredData(out, route, lang, t);
+  out = injectBlogPostCrawlerFallback(out, route, t);
   out = injectPasswordGeneratorFaqSchema(out, route, t);
   out = injectSecureFileTransferFaqSchema(out, route, t);
   out = stripPrerenderCloudflareAnalyticsBeacons(out);

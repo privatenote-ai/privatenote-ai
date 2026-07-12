@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
@@ -8,30 +8,32 @@ import { type BlogPost } from '@shared/schema';
 import { parseBlogPostTags } from '@/utils/blogPostTags';
 import { escapeHtml } from '@shared/escapeHtml';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PrivacyToolsPost } from '@/components/blog/PrivacyToolsPost';
-import { GoodEnoughSecurityPost } from '@/components/blog/GoodEnoughSecurityPost';
-import { PasswordGenerationPost } from '@/components/blog/PasswordGenerationPost';
-import { WorkplaceTextsPost } from '@/components/blog/WorkplaceTextsPost';
-import { PrivateNoteForDevelopersPost } from '@/components/blog/PrivateNoteForDevelopersPost';
-import { PrivateNoteCodexPost } from '@/components/blog/PrivateNoteCodexPost';
-import { AgentSecurityPost } from '@/components/blog/AgentSecurityPost';
-import { OneTimeSecretLinksPost } from '@/components/blog/OneTimeSecretLinksPost';
-import { EncryptedVsSecureFileSharingPost } from '@/components/blog/EncryptedVsSecureFileSharingPost';
-import { SecretMessageWithoutAccountPost } from '@/components/blog/SecretMessageWithoutAccountPost';
-import { SecretsNeverSendInChatPost } from '@/components/blog/SecretsNeverSendInChatPost';
-import { EndToEndEncryptionDefinitionPost } from '@/components/blog/EndToEndEncryptionDefinitionPost';
-import { ShareApiKeySecurelyPost } from '@/components/blog/ShareApiKeySecurelyPost';
-import { ChatControlCryptographersPost } from '@/components/blog/ChatControlCryptographersPost';
-import { ChatControl10VoteExplainedPost } from '@/components/blog/ChatControl10VoteExplainedPost';
-import { EmailWorstForSecretsPost } from '@/components/blog/EmailWorstForSecretsPost';
-import { CryptoSeedPhraseOneTimeLinkPost } from '@/components/blog/CryptoSeedPhraseOneTimeLinkPost';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 import { buildDocumentTitle, setDocumentMeta, setStructuredDataScript } from '@/utils/documentMeta';
 import { resolveCanonicalBlogSlug } from '@shared/localizedBlogSlugs';
 import { buildBlogArticleStructuredData } from '@shared/blogStructuredData';
+import { STATIC_BLOG_POST_BY_SLUG } from '@/pages/staticBlogPostComponents';
 
 import { STATIC_BLOG_SLUGS } from '@/utils/staticBlogPosts';
+
+function BlogPostLoadingSkeleton() {
+  return (
+    <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
+      <Skeleton className="h-10 w-3/4 mb-4" />
+      <div className="flex items-center mb-6">
+        <Skeleton className="h-4 w-32 mr-4" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    </div>
+  );
+}
 
 export default function BlogPostPage() {
   const { language, t } = useLanguage();
@@ -89,56 +91,13 @@ export default function BlogPostPage() {
     setStructuredDataScript("blog-article", schema);
   }, [slug, language, isStaticSlug, error, isLoading, post, t]);
 
-  if (slug === 'privacy-tools') {
-    return <PrivacyToolsPost />;
-  }
-  if (slug === 'how-to-share-api-key-securely') {
-    return <ShareApiKeySecurelyPost />;
-  }
-  if (slug === 'crypto-seed-phrase-one-time-link') {
-    return <CryptoSeedPhraseOneTimeLinkPost />;
-  }
-  if (slug === 'why-email-is-worst-for-secrets') {
-    return <EmailWorstForSecretsPost />;
-  }
-  if (slug === 'chat-control-1-0-vote-explained') {
-    return <ChatControl10VoteExplainedPost />;
-  }
-  if (slug === 'chat-control-europe-cryptographers') {
-    return <ChatControlCryptographersPost />;
-  }
-  if (slug === 'myth-good-enough-security') {
-    return <GoodEnoughSecurityPost />;
-  }
-  if (slug === 'how-we-generate-passwords') {
-    return <PasswordGenerationPost />;
-  }
-  if (slug === 'workplace-texts-private-note') {
-    return <WorkplaceTextsPost />;
-  }
-  if (slug === 'privatenote-for-developers') {
-    return <PrivateNoteForDevelopersPost />;
-  }
-  if (slug === 'privatenote-codex') {
-    return <PrivateNoteCodexPost />;
-  }
-  if (slug === 'securing-ai-agents-like-employees') {
-    return <AgentSecurityPost />;
-  }
-  if (slug === 'one-time-secret-links') {
-    return <OneTimeSecretLinksPost />;
-  }
-  if (slug === 'encrypted-vs-secure-file-sharing') {
-    return <EncryptedVsSecureFileSharingPost />;
-  }
-  if (slug === 'send-secret-message-without-account') {
-    return <SecretMessageWithoutAccountPost />;
-  }
-  if (slug === 'secrets-never-send-in-chat') {
-    return <SecretsNeverSendInChatPost />;
-  }
-  if (slug === 'what-is-end-to-end-encryption') {
-    return <EndToEndEncryptionDefinitionPost />;
+  const StaticPost = slug ? STATIC_BLOG_POST_BY_SLUG[slug] : undefined;
+  if (StaticPost) {
+    return (
+      <Suspense fallback={<BlogPostLoadingSkeleton />}>
+        <StaticPost />
+      </Suspense>
+    );
   }
 
   if (error) {
@@ -160,21 +119,7 @@ export default function BlogPostPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto max-w-3xl px-4 pt-24 pb-16">
-        <Skeleton className="h-10 w-3/4 mb-4" />
-        <div className="flex items-center mb-6">
-          <Skeleton className="h-4 w-32 mr-4" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-      </div>
-    );
+    return <BlogPostLoadingSkeleton />;
   }
 
   if (!post) {

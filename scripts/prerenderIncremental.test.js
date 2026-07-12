@@ -31,7 +31,7 @@ describe("prerender incremental route selection", () => {
     assert.ok(affected);
     assert.ok(affected.has("/blog"));
     assert.ok(affected.has("/blog/privacy-tools"));
-    assert.ok(affected.has("/de/blog/privacy-tools"));
+    assert.ok(affected.has("/de/blog/datenschutz-tools"));
   });
 
   it("ignores app-only note component changes", () => {

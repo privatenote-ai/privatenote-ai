@@ -44,6 +44,35 @@ export const SecurityEducation: React.FC = () => {
     },
   ];
 
+  const isPrerender =
+    typeof window !== "undefined" &&
+    Boolean((window as Window & { __PRERENDER__?: boolean }).__PRERENDER__);
+
+  if (isPrerender) {
+    return (
+      <div className="space-y-6">
+        {sections.map(({ icon: Icon, title, items }) => (
+          <section
+            key={title}
+            className="rounded-2xl border border-gray-200 bg-white/70 p-5 dark:border-gray-800 dark:bg-gray-900/50"
+          >
+            <h2 className="mb-4 flex items-center gap-3 text-lg font-medium">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Icon className="h-5 w-5" />
+              </span>
+              <span>{title}</span>
+            </h2>
+            <ul className="list-disc space-y-2 pl-5 text-base text-gray-600 dark:text-gray-400">
+              {items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Accordion

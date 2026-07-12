@@ -1555,6 +1555,18 @@ export const pt: Translations = {
   blogCrossLinksHeading: "Explore o PrivateNote",
   blogCrossLinksRelatedLabel: "Artigos relacionados",
   blogCrossLinksTrustLabel: "Confiança e segurança",
+  blogIntroductionPrivateAiTitle: "Introdução à IA privada: executar modelos localmente, no navegador ou em casa",
+  blogIntroductionPrivateAiExcerpt:
+    "Como a IA privada evoluiu, por que laboratórios publicam pesos abertos e como executar modelos com Ollama, no navegador ou na sua própria GPU—além de Gemma 4, Llama, Mistral, Qwen e Write with Private AI no PrivateNote.",
+  blogIntroductionPrivateAiMetaTitle: "Introdução à IA privada",
+  blogIntroductionPrivateAiMetaDescription:
+    "IA privada: pesos abertos, Ollama vs navegador vs GPU em casa, Gemma 4 e Llama, e Write with Private AI no navegador.",
+  blogMakePrivateNoteTitle: "Como fazer uma nota privada (e mantê-la realmente privada)",
+  blogMakePrivateNoteExcerpt:
+    "Um ícone de cadeado num app de notas não é o mesmo que uma nota verdadeiramente privada. Saiba o que privado realmente significa, quais definições importam e como criar uma nota cifrada que desaparece após a leitura—sem criar conta.",
+  blogMakePrivateNoteMetaTitle: "Como fazer uma nota privada",
+  blogMakePrivateNoteMetaDescription:
+    "Crie uma nota privada com criptografia no navegador, autodestruição após leitura e senha opcional—sem app de notas ou conta.",
   blogCryptoSeedTitle:
     "Você deve compartilhar uma frase-semente cripto por um link de uso único?",
   blogCryptoSeedExcerpt:

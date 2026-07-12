@@ -1329,6 +1329,18 @@ export const nl: Translations = {
   recommendQuick5: "Gebruik gecodeerde services voor gevoelige communicatie",
   blogGoodEnoughTitle: "De mythe van ‘goed genoeg’-beveiliging",
   blogGoodEnoughExcerpt: "Waarom moderne bedreigingen architecturale beveiliging, kortstondige gevoelige data, veiligere defaults en privacytools vereisen.",
+  blogIntroductionPrivateAiTitle: "Introductie tot private AI: modellen lokaal, in de browser of thuis draaien",
+  blogIntroductionPrivateAiExcerpt:
+    "Hoe private AI zich ontwikkelde, waarom labs open gewichten publiceren en hoe je modellen draait met Ollama, in de browser of op je eigen GPU—plus Gemma 4, Llama, Mistral, Qwen en Write with Private AI in PrivateNote.",
+  blogIntroductionPrivateAiMetaTitle: "Introductie tot private AI",
+  blogIntroductionPrivateAiMetaDescription:
+    "Private AI: open gewichten, Ollama vs browser vs thuis-GPU, Gemma 4 en Llama, en Write with Private AI in je browser.",
+  blogMakePrivateNoteTitle: "Hoe maak je een privénotitie (en houd je die echt privé)",
+  blogMakePrivateNoteExcerpt:
+    "Een slotpictogram in een notitie-app is niet hetzelfde als een echt privénotitie. Leer wat privé echt betekent, welke instellingen ertoe doen en hoe je een versleutelde notitie maakt die verdwijnt na het lezen—zonder account.",
+  blogMakePrivateNoteMetaTitle: "Hoe maak je een privénotitie",
+  blogMakePrivateNoteMetaDescription:
+    "Maak een privénotitie met browserversleuteling, vernietigen na lezen en optioneel wachtwoord—zonder notitie-app of account.",
   blogCryptoSeedTitle: "Moet je een crypto seed phrase delen via een eenmalige link?",
   blogCryptoSeedExcerpt:
     "Meestal niet. Als het echt moet, versleutel hem eerst lokaal — typ de mnemonic nooit in op een website, ook niet op PrivateNote.",

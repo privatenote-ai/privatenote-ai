@@ -1364,6 +1364,18 @@ export const de: Translations = {
   blogTagAi: "ki",
   blogAgentSecurityMetaTitle: "KI-Agenten wie Mitarbeiter absichern",
   blogAgentSecurityMetaDescription: "Warum agentische KI das Sicherheitsregelwerk ändert: Kontextgrenzen, Gedächtnisrisiken, Berechtigungen und Vertrauensarchitektur.",
+  blogIntroductionPrivateAiTitle: "Einführung in Private KI: Modelle lokal, im Browser oder zu Hause betreiben",
+  blogIntroductionPrivateAiExcerpt:
+    "Wie sich private KI entwickelt hat, warum Labore offene Gewichte veröffentlichen und wie Sie Modelle mit Ollama, im Browser oder auf eigener GPU nutzen—plus Gemma 4, Llama, Mistral, Qwen und Write with Private AI in PrivateNote.",
+  blogIntroductionPrivateAiMetaTitle: "Einführung in private KI",
+  blogIntroductionPrivateAiMetaDescription:
+    "Private KI: offene Gewichte, Ollama vs Browser vs Heim-GPU, Gemma 4 und Llama, und Write with Private AI im Browser.",
+  blogMakePrivateNoteTitle: "Wie man eine private Notiz erstellt (und sie wirklich privat haelt)",
+  blogMakePrivateNoteExcerpt:
+    "Ein Schloss-Symbol in einer Notiz-App ist nicht dasselbe wie eine wirklich private Notiz. Erfahren Sie, was privat wirklich bedeutet, welche Einstellungen zaehlen und wie Sie eine verschluesselte Notiz erstellen, die nach dem Lesen verschwindet—ohne Konto.",
+  blogMakePrivateNoteMetaTitle: "Private Notiz erstellen",
+  blogMakePrivateNoteMetaDescription:
+    "Private Notiz mit Browser-Verschluesselung, Burn-after-Reading und optionalem Passwort—ohne Notiz-App oder Konto.",
   blogCryptoSeedTitle: "Sollten Sie eine Krypto-Seed-Phrase über einen Einmal-Link teilen?",
   blogCryptoSeedExcerpt:
     "In der Regel nein. Wenn es unvermeidlich ist: zuerst lokal verschlüsseln—geben Sie die Mnemonic niemals auf einer Website ein, auch nicht bei PrivateNote.",

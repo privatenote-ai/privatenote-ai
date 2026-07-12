@@ -10,6 +10,46 @@ function extractBlogSchema(html: string): Record<string, unknown> {
   return JSON.parse(match[1]);
 }
 
+test("injectPrerenderDocumentMeta injects blog H1 when snapshot has empty root", () => {
+  const html = [
+    '<html lang="en"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="en_US" />',
+    '</head><body><div id="root"></div></body></html>',
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/blog/privacy-tools");
+  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Why Privacy Matters<\/h1>/);
+  assert.match(out, /I approach privacy the way I approach cryptography/);
+  assert.match(out, /Secure Your Network/);
+  assert.match(out, /Security Recommendations/);
+  assert.match(out, /data-privatenote-prerender-article="privacy-tools"/);
+});
+
+test("injectPrerenderDocumentMeta injects localized privacy-tools article for empty root", () => {
+  const html = [
+    '<html lang="de"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="de_DE" />',
+    '</head><body><div id="root"></div></body></html>',
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/de/blog/datenschutz-tools");
+  assert.match(out, /<h1[^>]*>Warum Privatsphäre wichtig ist<\/h1>/);
+  assert.match(out, /Ich betrachte Privatsphäre/);
+  assert.match(out, /Sicherheitsempfehlungen|Security Recommendations/);
+});
+
 test("injectPrerenderDocumentMeta injects Article and Breadcrumb schema for blog posts", () => {
   const html = [
     '<html lang="en"><head>',

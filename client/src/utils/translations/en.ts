@@ -1426,6 +1426,18 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
+  blogIntroductionPrivateAiTitle: "Introduction to Private AI: Run Models Locally, in Your Browser, or at Home",
+  blogIntroductionPrivateAiExcerpt:
+    "How private AI evolved, why labs publish open weights, and how to run models with Ollama, in the browser, or on your own GPU—plus a look at Gemma 4, Llama, Mistral, Qwen, and the engineering behind Write with Private AI.",
+  blogIntroductionPrivateAiMetaTitle: "Introduction to private AI",
+  blogIntroductionPrivateAiMetaDescription:
+    "Private AI: open weights, Ollama vs browser vs home GPU, Gemma 4 and Llama families, and Write with Private AI in your browser.",
+  blogMakePrivateNoteTitle: "How to Make a Private Note (And Actually Keep It Private)",
+  blogMakePrivateNoteExcerpt:
+    "A lock icon in a notes app is not the same as a truly private note. Learn what digital privacy actually means, which structural settings matter, and how to create an encrypted note that disappears after it is read—without ever creating an account.",
+  blogMakePrivateNoteMetaTitle: "How to make a private note",
+  blogMakePrivateNoteMetaDescription:
+    "Make a private note with browser encryption, burn-after-reading, and optional passwords—without a regular notes app or account.",
   blogCryptoSeedTitle: "Should You Share a Crypto Seed Phrase Through a One-Time Link?",
   blogCryptoSeedExcerpt:
     "Usually not. If you absolutely must, encrypt it locally first—never type the mnemonic into a website, including PrivateNote.",

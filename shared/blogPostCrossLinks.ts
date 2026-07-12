@@ -22,6 +22,28 @@ const MAX_RELATED_POSTS = 6;
  * Product CTAs live in each post's closing section, so they are not duplicated here.
  */
 export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks> = {
+  "introduction-to-private-ai": {
+    related: [
+      "securing-ai-agents-like-employees",
+      "privatenote-for-developers",
+      "how-to-make-a-private-note",
+      "what-is-end-to-end-encryption",
+      "privacy-tools",
+      "workplace-texts-private-note",
+    ],
+    trust: "/how-it-works",
+  },
+  "how-to-make-a-private-note": {
+    related: [
+      "one-time-secret-links",
+      "why-email-is-worst-for-secrets",
+      "how-to-share-api-key-securely",
+      "what-is-end-to-end-encryption",
+      "send-secret-message-without-account",
+      "workplace-texts-private-note",
+    ],
+    trust: "/how-it-works",
+  },
   "crypto-seed-phrase-one-time-link": {
     related: [
       "one-time-secret-links",
@@ -92,6 +114,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "send-secret-message-without-account": {
     related: [
+      "how-to-make-a-private-note",
       "one-time-secret-links",
       "secrets-never-send-in-chat",
       "what-is-end-to-end-encryption",
@@ -119,6 +142,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "securing-ai-agents-like-employees": {
     related: [
+      "introduction-to-private-ai",
       "privatenote-for-developers",
       "privatenote-codex",
       "how-to-share-api-key-securely",

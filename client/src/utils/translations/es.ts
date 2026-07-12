@@ -1368,6 +1368,18 @@ export const es: Translations = {
   blogChatSecretsMetaDescription: "Contraseñas, claves API y códigos de recuperación no deben quedar en el historial del chat. Riesgos y enlaces efímeros cifrados en el navegador.",
   blogAgentSecurityTitle: "Los agentes de IA se están convirtiendo en empleados. Debemos empezar a asegurarlos como empleados.",
   blogAgentSecurityExcerpt: "La inyección de prompts ya no cuenta toda la historia. Cuando los agentes de IA obtienen herramientas, memoria y autonomía, la seguridad debe gobernar todo el sistema—no solo el modelo.",
+  blogIntroductionPrivateAiTitle: "Introducción a la IA privada: ejecutar modelos en local, en el navegador o en casa",
+  blogIntroductionPrivateAiExcerpt:
+    "Cómo evolucionó la IA privada, por qué los laboratorios publican pesos abiertos y cómo ejecutar modelos con Ollama, en el navegador o en tu propia GPU—además de Gemma 4, Llama, Mistral, Qwen y Write with Private AI en PrivateNote.",
+  blogIntroductionPrivateAiMetaTitle: "Introducción a la IA privada",
+  blogIntroductionPrivateAiMetaDescription:
+    "IA privada: pesos abiertos, Ollama vs navegador vs GPU en casa, Gemma 4 y Llama, y Write with Private AI en el navegador.",
+  blogMakePrivateNoteTitle: "Cómo hacer una nota privada (y mantenerla realmente privada)",
+  blogMakePrivateNoteExcerpt:
+    "Un icono de candado en una app de notas no es lo mismo que una nota verdaderamente privada. Aprende qué significa privado de verdad, qué ajustes importan y cómo crear una nota cifrada que desaparece tras leerla—sin crear una cuenta.",
+  blogMakePrivateNoteMetaTitle: "Cómo hacer una nota privada",
+  blogMakePrivateNoteMetaDescription:
+    "Crea una nota privada con cifrado en el navegador, autodestrucción tras lectura y contraseña opcional—sin app de notas ni cuenta.",
   blogCryptoSeedTitle: "¿Deberías compartir una frase semilla cripto mediante un enlace de un solo uso?",
   blogCryptoSeedExcerpt:
     "En general, no. Si no hay alternativa, cifra primero en local: nunca escribas la frase mnemotécnica en un sitio web, ni siquiera en PrivateNote.",
