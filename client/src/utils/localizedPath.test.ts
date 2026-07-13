@@ -65,4 +65,11 @@ describe("localizedPath", () => {
     assert.equal(localizedPath("/secure-file-transfer", "sr"), "/sr/secure-file-transfer");
     assert.equal(localizedPath("/secure-file-transfer", "hr"), "/hr/secure-file-transfer");
   });
+
+  it("localizes vpn and password security guides", () => {
+    assert.equal(localizedPath("/security-guides/vpn", "en"), "/security-guides/vpn");
+    assert.equal(localizedPath("/security-guides/vpn", "de"), "/de/security-guides/vpn");
+    assert.equal(localizedPath("/security-guides/password", "fr"), "/fr/security-guides/password");
+    assert.equal(localizedPath("/security-guides/messenger", "de"), "/security-guides/messenger");
+  });
 });

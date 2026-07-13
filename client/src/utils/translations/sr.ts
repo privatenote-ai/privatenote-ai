@@ -1176,11 +1176,14 @@ export const sr: Translations = {
   blogBackToBlog: "Nazad na blog",
   blogNotFoundTitle: "Post na blogu nije pronađen",
   blogNotFoundBody: "Članak koji tražite ne postoji ili je uklonjen.",
-  blogPrivacyTitle: "Zašto je privatnost važna",
-  blogPrivacyExcerpt: "Privatnost nije paranoja; to je dobar inženjering i osnovna ljudska potreba za autonomijom, eksperimentisanjem i dostojanstvom.",
-  blogPrivacyBody1: "Pristupam privatnosti na način na koji pristupam kriptografiji: pretpostavimo da će sistem biti posmatran, meren i na kraju eksploatisan osim ako ne dizajnirate za tu realnost. Privatnost nije paranoja; to je dobar inženjering i osnovna ljudska potreba za autonomijom, eksperimentisanjem i dostojanstvom.",
-  blogPrivacyBody2: "Kada se tragovi podataka prikupljaju podrazumevano, oni se neizbežno ponovo koriste izvan svoje prvobitne svrhe. Profili se prave, dozvole se tiho šire, a odluke se donose o vama bez vašeg pristanka. Što se ovo duže ne proverava, to će biti teže isključiti se.",
-  blogPrivacyBody3: "Moj cilj sa privateNote.ai je da učinim da jaka privatnost bude uobičajena. Ne bi trebalo da budete stručnjak za bezbednost da biste bezbedno poslali tajnu. Male, dosledne navike - kratkotrajne poruke, odvojeni kanali za lozinke i šifrovana komunikacija - tokom vremena postaju stvarna bezbednost.",
+  blogPrivacyTitle: "Alati i navike privatnosti koji zaista pomažu",
+  blogPrivacyExcerpt:
+    "Praktičan vodič za svakodnevne navike privatnosti, kada koristiti jednokratnu šifrovanu poruku i gde pronaći alate koji smanjuju izloženost bez drugog posla.",
+  blogPrivacyBody1:
+    "Privatnost propada tiho. Podaci se prikupljaju jer je podešavanje bilo uključeno podrazumevano, link je preživeo svoju svrhu ili je lozinka ostala u istoriji četa koju niko nije hteo da zadrži. Rešenje nije strah — to je pravi alat za trenutak i dosledna upotreba.",
+  blogPrivacyBody2:
+    "U nastavku su praktične navike za mrežu, uređaje, pregledač i komunikaciju — zatim kada PrivateNote.ai odgovara, pregled našeg kuriranog direktorijuma alata za privatnost i linkovi koje vredi sačuvati.",
+  blogPrivacyHabitsTitle: "Praktične navike privatnosti",
   blogSecurityRecommendations: "Bezbednosne preporuke",
   blogAdditionalResources: "Dodatni resursi",
   blogBackToHome: "Povratak kući",

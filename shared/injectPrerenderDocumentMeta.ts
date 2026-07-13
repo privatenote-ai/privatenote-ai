@@ -132,13 +132,18 @@ function replaceMetaContent(html: string, attr: "name" | "property", key: string
   return html.replace("</head>", `<meta ${attr}="${key}" content="${escaped}" /></head>`);
 }
 
+/** Remove the static home hero snapshot block from prerender HTML. */
+export function stripPnHomePrerenderBlock(html: string): string {
+  return html.replace(
+    /<div\s+id=["']pn-home-prerender["'][^>]*>[\s\S]*?<\/section>\s*<\/div>\s*/gi,
+    "",
+  );
+}
+
 /** Remove static home hero snapshot so crawlers do not see duplicate H1 on inner pages. */
 function stripHomePrerenderHero(html: string, route: string): string {
   if (route === "/" || isLocaleHomeRoute(route)) return html;
-  return html.replace(
-    /\s*<div id="pn-home-prerender"[\s\S]*?<\/div>\s*(?=<\/div>\s*<noscript>)/i,
-    "\n",
-  );
+  return stripPnHomePrerenderBlock(html);
 }
 
 function blogSlugFromRoute(route: string): string | null {
@@ -149,7 +154,8 @@ function blogSlugFromRoute(route: string): string | null {
 }
 
 function hasNonemptyH1(html: string): boolean {
-  for (const match of html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
+  const withoutHomeSnapshot = stripPnHomePrerenderBlock(html);
+  for (const match of withoutHomeSnapshot.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
     const text = match[1].replace(/<[^>]+>/g, "").trim();
     if (text) return true;
   }
@@ -158,7 +164,7 @@ function hasNonemptyH1(html: string): boolean {
 
 function buildPrivacyToolsPrerenderArticle(t: Translations): string {
   const title = t.blogPrivacyTitle.trim();
-  const paragraphs = [t.blogPrivacyBody1, t.blogPrivacyBody2, t.blogPrivacyBody3];
+  const paragraphs = [t.blogPrivacyBody1, t.blogPrivacyBody2];
   const educationSections = [
     { title: t.educationNetworkTitle, items: [t.educationNetwork1, t.educationNetwork2, t.educationNetwork3, t.educationNetwork4, t.educationNetwork5] },
     { title: t.educationMobileTitle, items: [t.educationMobile1, t.educationMobile2, t.educationMobile3, t.educationMobile4, t.educationMobile5, t.educationMobile6] },
@@ -166,7 +172,14 @@ function buildPrivacyToolsPrerenderArticle(t: Translations): string {
     { title: t.educationCommunicationTitle, items: [t.educationCommunication1, t.educationCommunication2, t.educationCommunication3, t.educationCommunication4, t.educationCommunication5, t.educationCommunication6] },
     { title: t.educationPrivacyTitle, items: [t.educationPrivacy1, t.educationPrivacy2, t.educationPrivacy3, t.educationPrivacy4, t.educationPrivacy5, t.educationPrivacy6] },
   ];
-  const quickTips = [t.recommendQuick1, t.recommendQuick2, t.recommendQuick3, t.recommendQuick4, t.recommendQuick5];
+  const externalResources = [
+    { href: "https://www.eff.org/issues/privacy", label: t.blogPrivacyResourceEff },
+    { href: "https://haveibeenpwned.com/", label: t.blogPrivacyResourceHibp },
+    { href: "https://2fa.directory/", label: t.blogPrivacyResource2fa },
+    { href: "https://signal.org/", label: t.blogPrivacyResourceSignal },
+    { href: "https://www.mozilla.org/en-US/privacy/", label: t.blogPrivacyResourceMozilla },
+    { href: "https://proton.me/", label: t.blogPrivacyResourceProton },
+  ];
 
   const bodyParagraphs = paragraphs
     .map((paragraph) => `<p>${escapeHtmlText(paragraph)}</p>`)
@@ -179,19 +192,49 @@ function buildPrivacyToolsPrerenderArticle(t: Translations): string {
           .join("")}</ul></section>`,
     )
     .join("");
-  const tipsHtml = quickTips.map((tip) => `<li>${escapeHtmlText(tip)}</li>`).join("");
+  const oneTimeSection =
+    `<section><h2>${escapeHtmlText(t.blogPrivacyOneTimeTitle)}</h2>` +
+    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP1)}</p>` +
+    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP2)}</p>` +
+    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP3)}</p>` +
+    `<ul>` +
+    `<li><a href="/how-it-works">${escapeHtmlText(t.blogPrivacyLinkHowItWorks)}</a></li>` +
+    `<li><a href="/password-generator">${escapeHtmlText(t.blogPrivacyLinkPasswordGenerator)}</a></li>` +
+    `<li><a href="/blog/why-email-is-worst-for-secrets">${escapeHtmlText(t.blogPrivacyLinkEmailSecrets)}</a></li>` +
+    `<li><a href="/blog/send-secret-message-without-account">${escapeHtmlText(t.blogPrivacyLinkSecretNoAccount)}</a></li>` +
+    `</ul></section>`;
+  const toolsMapSection =
+    `<section><h2>${escapeHtmlText(t.blogPrivacyToolsMapTitle)}</h2>` +
+    `<p>${escapeHtmlText(t.blogPrivacyToolsMapIntro)} <a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyLinkPrivacyTools)}</a>.</p>` +
+    `<table><thead><tr><th>${escapeHtmlText(t.blogPrivacyToolsMapColJob)}</th><th>${escapeHtmlText(t.blogPrivacyToolsMapColTool)}</th><th>${escapeHtmlText(t.blogPrivacyToolsMapColStart)}</th></tr></thead>` +
+    `<tbody>` +
+    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowPasswordsJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowPasswordsTool)}</td><td><a href="/password-generator">${escapeHtmlText(t.blogPrivacyToolsRowPasswordsStart)}</a></td></tr>` +
+    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowSecretsJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowSecretsTool)}</td><td><a href="/">${escapeHtmlText(t.blogPrivacyToolsRowSecretsStart)}</a></td></tr>` +
+    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowFilesJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowFilesTool)}</td><td><a href="/secure-file-transfer">${escapeHtmlText(t.blogPrivacyToolsRowFilesStart)}</a></td></tr>` +
+    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowDirectoryJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowDirectoryTool)}</td><td><a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyToolsRowDirectoryStart)}</a></td></tr>` +
+    `</tbody></table></section>`;
+  const internalLinks =
+    `<section><h2>${escapeHtmlText(t.blogPrivacyFurtherReadingTitle)}</h2>` +
+    `<h3>${escapeHtmlText(t.blogPrivacyInternalLinksTitle)}</h3>` +
+    `<ul>` +
+    `<li><a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyLinkPrivacyTools)}</a></li>` +
+    `<li><a href="/how-it-works">${escapeHtmlText(t.blogPrivacyLinkHowItWorks)}</a></li>` +
+    `<li><a href="/password-generator">${escapeHtmlText(t.blogPrivacyLinkPasswordGenerator)}</a></li>` +
+    `<li><a href="/security-resources">${escapeHtmlText(t.blogPrivacyLinkSecurityResources)}</a></li>` +
+    `</ul>` +
+    `<h3>${escapeHtmlText(t.blogPrivacyExternalLinksTitle)}</h3>` +
+    `<ul>${externalResources.map((resource) => `<li><a href="${escapeHtmlAttr(resource.href)}">${escapeHtmlText(resource.label)}</a></li>`).join("")}</ul>` +
+    `</section>`;
 
   return (
     `<article data-privatenote-prerender-article="privacy-tools">` +
     `<h1 data-privatenote-prerender-h1="true">${escapeHtmlText(title)}</h1>` +
     bodyParagraphs +
-    educationHtml +
-    `<section><h2>${escapeHtmlText(t.blogSecurityRecommendations)}</h2>` +
-    `<h3>${escapeHtmlText(t.recommendQuickTitle)}</h3>` +
-    `<ul>${tipsHtml}</ul></section>` +
-    `<section><h2>${escapeHtmlText(t.blogAdditionalResources)}</h2>` +
-    `<ul><li><a href="https://www.eff.org/issues/privacy">Electronic Frontier Foundation - Privacy Resources</a></li></ul>` +
-    `</section></article>`
+    `<section><h2>${escapeHtmlText(t.blogPrivacyHabitsTitle)}</h2>${educationHtml}</section>` +
+    oneTimeSection +
+    toolsMapSection +
+    internalLinks +
+    `</article>`
   );
 }
 
@@ -203,13 +246,13 @@ function injectBlogPostCrawlerFallback(html: string, route: string, t: Translati
   const canonicalSlug = resolveCanonicalBlogSlug(slugFromRoute);
   if (!canonicalSlug || !isBlogCanonicalSlug(canonicalSlug)) return html;
 
+  if (hasNonemptyH1(html)) return html;
+
   const emptyRoot = /<div\s+id=["']root["']\s*>\s*<\/div>/i;
   if (canonicalSlug === "privacy-tools" && emptyRoot.test(html)) {
     const article = buildPrivacyToolsPrerenderArticle(t);
     return html.replace(emptyRoot, `<div id="root"><main>${article}</main></div>`);
   }
-
-  if (hasNonemptyH1(html)) return html;
 
   const title = blogPostTitleForSlug(canonicalSlug, t).trim();
   if (!title) return html;
@@ -217,6 +260,12 @@ function injectBlogPostCrawlerFallback(html: string, route: string, t: Translati
   const h1 =
     `<h1 class="mb-5 max-w-4xl text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 dark:text-white" ` +
     `data-privatenote-prerender-h1="true">${escapeHtmlAttr(title)}</h1>`;
+
+  const articleOpen = html.match(/<article\b[^>]*>/i);
+  if (articleOpen) {
+    const idx = html.indexOf(articleOpen[0]) + articleOpen[0].length;
+    return html.slice(0, idx) + h1 + html.slice(idx);
+  }
 
   if (emptyRoot.test(html)) {
     return html.replace(emptyRoot, `<div id="root"><main>${h1}</main></div>`);

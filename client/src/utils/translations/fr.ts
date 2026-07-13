@@ -1210,11 +1210,14 @@ export const fr: Translations = {
   blogBackToBlog: "Retour au blog",
   blogNotFoundTitle: "Article introuvable",
   blogNotFoundBody: "L'article que vous recherchez n'existe pas ou a été supprimé.",
-  blogPrivacyTitle: "Pourquoi la confidentialité compte",
-  blogPrivacyExcerpt: "La confidentialité n'est pas de la paranoïa ; c'est une bonne ingénierie et un besoin humain fondamental d'autonomie, d'expérimentation et de dignité.",
-  blogPrivacyBody1: "J'aborde la confidentialité comme la cryptographie : il faut supposer que le système sera observé, mesuré et finalement exploité si l'on ne conçoit pas pour cette réalité. La confidentialité n'est pas de la paranoïa ; c'est une bonne ingénierie et un besoin humain fondamental d'autonomie, d'expérimentation et de dignité.",
-  blogPrivacyBody2: "Lorsque les traces de données sont collectées par défaut, elles sont inévitablement réutilisées au-delà de leur objectif initial. Des profils sont créés, les autorisations s'étendent discrètement et des décisions sont prises à votre sujet sans votre consentement. Plus cela dure, plus il devient difficile de s'en extraire.",
-  blogPrivacyBody3: "Mon objectif avec privateNote.ai est de rendre la confidentialité forte ordinaire. Vous ne devriez pas avoir besoin d'être expert en sécurité pour envoyer un secret en toute sûreté. De petites habitudes cohérentes - notes de courte durée, canaux séparés pour les mots de passe et communication chiffrée - produisent une vraie sécurité avec le temps.",
+  blogPrivacyTitle: "Outils et habitudes de confidentialité qui aident vraiment",
+  blogPrivacyExcerpt:
+    "Un guide pratique pour les habitudes quotidiennes, quand utiliser une note chiffrée à usage unique, et où trouver des outils qui réduisent l'exposition sans y consacrer une seconde vie.",
+  blogPrivacyBody1:
+    "La confidentialité échoue en silence. Les données sont collectées parce qu'un réglage était activé par défaut, qu'un lien a survécu à son usage, ou qu'un mot de passe est resté dans un fil de discussion que personne ne voulait garder. La solution n'est pas la peur — c'est le bon outil au bon moment, utilisé avec constance.",
+  blogPrivacyBody2:
+    "Vous trouverez ci-dessous des habitudes pratiques pour votre réseau, vos appareils, votre navigateur et vos communications — puis quand PrivateNote.ai convient, une carte vers notre répertoire d'outils de confidentialité, et des liens à mettre en favoris.",
+  blogPrivacyHabitsTitle: "Habitudes de confidentialité pratiques",
   blogSecurityRecommendations: "Recommandations de sécurité",
   blogAdditionalResources: "Ressources supplémentaires",
   blogBackToHome: "Retour à l'accueil",

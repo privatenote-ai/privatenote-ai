@@ -98,6 +98,7 @@ export function BlogPostHeader({
       ) : null}
 
       <h1
+        data-privatenote-prerender-h1="true"
         className={cn(
           "mb-5 max-w-4xl text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 dark:text-white sm:mb-6 sm:text-[2.625rem] sm:leading-[1.1]",
           titleClassName,

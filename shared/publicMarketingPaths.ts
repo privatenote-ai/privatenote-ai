@@ -3,6 +3,10 @@
  * Single source for prerender fallback list and Pages middleware SPA shell fallback.
  */
 import { allLocalizedBlogMarketingPaths } from "./localizedBlogSlugs.ts";
+import {
+  ENGLISH_ONLY_SECURITY_GUIDE_TOPICS,
+  LOCALIZED_SECURITY_GUIDE_TOPICS,
+} from "./localizedSecurityGuides.ts";
 import { isLocaleHomeSegment, NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
 
 const LOCALIZED_LANGUAGE_CODES = NON_ENGLISH_LANGUAGE_CODES;
@@ -29,13 +33,17 @@ const ENGLISH_NON_BLOG_PATHS = NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) =>
 const ENGLISH_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) => path.startsWith("/blog/"));
 
 /** Routes that are public but not mirrored under /de, /fr, etc. */
-const EXTRA_MARKETING_PATHS = [
-  "/security-guides/vpn",
-  "/security-guides/password",
-  "/security-guides/messenger",
-  "/security-guides/email",
-  "/security-guides/browser",
-] as const;
+const EXTRA_MARKETING_PATHS = ENGLISH_ONLY_SECURITY_GUIDE_TOPICS.map(
+  (topic) => `/security-guides/${topic}`,
+) as readonly `/security-guides/${(typeof ENGLISH_ONLY_SECURITY_GUIDE_TOPICS)[number]}`[];
+
+const LOCALIZED_SECURITY_GUIDE_PATHS = LOCALIZED_SECURITY_GUIDE_TOPICS.flatMap((topic) => {
+  const english = `/security-guides/${topic}` as const;
+  const localized = LOCALIZED_LANGUAGE_CODES.map(
+    (language) => `/${language}/security-guides/${topic}` as const,
+  );
+  return [english, ...localized];
+});
 
 const LOCALIZED_NON_BLOG_PATHS = LOCALIZED_LANGUAGE_CODES.flatMap((language) =>
   NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) => (path === "" ? `/${language}/` : `/${language}${path}`)),
@@ -50,6 +58,7 @@ export const PUBLIC_MARKETING_PATHS = [
   ...ENGLISH_BLOG_PATHS,
   ...LOCALIZED_NON_BLOG_PATHS,
   ...LOCALIZED_BLOG_PATHS,
+  ...LOCALIZED_SECURITY_GUIDE_PATHS,
   ...EXTRA_MARKETING_PATHS,
 ] as const;
 

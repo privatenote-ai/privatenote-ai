@@ -11,6 +11,7 @@ import {
 } from "./homeSeoLinks.ts";
 import { localizedBlogPostPath, resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
 import { isPublicMarketingPath, normalizeMarketingPathname } from "./publicMarketingPaths.ts";
+import { isSecurityGuideMarketingStem } from "./localizedSecurityGuides.ts";
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 const LOCALIZED_MARKETING_STEMS = new Set([
@@ -66,6 +67,10 @@ function parseLocalizedMarketingRoute(route: string): ParsedLocalizedMarketingRo
     return { language, stem: rest[0]!, blogSlug: null };
   }
 
+  if (rest.length === 2 && rest[0] === "security-guides" && isSecurityGuideMarketingStem(`security-guides/${rest[1]!}`)) {
+    return { language, stem: `security-guides/${rest[1]!}`, blogSlug: null };
+  }
+
   return null;
 }
 
@@ -86,6 +91,11 @@ function localizedMarketingPathForLanguage(
     return localizedBlogPostPath(canonical, language);
   }
 
+  if (isSecurityGuideMarketingStem(stem)) {
+    const base = `/${stem}`;
+    return language === "en" ? base : `/${language}${base}`;
+  }
+
   const base = `/${stem}`;
   return language === "en" ? base : `/${language}${base}`;
 }
@@ -96,6 +106,7 @@ export function isLocalizedMarketingHreflangRoute(route: string): boolean {
   if (parsed.stem === "blog" && parsed.blogSlug) {
     return resolveCanonicalBlogSlug(parsed.blogSlug) !== null;
   }
+  if (isSecurityGuideMarketingStem(parsed.stem)) return true;
   return LOCALIZED_MARKETING_STEMS.has(parsed.stem);
 }
 

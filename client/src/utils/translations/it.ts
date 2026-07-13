@@ -1210,11 +1210,14 @@ export const it: Translations = {
   blogBackToBlog: "Torniamo al blog",
   blogNotFoundTitle: "Post del blog non trovato",
   blogNotFoundBody: "L'articolo che stai cercando non esiste o è stato rimosso.",
-  blogPrivacyTitle: "Perché la privacy è importante",
-  blogPrivacyExcerpt: "La privacy non è paranoia; è una buona ingegneria e un bisogno umano fondamentale di autonomia, sperimentazione e dignità.",
-  blogPrivacyBody1: "Mi avvicino alla privacy nello stesso modo in cui mi avvicino alla crittografia: presumo che il sistema verrà osservato, misurato e alla fine sfruttato a meno che non si progetti per quella realtà. La privacy non è paranoia; è una buona ingegneria e un bisogno umano fondamentale di autonomia, sperimentazione e dignità.",
-  blogPrivacyBody2: "Quando le tracce di dati vengono raccolte per impostazione predefinita, vengono inevitabilmente riutilizzate oltre il loro scopo originale. I profili vengono creati, le autorizzazioni si espandono silenziosamente e le decisioni su di te vengono prese senza il tuo consenso. Più a lungo questa situazione viene lasciata senza controllo, più diventa difficile rinunciarvi.",
-  blogPrivacyBody3: "Il mio obiettivo con privateNote.ai è rendere ordinaria la privacy forte. Non dovrebbe essere necessario essere un esperto di sicurezza per inviare un segreto in modo sicuro. Abitudini piccole e costanti (note di breve durata, canali separati per le password e comunicazioni crittografate) si trasformano nel tempo in una vera sicurezza.",
+  blogPrivacyTitle: "Strumenti e abitudini per la privacy che funzionano davvero",
+  blogPrivacyExcerpt:
+    "Una guida pratica alle abitudini quotidiane, a quando usare una nota crittografata monouso e a dove trovare strumenti che riducono l'esposizione senza diventare un secondo lavoro.",
+  blogPrivacyBody1:
+    "La privacy fallisce in silenzio. I dati vengono raccolti perché un'impostazione era attiva per impostazione predefinita, un link ha superato il suo scopo o una password è rimasta nella cronologia di una chat che nessuno voleva conservare. La soluzione non è la paura: è scegliere lo strumento giusto per il momento e usarlo con costanza.",
+  blogPrivacyBody2:
+    "Qui sotto trovi abitudini pratiche per rete, dispositivi, browser e comunicazioni; poi quando PrivateNote.ai è la scelta giusta, una mappa verso la nostra directory di strumenti per la privacy e link da tenere nei preferiti.",
+  blogPrivacyHabitsTitle: "Abitudini pratiche per la privacy",
   blogSecurityRecommendations: "Raccomandazioni sulla sicurezza",
   blogAdditionalResources: "Risorse aggiuntive",
   blogBackToHome: "Ritorno a casa",

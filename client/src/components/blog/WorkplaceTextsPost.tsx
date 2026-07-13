@@ -366,6 +366,8 @@ export const WorkplaceTextsPost: React.FC = () => {
               alt="Man using smartphone in an urban setting"
               width={1000}
               height={666}
+              decoding="async"
+              fetchPriority="high"
               className="w-full max-w-2xl max-h-[340px] mx-auto rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">

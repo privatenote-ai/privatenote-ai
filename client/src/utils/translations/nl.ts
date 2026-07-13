@@ -1257,11 +1257,14 @@ export const nl: Translations = {
   blogBackToBlog: "Terug naar Blog",
   blogNotFoundTitle: "Blogbericht niet gevonden",
   blogNotFoundBody: "Het artikel dat u zoekt bestaat niet of is verwijderd.",
-  blogPrivacyTitle: "Waarom privacy belangrijk is",
-  blogPrivacyExcerpt: "Privacy is geen paranoia; het is goede techniek en een fundamentele menselijke behoefte aan autonomie, experimenteren en waardigheid.",
-  blogPrivacyBody1: "Ik benader privacy op dezelfde manier als ik cryptografie benader: ga ervan uit dat het systeem zal worden geobserveerd, gemeten en uiteindelijk geëxploiteerd, tenzij je voor die realiteit ontwerpt. Privacy is geen paranoia; het is goede techniek en een fundamentele menselijke behoefte aan autonomie, experimenteren en waardigheid.",
-  blogPrivacyBody2: "Wanneer datasporen standaard worden verzameld, worden ze onvermijdelijk hergebruikt buiten hun oorspronkelijke doel. Er worden profielen opgebouwd, machtigingen worden stilletjes uitgebreid en er worden beslissingen over je genomen zonder je toestemming. Hoe langer dit ongecontroleerd blijft, hoe moeilijker het wordt om je af te melden.",
-  blogPrivacyBody3: "Mijn doel met privateNote.ai is om sterke privacy gewoon te laten aanvoelen. Je hoeft geen beveiligingsexpert te zijn om een geheim veilig te versturen. Kleine, consistente gewoonten — korte notities, aparte kanalen voor wachtwoorden en versleutelde communicatie — zorgen op termijn voor echte veiligheid.",
+  blogPrivacyTitle: "Privacytools en gewoonten die echt helpen",
+  blogPrivacyExcerpt:
+    "Een praktische gids voor dagelijkse privacygewoonten, wanneer een eenmalige versleutelde notitie past, en waar je tools vindt die blootstelling verminderen zonder een tweede baan te worden.",
+  blogPrivacyBody1:
+    "Privacy faalt stilletjes. Gegevens worden verzameld omdat een instelling standaard aan stond, een link langer leefde dan bedoeld, of een wachtwoord bleef hangen in een chatgeschiedenis die niemand wilde bewaren. De oplossing is geen angst — het is het juiste hulpmiddel voor het moment, consequent gebruikt.",
+  blogPrivacyBody2:
+    "Hieronder vind je praktische gewoonten voor je netwerk, apparaten, browser en communicatie — daarna wanneer PrivateNote.ai past, een overzicht naar onze privacytools-directory, en links die de moeite waard zijn om te bewaren.",
+  blogPrivacyHabitsTitle: "Praktische privacygewoonten",
   blogSecurityRecommendations: "Beveiligingsaanbevelingen",
   blogAdditionalResources: "Aanvullende bronnen",
   blogBackToHome: "Terug naar Thuis",

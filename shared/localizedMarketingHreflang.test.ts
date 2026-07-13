@@ -15,6 +15,8 @@ test("isLocalizedMarketingHreflangRoute matches mirrored marketing paths", () =>
   assert.equal(isLocalizedMarketingHreflangRoute("/fr/blog"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/blog/privacy-tools"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/security-guides/browser"), false);
+  assert.equal(isLocalizedMarketingHreflangRoute("/security-guides/vpn"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/de/security-guides/password"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/"), false);
 });
 
@@ -45,8 +47,16 @@ test("marketingHreflangAlternatesForRoute includes Spanish self-reference", () =
   assert.match(html, /hreflang="es" href="https:\/\/privatenote\.ai\/es\/about"/);
 });
 
-test("buildMarketingHreflangMarkup adds en self-reference for security guides", () => {
+test("buildMarketingHreflangMarkup mirrors localized security guides", () => {
   const html = buildMarketingHreflangMarkup("/security-guides/vpn");
   assert.match(html, /hreflang="en" href="https:\/\/privatenote\.ai\/security-guides\/vpn"/);
+  assert.match(html, /hreflang="de" href="https:\/\/privatenote\.ai\/de\/security-guides\/vpn"/);
   assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/security-guides\/vpn"/);
+});
+
+test("buildMarketingHreflangMarkup adds en self-reference for english-only security guides", () => {
+  const html = buildMarketingHreflangMarkup("/security-guides/browser");
+  assert.match(html, /hreflang="en" href="https:\/\/privatenote\.ai\/security-guides\/browser"/);
+  assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/security-guides\/browser"/);
+  assert.doesNotMatch(html, /hreflang="de"/);
 });

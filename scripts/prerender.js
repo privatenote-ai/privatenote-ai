@@ -21,6 +21,7 @@ import {
   buildMarketingHreflangMarkup,
 } from "../shared/localizedMarketingHreflang.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
+import { LEGACY_IMAGE_REDIRECTS } from "../shared/legacyImageRedirects.ts";
 import {
   isPublicMarketingPath,
   PUBLIC_MARKETING_PATHS,
@@ -239,8 +240,20 @@ function stripStaleModulePreloads(html) {
   );
 }
 
+function rewriteLegacyImageUrls(html) {
+  let out = html;
+  for (const [from, to] of Object.entries(LEGACY_IMAGE_REDIRECTS)) {
+    out = out.split(from).join(to);
+    const absoluteFrom = `${PUBLIC_SITE_ORIGIN}${from}`;
+    const absoluteTo = `${PUBLIC_SITE_ORIGIN}${to}`;
+    out = out.split(absoluteFrom).join(absoluteTo);
+  }
+  return out;
+}
+
 function postProcessHTML(html, route) {
   let out = injectPrerenderDocumentMeta(html, route);
+  out = rewriteLegacyImageUrls(out);
 
   // Rewrite preview absolute URLs -> root-relative (except locale-home SEO links; fixed below).
   out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
@@ -532,7 +545,10 @@ async function main() {
     const waitForStableAboveTheFold = async (route) => {
       if (isBlogArticleRoute(route)) {
         try {
-          await page.waitForSelector("main h1, #root h1", { timeout: 12_000 });
+          await page.waitForSelector(
+            '[data-privatenote-prerender-h1="true"], main article h1, main header h1, #root h1',
+            { timeout: 12_000 },
+          );
         } catch {
           await page.waitForTimeout(800);
         }

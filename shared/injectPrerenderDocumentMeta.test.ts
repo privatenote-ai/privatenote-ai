@@ -10,6 +10,27 @@ function extractBlogSchema(html: string): Record<string, unknown> {
   return JSON.parse(match[1]);
 }
 
+test("injectPrerenderDocumentMeta injects blog H1 when hidden home snapshot H1 is the only heading", () => {
+  const html = [
+    '<html lang="en"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="en_US" />',
+    '</head><body><div id="root">',
+    '<div id="pn-home-prerender" hidden><section><div><h1>Your Messages</h1></div></section></div>',
+    "<main><article><h2>Secure Your Network</h2><p>Body</p></article></main>",
+    "</div></body></html>",
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/blog/privacy-tools");
+  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Privacy tools and habits that actually help<\/h1>/);
+  assert.doesNotMatch(out, /id="pn-home-prerender"/);
+});
+
 test("injectPrerenderDocumentMeta injects blog H1 when snapshot has empty root", () => {
   const html = [
     '<html lang="en"><head>',
@@ -24,10 +45,10 @@ test("injectPrerenderDocumentMeta injects blog H1 when snapshot has empty root",
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/blog/privacy-tools");
-  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Why Privacy Matters<\/h1>/);
-  assert.match(out, /I approach privacy the way I approach cryptography/);
-  assert.match(out, /Secure Your Network/);
-  assert.match(out, /Security Recommendations/);
+  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Privacy tools and habits that actually help<\/h1>/);
+  assert.match(out, /Privacy fails quietly/);
+  assert.match(out, /Practical privacy habits/);
+  assert.match(out, /When a one-time encrypted note beats email, chat, or cloud storage/);
   assert.match(out, /data-privatenote-prerender-article="privacy-tools"/);
 });
 
@@ -45,9 +66,10 @@ test("injectPrerenderDocumentMeta injects localized privacy-tools article for em
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/de/blog/datenschutz-tools");
-  assert.match(out, /<h1[^>]*>Warum Privatsphäre wichtig ist<\/h1>/);
-  assert.match(out, /Ich betrachte Privatsphäre/);
-  assert.match(out, /Sicherheitsempfehlungen|Security Recommendations/);
+  assert.match(out, /<h1[^>]*>Datenschutz-Tools und Gewohnheiten, die wirklich helfen<\/h1>/);
+  assert.match(out, /Privatsphäre scheitert leise/);
+  assert.match(out, /Praktische Datenschutz-Gewohnheiten/);
+  assert.match(out, /Weiterführende Links/);
 });
 
 test("injectPrerenderDocumentMeta injects Article and Breadcrumb schema for blog posts", () => {

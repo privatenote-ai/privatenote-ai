@@ -38,6 +38,8 @@ test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/it/about/"), true);
   assert.equal(isPublicMarketingPath("/nl/blog/privatenote-met-openai-codex"), true);
   assert.equal(isPublicMarketingPath("/nl/blog/privatenote-codex"), false);
+  assert.equal(isPublicMarketingPath("/de/security-guides/vpn"), true);
+  assert.equal(isPublicMarketingPath("/security-guides/messenger"), true);
   assert.equal(isPublicMarketingPath("/note/abc"), false);
 });
 

@@ -40,7 +40,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "send-secret-message-without-account": 7,
   "encrypted-vs-secure-file-sharing": 6,
   "one-time-secret-links": 7,
-  "privacy-tools": 4,
+  "privacy-tools": 6,
   "myth-good-enough-security": 5,
   "how-we-generate-passwords": 6,
   "workplace-texts-private-note": 6,

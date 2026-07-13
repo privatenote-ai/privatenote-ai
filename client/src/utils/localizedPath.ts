@@ -6,6 +6,10 @@ import {
   localizedBlogSlug,
   resolveCanonicalBlogSlug,
 } from "@shared/localizedBlogSlugs";
+import {
+  isLocalizedSecurityGuideTopic,
+  localizedSecurityGuidePath,
+} from "@shared/localizedSecurityGuides";
 
 const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter((l): l is Exclude<SupportedLanguage, "en"> => l !== "en");
 
@@ -36,10 +40,29 @@ function translateBlogPath(pathWithoutLanguage: string, language: SupportedLangu
   return `/blog/${slug}`;
 }
 
+function translateSecurityGuidePath(pathWithoutLanguage: string): string {
+  const match = pathWithoutLanguage.match(/^\/security-guides\/([^/]+)$/);
+  if (!match) return pathWithoutLanguage;
+  const topic = match[1]!;
+  if (!isLocalizedSecurityGuideTopic(topic)) return pathWithoutLanguage;
+  return pathWithoutLanguage;
+}
+
+function stripLanguagePrefix(pathname: string): string {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts[0] && (NON_ENGLISH_LANGUAGES as readonly string[]).includes(parts[0])) {
+    return parts.length > 1 ? `/${parts.slice(1).join("/")}` : "/";
+  }
+  return pathname;
+}
+
 function isLocalizedPublicPath(pathWithoutLanguage: string): boolean {
-  if (LOCALIZED_PUBLIC_PATHS.has(pathWithoutLanguage)) return true;
-  if (!pathWithoutLanguage.startsWith("/blog/")) return false;
-  const slug = pathWithoutLanguage.slice("/blog/".length);
+  const path = stripLanguagePrefix(pathWithoutLanguage);
+  if (LOCALIZED_PUBLIC_PATHS.has(path)) return true;
+  const guideMatch = path.match(/^\/security-guides\/([^/]+)$/);
+  if (guideMatch && isLocalizedSecurityGuideTopic(guideMatch[1]!)) return true;
+  if (!path.startsWith("/blog/")) return false;
+  const slug = path.slice("/blog/".length);
   return resolveCanonicalBlogSlug(slug) !== null;
 }
 
@@ -88,7 +111,7 @@ function splitLanguagePrefix(pathname: string): {
 
 export function localizedPath(path: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(path);
-  const translatedPath = translateBlogPath(pathWithoutLanguage, language);
+  const translatedPath = translateSecurityGuidePath(translateBlogPath(pathWithoutLanguage, language));
 
   if (!isLocalizedPublicPath(translatedPath)) {
     return publicSitePath(pathWithoutLanguage);
@@ -112,6 +135,10 @@ export function isLocaleSiteHomeHref(href: string): boolean {
 
 export function switchLanguagePath(pathname: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(pathname);
+  const guideMatch = pathWithoutLanguage.match(/^\/security-guides\/([^/]+)$/);
+  if (guideMatch && isLocalizedSecurityGuideTopic(guideMatch[1]!)) {
+    return localizedSecurityGuidePath(guideMatch[1]!, language);
+  }
   const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
   if (blogMatch) {
     const canonical = resolveCanonicalBlogSlug(blogMatch[1]!);

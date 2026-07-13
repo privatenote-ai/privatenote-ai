@@ -1176,11 +1176,14 @@ export const pt: Translations = {
   blogBackToBlog: "Voltar ao blog",
   blogNotFoundTitle: "Postagem do blog não encontrada",
   blogNotFoundBody: "O artigo que você procura não existe ou foi removido.",
-  blogPrivacyTitle: "Por que a privacidade é importante",
-  blogPrivacyExcerpt: "Privacidade não é paranóia; é uma boa engenharia e uma necessidade humana básica de autonomia, experimentação e dignidade.",
-  blogPrivacyBody1: "Abordo a privacidade da mesma forma que abordo a criptografia: suponho que o sistema será observado, medido e eventualmente explorado, a menos que você projete para essa realidade. Privacidade não é paranóia; é uma boa engenharia e uma necessidade humana básica de autonomia, experimentação e dignidade.",
-  blogPrivacyBody2: "Quando os rastros de dados são coletados por padrão, eles são inevitavelmente reutilizados além de sua finalidade original. Perfis são criados, permissões se expandem silenciosamente e decisões são tomadas sobre você sem o seu consentimento. Quanto mais tempo isso ficar desmarcado, mais difícil será cancelar.",
-  blogPrivacyBody3: "Meu objetivo com privateNote.ai é fazer com que a privacidade forte pareça comum. Você não precisa ser um especialista em segurança para enviar um segredo com segurança. Hábitos pequenos e consistentes – notas de curta duração, canais separados para senhas e comunicação criptografada – se transformam em segurança real ao longo do tempo.",
+  blogPrivacyTitle: "Ferramentas e hábitos de privacidade que realmente ajudam",
+  blogPrivacyExcerpt:
+    "Um guia prático de hábitos diários de privacidade, quando usar uma nota criptografada de uso único e onde encontrar ferramentas que reduzem a exposição sem virar um segundo emprego.",
+  blogPrivacyBody1:
+    "A privacidade falha em silêncio. Dados são coletados porque uma configuração veio ativada por padrão, um link sobreviveu ao seu propósito ou uma senha ficou no histórico de um chat que ninguém queria guardar. A solução não é o medo — é escolher a ferramenta certa para o momento e usá-la com consistência.",
+  blogPrivacyBody2:
+    "Abaixo você encontra hábitos práticos para rede, dispositivos, navegador e comunicação — depois quando o PrivateNote.ai faz sentido, um mapa para o nosso diretório de ferramentas de privacidade e links que valem a pena salvar.",
+  blogPrivacyHabitsTitle: "Hábitos práticos de privacidade",
   blogSecurityRecommendations: "Recomendações de segurança",
   blogAdditionalResources: "Recursos Adicionais",
   blogBackToHome: "De volta para casa",

@@ -234,6 +234,7 @@ function Router() {
               <Route path={`/${language}/blog`} component={() => <LocalizedRoute language={language} component={Blog} />} />
               <Route path={`/${language}/privacy`} component={() => <LocalizedRoute language={language} component={Privacy} />} />
               <Route path={`/${language}/terms`} component={() => <LocalizedRoute language={language} component={Terms} />} />
+              <Route path={`/${language}/security-guides/:topicId`} component={() => <LocalizedRoute language={language} component={SecurityGuideDetail} />} />
             </Fragment>
           ))}
           <Route path="/note/:id" component={() => <LazyRoute component={ViewNote} />} />
