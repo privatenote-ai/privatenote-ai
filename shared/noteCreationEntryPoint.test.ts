@@ -11,10 +11,12 @@ describe("sanitizeNoteCreationEntryPoint", () => {
     assert.equal(sanitizeNoteCreationEntryPoint(" Password-Share "), "password-share");
     assert.equal(sanitizeNoteCreationEntryPoint("FILE-SHARE"), "file-share");
     assert.equal(sanitizeNoteCreationEntryPoint("extension"), "extension");
+    assert.equal(sanitizeNoteCreationEntryPoint("CLI"), "cli");
+    assert.equal(sanitizeNoteCreationEntryPoint("MCP"), "mcp");
   });
 
   it("rejects unknown values", () => {
-    assert.equal(sanitizeNoteCreationEntryPoint("mcp"), null);
+    assert.equal(sanitizeNoteCreationEntryPoint("mobile"), null);
     assert.equal(sanitizeNoteCreationEntryPoint(""), null);
     assert.equal(sanitizeNoteCreationEntryPoint(null), null);
   });
@@ -25,5 +27,7 @@ describe("NOTE_CREATION_ENTRY_POINT_LABELS", () => {
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS.home, "Home");
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS["password-share"], "Share a password");
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS["file-share"], "Share a file");
+    assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS.cli, "Command line");
+    assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS.mcp, "MCP server");
   });
 });

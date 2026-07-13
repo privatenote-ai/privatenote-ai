@@ -1210,9 +1210,9 @@ export const it: Translations = {
   blogBackToBlog: "Torniamo al blog",
   blogNotFoundTitle: "Post del blog non trovato",
   blogNotFoundBody: "L'articolo che stai cercando non esiste o è stato rimosso.",
-  blogPrivacyTitle: "Strumenti e abitudini per la privacy che funzionano davvero",
+  blogPrivacyTitle: "Strumenti e abitudini per la privacy utili",
   blogPrivacyExcerpt:
-    "Una guida pratica alle abitudini quotidiane, a quando usare una nota crittografata monouso e a dove trovare strumenti che riducono l'esposizione senza diventare un secondo lavoro.",
+    "Guida pratica ad abitudini quotidiane, note crittografate monouso e strumenti che riducono l'esposizione senza un secondo lavoro.",
   blogPrivacyBody1:
     "La privacy fallisce in silenzio. I dati vengono raccolti perché un'impostazione era attiva per impostazione predefinita, un link ha superato il suo scopo o una password è rimasta nella cronologia di una chat che nessuno voleva conservare. La soluzione non è la paura: è scegliere lo strumento giusto per il momento e usarlo con costanza.",
   blogPrivacyBody2:

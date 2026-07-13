@@ -1176,9 +1176,9 @@ export const pt: Translations = {
   blogBackToBlog: "Voltar ao blog",
   blogNotFoundTitle: "Postagem do blog não encontrada",
   blogNotFoundBody: "O artigo que você procura não existe ou foi removido.",
-  blogPrivacyTitle: "Ferramentas e hábitos de privacidade que realmente ajudam",
+  blogPrivacyTitle: "Ferramentas e hábitos de privacidade úteis",
   blogPrivacyExcerpt:
-    "Um guia prático de hábitos diários de privacidade, quando usar uma nota criptografada de uso único e onde encontrar ferramentas que reduzem a exposição sem virar um segundo emprego.",
+    "Guia prático de hábitos, notas criptografadas de uso único e ferramentas que reduzem exposição sem virar segundo emprego.",
   blogPrivacyBody1:
     "A privacidade falha em silêncio. Dados são coletados porque uma configuração veio ativada por padrão, um link sobreviveu ao seu propósito ou uma senha ficou no histórico de um chat que ninguém queria guardar. A solução não é o medo — é escolher a ferramenta certa para o momento e usá-la com consistência.",
   blogPrivacyBody2:

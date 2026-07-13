@@ -1259,7 +1259,7 @@ export const nl: Translations = {
   blogNotFoundBody: "Het artikel dat u zoekt bestaat niet of is verwijderd.",
   blogPrivacyTitle: "Privacytools en gewoonten die echt helpen",
   blogPrivacyExcerpt:
-    "Een praktische gids voor dagelijkse privacygewoonten, wanneer een eenmalige versleutelde notitie past, en waar je tools vindt die blootstelling verminderen zonder een tweede baan te worden.",
+    "Praktische gids voor privacygewoonten, eenmalige versleutelde notities en tools die blootstelling verlagen zonder extra werk.",
   blogPrivacyBody1:
     "Privacy faalt stilletjes. Gegevens worden verzameld omdat een instelling standaard aan stond, een link langer leefde dan bedoeld, of een wachtwoord bleef hangen in een chatgeschiedenis die niemand wilde bewaren. De oplossing is geen angst — het is het juiste hulpmiddel voor het moment, consequent gebruikt.",
   blogPrivacyBody2:

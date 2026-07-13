@@ -1263,9 +1263,9 @@ export const es: Translations = {
   blogCrossLinksTrustLabel: "Confianza y seguridad",
   blogNotFoundTitle: "Artículo no encontrado",
   blogNotFoundBody: "El artículo que buscas no existe o se ha eliminado.",
-  blogPrivacyTitle: "Herramientas y hábitos de privacidad que sí ayudan",
+  blogPrivacyTitle: "Herramientas y hábitos de privacidad útiles",
   blogPrivacyExcerpt:
-    "Una guía práctica de hábitos cotidianos, cuándo usar una nota cifrada de un solo uso y dónde encontrar herramientas que reducen la exposición sin convertirse en un segundo trabajo.",
+    "Guía práctica de hábitos, cuándo usar una nota cifrada única y herramientas que reducen la exposición sin un segundo trabajo.",
   blogPrivacyBody1:
     "La privacidad falla en silencio. Los datos se recopilan porque un ajuste venía activado por defecto, un enlace sobrevivió a su propósito o una contraseña quedó en un historial de chat que nadie quería conservar. La solución no es el miedo: es elegir la herramienta adecuada para el momento y usarla con constancia.",
   blogPrivacyBody2:

@@ -66,7 +66,7 @@ test("injectPrerenderDocumentMeta injects localized privacy-tools article for em
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/de/blog/datenschutz-tools");
-  assert.match(out, /<h1[^>]*>Datenschutz-Tools und Gewohnheiten, die wirklich helfen<\/h1>/);
+  assert.match(out, /<h1[^>]*>Datenschutz-Tools und Gewohnheiten<\/h1>/);
   assert.match(out, /Privatsphäre scheitert leise/);
   assert.match(out, /Praktische Datenschutz-Gewohnheiten/);
   assert.match(out, /Weiterführende Links/);

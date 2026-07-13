@@ -3,6 +3,8 @@ export const NOTE_CREATION_ENTRY_POINTS = [
   "password-share",
   "file-share",
   "extension",
+  "cli",
+  "mcp",
 ] as const;
 
 export type NoteCreationEntryPoint = (typeof NOTE_CREATION_ENTRY_POINTS)[number];
@@ -14,7 +16,9 @@ export function sanitizeNoteCreationEntryPoint(raw: unknown): NoteCreationEntryP
     normalized === "home" ||
     normalized === "password-share" ||
     normalized === "file-share" ||
-    normalized === "extension"
+    normalized === "extension" ||
+    normalized === "cli" ||
+    normalized === "mcp"
   ) {
     return normalized;
   }
@@ -26,6 +30,8 @@ export const NOTE_CREATION_ENTRY_POINT_LABELS: Record<NoteCreationEntryPoint, st
   "password-share": "Share a password",
   "file-share": "Share a file",
   extension: "Editor extension",
+  cli: "Command line",
+  mcp: "MCP server",
 };
 
 export const FILE_SIZE_BUCKET_LABELS = {

@@ -144,23 +144,6 @@ export const PRIVACY_DIRECTORY_CATEGORIES: PrivacyDirectoryCategory[] = [
         pricing: "free",
         pricingLabelKey: "privacyToolsPricingFreeOpenSource",
       },
-      {
-        id: "threema",
-        name: "Threema",
-        descKey: "privacyToolsDescThreema",
-        nuanceKey: "privacyToolsNuanceThreema",
-        href: "https://threema.ch/",
-        pricing: "paid",
-      },
-      {
-        id: "simplex",
-        name: "SimpleX Chat",
-        descKey: "privacyToolsDescSimplex",
-        nuanceKey: "privacyToolsNuanceSimplex",
-        href: "https://simplex.chat/",
-        pricing: "open-source",
-        pricingLabelKey: "privacyToolsPricingFreeOpenSource",
-      },
     ],
   },
   {

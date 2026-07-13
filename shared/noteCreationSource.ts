@@ -1,4 +1,4 @@
-export const NOTE_CREATION_SOURCES = ["web", "vscode", "cursor", "chrome"] as const;
+export const NOTE_CREATION_SOURCES = ["web", "vscode", "cursor", "chrome", "cli", "mcp"] as const;
 
 export type NoteCreationSource = (typeof NOTE_CREATION_SOURCES)[number];
 
@@ -9,7 +9,9 @@ export function sanitizeNoteCreationSource(raw: unknown): NoteCreationSource | n
     normalized === "web" ||
     normalized === "vscode" ||
     normalized === "cursor" ||
-    normalized === "chrome"
+    normalized === "chrome" ||
+    normalized === "cli" ||
+    normalized === "mcp"
   ) {
     return normalized;
   }
@@ -21,4 +23,6 @@ export const NOTE_CREATION_SOURCE_LABELS: Record<NoteCreationSource, string> = {
   vscode: "VS Code",
   cursor: "Cursor",
   chrome: "Chrome extension",
+  cli: "CLI",
+  mcp: "MCP",
 };

@@ -1848,13 +1848,6 @@ export const en: Translations = {
   privacyToolsDescSignal: "The consensus default for secure mainstream chat with open protocols.",
   privacyToolsNuanceSignal:
     "Trade-off: requires a phone number for registration, which may not suit high-anonymity threat models.",
-  privacyToolsDescThreema: "Swiss-based encrypted messenger without requiring a phone number or email.",
-  privacyToolsNuanceThreema:
-    "Trade-off: the client app is open-source, but the server code remains proprietary.",
-  privacyToolsDescSimplex:
-    "Decentralized messenger designed to eliminate persistent user identifiers on the network.",
-  privacyToolsNuanceSimplex:
-    "Highly recommended for metadata defense—not even a random ID number is permanently linked to a server.",
   privacyToolsDescProtonMail: "Encrypted email from Proton with zero-access architecture and a free tier.",
   privacyToolsDescTuta: "German encrypted email (formerly Tutanota) with built-in calendar and contacts.",
   privacyToolsDescFirefoxRelay: "Lightweight email aliasing to mask your real address on sign-ups.",

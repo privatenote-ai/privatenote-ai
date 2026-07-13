@@ -1210,9 +1210,9 @@ export const fr: Translations = {
   blogBackToBlog: "Retour au blog",
   blogNotFoundTitle: "Article introuvable",
   blogNotFoundBody: "L'article que vous recherchez n'existe pas ou a été supprimé.",
-  blogPrivacyTitle: "Outils et habitudes de confidentialité qui aident vraiment",
+  blogPrivacyTitle: "Outils et habitudes de confidentialité",
   blogPrivacyExcerpt:
-    "Un guide pratique pour les habitudes quotidiennes, quand utiliser une note chiffrée à usage unique, et où trouver des outils qui réduisent l'exposition sans y consacrer une seconde vie.",
+    "Guide pratique : habitudes quotidiennes, notes chiffrées à usage unique et outils qui réduisent l'exposition sans y consacrer sa vie.",
   blogPrivacyBody1:
     "La confidentialité échoue en silence. Les données sont collectées parce qu'un réglage était activé par défaut, qu'un lien a survécu à son usage, ou qu'un mot de passe est resté dans un fil de discussion que personne ne voulait garder. La solution n'est pas la peur — c'est le bon outil au bon moment, utilisé avec constance.",
   blogPrivacyBody2:

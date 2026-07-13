@@ -1246,9 +1246,9 @@ export const de: Translations = {
   blogBackToBlog: "Zurück zum Blog",
   blogNotFoundTitle: "Blogbeitrag nicht gefunden",
   blogNotFoundBody: "Der gesuchte Artikel existiert nicht oder wurde entfernt.",
-  blogPrivacyTitle: "Datenschutz-Tools und Gewohnheiten, die wirklich helfen",
+  blogPrivacyTitle: "Datenschutz-Tools und Gewohnheiten",
   blogPrivacyExcerpt:
-    "Ein praktischer Leitfaden für alltägliche Datenschutz-Gewohnheiten, wann eine einmalige verschlüsselte Notiz sinnvoll ist, und wo Sie Tools finden, die Ihr Risiko senken – ohne einen zweiten Job.",
+    "Leitfaden zu Gewohnheiten, einmaligen verschlüsselten Notizen und Tools, die Ihr Risiko senken – ohne einen zweiten Job.",
   blogPrivacyBody1:
     "Privatsphäre scheitert leise. Daten werden gesammelt, weil eine Einstellung standardmäßig aktiv war, ein Link länger existierte als geplant oder ein Passwort in einem Chat-Verlauf hing, den niemand behalten wollte. Die Lösung ist keine Angst – sondern das richtige Werkzeug für den Moment und konsequente Nutzung.",
   blogPrivacyBody2:

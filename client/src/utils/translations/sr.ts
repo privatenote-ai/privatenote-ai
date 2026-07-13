@@ -1176,7 +1176,7 @@ export const sr: Translations = {
   blogBackToBlog: "Nazad na blog",
   blogNotFoundTitle: "Post na blogu nije pronađen",
   blogNotFoundBody: "Članak koji tražite ne postoji ili je uklonjen.",
-  blogPrivacyTitle: "Alati i navike privatnosti koji zaista pomažu",
+  blogPrivacyTitle: "Alati i navike privatnosti koji pomažu",
   blogPrivacyExcerpt:
     "Praktičan vodič za svakodnevne navike privatnosti, kada koristiti jednokratnu šifrovanu poruku i gde pronaći alate koji smanjuju izloženost bez drugog posla.",
   blogPrivacyBody1:
