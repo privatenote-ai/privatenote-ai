@@ -51,7 +51,14 @@ export async function reserveNoteId(apiBaseUrl: string): Promise<ReserveNoteResu
   const res = await request(`${apiBaseUrl}/api/notes/reserve`, "POST");
 
   if (res.status < 200 || res.status >= 300) {
-    throw new Error(`Note reservation failed (${res.status})`);
+    let detail = "";
+    try {
+      const json = (await res.json()) as Record<string, unknown>;
+      if (typeof json["error"] === "string") detail = `: ${json["error"]}`;
+    } catch {
+      // ignore
+    }
+    throw new Error(`${res.status}${detail}`);
   }
 
   let body: unknown;

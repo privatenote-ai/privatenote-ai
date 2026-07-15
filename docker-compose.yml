@@ -17,6 +17,7 @@ services:
       - -lc
       - >
         npx wrangler dev
+        --config wrangler.local.toml
         --local
         --ip 0.0.0.0
         --port 8787

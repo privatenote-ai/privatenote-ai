@@ -1,10 +1,36 @@
 import sodium from "libsodium-wrappers";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
+import { isSafariBrowser } from "@/lib/binaryUploadTransport";
 
 /** Plaintext bytes per chunk — min size so 1 GB premium files stay within 999 chunks; ~1 MiB per PUT for Safari. */
 export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = Math.ceil((1024 * 1024 * 1024) / 999);
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
+
+/** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
+const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
+const UPLOAD_CONCURRENCY_SAFARI = 3;
+const UPLOAD_CONCURRENCY_DEFAULT = 6;
+
+async function runWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  let nextIndex = 0;
+
+  const runners = Array.from({ length: limit }, async () => {
+    while (nextIndex < items.length) {
+      const current = items[nextIndex]!;
+      nextIndex += 1;
+      await worker(current);
+    }
+  });
+
+  await Promise.all(runners);
+}
 
 export interface SodiumAttachmentChunk {
   index: number;
@@ -243,12 +269,23 @@ export async function encryptFileToSodiumChunks(
   const chunks: SodiumAttachmentMetadataChunk[] = [];
   let encryptedSize = 0;
   const contentHasher = sha256.create();
+  const encryptedChunks: SodiumAttachmentChunk[] = [];
+  const fileBytes =
+    file.size > 0 && file.size <= IN_MEMORY_FILE_READ_MAX_BYTES
+      ? new Uint8Array(await file.arrayBuffer())
+      : null;
+  const uploadConcurrency = isSafariBrowser()
+    ? UPLOAD_CONCURRENCY_SAFARI
+    : UPLOAD_CONCURRENCY_DEFAULT;
+  const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
 
   try {
     for (let index = 0; index < totalChunks; index += 1) {
       const start = index * SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
       const end = Math.min(file.size, start + SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES);
-      const plaintext = new Uint8Array(await file.slice(start, end).arrayBuffer());
+      const plaintext = fileBytes
+        ? fileBytes.subarray(start, end)
+        : new Uint8Array(await file.slice(start, end).arrayBuffer());
       const tag =
         index === totalChunks - 1
           ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
@@ -262,6 +299,7 @@ export async function encryptFileToSodiumChunks(
       encryptedSize += encryptedBytes.byteLength;
       contentHasher.update(encryptedBytes);
       chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
+      encryptedChunks.push({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
       if (import.meta.env?.DEV) {
         console.info(
           "[FILE_UPLOAD] chunk encrypted locally",
@@ -276,7 +314,32 @@ export async function encryptFileToSodiumChunks(
           }),
         );
       }
-      await onChunk({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
+    }
+
+    if (import.meta.env?.DEV && typeof performance !== "undefined") {
+      console.info(
+        "[FILE_UPLOAD] encryption phase complete",
+        JSON.stringify({
+          noteId,
+          totalChunks,
+          encryptMs: Math.round(performance.now() - encryptStartedAt),
+          uploadConcurrency,
+          inMemoryRead: Boolean(fileBytes),
+        }),
+      );
+    }
+
+    const uploadStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+    await runWithConcurrency(encryptedChunks, uploadConcurrency, onChunk);
+    if (import.meta.env?.DEV && typeof performance !== "undefined") {
+      console.info(
+        "[FILE_UPLOAD] upload phase complete",
+        JSON.stringify({
+          noteId,
+          totalChunks,
+          uploadMs: Math.round(performance.now() - uploadStartedAt),
+        }),
+      );
     }
   } finally {
     fileKey.fill(0);

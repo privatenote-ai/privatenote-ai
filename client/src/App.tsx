@@ -41,6 +41,7 @@ const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
 const Developers = lazy(() => import("@/pages/Developers"));
+const DeveloperIntegrationDetail = lazy(() => import("@/pages/DeveloperIntegrationDetail"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -227,6 +228,7 @@ function Router() {
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
+              <Route path={`/${language}/developers/:integrationId`} component={() => <LocalizedRoute language={language} component={DeveloperIntegrationDetail} />} />
               <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
               <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
@@ -246,6 +248,7 @@ function Router() {
           <Route path="/privacy" component={() => <LazyRoute component={Privacy} />} />
           <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
           <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
+          <Route path="/developers/:integrationId" component={() => <LazyRoute component={DeveloperIntegrationDetail} />} />
           <Route path="/developers" component={() => <LazyRoute component={Developers} />} />
           <Route path="/about" component={() => <LazyRoute component={About} />} />
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />

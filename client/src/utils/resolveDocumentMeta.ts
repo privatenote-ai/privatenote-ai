@@ -2,6 +2,8 @@ import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
 import { localizedSecurityGuideMeta } from "@/components/security-guides/locale";
 import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
+import { developerIntegrationMeta } from "@/pages/developers/integrationContent";
+import { isEnglishOnlyDeveloperIntegration } from "@shared/englishOnlyDeveloperIntegrations";
 import { isLocalizedSecurityGuideTopic } from "@shared/localizedSecurityGuides";
 import { isSupportedLanguage, NON_ENGLISH_LANGUAGE_CODES, type SupportedLanguage } from "@shared/supportedLanguages";
 
@@ -273,6 +275,18 @@ function metaForLocalizedRest(
       return metaForSecurityGuideTopic(topic, pathname);
     }
   }
+  if (rest.startsWith("developers/")) {
+    const integrationId = rest.slice("developers/".length);
+    if (!integrationId.includes("/") && isEnglishOnlyDeveloperIntegration(integrationId)) {
+      const meta = developerIntegrationMeta(integrationId);
+      if (meta) {
+        return {
+          title: buildDocumentTitle(meta.title),
+          description: meta.description,
+        };
+      }
+    }
+  }
   return pageMetaForPublicPage(rest, t);
 }
 
@@ -431,6 +445,18 @@ export function resolveDocumentMeta(
       title: buildDocumentTitle(t.documentMetaSecurityGuideTitle),
       description: t.documentMetaSecurityGuideDescription,
     };
+  }
+
+  if (segments[0] === "developers" && segments[1] && segments.length === 2) {
+    if (isEnglishOnlyDeveloperIntegration(segments[1])) {
+      const meta = developerIntegrationMeta(segments[1]);
+      if (meta) {
+        return {
+          title: buildDocumentTitle(meta.title),
+          description: meta.description,
+        };
+      }
+    }
   }
 
   if (segments[0] === "blog") {

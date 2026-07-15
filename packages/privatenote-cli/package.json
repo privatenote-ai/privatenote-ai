@@ -1,16 +1,22 @@
 {
-  "name": "@privatenote/cli",
+  "name": "privatenote-cli",
   "version": "0.1.0",
   "description": "Create encrypted PrivateNote links from the terminal. Plaintext is encrypted locally; only ciphertext reaches the server.",
   "license": "MIT",
-  "private": true,
   "bin": {
-    "privatenote": "./dist/cli.js"
+    "privatenote": "dist/cli.js"
   },
-  "homepage": "https://privatenote.ai",
+  "files": [
+    "dist/cli.js",
+    "README.md"
+  ],
+  "homepage": "https://privatenote.ai/developers/cli",
+  "bugs": {
+    "url": "https://github.com/privatenote-ai/privatenote/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/privatenote-ai/privatenote.git",
+    "url": "git+https://github.com/privatenote-ai/privatenote.git",
     "directory": "packages/privatenote-cli"
   },
   "keywords": [
@@ -18,13 +24,15 @@
     "cli",
     "encryption",
     "secrets",
-    "devops"
+    "devops",
+    "one-time-secret"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "build": "node build.mjs",
+    "prepublishOnly": "npm run build && chmod +x dist/cli.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/endpoints.test.ts src/responseValidation.test.ts src/cliOptions.test.ts src/createNote.test.ts src/stdoutPolicy.test.ts",
     "prepare-release": "bash scripts/prepare-release.sh",

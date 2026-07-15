@@ -54,14 +54,9 @@ tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
 # SecureNoteStorageSql uses the Durable Object SQL API (`state.storage.sql`). Local `wrangler dev`
-# (Miniflare) only enables SQL if the class was first registered with `new_sqlite_classes` — otherwise
-# note create returns: "SQL is not enabled for this Durable Object class". After local DO changes,
-# delete `.wrangler/state` once so local migrations re-apply cleanly.
-#
-# v5 `new_sqlite_classes = ["SecureNoteStorageSql"]` was removed from this file: production already
-# applied it; keeping it causes deploy error 10074 ("already depended on by existing Durable Objects").
-# Greenfield: if you create a brand-new Worker name, add a fresh migration with new_sqlite_classes
-# before first production deploy. See https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
+# must use `wrangler.local.toml` (includes v5 `new_sqlite_classes`). Production deploy uses this
+# file without v5 — migration was already applied remotely; re-adding it causes error 10074.
+# After switching local config or DO migrations, run `npm run dev:reset-local-state` once.
 
 # Environment variables (set via wrangler secret put or dashboard)
 

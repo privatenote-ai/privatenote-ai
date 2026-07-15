@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE } from "./check-locale-home-anchor-hrefs.js";
+import {
+  BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE,
+  fixSlashlessLocaleHomeAnchorHrefs,
+} from "./check-locale-home-anchor-hrefs.js";
 
 function badAnchors(html) {
   BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE.lastIndex = 0;
@@ -22,5 +25,23 @@ describe("BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE", () => {
     assert.equal(badAnchors('<a href="https://privatenote.ai/es/blog">').length, 0);
     assert.equal(badAnchors('href="/de"').length, 0);
     assert.equal(badAnchors('<link rel="alternate" hreflang="de" href="/de">').length, 0);
+  });
+});
+
+describe("fixSlashlessLocaleHomeAnchorHrefs", () => {
+  it("rewrites slashless locale home anchors", () => {
+    assert.equal(
+      fixSlashlessLocaleHomeAnchorHrefs('<a href="/de" class="logo">'),
+      '<a href="/de/" class="logo">',
+    );
+    assert.equal(
+      fixSlashlessLocaleHomeAnchorHrefs('<a href="https://privatenote.ai/fr">'),
+      '<a href="https://privatenote.ai/fr/">',
+    );
+  });
+
+  it("leaves canonical anchors unchanged", () => {
+    const html = '<a href="/de/">home</a><a href="/de/blog">blog</a>';
+    assert.equal(fixSlashlessLocaleHomeAnchorHrefs(html), html);
   });
 });

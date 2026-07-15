@@ -1,4 +1,4 @@
-# @privatenote/cli
+# privatenote-cli
 
 Create encrypted [PrivateNote.ai](https://privatenote.ai) links from the terminal.
 
@@ -10,25 +10,30 @@ Notes created via this tool are tracked as `creationSource: cli` in analytics.
 
 - Node.js 18+
 
-## Build
-
-From the repository root:
+## Install
 
 ```bash
-npm run build:cli
+# Run without installing (recommended to try)
+npx privatenote-cli --help
+
+# Global install — adds the `privatenote` command
+npm install -g privatenote-cli
 ```
 
 ## Usage
 
 ```bash
 # Pipe secrets from stdin (use --output-url-only when piping)
-cat config.json | node packages/privatenote-cli/dist/cli.js --expire 1h --output-url-only
+cat secret.txt | npx privatenote-cli --expire 1h --output-url-only
+
+# After global install
+cat secret.txt | privatenote --expire 1h --output-url-only
 
 # Read from a file
-node packages/privatenote-cli/dist/cli.js --expire 24h .env
+privatenote --expire 24h .env
 
 # JSON output for scripts
-cat secret.txt | node packages/privatenote-cli/dist/cli.js --expire 1h --json --force-stdout
+cat secret.txt | privatenote --expire 1h --json --force-stdout
 ```
 
 ### Options
@@ -69,7 +74,6 @@ The share URL contains the decryption key in its `#fragment`. Treat it like a pa
 ### pass (password-store)
 
 ```bash
-# Read a secret from pass; write only the URL to a restricted file (not the terminal)
 pass show prod/api-key | privatenote --expire 1h --output-url-only > "$(mktemp -u).url"
 chmod 600 *.url
 
@@ -80,7 +84,6 @@ pass show prod/api-key | privatenote --expire 1h --output-url-only | pbcopy
 ### 1Password CLI (`op`)
 
 ```bash
-# Inject a field at runtime; avoid typing the URL on the command line
 op read "op://Engineering/deploy-key/password" | privatenote --expire 1h --output-url-only > /tmp/note.url
 chmod 600 /tmp/note.url
 ```
@@ -92,47 +95,43 @@ chmod 600 /tmp/note.url
 - Never put the full URL in a script argument list — scripts show up in `ps` and logs.
 - For CI, use `--json --force-stdout` and write to a masked secret output, not plain build logs.
 
-## Signed releases
+## Publishing (maintainers)
 
-Official CLI binaries are published on [GitHub Releases](https://github.com/privatenote-ai/privatenote/releases) with SHA-256 checksums and a detached GPG signature over the checksum file.
-
-### Verify a release
-
-1. Download `privatenote-cli-<version>`, `SHA256SUMS`, and `SHA256SUMS.asc` from the release assets.
-2. Import the signing key (fingerprint published on [privatenote.ai/developers](https://privatenote.ai/developers#cli)):
+From the repository root:
 
 ```bash
-gpg --keyserver keys.openpgp.org --recv-keys <FINGERPRINT>
+npm run publish:cli
 ```
 
-3. Verify the signature and checksum:
+Requires npm login as **`privatenote-ai`** (same account as `privatenote-mcp`). Verify before publishing:
 
 ```bash
-gpg --verify SHA256SUMS.asc SHA256SUMS
-shasum -a 256 -c SHA256SUMS
+npm whoami   # must print: privatenote-ai
+npm run publish:cli
 ```
 
-4. Install the verified binary:
+If you use 2FA on npm, add a one-time password:
 
 ```bash
-chmod +x privatenote-cli-<version>
-sudo mv privatenote-cli-<version> /usr/local/bin/privatenote
+cd packages/privatenote-cli && npm publish --otp=YOUR_CODE
 ```
 
-### Build release artifacts locally
+Create an **Automation** token at [npmjs.com/settings/tokens](https://www.npmjs.com/settings/tokens) with publish access if CI fails.
 
-Maintainers can reproduce the checksum (and sign when GPG is configured):
+## Build from source
 
 ```bash
-bash packages/privatenote-cli/scripts/prepare-release.sh
-# Optional: PRIVATENOTE_RELEASE_SIGNING_KEY=<key-id> bash packages/privatenote-cli/scripts/prepare-release.sh 0.1.0
+git clone https://github.com/privatenote-ai/privatenote.git
+cd privatenote
+npm run build:cli
+node packages/privatenote-cli/dist/cli.js --help
 ```
 
-This writes `packages/privatenote-cli/release/privatenote-cli-<version>`, `SHA256SUMS`, and optionally `SHA256SUMS.asc`.
+## Signed GitHub releases (optional)
+
+Checksum-signed release artifacts are also published on [GitHub Releases](https://github.com/privatenote-ai/privatenote/releases) when tagged `cli-v*`. See [developers/cli](https://privatenote.ai/developers/cli) for verification steps.
 
 ## Self-hosting
-
-Point both URLs at your PrivateNote instance:
 
 ```bash
 export PRIVATENOTE_API_BASE_URL=https://notes.example.com
@@ -142,7 +141,7 @@ cat credentials.txt | privatenote --expire 1h --output-url-only > link.txt
 For local Wrangler dev over HTTP:
 
 ```bash
-node packages/privatenote-cli/dist/cli.js --insecure --api-base-url http://localhost:8787 < secret.txt
+privatenote --insecure --api-base-url http://localhost:8787 < secret.txt
 ```
 
 ## License

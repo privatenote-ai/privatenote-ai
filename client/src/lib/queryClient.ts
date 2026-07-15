@@ -2,7 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
-import { bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+import { bodyInitToUploadArrayBuffer, bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
 
 type BinaryUploadRoute = "direct-worker" | "same-origin";
 
@@ -16,6 +16,52 @@ type BinaryUploadAttempt = {
 };
 
 const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
+
+/** After one sacrificial Safari/WebKit request, chunk uploads use same-origin only. */
+let safariAttachmentUploadPrimed = false;
+
+export function resetSafariAttachmentUploadTransport(): void {
+  safariAttachmentUploadPrimed = false;
+}
+
+/**
+ * Safari/WebKit drops the first upload on a fresh HTTP/2 connection. Prime once per
+ * attachment so every chunk does not pay for a cross-origin sacrificial attempt.
+ */
+export async function primeSafariAttachmentUploadTransport(
+  sampleChunkUrl: string,
+  uploadToken: string,
+): Promise<void> {
+  if (
+    safariAttachmentUploadPrimed ||
+    !isSafariBrowser() ||
+    typeof window === "undefined" ||
+    !hasPagesSameOriginApiProxy(window.location.hostname)
+  ) {
+    return;
+  }
+
+  const directUrl = appendQuery(getDirectWorkerUploadUrl(sampleChunkUrl), {
+    [NOTE_UPLOAD_QUERY_PARAM]: uploadToken,
+    plaintextSize: "0",
+    encryptedSize: "1",
+    chunkEncryptedSize: "0",
+  });
+
+  try {
+    await sendBinaryHttpRequest(
+      directUrl,
+      "POST",
+      new Blob([], { type: "application/octet-stream" }),
+      { "Content-Type": "application/octet-stream" },
+      "omit",
+    );
+  } catch {
+    // Expected — absorbs the WebKit connection glitch before real chunk uploads.
+  } finally {
+    safariAttachmentUploadPrimed = true;
+  }
+}
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_URL || "").trim();
@@ -127,14 +173,11 @@ function getBinaryUploadAttempts(
   };
 
   if (options.uploadToken) {
-    if (isSafariBrowser()) {
-      // Safari/WebKit drops the *first* upload request it sends on a freshly (re)used
-      // HTTP/2 connection with "network connection was lost" — including the same-origin
-      // Pages proxy. Empirically the same-origin proxy reliably succeeds only as a
-      // follow-up attempt, so we send a cross-origin direct-worker request first (token +
-      // metadata in the query string to avoid a CORS preflight). That attempt absorbs the
-      // WebKit connection glitch, and the same-origin retry then goes through. Putting
-      // same-origin first instead caused every chunk to fail outright.
+    if (isSafariBrowser() && hasPagesSameOriginApiProxy(window.location.hostname)) {
+      if (safariAttachmentUploadPrimed) {
+        return [sameOrigin];
+      }
+      // First chunk only: sacrificial direct-worker attempt, then same-origin retry.
       return [
         {
           ...directWorker,
@@ -345,7 +388,7 @@ function isBinaryUploadNetworkError(error: unknown): boolean {
 async function executeBinaryUploadAttempt(
   attempt: BinaryUploadAttempt,
   method: string,
-  body: Blob,
+  body: Blob | ArrayBuffer,
   requestHeaders: Record<string, string>,
 ): Promise<Response> {
   return sendBinaryHttpRequest(
@@ -357,6 +400,18 @@ async function executeBinaryUploadAttempt(
   );
 }
 
+function resolveBinaryUploadBody(body: BodyInit): Blob | ArrayBuffer {
+  const arrayBuffer = bodyInitToUploadArrayBuffer(body);
+  if (arrayBuffer) {
+    return arrayBuffer;
+  }
+  const uploadBlob = bodyInitToUploadBlob(body);
+  if (!uploadBlob) {
+    throw new Error("Unsupported upload body type.");
+  }
+  return uploadBlob;
+}
+
 export async function apiBinaryRequest<T = any>(
   url: string,
   method: string,
@@ -364,11 +419,8 @@ export async function apiBinaryRequest<T = any>(
   headers: Record<string, string> = {},
   options: { uploadToken?: string } = {},
 ): Promise<T> {
-  const uploadBlob = bodyInitToUploadBlob(body);
-  if (!uploadBlob) {
-    throw new Error("Unsupported upload body type.");
-  }
-  const bodyBytes = uploadBlob.size;
+  const uploadBody = resolveBinaryUploadBody(body);
+  const bodyBytes = uploadBody instanceof ArrayBuffer ? uploadBody.byteLength : uploadBody.size;
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
   const sharedLogBase = {
     usesUploadToken: Boolean(options.uploadToken),
@@ -434,7 +486,7 @@ export async function apiBinaryRequest<T = any>(
         const res = await executeBinaryUploadAttempt(
           { ...attempt, url: requestUrl },
           requestMethod,
-          uploadBlob,
+          uploadBody,
           requestHeaders,
         );
         const responseText = await res.text();

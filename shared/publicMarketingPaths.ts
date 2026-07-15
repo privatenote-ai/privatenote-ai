@@ -3,6 +3,7 @@
  * Single source for prerender fallback list and Pages middleware SPA shell fallback.
  */
 import { allLocalizedBlogMarketingPaths } from "./localizedBlogSlugs.ts";
+import { ENGLISH_ONLY_DEVELOPER_MARKETING_PATHS } from "./englishOnlyDeveloperIntegrations.ts";
 import {
   ENGLISH_ONLY_SECURITY_GUIDE_TOPICS,
   LOCALIZED_SECURITY_GUIDE_TOPICS,
@@ -33,9 +34,10 @@ const ENGLISH_NON_BLOG_PATHS = NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) =>
 const ENGLISH_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) => path.startsWith("/blog/"));
 
 /** Routes that are public but not mirrored under /de, /fr, etc. */
-const EXTRA_MARKETING_PATHS = ENGLISH_ONLY_SECURITY_GUIDE_TOPICS.map(
-  (topic) => `/security-guides/${topic}`,
-) as readonly `/security-guides/${(typeof ENGLISH_ONLY_SECURITY_GUIDE_TOPICS)[number]}`[];
+const EXTRA_MARKETING_PATHS = [
+  ...ENGLISH_ONLY_SECURITY_GUIDE_TOPICS.map((topic) => `/security-guides/${topic}`),
+  ...ENGLISH_ONLY_DEVELOPER_MARKETING_PATHS,
+];
 
 const LOCALIZED_SECURITY_GUIDE_PATHS = LOCALIZED_SECURITY_GUIDE_TOPICS.flatMap((topic) => {
   const english = `/security-guides/${topic}` as const;

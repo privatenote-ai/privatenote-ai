@@ -153,6 +153,10 @@ export class EuD1KvNamespace {
 
 export function withEuStoredDataEnv(env: Env): Env {
   if (!env.AUTH_DB) return env;
+  // Local wrangler dev: use Miniflare KV bindings (see wrangler.local.toml LOCAL_DEV).
+  if (env.LOCAL_DEV === "1" || env.LOCAL_DEV === "true") {
+    return env;
+  }
   const notesKv = new EuD1KvNamespace(env.AUTH_DB, "NOTES_KV") as unknown as KVNamespace;
   const analyticsKv = new EuD1KvNamespace(env.AUTH_DB, "ANALYTICS_KV") as unknown as KVNamespace;
   const authKv = new EuD1KvNamespace(env.AUTH_DB, "AUTH_KV") as unknown as KVNamespace;

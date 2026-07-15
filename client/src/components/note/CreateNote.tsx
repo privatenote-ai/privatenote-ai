@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
-import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
+import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload, primeSafariAttachmentUploadTransport, resetSafariAttachmentUploadTransport } from "@/lib/queryClient";
+import { uint8ArrayToUploadArrayBuffer } from "@/lib/binaryUploadTransport";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -61,6 +62,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
+import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
@@ -108,10 +110,8 @@ function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
   return promptTemplatesModulePromise;
 }
 
-function copyToExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-  return copy.buffer;
+function encryptedChunkUploadBody(encryptedBytes: Uint8Array): ArrayBuffer {
+  return uint8ArrayToUploadArrayBuffer(encryptedBytes);
 }
 
 async function uploadEncryptedAttachmentChunk(
@@ -122,7 +122,7 @@ async function uploadEncryptedAttachmentChunk(
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const body = copyToExactArrayBuffer(encryptedBytes);
+  const body = encryptedChunkUploadBody(encryptedBytes);
   logFileUpload("info", "uploading chunk", {
     chunkIndex,
     encryptedBytes: encryptedBytes.byteLength,
@@ -656,7 +656,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const attachFileButtonLabel = selectedFile
-    ? selectedFile.name
+    ? formatAttachmentDisplayName(selectedFile.name)
     : isFileTransferMode
       ? t.sftAttachFile
       : t.attachFile;
@@ -1434,6 +1434,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             encryptedSizeUpperBound,
             apiBase: getFileUploadTargetLabel(),
           });
+          resetSafariAttachmentUploadTransport();
+          await primeSafariAttachmentUploadTransport(
+            `/api/notes/${reservedId}/file/chunks/0`,
+            uploadToken,
+          );
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
             fileWrapKey!,
@@ -2442,8 +2447,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div className="mb-4 space-y-4">
               <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {selectedFile.name}
+                <span
+                  className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
+                  title={selectedFile.name}
+                >
+                  {formatAttachmentDisplayName(selectedFile.name)}
                 </span>
                 <button
                   type="button"
@@ -2648,7 +2656,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                    className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                   >
                     {isLoading ? (
                       <>
@@ -2674,7 +2682,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onChange={handleAttachFileSelected}
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="flex w-full min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -2699,15 +2707,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     )}
                   </button>
 
-                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none sm:max-w-none">
+                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-[10.5rem]">
                     <button
                       type="button"
                       onClick={handleAttachFileClick}
-                      title={
-                        selectedFile
-                          ? (t.attachFileChangeHint ?? "Click to choose a different file")
-                          : undefined
-                      }
+                      title={selectedFile ? selectedFile.name : undefined}
                       className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
                     >
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -2729,7 +2733,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>

@@ -20,7 +20,9 @@ export const FULL_PRERENDER_PATTERNS = [
   /^client\/src\/App\.tsx$/,
   /^client\/src\/components\/Navbar\.tsx$/,
   /^client\/src\/components\/Footer\.tsx$/,
+  /^client\/src\/utils\/localizedPath\.ts$/,
   /^client\/src\/utils\/resolveDocumentMeta\.ts$/,
+  /^scripts\/check-locale-home-anchor-hrefs\.js$/,
   /^client\/src\/utils\/translations\//,
   /^client\/public\/sitemap\.xml$/,
   /^vite\.config\.ts$/,
@@ -234,6 +236,47 @@ export async function saveHtmlCache(distDir, cacheDir) {
     await fs.copyFile(file, dest);
   }
   return files.length;
+}
+
+/** Relative paths under dist for each marketing route (matches scripts/prerender.js saveHTML). */
+export function expectedMarketingHtmlRelPaths(route) {
+  const trimmed = route.replace(/\/+$/, "") || "/";
+  const rel = trimmed.replace(/^\//, "");
+  const paths = new Set();
+
+  if (!rel) {
+    paths.add("index.html");
+    return paths;
+  }
+
+  const isLocaleHome = LOCALE_HOME_RE.test(rel);
+  if (!isLocaleHome) {
+    paths.add(`${rel}.html`);
+  }
+  paths.add(`${rel}/index.html`);
+  return paths;
+}
+
+const PRERENDER_SHELL_HTML = new Set(["index.html", "404.html"]);
+
+/** Drop cached marketing HTML no longer in the sitemap/route list (e.g. legacy /de/blog/english-slug). */
+export async function pruneStaleMarketingHtml(distDir, routes) {
+  const keep = new Set(PRERENDER_SHELL_HTML);
+  for (const route of routes) {
+    for (const rel of expectedMarketingHtmlRelPaths(route)) {
+      keep.add(rel.split(path.sep).join("/"));
+    }
+  }
+
+  const files = await walkHtmlFiles(distDir);
+  let removed = 0;
+  for (const file of files) {
+    const rel = path.relative(distDir, file).split(path.sep).join("/");
+    if (keep.has(rel)) continue;
+    await fs.rm(file, { force: true });
+    removed++;
+  }
+  return removed;
 }
 
 /**

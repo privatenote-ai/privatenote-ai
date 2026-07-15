@@ -29,10 +29,12 @@ import {
 import { LOCALE_HOME_PATH_PATTERN, SUPPORTED_LANGUAGES } from "../shared/supportedLanguages.ts";
 import {
   getChangedFiles,
+  pruneStaleMarketingHtml,
   restoreHtmlCache,
   saveHtmlCache,
   selectRoutesToPrerender,
 } from "./prerenderIncremental.js";
+import { fixSlashlessLocaleHomeAnchorHrefs } from "./check-locale-home-anchor-hrefs.js";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const HTML_CACHE_DIR = process.env.PRERENDER_HTML_CACHE_DIR || "";
@@ -318,6 +320,9 @@ function postProcessHTML(html, route) {
       .fixed.bottom-0.left-0.right-0.z-50.p-4.bg-black\\/80 { display: none !important; }
     </style></head>`
   );
+
+  // Cached incremental HTML may still ship slashless locale home anchors from before localizedPath used /de/.
+  out = fixSlashlessLocaleHomeAnchorHrefs(out);
 
   return out;
 }
@@ -617,6 +622,10 @@ async function main() {
 
     await syncShellAssetRefs(canonicalShellAssets);
     await repostProcessAllMarketingHtml(routes);
+    const pruned = await pruneStaleMarketingHtml(DIST_DIR, routes);
+    if (pruned > 0) {
+      console.log(`🧹 Removed ${pruned} stale marketing HTML file(s) not in current route list.`);
+    }
     await verifyPrerenderAssetRefs();
 
     if (INCREMENTAL && HTML_CACHE_DIR) {

@@ -32,6 +32,8 @@ test("normalizeMarketingPathname strips trailing slash except locale homes", () 
 
 test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/developers"), true);
+  assert.equal(isPublicMarketingPath("/developers/cli"), true);
+  assert.equal(isPublicMarketingPath("/developers/chrome"), true);
   assert.equal(isPublicMarketingPath("/secure-file-transfer"), true);
   assert.equal(isPublicMarketingPath("/blog/encrypted-vs-secure-file-sharing"), true);
   assert.equal(isPublicMarketingPath("/de/about/"), true);

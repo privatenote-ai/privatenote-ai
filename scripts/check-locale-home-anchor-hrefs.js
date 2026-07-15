@@ -13,6 +13,14 @@ export const BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE = new RegExp(
   "gi",
 );
 
+/** Rewrite cached/stale <a href="/de"> → <a href="/de/"> in prerender snapshots. */
+export function fixSlashlessLocaleHomeAnchorHrefs(html) {
+  BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE.lastIndex = 0;
+  return html.replace(BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE, (match, quote) => {
+    return `${match.slice(0, -quote.length)}/${quote}`;
+  });
+}
+
 const MAX_FAILURES = 40;
 
 async function walkHtmlFiles(dir) {
