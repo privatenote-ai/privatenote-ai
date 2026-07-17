@@ -14,6 +14,12 @@ describe("parseNoteExpirySecondsFromBody", () => {
     if (r.ok) assert.equal(r.seconds, 86400);
   });
 
+  it("accepts 15m preset seconds", () => {
+    const r = parseNoteExpirySecondsFromBody(noteExpiryPresetIdToSeconds("15m"));
+    assert.equal(r.ok, true);
+    if (r.ok) assert.equal(r.seconds, 15 * 60);
+  });
+
   it("accepts 30d for premium", () => {
     const r = parseNoteExpirySecondsFromBody(noteExpiryPresetIdToSeconds("30d"), { isPremium: true });
     assert.equal(r.ok, true);
