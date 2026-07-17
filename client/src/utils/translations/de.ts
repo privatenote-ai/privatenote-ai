@@ -1221,6 +1221,9 @@ export const de: Translations = {
   passwordGenerator: "Passwortgenerator",
   contact: "Kontakt",
   footerTagline: "Ende-zu-Ende verschlüsselte Notizen",
+  footerProduct: "Produkt",
+  footerCompany: "Unternehmen",
+  allRightsReserved: "Alle Rechte vorbehalten.",
   blogSubtitle: "Lesen Sie praktische Leitfäden zu privaten Notizen, Verschlüsselung, Passwort-Hygiene, sicherem Teilen und geschützter Kommunikation im Alltag.",
   blogFeatured: "Empfohlen",
   blogFilterAll: "Alle Themen",
@@ -1246,56 +1249,13 @@ export const de: Translations = {
   blogBackToBlog: "Zurück zum Blog",
   blogNotFoundTitle: "Blogbeitrag nicht gefunden",
   blogNotFoundBody: "Der gesuchte Artikel existiert nicht oder wurde entfernt.",
-  blogPrivacyTitle: "Datenschutz-Tools und Gewohnheiten",
+  blogPrivacyTitle: "Ein praktischer Datenschutz-Tools-Stack für 2026",
   blogPrivacyExcerpt:
-    "Leitfaden zu Gewohnheiten, einmaligen verschlüsselten Notizen und Tools, die Ihr Risiko senken – ohne einen zweiten Job.",
-  blogPrivacyBody1:
-    "Privatsphäre scheitert leise. Daten werden gesammelt, weil eine Einstellung standardmäßig aktiv war, ein Link länger existierte als geplant oder ein Passwort in einem Chat-Verlauf hing, den niemand behalten wollte. Die Lösung ist keine Angst – sondern das richtige Werkzeug für den Moment und konsequente Nutzung.",
-  blogPrivacyBody2:
-    "Unten finden Sie praktische Gewohnheiten für Netzwerk, Geräte, Browser und Kommunikation – dann, wann PrivateNote.ai passt, eine Übersicht zu unserem kuratierten Datenschutz-Tools-Verzeichnis und Links, die sich zum Merken lohnen.",
-  blogPrivacyHabitsTitle: "Praktische Datenschutz-Gewohnheiten",
-  blogPrivacyOneTimeTitle: "Wann eine einmalige verschlüsselte Notiz E-Mail, Chat oder Cloud-Speicher schlägt",
-  blogPrivacyOneTimeP1:
-    "Greifen Sie zu PrivateNote.ai, wenn Sie jemandem ein Passwort, einen Wiederherstellungscode, einen API-Schlüssel oder eine einmalige Anweisung übergeben müssen – und es nach dem Lesen verschwinden soll, nicht für immer in einem Thread archiviert bleibt.",
-  blogPrivacyOneTimeP2:
-    "E-Mail und Chat hinterlassen durchsuchbare Kopien. Cloud-Ordner bleiben bestehen. Eine im Browser verschlüsselte Notiz mit Selbstzerstörung verkleinert das Zeitfenster: Chiffretext auf dem Server, der Entschlüsselungsschlüssel im Link-Fragment – und nach Ablauf oder dem ersten Öffnen nichts Nützliches mehr.",
-  blogPrivacyOneTimeP3:
-    "Das ersetzt weder einen Passwort-Manager noch den täglichen Messenger. Es ist die richtige Form für temporäre, wichtige Übergaben zwischen Menschen, die vielleicht keine gemeinsame App oder kein gemeinsames Konto haben.",
-  blogPrivacyToolsMapTitle: "Wo anfangen: Tools nach Aufgabe",
-  blogPrivacyToolsMapIntro:
-    "Nutzen Sie diese Tabelle zur schnellen Orientierung. Für einen breiteren Katalog mit Kategorien und kostenlosen Optionen durchsuchen Sie unser vollständiges Datenschutz-Tools-Verzeichnis.",
-  blogPrivacyToolsMapColJob: "Aufgabe",
-  blogPrivacyToolsMapColTool: "Was nutzen",
-  blogPrivacyToolsMapColStart: "Wo anfangen",
-  blogPrivacyToolsRowPasswordsJob: "Langfristige Passwörter",
-  blogPrivacyToolsRowPasswordsTool: "Passwort-Manager + starker Generator",
-  blogPrivacyToolsRowPasswordsStart: "Passwortgenerator",
-  blogPrivacyToolsRowSecretsJob: "Einmalige Geheimnisse",
-  blogPrivacyToolsRowSecretsTool: "Im Browser verschlüsselte, ablaufende Notiz",
-  blogPrivacyToolsRowSecretsStart: "Notiz erstellen",
-  blogPrivacyToolsRowFilesJob: "Sensible Dateien",
-  blogPrivacyToolsRowFilesTool: "Verschlüsselter Dateitransfer",
-  blogPrivacyToolsRowFilesStart: "Sicherer Dateitransfer",
-  blogPrivacyToolsRowDirectoryJob: "Breiterer Katalog",
-  blogPrivacyToolsRowDirectoryTool: "Kuratierte Leitfäden und kostenlose Tools",
-  blogPrivacyToolsRowDirectoryStart: "Datenschutz-Tools-Verzeichnis",
-  blogPrivacyFurtherReadingTitle: "Weiterführende Links",
-  blogPrivacyInternalLinksTitle: "Auf PrivateNote.ai",
-  blogPrivacyExternalLinksTitle: "Vertrauenswürdige externe Ressourcen",
-  blogPrivacyLinkHowItWorks: "So funktioniert PrivateNote",
-  blogPrivacyLinkPasswordGenerator: "Passwortgenerator",
-  blogPrivacyLinkSecurityResources: "Sicherheitsressourcen",
-  blogPrivacyLinkPrivacyTools: "Datenschutz-Tools-Verzeichnis",
-  blogPrivacyLinkCreateNote: "Notiz erstellen",
-  blogPrivacyLinkSecureFileTransfer: "Sicherer Dateitransfer",
-  blogPrivacyLinkEmailSecrets: "Warum E-Mail der schlechteste Ort für Geheimnisse ist",
-  blogPrivacyLinkSecretNoAccount: "Ein Geheimnis ohne Konto senden",
-  blogPrivacyResourceEff: "Electronic Frontier Foundation — Datenschutz-Ressourcen",
-  blogPrivacyResourceHibp: "Have I Been Pwned — Geknackte Konten prüfen",
-  blogPrivacyResource2fa: "2FA Directory — Zwei-Faktor-Authentifizierung aktivieren",
-  blogPrivacyResourceSignal: "Signal — Verschlüsselte Nachrichten",
-  blogPrivacyResourceMozilla: "Mozilla — Grundlagen des Datenschutzes",
-  blogPrivacyResourceProton: "Proton — Verschlüsselte E-Mail und Speicher",
+    "So stellen Sie einen Datenschutz-Stack nach Aufgabe zusammen – nicht nach Hype. Bedrohungsmodelle, Standardwahl vs. Alternativen, ein minimales Starter-Kit und was wir nicht empfehlen.",
+  blogPrivacyMetaTitle: "Datenschutz-Tools-Stack für 2026",
+  blogPrivacyMetaDescription:
+    "Praktischer Leitfaden 2026 zu Datenschutz-Tools nach Aufgabe: Passwörter, einmalige Geheimnisse, Messaging, E-Mail, Browser, VPNs und Kontohygiene – plus ein minimales Starter-Kit.",
+
   blogSecurityRecommendations: "Sicherheitsempfehlungen",
   blogAdditionalResources: "Weitere Ressourcen",
   blogBackToHome: "Zurück zur Startseite",
@@ -1415,6 +1375,20 @@ export const de: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Einführung in private KI",
   blogIntroductionPrivateAiMetaDescription:
     "Private KI: offene Gewichte, Ollama vs Browser vs Heim-GPU, Gemma 4 und Llama, und Write with Private AI im Browser.",
+  blogSharePasswordSecurelyTitle:
+    "Wie man ein Passwort sicher teilt (ohne E-Mail, Teams oder WhatsApp)",
+  blogSharePasswordSecurelyExcerpt:
+    "Hören Sie auf, Passwörter in Microsoft Teams, WhatsApp oder E-Mail einzufügen. Dieser Leitfaden zeigt browserverschlüsselte Einmal-Links, DSGVO-Aspekte und typische Sicherheitsfehler.",
+  blogSharePasswordSecurelyMetaTitle: "Passwort sicher teilen",
+  blogSharePasswordSecurelyMetaDescription:
+    "Passwörter sicher teilen ohne E-Mail, Teams oder WhatsApp: browserverschlüsselte Einmal-Links, DSGVO-Aspekte und praktische Beispiele aus dem Alltag.",
+  blogCicdEnvGithubSecretsTitle:
+    "Geheimnisse in CI/CD, .env-Dateien und GitHub: So leaken Entwickler Keys (und wie man es stoppt)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Keine .env-Dateien committen, keine Tokens in Pull Requests und keine Secrets in CI-Logs. Wo Credentials in GitHub und Pipelines entweichen—und wie verschlüsselte Einmal-Links helfen.",
+  blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env und GitHub-Leaks",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Wie .env-Dateien, Git-Historie und CI/CD API-Keys leaken—plus Checkliste, um Secrets aus Git, Logs und Chat herauszuhalten.",
   blogSocialMediaBansTitle:
     "Wirken Social-Media-Verbote fuer Kinder? Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:
@@ -1507,7 +1481,7 @@ export const de: Translations = {
   homeFaq_forwarding_question: "Können Empfänger die Notiz weiterleiten?",
   homeFaq_forwarding_answer: "Empfänger können den Link weiterleiten. PrivateNote reduziert das Risiko durch Einmal-Lesen und Ablaufzeiten, kann aber Screenshots, Kopieren oder Weiterleiten nach dem Zugriff nicht verhindern.",
   homeFaq_size_question: "Wie groß darf eine Notiz maximal sein?",
-  homeFaq_size_answer: "Notizen sind für kurze bis mittellange Texte und kleine Geheimnisse gedacht. Sehr große Inhalte können abgelehnt oder gekürzt werden, damit der Dienst zuverlässig bleibt.",
+  homeFaq_size_answer: "Notizen sind auf 50 KB UTF-8-Text begrenzt—genug für kurze bis mittellange Geheimnisse. Größere Einfügungen werden gekürzt oder abgelehnt, damit der Dienst zuverlässig bleibt.",
   homeFaq_pricing_question: "Ist PrivateNote.ai kostenlos?",
   homeFaq_pricing_answer: "PrivateNote.ai bietet derzeit eine kostenlose Möglichkeit, sichere, verschwindende Notizen zu erstellen. Premium-Funktionen können in Zukunft hinzukommen.",
   homeFaq_ai_question: "Warum .ai — verwenden Sie KI für meine Notizen?",
@@ -1515,7 +1489,7 @@ export const de: Translations = {
   homeFaq_expirationDefaults_question: "Wie lange bleiben Notizen erhalten, wenn ich keinen Ablauf festlege?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai empfiehlt kurzlebige Notizen. Sie wählen die Lebensdauer beim Erstellen; nach Ablauf wird die Notiz automatisch gelöscht.",
   homeFaq_openSource_question: "Ist PrivateNote.ai Open Source?",
-  homeFaq_openSource_answer: "PrivateNote.ai ist noch nicht vollständig Open Source, nutzt aber die Web Crypto API des Browsers und Standardalgorithmen wie AES-GCM.",
+  homeFaq_openSource_answer: "Nicht vollständig. Die gehostete Web-App und das Backend sind nicht Open Source. Der Kern der Client-Verschlüsselung (encryption.ts), gemeinsame Krypto-Utilities und die Entwickler-Erweiterungen (Chrome, VS Code/Cursor, Codex) sind öffentlich auf GitHub unter https://github.com/privatenote-ai/privatenote-ai. Die Verschlüsselung nutzt die Web Crypto API des Browsers mit AES-GCM sowie Argon2id für passwortgeschützte Notizen.",
   homeFaq_sensitiveSecrets_question: "Kann ich Passwörter, Wiederherstellungscodes oder private Schlüssel teilen?",
   homeFaq_sensitiveSecrets_answer: "Ja, solange Sie die Grenzen verstehen: Jeder mit dem Link und gegebenenfalls dem Passwort kann das Geheimnis lesen und weiterhin kopieren, fotografieren oder per Screenshot sichern.",
   documentMetaHomeDescription: "Ende-zu-Ende-verschlüsselte Notizen und Dateien, die nach dem Öffnen verschwinden. Browserseitige Verschlüsselung hält Ihre Nachrichten privat.",

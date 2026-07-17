@@ -139,7 +139,7 @@ export const shareApiKeySecurelyEn: ShareApiKeyArticleCopy = {
     faq: { title: "Frequently asked questions" },
     bottomLine: {
       title: "The bottom line",
-      body: "Most API key leaks do not happen because cryptography failed. They happen because someone copied a secret into a permanent, searchable system out of convenience. Scope keys tightly, share them only when necessary, and avoid leaving a plaintext trail in chat, tickets, email, or Git.",
+      body: "Most API key leaks do not happen because cryptography failed. They happen because someone copied a secret into a permanent, searchable system out of convenience. Scope keys tightly, share them only when necessary, and avoid leaving a plaintext trail in chat, tickets, email, or Git. For the delivery-pipeline side—.env commits, CI logs, and GitHub history—see [secrets in CI/CD, .env files, and GitHub](blog:secrets-in-cicd-env-github-leaks).",
     },
   },
   ctaTitle: "Share an API key without leaving it in chat",

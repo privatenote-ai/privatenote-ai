@@ -21,6 +21,8 @@ export const BLOG_CANONICAL_SLUGS = [
   "how-we-generate-passwords",
   "workplace-texts-private-note",
   "social-media-bans-children-evidence",
+  "how-to-share-a-password-securely",
+  "secrets-in-cicd-env-github-leaks",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -246,6 +248,28 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "proibicoes-redes-sociais-criancas-evidencia",
     sr: "zabrane-drustvenih-mreza-za-decu-dokazi",
     hr: "zabrane-drustvenih-mreza-za-djecu-dokazi",
+  },
+  "how-to-share-a-password-securely": {
+    en: "how-to-share-a-password-securely",
+    de: "passwort-sicher-teilen",
+    fr: "partager-un-mot-de-passe-en-securite",
+    es: "como-compartir-una-contrasena-de-forma-segura",
+    it: "come-condividere-una-password-in-modo-sicuro",
+    nl: "wachtwoord-veilig-delen",
+    pt: "como-partilhar-uma-palavra-passe-com-seguranca",
+    sr: "kako-bezbedno-podeliti-lozinku",
+    hr: "kako-sigurno-podijeliti-lozinku",
+  },
+  "secrets-in-cicd-env-github-leaks": {
+    en: "secrets-in-cicd-env-github-leaks",
+    de: "geheimnisse-in-cicd-env-github-lecks",
+    fr: "secrets-cicd-env-fuites-github",
+    es: "secretos-cicd-env-filtraciones-github",
+    it: "segreti-cicd-env-perdite-github",
+    nl: "geheimen-in-cicd-env-github-leaks",
+    pt: "segredos-cicd-env-vazamentos-github",
+    sr: "tajne-u-cicd-env-github-curenja",
+    hr: "tajne-u-cicd-env-github-curenja",
   },
 };
 

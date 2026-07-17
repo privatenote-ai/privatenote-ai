@@ -161,7 +161,7 @@ export const introductionToPrivateAiPt: IntroductionToPrivateAiArticleCopy = {
     {
       slug: "privacy-tools",
       blurb:
-        "Ferramentas práticas de privacidade além de melhores hábitos.",
+        "Monte uma stack prática de privacidade para 2026 por tarefa—não por hype.",
     },
     {
       slug: "workplace-texts-private-note",

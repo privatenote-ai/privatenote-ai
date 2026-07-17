@@ -86,6 +86,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "how-to-share-api-key-securely": {
     related: [
+      "secrets-in-cicd-env-github-leaks",
       "crypto-seed-phrase-one-time-link",
       "why-email-is-worst-for-secrets",
       "privatenote-for-developers",
@@ -133,6 +134,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "one-time-secret-links": {
     related: [
+      "how-to-share-a-password-securely",
       "crypto-seed-phrase-one-time-link",
       "why-email-is-worst-for-secrets",
       "send-secret-message-without-account",
@@ -161,6 +163,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   "privatenote-for-developers": {
     related: [
       "how-to-share-api-key-securely",
+      "secrets-in-cicd-env-github-leaks",
       "privatenote-codex",
       "securing-ai-agents-like-employees",
       "one-time-secret-links",
@@ -187,6 +190,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "how-we-generate-passwords": {
     related: [
+      "how-to-share-a-password-securely",
       "secrets-never-send-in-chat",
       "send-secret-message-without-account",
       "myth-good-enough-security",
@@ -212,6 +216,28 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
       "secrets-never-send-in-chat",
     ],
     trust: "/privacy",
+  },
+  "how-to-share-a-password-securely": {
+    related: [
+      "one-time-secret-links",
+      "why-email-is-worst-for-secrets",
+      "secrets-never-send-in-chat",
+      "how-we-generate-passwords",
+      "how-to-share-api-key-securely",
+      "send-secret-message-without-account",
+    ],
+    trust: "/security-guides/password",
+  },
+  "secrets-in-cicd-env-github-leaks": {
+    related: [
+      "how-to-share-api-key-securely",
+      "privatenote-for-developers",
+      "one-time-secret-links",
+      "why-email-is-worst-for-secrets",
+      "secrets-never-send-in-chat",
+      "crypto-seed-phrase-one-time-link",
+    ],
+    trust: "/security-resources",
   },
 };
 

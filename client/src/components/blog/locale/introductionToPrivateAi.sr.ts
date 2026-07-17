@@ -156,7 +156,7 @@ export const introductionToPrivateAiSr: IntroductionToPrivateAiArticleCopy = {
     },
     {
       slug: "privacy-tools",
-      blurb: "Praktični alati za privatnost izvan boljih navika same po sebi.",
+      blurb: "Sastavite praktičan stek privatnosti za 2026. po poslu—ne po hipu.",
     },
     {
       slug: "workplace-texts-private-note",

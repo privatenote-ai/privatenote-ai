@@ -24,6 +24,8 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "privatenote-codex": "2026-05-21T12:00:00.000Z",
   "securing-ai-agents-like-employees": "2026-06-06T12:00:00.000Z",
   "social-media-bans-children-evidence": "2026-07-16T10:00:00.000Z",
+  "how-to-share-a-password-securely": "2026-07-17T01:00:00.000Z",
+  "secrets-in-cicd-env-github-leaks": "2026-07-17T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -41,7 +43,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "send-secret-message-without-account": 7,
   "encrypted-vs-secure-file-sharing": 6,
   "one-time-secret-links": 7,
-  "privacy-tools": 6,
+  "privacy-tools": 7,
   "myth-good-enough-security": 5,
   "how-we-generate-passwords": 6,
   "workplace-texts-private-note": 6,
@@ -49,6 +51,8 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "privatenote-codex": 5,
   "securing-ai-agents-like-employees": 6,
   "social-media-bans-children-evidence": 7,
+  "how-to-share-a-password-securely": 7,
+  "secrets-in-cicd-env-github-leaks": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -84,6 +88,34 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -22,
+      title: t.blogCicdEnvGithubSecretsTitle,
+      excerpt: t.blogCicdEnvGithubSecretsExcerpt,
+      author: "PrivateNote.ai",
+      slug: "secrets-in-cicd-env-github-leaks",
+      publishedAt: at("secrets-in-cicd-env-github-leaks"),
+      tags: JSON.stringify([t.blogTagDeveloper, t.blogTagSecurity, t.blogTagPasswords]),
+      content: "",
+      coverImage: "/images/blog-cicd-env-github-secrets-hero.jpg",
+      published: true,
+      createdAt: at("secrets-in-cicd-env-github-leaks"),
+      updatedAt: at("secrets-in-cicd-env-github-leaks"),
+    },
+    {
+      id: -21,
+      title: t.blogSharePasswordSecurelyTitle,
+      excerpt: t.blogSharePasswordSecurelyExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-share-a-password-securely",
+      publishedAt: at("how-to-share-a-password-securely"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPasswords]),
+      content: "",
+      coverImage: "/images/blog-share-password-securely-hero.jpg",
+      published: true,
+      createdAt: at("how-to-share-a-password-securely"),
+      updatedAt: at("how-to-share-a-password-securely"),
+    },
     {
       id: -20,
       title: t.blogSocialMediaBansTitle,

@@ -1229,6 +1229,9 @@ export const nl: Translations = {
   contact: "Contact",
   footerTagline: "End-to-end gecodeerde notities",
   footerTaglineFileTransfer: "Versleutelde notities en veilig bestanden delen",
+  footerProduct: "Product",
+  footerCompany: "Bedrijf",
+  allRightsReserved: "Alle rechten voorbehouden.",
   blogCrossLinksHeading: "Ontdek PrivateNote",
   blogCrossLinksRelatedLabel: "Gerelateerde artikelen",
   blogCrossLinksTrustLabel: "Vertrouwen en beveiliging",
@@ -1257,14 +1260,13 @@ export const nl: Translations = {
   blogBackToBlog: "Terug naar Blog",
   blogNotFoundTitle: "Blogbericht niet gevonden",
   blogNotFoundBody: "Het artikel dat u zoekt bestaat niet of is verwijderd.",
-  blogPrivacyTitle: "Privacytools en gewoonten die echt helpen",
+  blogPrivacyTitle: "Een praktische privacytools-stack voor 2026",
   blogPrivacyExcerpt:
-    "Praktische gids voor privacygewoonten, eenmalige versleutelde notities en tools die blootstelling verlagen zonder extra werk.",
-  blogPrivacyBody1:
-    "Privacy faalt stilletjes. Gegevens worden verzameld omdat een instelling standaard aan stond, een link langer leefde dan bedoeld, of een wachtwoord bleef hangen in een chatgeschiedenis die niemand wilde bewaren. De oplossing is geen angst — het is het juiste hulpmiddel voor het moment, consequent gebruikt.",
-  blogPrivacyBody2:
-    "Hieronder vind je praktische gewoonten voor je netwerk, apparaten, browser en communicatie — daarna wanneer PrivateNote.ai past, een overzicht naar onze privacytools-directory, en links die de moeite waard zijn om te bewaren.",
-  blogPrivacyHabitsTitle: "Praktische privacygewoonten",
+    "Hoe je een privacystack per taak samenstelt—niet op hype. Dreigingsmodellen, standaardkeuzes vs. alternatieven, een minimale starterkit en wat we weigeren aan te bevelen.",
+  blogPrivacyMetaTitle: "Privacytools-stack voor 2026",
+  blogPrivacyMetaDescription:
+    "Praktische gids 2026 voor privacytools per taak: wachtwoorden, eenmalige geheimen, messaging, e-mail, browsen, VPN’s en accounthygiëne—plus een minimale starterkit.",
+
   blogSecurityRecommendations: "Beveiligingsaanbevelingen",
   blogAdditionalResources: "Aanvullende bronnen",
   blogBackToHome: "Terug naar Thuis",
@@ -1338,6 +1340,20 @@ export const nl: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introductie tot private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open gewichten, Ollama vs browser vs thuis-GPU, Gemma 4 en Llama, en Write with Private AI in je browser.",
+  blogSharePasswordSecurelyTitle:
+    "Hoe deel je een wachtwoord veilig (zonder e-mail, Teams of WhatsApp)",
+  blogSharePasswordSecurelyExcerpt:
+    "Stop met wachtwoorden plakken in Microsoft Teams, WhatsApp of e-mail. Browserversleutelde eenmalige links, AVG/GDPR en wachtwoordmanager vs eenmalig delen.",
+  blogSharePasswordSecurelyMetaTitle: "Wachtwoord veilig delen",
+  blogSharePasswordSecurelyMetaDescription:
+    "Deel wachtwoorden zonder e-mail, Teams of WhatsApp: browserversleutelde eenmalige links, AVG-overwegingen en praktische voorbeelden.",
+  blogCicdEnvGithubSecretsTitle:
+    "Secrets in CI/CD, .env-bestanden en GitHub: hoe developers keys lekken (en hoe je stopt)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Stop met .env committen, tokens in PRs plakken en secrets in CI-logs echoën. Waar credentials ontsnappen—en hoe versleutelde eenmalige links in je workflow passen.",
+  blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env en GitHub-leaks",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Hoe .env-bestanden, Git-historie en CI/CD-pipelines API-keys lekken—plus een checklist om secrets uit Git, logs en chat te houden.",
   blogSocialMediaBansTitle:
     "Werken socialmediaverboden voor kinderen? Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
@@ -1472,7 +1488,7 @@ export const nl: Translations = {
   homeFaq_forwarding_question: "Kunnen ontvangers de notitie doorsturen?",
   homeFaq_forwarding_answer: "Zij kunnen de link doorsturen. PrivateNote vermindert het risico met eenmalige leesnotities en vervaldata, maar kan het maken van schermafbeeldingen, kopiëren/plakken of doorsturen na toegang niet voorkomen.",
   homeFaq_size_question: "Wat is de maximale notitiegrootte?",
-  homeFaq_size_answer: "Notities zijn bedoeld voor korte tot middellange tekst en kleine geheimen. Zeer grote payloads kunnen worden afgewezen of ingekort om de prestaties voorspelbaar te houden.",
+  homeFaq_size_answer: "Notities zijn beperkt tot 50 KB UTF-8-tekst—genoeg voor korte tot middellange geheimen. Grotere plaksels worden ingekort of geweigerd zodat de prestaties voorspelbaar blijven.",
   homeFaq_pricing_question: "Is PrivateNote.ai gratis?",
   homeFaq_pricing_answer: "PrivateNote.ai biedt momenteel een gratis manier om veilige, verdwijnende notities te maken. Premiumfuncties kunnen in de toekomst worden toegevoegd.",
   homeFaq_ai_question: "Waarom .ai – gebruiken jullie AI in mijn aantekeningen?",
@@ -1480,7 +1496,7 @@ export const nl: Translations = {
   homeFaq_expirationDefaults_question: "Hoe lang blijven notities bestaan als ik geen vervaldatum instel?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai moedigt kortstondige notities aan. U kunt de levensduur kiezen bij het maken van een notitie; na het verstrijken wordt de notitie automatisch verwijderd.",
   homeFaq_openSource_question: "Is PrivateNote.ai open source?",
-  homeFaq_openSource_answer: "PrivateNote.ai is nog niet volledig open source, maar de kerncryptografie is afhankelijk van de browser Web Crypto API en standaardalgoritmen zoals AES-GCM.",
+  homeFaq_openSource_answer: "Niet volledig. De gehoste webapp en backend zijn niet open source. De kern van de clientversleuteling (encryption.ts), gedeelde cryptohulpprogramma’s en de ontwikkelaarsextensies (Chrome, VS Code/Cursor, Codex) zijn openbaar op GitHub: https://github.com/privatenote-ai/privatenote-ai. Versleuteling gebruikt de Web Crypto API van de browser met AES-GCM, plus Argon2id voor wachtwoordbeveiligde notities.",
   homeFaq_sensitiveSecrets_question: "Kan ik dit gebruiken voor wachtwoorden, herstelcodes of privésleutels?",
   homeFaq_sensitiveSecrets_answer: "Ja, zolang je de afwegingen begrijpt: iedereen met de link en het wachtwoord, indien ingesteld, kan het geheim lezen en het nog steeds kopiëren of er een screenshot van maken.",
   documentMetaHomeDescription: "End-to-end gecodeerde notities die zichzelf vernietigen na het lezen. Encryptie aan de clientzijde houdt uw berichten privé.",

@@ -90,6 +90,16 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogSocialMediaBansMetaTitle),
         description: t.blogSocialMediaBansMetaDescription,
       };
+    case "how-to-share-a-password-securely":
+      return {
+        title: buildDocumentTitle(t.blogSharePasswordSecurelyMetaTitle),
+        description: t.blogSharePasswordSecurelyMetaDescription,
+      };
+    case "secrets-in-cicd-env-github-leaks":
+      return {
+        title: buildDocumentTitle(t.blogCicdEnvGithubSecretsMetaTitle),
+        description: t.blogCicdEnvGithubSecretsMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),
@@ -121,7 +131,10 @@ function blogSlugStaticMeta(
         description: t.blogApiKeySharingMetaDescription,
       };
     case "privacy-tools":
-      return { title: buildDocumentTitle(t.blogPrivacyTitle), description: t.blogPrivacyExcerpt };
+      return {
+        title: buildDocumentTitle(t.blogPrivacyMetaTitle),
+        description: t.blogPrivacyMetaDescription,
+      };
     case "myth-good-enough-security":
       return { title: buildDocumentTitle(t.blogGoodEnoughMetaTitle), description: t.blogGoodEnoughExcerpt };
     case "how-we-generate-passwords":

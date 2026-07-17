@@ -1151,6 +1151,9 @@ export const sr: Translations = {
   passwordGenerator: "Passvord Generator",
   contact: "Kontakt",
   footerTagline: "Šifrovane poruke od kraja do kraja",
+  footerProduct: "Proizvod",
+  footerCompany: "Kompanija",
+  allRightsReserved: "Sva prava zadržana.",
   blogSubtitle: "Smernice o privatnim porukama, šifrovanju, lozinkama, bezbednom deljenju i sigurnijoj komunikaciji za svakodnevni rad.",
   blogFeatured: "Featured",
   blogFilterAll: "Sve teme",
@@ -1176,14 +1179,13 @@ export const sr: Translations = {
   blogBackToBlog: "Nazad na blog",
   blogNotFoundTitle: "Post na blogu nije pronađen",
   blogNotFoundBody: "Članak koji tražite ne postoji ili je uklonjen.",
-  blogPrivacyTitle: "Alati i navike privatnosti koji pomažu",
+  blogPrivacyTitle: "Praktičan stek alata za privatnost za 2026.",
   blogPrivacyExcerpt:
-    "Praktičan vodič za svakodnevne navike privatnosti, kada koristiti jednokratnu šifrovanu poruku i gde pronaći alate koji smanjuju izloženost bez drugog posla.",
-  blogPrivacyBody1:
-    "Privatnost propada tiho. Podaci se prikupljaju jer je podešavanje bilo uključeno podrazumevano, link je preživeo svoju svrhu ili je lozinka ostala u istoriji četa koju niko nije hteo da zadrži. Rešenje nije strah — to je pravi alat za trenutak i dosledna upotreba.",
-  blogPrivacyBody2:
-    "U nastavku su praktične navike za mrežu, uređaje, pregledač i komunikaciju — zatim kada PrivateNote.ai odgovara, pregled našeg kuriranog direktorijuma alata za privatnost i linkovi koje vredi sačuvati.",
-  blogPrivacyHabitsTitle: "Praktične navike privatnosti",
+    "Kako sastaviti stek privatnosti po poslu—ne po hipu. Modeli pretnji, podrazumevani izbori naspram alternativa, minimalni starter komplet i ono što odbijamo da preporučimo.",
+  blogPrivacyMetaTitle: "Stek alata za privatnost za 2026.",
+  blogPrivacyMetaDescription:
+    "Praktičan vodič za 2026. o alatima za privatnost po poslu: lozinke, jednokratne tajne, poruke, e-pošta, pregledanje, VPN-ovi i higijena naloga—plus minimalni starter komplet.",
+
   blogSecurityRecommendations: "Bezbednosne preporuke",
   blogAdditionalResources: "Dodatni resursi",
   blogBackToHome: "Povratak kući",
@@ -1341,7 +1343,7 @@ export const sr: Translations = {
   homeFaq_forwarding_question: "Mogu li primaoci proslediti poruku?",
   homeFaq_forwarding_answer: "Oni mogu da proslede link. PrivateNote smanjuje rizik sa porukama za jednokratno čitanje i istekom, ali ne može sprečiti snimke ekrana, kopiranje/lepljenje ili prosleđivanje nakon pristupa.",
   homeFaq_size_question: "Koja je maksimalna veličina poruke?",
-  homeFaq_size_answer: "Poruke su namenjene kratkom do srednje dugačkom tekstu i malim tajnama. Veoma velika korisna opterećenja mogu biti odbijena ili skraćena da bi performanse bile predvidljive.",
+  homeFaq_size_answer: "Poruke su ograničene na 50 KB UTF-8 teksta—dovoljno za kratke do srednje tajne. Veći unosi se skraćuju ili odbijaju da performanse ostanu predvidljive.",
   homeFaq_pricing_question: "Da li je PrivateNote.ai besplatan?",
   homeFaq_pricing_answer: "PrivateNote.ai trenutno nudi besplatan način za kreiranje sigurnih poruka koje nestaju. Premijum funkcije se mogu dodati u budućnosti.",
   homeFaq_ai_question: "Zašto .ai — da li koristite AI u mojim porukama?",
@@ -1349,7 +1351,7 @@ export const sr: Translations = {
   homeFaq_expirationDefaults_question: "Koliko dugo traju poruke ako ne podesim rok trajanja?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai podstiče kratkotrajne poruke. Možete odabrati životni vek kada kreirate poruku; nakon isteka, poruka se automatski briše.",
   homeFaq_openSource_question: "Da li je PrivateNote.ai otvorenog koda?",
-  homeFaq_openSource_answer: "PrivateNote.ai još uvek nije potpuno otvorenog koda, ali se osnovna kriptografija oslanja na Web Crypto API u pregledaču i standardne algoritme kao što je AES-GCM.",
+  homeFaq_openSource_answer: "Ne u potpunosti. Hostovana veb aplikacija i backend nisu otvorenog koda. Osnovni klijentski kod za šifrovanje (encryption.ts), zajedničke kripto utilite i ekstenzije za developere (Chrome, VS Code/Cursor, Codex) javni su na GitHub-u: https://github.com/privatenote-ai/privatenote-ai. Šifrovanje koristi Web Crypto API pregledača sa AES-GCM, plus Argon2id za poruke zaštićene lozinkom.",
   homeFaq_sensitiveSecrets_question: "Mogu li ovo da koristim za lozinke, kodove za oporavak ili privatne ključeve?",
   homeFaq_sensitiveSecrets_answer: "Da, sve dok razumete kompromise: svako sa linkom i lozinkom, ako su podešeni, može da pročita tajnu i još uvek može da je kopira ili snimi ekran.",
   documentMetaHomeDescription: "Šifrovane poruke od kraja do kraja koje se samouništavaju nakon čitanja. Šifrovanje na strani klijenta čuva vaše poruke privatnim.",
@@ -1717,6 +1719,20 @@ export const sr: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Uvod u privatnu AI",
   blogIntroductionPrivateAiMetaDescription:
     "Privatna AI: otvorene težine (otvoreni koeficienti), Ollama vs pregledač vs kućni GPU, Gemma 4 i Llama, Write with Private AI u pregledaču.",
+  blogSharePasswordSecurelyTitle:
+    "Kako bezbedno podeliti lozinku (bez e-pošte, Teamsa ili WhatsAppa)",
+  blogSharePasswordSecurelyExcerpt:
+    "Prestanite da lepite lozinke u Microsoft Teams, WhatsApp ili e-poštu. Jednokratni šifrovani linkovi, GDPR i menadžer lozinki naspram jednokratnog deljenja.",
+  blogSharePasswordSecurelyMetaTitle: "Kako bezbedno podeliti lozinku",
+  blogSharePasswordSecurelyMetaDescription:
+    "Delite lozinke bez e-pošte, Teamsa ili WhatsAppa: jednokratni šifrovani linkovi, GDPR i praktični primeri.",
+  blogCicdEnvGithubSecretsTitle:
+    "Tajne u CI/CD, .env fajlovima i GitHub-u: kako developeri cure ključeve (i kako to zaustaviti)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Prestanite da commit-ujete .env, lepite tokene u PR-ove i ispisujete tajne u CI logovima. Gde credentials cure—i kako jednokratni šifrovani linkovi pomažu.",
+  blogCicdEnvGithubSecretsMetaTitle: "Tajne u CI/CD, .env i GitHub curenja",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Kako .env fajlovi, Git istorija i CI/CD pajplajni cure API ključeve—plus kontrolna lista da ih držite van Git-a, logova i četa.",
   blogSocialMediaBansTitle:
     "Da li će zabrane društvenih mreža za decu zaista delovati? Šta kaže evidencija",
   blogSocialMediaBansExcerpt:

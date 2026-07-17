@@ -1321,6 +1321,9 @@ export const en: Translations = {
   contact: "Contact",
   footerTagline: "End-to-end encrypted notes",
   footerTaglineFileTransfer: "Encrypted notes and secure file sharing",
+  footerProduct: "Product",
+  footerCompany: "Company",
+  allRightsReserved: "All rights reserved.",
   blogSubtitle:
     "Read practical guidance on private notes, encryption, password hygiene, secure sharing, and safer communication habits for everyday work and personal use.",
   blogFeatured: "Featured",
@@ -1350,56 +1353,12 @@ export const en: Translations = {
   blogCrossLinksTrustLabel: "Trust & security",
   blogNotFoundTitle: "Blog post not found",
   blogNotFoundBody: "The article you're looking for doesn't exist or has been removed.",
-  blogPrivacyTitle: "Privacy tools and habits that actually help",
+  blogPrivacyTitle: "A Practical Privacy Tools Stack for 2026",
   blogPrivacyExcerpt:
-    "A practical guide to everyday privacy habits, when to use a one-time encrypted note, and where to find tools that reduce exposure without a second job.",
-  blogPrivacyBody1:
-    "Privacy fails quietly. Data gets collected because a setting defaulted to on, a link outlived its purpose, or a password lingered in chat history nobody meant to keep. The fix is not fear—it is picking the right tool for the moment and using it consistently.",
-  blogPrivacyBody2:
-    "Below you will find practical habits for your network, devices, browser, and communications—then when PrivateNote.ai fits, a map to our curated privacy-tools directory, and links worth bookmarking.",
-  blogPrivacyHabitsTitle: "Practical privacy habits",
-  blogPrivacyOneTimeTitle: "When a one-time encrypted note beats email, chat, or cloud storage",
-  blogPrivacyOneTimeP1:
-    "Reach for PrivateNote.ai when you need to hand someone a password, recovery code, API key, or one-off instruction—and you want it gone after it is read, not archived in a thread forever.",
-  blogPrivacyOneTimeP2:
-    "Email and chat leave searchable copies. Cloud folders linger. A browser-encrypted note with burn-after-reading shrinks the window: ciphertext on the server, the decryption key in the link fragment, and nothing useful left after expiry or the first open.",
-  blogPrivacyOneTimeP3:
-    "It is not a replacement for a password manager or for day-to-day messaging. It is the right shape for temporary, high-stakes handoffs between people who may not share an app or account.",
-  blogPrivacyToolsMapTitle: "Where to start: tools by job",
-  blogPrivacyToolsMapIntro:
-    "Use this table for quick orientation. For a broader catalog with categories and free options, browse our full privacy tools directory.",
-  blogPrivacyToolsMapColJob: "Job",
-  blogPrivacyToolsMapColTool: "What to use",
-  blogPrivacyToolsMapColStart: "Where to start",
-  blogPrivacyToolsRowPasswordsJob: "Long-lived passwords",
-  blogPrivacyToolsRowPasswordsTool: "Password manager + strong generator",
-  blogPrivacyToolsRowPasswordsStart: "Password generator",
-  blogPrivacyToolsRowSecretsJob: "One-time secrets",
-  blogPrivacyToolsRowSecretsTool: "Browser-encrypted, expiring note",
-  blogPrivacyToolsRowSecretsStart: "Create a note",
-  blogPrivacyToolsRowFilesJob: "Sensitive files",
-  blogPrivacyToolsRowFilesTool: "Encrypted file transfer",
-  blogPrivacyToolsRowFilesStart: "Secure file transfer",
-  blogPrivacyToolsRowDirectoryJob: "Broader catalog",
-  blogPrivacyToolsRowDirectoryTool: "Curated guides and free tools",
-  blogPrivacyToolsRowDirectoryStart: "Privacy tools directory",
-  blogPrivacyFurtherReadingTitle: "Further reading",
-  blogPrivacyInternalLinksTitle: "On PrivateNote.ai",
-  blogPrivacyExternalLinksTitle: "Trusted external resources",
-  blogPrivacyLinkHowItWorks: "How PrivateNote works",
-  blogPrivacyLinkPasswordGenerator: "Password generator",
-  blogPrivacyLinkSecurityResources: "Security resources",
-  blogPrivacyLinkPrivacyTools: "Privacy tools directory",
-  blogPrivacyLinkCreateNote: "Create a note",
-  blogPrivacyLinkSecureFileTransfer: "Secure file transfer",
-  blogPrivacyLinkEmailSecrets: "Why email is the worst place for secrets",
-  blogPrivacyLinkSecretNoAccount: "Send a secret without an account",
-  blogPrivacyResourceEff: "Electronic Frontier Foundation — Privacy resources",
-  blogPrivacyResourceHibp: "Have I Been Pwned — Check breached accounts",
-  blogPrivacyResource2fa: "2FA Directory — Turn on two-factor authentication",
-  blogPrivacyResourceSignal: "Signal — Encrypted messaging",
-  blogPrivacyResourceMozilla: "Mozilla — Data privacy fundamentals",
-  blogPrivacyResourceProton: "Proton — Encrypted email and storage",
+    "How to assemble a privacy stack by job—not by hype. Threat models, defaults vs alternatives, a minimal starter kit, and what we refuse to recommend.",
+  blogPrivacyMetaTitle: "Privacy tools stack for 2026",
+  blogPrivacyMetaDescription:
+    "A practical 2026 guide to privacy tools by job: passwords, one-time secrets, messaging, email, browsing, VPNs, and account hygiene—plus a minimal starter kit.",
   blogSecurityRecommendations: "Security Recommendations",
   blogAdditionalResources: "Additional Resources",
   blogBackToHome: "Back to Home",
@@ -1474,6 +1433,20 @@ export const en: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introduction to private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open weights, Ollama vs browser vs home GPU, Gemma 4 and Llama families, and Write with Private AI in your browser.",
+  blogSharePasswordSecurelyTitle:
+    "How to Share a Password Securely (Without Email, Teams, or WhatsApp)",
+  blogSharePasswordSecurelyExcerpt:
+    "Stop pasting passwords into Microsoft Teams, WhatsApp, or email. This guide shows you how to use browser-encrypted one-time links to hand off secrets safely, align with GDPR (DSGVO) requirements, and avoid critical security pitfalls.",
+  blogSharePasswordSecurelyMetaTitle: "How to Share a Password Securely",
+  blogSharePasswordSecurelyMetaDescription:
+    "Share passwords without email, Teams, or WhatsApp. Browser-encrypted one-time links, GDPR (DSGVO) considerations, and practical European workplace examples.",
+  blogCicdEnvGithubSecretsTitle:
+    "Secrets in CI/CD, .env Files, and GitHub: How Developers Leak Keys (and How to Stop)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Stop committing .env files, pasting tokens into pull requests, and echoing secrets in CI logs. Learn where credentials escape in GitHub and pipelines—and how one-time encrypted links fit a safer developer workflow.",
+  blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env, and GitHub leaks",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "How .env files, GitHub history, and CI/CD pipelines leak API keys—plus a practical checklist to keep secrets out of Git, logs, and chat.",
   blogSocialMediaBansTitle:
     "Will Social Media Bans for Children Actually Work? What the Evidence Says",
   blogSocialMediaBansExcerpt:
@@ -1642,7 +1615,7 @@ export const en: Translations = {
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",
   homeFaq_size_question: "What is the maximum note size?",
   homeFaq_size_answer:
-    "Notes are intended for short to medium-length text and small secrets. Very large payloads may be rejected or truncated to keep performance predictable.",
+    "Notes are limited to 50 KB of UTF-8 text—enough for short to medium secrets. Larger pastes are trimmed or rejected so performance stays predictable.",
   homeFaq_pricing_question: "Is PrivateNote.ai free?",
   homeFaq_pricing_answer:
     "PrivateNote.ai currently offers a free way to create secure, disappearing notes. Premium features may be added in the future.",
@@ -1654,7 +1627,7 @@ export const en: Translations = {
     "PrivateNote.ai encourages short-lived notes. You can choose the lifetime when creating a note; after expiration, the note is deleted automatically.",
   homeFaq_openSource_question: "Is PrivateNote.ai open source?",
   homeFaq_openSource_answer:
-    "PrivateNote.ai is not fully open source yet, but the core cryptography relies on the browser Web Crypto API and standard algorithms like AES-GCM.",
+    "Not fully. The hosted web app and backend are not open source. The core client encryption code (encryption.ts), shared crypto utilities, and developer extensions (Chrome, VS Code/Cursor, Codex) are public on GitHub at https://github.com/privatenote-ai/privatenote-ai. Encryption uses the browser Web Crypto API with AES-GCM, plus Argon2id for password-protected notes.",
   homeFaq_sensitiveSecrets_question: "Can I use this for passwords, recovery codes, or private keys?",
   homeFaq_sensitiveSecrets_answer:
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
@@ -2061,10 +2034,10 @@ export const en: Translations = {
   privacyToolsCtaButton: "Create a note",
   privacyToolsFeaturedEyebrow: "Featured guide",
   privacyToolsFeaturedDescription:
-    "For a deeper perspective on everyday privacy habits and why tools alone are not enough, read our full article on building practical privacy routines.",
+    "Our 2026 guide walks through privacy jobs, threat models, a minimal starter kit, and what we refuse to recommend—then sends you back here for the catalog.",
   privacyToolsDirectoryNote:
     "This page is a curated directory of categories and third-party tools. It complements—not replaces—our long-form blog guides.",
-  privacyToolsFeaturedCta: "Read the privacy tools article",
+  privacyToolsFeaturedCta: "Read the 2026 privacy tools guide",
   documentMetaContactTitle: "Contact",
   documentMetaContactDescription:
     "Contact PrivateNote.ai for support, feedback, product questions, security concerns, or help using encrypted one-time notes safely.",

@@ -3,6 +3,8 @@
  * Crawlers read static HTML; client-side setDocumentMeta runs too late for Ahrefs.
  */
 import { blogPostTitleForSlug } from "../client/src/components/blog/blogPostTitles.ts";
+import { privacyToolsGuideEn } from "../client/src/components/blog/locale/privacyToolsGuide.en.ts";
+import type { PrivacyToolsGuideArticleCopy } from "../client/src/components/blog/locale/privacyToolsGuide.types.ts";
 import { resolveDocumentMeta } from "../client/src/utils/resolveDocumentMeta.ts";
 import { buildStaticBlogPosts } from "../client/src/utils/staticBlogPosts.ts";
 import { en } from "../client/src/utils/translations/en.ts";
@@ -162,78 +164,117 @@ function hasNonemptyH1(html: string): boolean {
   return false;
 }
 
+function resolvePrerenderArticleHref(href: string): string {
+  if (href.startsWith("blog:")) {
+    return `/blog/${href.slice(5)}`;
+  }
+  if (href.startsWith("app:")) {
+    const path = href.slice(4).replace(/^\/+/, "");
+    if (!path || path === "home") return "/";
+    return `/${path}`;
+  }
+  return href;
+}
+
+function inlineArticleTextToHtml(text: string): string {
+  const escaped = escapeHtmlText(text);
+  const withBold = escaped.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  return withBold.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
+    const to = resolvePrerenderArticleHref(href);
+    const external = to.startsWith("http://") || to.startsWith("https://");
+    const rel = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+    return `<a href="${escapeHtmlAttr(to)}"${rel}>${label}</a>`;
+  });
+}
+
+function buildPrivacyToolsPrerenderSections(article: PrivacyToolsGuideArticleCopy): string {
+  return article.sections
+    .map((section) => {
+      const parts: string[] = [`<section><h2>${escapeHtmlText(section.title)}</h2>`];
+      for (const paragraph of section.paragraphs ?? []) {
+        parts.push(`<p>${inlineArticleTextToHtml(paragraph)}</p>`);
+      }
+      if (section.bullets?.length) {
+        parts.push(
+          `<ul>${section.bullets.map((bullet) => `<li>${inlineArticleTextToHtml(bullet)}</li>`).join("")}</ul>`,
+        );
+      }
+      if (section.comparisonTable) {
+        const headers = section.comparisonTable.headers
+          .map((header) => `<th>${escapeHtmlText(header)}</th>`)
+          .join("");
+        const rows = section.comparisonTable.rows
+          .map(
+            (row) =>
+              `<tr>${row.map((cell) => `<td>${escapeHtmlText(cell)}</td>`).join("")}</tr>`,
+          )
+          .join("");
+        parts.push(`<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`);
+        for (const paragraph of section.comparisonTable.after ?? []) {
+          parts.push(`<p>${inlineArticleTextToHtml(paragraph)}</p>`);
+        }
+      }
+      if (section.useCaseTable) {
+        const headers = section.useCaseTable.headers
+          .map((header) => `<th>${escapeHtmlText(header)}</th>`)
+          .join("");
+        const rows = section.useCaseTable.rows
+          .map(
+            (row) =>
+              `<tr>${row.map((cell) => `<td>${escapeHtmlText(cell)}</td>`).join("")}</tr>`,
+          )
+          .join("");
+        parts.push(`<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`);
+      }
+      for (const subsection of section.subsections ?? []) {
+        parts.push(`<h3>${escapeHtmlText(subsection.title)}</h3>`);
+        for (const paragraph of subsection.paragraphs) {
+          parts.push(`<p>${inlineArticleTextToHtml(paragraph)}</p>`);
+        }
+        if (subsection.bullets?.length) {
+          parts.push(
+            `<ul>${subsection.bullets.map((bullet) => `<li>${inlineArticleTextToHtml(bullet)}</li>`).join("")}</ul>`,
+          );
+        }
+      }
+      if (section.callout) {
+        const title = section.calloutTitle
+          ? `<p><strong>${escapeHtmlText(section.calloutTitle)}</strong></p>`
+          : "";
+        parts.push(`<blockquote>${title}<p>${inlineArticleTextToHtml(section.callout)}</p></blockquote>`);
+      }
+      if (section.faqs?.length) {
+        for (const faq of section.faqs) {
+          parts.push(`<h3>${escapeHtmlText(faq.question)}</h3>`);
+          parts.push(`<p>${inlineArticleTextToHtml(faq.answer)}</p>`);
+        }
+      }
+      parts.push("</section>");
+      return parts.join("");
+    })
+    .join("");
+}
+
 function buildPrivacyToolsPrerenderArticle(t: Translations): string {
   const title = t.blogPrivacyTitle.trim();
-  const paragraphs = [t.blogPrivacyBody1, t.blogPrivacyBody2];
-  const educationSections = [
-    { title: t.educationNetworkTitle, items: [t.educationNetwork1, t.educationNetwork2, t.educationNetwork3, t.educationNetwork4, t.educationNetwork5] },
-    { title: t.educationMobileTitle, items: [t.educationMobile1, t.educationMobile2, t.educationMobile3, t.educationMobile4, t.educationMobile5, t.educationMobile6] },
-    { title: t.educationBrowsingTitle, items: [t.educationBrowsing1, t.educationBrowsing2, t.educationBrowsing3, t.educationBrowsing4, t.educationBrowsing5, t.educationBrowsing6] },
-    { title: t.educationCommunicationTitle, items: [t.educationCommunication1, t.educationCommunication2, t.educationCommunication3, t.educationCommunication4, t.educationCommunication5, t.educationCommunication6] },
-    { title: t.educationPrivacyTitle, items: [t.educationPrivacy1, t.educationPrivacy2, t.educationPrivacy3, t.educationPrivacy4, t.educationPrivacy5, t.educationPrivacy6] },
-  ];
-  const externalResources = [
-    { href: "https://www.eff.org/issues/privacy", label: t.blogPrivacyResourceEff },
-    { href: "https://haveibeenpwned.com/", label: t.blogPrivacyResourceHibp },
-    { href: "https://2fa.directory/", label: t.blogPrivacyResource2fa },
-    { href: "https://signal.org/", label: t.blogPrivacyResourceSignal },
-    { href: "https://www.mozilla.org/en-US/privacy/", label: t.blogPrivacyResourceMozilla },
-    { href: "https://proton.me/", label: t.blogPrivacyResourceProton },
-  ];
-
-  const bodyParagraphs = paragraphs
-    .map((paragraph) => `<p>${escapeHtmlText(paragraph)}</p>`)
-    .join("");
-  const educationHtml = educationSections
-    .map(
-      (section) =>
-        `<section><h2>${escapeHtmlText(section.title)}</h2><ul>${section.items
-          .map((item) => `<li>${escapeHtmlText(item)}</li>`)
-          .join("")}</ul></section>`,
-    )
-    .join("");
-  const oneTimeSection =
-    `<section><h2>${escapeHtmlText(t.blogPrivacyOneTimeTitle)}</h2>` +
-    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP1)}</p>` +
-    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP2)}</p>` +
-    `<p>${escapeHtmlText(t.blogPrivacyOneTimeP3)}</p>` +
-    `<ul>` +
-    `<li><a href="/how-it-works">${escapeHtmlText(t.blogPrivacyLinkHowItWorks)}</a></li>` +
-    `<li><a href="/password-generator">${escapeHtmlText(t.blogPrivacyLinkPasswordGenerator)}</a></li>` +
-    `<li><a href="/blog/why-email-is-worst-for-secrets">${escapeHtmlText(t.blogPrivacyLinkEmailSecrets)}</a></li>` +
-    `<li><a href="/blog/send-secret-message-without-account">${escapeHtmlText(t.blogPrivacyLinkSecretNoAccount)}</a></li>` +
-    `</ul></section>`;
-  const toolsMapSection =
-    `<section><h2>${escapeHtmlText(t.blogPrivacyToolsMapTitle)}</h2>` +
-    `<p>${escapeHtmlText(t.blogPrivacyToolsMapIntro)} <a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyLinkPrivacyTools)}</a>.</p>` +
-    `<table><thead><tr><th>${escapeHtmlText(t.blogPrivacyToolsMapColJob)}</th><th>${escapeHtmlText(t.blogPrivacyToolsMapColTool)}</th><th>${escapeHtmlText(t.blogPrivacyToolsMapColStart)}</th></tr></thead>` +
-    `<tbody>` +
-    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowPasswordsJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowPasswordsTool)}</td><td><a href="/password-generator">${escapeHtmlText(t.blogPrivacyToolsRowPasswordsStart)}</a></td></tr>` +
-    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowSecretsJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowSecretsTool)}</td><td><a href="/">${escapeHtmlText(t.blogPrivacyToolsRowSecretsStart)}</a></td></tr>` +
-    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowFilesJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowFilesTool)}</td><td><a href="/secure-file-transfer">${escapeHtmlText(t.blogPrivacyToolsRowFilesStart)}</a></td></tr>` +
-    `<tr><td>${escapeHtmlText(t.blogPrivacyToolsRowDirectoryJob)}</td><td>${escapeHtmlText(t.blogPrivacyToolsRowDirectoryTool)}</td><td><a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyToolsRowDirectoryStart)}</a></td></tr>` +
-    `</tbody></table></section>`;
-  const internalLinks =
-    `<section><h2>${escapeHtmlText(t.blogPrivacyFurtherReadingTitle)}</h2>` +
-    `<h3>${escapeHtmlText(t.blogPrivacyInternalLinksTitle)}</h3>` +
-    `<ul>` +
-    `<li><a href="/privacy-tools">${escapeHtmlText(t.blogPrivacyLinkPrivacyTools)}</a></li>` +
-    `<li><a href="/how-it-works">${escapeHtmlText(t.blogPrivacyLinkHowItWorks)}</a></li>` +
-    `<li><a href="/password-generator">${escapeHtmlText(t.blogPrivacyLinkPasswordGenerator)}</a></li>` +
-    `<li><a href="/security-resources">${escapeHtmlText(t.blogPrivacyLinkSecurityResources)}</a></li>` +
-    `</ul>` +
-    `<h3>${escapeHtmlText(t.blogPrivacyExternalLinksTitle)}</h3>` +
-    `<ul>${externalResources.map((resource) => `<li><a href="${escapeHtmlAttr(resource.href)}">${escapeHtmlText(resource.label)}</a></li>`).join("")}</ul>` +
-    `</section>`;
+  const article = privacyToolsGuideEn;
+  const intro = article.intro.map((paragraph) => `<p>${inlineArticleTextToHtml(paragraph)}</p>`).join("");
+  const sections = buildPrivacyToolsPrerenderSections(article);
+  const cta =
+    `<section><h2>${escapeHtmlText(article.ctaTitle)}</h2>` +
+    `<p>${escapeHtmlText(article.ctaBody)}</p>` +
+    `<p><a href="/">${escapeHtmlText(article.ctaButton)}</a>` +
+    (article.ctaSecondaryLabel
+      ? ` · <a href="${escapeHtmlAttr(resolvePrerenderArticleHref(article.ctaSecondaryHref ?? "app:privacy-tools"))}">${escapeHtmlText(article.ctaSecondaryLabel)}</a>`
+      : "") +
+    `</p></section>`;
 
   return (
     `<article data-privatenote-prerender-article="privacy-tools">` +
     `<h1 data-privatenote-prerender-h1="true">${escapeHtmlText(title)}</h1>` +
-    bodyParagraphs +
-    `<section><h2>${escapeHtmlText(t.blogPrivacyHabitsTitle)}</h2>${educationHtml}</section>` +
-    oneTimeSection +
-    toolsMapSection +
-    internalLinks +
+    intro +
+    sections +
+    cta +
     `</article>`
   );
 }

@@ -65,7 +65,7 @@ const UNIQUE_TITLE_CHECKS = [
 ];
 
 const BLOG_H1_CHECKS = [
-  { file: "blog/privacy-tools.html", h1MustContain: "Privacy tools" },
+  { file: "blog/privacy-tools.html", h1MustContain: "Privacy Tools" },
   { file: "de/blog/datenschutz-tools.html", h1MustContain: "Datenschutz" },
   { file: "fr/blog/outils-de-confidentialite.html", h1MustContain: "confidentialité" },
   { file: "es/blog/herramientas-de-privacidad.html", h1MustContain: "privacidad" },

@@ -23,6 +23,8 @@ const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
   "how-we-generate-passwords": "blogPasswordTitle",
   "workplace-texts-private-note": "blogWorkplaceTextsTitle",
   "social-media-bans-children-evidence": "blogSocialMediaBansTitle",
+  "how-to-share-a-password-securely": "blogSharePasswordSecurelyTitle",
+  "secrets-in-cicd-env-github-leaks": "blogCicdEnvGithubSecretsTitle",
 };
 
 export function blogPostTitleForSlug(slug: BlogCanonicalSlug, t: Translations): string {

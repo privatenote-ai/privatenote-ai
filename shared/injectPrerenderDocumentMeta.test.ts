@@ -27,7 +27,10 @@ test("injectPrerenderDocumentMeta injects blog H1 when hidden home snapshot H1 i
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/blog/privacy-tools");
-  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Privacy tools and habits that actually help<\/h1>/);
+  assert.match(
+    out,
+    /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>A Practical Privacy Tools Stack for 2026<\/h1>/,
+  );
   assert.doesNotMatch(out, /id="pn-home-prerender"/);
 });
 
@@ -45,10 +48,13 @@ test("injectPrerenderDocumentMeta injects blog H1 when snapshot has empty root",
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/blog/privacy-tools");
-  assert.match(out, /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>Privacy tools and habits that actually help<\/h1>/);
-  assert.match(out, /Privacy fails quietly/);
-  assert.match(out, /Practical privacy habits/);
-  assert.match(out, /When a one-time encrypted note beats email, chat, or cloud storage/);
+  assert.match(
+    out,
+    /<h1[^>]*data-privatenote-prerender-h1="true"[^>]*>A Practical Privacy Tools Stack for 2026<\/h1>/,
+  );
+  assert.match(out, /Most “best privacy tools” pages are affiliate catalogs/);
+  assert.match(out, /Start with a threat model/);
+  assert.match(out, /Minimal starter kit/);
   assert.match(out, /data-privatenote-prerender-article="privacy-tools"/);
 });
 
@@ -66,10 +72,10 @@ test("injectPrerenderDocumentMeta injects localized privacy-tools article for em
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/de/blog/datenschutz-tools");
-  assert.match(out, /<h1[^>]*>Datenschutz-Tools und Gewohnheiten<\/h1>/);
-  assert.match(out, /Privatsphäre scheitert leise/);
-  assert.match(out, /Praktische Datenschutz-Gewohnheiten/);
-  assert.match(out, /Weiterführende Links/);
+  assert.match(out, /<h1[^>]*>Ein praktischer Datenschutz-Tools-Stack für 2026<\/h1>/);
+  assert.match(out, /Start with a threat model/);
+  assert.match(out, /Minimal starter kit/);
+  assert.match(out, /privacy tools directory/);
 });
 
 test("injectPrerenderDocumentMeta injects Article and Breadcrumb schema for blog posts", () => {

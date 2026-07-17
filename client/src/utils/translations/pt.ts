@@ -1151,6 +1151,9 @@ export const pt: Translations = {
   passwordGenerator: "Gerador de senha",
   contact: "Contato",
   footerTagline: "Notas criptografadas de ponta a ponta",
+  footerProduct: "Produto",
+  footerCompany: "Empresa",
+  allRightsReserved: "Todos os direitos reservados.",
   blogSubtitle: "Orientações sobre notas privadas, criptografia, senhas, compartilhamento seguro e hábitos de comunicação mais seguros.",
   blogFeatured: "Apresentou",
   blogFilterAll: "Todos os temas",
@@ -1176,14 +1179,13 @@ export const pt: Translations = {
   blogBackToBlog: "Voltar ao blog",
   blogNotFoundTitle: "Postagem do blog não encontrada",
   blogNotFoundBody: "O artigo que você procura não existe ou foi removido.",
-  blogPrivacyTitle: "Ferramentas e hábitos de privacidade úteis",
+  blogPrivacyTitle: "Uma stack prática de ferramentas de privacidade para 2026",
   blogPrivacyExcerpt:
-    "Guia prático de hábitos, notas criptografadas de uso único e ferramentas que reduzem exposição sem virar segundo emprego.",
-  blogPrivacyBody1:
-    "A privacidade falha em silêncio. Dados são coletados porque uma configuração veio ativada por padrão, um link sobreviveu ao seu propósito ou uma senha ficou no histórico de um chat que ninguém queria guardar. A solução não é o medo — é escolher a ferramenta certa para o momento e usá-la com consistência.",
-  blogPrivacyBody2:
-    "Abaixo você encontra hábitos práticos para rede, dispositivos, navegador e comunicação — depois quando o PrivateNote.ai faz sentido, um mapa para o nosso diretório de ferramentas de privacidade e links que valem a pena salvar.",
-  blogPrivacyHabitsTitle: "Hábitos práticos de privacidade",
+    "Como montar uma stack de privacidade por tarefa—não por hype. Modelos de ameaça, padrões vs. alternativas, um kit inicial mínimo e o que nos recusamos a recomendar.",
+  blogPrivacyMetaTitle: "Stack de ferramentas de privacidade 2026",
+  blogPrivacyMetaDescription:
+    "Guia prático 2026 de ferramentas de privacidade por tarefa: palavras-passe, segredos únicos, mensagens, e-mail, navegação, VPNs e higiene de contas—mais um kit inicial mínimo.",
+
   blogSecurityRecommendations: "Recomendações de segurança",
   blogAdditionalResources: "Recursos Adicionais",
   blogBackToHome: "De volta para casa",
@@ -1341,7 +1343,7 @@ export const pt: Translations = {
   homeFaq_forwarding_question: "Os destinatários podem encaminhar a nota?",
   homeFaq_forwarding_answer: "Eles podem encaminhar o link. PrivateNote reduz o risco com notas de leitura única e expirações, mas não pode impedir capturas de tela, copiar/colar ou encaminhar após o acesso.",
   homeFaq_size_question: "Qual é o tamanho máximo da nota?",
-  homeFaq_size_answer: "As notas destinam-se a textos curtos e médios e pequenos segredos. Cargas muito grandes podem ser rejeitadas ou truncadas para manter o desempenho previsível.",
+  homeFaq_size_answer: "As notas estão limitadas a 50 KB de texto UTF-8—o suficiente para segredos curtos ou médios. Colagens maiores são cortadas ou rejeitadas para manter o desempenho previsível.",
   homeFaq_pricing_question: "PrivateNote.ai é gratuito?",
   homeFaq_pricing_answer: "PrivateNote.ai atualmente oferece uma maneira gratuita de criar notas seguras e que desaparecem. Recursos premium podem ser adicionados no futuro.",
   homeFaq_ai_question: "Por que .ai — você usa AI em minhas anotações?",
@@ -1349,7 +1351,7 @@ export const pt: Translations = {
   homeFaq_expirationDefaults_question: "Quanto tempo duram as notas se eu não definir uma expiração?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai incentiva notas de curta duração. Você pode escolher o tempo de vida ao criar uma nota; após a expiração, a nota é excluída automaticamente.",
   homeFaq_openSource_question: "PrivateNote.ai é código aberto?",
-  homeFaq_openSource_answer: "PrivateNote.ai ainda não é totalmente de código aberto, mas a criptografia principal depende do navegador Web Crypto API e de algoritmos padrão como AES-GCM.",
+  homeFaq_openSource_answer: "Não totalmente. A aplicação web alojada e o backend não são de código aberto. O código principal de encriptação no cliente (encryption.ts), as utilidades criptográficas partilhadas e as extensões para programadores (Chrome, VS Code/Cursor, Codex) são públicos no GitHub: https://github.com/privatenote-ai/privatenote-ai. A encriptação usa a Web Crypto API do navegador com AES-GCM, mais Argon2id para notas protegidas por palavra-passe.",
   homeFaq_sensitiveSecrets_question: "Posso usar isso para senhas, códigos de recuperação ou chaves privadas?",
   homeFaq_sensitiveSecrets_answer: "Sim, desde que você entenda as desvantagens: qualquer pessoa com o link e a senha, se definidos, poderá ler o segredo e ainda poderá copiá-lo ou capturá-lo.",
   documentMetaHomeDescription: "Notas criptografadas de ponta a ponta que se autodestroem após a leitura. A criptografia do lado do cliente mantém suas mensagens privadas.",
@@ -1717,6 +1719,20 @@ export const pt: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introdução à IA privada",
   blogIntroductionPrivateAiMetaDescription:
     "IA privada: pesos abertos, Ollama vs navegador vs GPU em casa, Gemma 4 e Llama, e Write with Private AI no navegador.",
+  blogSharePasswordSecurelyTitle:
+    "Como partilhar uma palavra-passe com segurança (sem e-mail, Teams ou WhatsApp)",
+  blogSharePasswordSecurelyExcerpt:
+    "Deixe de colar palavras-passe em Microsoft Teams, WhatsApp ou e-mail. Ligações encriptadas de uso único, RGPD e gestor vs partilha pontual.",
+  blogSharePasswordSecurelyMetaTitle: "Como partilhar uma palavra-passe com segurança",
+  blogSharePasswordSecurelyMetaDescription:
+    "Partilhe palavras-passe sem e-mail, Teams ou WhatsApp: ligações encriptadas de uso único, RGPD e exemplos práticos.",
+  blogCicdEnvGithubSecretsTitle:
+    "Segredos em CI/CD, ficheiros .env e GitHub: como developers vazam chaves (e como parar)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Pare de fazer commit de .env, colar tokens em PRs e ecoar segredos em logs de CI. Onde as credenciais escapam—e como ligações encriptadas de uso único ajudam.",
+  blogCicdEnvGithubSecretsMetaTitle: "Segredos CI/CD, .env e GitHub",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Como ficheiros .env, histórico Git e pipelines CI/CD vazam chaves API—mais um checklist para as manter fora de Git, logs e chat.",
   blogSocialMediaBansTitle:
     "As proibições de redes sociais para crianças funcionarão? O que a evidência diz",
   blogSocialMediaBansExcerpt:

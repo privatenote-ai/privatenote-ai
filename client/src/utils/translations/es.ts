@@ -1235,6 +1235,9 @@ export const es: Translations = {
   contact: "Contacto",
   footerTagline: "Notas cifradas de extremo a extremo",
   footerTaglineFileTransfer: "Notas cifradas y compartición segura de archivos",
+  footerProduct: "Producto",
+  footerCompany: "Empresa",
+  allRightsReserved: "Todos los derechos reservados.",
   blogSubtitle: "Lee guías prácticas sobre notas privadas, cifrado, higiene de contraseñas, uso compartido seguro y hábitos de comunicación más seguros.",
   blogFeatured: "Destacado",
   blogFilterAll: "Todos los temas",
@@ -1263,14 +1266,13 @@ export const es: Translations = {
   blogCrossLinksTrustLabel: "Confianza y seguridad",
   blogNotFoundTitle: "Artículo no encontrado",
   blogNotFoundBody: "El artículo que buscas no existe o se ha eliminado.",
-  blogPrivacyTitle: "Herramientas y hábitos de privacidad útiles",
+  blogPrivacyTitle: "Una pila práctica de herramientas de privacidad para 2026",
   blogPrivacyExcerpt:
-    "Guía práctica de hábitos, cuándo usar una nota cifrada única y herramientas que reducen la exposición sin un segundo trabajo.",
-  blogPrivacyBody1:
-    "La privacidad falla en silencio. Los datos se recopilan porque un ajuste venía activado por defecto, un enlace sobrevivió a su propósito o una contraseña quedó en un historial de chat que nadie quería conservar. La solución no es el miedo: es elegir la herramienta adecuada para el momento y usarla con constancia.",
-  blogPrivacyBody2:
-    "A continuación encontrarás hábitos prácticos para tu red, dispositivos, navegador y comunicaciones; luego cuándo encaja PrivateNote.ai, un mapa hacia nuestro directorio de herramientas de privacidad y enlaces que merece la pena guardar.",
-  blogPrivacyHabitsTitle: "Hábitos de privacidad prácticos",
+    "Cómo montar una pila de privacidad por tarea—no por hype. Modelos de amenaza, opciones por defecto frente a alternativas, un kit mínimo de inicio y lo que nos negamos a recomendar.",
+  blogPrivacyMetaTitle: "Pila de herramientas de privacidad 2026",
+  blogPrivacyMetaDescription:
+    "Guía práctica 2026 de herramientas de privacidad por tarea: contraseñas, secretos de un solo uso, mensajería, correo, navegación, VPN e higiene de cuentas—más un kit de inicio mínimo.",
+
   blogSecurityRecommendations: "Recomendaciones de seguridad",
   blogAdditionalResources: "Recursos adicionales",
   blogBackToHome: "Volver al inicio",
@@ -1377,6 +1379,20 @@ export const es: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introducción a la IA privada",
   blogIntroductionPrivateAiMetaDescription:
     "IA privada: pesos abiertos, Ollama vs navegador vs GPU en casa, Gemma 4 y Llama, y Write with Private AI en el navegador.",
+  blogSharePasswordSecurelyTitle:
+    "Cómo compartir una contraseña de forma segura (sin correo, Teams ni WhatsApp)",
+  blogSharePasswordSecurelyExcerpt:
+    "Deja de pegar contraseñas en Microsoft Teams, WhatsApp o el correo. Enlaces cifrados de un solo uso, RGPD y gestor vs enlace puntual.",
+  blogSharePasswordSecurelyMetaTitle: "Cómo compartir una contraseña de forma segura",
+  blogSharePasswordSecurelyMetaDescription:
+    "Comparte contraseñas sin correo, Teams ni WhatsApp: enlaces cifrados de un solo uso, RGPD y ejemplos prácticos.",
+  blogCicdEnvGithubSecretsTitle:
+    "Secretos en CI/CD, archivos .env y GitHub: cómo se filtran las claves (y cómo evitarlo)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Deja de subir .env, pegar tokens en PRs y volcar secretos en logs de CI. Dónde escapan las credenciales en GitHub y pipelines—y cómo encajan los enlaces cifrados de un solo uso.",
+  blogCicdEnvGithubSecretsMetaTitle: "Secretos CI/CD, .env y GitHub",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Cómo los .env, el historial de Git y los pipelines CI/CD filtran claves API—más una checklist para mantenerlos fuera de Git, logs y chat.",
   blogSocialMediaBansTitle:
     "¿Funcionarán las prohibiciones de redes sociales para menores? Lo que dice la evidencia",
   blogSocialMediaBansExcerpt:
@@ -1478,7 +1494,7 @@ export const es: Translations = {
   homeFaq_forwarding_question: "¿Los destinatarios pueden reenviar la nota?",
   homeFaq_forwarding_answer: "Pueden reenviar el enlace. PrivateNote reduce el riesgo con lectura única y caducidad, pero no puede impedir capturas de pantalla o copiar y pegar.",
   homeFaq_size_question: "¿Cuál es el tamaño máximo de una nota?",
-  homeFaq_size_answer: "Las notas están pensadas para textos cortos o medianos y secretos pequeños. El contenido muy grande puede rechazarse o truncarse.",
+  homeFaq_size_answer: "Las notas están limitadas a 50 KB de texto UTF-8—suficiente para secretos cortos o medianos. Los pegados más grandes se recortan o rechazan para mantener un rendimiento predecible.",
   homeFaq_pricing_question: "¿PrivateNote.ai es gratis?",
   homeFaq_pricing_answer: "PrivateNote.ai ofrece actualmente una forma gratuita de crear notas seguras y efímeras.",
   homeFaq_ai_question: "¿Por qué .ai? ¿Usan IA en mis notas?",
@@ -1486,7 +1502,7 @@ export const es: Translations = {
   homeFaq_expirationDefaults_question: "¿Cuánto duran las notas si no configuro caducidad?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai recomienda notas de corta duración. Puedes elegir la vida útil al crearla; al caducar, la nota se elimina automáticamente.",
   homeFaq_openSource_question: "¿PrivateNote.ai es de código abierto?",
-  homeFaq_openSource_answer: "PrivateNote.ai aún no es totalmente de código abierto, pero la criptografía principal usa la Web Crypto API del navegador y AES-GCM.",
+  homeFaq_openSource_answer: "No del todo. La aplicación web alojada y el backend no son de código abierto. El código principal de cifrado en el cliente (encryption.ts), las utilidades criptográficas compartidas y las extensiones para desarrolladores (Chrome, VS Code/Cursor, Codex) son públicos en GitHub: https://github.com/privatenote-ai/privatenote-ai. El cifrado usa la Web Crypto API del navegador con AES-GCM, más Argon2id para notas protegidas con contraseña.",
   homeFaq_sensitiveSecrets_question: "¿Puedo usarlo para contraseñas, códigos de recuperación o claves privadas?",
   homeFaq_sensitiveSecrets_answer: "Sí, si entiendes los límites: cualquiera con el enlace y la contraseña, si existe, puede leer el secreto y copiarlo o capturarlo.",
   documentMetaHomeDescription: "Notas cifradas que se autodestruyen al leerlas. Cifrado en el navegador para mantener privados tus mensajes.",

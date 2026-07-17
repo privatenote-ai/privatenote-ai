@@ -53,6 +53,7 @@ export const PRIVACY_DIRECTORY_BLOG_SLUGS: BlogCanonicalSlug[] = [
   "send-secret-message-without-account",
   "what-is-end-to-end-encryption",
   "how-to-share-api-key-securely",
+  "secrets-in-cicd-env-github-leaks",
   "secrets-never-send-in-chat",
   "one-time-secret-links",
   "how-we-generate-passwords",

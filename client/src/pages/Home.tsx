@@ -94,7 +94,7 @@ const Home: React.FC = () => {
         category: t.blogTagPrivacy,
         title: t.blogPrivacyTitle,
         excerpt: t.blogPrivacyExcerpt,
-        readTime: t.homeBlogReadTime4,
+        readTime: t.homeBlogReadTime7,
       },
     ],
     [

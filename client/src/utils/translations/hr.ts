@@ -1151,6 +1151,9 @@ export const hr: Translations = {
   passwordGenerator: "Generator lozinke",
   contact: "Kontakt",
   footerTagline: "Šifrirane bilješke s kraja na kraj",
+  footerProduct: "Proizvod",
+  footerCompany: "Tvrtka",
+  allRightsReserved: "Sva prava pridržana.",
   blogSubtitle: "Smjernice o privatnim bilješkama, enkripciji, lozinkama, sigurnom dijeljenju i sigurnijoj komunikaciji za svakodnevni rad.",
   blogFeatured: "Istaknuto",
   blogFilterAll: "Sve teme",
@@ -1176,14 +1179,13 @@ export const hr: Translations = {
   blogBackToBlog: "Povratak na blog",
   blogNotFoundTitle: "Post na blogu nije pronađen",
   blogNotFoundBody: "Članak koji tražite ne postoji ili je uklonjen.",
-  blogPrivacyTitle: "Alati i navike privatnosti koje pomažu",
+  blogPrivacyTitle: "Praktičan stack alata za privatnost za 2026.",
   blogPrivacyExcerpt:
-    "Praktičan vodič za svakodnevne navike privatnosti, kada koristiti jednokratnu šifriranu bilješku i gdje pronaći alate koji smanjuju izloženost bez drugog posla.",
-  blogPrivacyBody1:
-    "Privatnost propada tiho. Podaci se prikupljaju jer je postavka bila uključena prema zadanim postavkama, veza je preživjela svoju svrhu ili je lozinka ostala u povijesti chata koju nitko nije htio zadržati. Rješenje nije strah — to je pravi alat za trenutak i dosljedna upotreba.",
-  blogPrivacyBody2:
-    "U nastavku su praktične navike za mrežu, uređaje, preglednik i komunikaciju — zatim kada PrivateNote.ai odgovara, pregled našeg kuriranog direktorija alata za privatnost i veze koje vrijedi spremiti.",
-  blogPrivacyHabitsTitle: "Praktične navike privatnosti",
+    "Kako sastaviti stack privatnosti po poslu—ne po hipu. Modeli prijetnji, zadani izbori naspram alternativa, minimalni starter komplet i ono što odbijamo preporučiti.",
+  blogPrivacyMetaTitle: "Stack alata za privatnost za 2026.",
+  blogPrivacyMetaDescription:
+    "Praktičan vodič za 2026. o alatima za privatnost po poslu: lozinke, jednokratne tajne, poruke, e-pošta, pregledavanje, VPN-ovi i higijena računa—plus minimalni starter komplet.",
+
   blogSecurityRecommendations: "Sigurnosne preporuke",
   blogAdditionalResources: "Dodatni resursi",
   blogBackToHome: "Povratak kući",
@@ -1341,7 +1343,7 @@ export const hr: Translations = {
   homeFaq_forwarding_question: "Mogu li primatelji proslijediti poruku?",
   homeFaq_forwarding_answer: "Oni mogu proslijediti link. PrivateNote smanjuje rizik s jednom pročitanim bilješkama i istekom, ali ne može spriječiti snimke zaslona, ​​kopiranje/lijepljenje ili prosljeđivanje nakon pristupa.",
   homeFaq_size_question: "Koja je najveća veličina novčanice?",
-  homeFaq_size_answer: "Bilješke su namijenjene kratkom do srednjem tekstu i malim tajnama. Vrlo velika korisna opterećenja mogu biti odbijena ili skraćena kako bi performanse bile predvidljive.",
+  homeFaq_size_answer: "Bilješke su ograničene na 50 KB UTF-8 teksta—dovoljno za kratke do srednje tajne. Veći unosi se skraćuju ili odbijaju kako bi performanse ostale predvidljive.",
   homeFaq_pricing_question: "Je li PrivateNote.ai besplatan?",
   homeFaq_pricing_answer: "PrivateNote.ai trenutno nudi besplatan način za stvaranje sigurnih bilješki koje nestaju. Premium značajke mogu biti dodane u budućnosti.",
   homeFaq_ai_question: "Zašto .ai — koristite li AI u mojim bilješkama?",
@@ -1349,7 +1351,7 @@ export const hr: Translations = {
   homeFaq_expirationDefaults_question: "Koliko dugo žive bilješke ako ne postavim istek?",
   homeFaq_expirationDefaults_answer: "PrivateNote.ai potiče kratkotrajne bilješke. Možete odabrati životni vijek prilikom stvaranja bilješke; nakon isteka bilješka se automatski briše.",
   homeFaq_openSource_question: "Je li PrivateNote.ai otvorenog koda?",
-  homeFaq_openSource_answer: "PrivateNote.ai još nije potpuno otvorenog koda, ali se temeljna kriptografija oslanja na preglednik Web Crypto API i standardne algoritme poput AES-GCM.",
+  homeFaq_openSource_answer: "Ne u potpunosti. Hostana web aplikacija i backend nisu otvorenog koda. Osnovni klijentski kod za enkripciju (encryption.ts), zajedničke kripto utilite i ekstenzije za developere (Chrome, VS Code/Cursor, Codex) javni su na GitHubu: https://github.com/privatenote-ai/privatenote-ai. Enkripcija koristi Web Crypto API preglednika s AES-GCM, plus Argon2id za bilješke zaštićene lozinkom.",
   homeFaq_sensitiveSecrets_question: "Mogu li ovo koristiti za lozinke, kodove za oporavak ili privatne ključeve?",
   homeFaq_sensitiveSecrets_answer: "Da, sve dok razumijete kompromise: svatko s vezom i lozinkom, ako je postavljena, može pročitati tajnu i još uvijek je može kopirati ili napraviti snimku zaslona.",
   documentMetaHomeDescription: "Šifrirane bilješke s kraja na kraj koje se same uništavaju nakon čitanja. Enkripcija na strani klijenta čuva privatnost vaših poruka.",
@@ -1717,6 +1719,20 @@ export const hr: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Uvod u privatnu AI",
   blogIntroductionPrivateAiMetaDescription:
     "Privatna AI: otvorene težine (otvoreni koeficienti), Ollama vs preglednik vs kućni GPU, Gemma 4 i Llama, Write with Private AI u pregledniku.",
+  blogSharePasswordSecurelyTitle:
+    "Kako sigurno podijeliti lozinku (bez e-pošte, Teamsa ili WhatsAppa)",
+  blogSharePasswordSecurelyExcerpt:
+    "Prestanite lijepiti lozinke u Microsoft Teams, WhatsApp ili e-poštu. Jednokratne šifrirane poveznice, GDPR i upravitelj lozinki naspram jednokratnog dijeljenja.",
+  blogSharePasswordSecurelyMetaTitle: "Kako sigurno podijeliti lozinku",
+  blogSharePasswordSecurelyMetaDescription:
+    "Dijelite lozinke bez e-pošte, Teamsa ili WhatsAppa: jednokratne šifrirane poveznice, GDPR i praktični primjeri.",
+  blogCicdEnvGithubSecretsTitle:
+    "Tajne u CI/CD, .env datotekama i GitHubu: kako developeri propuštaju ključeve (i kako to zaustaviti)",
+  blogCicdEnvGithubSecretsExcerpt:
+    "Prestanite commitati .env, lijepiti tokene u PR-ove i ispisivati tajne u CI logovima. Gdje credentials cure—i kako jednokratne šifrirane poveznice pomažu.",
+  blogCicdEnvGithubSecretsMetaTitle: "Tajne u CI/CD, .env i GitHub curenja",
+  blogCicdEnvGithubSecretsMetaDescription:
+    "Kako .env datoteke, Git povijest i CI/CD pipelineovi cure API ključeve—plus kontrolna lista da ih držite izvan Gita, logova i chata.",
   blogSocialMediaBansTitle:
     "Hoće li zabrane društvenih mreža za djecu zaista djelovati? Što kaže evidencija",
   blogSocialMediaBansExcerpt:

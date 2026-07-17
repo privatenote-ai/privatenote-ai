@@ -86,4 +86,12 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/SocialMediaBansChildrenPost"),
     "SocialMediaBansChildrenPost",
   ),
+  "how-to-share-a-password-securely": lazyPost(
+    () => import("@/components/blog/SharePasswordSecurelyPost"),
+    "SharePasswordSecurelyPost",
+  ),
+  "secrets-in-cicd-env-github-leaks": lazyPost(
+    () => import("@/components/blog/CicdEnvGithubSecretsPost"),
+    "CicdEnvGithubSecretsPost",
+  ),
 };
