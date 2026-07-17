@@ -7384,6 +7384,30 @@ export async function reserveAccountFileStorageBytes(
       .bind(noteId, userId, encryptedSize)
       .run();
   } catch (error) {
+    // Concurrent chunk PUTs often race past the SELECT above; the loser hits the
+    // note_id PRIMARY KEY. Treat a matching reservation as success instead of 500.
+    const raced = await env.AUTH_DB.prepare(
+      "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+    )
+      .bind(noteId)
+      .first<{ user_id: string; encrypted_size: number; status: string }>();
+    if (
+      raced &&
+      raced.user_id === userId &&
+      raced.status === "reserved" &&
+      raced.encrypted_size === encryptedSize
+    ) {
+      // Roll back the duplicate usage increment from this losing request.
+      await env.AUTH_DB.prepare(
+        `UPDATE account_file_storage_usage
+           SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+         WHERE user_id = ?`,
+      )
+        .bind(encryptedSize, userId)
+        .run();
+      return { ok: true };
+    }
+
     await env.AUTH_DB.prepare(
       `UPDATE account_file_storage_usage
          SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
@@ -8265,45 +8289,64 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const chunkSha256Hex = sha256HexBytes(new Uint8Array(encryptedBytes));
     const chunkKey = uploadedChunkHashKey(chunkIndex);
-    const existingHash = reservation.uploadedChunkHashes?.[chunkKey];
-    if (existingHash) {
-      if (existingHash !== chunkSha256Hex) {
-        return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+
+    try {
+      // Re-read reservation so concurrent chunk PUTs merge hashes instead of
+      // last-write-wins wiping sibling chunk hashes.
+      const freshRaw = await env.NOTES_KV.get(getReservationKey(id));
+      const freshReservation = freshRaw
+        ? (JSON.parse(freshRaw) as NoteReservationRecord)
+        : reservation;
+      const existingHash = freshReservation.uploadedChunkHashes?.[chunkKey];
+      if (existingHash) {
+        if (existingHash !== chunkSha256Hex) {
+          return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+        }
+        const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
+        if (
+          existingObject &&
+          existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
+          Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
+        ) {
+          return jsonResponse(
+            { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
+            200,
+            request,
+          );
+        }
       }
-      const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
-      if (
-        existingObject &&
-        existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
-        Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
-      ) {
-        return jsonResponse(
-          { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
-          200,
-          request,
-        );
-      }
+
+      await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
+        httpMetadata: { contentType: "application/octet-stream" },
+        customMetadata: {
+          encryptedSize: String(encryptedTotalSize),
+          chunkIndex: String(chunkIndex),
+          chunkEncryptedSize: String(encryptedBytes.byteLength),
+          chunkSha256: chunkSha256Hex,
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      await persistNoteReservation(env, id, {
+        ...freshReservation,
+        uploadedChunkHashes: {
+          ...(freshReservation.uploadedChunkHashes ?? {}),
+          [chunkKey]: chunkSha256Hex,
+        },
+      });
+
+      return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
+    } catch (error) {
+      console.error(`[NOTE_FILES] Chunk upload failed for ${id}#${chunkIndex}:`, error);
+      return jsonResponse(
+        {
+          error: "file_chunk_upload_failed",
+          message: "Encrypted file chunk upload failed. Please retry.",
+        },
+        500,
+        request,
+      );
     }
-
-    await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
-      httpMetadata: { contentType: "application/octet-stream" },
-      customMetadata: {
-        encryptedSize: String(encryptedTotalSize),
-        chunkIndex: String(chunkIndex),
-        chunkEncryptedSize: String(encryptedBytes.byteLength),
-        chunkSha256: chunkSha256Hex,
-        createdAt: new Date().toISOString(),
-      },
-    });
-
-    await persistNoteReservation(env, id, {
-      ...reservation,
-      uploadedChunkHashes: {
-        ...(reservation.uploadedChunkHashes ?? {}),
-        [chunkKey]: chunkSha256Hex,
-      },
-    });
-
-    return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
   }
 
   if (noteFileChunkParams && method === "GET") {
@@ -8508,11 +8551,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "invalid attachment chunk metadata");
           return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
         }
-        const expectedChunkHash = reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)];
-        if (!expectedChunkHash) {
-          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from reservation");
-          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
-        }
         const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
         if (!uploadedChunk) {
           await cleanupNoteFileChunks(env, id, "missing attachment upload");
@@ -8523,7 +8561,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }
-        if (uploadedChunk.customMetadata?.chunkSha256 !== expectedChunkHash) {
+        const r2ChunkHash = uploadedChunk.customMetadata?.chunkSha256;
+        if (!r2ChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from R2");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        // Prefer reservation hash when present; fall back to R2 metadata so concurrent
+        // chunk PUTs that race on KV last-write-wins still finalize successfully.
+        const expectedChunkHash =
+          reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)] ?? r2ChunkHash;
+        if (r2ChunkHash !== expectedChunkHash) {
           await cleanupNoteFileChunks(env, id, "attachment chunk hash mismatch");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }

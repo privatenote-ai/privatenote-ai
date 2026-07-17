@@ -299,7 +299,12 @@ export async function encryptFileToSodiumChunks(
       encryptedSize += encryptedBytes.byteLength;
       contentHasher.update(encryptedBytes);
       chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
-      encryptedChunks.push({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
+      // Copy off the WASM heap — concurrent uploads must not share a reused buffer view.
+      encryptedChunks.push({
+        index,
+        encryptedSize: encryptedBytes.byteLength,
+        encryptedBytes: encryptedBytes.slice(),
+      });
       if (import.meta.env?.DEV) {
         console.info(
           "[FILE_UPLOAD] chunk encrypted locally",

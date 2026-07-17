@@ -17,7 +17,7 @@ type BinaryUploadAttempt = {
 
 const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
 
-/** After one sacrificial Safari/WebKit request, chunk uploads use same-origin only. */
+/** After one sacrificial Safari/WebKit request, prefer the warmed same-origin route. */
 let safariAttachmentUploadPrimed = false;
 
 export function resetSafariAttachmentUploadTransport(): void {
@@ -25,8 +25,10 @@ export function resetSafariAttachmentUploadTransport(): void {
 }
 
 /**
- * Safari/WebKit drops the first upload on a fresh HTTP/2 connection. Prime once per
- * attachment so every chunk does not pay for a cross-origin sacrificial attempt.
+ * Safari/WebKit drops the first upload on a fresh HTTP/2 connection. Prime the
+ * **same-origin Pages /api proxy** once per attachment — that is the route real
+ * chunks use after priming. (Priming the direct Worker left the same-origin
+ * connection cold and caused 400 chunk size mismatches on ~30MB+ uploads.)
  */
 export async function primeSafariAttachmentUploadTransport(
   sampleChunkUrl: string,
@@ -41,20 +43,19 @@ export async function primeSafariAttachmentUploadTransport(
     return;
   }
 
-  const directUrl = appendQuery(getDirectWorkerUploadUrl(sampleChunkUrl), {
-    [NOTE_UPLOAD_QUERY_PARAM]: uploadToken,
-    plaintextSize: "0",
-    encryptedSize: "1",
-    chunkEncryptedSize: "0",
-  });
-
   try {
     await sendBinaryHttpRequest(
-      directUrl,
+      getApiUrl(sampleChunkUrl),
       "POST",
       new Blob([], { type: "application/octet-stream" }),
-      { "Content-Type": "application/octet-stream" },
-      "omit",
+      {
+        "Content-Type": "application/octet-stream",
+        Authorization: noteUploadAuthorizationHeader(uploadToken),
+        "x-file-plaintext-size": "0",
+        "x-file-encrypted-size": "1",
+        "x-file-chunk-encrypted-size": "0",
+      },
+      "include",
     );
   } catch {
     // Expected — absorbs the WebKit connection glitch before real chunk uploads.
@@ -174,19 +175,19 @@ function getBinaryUploadAttempts(
 
   if (options.uploadToken) {
     if (isSafariBrowser() && hasPagesSameOriginApiProxy(window.location.hostname)) {
+      const directWorkerSafariFallback: BinaryUploadAttempt = {
+        ...directWorker,
+        method: "POST",
+        tokenInQuery: true,
+        metadataInQuery: true,
+      };
       if (safariAttachmentUploadPrimed) {
-        return [sameOrigin];
+        // Prefer the warmed same-origin connection; keep direct-worker as fallback
+        // for WebKit truncated-body 400s.
+        return [sameOrigin, directWorkerSafariFallback];
       }
-      // First chunk only: sacrificial direct-worker attempt, then same-origin retry.
-      return [
-        {
-          ...directWorker,
-          method: "POST",
-          tokenInQuery: true,
-          metadataInQuery: true,
-        },
-        sameOrigin,
-      ];
+      // First chunk only (before explicit prime): sacrificial direct-worker, then same-origin.
+      return [directWorkerSafariFallback, sameOrigin];
     }
     return [directWorker, sameOrigin];
   }
@@ -214,6 +215,16 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.bodyText = bodyText;
   }
+}
+
+/** Safari sometimes truncates the first body on a cold connection → server 400 size mismatch. */
+function isRetriableSafariChunkUploadError(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError &&
+    isSafariBrowser() &&
+    error.status === 400 &&
+    /File chunk size mismatch/i.test(error.bodyText)
+  );
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -438,12 +449,17 @@ export async function apiBinaryRequest<T = any>(
 
   for (let round = 0; round < 2; round += 1) {
     if (round === 1) {
-      if (!isBinaryUploadNetworkError(lastError)) {
-        break;
+      if (!isBinaryUploadNetworkError(lastError) && !isRetriableSafariChunkUploadError(lastError)) {
+        const status = lastError instanceof ApiRequestError ? lastError.status : 0;
+        if (!(status >= 500 || status === 429)) {
+          break;
+        }
       }
       logFileUpload("warn", "network retry after delay", {
         ...sharedLogBase,
         delayMs: BINARY_UPLOAD_NETWORK_RETRY_MS,
+        safariChunkMismatchRetry: isRetriableSafariChunkUploadError(lastError),
+        status: lastError instanceof ApiRequestError ? lastError.status : null,
       });
       await new Promise((resolve) => window.setTimeout(resolve, BINARY_UPLOAD_NETWORK_RETRY_MS));
     }
@@ -516,6 +532,17 @@ export async function apiBinaryRequest<T = any>(
           ...errorDetails,
         });
         if (error instanceof ApiRequestError) {
+          // Fall through to the next upload route on transient server failures
+          // (e.g. concurrent quota race on direct-worker) and Safari size mismatches.
+          const canTryNextRoute =
+            attemptIndex < attempts.length - 1 &&
+            (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429);
+          if (canTryNextRoute) {
+            continue;
+          }
+          if (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429) {
+            break;
+          }
           throw error;
         }
       }

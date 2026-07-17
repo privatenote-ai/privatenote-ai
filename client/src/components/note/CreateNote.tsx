@@ -136,13 +136,45 @@ async function uploadEncryptedAttachmentChunk(
     logFileUpload("info", "chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
+      const safariChunkMismatch =
+        error.status === 400 && /File chunk size mismatch/i.test(error.bodyText);
       logFileUpload("error", "chunk rejected by server", {
         chunkIndex,
         url,
         status: error.status,
         bodyPreview: error.bodyText.slice(0, 500),
+        safariChunkMismatch,
       });
-      throw error;
+      if (!safariChunkMismatch) {
+        throw error;
+      }
+      logFileUpload("warn", "Safari chunk size mismatch — retrying once", {
+        chunkIndex,
+        url,
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      try {
+        await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
+          uploadToken,
+        });
+        logFileUpload("info", "chunk uploaded after Safari size-mismatch retry", {
+          chunkIndex,
+          url,
+        });
+        return;
+      } catch (retryError) {
+        logFileUpload("error", "chunk Safari size-mismatch retry failed", {
+          chunkIndex,
+          url,
+          error:
+            retryError instanceof ApiRequestError
+              ? { status: retryError.status, bodyPreview: retryError.bodyText.slice(0, 500) }
+              : retryError instanceof Error
+                ? retryError.message
+                : String(retryError),
+        });
+        throw retryError;
+      }
     }
     logFileUpload("warn", "chunk upload failed, retrying once", {
       chunkIndex,
