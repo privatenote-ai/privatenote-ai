@@ -9,7 +9,11 @@ export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" 
 
 /** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
 const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
-const UPLOAD_CONCURRENCY_SAFARI = 3;
+/**
+ * Safari/WebKit aborts concurrent body-bearing HTTP/2 requests with "The network
+ * connection was lost". Serialize chunk uploads on Safari to keep the connection alive.
+ */
+const UPLOAD_CONCURRENCY_SAFARI = 1;
 const UPLOAD_CONCURRENCY_DEFAULT = 6;
 
 async function runWithConcurrency<T>(

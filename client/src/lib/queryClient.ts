@@ -15,7 +15,9 @@ type BinaryUploadAttempt = {
   metadataInQuery?: boolean;
 };
 
-const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
+const BINARY_UPLOAD_NETWORK_RETRY_MS = 1200;
+/** Total attempt rounds for a chunk (WebKit "network connection was lost" needs several). */
+const BINARY_UPLOAD_MAX_ROUNDS = 4;
 
 /** After one sacrificial Safari/WebKit request, prefer the warmed same-origin route. */
 let safariAttachmentUploadPrimed = false;
@@ -447,21 +449,27 @@ export async function apiBinaryRequest<T = any>(
   const attempts = getBinaryUploadAttempts(url, options);
   let lastError: unknown = null;
 
-  for (let round = 0; round < 2; round += 1) {
-    if (round === 1) {
-      if (!isBinaryUploadNetworkError(lastError) && !isRetriableSafariChunkUploadError(lastError)) {
-        const status = lastError instanceof ApiRequestError ? lastError.status : 0;
-        if (!(status >= 500 || status === 429)) {
-          break;
-        }
+  for (let round = 0; round < BINARY_UPLOAD_MAX_ROUNDS; round += 1) {
+    if (round > 0) {
+      const status = lastError instanceof ApiRequestError ? lastError.status : 0;
+      const retriable =
+        isBinaryUploadNetworkError(lastError) ||
+        isRetriableSafariChunkUploadError(lastError) ||
+        status >= 500 ||
+        status === 429;
+      if (!retriable) {
+        break;
       }
+      // Exponential backoff — WebKit needs the connection to fully reset between tries.
+      const delayMs = BINARY_UPLOAD_NETWORK_RETRY_MS * 2 ** (round - 1);
       logFileUpload("warn", "network retry after delay", {
         ...sharedLogBase,
-        delayMs: BINARY_UPLOAD_NETWORK_RETRY_MS,
+        delayMs,
+        round: round + 1,
         safariChunkMismatchRetry: isRetriableSafariChunkUploadError(lastError),
         status: lastError instanceof ApiRequestError ? lastError.status : null,
       });
-      await new Promise((resolve) => window.setTimeout(resolve, BINARY_UPLOAD_NETWORK_RETRY_MS));
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
     }
 
     for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
