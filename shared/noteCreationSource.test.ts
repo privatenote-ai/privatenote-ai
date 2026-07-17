@@ -11,10 +11,12 @@ describe("sanitizeNoteCreationSource", () => {
     assert.equal(sanitizeNoteCreationSource(" VSCode "), "vscode");
     assert.equal(sanitizeNoteCreationSource("CURSOR"), "cursor");
     assert.equal(sanitizeNoteCreationSource("Chrome"), "chrome");
+    assert.equal(sanitizeNoteCreationSource("CLI"), "cli");
+    assert.equal(sanitizeNoteCreationSource("MCP"), "mcp");
   });
 
   it("rejects unknown values", () => {
-    assert.equal(sanitizeNoteCreationSource("mcp"), null);
+    assert.equal(sanitizeNoteCreationSource("mobile"), null);
     assert.equal(sanitizeNoteCreationSource(""), null);
     assert.equal(sanitizeNoteCreationSource(null), null);
   });
@@ -26,5 +28,7 @@ describe("NOTE_CREATION_SOURCE_LABELS", () => {
     assert.equal(NOTE_CREATION_SOURCE_LABELS.vscode, "VS Code");
     assert.equal(NOTE_CREATION_SOURCE_LABELS.cursor, "Cursor");
     assert.equal(NOTE_CREATION_SOURCE_LABELS.chrome, "Chrome extension");
+    assert.equal(NOTE_CREATION_SOURCE_LABELS.cli, "CLI");
+    assert.equal(NOTE_CREATION_SOURCE_LABELS.mcp, "MCP");
   });
 });

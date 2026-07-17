@@ -26,6 +26,20 @@
   "options_page": "options.html",
   "permissions": ["storage", "contextMenus", "activeTab", "scripting", "clipboardWrite"],
   "host_permissions": ["https://privatenote.ai/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://privatenote.ai/*",
+        "https://*.privatenote.ai/*",
+        "https://privatenote-ai.pages.dev/*",
+        "https://*.privatenote-ai.pages.dev/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["presence.js"],
+      "run_at": "document_start"
+    }
+  ],
   "commands": {
     "create-from-selection": {
       "suggested_key": {

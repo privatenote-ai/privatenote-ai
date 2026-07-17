@@ -44,6 +44,12 @@ await build({
   outfile: "dist/options.js",
 });
 
+await build({
+  ...common,
+  entryPoints: ["src/presence.ts"],
+  outfile: "dist/presence.js",
+});
+
 for (const file of ["popup.html", "popup.css", "options.html", "options.css"]) {
   const src = resolve(__dirname, "src", file.includes("options") ? "options" : "popup", file);
   cpSync(src, resolve(distDir, file));

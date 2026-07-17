@@ -5,6 +5,7 @@
 export const NOTE_EXPIRY_PRESETS = [
   { id: "5m", seconds: 5 * 60, label: "5 minutes" },
   { id: "10m", seconds: 10 * 60, label: "10 minutes" },
+  { id: "15m", seconds: 15 * 60, label: "15 minutes" },
   { id: "30m", seconds: 30 * 60, label: "30 minutes" },
   { id: "1h", seconds: 60 * 60, label: "1 hour" },
   { id: "2h", seconds: 2 * 60 * 60, label: "2 hours" },

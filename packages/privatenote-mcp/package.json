@@ -1,0 +1,48 @@
+{
+  "name": "privatenote-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server — create end-to-end encrypted PrivateNote links from Cursor. Encryption happens on your machine; only ciphertext reaches the server.",
+  "type": "module",
+  "bin": {
+    "privatenote-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/index.js",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/createPrivateNote.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "tsx": "^4.19.1",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "cursor",
+    "privatenote",
+    "encryption",
+    "privacy",
+    "secure-notes",
+    "model-context-protocol"
+  ],
+  "author": "PrivateNote",
+  "license": "MIT",
+  "homepage": "https://privatenote.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/privatenote-ai/privatenote-ai.git",
+    "directory": "packages/privatenote-mcp"
+  }
+}

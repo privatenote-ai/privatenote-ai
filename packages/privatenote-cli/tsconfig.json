@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "lib": ["ES2022"],
+    "baseUrl": "../..",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*",
+    "../../shared/noteCrypto.ts",
+    "../../shared/noteAad.ts",
+    "../../shared/noteExpiry.ts",
+    "../../shared/noteReadLimits.ts",
+    "../../shared/noteSizeLimits.ts",
+    "../../shared/urlFragmentKey.ts",
+    "../../shared/noteId.ts"
+  ]
+}

@@ -1,0 +1,231 @@
+/**
+ * Unit tests for the create_private_note MCP tool.
+ * Run with: tsx --test tests/createPrivateNote.test.ts
+ *
+ * These tests mock `fetch` so no network connection is needed.
+ * Key assertion: the HTTP body sent to the API NEVER contains plaintext.
+ */
+import assert from "node:assert/strict";
+import { describe, it, before, after } from "node:test";
+
+// ── Test helpers ─────────────────────────────────────────────────────────────
+
+const TEST_NOTE_ID = "00000000-0000-0000-0000-000000000001";
+const SECRET = "sk_test_super_secret_value_42";
+
+type RequestBody = Record<string, unknown>;
+
+interface MockFetchCall {
+  url: string;
+  body: RequestBody | null;
+}
+
+let fetchCalls: MockFetchCall[] = [];
+let globalFetchOriginal: typeof globalThis.fetch | undefined;
+
+function mockFetch() {
+  fetchCalls = [];
+  globalFetchOriginal = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    let parsed: RequestBody | null = null;
+    if (init?.body && typeof init.body === "string") {
+      parsed = JSON.parse(init.body) as RequestBody;
+    }
+    fetchCalls.push({ url, body: parsed });
+
+    if (url.includes("/api/notes/reserve")) {
+      return new Response(JSON.stringify({ id: TEST_NOTE_ID }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.includes("/api/notes")) {
+      return new Response(JSON.stringify({ id: TEST_NOTE_ID }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response("Not found", { status: 404 });
+  };
+}
+
+function restoreFetch() {
+  if (globalFetchOriginal) globalThis.fetch = globalFetchOriginal;
+}
+
+const { createPrivateNote, mcpExpiresInToExpirySeconds, isMcpExpiresIn } = await import(
+  "../src/createNote.ts"
+);
+
+// ── Expiry mapping ─────────────────────────────────────────────────────────
+
+describe("mcpExpiresInToExpirySeconds", () => {
+  it("maps 15m to 900 seconds", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("15m"), 900);
+  });
+
+  it("maps 1h to 3600 seconds", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("1h"), 3600);
+  });
+
+  it("maps 24h to 86400 seconds (1d preset)", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("24h"), 86400);
+  });
+
+  it("maps 7d to 604800 seconds", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("7d"), 604800);
+  });
+});
+
+describe("isMcpExpiresIn", () => {
+  it("accepts valid values", () => {
+    assert.ok(isMcpExpiresIn("15m"));
+    assert.ok(isMcpExpiresIn("1h"));
+    assert.ok(isMcpExpiresIn("24h"));
+    assert.ok(isMcpExpiresIn("7d"));
+  });
+
+  it("rejects invalid values", () => {
+    assert.ok(!isMcpExpiresIn("2h"));
+    assert.ok(!isMcpExpiresIn("30d"));
+    assert.ok(!isMcpExpiresIn(""));
+  });
+});
+
+// ── Validation (no network) ────────────────────────────────────────────────
+
+describe("createPrivateNote validation", () => {
+  it("rejects empty content", async () => {
+    await assert.rejects(
+      () => createPrivateNote({ content: "   " }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match(err.message, /required/i);
+        return true;
+      },
+    );
+  });
+
+  it("rejects content that exceeds 50 KiB", async () => {
+    const big = "x".repeat(51 * 1024);
+    await assert.rejects(
+      () => createPrivateNote({ content: big }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match(err.message, /too large/i);
+        return true;
+      },
+    );
+  });
+
+  it("error messages do not contain the secret input", async () => {
+    const longSecret = `secret_${SECRET}`;
+    await assert.rejects(
+      () => createPrivateNote({ content: "   " }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.ok(!err.message.includes(longSecret));
+        return true;
+      },
+    );
+  });
+});
+
+// ── Encrypt path ─────────────────────────────────────────────────────────
+
+describe("createPrivateNote encrypt path (default options)", () => {
+  let result: Awaited<ReturnType<typeof createPrivateNote>>;
+
+  before(async () => {
+    mockFetch();
+    result = await createPrivateNote({ content: SECRET });
+  });
+
+  after(restoreFetch);
+
+  it("returns a URL matching /note/{uuid}#{43-char fragment}", () => {
+    assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#[A-Za-z0-9_-]{43}$/);
+  });
+
+  it("URL fragment is exactly 43 characters", () => {
+    const fragment = result.secureUrl.split("#")[1]!;
+    assert.equal(fragment.length, 43);
+  });
+
+  it("burnAfterReading defaults to true", () => {
+    assert.equal(result.burnAfterReading, true);
+  });
+
+  it("expiresAt is a valid ISO date string in the future", () => {
+    const dt = new Date(result.expiresAt).getTime();
+    assert.ok(dt > Date.now(), "expiresAt is in the future");
+  });
+
+  it("sends exactly two requests (reserve + create)", () => {
+    assert.equal(fetchCalls.length, 2);
+    assert.match(fetchCalls[0]!.url, /\/api\/notes\/reserve/);
+    assert.match(fetchCalls[1]!.url, /\/api\/notes/);
+  });
+
+  it("API body contains base64 ciphertext fields", () => {
+    const body = fetchCalls[1]!.body!;
+    assert.ok(typeof body["content"] === "string", "content field present");
+    assert.ok(typeof body["iv"] === "string", "iv field present");
+    assert.ok(typeof body["aad"] === "string", "aad field present");
+  });
+
+  it("API body does not contain plaintext secret", () => {
+    const serialized = JSON.stringify(fetchCalls[1]!.body!);
+    assert.ok(!serialized.includes(SECRET), "plaintext not in API body");
+  });
+
+  it("API body has the correct note id from reservation", () => {
+    assert.equal(fetchCalls[1]!.body!["id"], TEST_NOTE_ID);
+  });
+
+  it("API body has isPasswordProtected: false", () => {
+    assert.equal(fetchCalls[1]!.body!["isPasswordProtected"], false);
+  });
+
+  it("API body has maxReads: 1 for burn-after-reading", () => {
+    assert.equal(fetchCalls[1]!.body!["maxReads"], 1);
+  });
+});
+
+describe("createPrivateNote expiry mapping in API body", () => {
+  before(mockFetch);
+  after(restoreFetch);
+
+  it("sends correct expirySeconds for 15m", async () => {
+    await createPrivateNote({ content: SECRET, expiresIn: "15m" });
+    assert.equal(fetchCalls[1]!.body!["expirySeconds"], 900);
+  });
+});
+
+describe("createPrivateNote burnAfterReading=false", () => {
+  before(mockFetch);
+  after(restoreFetch);
+
+  it("sends maxReads: 2 when burnAfterReading is false", async () => {
+    const res = await createPrivateNote({ content: SECRET, burnAfterReading: false });
+    assert.equal(fetchCalls[1]!.body!["maxReads"], 2);
+    assert.equal(res.burnAfterReading, false);
+  });
+});
+
+describe("createPrivateNote title prepend", () => {
+  before(mockFetch);
+  after(restoreFetch);
+
+  it("title is absorbed into encryption — not sent as a separate field", async () => {
+    await createPrivateNote({ content: SECRET, title: "My Secret" });
+    const body = fetchCalls[1]!.body!;
+    const serialized = JSON.stringify(body);
+    assert.ok(!("title" in body), "no title field in API body");
+    assert.ok(!serialized.includes("My Secret"), "title not in API body plaintext");
+    assert.ok(!serialized.includes(SECRET), "content not in API body plaintext");
+  });
+});
