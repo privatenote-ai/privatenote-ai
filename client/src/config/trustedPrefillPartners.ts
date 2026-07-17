@@ -26,14 +26,21 @@ export interface TrustedPartner {
   branding?: TrustedPartnerBranding;
 }
 
+const PASSWORDS_LU_BRANDING: TrustedPartnerBranding = {
+  logoSrc: "/images/partners/password-dots-logo.svg",
+  logoAlt: "passwords.lu",
+};
+
 export const TRUSTED_PREFILL_PARTNERS: readonly TrustedPartner[] = [
   {
     id: "passwords.lu",
     displayName: "passwords.lu",
-    branding: {
-      logoSrc: "/images/partners/password-dots-logo.svg",
-      logoAlt: "passwords.lu",
-    },
+    branding: PASSWORDS_LU_BRANDING,
+  },
+  {
+    id: "passwords.lu-chrome",
+    displayName: "passwords.lu",
+    branding: PASSWORDS_LU_BRANDING,
   },
 ];
 
