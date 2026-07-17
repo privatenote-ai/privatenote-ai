@@ -8209,6 +8209,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
 
+    // Drain the request body BEFORE any size/quota validation. Safari/WebKit reports
+    // an opaque "The network connection was lost" (masking the real HTTP status)
+    // whenever a Worker responds while the upload body is still streaming. Reading the
+    // body first guarantees the client sees real 4xx/5xx statuses so its retry and
+    // route-fallback logic can actually engage.
+    const encryptedBytes = await request.arrayBuffer();
+
     const premiumUserId = uploadAuth.premiumUserId;
     const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
@@ -8277,12 +8284,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
     }
-    const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
-    if (Number.isFinite(contentLength) && contentLength !== encryptedChunkSize) {
-      return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
-    }
-
-    const encryptedBytes = await request.arrayBuffer();
     if (encryptedBytes.byteLength !== encryptedChunkSize) {
       return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
     }
