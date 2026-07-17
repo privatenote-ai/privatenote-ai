@@ -121,7 +121,7 @@ Create an **Automation** token at [npmjs.com/settings/tokens](https://www.npmjs.
 ## Build from source
 
 ```bash
-git clone https://github.com/privatenote-ai/privatenote.git
+git clone https://github.com/privatenote-ai/privatenote-ai.git
 cd privatenote
 npm run build:cli
 node packages/privatenote-cli/dist/cli.js --help
@@ -129,7 +129,7 @@ node packages/privatenote-cli/dist/cli.js --help
 
 ## Signed GitHub releases (optional)
 
-Checksum-signed release artifacts are also published on [GitHub Releases](https://github.com/privatenote-ai/privatenote/releases) when tagged `cli-v*`. See [developers/cli](https://privatenote.ai/developers/cli) for verification steps.
+Checksum-signed release artifacts are also published on [GitHub Releases](https://github.com/privatenote-ai/privatenote-ai/releases) when tagged `cli-v*`. See [developers/cli](https://privatenote.ai/developers/cli) for verification steps.
 
 ## Self-hosting
 

@@ -2,7 +2,7 @@ import React from "react";
 import { Database, GitBranch } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-const GITHUB_RELEASES_URL = "https://github.com/privatenote-ai/privatenote/releases";
+const GITHUB_RELEASES_URL = "https://github.com/privatenote-ai/privatenote-ai/releases";
 const NPM_CLI_VERSIONS_URL = "https://www.npmjs.com/package/privatenote-cli?activeTab=versions";
 const NPM_MCP_VERSIONS_URL = "https://www.npmjs.com/package/privatenote-mcp?activeTab=versions";
 

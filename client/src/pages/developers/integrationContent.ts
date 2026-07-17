@@ -91,7 +91,7 @@ echo "secret" | privatenote --insecure --api-base-url http://localhost:8787 --ou
     },
     secondaryCta: {
       label: "CLI source on GitHub",
-      href: "https://github.com/privatenote-ai/privatenote/tree/main/packages/privatenote-cli",
+      href: "https://github.com/privatenote-ai/privatenote-ai/tree/main/packages/privatenote-cli",
       external: true,
     },
     blogLink: { label: "Developer walkthrough", slug: "privatenote-for-developers" },

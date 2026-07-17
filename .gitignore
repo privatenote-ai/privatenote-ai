@@ -8,6 +8,7 @@ dist
 .DS_Store
 .wrangler
 .codex-history/
+.publish/
 prerender
 .prerender-html-cache
 

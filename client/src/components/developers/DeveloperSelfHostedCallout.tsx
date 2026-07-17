@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 
 const SELF_HOST_DOCKER_DOCS_URL =
-  "https://github.com/privatenote-ai/privatenote/blob/main/docs/self-hosted-docker-compose.md";
+  "https://github.com/privatenote-ai/privatenote-ai/blob/main/docs/self-hosted-docker-compose.md";
 
 export function DeveloperSelfHostedCallout() {
   const { language, t } = useLanguage();

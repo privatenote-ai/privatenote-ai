@@ -12,11 +12,11 @@
   ],
   "homepage": "https://privatenote.ai/developers/cli",
   "bugs": {
-    "url": "https://github.com/privatenote-ai/privatenote/issues"
+    "url": "https://github.com/privatenote-ai/privatenote-ai/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/privatenote-ai/privatenote.git",
+    "url": "git+https://github.com/privatenote-ai/privatenote-ai.git",
     "directory": "packages/privatenote-cli"
   },
   "keywords": [
