@@ -82,4 +82,8 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/IntroductionToPrivateAiPost"),
     "IntroductionToPrivateAiPost",
   ),
+  "social-media-bans-children-evidence": lazyPost(
+    () => import("@/components/blog/SocialMediaBansChildrenPost"),
+    "SocialMediaBansChildrenPost",
+  ),
 };

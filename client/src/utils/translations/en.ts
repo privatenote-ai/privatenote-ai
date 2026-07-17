@@ -1474,6 +1474,13 @@ export const en: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introduction to private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open weights, Ollama vs browser vs home GPU, Gemma 4 and Llama families, and Write with Private AI in your browser.",
+  blogSocialMediaBansTitle:
+    "Will Social Media Bans for Children Actually Work? What the Evidence Says",
+  blogSocialMediaBansExcerpt:
+    "Australia, France, and Norway are debating under-16 bans—but researchers warn blanket restrictions may displace harm, fail on age verification, and miss the real issue: addictive platform design.",
+  blogSocialMediaBansMetaTitle: "Social media bans for children: what the evidence says",
+  blogSocialMediaBansMetaDescription:
+    "Do under-16 social media bans work? Evidence on digital displacement, age-verification privacy risks, platform design, and alternatives from the Information Labs report.",
   blogMakePrivateNoteTitle: "How to Make a Private Note (And Actually Keep It Private)",
   blogMakePrivateNoteExcerpt:
     "A lock icon in a notes app is not the same as a truly private note. Learn what digital privacy actually means, which structural settings matter, and how to create an encrypted note that disappears after it is read—without ever creating an account.",

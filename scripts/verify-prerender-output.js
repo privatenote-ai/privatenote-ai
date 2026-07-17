@@ -213,12 +213,14 @@ function main() {
     const html = fs.readFileSync(htmlPath, "utf8");
     const h1 = firstH1Text(html);
     if (!h1 || !h1.toLowerCase().includes(h1MustContain.toLowerCase())) {
-      badH1.push(`${file} (h1: ${h1 || "(missing)"})`);
+      badH1.push(
+        `${file} (expected h1 to contain "${h1MustContain}", got: ${h1 || "(missing)"})`,
+      );
     }
   }
   if (badH1.length) {
     console.error(
-      "Prerender HTML is missing a non-empty <h1> on blog article routes:\n\n" +
+      "Prerender blog article <h1> checks failed:\n\n" +
         badH1.map((r) => `  - ${r}`).join("\n"),
     );
     process.exit(1);

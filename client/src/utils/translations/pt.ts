@@ -1717,6 +1717,13 @@ export const pt: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introdução à IA privada",
   blogIntroductionPrivateAiMetaDescription:
     "IA privada: pesos abertos, Ollama vs navegador vs GPU em casa, Gemma 4 e Llama, e Write with Private AI no navegador.",
+  blogSocialMediaBansTitle:
+    "As proibições de redes sociais para crianças funcionarão? O que a evidência diz",
+  blogSocialMediaBansExcerpt:
+    "Austrália, França e Noruega debatem proibições para menores de 16—pesquisadores alertam para deslocamento de danos, verificação de idade e o problema real: design viciante das plataformas.",
+  blogSocialMediaBansMetaTitle: "Proibições de redes sociais para crianças: evidência",
+  blogSocialMediaBansMetaDescription:
+    "As proibições para menores de 16 funcionam? Evidência sobre deslocamento digital, privacidade na verificação de idade e alternativas no relatório Information Labs.",
   blogMakePrivateNoteTitle: "Como fazer uma nota privada (e mantê-la realmente privada)",
   blogMakePrivateNoteExcerpt:
     "Um ícone de cadeado num app de notas não é o mesmo que uma nota verdadeiramente privada. Saiba o que privado realmente significa, quais definições importam e como criar uma nota cifrada que desaparece após a leitura—sem criar conta.",

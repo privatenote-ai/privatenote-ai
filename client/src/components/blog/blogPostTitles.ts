@@ -22,6 +22,7 @@ const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
   "myth-good-enough-security": "blogGoodEnoughTitle",
   "how-we-generate-passwords": "blogPasswordTitle",
   "workplace-texts-private-note": "blogWorkplaceTextsTitle",
+  "social-media-bans-children-evidence": "blogSocialMediaBansTitle",
 };
 
 export function blogPostTitleForSlug(slug: BlogCanonicalSlug, t: Translations): string {

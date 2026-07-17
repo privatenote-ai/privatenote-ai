@@ -85,6 +85,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogIntroductionPrivateAiMetaTitle),
         description: t.blogIntroductionPrivateAiMetaDescription,
       };
+    case "social-media-bans-children-evidence":
+      return {
+        title: buildDocumentTitle(t.blogSocialMediaBansMetaTitle),
+        description: t.blogSocialMediaBansMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

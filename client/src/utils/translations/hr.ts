@@ -1717,6 +1717,13 @@ export const hr: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Uvod u privatnu AI",
   blogIntroductionPrivateAiMetaDescription:
     "Privatna AI: otvorene težine (otvoreni koeficienti), Ollama vs preglednik vs kućni GPU, Gemma 4 i Llama, Write with Private AI u pregledniku.",
+  blogSocialMediaBansTitle:
+    "Hoće li zabrane društvenih mreža za djecu zaista djelovati? Što kaže evidencija",
+  blogSocialMediaBansExcerpt:
+    "Australija, Francuska i Norveška raspravljaju o zabrani ispod 16 godina—istraživači upozoravaju na premještanje rizika, provjeru dobi i pravi problem: ovisni dizajn platformi.",
+  blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za djecu: evidencija",
+  blogSocialMediaBansMetaDescription:
+    "Hoće li zabrane ispod 16 godina funkcionirati? Evidencija o digitalnom premještanju, privatnosti provjere dobi i alternativama iz Information Labs izvještaja.",
   blogMakePrivateNoteTitle: "Kako napraviti privatnu bilješku (i zaista je zadržati privatnom)",
   blogMakePrivateNoteExcerpt:
     "Ikona lokota u aplikaciji za bilješke nije isto što i zaista privatna bilješka. Saznajte što privatno zapravo znači, koje postavke su važne i kako stvoriti šifriranu bilješku koja nestaje nakon čitanja—bez otvaranja računa.",

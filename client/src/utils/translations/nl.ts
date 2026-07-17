@@ -1338,6 +1338,13 @@ export const nl: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Introductie tot private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open gewichten, Ollama vs browser vs thuis-GPU, Gemma 4 en Llama, en Write with Private AI in je browser.",
+  blogSocialMediaBansTitle:
+    "Werken socialmediaverboden voor kinderen? Wat het bewijs zegt",
+  blogSocialMediaBansExcerpt:
+    "Australië, Frankrijk en Noorwegen debatteren over verboden onder 16—onderzoekers waarschuwen voor verschuiving van schade, leeftijdsverificatie en het echte probleem: verslavend platformontwerp.",
+  blogSocialMediaBansMetaTitle: "Socialmediaverboden voor kinderen: het bewijs",
+  blogSocialMediaBansMetaDescription:
+    "Werken verboden onder 16? Bewijs over digitale verschuiving, privacyrisico's van leeftijdsverificatie en alternatieven volgens het Information Labs-rapport.",
   blogMakePrivateNoteTitle: "Hoe maak je een privénotitie (en houd je die echt privé)",
   blogMakePrivateNoteExcerpt:
     "Een slotpictogram in een notitie-app is niet hetzelfde als een echt privénotitie. Leer wat privé echt betekent, welke instellingen ertoe doen en hoe je een versleutelde notitie maakt die verdwijnt na het lezen—zonder account.",

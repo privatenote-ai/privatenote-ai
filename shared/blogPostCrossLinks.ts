@@ -202,6 +202,17 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
     ],
     trust: "/privacy",
   },
+  "social-media-bans-children-evidence": {
+    related: [
+      "privacy-tools",
+      "chat-control-europe-cryptographers",
+      "what-is-end-to-end-encryption",
+      "myth-good-enough-security",
+      "one-time-secret-links",
+      "secrets-never-send-in-chat",
+    ],
+    trust: "/privacy",
+  },
 };
 
 export function getBlogPostCrossLinks(slug: BlogCanonicalSlug): BlogPostCrossLinks {

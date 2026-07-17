@@ -23,6 +23,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "privatenote-for-developers": "2026-05-20T12:00:00.000Z",
   "privatenote-codex": "2026-05-21T12:00:00.000Z",
   "securing-ai-agents-like-employees": "2026-06-06T12:00:00.000Z",
+  "social-media-bans-children-evidence": "2026-07-16T10:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -47,6 +48,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "privatenote-for-developers": 6,
   "privatenote-codex": 5,
   "securing-ai-agents-like-employees": 6,
+  "social-media-bans-children-evidence": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -82,6 +84,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -20,
+      title: t.blogSocialMediaBansTitle,
+      excerpt: t.blogSocialMediaBansExcerpt,
+      author: "PrivateNote.ai",
+      slug: "social-media-bans-children-evidence",
+      publishedAt: at("social-media-bans-children-evidence"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity]),
+      content: "",
+      coverImage: "/images/blog-social-media-bans-children-hero.jpg",
+      published: true,
+      createdAt: at("social-media-bans-children-evidence"),
+      updatedAt: at("social-media-bans-children-evidence"),
+    },
     {
       id: -19,
       title: t.blogIntroductionPrivateAiTitle,

@@ -1415,6 +1415,13 @@ export const de: Translations = {
   blogIntroductionPrivateAiMetaTitle: "Einführung in private KI",
   blogIntroductionPrivateAiMetaDescription:
     "Private KI: offene Gewichte, Ollama vs Browser vs Heim-GPU, Gemma 4 und Llama, und Write with Private AI im Browser.",
+  blogSocialMediaBansTitle:
+    "Wirken Social-Media-Verbote fuer Kinder? Was die Evidenz sagt",
+  blogSocialMediaBansExcerpt:
+    "Australien, Frankreich und Norwegen debattieren Unter-16-Verbote—Forscher warnen jedoch vor Verlagerung von Risiken, Problemen bei Altersverifikation und dem eigentlichen Kern: suchtfoerderndem Plattformdesign.",
+  blogSocialMediaBansMetaTitle: "Social-Media-Verbote fuer Kinder: Evidenz",
+  blogSocialMediaBansMetaDescription:
+    "Funktionieren Social-Media-Verbote fuer Kinder? Evidenz zu digitaler Verlagerung, Datenschutzrisiken der Altersverifikation und Alternativen laut Information-Labs-Bericht.",
   blogMakePrivateNoteTitle: "Wie man eine private Notiz erstellt (und sie wirklich privat haelt)",
   blogMakePrivateNoteExcerpt:
     "Ein Schloss-Symbol in einer Notiz-App ist nicht dasselbe wie eine wirklich private Notiz. Erfahren Sie, was privat wirklich bedeutet, welche Einstellungen zaehlen und wie Sie eine verschluesselte Notiz erstellen, die nach dem Lesen verschwindet—ohne Konto.",

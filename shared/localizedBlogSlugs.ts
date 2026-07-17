@@ -20,6 +20,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "myth-good-enough-security",
   "how-we-generate-passwords",
   "workplace-texts-private-note",
+  "social-media-bans-children-evidence",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -234,6 +235,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "textos-de-trabalho-e-notas-efemer",
     sr: "tekstovi-na-radnom-mestu-i-efemerne-poruke",
     hr: "tekstovi-na-radnom-mjestu-i-efemerne-biljeske",
+  },
+  "social-media-bans-children-evidence": {
+    en: "social-media-bans-children-evidence",
+    de: "social-media-verbote-kinder-evidenz",
+    fr: "interdictions-reseaux-sociaux-enfants-preuves",
+    es: "prohibiciones-redes-sociales-ninos-evidencia",
+    it: "divieti-social-media-minori-evidenze",
+    nl: "social-media-verboden-kinderen-bewijs",
+    pt: "proibicoes-redes-sociais-criancas-evidencia",
+    sr: "zabrane-drustvenih-mreza-za-decu-dokazi",
+    hr: "zabrane-drustvenih-mreza-za-djecu-dokazi",
   },
 };
 
