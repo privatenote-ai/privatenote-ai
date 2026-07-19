@@ -719,6 +719,9 @@ export const de: Translations = {
   attachmentProgressChunkDetail: "{done} von {total} Teilen · {name}",
   attachmentProgressFootnote:
     "Ihre Datei wird in diesem Browser verschlüsselt, bevor sie hochgeladen wird. Lassen Sie diesen Tab im Vordergrund — Hintergrund-Tabs werden gedrosselt und Uploads werden deutlich langsamer.",
+  attachmentDecryptProgressTitle: "Entschlüsselung in Ihrem Browser…",
+  attachmentDecryptProgressFootnote:
+    "Die Datei wird in diesem Browser heruntergeladen und entschlüsselt. Lassen Sie diesen Tab im Vordergrund — Hintergrund-Tabs werden gedrosselt und große Dateien werden deutlich langsamer.",
   notesLimitTrimmed: "Notizen sind auf 50 KB UTF-8-Text begrenzt. Zusätzlich eingefügter Text wurde entfernt.",
   password: "Passwort",
   passwordPlaceholder: "Sicheres Passwort eingeben (optional)",

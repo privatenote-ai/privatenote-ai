@@ -704,6 +704,9 @@ export const fr: Translations = {
   attachmentProgressChunkDetail: "{done} sur {total} parties · {name}",
   attachmentProgressFootnote:
     "Votre fichier est chiffré dans ce navigateur avant l’envoi. Gardez cet onglet au premier plan — les onglets en arrière-plan sont ralentis et l’envoi devient beaucoup plus lent.",
+  attachmentDecryptProgressTitle: "Déchiffrement dans votre navigateur…",
+  attachmentDecryptProgressFootnote:
+    "Le fichier est téléchargé et déchiffré dans ce navigateur. Gardez cet onglet au premier plan — les onglets en arrière-plan sont ralentis et les gros fichiers deviennent beaucoup plus lents.",
   notesLimitTrimmed: "Les notes sont limitées à 50 Ko de texte UTF-8. Le texte collé en trop a été supprimé.",
   password: "Mot de passe",
   passwordPlaceholder: "Saisir un mot de passe sécurisé (facultatif)",

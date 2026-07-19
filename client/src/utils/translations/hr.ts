@@ -700,6 +700,9 @@ export const hr: Translations = {
   attachmentProgressChunkDetail: "{done} od {total} dijelova · {name}",
   attachmentProgressFootnote:
     "Datoteka se šifrira u ovom pregledniku prije prijenosa. Držite ovu karticu u prvom planu — pozadinske kartice se usporavaju i prijenos traje puno dulje.",
+  attachmentDecryptProgressTitle: "Dešifriranje u pregledniku…",
+  attachmentDecryptProgressFootnote:
+    "Datoteka se preuzima i dešifrira u ovom pregledniku. Držite ovu karticu u prvom planu — pozadinske kartice se usporavaju i velike datoteke traju puno dulje.",
   notesLimitTrimmed: "Bilješke su ograničene na 50 KB UTF-8 teksta. Dodatni zalijepljeni tekst je uklonjen.",
   password: "Lozinka",
   passwordPlaceholder: "Unesite sigurnu lozinku (nije obavezno)",

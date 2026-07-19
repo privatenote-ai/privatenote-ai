@@ -39,6 +39,10 @@ import {
   type SupportedLanguage,
   type Translations,
 } from '@/utils/translation';
+import {
+  AttachmentProgressDialog,
+  type AttachmentProgressState,
+} from '@/components/note/AttachmentProgressDialog';
 
 type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated';
 
@@ -458,6 +462,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const [isViewingFile, setIsViewingFile] = useState(false);
+  const [attachmentDecryptProgress, setAttachmentDecryptProgress] =
+    useState<AttachmentProgressState | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const [showInlinePreview, setShowInlinePreview] = useState(false);
@@ -516,7 +522,27 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     [attachmentMetadata?.type, attachmentMetadata?.name],
   );
 
-  const decryptAttachmentPreview = useCallback(async (): Promise<{ url: string; mimeType: string } | null> => {
+  const reportAttachmentDecryptProgress = useCallback(
+    (completedChunks: number, totalChunks: number) => {
+      const ratio = totalChunks > 0 ? completedChunks / totalChunks : 1;
+      const name = attachmentMetadata?.name || "file";
+      setAttachmentDecryptProgress({
+        phase: "decrypt",
+        progress: Math.round(ratio * 100),
+        title: t.attachmentDecryptProgressTitle,
+        detail: t.attachmentProgressChunkDetail
+          .replace("{done}", String(completedChunks))
+          .replace("{total}", String(totalChunks))
+          .replace("{name}", name),
+        footnote: t.attachmentDecryptProgressFootnote,
+      });
+    },
+    [attachmentMetadata?.name, t],
+  );
+
+  const decryptAttachmentPreview = useCallback(async (options?: {
+    onProgress?: boolean;
+  }): Promise<{ url: string; mimeType: string } | null> => {
     if (!noteData?.attachment || !contentKey || !attachmentPreviewKind) return null;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       return null;
@@ -537,6 +563,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         );
         return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
       },
+      options?.onProgress
+        ? (pipeline) => {
+            reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+          }
+        : undefined,
     );
     const mimeType = getAttachmentBlobMimeType(
       attachmentMetadata?.type,
@@ -546,7 +577,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     const blob = new Blob(decryptedParts as BlobPart[], { type: mimeType });
     const url = await createAttachmentPreviewUrl(blob, attachmentPreviewKind);
     return { url, mimeType };
-  }, [attachmentMetadata?.name, attachmentMetadata?.type, attachmentPreviewKind, contentKey, id, noteData]);
+  }, [
+    attachmentMetadata?.name,
+    attachmentMetadata?.type,
+    attachmentPreviewKind,
+    contentKey,
+    id,
+    noteData,
+    reportAttachmentDecryptProgress,
+  ]);
 
   useEffect(() => {
     thumbnailLoadAttemptedRef.current = false;
@@ -969,10 +1008,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       ? { "x-file-access-token": noteData.fileAccessToken }
       : {};
     setIsDownloadingFile(true);
+    setAttachmentDecryptProgress({
+      phase: "decrypt",
+      progress: 0,
+      title: t.attachmentDecryptProgressTitle,
+      detail: attachmentMetadata?.name
+        ? `${attachmentMetadata.name} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+        : undefined,
+      footnote: t.attachmentDecryptProgressFootnote,
+    });
     try {
       let decryptedParts: BlobPart[];
       const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
-      decryptedParts = await decryptSodiumAttachmentChunks(
+      decryptedParts = (await decryptSodiumAttachmentChunks(
         noteData.attachment,
         contentKey,
         async (index) => {
@@ -983,7 +1031,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           );
           return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
         },
-      );
+        (pipeline) => {
+          reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+        },
+      )) as BlobPart[];
       const blob = new Blob(decryptedParts, {
         type: attachmentMetadata?.type || "application/octet-stream",
       });
@@ -1006,6 +1057,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       });
     } finally {
       setIsDownloadingFile(false);
+      setAttachmentDecryptProgress(null);
     }
   };
 
@@ -1030,8 +1082,17 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
 
     setIsViewingFile(true);
+    setAttachmentDecryptProgress({
+      phase: "decrypt",
+      progress: 0,
+      title: t.attachmentDecryptProgressTitle,
+      detail: attachmentMetadata?.name
+        ? `${attachmentMetadata.name} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+        : undefined,
+      footnote: t.attachmentDecryptProgressFootnote,
+    });
     try {
-      const result = await decryptAttachmentPreview();
+      const result = await decryptAttachmentPreview({ onProgress: true });
       if (!result) return;
       revokeAttachmentPreviewUrl(previewObjectUrl);
       setPreviewObjectUrl(result.url);
@@ -1048,6 +1109,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       });
     } finally {
       setIsViewingFile(false);
+      setAttachmentDecryptProgress(null);
     }
   };
 
@@ -1467,6 +1529,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </p>
         </div>
       </section>
+      <AttachmentProgressDialog progress={attachmentDecryptProgress} />
     </section>
   );
 };

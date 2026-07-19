@@ -704,6 +704,9 @@ export const it: Translations = {
   attachmentProgressChunkDetail: "{done} di {total} parti · {name}",
   attachmentProgressFootnote:
     "Il file viene crittografato in questo browser prima del caricamento. Tieni questa scheda in primo piano: le schede in background vengono limitate e il caricamento rallenta molto.",
+  attachmentDecryptProgressTitle: "Decrittografia nel browser…",
+  attachmentDecryptProgressFootnote:
+    "Il file viene scaricato e decrittografato in questo browser. Tieni questa scheda in primo piano: le schede in background vengono limitate e i file grandi rallentano molto.",
   notesLimitTrimmed: "Le note sono limitate a 50 KB di testo UTF-8. Il testo extra incollato è stato rimosso.",
   password: "Password",
   passwordPlaceholder: "Inserisci una password sicura (facoltativo)",

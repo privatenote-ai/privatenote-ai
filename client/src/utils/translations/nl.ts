@@ -719,6 +719,9 @@ export const nl: Translations = {
   attachmentProgressChunkDetail: "{done} van {total} delen · {name}",
   attachmentProgressFootnote:
     "Uw bestand wordt in deze browser versleuteld voordat het wordt geüpload. Houd dit tabblad op de voorgrond — achtergrondtabbladen worden beperkt en uploads worden veel trager.",
+  attachmentDecryptProgressTitle: "Ontsleutelen in uw browser…",
+  attachmentDecryptProgressFootnote:
+    "Het bestand wordt in deze browser gedownload en ontsleuteld. Houd dit tabblad op de voorgrond — achtergrondtabbladen worden beperkt en grote bestanden worden veel trager.",
   notesLimitTrimmed: "Notities zijn beperkt tot 50 KB UTF-8-tekst. Extra geplakte tekst is verwijderd.",
   password: "Wachtwoord",
   passwordPlaceholder: "Voer een veilig wachtwoord in (optioneel)",

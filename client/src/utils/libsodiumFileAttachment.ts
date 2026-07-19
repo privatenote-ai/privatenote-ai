@@ -418,10 +418,18 @@ export async function encryptFileToSodiumChunks(
   };
 }
 
+/** Progress while downloading + decrypting attachment chunks. */
+export type AttachmentDecryptProgress = {
+  phase: "download" | "decrypt";
+  completedChunks: number;
+  totalChunks: number;
+};
+
 export async function decryptSodiumAttachmentChunks(
   attachment: SodiumAttachmentMetadata,
   contentKey: CryptoKey,
   getChunk: (index: number) => Promise<Uint8Array>,
+  onProgress?: (progress: AttachmentDecryptProgress) => void,
 ): Promise<Uint8Array[]> {
   await sodium.ready;
 
@@ -432,22 +440,25 @@ export async function decryptSodiumAttachmentChunks(
   );
   const aad = base64ToUint8Array(attachment.aad);
   const plaintextChunks: Uint8Array[] = [];
+  const totalChunks = attachment.totalChunks;
 
   try {
-    for (let index = 0; index < attachment.totalChunks; index += 1) {
+    for (let index = 0; index < totalChunks; index += 1) {
       const encryptedChunk = await getChunk(index);
       const result = sodium.crypto_secretstream_xchacha20poly1305_pull(state, encryptedChunk, aad);
       if (!result) {
         throw new Error("Attachment chunk authentication failed");
       }
       const expectedTag =
-        index === attachment.totalChunks - 1
+        index === totalChunks - 1
           ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
           : sodium.crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
       if (result.tag !== expectedTag) {
         throw new Error("Attachment chunk sequence is invalid");
       }
       plaintextChunks.push(result.message);
+      // One tick per finished chunk (download + decrypt) so the bar stays linear.
+      onProgress?.({ phase: "decrypt", completedChunks: index + 1, totalChunks });
     }
   } finally {
     fileKey.fill(0);
