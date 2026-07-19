@@ -1348,13 +1348,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         return arrayBufferToBase64(copy.buffer);
       };
 
-      const { SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES } = await import("@/utils/libsodiumFileAttachment");
+      const { getAttachmentChunkSizeBytes } = await import("@/utils/libsodiumFileAttachment");
+      const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes();
       const attachmentReserveBinding = selectedFile
         ? {
             attachmentPlaintextSize: selectedFile.size,
             attachmentEncryptedSize:
               selectedFile.size +
-              Math.max(1, Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES)) * 17,
+              Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes)) * 17,
           }
         : undefined;
 
@@ -1453,7 +1454,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           const { encryptFileToSodiumChunks } = await import("@/utils/libsodiumFileAttachment");
           const totalChunks = Math.max(
             1,
-            Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
+            Math.ceil(selectedFile.size / attachmentChunkSizeBytes),
           );
           const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
           logFileUpload("info", "starting attachment encryption", {
@@ -1462,7 +1463,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             fileType: selectedFile.type || "application/octet-stream",
             fileSize: selectedFile.size,
             totalChunks,
-            chunkSizeBytes: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+            chunkSizeBytes: attachmentChunkSizeBytes,
             encryptedSizeUpperBound,
             apiBase: getFileUploadTargetLabel(),
           });

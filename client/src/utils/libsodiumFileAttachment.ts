@@ -1,21 +1,34 @@
 import sodium from "libsodium-wrappers";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
-import { isSafariBrowser } from "@/lib/binaryUploadTransport";
+import { isRetriableUploadTransportError, isSafariBrowser } from "@/lib/binaryUploadTransport";
 
-/** Plaintext bytes per chunk — min size so 1 GB premium files stay within 999 chunks; ~1 MiB per PUT for Safari. */
+/**
+ * Default plaintext bytes per chunk — sized so 1 GB premium files stay within 999 chunks
+ * (~1 MiB). Safari uses a larger size via {@link getAttachmentChunkSizeBytes}.
+ */
 export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = Math.ceil((1024 * 1024 * 1024) / 999);
+/** Safari: fewer round trips over a fragile HTTP/2 connection (~4 MiB). Still ≤999 chunks at 1 GB. */
+const SODIUM_ATTACHMENT_CHUNK_SIZE_SAFARI_BYTES = 4 * 1024 * 1024;
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
+
+/** Chunk size for the current browser — must match encrypt + reserve upper-bound math. */
+export function getAttachmentChunkSizeBytes(): number {
+  return isSafariBrowser()
+    ? SODIUM_ATTACHMENT_CHUNK_SIZE_SAFARI_BYTES
+    : SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
+}
 
 /** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
 const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
 /**
- * Safari/WebKit aborts concurrent body-bearing HTTP/2 requests with "The network
- * connection was lost". Serialize chunk uploads on Safari to keep the connection alive.
- * Chrome/Firefox can pipeline several PUTs over HTTP/2 safely.
+ * Safari/WebKit often aborts many concurrent body-bearing HTTP/2 requests. Start at 2;
+ * degrade to 1 if a chunk hits a connection-lost style error. Chrome/Firefox can pipeline.
  */
-const UPLOAD_CONCURRENCY_SAFARI = 1;
+const UPLOAD_CONCURRENCY_SAFARI = 2;
+const UPLOAD_CONCURRENCY_SAFARI_FLOOR = 1;
 const UPLOAD_CONCURRENCY_DEFAULT = 8;
+const SAFARI_DEGRADE_RETRY_MS = 800;
 
 export interface SodiumAttachmentChunk {
   index: number;
@@ -233,13 +246,14 @@ export async function encryptFileToSodiumChunks(
 ): Promise<SodiumAttachmentMetadata> {
   await sodium.ready;
 
-  const totalChunks = Math.max(1, Math.ceil(file.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES));
+  const chunkSize = getAttachmentChunkSizeBytes();
+  const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
   const streamAad = jsonAadBytes({
     v: 1,
     purpose: "privatenote-attachment-stream",
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
-    chunkSize: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+    chunkSize,
     totalChunks,
   });
   const encryptedMetadata = await encryptSodiumAttachmentMetadata(
@@ -262,9 +276,9 @@ export async function encryptFileToSodiumChunks(
     file.size > 0 && file.size <= IN_MEMORY_FILE_READ_MAX_BYTES
       ? new Uint8Array(await file.arrayBuffer())
       : null;
-  const uploadConcurrency = isSafariBrowser()
-    ? UPLOAD_CONCURRENCY_SAFARI
-    : UPLOAD_CONCURRENCY_DEFAULT;
+  const safariUpload = isSafariBrowser();
+  let uploadConcurrency = safariUpload ? UPLOAD_CONCURRENCY_SAFARI : UPLOAD_CONCURRENCY_DEFAULT;
+  let degradedToSerial = false;
   const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let encryptCpuMs = 0;
 
@@ -273,19 +287,53 @@ export async function encryptFileToSodiumChunks(
     // Do NOT buffer all ciphertext first — that doubled peak memory and made a ~30s
     // Safari upload look like "slow encryption".
     const inFlight = new Set<Promise<void>>();
+
     const enqueueUpload = async (chunk: SodiumAttachmentChunk): Promise<void> => {
       while (inFlight.size >= uploadConcurrency) {
-        await Promise.race(inFlight);
+        // Ignore settle outcome here — failures propagate via Promise.all at the end
+        // (or are recovered by the Safari degrade path below).
+        await Promise.race(
+          [...inFlight].map((pending) => pending.then(() => undefined, () => undefined)),
+        );
       }
-      const task = onChunk(chunk).finally(() => {
+      let task!: Promise<void>;
+      task = (async () => {
+        try {
+          await onChunk(chunk);
+        } catch (error) {
+          if (
+            safariUpload &&
+            uploadConcurrency > UPLOAD_CONCURRENCY_SAFARI_FLOOR &&
+            isRetriableUploadTransportError(error)
+          ) {
+            uploadConcurrency = UPLOAD_CONCURRENCY_SAFARI_FLOOR;
+            degradedToSerial = true;
+            console.warn(
+              "[FILE_UPLOAD] Safari upload degraded to serial after connection loss",
+              JSON.stringify({ noteId, chunkIndex: chunk.index }),
+            );
+            // Wait for sibling PUTs only — not this task (would deadlock).
+            const siblings = [...inFlight].filter((pending) => pending !== task);
+            if (siblings.length > 0) {
+              await Promise.allSettled(siblings);
+            }
+            await new Promise<void>((resolve) => {
+              globalThis.setTimeout(resolve, SAFARI_DEGRADE_RETRY_MS);
+            });
+            await onChunk(chunk);
+            return;
+          }
+          throw error;
+        }
+      })().finally(() => {
         inFlight.delete(task);
       });
       inFlight.add(task);
     };
 
     for (let index = 0; index < totalChunks; index += 1) {
-      const start = index * SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
-      const end = Math.min(file.size, start + SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES);
+      const start = index * chunkSize;
+      const end = Math.min(file.size, start + chunkSize);
       const plaintext = fileBytes
         ? fileBytes.subarray(start, end)
         : new Uint8Array(await file.slice(start, end).arrayBuffer());
@@ -329,10 +377,12 @@ export async function encryptFileToSodiumChunks(
       JSON.stringify({
         noteId,
         totalChunks,
+        chunkSize,
         fileBytes: file.size,
         encryptCpuMs: Math.round(encryptCpuMs),
         totalMs,
         uploadConcurrency,
+        degradedToSerial,
         inMemoryRead: Boolean(fileBytes),
       }),
     );
@@ -344,7 +394,7 @@ export async function encryptFileToSodiumChunks(
     v: 2,
     alg: SODIUM_ATTACHMENT_ALG,
     encryptedSize,
-    chunkSize: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+    chunkSize,
     totalChunks,
     header: bytesToBase64(header),
     aad: bytesToBase64(streamAad),

@@ -42,6 +42,20 @@ export function isSafariBrowser(): boolean {
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
 }
 
+/** WebKit "Load failed" / connection-lost style errors that warrant degrade + retry. */
+export function isRetriableUploadTransportError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message === "Load failed" ||
+    error.message === "XHR network request failed" ||
+    error.message === "Encrypted file upload failed before the server responded." ||
+    error.name === "TypeError" ||
+    /network connection was lost/i.test(error.message)
+  );
+}
+
 function filterBrowserUploadHeaders(headers: Record<string, string>): Record<string, string> {
   const filtered: Record<string, string> = {};
   for (const [name, value] of Object.entries(headers)) {
