@@ -718,7 +718,7 @@ export const es: Translations = {
   attachmentProgressFinalizing: "Creando nota segura…",
   attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
   attachmentProgressFootnote:
-    "Su archivo se cifra en este navegador antes de subirse. Los archivos grandes pueden tardar varios minutos.",
+    "Su archivo se cifra en este navegador antes de subirse. Mantenga esta pestaña en primer plano: las pestañas en segundo plano se limitan y la subida se ralentiza mucho.",
   notesLimitTrimmed: "Las notas están limitadas a 50 KB de texto UTF-8. Se eliminó el texto pegado sobrante.",
   password: "Contraseña",
   passwordPlaceholder: "Introduce una contraseña segura (opcional)",

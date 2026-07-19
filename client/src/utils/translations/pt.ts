@@ -699,7 +699,7 @@ export const pt: Translations = {
   attachmentProgressFinalizing: "A criar nota segura…",
   attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
   attachmentProgressFootnote:
-    "O seu ficheiro é encriptado neste browser antes do envio. Ficheiros grandes podem demorar vários minutos.",
+    "O seu ficheiro é encriptado neste browser antes do envio. Mantenha este separador em primeiro plano — separadores em segundo plano são limitados e o envio fica bem mais lento.",
   notesLimitTrimmed: "As notas estão limitadas a 50 KB de texto UTF-8. O texto extra colado foi removido.",
   password: "Senha",
   passwordPlaceholder: "Digite uma senha segura (opcional)",

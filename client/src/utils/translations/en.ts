@@ -741,7 +741,7 @@ export const en: Translations = {
   attachmentProgressFinalizing: "Creating secure note…",
   attachmentProgressChunkDetail: "{done} of {total} chunks · {name}",
   attachmentProgressFootnote:
-    "Your file is encrypted in this browser before upload. Large files can take several minutes.",
+    "Your file is encrypted in this browser before upload. Keep this tab in the foreground — background tabs are throttled and uploads slow down a lot.",
   notesLimitTrimmed: "Notes are limited to 50 KB of UTF-8 text. Extra pasted text was removed.",
   password: "Password",
   passwordPlaceholder: "Enter a secure password (optional)",

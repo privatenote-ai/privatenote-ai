@@ -699,7 +699,7 @@ export const sr: Translations = {
   attachmentProgressFinalizing: "Pravljenje bezbedne poruke…",
   attachmentProgressChunkDetail: "{done} od {total} delova · {name}",
   attachmentProgressFootnote:
-    "Fajl se šifruje u ovom pregledaču pre otpremanja. Veliki fajlovi mogu potrajati nekoliko minuta.",
+    "Fajl se šifruje u ovom pregledaču pre otpremanja. Ostavi ovaj tab u prvom planu — pozadinski tabovi se usporavaju i otpremanje traje mnogo duže.",
   notesLimitTrimmed: "Poruke su ograničene na 50 KB UTF-8 teksta. Dodatni nalepljeni tekst je uklonjen.",
   password: "Lozinka",
   passwordPlaceholder: "Unesite sigurnu lozinku (opcionalno)",
