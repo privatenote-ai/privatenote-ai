@@ -712,6 +712,13 @@ export const es: Translations = {
   aiComposerPlaceholdersToastTitle: "Aún hay marcadores en la nota",
   sharePrivateNote: "Compartir nota privada",
   creatingSecureNote: "Creando nota segura...",
+  attachmentProgressPreparing: "Preparando el archivo…",
+  attachmentProgressEncrypting: "Cifrando en su navegador…",
+  attachmentProgressUploading: "Subiendo el archivo cifrado…",
+  attachmentProgressFinalizing: "Creando nota segura…",
+  attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
+  attachmentProgressFootnote:
+    "Su archivo se cifra en este navegador antes de subirse. Los archivos grandes pueden tardar varios minutos.",
   notesLimitTrimmed: "Las notas están limitadas a 50 KB de texto UTF-8. Se eliminó el texto pegado sobrante.",
   password: "Contraseña",
   passwordPlaceholder: "Introduce una contraseña segura (opcional)",

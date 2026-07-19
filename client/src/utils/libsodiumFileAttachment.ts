@@ -37,6 +37,13 @@ export interface SodiumAttachmentMetadataChunk {
   encryptedSize: number;
 }
 
+/** Progress while encrypting + uploading attachment chunks (streamed pipeline). */
+export type AttachmentPipelineProgress = {
+  phase: "encrypt" | "upload";
+  completedChunks: number;
+  totalChunks: number;
+};
+
 export interface SodiumAttachmentPlainMetadata {
   name: string;
   type: string;
@@ -239,11 +246,16 @@ export async function encryptFileToSodiumChunks(
   metadataKey: CryptoKey,
   noteId: string,
   onChunk: (chunk: SodiumAttachmentChunk) => Promise<void>,
+  onProgress?: (progress: AttachmentPipelineProgress) => void,
 ): Promise<SodiumAttachmentMetadata> {
   await sodium.ready;
 
   const chunkSize = getAttachmentChunkSizeBytes();
   const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+  const reportProgress = (phase: AttachmentPipelineProgress["phase"], completedChunks: number) => {
+    onProgress?.({ phase, completedChunks, totalChunks });
+  };
+  reportProgress("encrypt", 0);
   const streamAad = jsonAadBytes({
     v: 1,
     purpose: "privatenote-attachment-stream",
@@ -283,6 +295,7 @@ export async function encryptFileToSodiumChunks(
     // Do NOT buffer all ciphertext first — that doubled peak memory and made a ~30s
     // Safari upload look like "slow encryption".
     const inFlight = new Set<Promise<void>>();
+    let uploadedChunks = 0;
 
     const enqueueUpload = async (chunk: SodiumAttachmentChunk): Promise<void> => {
       while (inFlight.size >= uploadConcurrency) {
@@ -317,10 +330,12 @@ export async function encryptFileToSodiumChunks(
               globalThis.setTimeout(resolve, SAFARI_DEGRADE_RETRY_MS);
             });
             await onChunk(chunk);
-            return;
+          } else {
+            throw error;
           }
-          throw error;
         }
+        uploadedChunks += 1;
+        reportProgress("upload", uploadedChunks);
       })().finally(() => {
         inFlight.delete(task);
       });
@@ -352,6 +367,7 @@ export async function encryptFileToSodiumChunks(
       encryptedSize += encryptedCopy.byteLength;
       contentHasher.update(encryptedCopy);
       chunks.push({ index, encryptedSize: encryptedCopy.byteLength });
+      reportProgress("encrypt", index + 1);
       await enqueueUpload({
         index,
         encryptedSize: encryptedCopy.byteLength,
@@ -365,6 +381,7 @@ export async function encryptFileToSodiumChunks(
       }
     }
     await Promise.all([...inFlight]);
+    reportProgress("upload", totalChunks);
 
     const totalMs =
       typeof performance !== "undefined" ? Math.round(performance.now() - pipelineStartedAt) : null;

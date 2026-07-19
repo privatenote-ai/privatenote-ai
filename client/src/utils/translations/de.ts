@@ -712,6 +712,13 @@ export const de: Translations = {
   aiComposerPlaceholdersToastTitle: "Noch Platzhalter in der Notiz",
   sharePrivateNote: "Private Notiz teilen",
   creatingSecureNote: "Sichere Notiz wird erstellt...",
+  attachmentProgressPreparing: "Datei wird vorbereitet…",
+  attachmentProgressEncrypting: "Verschlüsselung in Ihrem Browser…",
+  attachmentProgressUploading: "Verschlüsselte Datei wird hochgeladen…",
+  attachmentProgressFinalizing: "Sichere Notiz wird erstellt…",
+  attachmentProgressChunkDetail: "{done} von {total} Teilen · {name}",
+  attachmentProgressFootnote:
+    "Ihre Datei wird in diesem Browser verschlüsselt, bevor sie hochgeladen wird. Große Dateien können mehrere Minuten dauern.",
   notesLimitTrimmed: "Notizen sind auf 50 KB UTF-8-Text begrenzt. Zusätzlich eingefügter Text wurde entfernt.",
   password: "Passwort",
   passwordPlaceholder: "Sicheres Passwort eingeben (optional)",

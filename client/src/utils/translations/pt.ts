@@ -693,6 +693,13 @@ export const pt: Translations = {
   aiComposerPlaceholdersToastTitle: "Espaços reservados ainda na nota",
   sharePrivateNote: "Compartilhar nota privada",
   creatingSecureNote: "Criando nota segura...",
+  attachmentProgressPreparing: "A preparar o ficheiro…",
+  attachmentProgressEncrypting: "A encriptar no seu browser…",
+  attachmentProgressUploading: "A enviar o ficheiro encriptado…",
+  attachmentProgressFinalizing: "A criar nota segura…",
+  attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
+  attachmentProgressFootnote:
+    "O seu ficheiro é encriptado neste browser antes do envio. Ficheiros grandes podem demorar vários minutos.",
   notesLimitTrimmed: "As notas estão limitadas a 50 KB de texto UTF-8. O texto extra colado foi removido.",
   password: "Senha",
   passwordPlaceholder: "Digite uma senha segura (opcional)",

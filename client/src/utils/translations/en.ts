@@ -735,6 +735,13 @@ export const en: Translations = {
   aiComposerPlaceholdersToastTitle: "Placeholders still in the note",
   sharePrivateNote: "Share Private Note",
   creatingSecureNote: "Creating secure note...",
+  attachmentProgressPreparing: "Preparing file…",
+  attachmentProgressEncrypting: "Encrypting in your browser…",
+  attachmentProgressUploading: "Uploading encrypted file…",
+  attachmentProgressFinalizing: "Creating secure note…",
+  attachmentProgressChunkDetail: "{done} of {total} chunks · {name}",
+  attachmentProgressFootnote:
+    "Your file is encrypted in this browser before upload. Large files can take several minutes.",
   notesLimitTrimmed: "Notes are limited to 50 KB of UTF-8 text. Extra pasted text was removed.",
   password: "Password",
   passwordPlaceholder: "Enter a secure password (optional)",

@@ -697,6 +697,13 @@ export const fr: Translations = {
   aiComposerPlaceholdersToastTitle: "Placeholders encore présents",
   sharePrivateNote: "Partager la note privée",
   creatingSecureNote: "Création de la note sécurisée...",
+  attachmentProgressPreparing: "Préparation du fichier…",
+  attachmentProgressEncrypting: "Chiffrement dans votre navigateur…",
+  attachmentProgressUploading: "Envoi du fichier chiffré…",
+  attachmentProgressFinalizing: "Création de la note sécurisée…",
+  attachmentProgressChunkDetail: "{done} sur {total} parties · {name}",
+  attachmentProgressFootnote:
+    "Votre fichier est chiffré dans ce navigateur avant l’envoi. Les gros fichiers peuvent prendre plusieurs minutes.",
   notesLimitTrimmed: "Les notes sont limitées à 50 Ko de texte UTF-8. Le texte collé en trop a été supprimé.",
   password: "Mot de passe",
   passwordPlaceholder: "Saisir un mot de passe sécurisé (facultatif)",

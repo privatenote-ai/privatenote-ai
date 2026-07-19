@@ -712,6 +712,13 @@ export const nl: Translations = {
   aiComposerPlaceholdersToastTitle: "Tijdelijke aanduidingen staan ​​nog in de notitie",
   sharePrivateNote: "Deel privénotitie",
   creatingSecureNote: "Veilige notitie maken...",
+  attachmentProgressPreparing: "Bestand voorbereiden…",
+  attachmentProgressEncrypting: "Versleutelen in uw browser…",
+  attachmentProgressUploading: "Versleuteld bestand uploaden…",
+  attachmentProgressFinalizing: "Veilige notitie maken…",
+  attachmentProgressChunkDetail: "{done} van {total} delen · {name}",
+  attachmentProgressFootnote:
+    "Uw bestand wordt in deze browser versleuteld voordat het wordt geüpload. Grote bestanden kunnen enkele minuten duren.",
   notesLimitTrimmed: "Notities zijn beperkt tot 50 KB UTF-8-tekst. Extra geplakte tekst is verwijderd.",
   password: "Wachtwoord",
   passwordPlaceholder: "Voer een veilig wachtwoord in (optioneel)",

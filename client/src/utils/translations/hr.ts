@@ -693,6 +693,13 @@ export const hr: Translations = {
   aiComposerPlaceholdersToastTitle: "Rezervirana mjesta još uvijek u bilješci",
   sharePrivateNote: "Podijelite privatnu bilješku",
   creatingSecureNote: "Stvaranje sigurne bilješke...",
+  attachmentProgressPreparing: "Priprema datoteke…",
+  attachmentProgressEncrypting: "Šifriranje u pregledniku…",
+  attachmentProgressUploading: "Prijenos šifrirane datoteke…",
+  attachmentProgressFinalizing: "Stvaranje sigurne bilješke…",
+  attachmentProgressChunkDetail: "{done} od {total} dijelova · {name}",
+  attachmentProgressFootnote:
+    "Datoteka se šifrira u ovom pregledniku prije prijenosa. Velike datoteke mogu potrajati nekoliko minuta.",
   notesLimitTrimmed: "Bilješke su ograničene na 50 KB UTF-8 teksta. Dodatni zalijepljeni tekst je uklonjen.",
   password: "Lozinka",
   passwordPlaceholder: "Unesite sigurnu lozinku (nije obavezno)",

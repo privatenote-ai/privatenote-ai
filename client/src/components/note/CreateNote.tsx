@@ -402,6 +402,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   // ── Submission ────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
+  const [attachmentProgress, setAttachmentProgress] = useState<{
+    phase: "prepare" | "encrypt" | "upload" | "finalize";
+    progress: number;
+    detail?: string;
+  } | null>(null);
 
   // ── Success state ─────────────────────────────────────────────────────────
   const [createdNote, setCreatedNote] = useState<CreatedNoteState | null>(null);
@@ -1320,6 +1325,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsLoading(true);
+    setAttachmentProgress(
+      selectedFile
+        ? {
+            phase: "prepare",
+            progress: 2,
+            detail: `${selectedFile.name} · ${formatNoteFileSize(selectedFile.size)}`,
+          }
+        : null,
+    );
 
     try {
       const {
@@ -1472,6 +1486,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             `/api/notes/${reservedId}/file/chunks/0`,
             uploadToken,
           );
+          const chunkDetail = (done: number, total: number) =>
+            t.attachmentProgressChunkDetail
+              .replace("{done}", String(done))
+              .replace("{total}", String(total))
+              .replace("{name}", selectedFile.name);
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
             fileWrapKey!,
@@ -1490,7 +1509,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 uploadToken,
               );
             },
+            (pipeline) => {
+              if (pipeline.phase === "encrypt") {
+                const ratio =
+                  pipeline.totalChunks > 0 ? pipeline.completedChunks / pipeline.totalChunks : 1;
+                setAttachmentProgress({
+                  phase: "encrypt",
+                  progress: Math.round(5 + ratio * 10),
+                  detail: chunkDetail(pipeline.completedChunks, pipeline.totalChunks),
+                });
+                return;
+              }
+              const ratio =
+                pipeline.totalChunks > 0 ? pipeline.completedChunks / pipeline.totalChunks : 1;
+              setAttachmentProgress({
+                phase: "upload",
+                progress: Math.round(15 + ratio * 80),
+                detail: chunkDetail(pipeline.completedChunks, pipeline.totalChunks),
+              });
+            },
           );
+          setAttachmentProgress({
+            phase: "finalize",
+            progress: 96,
+            detail: selectedFile.name,
+          });
           logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
@@ -1638,6 +1681,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       toast({ title: t.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
+      setAttachmentProgress(null);
     }
   };
 
@@ -2258,7 +2302,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     ) : null;
 
   const shouldRenderDeferredDialogs =
-    isGeneratingContent || cellularPreloadConfirmOpen || showTemplateOfferPrompt;
+    isGeneratingContent ||
+    cellularPreloadConfirmOpen ||
+    showTemplateOfferPrompt ||
+    Boolean(attachmentProgress);
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
@@ -2855,6 +2902,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         <Suspense fallback={null}>
           <CreateNoteDeferredDialogs
             aiProgress={aiProgress}
+            attachmentProgress={attachmentProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
             isGeneratingContent={isGeneratingContent && !usesHostedCloudAi}
             onStartFreeModelDownload={() => {
