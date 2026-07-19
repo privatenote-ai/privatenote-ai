@@ -4,19 +4,15 @@ import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
 import { isRetriableUploadTransportError, isSafariBrowser } from "@/lib/binaryUploadTransport";
 
 /**
- * Default plaintext bytes per chunk — sized so 1 GB premium files stay within 999 chunks
- * (~1 MiB). Safari uses a larger size via {@link getAttachmentChunkSizeBytes}.
+ * Plaintext bytes per chunk. 4 MiB cuts round trips on Chrome (concurrency 8) and
+ * Safari (concurrency 2). Still ≤999 chunks for a 1 GB premium file.
  */
-export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = Math.ceil((1024 * 1024 * 1024) / 999);
-/** Safari: fewer round trips over a fragile HTTP/2 connection (~4 MiB). Still ≤999 chunks at 1 GB. */
-const SODIUM_ATTACHMENT_CHUNK_SIZE_SAFARI_BYTES = 4 * 1024 * 1024;
+export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 4 * 1024 * 1024;
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
-/** Chunk size for the current browser — must match encrypt + reserve upper-bound math. */
+/** Chunk size for the current browser — reserved for future per-browser tuning. */
 export function getAttachmentChunkSizeBytes(): number {
-  return isSafariBrowser()
-    ? SODIUM_ATTACHMENT_CHUNK_SIZE_SAFARI_BYTES
-    : SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
+  return SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
 }
 
 /** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
