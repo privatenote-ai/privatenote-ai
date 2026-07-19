@@ -1510,28 +1510,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               );
             },
             (pipeline) => {
-              if (pipeline.phase === "encrypt") {
-                const ratio =
-                  pipeline.totalChunks > 0 ? pipeline.completedChunks / pipeline.totalChunks : 1;
-                setAttachmentProgress({
+              // Drive the bar from uploaded chunks only. Encrypt runs ahead in the
+              // pipeline and used to jump the "X of Y" label while the bar stayed low.
+              if (pipeline.phase !== "upload") {
+                setAttachmentProgress((prev) => ({
                   phase: "encrypt",
-                  progress: Math.round(5 + ratio * 10),
-                  detail: chunkDetail(pipeline.completedChunks, pipeline.totalChunks),
-                });
+                  progress: Math.max(prev?.progress ?? 0, 5),
+                  detail:
+                    prev?.detail ??
+                    `${selectedFile.name} · ${formatNoteFileSize(selectedFile.size)}`,
+                }));
                 return;
               }
               const ratio =
                 pipeline.totalChunks > 0 ? pipeline.completedChunks / pipeline.totalChunks : 1;
-              setAttachmentProgress({
-                phase: "upload",
-                progress: Math.round(15 + ratio * 80),
+              const nextProgress = Math.round(5 + ratio * 90);
+              setAttachmentProgress((prev) => ({
+                phase: "encrypt",
+                progress: Math.max(prev?.progress ?? 0, nextProgress),
                 detail: chunkDetail(pipeline.completedChunks, pipeline.totalChunks),
-              });
+              }));
             },
           );
           setAttachmentProgress({
             phase: "finalize",
-            progress: 96,
+            progress: 98,
             detail: selectedFile.name,
           });
           logFileUpload("info", "attachment encryption+upload complete", {
