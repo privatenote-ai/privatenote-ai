@@ -67,13 +67,10 @@ export function CreateNoteDeferredDialogs({
   const attachmentTitle =
     attachmentProgress?.phase === "prepare"
       ? t.attachmentProgressPreparing
-      : attachmentProgress?.phase === "encrypt"
-        ? t.attachmentProgressEncrypting
-        : attachmentProgress?.phase === "upload"
-          ? t.attachmentProgressUploading
-          : attachmentProgress?.phase === "finalize"
-            ? t.attachmentProgressFinalizing
-            : t.creatingSecureNote;
+      : attachmentProgress?.phase === "finalize"
+        ? t.attachmentProgressFinalizing
+        : // Encrypt and upload are streamed together — keep one stable title.
+          t.attachmentProgressEncrypting;
 
   return (
     <>
