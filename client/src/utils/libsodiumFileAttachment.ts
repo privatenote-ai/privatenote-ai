@@ -12,29 +12,10 @@ const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
 /**
  * Safari/WebKit aborts concurrent body-bearing HTTP/2 requests with "The network
  * connection was lost". Serialize chunk uploads on Safari to keep the connection alive.
+ * Chrome/Firefox can pipeline several PUTs over HTTP/2 safely.
  */
 const UPLOAD_CONCURRENCY_SAFARI = 1;
-const UPLOAD_CONCURRENCY_DEFAULT = 6;
-
-async function runWithConcurrency<T>(
-  items: readonly T[],
-  concurrency: number,
-  worker: (item: T) => Promise<void>,
-): Promise<void> {
-  if (items.length === 0) return;
-  const limit = Math.max(1, Math.min(concurrency, items.length));
-  let nextIndex = 0;
-
-  const runners = Array.from({ length: limit }, async () => {
-    while (nextIndex < items.length) {
-      const current = items[nextIndex]!;
-      nextIndex += 1;
-      await worker(current);
-    }
-  });
-
-  await Promise.all(runners);
-}
+const UPLOAD_CONCURRENCY_DEFAULT = 8;
 
 export interface SodiumAttachmentChunk {
   index: number;
@@ -83,7 +64,11 @@ export interface SodiumAttachmentMetadata {
 }
 
 function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    out += bytes[i]!.toString(16).padStart(2, "0");
+  }
+  return out;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -273,7 +258,6 @@ export async function encryptFileToSodiumChunks(
   const chunks: SodiumAttachmentMetadataChunk[] = [];
   let encryptedSize = 0;
   const contentHasher = sha256.create();
-  const encryptedChunks: SodiumAttachmentChunk[] = [];
   const fileBytes =
     file.size > 0 && file.size <= IN_MEMORY_FILE_READ_MAX_BYTES
       ? new Uint8Array(await file.arrayBuffer())
@@ -281,9 +265,24 @@ export async function encryptFileToSodiumChunks(
   const uploadConcurrency = isSafariBrowser()
     ? UPLOAD_CONCURRENCY_SAFARI
     : UPLOAD_CONCURRENCY_DEFAULT;
-  const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+  const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+  let encryptCpuMs = 0;
 
   try {
+    // Encrypt sequentially (secretstream is stateful), upload with limited concurrency.
+    // Do NOT buffer all ciphertext first — that doubled peak memory and made a ~30s
+    // Safari upload look like "slow encryption".
+    const inFlight = new Set<Promise<void>>();
+    const enqueueUpload = async (chunk: SodiumAttachmentChunk): Promise<void> => {
+      while (inFlight.size >= uploadConcurrency) {
+        await Promise.race(inFlight);
+      }
+      const task = onChunk(chunk).finally(() => {
+        inFlight.delete(task);
+      });
+      inFlight.add(task);
+    };
+
     for (let index = 0; index < totalChunks; index += 1) {
       const start = index * SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
       const end = Math.min(file.size, start + SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES);
@@ -294,62 +293,49 @@ export async function encryptFileToSodiumChunks(
         index === totalChunks - 1
           ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
           : sodium.crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
+      const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
       const encryptedBytes = sodium.crypto_secretstream_xchacha20poly1305_push(
         state,
         plaintext,
         streamAad,
         tag,
       );
-      encryptedSize += encryptedBytes.byteLength;
-      contentHasher.update(encryptedBytes);
-      chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
-      // Copy off the WASM heap — concurrent uploads must not share a reused buffer view.
-      encryptedChunks.push({
+      // Copy off the WASM heap before the next push reuses it.
+      const encryptedCopy = encryptedBytes.slice();
+      if (typeof performance !== "undefined") {
+        encryptCpuMs += performance.now() - encryptStartedAt;
+      }
+      encryptedSize += encryptedCopy.byteLength;
+      contentHasher.update(encryptedCopy);
+      chunks.push({ index, encryptedSize: encryptedCopy.byteLength });
+      await enqueueUpload({
         index,
-        encryptedSize: encryptedBytes.byteLength,
-        encryptedBytes: encryptedBytes.slice(),
+        encryptedSize: encryptedCopy.byteLength,
+        encryptedBytes: encryptedCopy,
       });
-      if (import.meta.env?.DEV) {
-        console.info(
-          "[FILE_UPLOAD] chunk encrypted locally",
-          JSON.stringify({
-            noteId,
-            chunkIndex: index,
-            totalChunks,
-            plaintextBytes: plaintext.byteLength,
-            encryptedBytes: encryptedBytes.byteLength,
-            bufferBytes: encryptedBytes.buffer.byteLength,
-            byteOffset: encryptedBytes.byteOffset,
-          }),
-        );
+      // Keep the UI responsive during long attachments.
+      if (index % 4 === 3) {
+        await new Promise<void>((resolve) => {
+          globalThis.setTimeout(resolve, 0);
+        });
       }
     }
+    await Promise.all([...inFlight]);
 
-    if (import.meta.env?.DEV && typeof performance !== "undefined") {
-      console.info(
-        "[FILE_UPLOAD] encryption phase complete",
-        JSON.stringify({
-          noteId,
-          totalChunks,
-          encryptMs: Math.round(performance.now() - encryptStartedAt),
-          uploadConcurrency,
-          inMemoryRead: Boolean(fileBytes),
-        }),
-      );
-    }
-
-    const uploadStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
-    await runWithConcurrency(encryptedChunks, uploadConcurrency, onChunk);
-    if (import.meta.env?.DEV && typeof performance !== "undefined") {
-      console.info(
-        "[FILE_UPLOAD] upload phase complete",
-        JSON.stringify({
-          noteId,
-          totalChunks,
-          uploadMs: Math.round(performance.now() - uploadStartedAt),
-        }),
-      );
-    }
+    const totalMs =
+      typeof performance !== "undefined" ? Math.round(performance.now() - pipelineStartedAt) : null;
+    console.warn(
+      "[FILE_UPLOAD] attachment pipeline complete",
+      JSON.stringify({
+        noteId,
+        totalChunks,
+        fileBytes: file.size,
+        encryptCpuMs: Math.round(encryptCpuMs),
+        totalMs,
+        uploadConcurrency,
+        inMemoryRead: Boolean(fileBytes),
+      }),
+    );
   } finally {
     fileKey.fill(0);
   }

@@ -8216,6 +8216,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     // route-fallback logic can actually engage.
     const encryptedBytes = await request.arrayBuffer();
 
+    // Safari fires one empty-body probe to warm the HTTP/2 connection before real
+    // chunks. Answer 204 so DevTools doesn't look like a failed upload.
+    const probeChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
+    if (encryptedBytes.byteLength === 0 && probeChunkSize === 0) {
+      return applyCorsHeaders(new Response(null, { status: 204 }), request);
+    }
+
     const premiumUserId = uploadAuth.premiumUserId;
     const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;

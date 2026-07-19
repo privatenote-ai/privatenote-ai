@@ -1490,7 +1490,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               );
             },
           );
-          logFileUpload("info", "attachment encryption complete", {
+          logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
             encryptedSize: attachment.encryptedSize,
