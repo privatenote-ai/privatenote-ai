@@ -1,6 +1,6 @@
 /**
  * Binary PUT transport — Safari fetch() can drop upload bodies and Blob-backed
- * XHR uploads can fail on WebKit. XHR with an ArrayBuffer body uses the most
+ * XHR uploads can fail on WebKit. XHR with a Uint8Array body uses the most
  * reliable WebKit path for encrypted attachment chunks.
  */
 
@@ -25,6 +25,14 @@ const BROWSER_FORBIDDEN_REQUEST_HEADERS = new Set([
   "upgrade",
   "via",
 ]);
+
+/** Status codes that must not carry a Response body (Fetch spec). */
+function responseBodyForStatus(status: number, text: string): string | null {
+  if (status === 204 || status === 205 || status === 304) {
+    return null;
+  }
+  return text;
+}
 
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {
@@ -61,12 +69,16 @@ function xhrBinaryRequest(
       xhr.setRequestHeader(name, value);
     }
     xhr.onload = () => {
-      resolve(
-        new Response(xhr.responseText ?? "", {
-          status: xhr.status,
-          statusText: xhr.statusText,
-        }),
-      );
+      try {
+        resolve(
+          new Response(responseBodyForStatus(xhr.status, xhr.responseText ?? ""), {
+            status: xhr.status,
+            statusText: xhr.statusText,
+          }),
+        );
+      } catch (error) {
+        reject(error);
+      }
     };
     xhr.onerror = () => reject(new TypeError("Load failed"));
     xhr.onabort = () => reject(new TypeError("Load failed"));
@@ -83,8 +95,10 @@ export async function sendBinaryHttpRequest(
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
   if (isSafariBrowser() && (method === "PUT" || method === "POST")) {
-    const buffer = body instanceof ArrayBuffer ? body : await body.arrayBuffer();
-    return xhrBinaryRequest(url, method, buffer, safeHeaders, credentials);
+    // Prefer ArrayBufferView — browsers deprecate bare ArrayBuffer in XHR.send().
+    const bytes =
+      body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(await body.arrayBuffer());
+    return xhrBinaryRequest(url, method, bytes, safeHeaders, credentials);
   }
   const fetchBody = body instanceof ArrayBuffer ? body : body;
   return fetch(url, {
