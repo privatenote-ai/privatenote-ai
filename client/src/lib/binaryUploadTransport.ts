@@ -67,12 +67,18 @@ function filterBrowserUploadHeaders(headers: Record<string, string>): Record<str
   return filtered;
 }
 
+export type BinaryUploadProgress = {
+  loaded: number;
+  total: number;
+};
+
 function xhrBinaryRequest(
   url: string,
   method: string,
   body: XMLHttpRequestBodyInit,
   headers: Record<string, string>,
   credentials: RequestCredentials,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -81,6 +87,12 @@ function xhrBinaryRequest(
     xhr.responseType = "text";
     for (const [name, value] of Object.entries(filterBrowserUploadHeaders(headers))) {
       xhr.setRequestHeader(name, value);
+    }
+    if (onUploadProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || event.total <= 0) return;
+        onUploadProgress({ loaded: event.loaded, total: event.total });
+      };
     }
     xhr.onload = () => {
       try {
@@ -106,13 +118,17 @@ export async function sendBinaryHttpRequest(
   body: Blob | ArrayBuffer,
   headers: Record<string, string>,
   credentials: RequestCredentials,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
-  if (isSafariBrowser() && (method === "PUT" || method === "POST")) {
+  const isMutatingUpload = method === "PUT" || method === "POST";
+  // Safari always uses XHR for reliability; also use XHR when byte progress is needed
+  // (fetch has no upload progress API).
+  if (isMutatingUpload && (isSafariBrowser() || onUploadProgress)) {
     // Prefer ArrayBufferView — browsers deprecate bare ArrayBuffer in XHR.send().
     const bytes =
       body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(await body.arrayBuffer());
-    return xhrBinaryRequest(url, method, bytes, safeHeaders, credentials);
+    return xhrBinaryRequest(url, method, bytes, safeHeaders, credentials, onUploadProgress);
   }
   const fetchBody = body instanceof ArrayBuffer ? body : body;
   return fetch(url, {

@@ -2,7 +2,13 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
-import { bodyInitToUploadArrayBuffer, bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+import {
+  bodyInitToUploadArrayBuffer,
+  bodyInitToUploadBlob,
+  isSafariBrowser,
+  sendBinaryHttpRequest,
+  type BinaryUploadProgress,
+} from "@/lib/binaryUploadTransport";
 
 type BinaryUploadRoute = "direct-worker" | "same-origin";
 
@@ -403,6 +409,7 @@ async function executeBinaryUploadAttempt(
   method: string,
   body: Blob | ArrayBuffer,
   requestHeaders: Record<string, string>,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   return sendBinaryHttpRequest(
     attempt.url,
@@ -410,6 +417,7 @@ async function executeBinaryUploadAttempt(
     body,
     requestHeaders,
     attempt.credentials,
+    onUploadProgress,
   );
 }
 
@@ -430,7 +438,10 @@ export async function apiBinaryRequest<T = any>(
   method: string,
   body: BodyInit,
   headers: Record<string, string> = {},
-  options: { uploadToken?: string } = {},
+  options: {
+    uploadToken?: string;
+    onUploadProgress?: (progress: BinaryUploadProgress) => void;
+  } = {},
 ): Promise<T> {
   const uploadBody = resolveBinaryUploadBody(body);
   const bodyBytes = uploadBody instanceof ArrayBuffer ? uploadBody.byteLength : uploadBody.size;
@@ -512,6 +523,7 @@ export async function apiBinaryRequest<T = any>(
           requestMethod,
           uploadBody,
           requestHeaders,
+          options.onUploadProgress,
         );
         const responseText = await res.text();
         const elapsedMs = Math.round(performance.now() - startedAt);

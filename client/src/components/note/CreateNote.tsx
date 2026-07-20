@@ -119,6 +119,7 @@ async function uploadEncryptedAttachmentChunk(
   encryptedBytes: Uint8Array,
   headers: Record<string, string>,
   uploadToken: string,
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void,
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
@@ -132,7 +133,10 @@ async function uploadEncryptedAttachmentChunk(
     url,
   });
   try {
-    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, { uploadToken });
+    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, {
+      uploadToken,
+      onUploadProgress,
+    });
     logFileUpload("info", "chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
@@ -156,6 +160,7 @@ async function uploadEncryptedAttachmentChunk(
       try {
         await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
           uploadToken,
+          onUploadProgress,
         });
         logFileUpload("info", "chunk uploaded after Safari size-mismatch retry", {
           chunkIndex,
@@ -185,6 +190,7 @@ async function uploadEncryptedAttachmentChunk(
     try {
       await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
         uploadToken,
+        onUploadProgress,
       });
       logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
     } catch (retryError) {
@@ -1325,12 +1331,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsLoading(true);
+    // 4 MiB matches SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES — avoid awaiting the sodium
+    // module just to show an immediate 0/N chunk label.
+    const earlyTotalChunks = selectedFile
+      ? Math.max(1, Math.ceil(selectedFile.size / (4 * 1024 * 1024)))
+      : 0;
     setAttachmentProgress(
       selectedFile
         ? {
             phase: "prepare",
             progress: 2,
-            detail: `${selectedFile.name} · ${formatNoteFileSize(selectedFile.size)}`,
+            detail: t.attachmentProgressChunkDetail
+              .replace("{done}", "0")
+              .replace("{total}", String(earlyTotalChunks))
+              .replace("{name}", selectedFile.name),
           }
         : null,
     );
@@ -1491,45 +1505,79 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               .replace("{done}", String(done))
               .replace("{total}", String(total))
               .replace("{name}", selectedFile.name);
+          // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
+          // modal stuck with no chunk count for a long time on slow uplinks.
+          const completedChunksRef = { current: 0 };
+          const inFlightChunkRatios = new Map<number, number>();
+          let lastProgressPublishMs = 0;
+          const publishUploadProgress = (force = false) => {
+            const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+            if (!force && now - lastProgressPublishMs < 80) return;
+            lastProgressPublishMs = now;
+            let inFlightSum = 0;
+            for (const ratio of inFlightChunkRatios.values()) {
+              inFlightSum += ratio;
+            }
+            const overall =
+              totalChunks > 0
+                ? Math.min(1, (completedChunksRef.current + inFlightSum) / totalChunks)
+                : 1;
+            const nextProgress = Math.round(5 + overall * 90);
+            setAttachmentProgress((prev) => ({
+              phase: "encrypt",
+              progress: Math.max(prev?.progress ?? 0, nextProgress),
+              detail: chunkDetail(completedChunksRef.current, totalChunks),
+            }));
+          };
+          setAttachmentProgress({
+            phase: "encrypt",
+            progress: 5,
+            detail: chunkDetail(0, totalChunks),
+          });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
             fileWrapKey!,
             metadataKey!,
             reservedId,
             async (chunk) => {
-              await uploadEncryptedAttachmentChunk(
-                `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                chunk.encryptedBytes,
-                {
-                  "Content-Type": "application/octet-stream",
-                  "x-file-plaintext-size": String(selectedFile.size),
-                  "x-file-encrypted-size": String(encryptedSizeUpperBound),
-                  "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
-                },
-                uploadToken,
-              );
+              inFlightChunkRatios.set(chunk.index, 0);
+              publishUploadProgress(true);
+              try {
+                await uploadEncryptedAttachmentChunk(
+                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
+                  chunk.encryptedBytes,
+                  {
+                    "Content-Type": "application/octet-stream",
+                    "x-file-plaintext-size": String(selectedFile.size),
+                    "x-file-encrypted-size": String(encryptedSizeUpperBound),
+                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                  },
+                  uploadToken,
+                  ({ loaded, total }) => {
+                    inFlightChunkRatios.set(
+                      chunk.index,
+                      total > 0 ? Math.min(1, loaded / total) : 0,
+                    );
+                    publishUploadProgress();
+                  },
+                );
+              } finally {
+                inFlightChunkRatios.delete(chunk.index);
+              }
             },
             (pipeline) => {
-              // Drive the bar from uploaded chunks only. Encrypt runs ahead in the
-              // pipeline and used to jump the "X of Y" label while the bar stayed low.
+              // Drive the bar from uploaded bytes/chunks only. Encrypt runs ahead in
+              // the pipeline and used to jump the "X of Y" label while the bar stayed low.
               if (pipeline.phase !== "upload") {
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
                   progress: Math.max(prev?.progress ?? 0, 5),
-                  detail:
-                    prev?.detail ??
-                    `${selectedFile.name} · ${formatNoteFileSize(selectedFile.size)}`,
+                  detail: chunkDetail(0, pipeline.totalChunks),
                 }));
                 return;
               }
-              const ratio =
-                pipeline.totalChunks > 0 ? pipeline.completedChunks / pipeline.totalChunks : 1;
-              const nextProgress = Math.round(5 + ratio * 90);
-              setAttachmentProgress((prev) => ({
-                phase: "encrypt",
-                progress: Math.max(prev?.progress ?? 0, nextProgress),
-                detail: chunkDetail(pipeline.completedChunks, pipeline.totalChunks),
-              }));
+              completedChunksRef.current = pipeline.completedChunks;
+              publishUploadProgress(true);
             },
           );
           setAttachmentProgress({
