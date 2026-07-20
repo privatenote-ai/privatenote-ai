@@ -1403,6 +1403,27 @@ export const es: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Secretos CI/CD, .env y GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Cómo los .env, el historial de Git y los pipelines CI/CD filtran claves API—más una checklist para mantenerlos fuera de Git, logs y chat.",
+  blogSendSensitiveDocumentsTitle:
+    "Cómo enviar documentos sensibles de forma segura (sin perder el control)",
+  blogSendSensitiveDocumentsExcerpt:
+    "El correo deja copias permanentes. Los enlaces cifrados de un solo uso, no. Descubre por qué pasaportes, contratos y archivos fiscales necesitan cifrado en el navegador, acceso caducable y menos copias sobrantes.",
+  blogSendSensitiveDocumentsMetaTitle: "Envía documentos sensibles con seguridad",
+  blogSendSensitiveDocumentsMetaDescription:
+    "El correo deja copias permanentes, los enlaces de un solo uso no. Intercambio seguro con cifrado en el navegador, acceso caducable y menos archivos sobrantes.",
+  blogShareSshKeysSecurelyTitle:
+    "Cómo compartir claves SSH de forma segura (sin Slack, correo ni historial de Git)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Las claves públicas se pueden compartir. Las privadas no. Cuándo evitar entregar una clave privada, cómo enviarla con un enlace cifrado de un solo uso y qué extensiones de PrivateNote mantienen los PEM fuera del chat.",
+  blogShareSshKeysSecurelyMetaTitle: "Compartir claves SSH de forma segura",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Comparte claves SSH privadas sin Slack, correo ni Git. Prefiere claves públicas y enlaces cifrados de un solo uso desde VS Code, CLI o Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Los mensajes de Android e iPhone por fin tienen cifrado de extremo a extremo. Qué significa",
+  blogRcsE2eEncryptionExcerpt:
+    "El RCS entre Android e iPhone está ganando cifrado de extremo a extremo. Qué protege el E2EE, qué no, y cuándo los enlaces de un solo uso siguen siendo mejores para secretos.",
+  blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone cifrado E2EE",
+  blogRcsE2eEncryptionMetaDescription:
+    "RCS Android–iPhone gana cifrado E2EE. Qué protege, sus límites y cuándo siguen importando los enlaces de un solo uso.",
   blogSocialMediaBansTitle:
     "¿Funcionarán las prohibiciones de redes sociales para menores? Lo que dice la evidencia",
   blogSocialMediaBansExcerpt:

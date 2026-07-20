@@ -100,6 +100,21 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogCicdEnvGithubSecretsMetaTitle),
         description: t.blogCicdEnvGithubSecretsMetaDescription,
       };
+    case "send-sensitive-documents-securely":
+      return {
+        title: buildDocumentTitle(t.blogSendSensitiveDocumentsMetaTitle),
+        description: t.blogSendSensitiveDocumentsMetaDescription,
+      };
+    case "how-to-share-ssh-keys-securely":
+      return {
+        title: buildDocumentTitle(t.blogShareSshKeysSecurelyMetaTitle),
+        description: t.blogShareSshKeysSecurelyMetaDescription,
+      };
+    case "android-iphone-rcs-end-to-end-encryption":
+      return {
+        title: buildDocumentTitle(t.blogRcsE2eEncryptionMetaTitle),
+        description: t.blogRcsE2eEncryptionMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

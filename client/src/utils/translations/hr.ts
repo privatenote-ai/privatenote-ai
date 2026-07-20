@@ -1743,6 +1743,27 @@ export const hr: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Tajne u CI/CD, .env i GitHub curenja",
   blogCicdEnvGithubSecretsMetaDescription:
     "Kako .env datoteke, Git povijest i CI/CD pipelineovi cure API ključeve—plus kontrolna lista da ih držite izvan Gita, logova i chata.",
+  blogSendSensitiveDocumentsTitle:
+    "Kako sigurno poslati povjerljive dokumente (bez gubitka kontrole)",
+  blogSendSensitiveDocumentsExcerpt:
+    "E-pošta ostavlja trajne kopije. Jednokratni enkriptirani linkovi ne. Saznajte zašto putovnice, ugovori i porezne datoteke zahtijevaju enkripciju u pregledniku, pristup koji ističe i manje zaostalih kopija.",
+  blogSendSensitiveDocumentsMetaTitle: "Sigurno slanje povjerljivih dokumenata",
+  blogSendSensitiveDocumentsMetaDescription:
+    "E-pošta ostavlja trajne kopije. Jednokratni enkriptirani linkovi ne. Saznajte za sigurno slanje dokumenata uz enkripciju u pregledniku i pristup koji ističe.",
+  blogShareSshKeysSecurelyTitle:
+    "Kako sigurno dijeliti SSH ključeve (bez Slacka, e-pošte ili Git povijesti)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Javni ključevi smiju se dijeliti. Privatni ne. Kada izbjeći predaju privatnog ključa, kako ga isporučiti jednokratnim šifriranim linkom i koje PrivateNote ekstenzije drže PEM izvan chata.",
+  blogShareSshKeysSecurelyMetaTitle: "Sigurno dijeljenje SSH ključeva",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Dijelite SSH privatne ključeve bez Slacka, e-pošte ili Gita. Preferirajte javne ključeve i jednokratne šifrirane linkove iz VS Codea, CLI-ja ili Chromea.",
+  blogRcsE2eEncryptionTitle:
+    "Android i iPhone poruke konačno imaju enkripciju od kraja do kraja. Što to znači",
+  blogRcsE2eEncryptionExcerpt:
+    "Cross-platform RCS između Androida i iPhonea dobiva enkripciju od kraja do kraja. Što E2EE štiti, što ne, i kada jednokratni linkovi i dalje imaju više smisla za tajne.",
+  blogRcsE2eEncryptionMetaTitle: "Android/iPhone RCS E2EE enkripcija",
+  blogRcsE2eEncryptionMetaDescription:
+    "RCS razgovori između Androida i iPhonea dobivaju enkripciju od kraja do kraja. Što E2EE štiti, granice i kada jednokratni linkovi i dalje bitni.",
   blogSocialMediaBansTitle:
     "Hoće li zabrane društvenih mreža za djecu zaista djelovati? Što kaže evidencija",
   blogSocialMediaBansExcerpt:

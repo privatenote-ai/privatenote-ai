@@ -1457,6 +1457,27 @@ export const en: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env, and GitHub leaks",
   blogCicdEnvGithubSecretsMetaDescription:
     "How .env files, GitHub history, and CI/CD pipelines leak API keys—plus a practical checklist to keep secrets out of Git, logs, and chat.",
+  blogSendSensitiveDocumentsTitle:
+    "How to Send Sensitive Documents Securely (Without Losing Control)",
+  blogSendSensitiveDocumentsExcerpt:
+    "Email leaves permanent copies. One-time encrypted links don’t. Learn why passports, contracts, and tax files need browser encryption, expiring access, and fewer leftover copies.",
+  blogSendSensitiveDocumentsMetaTitle: "Send sensitive documents securely",
+  blogSendSensitiveDocumentsMetaDescription:
+    "Email leaves permanent copies. One-time encrypted links don’t. Learn secure document sharing with browser encryption, expiring access, and fewer leftover files.",
+  blogShareSshKeysSecurelyTitle:
+    "How to Share SSH Keys Securely (Without Slack, Email, or Git History)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Public keys are safe to share. Private keys are not. Learn when to avoid private-key handoffs, how to deliver one with a burn-after-reading encrypted link, and which PrivateNote developer extensions keep PEMs out of chat.",
+  blogShareSshKeysSecurelyMetaTitle: "How to share SSH keys securely",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Share SSH private keys without Slack, email, or git. Prefer public-key enrollment and one-time encrypted links from VS Code, CLI, or Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Android and iPhone Messages Are Finally End-to-End Encrypted. Here’s What That Means",
+  blogRcsE2eEncryptionExcerpt:
+    "Cross-platform RCS between Android and iPhone is gaining end-to-end encryption. Here’s what E2EE protects, what it doesn’t, and when one-time links still make more sense for secrets.",
+  blogRcsE2eEncryptionMetaTitle: "Android & iPhone RCS end-to-end encryption",
+  blogRcsE2eEncryptionMetaDescription:
+    "Android and iPhone RCS chats are rolling out end-to-end encryption. What E2EE protects, its limits, and when one-time secret links still matter.",
   blogSocialMediaBansTitle:
     "Will Social Media Bans for Children Actually Work? What the Evidence Says",
   blogSocialMediaBansExcerpt:

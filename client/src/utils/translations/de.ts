@@ -1399,6 +1399,27 @@ export const de: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env und GitHub-Leaks",
   blogCicdEnvGithubSecretsMetaDescription:
     "Wie .env-Dateien, Git-Historie und CI/CD API-Keys leaken—plus Checkliste, um Secrets aus Git, Logs und Chat herauszuhalten.",
+  blogSendSensitiveDocumentsTitle:
+    "Vertrauliche Dokumente sicher versenden (ohne die Kontrolle zu verlieren)",
+  blogSendSensitiveDocumentsExcerpt:
+    "E-Mail hinterlässt dauerhafte Kopien. Einmal-verschlüsselte Links nicht. Erfahren Sie, warum Pässe, Verträge und Steuerunterlagen Browserverschlüsselung, ablaufenden Zugriff und weniger übrig bleibende Kopien brauchen.",
+  blogSendSensitiveDocumentsMetaTitle: "Dokumente sicher versenden",
+  blogSendSensitiveDocumentsMetaDescription:
+    "E-Mail hinterlässt dauerhafte Kopien, Einmal-Links nicht. Sicheres Teilen mit Browserverschlüsselung, ablaufendem Zugriff und weniger übrigen Dateien.",
+  blogShareSshKeysSecurelyTitle:
+    "SSH-Schluessel sicher teilen (ohne Slack, E-Mail oder Git-Historie)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Oeffentliche Schluessel darf man teilen. Private nicht. Wann Sie Private-Key-Handoffs vermeiden, wie Sie einen mit einem einmaligen verschluesselten Link uebergeben—und welche PrivateNote-Entwickler-Extensions PEMs aus dem Chat halten.",
+  blogShareSshKeysSecurelyMetaTitle: "SSH-Schluessel sicher teilen",
+  blogShareSshKeysSecurelyMetaDescription:
+    "SSH-Privatschluessel ohne Slack, E-Mail oder Git teilen. Oeffentliche Keys und einmalige verschluesselte Links aus VS Code, CLI oder Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Android- und iPhone-Nachrichten sind endlich Ende-zu-Ende verschluesselt. Was das bedeutet",
+  blogRcsE2eEncryptionExcerpt:
+    "Cross-Platform-RCS zwischen Android und iPhone bekommt Ende-zu-Ende-Verschluesselung. Was E2EE schuetzt, was nicht – und wann Einmal-Links fuer Secrets weiter sinnvoller sind.",
+  blogRcsE2eEncryptionMetaTitle: "Android/iPhone RCS Ende-zu-Ende",
+  blogRcsE2eEncryptionMetaDescription:
+    "RCS-Chats zwischen Android und iPhone erhalten Ende-zu-Ende-Verschluesselung. Was E2EE schuetzt, Grenzen und wann Einmal-Links weiterhin zaehlen.",
   blogSocialMediaBansTitle:
     "Wirken Social-Media-Verbote fuer Kinder? Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:

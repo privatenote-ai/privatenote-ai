@@ -87,7 +87,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   "how-to-share-api-key-securely": {
     related: [
       "secrets-in-cicd-env-github-leaks",
-      "crypto-seed-phrase-one-time-link",
+      "how-to-share-ssh-keys-securely",
       "why-email-is-worst-for-secrets",
       "privatenote-for-developers",
       "one-time-secret-links",
@@ -96,6 +96,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "what-is-end-to-end-encryption": {
     related: [
+      "android-iphone-rcs-end-to-end-encryption",
       "chat-control-1-0-vote-explained",
       "chat-control-europe-cryptographers",
       "encrypted-vs-secure-file-sharing",
@@ -106,6 +107,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "secrets-never-send-in-chat": {
     related: [
+      "android-iphone-rcs-end-to-end-encryption",
       "why-email-is-worst-for-secrets",
       "send-secret-message-without-account",
       "one-time-secret-links",
@@ -125,6 +127,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "encrypted-vs-secure-file-sharing": {
     related: [
+      "send-sensitive-documents-securely",
       "one-time-secret-links",
       "what-is-end-to-end-encryption",
       "how-to-share-api-key-securely",
@@ -163,6 +166,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   "privatenote-for-developers": {
     related: [
       "how-to-share-api-key-securely",
+      "how-to-share-ssh-keys-securely",
       "secrets-in-cicd-env-github-leaks",
       "privatenote-codex",
       "securing-ai-agents-like-employees",
@@ -231,11 +235,44 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   "secrets-in-cicd-env-github-leaks": {
     related: [
       "how-to-share-api-key-securely",
+      "how-to-share-ssh-keys-securely",
       "privatenote-for-developers",
       "one-time-secret-links",
       "why-email-is-worst-for-secrets",
       "secrets-never-send-in-chat",
-      "crypto-seed-phrase-one-time-link",
+    ],
+    trust: "/security-resources",
+  },
+  "send-sensitive-documents-securely": {
+    related: [
+      "encrypted-vs-secure-file-sharing",
+      "one-time-secret-links",
+      "why-email-is-worst-for-secrets",
+      "how-to-make-a-private-note",
+      "send-secret-message-without-account",
+      "how-to-share-a-password-securely",
+    ],
+    trust: "/how-it-works",
+  },
+  "how-to-share-ssh-keys-securely": {
+    related: [
+      "how-to-share-api-key-securely",
+      "privatenote-for-developers",
+      "secrets-in-cicd-env-github-leaks",
+      "one-time-secret-links",
+      "secrets-never-send-in-chat",
+      "how-to-share-a-password-securely",
+    ],
+    trust: "/security-resources",
+  },
+  "android-iphone-rcs-end-to-end-encryption": {
+    related: [
+      "what-is-end-to-end-encryption",
+      "secrets-never-send-in-chat",
+      "one-time-secret-links",
+      "how-to-share-a-password-securely",
+      "chat-control-europe-cryptographers",
+      "send-secret-message-without-account",
     ],
     trust: "/security-resources",
   },

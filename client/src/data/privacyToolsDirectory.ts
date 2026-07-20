@@ -52,6 +52,7 @@ export const PRIVACY_DIRECTORY_BLOG_SLUGS: BlogCanonicalSlug[] = [
   "why-email-is-worst-for-secrets",
   "send-secret-message-without-account",
   "what-is-end-to-end-encryption",
+  "android-iphone-rcs-end-to-end-encryption",
   "how-to-share-api-key-securely",
   "secrets-in-cicd-env-github-leaks",
   "secrets-never-send-in-chat",

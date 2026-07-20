@@ -26,6 +26,9 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "social-media-bans-children-evidence": "2026-07-16T10:00:00.000Z",
   "how-to-share-a-password-securely": "2026-07-17T01:00:00.000Z",
   "secrets-in-cicd-env-github-leaks": "2026-07-17T12:00:00.000Z",
+  "send-sensitive-documents-securely": "2026-07-20T12:00:00.000Z",
+  "how-to-share-ssh-keys-securely": "2026-07-20T14:00:00.000Z",
+  "android-iphone-rcs-end-to-end-encryption": "2026-07-20T16:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -53,6 +56,9 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "social-media-bans-children-evidence": 7,
   "how-to-share-a-password-securely": 7,
   "secrets-in-cicd-env-github-leaks": 7,
+  "send-sensitive-documents-securely": 7,
+  "how-to-share-ssh-keys-securely": 7,
+  "android-iphone-rcs-end-to-end-encryption": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -88,6 +94,48 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -25,
+      title: t.blogRcsE2eEncryptionTitle,
+      excerpt: t.blogRcsE2eEncryptionExcerpt,
+      author: "PrivateNote.ai",
+      slug: "android-iphone-rcs-end-to-end-encryption",
+      publishedAt: at("android-iphone-rcs-end-to-end-encryption"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy, t.blogTagCryptography]),
+      content: "",
+      coverImage: "/images/blog-android-iphone-rcs-e2e-hero.jpg",
+      published: true,
+      createdAt: at("android-iphone-rcs-end-to-end-encryption"),
+      updatedAt: at("android-iphone-rcs-end-to-end-encryption"),
+    },
+    {
+      id: -24,
+      title: t.blogShareSshKeysSecurelyTitle,
+      excerpt: t.blogShareSshKeysSecurelyExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-share-ssh-keys-securely",
+      publishedAt: at("how-to-share-ssh-keys-securely"),
+      tags: JSON.stringify([t.blogTagDeveloper, t.blogTagSecurity, t.blogTagPasswords]),
+      content: "",
+      coverImage: "/images/blog-share-ssh-keys-securely-hero.jpg",
+      published: true,
+      createdAt: at("how-to-share-ssh-keys-securely"),
+      updatedAt: at("how-to-share-ssh-keys-securely"),
+    },
+    {
+      id: -23,
+      title: t.blogSendSensitiveDocumentsTitle,
+      excerpt: t.blogSendSensitiveDocumentsExcerpt,
+      author: "PrivateNote.ai",
+      slug: "send-sensitive-documents-securely",
+      publishedAt: at("send-sensitive-documents-securely"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy]),
+      content: "",
+      coverImage: "/images/blog-send-sensitive-documents-securely-hero.jpg",
+      published: true,
+      createdAt: at("send-sensitive-documents-securely"),
+      updatedAt: at("send-sensitive-documents-securely"),
+    },
     {
       id: -22,
       title: t.blogCicdEnvGithubSecretsTitle,

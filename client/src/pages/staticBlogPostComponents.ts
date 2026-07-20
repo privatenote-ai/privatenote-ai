@@ -94,4 +94,16 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/CicdEnvGithubSecretsPost"),
     "CicdEnvGithubSecretsPost",
   ),
+  "send-sensitive-documents-securely": lazyPost(
+    () => import("@/components/blog/SendSensitiveDocumentsSecurelyPost"),
+    "SendSensitiveDocumentsSecurelyPost",
+  ),
+  "how-to-share-ssh-keys-securely": lazyPost(
+    () => import("@/components/blog/ShareSshKeysSecurelyPost"),
+    "ShareSshKeysSecurelyPost",
+  ),
+  "android-iphone-rcs-end-to-end-encryption": lazyPost(
+    () => import("@/components/blog/RcsE2eEncryptionPost"),
+    "RcsE2eEncryptionPost",
+  ),
 };

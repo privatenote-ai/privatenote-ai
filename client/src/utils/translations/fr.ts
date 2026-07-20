@@ -1736,6 +1736,27 @@ export const fr: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Secrets CI/CD, .env et fuites GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Comment les fichiers .env, l’historique Git et les pipelines CI/CD fuient des clés API—plus une checklist pour les garder hors de Git, des logs et du chat.",
+  blogSendSensitiveDocumentsTitle:
+    "Comment envoyer des documents sensibles en toute sécurité (sans perdre le contrôle)",
+  blogSendSensitiveDocumentsExcerpt:
+    "L'e-mail laisse des copies permanentes. Les liens chiffrés à usage unique, non. Découvrez pourquoi passeports, contrats et documents fiscaux ont besoin de chiffrement dans le navigateur, d'accès expirant et de moins de copies restantes.",
+  blogSendSensitiveDocumentsMetaTitle: "Envoyer des documents sensibles",
+  blogSendSensitiveDocumentsMetaDescription:
+    "L'e-mail laisse des copies permanentes, les liens à usage unique non. Partage sécurisé : chiffrement navigateur, accès expirant, moins de fichiers restants.",
+  blogShareSshKeysSecurelyTitle:
+    "Comment partager des clés SSH en sécurité (sans Slack, e-mail ni historique Git)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Les clés publiques se partagent. Les privées non. Quand éviter de transmettre une clé privée, comment la livrer via un lien chiffré à usage unique, et quelles extensions PrivateNote gardent les PEM hors du chat.",
+  blogShareSshKeysSecurelyMetaTitle: "Partager des clés SSH en sécurité",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Partagez des clés SSH privées sans Slack, e-mail ni Git. Préférez les clés publiques et les liens chiffrés uniques via VS Code, CLI ou Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Les messages Android et iPhone sont enfin chiffrés de bout en bout. Voici ce que cela signifie",
+  blogRcsE2eEncryptionExcerpt:
+    "Le RCS cross-platform entre Android et iPhone gagne le chiffrement de bout en bout. Ce que l’E2EE protège, ce qu’il ne protège pas, et quand les liens à usage unique restent plus adaptés aux secrets.",
+  blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone chiffrement E2EE",
+  blogRcsE2eEncryptionMetaDescription:
+    "Le RCS Android–iPhone déploie le chiffrement de bout en bout. Ce que l’E2EE protège, ses limites, et quand les liens secrets à usage unique comptent encore.",
   blogSocialMediaBansTitle:
     "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ? Ce que dit la science",
   blogSocialMediaBansExcerpt:

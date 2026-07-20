@@ -1364,6 +1364,27 @@ export const nl: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env en GitHub-leaks",
   blogCicdEnvGithubSecretsMetaDescription:
     "Hoe .env-bestanden, Git-historie en CI/CD-pipelines API-keys lekken—plus een checklist om secrets uit Git, logs en chat te houden.",
+  blogSendSensitiveDocumentsTitle:
+    "Hoe je Gevoelige Documenten Veilig Verstuurt (Zonder de Controle te Verliezen)",
+  blogSendSensitiveDocumentsExcerpt:
+    "E-mail laat permanente kopieën achter. Eenmalige versleutelde links niet. Ontdek waarom paspoorten, contracten en belastingdossiers browserversleuteling, verlopende toegang en minder overgebleven kopieën nodig hebben.",
+  blogSendSensitiveDocumentsMetaTitle: "Gevoelige documenten veilig versturen",
+  blogSendSensitiveDocumentsMetaDescription:
+    "E-mail laat permanente kopieën achter. Eenmalige links niet. Deel documenten veilig met browserversleuteling, verlopende toegang en minder restbestanden.",
+  blogShareSshKeysSecurelyTitle:
+    "SSH-sleutels veilig delen (zonder Slack, e-mail of Git-geschiedenis)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Publieke sleutels mag je delen. Privésleutels niet. Wanneer je een private-key-handoff vermijdt, hoe je er een met een eenmalige versleutelde link bezorgt—en welke PrivateNote-developer-extensies PEMs uit de chat houden.",
+  blogShareSshKeysSecurelyMetaTitle: "SSH-sleutels veilig delen",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Deel SSH-privésleutels zonder Slack, e-mail of Git. Gebruik publieke keys en eenmalige versleutelde links via VS Code, CLI of Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Android- en iPhone-berichten zijn eindelijk end-to-end versleuteld. Dit betekent het",
+  blogRcsE2eEncryptionExcerpt:
+    "Cross-platform RCS tussen Android en iPhone krijgt end-to-end encryptie. Wat E2EE beschermt, wat niet, en wanneer eenmalige links nog steeds beter zijn voor secrets.",
+  blogRcsE2eEncryptionMetaTitle: "Android & iPhone RCS end-to-end encryptie",
+  blogRcsE2eEncryptionMetaDescription:
+    "RCS-chats tussen Android en iPhone krijgen end-to-end encryptie. Wat E2EE beschermt, de grenzen, en wanneer eenmalige secret-links nog tellen.",
   blogSocialMediaBansTitle:
     "Werken socialmediaverboden voor kinderen? Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:

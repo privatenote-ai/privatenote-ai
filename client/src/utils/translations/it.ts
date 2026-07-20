@@ -1736,6 +1736,27 @@ export const it: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Segreti CI/CD, .env e perdite su GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Come file .env, cronologia Git e pipeline CI/CD espongono chiavi API—più una checklist per tenerle fuori da Git, log e chat.",
+  blogSendSensitiveDocumentsTitle:
+    "Come Inviare Documenti Sensibili in Modo Sicuro (Senza Perdere il Controllo)",
+  blogSendSensitiveDocumentsExcerpt:
+    "L'e-mail lascia copie permanenti. I link cifrati monouso no. Scopri perché passaporti, contratti e documenti fiscali hanno bisogno di cifratura nel browser, accesso a scadenza e meno copie residue.",
+  blogSendSensitiveDocumentsMetaTitle: "Invia documenti sensibili in sicurezza",
+  blogSendSensitiveDocumentsMetaDescription:
+    "L'e-mail lascia copie permanenti. I link cifrati monouso no. Scopri la condivisione sicura con cifratura nel browser, accesso a scadenza e meno file residui.",
+  blogShareSshKeysSecurelyTitle:
+    "Come condividere chiavi SSH in modo sicuro (senza Slack, email o cronologia Git)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Le chiavi pubbliche si possono condividere. Quelle private no. Quando evitare il passaggio di una chiave privata, come consegnarla con un link cifrato monouso e quali estensioni PrivateNote tengono i PEM fuori dalla chat.",
+  blogShareSshKeysSecurelyMetaTitle: "Condividere chiavi SSH in modo sicuro",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Condividi chiavi SSH private senza Slack, email o Git. Preferisci chiavi pubbliche e link cifrati monouso da VS Code, CLI o Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "I messaggi Android e iPhone sono finalmente crittografati end-to-end. Cosa significa",
+  blogRcsE2eEncryptionExcerpt:
+    "L’RCS cross-platform tra Android e iPhone sta ottenendo la crittografia end-to-end. Cosa protegge l’E2EE, cosa no, e quando i link monouso restano più adatti ai segreti.",
+  blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone crittografia E2EE",
+  blogRcsE2eEncryptionMetaDescription:
+    "Le chat RCS Android–iPhone stanno adottando la crittografia end-to-end. Cosa protegge l’E2EE, i limiti e quando i link monouso contano ancora.",
   blogSocialMediaBansTitle:
     "I divieti sui social media per i minori funzioneranno? Cosa dice l'evidenza",
   blogSocialMediaBansExcerpt:

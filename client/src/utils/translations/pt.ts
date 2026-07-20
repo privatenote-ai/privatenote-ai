@@ -1743,6 +1743,27 @@ export const pt: Translations = {
   blogCicdEnvGithubSecretsMetaTitle: "Segredos CI/CD, .env e GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Como ficheiros .env, histórico Git e pipelines CI/CD vazam chaves API—mais um checklist para as manter fora de Git, logs e chat.",
+  blogSendSensitiveDocumentsTitle:
+    "Como Enviar Documentos Sensíveis com Segurança (Sem Perder o Controle)",
+  blogSendSensitiveDocumentsExcerpt:
+    "O e-mail deixa cópias permanentes. Links criptografados de uso único não. Saiba por que passaportes, contratos e arquivos fiscais precisam de criptografia no navegador, acesso com expiração e menos cópias remanescentes.",
+  blogSendSensitiveDocumentsMetaTitle: "Envie documentos sensíveis com segurança",
+  blogSendSensitiveDocumentsMetaDescription:
+    "O e-mail deixa cópias permanentes. Links de uso único não. Partilhe documentos com criptografia no navegador, acesso com expiração e menos cópias.",
+  blogShareSshKeysSecurelyTitle:
+    "Como partilhar chaves SSH com segurança (sem Slack, e-mail ou histórico Git)",
+  blogShareSshKeysSecurelyExcerpt:
+    "Chaves públicas podem partilhar-se. As privadas não. Quando evitar entregar uma chave privada, como a enviar com um link cifrado de uso único e que extensões PrivateNote mantêm PEMs fora do chat.",
+  blogShareSshKeysSecurelyMetaTitle: "Partilhar chaves SSH com segurança",
+  blogShareSshKeysSecurelyMetaDescription:
+    "Partilhe chaves SSH privadas sem Slack, e-mail ou Git. Prefira chaves públicas e links cifrados de uso único via VS Code, CLI ou Chrome.",
+  blogRcsE2eEncryptionTitle:
+    "Mensagens Android e iPhone finalmente têm criptografia ponta a ponta. O que isso significa",
+  blogRcsE2eEncryptionExcerpt:
+    "O RCS entre Android e iPhone está a ganhar criptografia ponta a ponta. O que o E2EE protege, o que não protege, e quando links de uso único ainda fazem mais sentido para segredos.",
+  blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone ponta a ponta",
+  blogRcsE2eEncryptionMetaDescription:
+    "Chats RCS entre Android e iPhone estão a receber criptografia ponta a ponta. O que o E2EE protege, os limites e quando links de uso único ainda importam.",
   blogSocialMediaBansTitle:
     "As proibições de redes sociais para crianças funcionarão? O que a evidência diz",
   blogSocialMediaBansExcerpt:

@@ -23,6 +23,9 @@ export const BLOG_CANONICAL_SLUGS = [
   "social-media-bans-children-evidence",
   "how-to-share-a-password-securely",
   "secrets-in-cicd-env-github-leaks",
+  "send-sensitive-documents-securely",
+  "how-to-share-ssh-keys-securely",
+  "android-iphone-rcs-end-to-end-encryption",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -270,6 +273,39 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "segredos-cicd-env-vazamentos-github",
     sr: "tajne-u-cicd-env-github-curenja",
     hr: "tajne-u-cicd-env-github-curenja",
+  },
+  "send-sensitive-documents-securely": {
+    en: "send-sensitive-documents-securely",
+    de: "sensible-dokumente-sicher-senden",
+    fr: "envoyer-documents-sensibles-en-securite",
+    es: "enviar-documentos-sensibles-de-forma-segura",
+    it: "inviare-documenti-sensibili-in-modo-sicuro",
+    nl: "gevoelige-documenten-veilig-versturen",
+    pt: "enviar-documentos-sensiveis-com-seguranca",
+    sr: "bezbedno-slanje-osetljivih-dokumenata",
+    hr: "sigurno-slanje-osjetljivih-dokumenata",
+  },
+  "how-to-share-ssh-keys-securely": {
+    en: "how-to-share-ssh-keys-securely",
+    de: "ssh-schluessel-sicher-teilen",
+    fr: "partager-cles-ssh-en-securite",
+    es: "compartir-claves-ssh-de-forma-segura",
+    it: "condividere-chiavi-ssh-in-modo-sicuro",
+    nl: "ssh-sleutels-veilig-delen",
+    pt: "compartilhar-chaves-ssh-com-seguranca",
+    sr: "bezbedno-deljenje-ssh-kljuceva",
+    hr: "sigurno-dijeljenje-ssh-kljuceva",
+  },
+  "android-iphone-rcs-end-to-end-encryption": {
+    en: "android-iphone-rcs-end-to-end-encryption",
+    de: "android-iphone-rcs-ende-zu-ende-verschluesselung",
+    fr: "android-iphone-rcs-chiffrement-de-bout-en-bout",
+    es: "android-iphone-rcs-cifrado-de-extremo-a-extremo",
+    it: "android-iphone-rcs-crittografia-end-to-end",
+    nl: "android-iphone-rcs-end-to-end-encryptie",
+    pt: "android-iphone-rcs-criptografia-ponta-a-ponta",
+    sr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
+    hr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
   },
 };
 

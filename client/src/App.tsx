@@ -213,13 +213,17 @@ function Router() {
       <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
+          {/*
+            One route per locale home. Wouter ignores trailing slashes, so a
+            separate `/de` → `/de/` Redirect would match `/de/` first and render
+            an empty page (navbar/footer only). Server/prerender still canonicalize to `/de/`.
+          */}
           {NON_ENGLISH_LANGUAGES.map((language) => (
-            <Fragment key={`${language}-home`}>
-              <Route path={`/${language}`}>
-                <Redirect to={`/${language}/`} />
-              </Route>
-              <Route path={`/${language}/`} component={() => <HomeRoute language={language} />} />
-            </Fragment>
+            <Route
+              key={`${language}-home`}
+              path={`/${language}`}
+              component={() => <HomeRoute language={language} />}
+            />
           ))}
           {NON_ENGLISH_LANGUAGES.map((language) => (
             <Fragment key={language}>

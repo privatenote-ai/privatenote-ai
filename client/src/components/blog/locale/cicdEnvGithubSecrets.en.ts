@@ -243,7 +243,7 @@ export const cicdEnvGithubSecretsEn: CicdEnvGithubSecretsArticleCopy = {
       paragraphs: [
         "GitHub and CI/CD are excellent at preserving work. That is exactly why they are poor places to preserve secrets.",
         "Keep `.env` files local, gitignored, and limited to development where you can. Put automation credentials in native CI secrets, a secrets manager, or short-lived OIDC credentials. When a human needs a value, use a client-side encrypted one-time note—then rotate.",
-        "If your team still pastes keys into PRs or commits “just staging” credentials, start with the [API key sharing workflow](blog:how-to-share-api-key-securely) and the checklist above. Wire the [CLI](app:developers/cli), [VS Code extension](app:developers/vscode), or [Chrome extension](chrome:extension) into the path of least resistance so the secure option is also the fast one.",
+        "If your team still pastes keys into PRs or commits “just staging” credentials, start with the [API key sharing workflow](blog:how-to-share-api-key-securely) and the checklist above. For server access material, use [how to share SSH keys securely](blog:how-to-share-ssh-keys-securely). Wire the [CLI](app:developers/cli), [VS Code extension](app:developers/vscode), or [Chrome extension](chrome:extension) into the path of least resistance so the secure option is also the fast one.",
       ],
     },
   ],
