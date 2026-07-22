@@ -4,7 +4,16 @@ on:
   push:
     branches:
       - main
+  # Periodic safety net: re-render every route from scratch once a week so any
+  # drift in cached/reused HTML (missed by the incremental classifier) is healed.
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
   workflow_dispatch:
+    inputs:
+      force_full:
+        description: "Force a full prerender of every route (ignore incremental cache)"
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -48,13 +57,18 @@ jobs:
           PRERENDER_HTML_CACHE_DIR: .prerender-html-cache
           PRERENDER_BASE_SHA: ${{ github.event.before }}
           PRERENDER_HEAD_SHA: ${{ github.sha }}
+          # Scheduled runs and manual force_full dispatches ignore the cache and
+          # re-render every route. getChangedFiles() returns null on "1".
+          PRERENDER_FORCE_FULL: ${{ (github.event_name == 'schedule' || inputs.force_full) && '1' || '' }}
 
       - name: Save prerender HTML cache
         if: success()
         uses: actions/cache/save@v4
         with:
           path: .prerender-html-cache
-          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}
+          # run_id keeps the key unique so a scheduled full render persists its
+          # fresh cache; restore-keys prefix-matches the most recent one.
+          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}-${{ github.run_id }}
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy prerender --project-name "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch main

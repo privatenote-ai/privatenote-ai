@@ -1566,13 +1566,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               }
             },
             (pipeline) => {
-              // Drive the bar from uploaded bytes/chunks only. Encrypt runs ahead in
-              // the pipeline and used to jump the "X of Y" label while the bar stayed low.
+              // Drive the bar and the "X of Y" label from uploaded chunks only. Encrypt
+              // runs ahead in the pipeline, so reacting to its callbacks made the label
+              // flip between the real uploaded count and 0. Keep the label on the last
+              // uploaded count instead of resetting it.
               if (pipeline.phase !== "upload") {
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
                   progress: Math.max(prev?.progress ?? 0, 5),
-                  detail: chunkDetail(0, pipeline.totalChunks),
+                  detail: chunkDetail(completedChunksRef.current, pipeline.totalChunks),
                 }));
                 return;
               }
