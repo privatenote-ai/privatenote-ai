@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle,
@@ -13,8 +13,10 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { BlogGuideLayout, BlogGuideMobileToc } from "@/components/blog/BlogGuideLayout";
+import { BlogKeyTakeaways } from "@/components/blog/BlogKeyTakeaways";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { shareApiKeySecurelyDe } from "@/components/blog/locale/shareApiKeySecurely.de";
 import { shareApiKeySecurelyEn } from "@/components/blog/locale/shareApiKeySecurely.en";
@@ -28,11 +30,7 @@ import { shareApiKeySecurelySr } from "@/components/blog/locale/shareApiKeySecur
 import type { ShareApiKeyArticleCopy } from "@/components/blog/locale/shareApiKeySecurely.types";
 import { PASSWORDS_LU_PARTNER_URLS } from "@/config/passwordsLuPartner";
 
-const heroImagePath = "/images/blog-api-key-sharing-hero.jpg";
-const heroArtistUrl =
-  "https://pixabay.com/users/hans-2/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=65044";
-const heroPixabayUrl =
-  "https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=65044";
+const heroImagePath = "/images/blog-api-key-sharing-hero.png";
 
 const handoffIcons = {
   scope: KeyRound,
@@ -52,6 +50,8 @@ const copy: Partial<Record<SupportedLanguage, ShareApiKeyArticleCopy>> & { en: S
   hr: shareApiKeySecurelyHr,
   sr: shareApiKeySecurelySr,
 };
+
+const sectionClass = "scroll-mt-28 space-y-4";
 
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
@@ -127,11 +127,13 @@ function HandoffFlowNode({
   detail: string;
 }) {
   return (
-    <div className="flex h-full min-h-[8.25rem] w-full flex-col items-center justify-center rounded-2xl border border-gray-200/90 bg-white px-3 py-4 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+    <div className="flex h-full min-h-[8.25rem] w-full flex-col items-center justify-start rounded-2xl border border-gray-200/90 bg-white px-3 py-4 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
       <div className="mb-2.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <Icon className="h-5 w-5 text-primary" aria-hidden />
       </div>
-      <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-white">{label}</p>
+      <p className="flex min-h-[2.5rem] items-start justify-center text-sm font-semibold leading-snug text-gray-900 dark:text-white">
+        {label}
+      </p>
       <p className="mt-1 min-h-[2.5rem] text-xs leading-relaxed text-gray-600 dark:text-gray-400">{detail}</p>
     </div>
   );
@@ -139,7 +141,7 @@ function HandoffFlowNode({
 
 function HandoffFlowArrow() {
   return (
-    <div className="flex shrink-0 items-center justify-center self-center px-0.5 sm:px-1" aria-hidden>
+    <div className="flex shrink-0 items-start justify-center self-stretch px-0.5 pt-7 sm:px-1" aria-hidden>
       <ArrowRight className="hidden h-5 w-5 text-gray-400 sm:block" />
       <ArrowRight className="h-5 w-5 rotate-90 text-gray-400 sm:hidden" />
     </div>
@@ -158,53 +160,57 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
     return { to: href, external: true };
   };
 
-  return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
+  const toc = useMemo(
+    () => [
+      { id: "treat-like-passwords", label: article.sections.treatLikePasswords.title },
+      { id: "never-paste", label: article.sections.neverPaste.title },
+      { id: "where-keys-leak", label: article.sections.whereLeak.title },
+      { id: "before-you-share", label: article.sections.beforeShare.title },
+      { id: "high-risk-keys", label: article.sections.highRisk.title },
+      { id: "safer-handoff", label: article.sections.handoff.title },
+      { id: "how-privatenote-fits", label: article.sections.privateNote.title },
+      { id: "faq", label: article.sections.faq.title },
+    ],
+    [article],
+  );
 
+  return (
+    <BlogGuideLayout
+      slug="how-to-share-api-key-securely"
+      tocHeading={t.securityTocTitle}
+      toc={toc}
+    >
       <article>
         <BlogPostHeader
           slug="how-to-share-api-key-securely"
           title={t.blogApiKeySharingTitle}
+          subtitle={t.blogApiKeySharingSubtitle}
           excerpt={t.blogApiKeySharingExcerpt}
-          headerClassName="mb-12"
-        >
-          <figure className="mt-8">
+          faqs={article.faqs}
+          headerClassName="mb-12 max-w-none sm:mb-14"
+        />
+
+        <div className="max-w-3xl space-y-10 text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
+          <BlogKeyTakeaways heading={article.takeawaysHeading} items={article.takeaways} />
+
+          <BlogGuideMobileToc />
+
+          <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">{article.intro}</p>
+
+          <figure>
             <img
               src={heroImagePath}
               alt={article.heroAlt}
-              width={1000}
-              height={750}
-              className="aspect-[16/9] w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
+              width={1024}
+              height={682}
+              className="h-auto w-full rounded-2xl border border-gray-200 object-cover shadow-sm dark:border-gray-800"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
-              {article.heroCaptionPrefix}{" "}
-              <a
-                href={heroArtistUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-2 hover:opacity-90"
-              >
-                {article.heroArtist}
-              </a>{" "}
-              {article.heroCaptionMiddle}{" "}
-              <a
-                href={heroPixabayUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-2 hover:opacity-90"
-              >
-                {article.heroSource}
-              </a>
-              .
+              {article.heroCaption}
             </figcaption>
           </figure>
-        </BlogPostHeader>
 
-        <div className="space-y-10 text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
-          <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">{article.intro}</p>
-
-          <section className="space-y-4">
+          <section id="treat-like-passwords" className={sectionClass}>
             <SectionHeading>{article.sections.treatLikePasswords.title}</SectionHeading>
             {article.sections.treatLikePasswords.paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -213,7 +219,7 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="never-paste" className={sectionClass}>
             <SectionHeading>{article.sections.neverPaste.title}</SectionHeading>
             <p>{article.sections.neverPaste.intro}</p>
             <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/20">
@@ -234,19 +240,25 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="where-keys-leak" className={sectionClass}>
             <SectionHeading>{article.sections.whereLeak.title}</SectionHeading>
             <p>{article.sections.whereLeak.intro}</p>
-            <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
               {article.leakSources.map((source) => (
-                <BoldParagraph key={source.title} title={source.title} body={source.body} />
+                <div
+                  key={source.title}
+                  className="rounded-2xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950/40 sm:px-5"
+                >
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{source.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{source.body}</p>
+                </div>
               ))}
             </div>
           </section>
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="before-you-share" className={sectionClass}>
             <SectionHeading>{article.sections.beforeShare.title}</SectionHeading>
             <p>{article.sections.beforeShare.intro}</p>
             <div className="space-y-4">
@@ -275,7 +287,7 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="high-risk-keys" className={sectionClass}>
             <SectionHeading>{article.sections.highRisk.title}</SectionHeading>
             <p>{article.sections.highRisk.p1}</p>
             <p>{renderInlineContent(article.sections.highRisk.p2, resolveLink)}</p>
@@ -304,7 +316,7 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="safer-handoff" className={sectionClass}>
             <SectionHeading>{article.sections.handoff.title}</SectionHeading>
             <p className="text-pretty">{article.sections.handoff.intro}</p>
             <figure className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] p-5 dark:border-primary/25 dark:bg-primary/[0.07] sm:p-6">
@@ -331,9 +343,10 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="how-privatenote-fits" className={sectionClass}>
             <SectionHeading>{article.sections.privateNote.title}</SectionHeading>
             <p>{article.sections.privateNote.p1}</p>
+            <p>{renderInlineContent(article.sections.privateNote.relatedSsh, resolveLink)}</p>
             <p>{renderInlineContent(article.sections.privateNote.p2, resolveLink)}</p>
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
               <p className="mb-3 font-mono text-sm text-gray-800 dark:text-gray-100">
@@ -359,7 +372,7 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
           <hr className="border-gray-200 dark:border-gray-800" />
 
-          <section className="space-y-4">
+          <section id="faq" className={sectionClass}>
             <SectionHeading>{article.sections.faq.title}</SectionHeading>
             <div className="space-y-4">
               {article.faqs.map((faq) => (
@@ -394,6 +407,6 @@ export const ShareApiKeySecurelyPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="how-to-share-api-key-securely" />
       </article>
-    </div>
+    </BlogGuideLayout>
   );
 };

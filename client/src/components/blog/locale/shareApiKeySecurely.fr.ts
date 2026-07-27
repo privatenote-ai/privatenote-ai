@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyFr: ShareApiKeyArticleCopy = {
-  heroAlt: "Clés d'hôtel accrochées à un porte-clés en bois numéroté",
-  heroCaptionPrefix: "Image de",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "sur",
-  heroSource: "Pixabay",
+  heroAlt: "Deux ordinateurs portables échangeant une clé API via un lien chiffré à usage unique PrivateNote",
+  heroCaption: "Illustration générée pour PrivateNote.ai.",
+  takeawaysHeading: "À retenir",
+  takeaways: [
+    "Ne collez jamais de clés API dans un e-mail, chat, ticket, document ou Git.",
+    "Clé la plus étroite possible : moindre privilège, courte durée, puis rotation.",
+    "Envoyez les secrets via un lien à usage unique chiffré dans le navigateur.",
+    "Pour les clés à haut risque, chiffrez d’abord en local ; ne partagez que le ciphertext.",
+    "Surveillez les usages inhabituels—PrivateNote est une passation, pas un coffre.",
+  ],
   intro:
     "Tout développeur finit un jour par devoir envoyer une clé API à quelqu'un d'autre — pour un accès staging, un sous-traitant, une intégration webhook ou une passation client. Le chemin le plus rapide est généralement aussi celui qui laisse la trace la plus longue.",
   avoidChannels: [
@@ -129,6 +134,8 @@ export const shareApiKeySecurelyFr: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Comment PrivateNote s'inscrit dans la passation",
       p1: "PrivateNote est conçu pour le moment personne à personne : clés API, clés SSH privées, identifiants de base de données, codes de récupération, secrets de signature webhook et mots de passe temporaires qui doivent atteindre une personne sans devenir un enregistrement permanent.",
+      relatedSsh:
+        "Si le secret est une clé SSH plutôt qu’une clé API, voir [comment partager des clés SSH en toute sécurité](blog:how-to-share-ssh-keys-securely) pour clés publiques vs privées, deploy keys et extensions d’éditeur.",
       p2: "Le secret est chiffré dans votre navigateur avant l'envoi. PrivateNote stocke du texte chiffré, pas du texte en clair. La clé de déchiffrement se trouve dans le fragment d'URL — la partie après le `#` — que les navigateurs n'envoient pas au serveur lors du chargement de la page.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Le serveur reçoit l'ID de la note et la charge utile chiffrée.",

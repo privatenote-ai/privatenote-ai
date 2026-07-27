@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyEn: ShareApiKeyArticleCopy = {
-  heroAlt: "Hotel keys hanging in a numbered wooden key rack",
-  heroCaptionPrefix: "Image by",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "from",
-  heroSource: "Pixabay",
+  heroAlt: "Two laptops exchanging an API key through a PrivateNote one-time encrypted link",
+  heroCaption: "Illustration generated for PrivateNote.ai.",
+  takeawaysHeading: "Key takeaways",
+  takeaways: [
+    "Never paste API keys into email, chat, tickets, docs, or Git.",
+    "Use the narrowest key: least privilege, short life, rotate when done.",
+    "Send secrets via a browser-encrypted one-time link.",
+    "For high-risk keys, encrypt locally first; share only ciphertext.",
+    "Monitor unusual usage after sharing—PrivateNote is handoff, not a vault.",
+  ],
   intro:
     "Every developer eventually needs to send an API key to someone else — for staging access, a contractor, a webhook integration, or a client handoff. The fastest path is usually also the one that leaves the longest trail.",
   avoidChannels: [
@@ -128,7 +133,9 @@ export const shareApiKeySecurelyEn: ShareApiKeyArticleCopy = {
     },
     privateNote: {
       title: "How PrivateNote fits the handoff",
-      p1: "PrivateNote is built for the human-to-human moment: API keys, SSH private keys, database credentials, recovery codes, webhook signing secrets, and temporary passwords that need to reach one person without becoming a permanent record. For SSH-specific guidance—public vs private keys, deploy keys, and editor extensions—see [how to share SSH keys securely](blog:how-to-share-ssh-keys-securely).",
+      p1: "PrivateNote is built for the human-to-human moment: API keys, SSH private keys, database credentials, recovery codes, webhook signing secrets, and temporary passwords that need to reach one person without becoming a permanent record.",
+      relatedSsh:
+        "If the secret is an SSH key rather than an API credential, see [how to share SSH keys securely](blog:how-to-share-ssh-keys-securely) for public vs private keys, deploy keys, and editor extensions.",
       p2: "The secret is encrypted in your browser before upload. PrivateNote stores ciphertext, not plaintext. The decryption key lives in the URL fragment — the part after the `#` — which browsers do not send to the server when loading the page.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "The server receives the note ID and encrypted payload.",

@@ -4,7 +4,9 @@ import { ArrowLeft, Lock, Zap, BarChart3, Shield, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { passwordGenerationHr } from "@/components/blog/locale/passwordGeneration.hr";
@@ -320,8 +322,7 @@ export const PasswordGenerationPost: React.FC = () => {
   const blogPath = localizedPath("/blog", language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
+    <BlogGuideArticle slug="how-we-generate-passwords">
       <article>
         <BlogPostHeader slug="how-we-generate-passwords" title={t.blogPasswordTitle} headerClassName="mb-16">
           <div className="mt-6 space-y-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mb-8">
@@ -344,6 +345,8 @@ export const PasswordGenerationPost: React.FC = () => {
             <p>{article.lead}</p>
           </div>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="how-we-generate-passwords" />
 
         {article.sections.map(({ icon: Icon, title, paragraphs, notes, bullets }) => (
           <React.Fragment key={title}>
@@ -414,6 +417,6 @@ export const PasswordGenerationPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="how-we-generate-passwords" className="mt-10 border-t-0 pt-0" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

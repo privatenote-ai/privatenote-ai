@@ -5,7 +5,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { introductionToPrivateAiDe } from "@/components/blog/locale/introductionToPrivateAi.de";
@@ -226,13 +228,12 @@ export const IntroductionToPrivateAiPost: React.FC = () => {
   };
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="introduction-to-private-ai">
       <article>
         <BlogPostHeader
           slug="introduction-to-private-ai"
           title={t.blogIntroductionPrivateAiTitle}
+          subtitle={t.blogIntroductionPrivateAiSubtitle}
           excerpt={t.blogIntroductionPrivateAiExcerpt}
           headerClassName="mb-12"
         >
@@ -249,6 +250,8 @@ export const IntroductionToPrivateAiPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="introduction-to-private-ai" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -315,6 +318,6 @@ export const IntroductionToPrivateAiPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="introduction-to-private-ai" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

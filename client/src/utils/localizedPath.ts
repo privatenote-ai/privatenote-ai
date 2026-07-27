@@ -1,6 +1,10 @@
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { canonicalPublicPath } from "@shared/homeSeoLinks";
 import {
+  isBlogCategory,
+  blogCategoryPath as sharedBlogCategoryPath,
+} from "@shared/blogCategories";
+import {
   isBlogCanonicalSlug,
   localizedBlogPostPath,
   localizedBlogSlug,
@@ -30,6 +34,11 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
 ]);
 
 function translateBlogPath(pathWithoutLanguage: string, language: SupportedLanguage): string {
+  const categoryMatch = pathWithoutLanguage.match(/^\/blog\/category\/([^/]+)$/);
+  if (categoryMatch && isBlogCategory(categoryMatch[1]!)) {
+    return `/blog/category/${categoryMatch[1]}`;
+  }
+
   const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
   if (!blogMatch) return pathWithoutLanguage;
 
@@ -61,8 +70,11 @@ function isLocalizedPublicPath(pathWithoutLanguage: string): boolean {
   if (LOCALIZED_PUBLIC_PATHS.has(path)) return true;
   const guideMatch = path.match(/^\/security-guides\/([^/]+)$/);
   if (guideMatch && isLocalizedSecurityGuideTopic(guideMatch[1]!)) return true;
+  const categoryMatch = path.match(/^\/blog\/category\/([^/]+)$/);
+  if (categoryMatch && isBlogCategory(categoryMatch[1]!)) return true;
   if (!path.startsWith("/blog/")) return false;
   const slug = path.slice("/blog/".length);
+  if (slug.includes("/")) return false;
   return resolveCanonicalBlogSlug(slug) !== null;
 }
 
@@ -89,6 +101,14 @@ export function blogPostPath(canonicalSlug: string, language: SupportedLanguage)
     return joinPublicPath(...localizedPath("/blog", language).split("/").filter(Boolean), canonicalSlug);
   }
   return publicSitePath(localizedBlogPostPath(canonicalSlug, language));
+}
+
+/** Localized href for a blog category landing page. */
+export function blogCategoryPath(category: string, language: SupportedLanguage): string {
+  if (!isBlogCategory(category)) {
+    return localizedPath("/blog", language);
+  }
+  return publicSitePath(sharedBlogCategoryPath(category, language));
 }
 
 function splitLanguagePrefix(pathname: string): {
@@ -138,6 +158,10 @@ export function switchLanguagePath(pathname: string, language: SupportedLanguage
   const guideMatch = pathWithoutLanguage.match(/^\/security-guides\/([^/]+)$/);
   if (guideMatch && isLocalizedSecurityGuideTopic(guideMatch[1]!)) {
     return localizedSecurityGuidePath(guideMatch[1]!, language);
+  }
+  const categoryMatch = pathWithoutLanguage.match(/^\/blog\/category\/([^/]+)$/);
+  if (categoryMatch && isBlogCategory(categoryMatch[1]!)) {
+    return blogCategoryPath(categoryMatch[1]!, language);
   }
   const blogMatch = pathWithoutLanguage.match(/^\/blog\/([^/]+)$/);
   if (blogMatch) {

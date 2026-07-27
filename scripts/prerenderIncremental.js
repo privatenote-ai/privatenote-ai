@@ -49,6 +49,10 @@ const PAGE_ROUTE_RULES = [
   { test: /client\/src\/pages\/About\.tsx$/, bases: ["/about"] },
   { test: /client\/src\/pages\/Blog\.tsx$/, bases: ["/blog"] },
   {
+    test: /client\/src\/pages\/BlogCategory\.tsx$|shared\/blogCategories\.ts$|client\/src\/components\/blog\/BlogGuideArticle\.tsx$/,
+    kind: "blog",
+  },
+  {
     test: /client\/src\/pages\/BlogPost\.tsx$|client\/src\/utils\/staticBlogPosts\.ts$|client\/src\/components\/blog\/.*Post\.tsx$/,
     kind: "blog",
   },

@@ -1268,6 +1268,25 @@ export const nl: Translations = {
   blogLoadFailedTitle: "Kan blogpost niet laden",
   blogLoadFailedBody: "Er is een fout opgetreden bij het laden van dit artikel. Probeer het later opnieuw.",
   blogBackToBlog: "Terug naar Blog",
+  blogBreadcrumbHome: "Home",
+  blogCategorySecrets: "Geheimen",
+  blogCategoryEncryption: "Versleuteling",
+  blogCategoryPrivacy: "Privacy",
+  blogCategoryAi: "AI",
+  blogCategoryDevelopers: "Ontwikkelaars",
+  blogCategorySecretsDescription:
+    "Gidsen over het veilig delen van API-sleutels, wachtwoorden, SSH-sleutels, documenten en andere geheimen zonder een permanent spoor.",
+  blogCategoryEncryptionDescription:
+    "Duidelijke uitleg over end-to-end-versleuteling, RCS en wat «veilig genoeg» echt betekent.",
+  blogCategoryPrivacyDescription:
+    "Beleid, werkplekberichten en praktische privacy-stacks voor wie controle wil houden.",
+  blogCategoryAiDescription:
+    "Private AI, lokale modellen en hoe je geheimen buiten agent-workflows houdt.",
+  blogCategoryDevelopersDescription:
+    "CLI, MCP, Codex en integraties om geheimen veilig vanuit je toolchain te delen.",
+  blogKeyTakeaways: "Belangrijkste punten",
+
+  blogUpdatedLabel: "Bijgewerkt",
   blogNotFoundTitle: "Blogbericht niet gevonden",
   blogNotFoundBody: "Het artikel dat u zoekt bestaat niet of is verwijderd.",
   blogPrivacyTitle: "Een praktische privacytools-stack voor 2026",
@@ -1344,55 +1363,64 @@ export const nl: Translations = {
   recommendQuick5: "Gebruik gecodeerde services voor gevoelige communicatie",
   blogGoodEnoughTitle: "De mythe van ‘goed genoeg’-beveiliging",
   blogGoodEnoughExcerpt: "Waarom moderne bedreigingen architecturale beveiliging, kortstondige gevoelige data, veiligere defaults en privacytools vereisen.",
-  blogIntroductionPrivateAiTitle: "Introductie tot private AI: modellen lokaal, in de browser of thuis draaien",
+  blogIntroductionPrivateAiTitle: "Introductie tot private AI",
+  blogIntroductionPrivateAiSubtitle: "Draai modellen lokaal, in de browser of thuis",
   blogIntroductionPrivateAiExcerpt:
     "Hoe private AI zich ontwikkelde, waarom labs open gewichten publiceren en hoe je modellen draait met Ollama, in de browser of op je eigen GPU—plus Gemma 4, Llama, Mistral, Qwen en Write with Private AI in PrivateNote.",
   blogIntroductionPrivateAiMetaTitle: "Introductie tot private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open gewichten, Ollama vs browser vs thuis-GPU, Gemma 4 en Llama, en Write with Private AI in je browser.",
-  blogSharePasswordSecurelyTitle:
-    "Hoe deel je een wachtwoord veilig (zonder e-mail, Teams of WhatsApp)",
+  blogSharePasswordSecurelyTitle: "Hoe deel je een wachtwoord veilig",
+  blogSharePasswordSecurelySubtitle: "Zonder e-mail, Teams of WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Stop met wachtwoorden plakken in Microsoft Teams, WhatsApp of e-mail. Browserversleutelde eenmalige links, AVG/GDPR en wachtwoordmanager vs eenmalig delen.",
   blogSharePasswordSecurelyMetaTitle: "Wachtwoord veilig delen",
   blogSharePasswordSecurelyMetaDescription:
     "Deel wachtwoorden zonder e-mail, Teams of WhatsApp: browserversleutelde eenmalige links, AVG-overwegingen en praktische voorbeelden.",
-  blogCicdEnvGithubSecretsTitle:
-    "Secrets in CI/CD, .env-bestanden en GitHub: hoe developers keys lekken (en hoe je stopt)",
+  blogCicdEnvGithubSecretsTitle: "Hoe developers secrets lekken in CI/CD en GitHub",
+  blogCicdEnvGithubSecretsSubtitle: "En hoe je stopt",
   blogCicdEnvGithubSecretsExcerpt:
     "Stop met .env committen, tokens in PRs plakken en secrets in CI-logs echoën. Waar credentials ontsnappen—en hoe versleutelde eenmalige links in je workflow passen.",
   blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env en GitHub-leaks",
   blogCicdEnvGithubSecretsMetaDescription:
     "Hoe .env-bestanden, Git-historie en CI/CD-pipelines API-keys lekken—plus een checklist om secrets uit Git, logs en chat te houden.",
-  blogSendSensitiveDocumentsTitle:
-    "Hoe je Gevoelige Documenten Veilig Verstuurt (Zonder de Controle te Verliezen)",
+  blogSendSensitiveDocumentsTitle: "Hoe je Gevoelige Documenten Veilig Verstuurt",
+  blogSendSensitiveDocumentsSubtitle: "Zonder de controle te verliezen",
   blogSendSensitiveDocumentsExcerpt:
     "E-mail laat permanente kopieën achter. Eenmalige versleutelde links niet. Ontdek waarom paspoorten, contracten en belastingdossiers browserversleuteling, verlopende toegang en minder overgebleven kopieën nodig hebben.",
   blogSendSensitiveDocumentsMetaTitle: "Gevoelige documenten veilig versturen",
   blogSendSensitiveDocumentsMetaDescription:
     "E-mail laat permanente kopieën achter. Eenmalige links niet. Deel documenten veilig met browserversleuteling, verlopende toegang en minder restbestanden.",
-  blogShareSshKeysSecurelyTitle:
-    "SSH-sleutels veilig delen (zonder Slack, e-mail of Git-geschiedenis)",
+  blogShareSshKeysSecurelyTitle: "SSH-sleutels veilig delen",
+  blogShareSshKeysSecurelySubtitle: "Zonder Slack, e-mail of Git-geschiedenis",
   blogShareSshKeysSecurelyExcerpt:
     "Publieke sleutels mag je delen. Privésleutels niet. Wanneer je een private-key-handoff vermijdt, hoe je er een met een eenmalige versleutelde link bezorgt—en welke PrivateNote-developer-extensies PEMs uit de chat houden.",
   blogShareSshKeysSecurelyMetaTitle: "SSH-sleutels veilig delen",
   blogShareSshKeysSecurelyMetaDescription:
     "Deel SSH-privésleutels zonder Slack, e-mail of Git. Gebruik publieke keys en eenmalige versleutelde links via VS Code, CLI of Chrome.",
-  blogRcsE2eEncryptionTitle:
-    "Android- en iPhone-berichten zijn eindelijk end-to-end versleuteld. Dit betekent het",
+  blogRcsE2eEncryptionTitle: "Android- en iPhone-RCS end-to-end-versleuteling",
+  blogRcsE2eEncryptionSubtitle: "Wat het beschermt—en wat niet",
   blogRcsE2eEncryptionExcerpt:
     "Cross-platform RCS tussen Android en iPhone krijgt end-to-end encryptie. Wat E2EE beschermt, wat niet, en wanneer eenmalige links nog steeds beter zijn voor secrets.",
   blogRcsE2eEncryptionMetaTitle: "Android & iPhone RCS end-to-end encryptie",
   blogRcsE2eEncryptionMetaDescription:
     "RCS-chats tussen Android en iPhone krijgen end-to-end encryptie. Wat E2EE beschermt, de grenzen, en wanneer eenmalige secret-links nog tellen.",
-  blogSocialMediaBansTitle:
-    "Werken socialmediaverboden voor kinderen? Wat het bewijs zegt",
+  blogGoogleDriveVsOneTimeLinksTitle: "Google Drive vs eenmalige links voor vertrouwelijke bestanden",
+  blogGoogleDriveVsOneTimeLinksSubtitle: "Samenwerking of tijdelijke overdracht?",
+  blogGoogleDriveVsOneTimeLinksExcerpt:
+    "Google Drive blinkt uit in langetermijnsamenwerking. Eenmalige versleutelde links minimaliseren retentie bij eenmalige vertrouwelijke overdrachten. Leer wanneer welke aanpak past.",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs eenmalige links voor vertrouwelijke bestanden",
+  blogGoogleDriveVsOneTimeLinksMetaDescription:
+    "Vergelijk Google Drive en eenmalige versleutelde links voor vertrouwelijke bestanden. Wanneer elke aanpak past en hoe je langetermijnblootstelling minimaliseert.",
+  blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
+  blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
     "Australië, Frankrijk en Noorwegen debatteren over verboden onder 16—onderzoekers waarschuwen voor verschuiving van schade, leeftijdsverificatie en het echte probleem: verslavend platformontwerp.",
   blogSocialMediaBansMetaTitle: "Socialmediaverboden voor kinderen: het bewijs",
   blogSocialMediaBansMetaDescription:
     "Werken verboden onder 16? Bewijs over digitale verschuiving, privacyrisico's van leeftijdsverificatie en alternatieven volgens het Information Labs-rapport.",
-  blogMakePrivateNoteTitle: "Hoe maak je een privénotitie (en houd je die echt privé)",
+  blogMakePrivateNoteTitle: "Hoe maak je een privénotitie",
+  blogMakePrivateNoteSubtitle: "En houd je die echt privé",
   blogMakePrivateNoteExcerpt:
     "Een slotpictogram in een notitie-app is niet hetzelfde als een echt privénotitie. Leer wat privé echt betekent, welke instellingen ertoe doen en hoe je een versleutelde notitie maakt die verdwijnt na het lezen—zonder account.",
   blogMakePrivateNoteMetaTitle: "Hoe maak je een privénotitie",
@@ -1410,57 +1438,67 @@ export const nl: Translations = {
   blogEmailSecretsMetaTitle: "Waarom e-mail slecht is voor geheimen",
   blogEmailSecretsMetaDescription:
     "Waarom e-mail een slecht kanaal is voor wachtwoorden, API-sleutels en vertrouwelijke data — en hoe eenmalige links inboxkopieën vermijden.",
-  blogChatControl10VoteTitle:
-    "Chat Control 1.0 aangenomen ondanks meer «nee»- dan «ja»-stemmen. Dit is er echt gebeurd.",
+  blogChatControl10VoteTitle: "Hoe Chat Control 1.0 aangenomen werd met meer «nee»- dan «ja»-stemmen",
+  blogChatControl10VoteSubtitle: "Wat er echt gebeurde",
   blogChatControl10VoteExcerpt:
     "Op 9 juli 2026 verlengde het Europees Parlement Chat Control 1.0, hoewel meer Europarlementariërs tegenstemden dan voor. De reden is parlementaire procedure — niet cryptografie.",
   blogChatControl10VoteMetaTitle: "Chat Control 1.0-stemming uitgelegd",
   blogChatControl10VoteMetaDescription:
     "Waarom Chat Control 1.0 werd aangenomen met meer tegen- dan voorstemmen, wat het betekent voor E2E-versleuteling en wat Chat Control 2.0 brengt.",
-  blogChatControlTitle: "Chat Control is terug: waarom Europa naar zijn cryptografen moet luisteren",
+  blogChatControlTitle: "Waarom Europa naar cryptografen moet luisteren over Chat Control",
+  blogChatControlSubtitle: "Verplichte scanning botst nog steeds met versleuteling",
   blogChatControlExcerpt:
     "Op dinsdag 7 juli wordt verwacht dat het Parlement CSAR opnieuw behandelt. Kinderbescherming is urgent, maar verplichte scanning van privécommunicatie botst nog steeds met versleuteling, privacy en technische realiteit.",
   blogChatControlMetaTitle: "Chat Control en cryptografenwaarschuwingen",
   blogChatControlMetaDescription:
     "Waarom cryptografen waarschuwen: verplichte client-side scanning onder Chat Control kan E2E-versleuteling en privacy op internetschaal niet behouden.",
-  blogApiKeySharingTitle: "Hoe deel je een API-sleutel veilig (zonder je geheimen bloot te leggen)",
+  blogApiKeySharingTitle: "Hoe deel je een API-sleutel veilig",
+  blogApiKeySharingSubtitle: "Zonder je geheimen bloot te leggen",
   blogApiKeySharingExcerpt:
-    "API-sleutels horen niet in Slack, e-mail, tickets of Git-geschiedenis. Leer de veiligere workflow: scope de sleutel, versleutel lokaal, gebruik een eenmalige link en roteer na de overdracht.",
+    "API-sleutels horen niet in Slack, Teams, e-mail, tickets of Git-geschiedenis. Leer de veiligere workflow: scope de sleutel, versleutel lokaal, gebruik een eenmalige link en roteer na de overdracht.",
   blogApiKeySharingMetaTitle: "Een API-sleutel veilig delen",
   blogApiKeySharingMetaDescription:
     "Hoe API-sleutels lekken via chat, e-mail, projecttools en Git — en hoe browserversleutelde eenmalige links veilig delen helpen.",
   blogPasswordTitle: "Hoe we veilige wachtwoorden genereren",
   blogPasswordExcerpt: "Ontdek hoe we cryptografische willekeur, onbevooroordeelde selectie en intelligente sterkteanalyse gebruiken om veilige wachtwoorden te creëren.",
-  blogWorkplaceTextsTitle: "Werkberichten, juridische discovery en het argument voor tijdelijke notities",
+  blogWorkplaceTextsTitle: "Tijdelijke notities voor werkberichten en juridische discovery",
+  blogWorkplaceTextsSubtitle: "Waarom duurzame chat een aansprakelijkheid is",
   blogWorkplaceTextsExcerpt: "Wat de controverse over OpenAI-tekstberichten leert over schriftelijke documenten, hygiëne op de werkplek en het gebruik van PrivateNote voor gevoelige eenmalige communicatie.",
   blogDevelopersMetaTitle: "PrivateNote voor ontwikkelaars",
   blogGoodEnoughMetaTitle: "De mythe van ‘goed genoeg’-beveiliging",
   blogPasswordMetaTitle: "Veilige wachtwoorden genereren",
-  blogDevelopersTitle: "Stop met het plakken van wachtwoorden in Slack. Gebruik in plaats daarvan PrivateNote.",
+  blogDevelopersTitle: "PrivateNote voor ontwikkelaars",
+  blogDevelopersSubtitle: "Deel geheimen zonder ze in Slack te plakken",
   blogDevelopersExcerpt: "Handleiding voor het delen van geheimen vanuit VS Code, Cursor, een AI-agent of elke browser — met versleuteling die uw machine nooit verlaat.",
   blogCodexTitle: "PrivateNote gebruiken met OpenAI Codex",
   blogCodexExcerpt: "Eén opdracht verbindt PrivateNote MCP met elke Codex-sessie. Instellen, wat Codex kan doen en hoe geheimen buiten de agentprompt blijven.",
-  blogOneTimeLinksTitle: "Eenmalige geheime links: gevoelige informatie delen zonder een permanent record achter te laten",
+  blogOneTimeLinksTitle: "Eenmalige geheime links",
+  blogOneTimeLinksSubtitle: "Deel gevoelige informatie zonder een permanent record achter te laten",
   blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger en Slack zijn gebouwd om berichten voor altijd te bewaren. Sommige geheimen waren nooit bedoeld om te blijven bestaan. Hier leest u hoe eenmalige versleutelde links werken, wanneer u ze gebruikt en waarom vernietigen na het lezen een beveiligingsfunctie is—geen gimmick.",
   blogOneTimeLinksMetaTitle: "Eenmalige geheime links uitgelegd",
   blogOneTimeLinksMetaDescription: "Hoe burn-after-reading-links werken, wanneer ze e-mail of Slack vervangen en waarom kortstondigheid het risico na levering vermindert.",
-  blogEncryptedFileSharingTitle: "Versleuteld vs. veilig bestanden delen: wat is het verschil?",
+  blogEncryptedFileSharingTitle: "Versleuteld vs. veilig bestanden delen",
+  blogEncryptedFileSharingSubtitle: "Wat is het verschil?",
   blogEncryptedFileSharingExcerpt: "TLS en browserversleuteling worden allebei «veilig bestanden delen» genoemd. Dat is niet hetzelfde. Waar versleuteling plaatsvindt en waarom dat ertoe doet.",
   blogEncryptedFileSharingMetaTitle: "Versleuteld vs. veilig delen uitgelegd",
   blogEncryptedFileSharingMetaDescription: "Transportversleuteling vs. browserversleuteling: wat elk beschermt, waartoe providers nog toegang hebben en hoe u kiest.",
-  blogE2eeDefinitionTitle: "Wat is end-to-end-versleuteling? Een cryptografische definitie",
+  blogE2eeDefinitionTitle: "Wat is end-to-end-versleuteling?",
+  blogE2eeDefinitionSubtitle: "Een cryptografische definitie",
   blogE2eeDefinitionExcerpt: "End-to-end-versleuteling betekent niet alleen dat data versleuteld is. Leer de sleutelbezit-test, hoe URL-fragmentnotities in het model passen en welk risico in het verzendkanaal blijft.",
   blogE2eeDefinitionMetaTitle: "Wat is end-to-end-versleuteling?",
   blogE2eeDefinitionMetaDescription: "Definitie van end-to-end-versleuteling: wie de sleutels heeft, waarom TLS anders is en hoe browserversleutelde eenmalige notities werken.",
-  blogSecretNoAccountTitle: "Een geheim bericht sturen zonder account",
+  blogSecretNoAccountTitle: "Een geheim bericht sturen",
+  blogSecretNoAccountSubtitle: "Zonder een account aan te maken",
   blogSecretNoAccountExcerpt: "U hoeft zich niet aan te melden om een wachtwoord, herstelcode of privénotitie veilig te delen. Browserversleuteling volstaat met alleen een link.",
   blogSecretNoAccountMetaTitle: "Geheim bericht zonder account",
   blogSecretNoAccountMetaDescription: "Deel wachtwoorden en privénotities zonder registratie: browserversleuteling, verlopende links, optioneel wachtwoord en waar u op moet letten.",
-  blogChatSecretsTitle: "10 geheimen die u nooit in chat moet sturen (en wat u in plaats daarvan gebruikt)",
+  blogChatSecretsTitle: "10 geheimen die u nooit in chat moet sturen",
+  blogChatSecretsSubtitle: "En wat u in plaats daarvan gebruikt",
   blogChatSecretsExcerpt: "Slack, Teams en WhatsApp bewaren gesprekken—geen inloggegevens. Tien geheimen die niet in chat thuishoren, en de browserversleutelde eenmalige alternatieven van PrivateNote.",
   blogChatSecretsMetaTitle: "10 geheimen die nooit in chat horen",
   blogChatSecretsMetaDescription: "Wachtwoorden, API-sleutels en herstelcodes horen niet in chatgeschiedenis. Begrijp de risico's en gebruik browserversleutelde eenmalige links.",
-  blogAgentSecurityTitle: "AI-agenten worden werknemers. We moeten beginnen ze te beveiligen als werknemers.",
+  blogAgentSecurityTitle: "AI-agenten beveiligen als werknemers",
+  blogAgentSecuritySubtitle: "Agenten worden workforce-infrastructuur",
   blogAgentSecurityExcerpt: "Prompt-injectie is niet langer het hele verhaal. Naarmate AI-agenten tools, geheugen en autonomie krijgen, moet beveiliging het hele systeem sturen, niet alleen het model.",
   blogTagDeveloper: "ontwikkelaar",
   blogTagMcp: "mcp",

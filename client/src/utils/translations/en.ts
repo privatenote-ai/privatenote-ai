@@ -1358,6 +1358,24 @@ export const en: Translations = {
   blogLoadFailedTitle: "Failed to load blog post",
   blogLoadFailedBody: "We encountered an error while loading this article. Please try again later.",
   blogBackToBlog: "Back to Blog",
+  blogBreadcrumbHome: "Home",
+  blogCategorySecrets: "Secrets",
+  blogCategoryEncryption: "Encryption",
+  blogCategoryPrivacy: "Privacy",
+  blogCategoryAi: "AI",
+  blogCategoryDevelopers: "Developers",
+  blogCategorySecretsDescription:
+    "Guides on sharing API keys, passwords, SSH keys, documents, and other secrets without leaving a permanent trail.",
+  blogCategoryEncryptionDescription:
+    "Clear explanations of end-to-end encryption, RCS, and what “secure enough” really means.",
+  blogCategoryPrivacyDescription:
+    "Policy, workplace messaging, and practical privacy stacks for people who care about control.",
+  blogCategoryAiDescription:
+    "Private AI, local models, and how to keep secrets out of agent workflows.",
+  blogCategoryDevelopersDescription:
+    "CLI, MCP, Codex, and integrations for shipping secrets safely from your toolchain.",
+  blogKeyTakeaways: "Key takeaways",
+  blogUpdatedLabel: "Updated",
   blogCrossLinksHeading: "Explore PrivateNote",
   blogCrossLinksRelatedLabel: "Related articles",
   blogCrossLinksTrustLabel: "Trust & security",
@@ -1437,55 +1455,64 @@ export const en: Translations = {
   blogGoodEnoughTitle: "The Myth of \"Good Enough\" Security",
   blogGoodEnoughExcerpt:
     "Why modern threats demand architectural security, short-lived sensitive data, safer defaults, and privacy tools that reduce risk beyond better habits alone.",
-  blogIntroductionPrivateAiTitle: "Introduction to Private AI: Run Models Locally, in Your Browser, or at Home",
+  blogIntroductionPrivateAiTitle: "Introduction to Private AI",
+  blogIntroductionPrivateAiSubtitle: "Run models locally, in your browser, or at home",
   blogIntroductionPrivateAiExcerpt:
     "How private AI evolved, why labs publish open weights, and how to run models with Ollama, in the browser, or on your own GPU—plus a look at Gemma 4, Llama, Mistral, Qwen, and the engineering behind Write with Private AI.",
   blogIntroductionPrivateAiMetaTitle: "Introduction to private AI",
   blogIntroductionPrivateAiMetaDescription:
     "Private AI: open weights, Ollama vs browser vs home GPU, Gemma 4 and Llama families, and Write with Private AI in your browser.",
-  blogSharePasswordSecurelyTitle:
-    "How to Share a Password Securely (Without Email, Teams, or WhatsApp)",
+  blogSharePasswordSecurelyTitle: "How to Share a Password Securely",
+  blogSharePasswordSecurelySubtitle: "Without email, Teams, or WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Stop pasting passwords into Microsoft Teams, WhatsApp, or email. This guide shows you how to use browser-encrypted one-time links to hand off secrets safely, align with GDPR (DSGVO) requirements, and avoid critical security pitfalls.",
   blogSharePasswordSecurelyMetaTitle: "How to Share a Password Securely",
   blogSharePasswordSecurelyMetaDescription:
     "Share passwords without email, Teams, or WhatsApp. Browser-encrypted one-time links, GDPR (DSGVO) considerations, and practical European workplace examples.",
-  blogCicdEnvGithubSecretsTitle:
-    "Secrets in CI/CD, .env Files, and GitHub: How Developers Leak Keys (and How to Stop)",
+  blogCicdEnvGithubSecretsTitle: "How Developers Leak Secrets in CI/CD and GitHub",
+  blogCicdEnvGithubSecretsSubtitle: "And how to stop",
   blogCicdEnvGithubSecretsExcerpt:
     "Stop committing .env files, pasting tokens into pull requests, and echoing secrets in CI logs. Learn where credentials escape in GitHub and pipelines—and how one-time encrypted links fit a safer developer workflow.",
   blogCicdEnvGithubSecretsMetaTitle: "Secrets in CI/CD, .env, and GitHub leaks",
   blogCicdEnvGithubSecretsMetaDescription:
     "How .env files, GitHub history, and CI/CD pipelines leak API keys—plus a practical checklist to keep secrets out of Git, logs, and chat.",
-  blogSendSensitiveDocumentsTitle:
-    "How to Send Sensitive Documents Securely (Without Losing Control)",
+  blogSendSensitiveDocumentsTitle: "How to Send Sensitive Documents Securely",
+  blogSendSensitiveDocumentsSubtitle: "Without losing control",
   blogSendSensitiveDocumentsExcerpt:
     "Email leaves permanent copies. One-time encrypted links don’t. Learn why passports, contracts, and tax files need browser encryption, expiring access, and fewer leftover copies.",
   blogSendSensitiveDocumentsMetaTitle: "Send sensitive documents securely",
   blogSendSensitiveDocumentsMetaDescription:
     "Email leaves permanent copies. One-time encrypted links don’t. Learn secure document sharing with browser encryption, expiring access, and fewer leftover files.",
-  blogShareSshKeysSecurelyTitle:
-    "How to Share SSH Keys Securely (Without Slack, Email, or Git History)",
+  blogShareSshKeysSecurelyTitle: "How to Share SSH Keys Securely",
+  blogShareSshKeysSecurelySubtitle: "Without Slack, email, or Git history",
   blogShareSshKeysSecurelyExcerpt:
     "Public keys are safe to share. Private keys are not. Learn when to avoid private-key handoffs, how to deliver one with a burn-after-reading encrypted link, and which PrivateNote developer extensions keep PEMs out of chat.",
   blogShareSshKeysSecurelyMetaTitle: "How to share SSH keys securely",
   blogShareSshKeysSecurelyMetaDescription:
     "Share SSH private keys without Slack, email, or git. Prefer public-key enrollment and one-time encrypted links from VS Code, CLI, or Chrome.",
-  blogRcsE2eEncryptionTitle:
-    "Android and iPhone Messages Are Finally End-to-End Encrypted. Here’s What That Means",
+  blogRcsE2eEncryptionTitle: "Android and iPhone RCS End-to-End Encryption",
+  blogRcsE2eEncryptionSubtitle: "What it protects—and what it doesn’t",
   blogRcsE2eEncryptionExcerpt:
     "Cross-platform RCS between Android and iPhone is gaining end-to-end encryption. Here’s what E2EE protects, what it doesn’t, and when one-time links still make more sense for secrets.",
   blogRcsE2eEncryptionMetaTitle: "Android & iPhone RCS end-to-end encryption",
   blogRcsE2eEncryptionMetaDescription:
     "Android and iPhone RCS chats are rolling out end-to-end encryption. What E2EE protects, its limits, and when one-time secret links still matter.",
-  blogSocialMediaBansTitle:
-    "Will Social Media Bans for Children Actually Work? What the Evidence Says",
+  blogGoogleDriveVsOneTimeLinksTitle: "Google Drive vs One-Time Links for Confidential Files",
+  blogGoogleDriveVsOneTimeLinksSubtitle: "Collaboration or temporary handoff?",
+  blogGoogleDriveVsOneTimeLinksExcerpt:
+    "Google Drive excels at long-term collaboration. One-time encrypted links minimise retention for one-off confidential handoffs. Learn when each approach fits.",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs one-time links for confidential files",
+  blogGoogleDriveVsOneTimeLinksMetaDescription:
+    "Compare Google Drive and one-time encrypted links for confidential files. Learn when each fits and how to minimise long-term exposure.",
+  blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
+  blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:
     "Australia, France, and Norway are debating under-16 bans—but researchers warn blanket restrictions may displace harm, fail on age verification, and miss the real issue: addictive platform design.",
   blogSocialMediaBansMetaTitle: "Social media bans for children: what the evidence says",
   blogSocialMediaBansMetaDescription:
     "Do under-16 social media bans work? Evidence on digital displacement, age-verification privacy risks, platform design, and alternatives from the Information Labs report.",
-  blogMakePrivateNoteTitle: "How to Make a Private Note (And Actually Keep It Private)",
+  blogMakePrivateNoteTitle: "How to Make a Private Note",
+  blogMakePrivateNoteSubtitle: "And actually keep it private",
   blogMakePrivateNoteExcerpt:
     "A lock icon in a notes app is not the same as a truly private note. Learn what digital privacy actually means, which structural settings matter, and how to create an encrypted note that disappears after it is read—without ever creating an account.",
   blogMakePrivateNoteMetaTitle: "How to make a private note",
@@ -1503,71 +1530,77 @@ export const en: Translations = {
   blogEmailSecretsMetaTitle: "Why email is the worst place for secrets",
   blogEmailSecretsMetaDescription:
     "Why email is a poor channel for passwords, API keys, and confidential data—and how one-time encrypted links avoid permanent inbox copies.",
-  blogChatControl10VoteTitle:
-    "Chat Control 1.0 Passed Despite More “No” Than “Yes” Votes. Here’s What Actually Happened.",
+  blogChatControl10VoteTitle: "How Chat Control 1.0 Passed With More “No” Than “Yes” Votes",
+  blogChatControl10VoteSubtitle: "What actually happened",
   blogChatControl10VoteExcerpt:
     "On 9 July 2026, the European Parliament extended Chat Control 1.0 even though more MEPs voted against it than for it. The reason is parliamentary procedure—not cryptography.",
   blogChatControl10VoteMetaTitle: "Chat Control 1.0 vote explained",
   blogChatControl10VoteMetaDescription:
     "Why Chat Control 1.0 passed with more No than Yes votes, what the extension means for end-to-end encryption, and what Chat Control 2.0 may bring.",
-  blogChatControlTitle: "Chat Control Is Back: Why Europe Should Listen to Its Cryptographers",
+  blogChatControlTitle: "Why Europe Should Listen to Cryptographers on Chat Control",
+  blogChatControlSubtitle: "Mandatory scanning still collides with encryption",
   blogChatControlExcerpt:
     "Today, Tuesday, July 7, Parliament is expected to revisit CSAR. The goal of protecting children is urgent, but mandatory scanning of private communications still collides with encryption, privacy, and technical reality.",
   blogChatControlMetaTitle: "Chat Control and cryptographers' warnings",
   blogChatControlMetaDescription:
     "Why cryptographers warn that mandatory client-side scanning under Chat Control cannot preserve end-to-end encryption or protect privacy at Internet scale.",
-  blogApiKeySharingTitle: "How to Share an API Key Securely (Without Exposing Your Secrets)",
+  blogApiKeySharingTitle: "How to Share an API Key Securely",
+  blogApiKeySharingSubtitle: "Without exposing your secrets",
   blogApiKeySharingExcerpt:
-    "API keys do not belong in Slack, email, tickets, or Git history. Learn the safer workflow: scope the key, encrypt it locally, use a one-time link, and rotate it when the handoff is done.",
+    "API keys do not belong in Slack, Teams, email, tickets, or Git history. Learn the safer workflow: scope the key, encrypt it locally, use a one-time link, and rotate it when the handoff is done.",
   blogApiKeySharingMetaTitle: "How to share an API key securely",
   blogApiKeySharingMetaDescription:
     "Learn how API keys leak through chat, email, project tools, and Git, and how browser-encrypted one-time links help developers share secrets safely.",
   blogPasswordTitle: "How We Generate Secure Passwords",
   blogPasswordExcerpt: "Learn how we use cryptographic randomness, unbiased selection, and intelligent strength analysis to create secure passwords.",
-  blogWorkplaceTextsTitle: "Workplace Texts, Legal Discovery, and the Case for Ephemeral Notes",
+  blogWorkplaceTextsTitle: "Ephemeral Notes for Workplace Texts and Legal Discovery",
+  blogWorkplaceTextsSubtitle: "Why durable chat is a liability",
   blogWorkplaceTextsExcerpt: "What the OpenAI text-message controversy teaches about written records, workplace hygiene, and using PrivateNote for sensitive one-time communication.",
   blogDevelopersMetaTitle: "PrivateNote for Developers",
   blogGoodEnoughMetaTitle: 'The "Good Enough" Security Myth',
   blogPasswordMetaTitle: "How We Generate Passwords",
-  blogDevelopersTitle: "Stop Pasting Passwords into Slack. Use PrivateNote Instead.",
+  blogDevelopersTitle: "PrivateNote for Developers",
+  blogDevelopersSubtitle: "Share secrets without pasting into Slack",
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
   blogCodexExcerpt: "One command wires PrivateNote MCP into every Codex session. Setup steps, what Codex can do, and how to keep secrets out of the agent prompt.",
-  blogOneTimeLinksTitle: "One-Time Secret Links: How to Share Sensitive Information Without Leaving a Permanent Record",
+  blogOneTimeLinksTitle: "One-Time Secret Links",
+  blogOneTimeLinksSubtitle: "Share sensitive information without leaving a permanent record",
   blogOneTimeLinksExcerpt:
     "Email, WhatsApp, Facebook Messenger, and Slack were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
   blogOneTimeLinksMetaTitle: "One-time secret links explained",
   blogOneTimeLinksMetaDescription:
     "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
-  blogEncryptedFileSharingTitle:
-    "Encrypted File Sharing vs. Secure File Sharing: What's the Difference?",
+  blogEncryptedFileSharingTitle: "Encrypted vs. Secure File Sharing",
+  blogEncryptedFileSharingSubtitle: "What’s the difference?",
   blogEncryptedFileSharingExcerpt:
     "TLS and browser-side encryption both get called \"secure file sharing.\" They are not the same. Learn where encryption happens, why it matters, and how to choose.",
   blogEncryptedFileSharingMetaTitle: "Encrypted vs secure file sharing explained",
   blogEncryptedFileSharingMetaDescription:
     "Transport encryption vs browser-side encryption for file sharing: what each protects, what providers can still access, and how to choose the right model.",
-  blogE2eeDefinitionTitle:
-    "What Is End-to-End Encryption? A Cryptographer's Definition",
+  blogE2eeDefinitionTitle: "What Is End-to-End Encryption?",
+  blogE2eeDefinitionSubtitle: "A cryptographer’s definition",
   blogE2eeDefinitionExcerpt:
     "End-to-end encryption is not just data being encrypted. Learn the key-ownership test, how URL-fragment notes fit the model, and where delivery-channel risk remains.",
   blogE2eeDefinitionMetaTitle: "What is end-to-end encryption?",
   blogE2eeDefinitionMetaDescription:
     "A clear cryptographic definition of end-to-end encryption: who holds the keys, why TLS is different, and how browser-encrypted one-time notes work.",
-  blogSecretNoAccountTitle:
-    "How to Send a Secret Message Without Creating an Account",
+  blogSecretNoAccountTitle: "How to Send a Secret Message",
+  blogSecretNoAccountSubtitle: "Without creating an account",
   blogSecretNoAccountExcerpt:
     "You do not need to sign up to share a password, recovery code, or private note securely. Learn how browser-side encryption lets you send a secret message with nothing but a link—and why that changes what a service can see.",
   blogSecretNoAccountMetaTitle: "Send a secret message without an account",
   blogSecretNoAccountMetaDescription:
     "Share passwords and private notes without signing up: browser encryption, expiring links, optional passwords, and what to look for in a secure note service.",
-  blogChatSecretsTitle: "10 Secrets You Should Never Send in Chat (And What to Use Instead)",
+  blogChatSecretsTitle: "10 Secrets You Should Never Send in Chat",
+  blogChatSecretsSubtitle: "And what to use instead",
   blogChatSecretsExcerpt:
     "Slack, Teams, and WhatsApp are built to preserve conversations—not protect credentials. Here are ten secrets that do not belong in chat, and the browser-encrypted, one-time alternatives PrivateNote was built for.",
   blogChatSecretsMetaTitle: "10 secrets never to send in chat",
   blogChatSecretsMetaDescription:
     "Passwords, API keys, recovery codes, and documents should not live in chat history. Learn the risks and use browser-encrypted one-time links instead.",
-  blogAgentSecurityTitle:
-    "AI Agents Are Becoming Employees. We Need to Start Securing Them Like Employees.",
+  blogAgentSecurityTitle: "Securing AI Agents Like Employees",
+  blogAgentSecuritySubtitle: "Agents are becoming workforce infrastructure",
   blogAgentSecurityExcerpt:
     "Prompt injection is no longer the whole story. As AI agents gain tools, memory, and autonomy, security must govern the entire system—not just the model.",
   blogTagDeveloper: "developer",

@@ -13,7 +13,9 @@ import {
 import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { oneTimeSecretLinksHr } from "@/components/blog/locale/oneTimeSecretLinks.hr";
@@ -937,13 +939,12 @@ export const OneTimeSecretLinksPost: React.FC = () => {
   const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="one-time-secret-links">
       <article>
         <BlogPostHeader
           slug="one-time-secret-links"
           title={t.blogOneTimeLinksTitle}
+          subtitle={t.blogOneTimeLinksSubtitle}
           excerpt={t.blogOneTimeLinksExcerpt}
           headerClassName="mb-12"
         >
@@ -978,6 +979,8 @@ export const OneTimeSecretLinksPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="one-time-secret-links" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -1052,6 +1055,6 @@ export const OneTimeSecretLinksPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="one-time-secret-links" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

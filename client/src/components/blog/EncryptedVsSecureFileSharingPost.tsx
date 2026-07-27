@@ -13,7 +13,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { encryptedVsSecureFileSharingDe } from "@/components/blog/locale/encryptedVsSecureFileSharing.de";
@@ -471,13 +473,12 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
   const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className={cn(blogPostPageClass, "max-w-3xl sm:px-6 mb-24")}>
-      <BlogPostBackLink className="mb-6" />
-
+    <BlogGuideArticle slug="encrypted-vs-secure-file-sharing">
       <article>
         <BlogPostHeader
           slug="encrypted-vs-secure-file-sharing"
           title={t.blogEncryptedFileSharingTitle}
+          subtitle={t.blogEncryptedFileSharingSubtitle}
           excerpt={t.blogEncryptedFileSharingExcerpt}
           titleClassName="mb-5 text-3xl leading-tight tracking-tight sm:text-4xl"
           headerClassName="mb-14"
@@ -492,6 +493,8 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
             />
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="encrypted-vs-secure-file-sharing" />
 
         <div className="space-y-7">
           {article.intro.map((paragraph, index) => (
@@ -562,6 +565,6 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="encrypted-vs-secure-file-sharing" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

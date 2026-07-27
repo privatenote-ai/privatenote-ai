@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { goodEnoughSecurityHr } from "@/components/blog/locale/goodEnoughSecurity.hr";
@@ -398,9 +400,7 @@ export const GoodEnoughSecurityPost: React.FC = () => {
   const blogPath = localizedPath("/blog", language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="myth-good-enough-security">
       <article>
         <BlogPostHeader
           slug="myth-good-enough-security"
@@ -408,6 +408,8 @@ export const GoodEnoughSecurityPost: React.FC = () => {
           excerpt={t.blogGoodEnoughExcerpt}
           headerClassName="mb-8"
         />
+
+        <BlogArticleTakeaways slug="myth-good-enough-security" />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph) => (
@@ -443,6 +445,6 @@ export const GoodEnoughSecurityPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="myth-good-enough-security" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

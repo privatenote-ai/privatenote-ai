@@ -6,10 +6,9 @@ export type FaqItem = { question: string; answer: string };
 
 export type ShareApiKeyArticleCopy = {
   heroAlt: string;
-  heroCaptionPrefix: string;
-  heroArtist: string;
-  heroCaptionMiddle: string;
-  heroSource: string;
+  heroCaption: string;
+  takeawaysHeading: string;
+  takeaways: string[];
   intro: string;
   sections: {
     treatLikePasswords: { title: string; paragraphs: string[] };
@@ -30,6 +29,7 @@ export type ShareApiKeyArticleCopy = {
     privateNote: {
       title: string;
       p1: string;
+      relatedSsh: string;
       p2: string;
       urlExample: string;
       bullet1: string;

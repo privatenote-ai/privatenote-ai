@@ -127,6 +127,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "encrypted-vs-secure-file-sharing": {
     related: [
+      "google-drive-vs-one-time-encrypted-links",
       "send-sensitive-documents-securely",
       "one-time-secret-links",
       "what-is-end-to-end-encryption",
@@ -245,12 +246,12 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "send-sensitive-documents-securely": {
     related: [
+      "google-drive-vs-one-time-encrypted-links",
       "encrypted-vs-secure-file-sharing",
       "one-time-secret-links",
       "why-email-is-worst-for-secrets",
       "how-to-make-a-private-note",
       "send-secret-message-without-account",
-      "how-to-share-a-password-securely",
     ],
     trust: "/how-it-works",
   },
@@ -275,6 +276,16 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
       "send-secret-message-without-account",
     ],
     trust: "/security-resources",
+  },
+  "google-drive-vs-one-time-encrypted-links": {
+    related: [
+      "send-sensitive-documents-securely",
+      "encrypted-vs-secure-file-sharing",
+      "one-time-secret-links",
+      "why-email-is-worst-for-secrets",
+      "what-is-end-to-end-encryption",
+    ],
+    trust: "/how-it-works",
   },
 };
 

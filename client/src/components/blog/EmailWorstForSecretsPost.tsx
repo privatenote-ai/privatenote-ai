@@ -14,7 +14,9 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { emailWorstForSecretsDe } from "@/components/blog/locale/emailWorstForSecrets.de";
@@ -162,9 +164,7 @@ export const EmailWorstForSecretsPost: React.FC = () => {
   ] = article.sections;
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="why-email-is-worst-for-secrets">
       <article>
         <BlogPostHeader
           slug="why-email-is-worst-for-secrets"
@@ -182,6 +182,8 @@ export const EmailWorstForSecretsPost: React.FC = () => {
             />
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="why-email-is-worst-for-secrets" />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14 sm:leading-[1.9]">
           <ArticleParagraph text={article.intro} lead resolveLink={resolveLink} />
@@ -362,6 +364,6 @@ export const EmailWorstForSecretsPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="why-email-is-worst-for-secrets" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

@@ -4,7 +4,9 @@ import { AlertTriangle, CheckCircle2, Eye, Lock, Scale, ShieldAlert, ShieldCheck
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { chatControlCryptographersDe } from "@/components/blog/locale/chatControlCryptographers.de";
@@ -79,13 +81,12 @@ export const ChatControlCryptographersPost: React.FC = () => {
   const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="chat-control-europe-cryptographers">
       <article>
         <BlogPostHeader
           slug="chat-control-europe-cryptographers"
           title={t.blogChatControlTitle}
+          subtitle={t.blogChatControlSubtitle}
           excerpt={t.blogChatControlExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -102,6 +103,8 @@ export const ChatControlCryptographersPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="chat-control-europe-cryptographers" />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14 sm:leading-[1.9]">
           <p className="text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100 sm:text-[1.35rem] sm:leading-[1.75]">
@@ -286,6 +289,6 @@ export const ChatControlCryptographersPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="chat-control-europe-cryptographers" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

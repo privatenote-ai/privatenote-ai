@@ -4,7 +4,9 @@ import { ArrowRight, Check, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { sendSensitiveDocumentsSecurelyDe } from "@/components/blog/locale/sendSensitiveDocumentsSecurely.de";
@@ -221,13 +223,12 @@ export const SendSensitiveDocumentsSecurelyPost: React.FC = () => {
   };
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug={slug}>
       <article>
         <BlogPostHeader
           slug={slug}
           title={t.blogSendSensitiveDocumentsTitle}
+          subtitle={t.blogSendSensitiveDocumentsSubtitle}
           excerpt={t.blogSendSensitiveDocumentsExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -244,6 +245,8 @@ export const SendSensitiveDocumentsSecurelyPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug={slug} />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
           <div className="space-y-5 sm:space-y-6">
@@ -432,6 +435,6 @@ export const SendSensitiveDocumentsSecurelyPost: React.FC = () => {
 
         <BlogPostCrossLinks slug={slug} />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

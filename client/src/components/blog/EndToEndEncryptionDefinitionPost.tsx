@@ -3,7 +3,9 @@ import { KeyRound, LockKeyhole, Server, ShieldCheck } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { endToEndEncryptionDefinitionDe } from "@/components/blog/locale/endToEndEncryptionDefinition.de";
@@ -146,16 +148,17 @@ export const EndToEndEncryptionDefinitionPost: React.FC = () => {
   const urlFragmentSectionTitle = copy.en.sections[3]?.title ?? "";
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="what-is-end-to-end-encryption">
       <article>
         <BlogPostHeader
           slug="what-is-end-to-end-encryption"
           title={t.blogE2eeDefinitionTitle}
+          subtitle={t.blogE2eeDefinitionSubtitle}
           excerpt={t.blogE2eeDefinitionExcerpt}
           headerClassName="mb-12"
         />
+
+        <BlogArticleTakeaways slug="what-is-end-to-end-encryption" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -202,6 +205,6 @@ export const EndToEndEncryptionDefinitionPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="what-is-end-to-end-encryption" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

@@ -4,10 +4,20 @@ import { ArrowRight, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { privacyToolsGuideDe } from "@/components/blog/locale/privacyToolsGuide.de";
 import { privacyToolsGuideEn } from "@/components/blog/locale/privacyToolsGuide.en";
+import { privacyToolsGuideEs } from "@/components/blog/locale/privacyToolsGuide.es";
+import { privacyToolsGuideFr } from "@/components/blog/locale/privacyToolsGuide.fr";
+import { privacyToolsGuideHr } from "@/components/blog/locale/privacyToolsGuide.hr";
+import { privacyToolsGuideIt } from "@/components/blog/locale/privacyToolsGuide.it";
+import { privacyToolsGuideNl } from "@/components/blog/locale/privacyToolsGuide.nl";
+import { privacyToolsGuidePt } from "@/components/blog/locale/privacyToolsGuide.pt";
+import { privacyToolsGuideSr } from "@/components/blog/locale/privacyToolsGuide.sr";
 import type { PrivacyToolsGuideArticleCopy } from "@/components/blog/locale/privacyToolsGuide.types";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +27,14 @@ const copy: Partial<Record<SupportedLanguage, PrivacyToolsGuideArticleCopy>> & {
   en: PrivacyToolsGuideArticleCopy;
 } = {
   en: privacyToolsGuideEn,
+  de: privacyToolsGuideDe,
+  fr: privacyToolsGuideFr,
+  es: privacyToolsGuideEs,
+  it: privacyToolsGuideIt,
+  nl: privacyToolsGuideNl,
+  pt: privacyToolsGuidePt,
+  hr: privacyToolsGuideHr,
+  sr: privacyToolsGuideSr,
 };
 
 function RichText({ text }: { text: string }) {
@@ -134,9 +152,7 @@ export const PrivacyToolsPost: React.FC = () => {
   const resolveLink = (href: string) => resolveArticleHref(href, language, homePath);
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug={slug}>
       <article>
         <BlogPostHeader
           slug={slug}
@@ -144,6 +160,8 @@ export const PrivacyToolsPost: React.FC = () => {
           excerpt={t.blogPrivacyExcerpt}
           headerClassName="mb-14 sm:mb-16"
         />
+
+        <BlogArticleTakeaways slug={slug} />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
           <div className="space-y-5 sm:space-y-6">
@@ -332,6 +350,6 @@ export const PrivacyToolsPost: React.FC = () => {
 
         <BlogPostCrossLinks slug={slug} />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

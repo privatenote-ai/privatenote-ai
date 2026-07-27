@@ -4,7 +4,9 @@ import { AlertTriangle, CheckCircle2, KeyRound, Lock, ShieldAlert, type LucideIc
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { cryptoSeedPhraseDe } from "@/components/blog/locale/cryptoSeedPhrase.de";
@@ -236,9 +238,7 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
   const askPrefix = language === "de" ? "Vor der Verschlüsselung fragen: " : "Before encryption, ask: ";
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="crypto-seed-phrase-one-time-link">
       <article>
         <BlogPostHeader
           slug="crypto-seed-phrase-one-time-link"
@@ -256,6 +256,8 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
             />
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="crypto-seed-phrase-one-time-link" />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14 sm:leading-[1.9]">
           {article.intro.map((paragraph, index) => (
@@ -467,6 +469,6 @@ export const CryptoSeedPhraseOneTimeLinkPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="crypto-seed-phrase-one-time-link" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

@@ -4,7 +4,9 @@ import { ArrowRight, ExternalLink, Scale, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { socialMediaBansChildrenDe } from "@/components/blog/locale/socialMediaBansChildren.de";
@@ -143,13 +145,12 @@ export const SocialMediaBansChildrenPost: React.FC = () => {
   };
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="social-media-bans-children-evidence">
       <article>
         <BlogPostHeader
           slug="social-media-bans-children-evidence"
           title={t.blogSocialMediaBansTitle}
+          subtitle={t.blogSocialMediaBansSubtitle}
           excerpt={t.blogSocialMediaBansExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -166,6 +167,8 @@ export const SocialMediaBansChildrenPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="social-media-bans-children-evidence" />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
           {article.intro.map((paragraph, index) => (
@@ -277,6 +280,6 @@ export const SocialMediaBansChildrenPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="social-media-bans-children-evidence" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

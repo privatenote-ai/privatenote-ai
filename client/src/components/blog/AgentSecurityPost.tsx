@@ -4,7 +4,9 @@ import { ArrowLeft, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { agentSecurityHr } from "@/components/blog/locale/agentSecurity.hr";
@@ -723,16 +725,17 @@ export const AgentSecurityPost: React.FC = () => {
   const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="securing-ai-agents-like-employees">
       <article>
         <BlogPostHeader
           slug="securing-ai-agents-like-employees"
           title={t.blogAgentSecurityTitle}
+          subtitle={t.blogAgentSecuritySubtitle}
           excerpt={t.blogAgentSecurityExcerpt}
           headerClassName="mb-12"
         />
+
+        <BlogArticleTakeaways slug="securing-ai-agents-like-employees" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -777,6 +780,6 @@ export const AgentSecurityPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="securing-ai-agents-like-employees" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

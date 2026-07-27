@@ -36,6 +36,8 @@ test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/developers/chrome"), true);
   assert.equal(isPublicMarketingPath("/secure-file-transfer"), true);
   assert.equal(isPublicMarketingPath("/blog/encrypted-vs-secure-file-sharing"), true);
+  assert.equal(isPublicMarketingPath("/blog/category/secrets"), true);
+  assert.equal(isPublicMarketingPath("/de/blog/category/encryption"), true);
   assert.equal(isPublicMarketingPath("/de/about/"), true);
   assert.equal(isPublicMarketingPath("/it/about/"), true);
   assert.equal(isPublicMarketingPath("/nl/blog/privatenote-met-openai-codex"), true);

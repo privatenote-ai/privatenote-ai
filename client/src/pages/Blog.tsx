@@ -1,16 +1,23 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import React, { useEffect, useMemo } from "react";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, ArrowRight, Tag, Clock } from "lucide-react";
 import { getQueryFn } from "@/lib/queryClient";
 import { type BlogPost } from "@shared/schema";
-import { parseBlogPostTags } from "@/utils/blogPostTags";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
-import { blogPostPath, localizedPath } from "@/utils/localizedPath";
+import { blogCategoryPath, blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import { buildFeaturedBlogPost, buildStaticBlogPosts } from "@/utils/staticBlogPosts";
 import { cn } from "@/lib/utils";
+import {
+  BLOG_CATEGORIES,
+  getBlogCategory,
+  isBlogCategory,
+  type BlogCategory,
+} from "@shared/blogCategories";
+import { isBlogListingSlug } from "@shared/localizedBlogSlugs";
+import { blogCategoryLabel } from "@/utils/blogCategoryLabel";
 
 const pageContainerClass =
   "mx-auto max-w-[1150px] px-4 pb-8 pt-24 sm:px-6 lg:px-8 lg:pt-28";
@@ -26,51 +33,31 @@ function formatBlogDate(language: string, publishedAt: Date | string | null | un
 
 function BlogMetadataRow({
   date,
-  tags,
+  categoryId,
+  categoryLabel,
   featured,
   compact = false,
-  activeTag,
-  onTagClick,
 }: {
   date: string;
-  tags: string[];
+  categoryId?: BlogCategory | null;
+  categoryLabel?: string | null;
   featured?: boolean;
   compact?: boolean;
-  activeTag?: string | null;
-  onTagClick?: (tag: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const renderTag = (tag: string) => {
-    const isActive = activeTag === tag;
-    const className = cn(
-      "text-xs font-medium capitalize",
-      isActive
-        ? "border-primary bg-primary text-primary-foreground"
-        : "border-primary/20 bg-primary/5 text-primary dark:border-primary/30 dark:bg-primary/10",
-      onTagClick && "cursor-pointer transition-colors hover:border-primary/40 hover:bg-primary/10",
-    );
-
-    if (onTagClick) {
-      return (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => onTagClick(tag)}
-          className={cn(
-            "inline-flex items-center rounded-full border px-2.5 py-0.5",
-            className,
-          )}
-        >
-          {tag}
-        </button>
-      );
-    }
-
+  const renderCategory = () => {
+    if (!categoryLabel || !categoryId) return null;
+    const href = blogCategoryPath(categoryId, language);
     return (
-      <Badge key={tag} variant="outline" className={className}>
-        {tag}
-      </Badge>
+      <Link
+        href={href}
+        className={cn(
+          "inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/10",
+        )}
+      >
+        {categoryLabel}
+      </Link>
     );
   };
 
@@ -92,15 +79,10 @@ function BlogMetadataRow({
           {t.blogFeatured}
         </Badge>
       ) : null}
-      {tags.length > 0 ? (
+      {categoryLabel ? (
         <div className={cn("flex flex-wrap items-center", compact ? "gap-2" : "gap-2 sm:ml-auto")}>
           <Tag className="hidden h-4 w-4 sm:block" aria-hidden />
-          {tags.slice(0, compact ? 2 : 3).map((tag) => renderTag(tag))}
-          {tags.length > (compact ? 2 : 3) ? (
-            <Badge variant="outline" className="text-xs">
-              +{tags.length - (compact ? 2 : 3)}
-            </Badge>
-          ) : null}
+          {renderCategory()}
         </div>
       ) : null}
     </div>
@@ -124,21 +106,12 @@ function ReadLink({ href, className }: { href: string; className?: string }) {
   );
 }
 
-function BlogPostCard({
-  post,
-  blogPath,
-  activeTag,
-  onTagClick,
-}: {
-  post: BlogPost;
-  blogPath: string;
-  activeTag?: string | null;
-  onTagClick?: (tag: string) => void;
-}) {
+function BlogPostCard({ post }: { post: BlogPost }) {
   const { language, t } = useLanguage();
   const formattedDate = formatBlogDate(language, post.publishedAt);
-  const tagList = parseBlogPostTags(post.tags);
   const href = blogPostHref(post.slug, language);
+  const categoryId = getBlogCategory(post.slug);
+  const categoryLabel = categoryId ? blogCategoryLabel(categoryId, t) : null;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
@@ -146,10 +119,9 @@ function BlogPostCard({
       <div className="flex flex-1 flex-col p-6">
         <BlogMetadataRow
           date={formattedDate}
-          tags={tagList}
+          categoryId={categoryId}
+          categoryLabel={categoryLabel}
           compact
-          activeTag={activeTag}
-          onTagClick={onTagClick}
         />
         <h3 className="mb-3 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
           <Link href={href} className="transition-colors hover:text-primary">
@@ -175,9 +147,6 @@ function BlogPostCard({
 
 function FeaturedPostCard({
   post,
-  blogPath,
-  activeTag,
-  onTagClick,
 }: {
   post: {
     title: string;
@@ -185,15 +154,13 @@ function FeaturedPostCard({
     author: string;
     slug: string;
     publishedAt: string;
-    tags: string[];
   };
-  blogPath: string;
-  activeTag?: string | null;
-  onTagClick?: (tag: string) => void;
 }) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const formattedDate = formatBlogDate(language, post.publishedAt);
   const href = blogPostHref(post.slug, language);
+  const categoryId = getBlogCategory(post.slug);
+  const categoryLabel = categoryId ? blogCategoryLabel(categoryId, t) : null;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-primary/25 bg-primary/[0.04] shadow-sm dark:border-primary/30 dark:bg-primary/10">
@@ -201,10 +168,9 @@ function FeaturedPostCard({
       <div className="p-8 lg:p-10">
         <BlogMetadataRow
           date={formattedDate}
-          tags={post.tags}
+          categoryId={categoryId}
+          categoryLabel={categoryLabel}
           featured
-          activeTag={activeTag}
-          onTagClick={onTagClick}
         />
         <h2 className="mb-4 text-2xl font-bold leading-tight text-gray-900 dark:text-white sm:text-3xl">
           <Link href={href} className="transition-colors hover:text-primary">
@@ -220,67 +186,26 @@ function FeaturedPostCard({
   );
 }
 
-function collectUniqueTags(posts: BlogPost[], extraTags: string[] = []): string[] {
-  const tagSet = new Set<string>();
-  for (const post of posts) {
-    parseBlogPostTags(post.tags).forEach((tag) => tagSet.add(tag));
-  }
-  extraTags.forEach((tag) => tagSet.add(tag));
-  return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
-}
-
-function readTagFromUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("tag");
-}
-
-function BlogTagFilter({
-  tags,
-  selectedTag,
-  onSelectTag,
-}: {
-  tags: string[];
-  selectedTag: string | null;
-  onSelectTag: (tag: string | null) => void;
-}) {
-  const { t } = useLanguage();
-
-  if (tags.length === 0) return null;
+function BlogCategoryNav() {
+  const { t, language } = useLanguage();
 
   return (
     <div className="mb-8">
       <p className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">
         {t.blogFilterByTopic}
       </p>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t.blogFilterByTopic}>
-        <button
-          type="button"
-          aria-pressed={selectedTag === null}
-          onClick={() => onSelectTag(null)}
-          className={cn(
-            "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-            selectedTag === null
-              ? "bg-primary text-primary-foreground"
-              : "border border-gray-200 bg-white text-gray-700 hover:border-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
-          )}
-        >
+      <div className="flex flex-wrap gap-2" role="navigation" aria-label={t.blogFilterByTopic}>
+        <span className="rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
           {t.blogFilterAll}
-        </button>
-        {tags.map((tag) => (
-          <button
-            key={tag}
-            type="button"
-            aria-pressed={selectedTag === tag}
-            onClick={() => onSelectTag(selectedTag === tag ? null : tag)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-              selectedTag === tag
-                ? "bg-primary text-primary-foreground"
-                : "border border-gray-200 bg-white text-gray-700 hover:border-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
-            )}
+        </span>
+        {BLOG_CATEGORIES.map((category) => (
+          <Link
+            key={category}
+            href={blogCategoryPath(category, language)}
+            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
           >
-            {tag}
-          </button>
+            {blogCategoryLabel(category, t)}
+          </Link>
         ))}
       </div>
     </div>
@@ -321,22 +246,29 @@ function BlogSecondaryCta() {
 
 export default function Blog() {
   const { language, t } = useLanguage();
-  const blogPath = localizedPath("/blog", language);
+  const [, setLocation] = useLocation();
   const featuredPost = buildFeaturedBlogPost(t);
   const staticPosts = buildStaticBlogPosts(t);
-  const [selectedTag, setSelectedTag] = useState<string | null>(() => readTagFromUrl());
+
+  // Legacy ?category= → category landing
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("category");
+    if (value && isBlogCategory(value)) {
+      setLocation(blogCategoryPath(value, language));
+    }
+  }, [language, setLocation]);
 
   const { data: posts } = useQuery({
     queryKey: ["/api/blog"],
     queryFn: getQueryFn<BlogPost[]>({ on401: "returnNull" }),
   });
 
-
   const allPosts = useMemo(
-    () => [
-      ...staticPosts,
-      ...(posts ?? []).filter((post) => !staticPosts.some((staticPost) => staticPost.slug === post.slug)),
-    ],
+    () =>
+      [
+        ...staticPosts,
+        ...(posts ?? []).filter((post) => !staticPosts.some((staticPost) => staticPost.slug === post.slug)),
+      ].filter((post) => isBlogListingSlug(post.slug)),
     [staticPosts, posts],
   );
 
@@ -352,43 +284,6 @@ export default function Blog() {
     [allPosts, featuredPost.slug],
   );
 
-  const availableTags = useMemo(
-    () => collectUniqueTags(allPosts, featuredPost.tags),
-    [allPosts, featuredPost.tags],
-  );
-
-  const filteredPosts = useMemo(() => {
-    if (!selectedTag) return gridPosts;
-    return gridPosts.filter((post) => parseBlogPostTags(post.tags).includes(selectedTag));
-  }, [gridPosts, selectedTag]);
-
-  const showFeatured =
-    !selectedTag || featuredPost.tags.includes(selectedTag);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (selectedTag) {
-      url.searchParams.set("tag", selectedTag);
-    } else {
-      url.searchParams.delete("tag");
-    }
-    const next = `${url.pathname}${url.search}${url.hash}`;
-    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (next !== current) {
-      window.history.replaceState(null, "", next);
-    }
-  }, [selectedTag]);
-
-  useEffect(() => {
-    if (selectedTag && !availableTags.includes(selectedTag)) {
-      setSelectedTag(null);
-    }
-  }, [availableTags, selectedTag]);
-
-  const handleTagSelect = (tag: string) => {
-    setSelectedTag((current) => (current === tag ? null : tag));
-  };
-
   const articlesHeading = t.homeBlogEyebrow;
 
   return (
@@ -402,61 +297,27 @@ export default function Blog() {
         </p>
       </header>
 
-      {showFeatured ? (
-        <section className="mb-16">
-          <FeaturedPostCard
-            post={featuredPost}
-            blogPath={blogPath}
-            activeTag={selectedTag}
-            onTagClick={handleTagSelect}
-          />
-        </section>
-      ) : null}
+      <section className="mb-16">
+        <FeaturedPostCard post={featuredPost} />
+      </section>
 
       <section>
         <h2 className="mb-8 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
           {articlesHeading}
         </h2>
 
-        <BlogTagFilter
-          tags={availableTags}
-          selectedTag={selectedTag}
-          onSelectTag={setSelectedTag}
-        />
+        <BlogCategoryNav />
 
-        {filteredPosts.length > 0 ? (
+        {gridPosts.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredPosts.map((post) => (
-              <BlogPostCard
-                key={post.id}
-                post={post}
-                blogPath={blogPath}
-                activeTag={selectedTag}
-                onTagClick={handleTagSelect}
-              />
+            {gridPosts.map((post) => (
+              <BlogPostCard key={post.id} post={post} />
             ))}
           </div>
         ) : (
           <div className="rounded-lg border border-gray-200 p-8 text-center dark:border-gray-800">
-            <h3 className="mb-2 text-xl font-medium text-gray-900 dark:text-white">
-              {selectedTag ? t.blogFilterNoResults : t.blogEmptyTitle}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {selectedTag ? (
-                <>
-                  {t.blogFilterNoResultsBody}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTag(null)}
-                    className="font-medium text-primary hover:text-primary/80"
-                  >
-                    {t.blogFilterAll}
-                  </button>
-                </>
-              ) : (
-                t.blogEmptyBody
-              )}
-            </p>
+            <h3 className="mb-2 text-xl font-medium text-gray-900 dark:text-white">{t.blogEmptyTitle}</h3>
+            <p className="text-gray-600 dark:text-gray-400">{t.blogEmptyBody}</p>
           </div>
         )}
       </section>

@@ -5,10 +5,20 @@ import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import { CHROME_EXTENSION_STORE_URL } from "@/utils/chromeExtensionOnboarding";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { cicdEnvGithubSecretsDe } from "@/components/blog/locale/cicdEnvGithubSecrets.de";
 import { cicdEnvGithubSecretsEn } from "@/components/blog/locale/cicdEnvGithubSecrets.en";
+import { cicdEnvGithubSecretsEs } from "@/components/blog/locale/cicdEnvGithubSecrets.es";
+import { cicdEnvGithubSecretsFr } from "@/components/blog/locale/cicdEnvGithubSecrets.fr";
+import { cicdEnvGithubSecretsHr } from "@/components/blog/locale/cicdEnvGithubSecrets.hr";
+import { cicdEnvGithubSecretsIt } from "@/components/blog/locale/cicdEnvGithubSecrets.it";
+import { cicdEnvGithubSecretsNl } from "@/components/blog/locale/cicdEnvGithubSecrets.nl";
+import { cicdEnvGithubSecretsPt } from "@/components/blog/locale/cicdEnvGithubSecrets.pt";
+import { cicdEnvGithubSecretsSr } from "@/components/blog/locale/cicdEnvGithubSecrets.sr";
 import type {
   CicdEnvGithubSecretsArticleCopy,
   CicdEnvGithubSecretsFlowStep,
@@ -22,6 +32,14 @@ const copy: Partial<Record<SupportedLanguage, CicdEnvGithubSecretsArticleCopy>> 
   en: CicdEnvGithubSecretsArticleCopy;
 } = {
   en: cicdEnvGithubSecretsEn,
+  de: cicdEnvGithubSecretsDe,
+  fr: cicdEnvGithubSecretsFr,
+  es: cicdEnvGithubSecretsEs,
+  it: cicdEnvGithubSecretsIt,
+  nl: cicdEnvGithubSecretsNl,
+  pt: cicdEnvGithubSecretsPt,
+  sr: cicdEnvGithubSecretsSr,
+  hr: cicdEnvGithubSecretsHr,
 };
 
 function RichText({ text }: { text: string }) {
@@ -178,13 +196,12 @@ export const CicdEnvGithubSecretsPost: React.FC = () => {
   };
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug={slug}>
       <article>
         <BlogPostHeader
           slug={slug}
           title={t.blogCicdEnvGithubSecretsTitle}
+          subtitle={t.blogCicdEnvGithubSecretsSubtitle}
           excerpt={t.blogCicdEnvGithubSecretsExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -201,6 +218,8 @@ export const CicdEnvGithubSecretsPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug={slug} />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
           <div className="space-y-5 sm:space-y-6">
@@ -373,6 +392,6 @@ export const CicdEnvGithubSecretsPost: React.FC = () => {
 
         <BlogPostCrossLinks slug={slug} />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

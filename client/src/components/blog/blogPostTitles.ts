@@ -28,6 +28,7 @@ const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
   "send-sensitive-documents-securely": "blogSendSensitiveDocumentsTitle",
   "how-to-share-ssh-keys-securely": "blogShareSshKeysSecurelyTitle",
   "android-iphone-rcs-end-to-end-encryption": "blogRcsE2eEncryptionTitle",
+  "google-drive-vs-one-time-encrypted-links": "blogGoogleDriveVsOneTimeLinksTitle",
 };
 
 export function blogPostTitleForSlug(slug: BlogCanonicalSlug, t: Translations): string {

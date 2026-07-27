@@ -3,7 +3,9 @@ import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { privateNoteForDevelopersDe } from "@/components/blog/locale/privateNoteForDevelopers.de";
@@ -37,16 +39,17 @@ export const PrivateNoteForDevelopersPost: React.FC = () => {
   const homePath = localizedPath("/", language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="privatenote-for-developers">
       <article>
         <BlogPostHeader
           slug="privatenote-for-developers"
           title={t.blogDevelopersTitle}
+          subtitle={t.blogDevelopersSubtitle}
           excerpt={t.blogDevelopersExcerpt}
           headerClassName="mb-10"
         />
+
+        <BlogArticleTakeaways slug="privatenote-for-developers" />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph, i) => (
@@ -98,6 +101,6 @@ export const PrivateNoteForDevelopersPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="privatenote-for-developers" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

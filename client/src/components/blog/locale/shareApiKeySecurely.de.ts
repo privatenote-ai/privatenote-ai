@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyDe: ShareApiKeyArticleCopy = {
-  heroAlt: "Hotelschlüssel an einem nummerierten Holz-Schlüsselbrett",
-  heroCaptionPrefix: "Bild von",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "von",
-  heroSource: "Pixabay",
+  heroAlt: "Zwei Laptops tauschen einen API-Schlüssel über einen einmaligen verschlüsselten PrivateNote-Link aus",
+  heroCaption: "Illustration erstellt für PrivateNote.ai.",
+  takeawaysHeading: "Wichtigste Punkte",
+  takeaways: [
+    "API-Schlüssel nie in E-Mail, Chat, Tickets, Dokumente oder Git einfügen.",
+    "Engstmöglichen Schlüssel nutzen: Least Privilege, kurze Laufzeit, danach rotieren.",
+    "Geheimnisse über einen browserverschlüsselten Einmallink senden.",
+    "Bei hochriskanten Keys zuerst lokal verschlüsseln; nur Ciphertext teilen.",
+    "Nach dem Teilen auf ungewöhnliche Nutzung achten—PrivateNote ist Übergabe, kein Vault.",
+  ],
   intro:
     "Jeder Entwickler muss irgendwann einen API-Schlüssel an jemand anderen senden—für Staging-Zugang, einen Auftragnehmer, eine Webhook-Integration oder eine Kundenübergabe. Der schnellste Weg ist meist auch der, der die längste Spur hinterlässt.",
   avoidChannels: [
@@ -131,6 +136,8 @@ export const shareApiKeySecurelyDe: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Wie PrivateNote in die Übergabe passt",
       p1: "PrivateNote ist für den Mensch-zu-Mensch-Moment gebaut: API-Schlüssel, SSH-Privatschlüssel, Datenbank-Zugangsdaten, Wiederherstellungscodes, Webhook-Signing-Secrets und temporäre Passwörter, die eine Person erreichen sollen, ohne dauerhafter Datensatz zu werden.",
+      relatedSsh:
+        "Geht es um einen SSH-Schlüssel statt um API-Zugangsdaten, siehe [SSH-Schlüssel sicher teilen](blog:how-to-share-ssh-keys-securely) zu öffentlichen vs. privaten Schlüsseln, Deploy Keys und Editor-Erweiterungen.",
       p2: "Das Geheimnis wird in Ihrem Browser vor dem Upload verschlüsselt. PrivateNote speichert Chiffretext, nicht Klartext. Der Entschlüsselungsschlüssel liegt im URL-Fragment—dem Teil nach `#`—den Browser beim Laden nicht an den Server senden.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Der Server erhält die Notiz-ID und die verschlüsselte Nutzlast.",

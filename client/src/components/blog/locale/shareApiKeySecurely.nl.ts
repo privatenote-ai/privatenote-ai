@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyNl: ShareApiKeyArticleCopy = {
-  heroAlt: "Hotelsleutel aan een genummerd houten sleutelbord",
-  heroCaptionPrefix: "Afbeelding van",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "van",
-  heroSource: "Pixabay",
+  heroAlt: "Twee laptops die een API-sleutel uitwisselen via een eenmalige versleutelde PrivateNote-link",
+  heroCaption: "Illustratie gemaakt voor PrivateNote.ai.",
+  takeawaysHeading: "Belangrijkste punten",
+  takeaways: [
+    "Plak API-sleutels nooit in e-mail, chat, tickets, docs of Git.",
+    "Smalst mogelijke sleutel: least privilege, korte levensduur, daarna roteren.",
+    "Stuur geheimen via een browserversleutelde eenmalige link.",
+    "Voor hoogrisicosleutels: eerst lokaal versleutelen; deel alleen ciphertext.",
+    "Let op ongebruikelijk gebruik—PrivateNote is overdracht, geen vault.",
+  ],
   intro:
     "Elke ontwikkelaar moet op een gegeven moment een API-sleutel naar iemand anders sturen—voor staging-toegang, een aannemer, een webhook-integratie of een klantoverdracht. De snelste manier is meestal ook degene die het langste spoor achterlaat.",
   avoidChannels: [
@@ -131,6 +136,8 @@ export const shareApiKeySecurelyNl: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Hoe PrivateNote past in de overdracht",
       p1: "PrivateNote is gebouwd voor het mens-tot-mens-moment: API-sleutels, SSH-privésleutels, databasegegevens, herstelcodes, webhook-signing-secrets en tijdelijke wachtwoorden die één persoon moeten bereiken zonder permanent record te worden.",
+      relatedSsh:
+        "Gaat het om een SSH-sleutel in plaats van een API-credential? Zie [SSH-sleutels veilig delen](blog:how-to-share-ssh-keys-securely) over publieke vs privésleutels, deploy keys en editor-extensies.",
       p2: "Het geheim wordt in je browser versleuteld vóór upload. PrivateNote slaat ciphertext op, geen platte tekst. De ontsleutelingssleutel zit in het URL-fragment—het deel na `#`—dat de browser bij het laden niet naar de server stuurt.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "De server ontvangt de notitie-ID en de versleutelde payload.",

@@ -106,4 +106,8 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/RcsE2eEncryptionPost"),
     "RcsE2eEncryptionPost",
   ),
+  "google-drive-vs-one-time-encrypted-links": lazyPost(
+    () => import("@/components/blog/GoogleDriveVsOneTimeEncryptedLinksPost"),
+    "GoogleDriveVsOneTimeEncryptedLinksPost",
+  ),
 };

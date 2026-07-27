@@ -23,7 +23,9 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import { CHROME_EXTENSION_STORE_URL } from "@/utils/chromeExtensionOnboarding";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { howToMakeAPrivateNoteDe } from "@/components/blog/locale/howToMakeAPrivateNote.de";
@@ -283,13 +285,12 @@ export const HowToMakeAPrivateNotePost: React.FC = () => {
   };
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="how-to-make-a-private-note">
       <article>
         <BlogPostHeader
           slug="how-to-make-a-private-note"
           title={t.blogMakePrivateNoteTitle}
+          subtitle={t.blogMakePrivateNoteSubtitle}
           excerpt={t.blogMakePrivateNoteExcerpt}
           headerClassName="mb-12"
         >
@@ -303,6 +304,8 @@ export const HowToMakeAPrivateNotePost: React.FC = () => {
             />
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="how-to-make-a-private-note" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -376,6 +379,6 @@ export const HowToMakeAPrivateNotePost: React.FC = () => {
 
         <BlogPostCrossLinks slug="how-to-make-a-private-note" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

@@ -1,7 +1,8 @@
 import React, { Suspense, useEffect } from 'react';
 import { Link, useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from '@/components/blog/BlogPostChrome';
+import { BlogPostHeader } from '@/components/blog/BlogPostChrome';
+import { BlogGuideArticle } from '@/components/blog/BlogGuideArticle';
 import { getStaticBlogReadTime } from '@/utils/staticBlogPosts';
 import { getQueryFn } from '@/lib/queryClient';
 import { type BlogPost } from '@shared/schema';
@@ -139,8 +140,7 @@ export default function BlogPostPage() {
   const readTime = slug ? getStaticBlogReadTime(slug, t) : undefined;
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
+    <BlogGuideArticle slug={slug || post.slug}>
       <article>
         <BlogPostHeader
           slug={slug}
@@ -166,7 +166,7 @@ export default function BlogPostPage() {
           dangerouslySetInnerHTML={{ __html: formatPostContent(post.content) }}
         />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 }
 

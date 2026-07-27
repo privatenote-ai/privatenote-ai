@@ -152,7 +152,11 @@ function blogSlugFromRoute(route: string): string | null {
   const parts = route.split("/").filter(Boolean);
   const blogIndex = parts.indexOf("blog");
   if (blogIndex < 0) return null;
-  return parts[blogIndex + 1] ?? null;
+  const next = parts[blogIndex + 1];
+  if (!next || next === "category") return null;
+  // Post routes are exactly one segment after /blog (locale already stripped by caller path shape).
+  if (parts.length !== blogIndex + 2) return null;
+  return next;
 }
 
 function hasNonemptyH1(html: string): boolean {

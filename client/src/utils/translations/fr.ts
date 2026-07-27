@@ -1221,6 +1221,25 @@ export const fr: Translations = {
   blogLoadFailedTitle: "Impossible de charger l'article",
   blogLoadFailedBody: "Une erreur est survenue lors du chargement de cet article. Veuillez réessayer plus tard.",
   blogBackToBlog: "Retour au blog",
+  blogBreadcrumbHome: "Accueil",
+  blogCategorySecrets: "Secrets",
+  blogCategoryEncryption: "Chiffrement",
+  blogCategoryPrivacy: "Confidentialité",
+  blogCategoryAi: "IA",
+  blogCategoryDevelopers: "Développeurs",
+  blogCategorySecretsDescription:
+    "Guides pour partager des clés API, mots de passe, clés SSH, documents et autres secrets sans laisser de trace permanente.",
+  blogCategoryEncryptionDescription:
+    "Explications claires du chiffrement de bout en bout, du RCS, et de ce que « suffisamment sécurisé » veut vraiment dire.",
+  blogCategoryPrivacyDescription:
+    "Politique, messagerie au travail et stacks de confidentialité pratiques pour ceux qui veulent garder le contrôle.",
+  blogCategoryAiDescription:
+    "IA privée, modèles locaux, et comment garder les secrets hors des workflows d’agents.",
+  blogCategoryDevelopersDescription:
+    "CLI, MCP, Codex et intégrations pour partager des secrets en toute sécurité depuis votre toolchain.",
+  blogKeyTakeaways: "À retenir",
+
+  blogUpdatedLabel: "Mis à jour",
   blogNotFoundTitle: "Article introuvable",
   blogNotFoundBody: "L'article que vous recherchez n'existe pas ou a été supprimé.",
   blogPrivacyTitle: "Une stack d’outils de confidentialité pratique pour 2026",
@@ -1299,36 +1318,44 @@ export const fr: Translations = {
   blogGoodEnoughExcerpt: "Pourquoi les menaces actuelles exigent sécurité d'architecture, données éphémères, réglages sûrs et outils privacy au-delà des habitudes.",
   blogPasswordTitle: "Comment nous générons des mots de passe sécurisés",
   blogPasswordExcerpt: "Découvrez comment nous utilisons l'aléatoire cryptographique, une sélection sans biais et une analyse intelligente de robustesse pour créer des mots de passe sûrs.",
-  blogWorkplaceTextsTitle: "Messages professionnels, communication des preuves et intérêt des notes éphémères",
+  blogWorkplaceTextsTitle: "Notes éphémères pour les messages professionnels et la communication des preuves",
+  blogWorkplaceTextsSubtitle: "Pourquoi le chat durable est un risque juridique",
   blogWorkplaceTextsExcerpt: "Ce que la controverse autour des messages OpenAI enseigne sur les traces écrites, l'hygiène au travail et PrivateNote pour les communications sensibles ponctuelles.",
   blogDevelopersMetaTitle: "PrivateNote pour développeurs",
   blogGoodEnoughMetaTitle: "Le mythe de la sécurité « suffisante »",
   blogPasswordMetaTitle: "Génération de mots de passe sécurisés",
-  blogDevelopersTitle: "Arrêtez de coller des mots de passe dans Slack. Utilisez PrivateNote à la place.",
+  blogDevelopersTitle: "PrivateNote pour développeurs",
+  blogDevelopersSubtitle: "Partagez des secrets sans les coller dans Slack",
   blogDevelopersExcerpt: "Un guide en langage clair pour partager des secrets depuis VS Code, Cursor, un agent IA ou n'importe quel navigateur.",
   blogCodexTitle: "Utiliser PrivateNote avec OpenAI Codex",
   blogCodexExcerpt: "Une commande connecte PrivateNote MCP à chaque session Codex. Configuration, usages possibles et comment garder les secrets hors du prompt.",
-  blogOneTimeLinksTitle: "Liens secrets à usage unique : partager des informations sensibles sans laisser de trace permanente",
+  blogOneTimeLinksTitle: "Liens secrets à usage unique",
+  blogOneTimeLinksSubtitle: "Partager des informations sensibles sans laisser de trace permanente",
   blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger et Slack sont faits pour conserver les messages indéfiniment. Certains secrets ne devraient pas persister. Voici comment fonctionnent les liens chiffrés à usage unique, quand les utiliser et pourquoi brûler après lecture est une fonctionnalité de sécurité.",
   blogOneTimeLinksMetaTitle: "Liens secrets à usage unique expliqués",
   blogOneTimeLinksMetaDescription: "Comment fonctionnent les liens chiffrés burn-after-reading, quand les utiliser plutôt qu'e-mail ou Slack et pourquoi l'éphémérité réduit les risques.",
-  blogEncryptedFileSharingTitle: "Partage chiffré vs partage sécurisé de fichiers : quelle différence ?",
+  blogEncryptedFileSharingTitle: "Partage chiffré vs. partage sécurisé de fichiers",
+  blogEncryptedFileSharingSubtitle: "Quelle est la différence ?",
   blogEncryptedFileSharingExcerpt: "TLS et chiffrement côté navigateur sont tous deux présentés comme du « partage sécurisé ». Ce n'est pas la même chose. Où le chiffrement a lieu, et pourquoi cela compte.",
   blogEncryptedFileSharingMetaTitle: "Partage chiffré vs sécurisé expliqué",
   blogEncryptedFileSharingMetaDescription: "Chiffrement de transport vs chiffrement dans le navigateur : ce qui est protégé, ce que les hébergeurs peuvent encore voir, et comment choisir.",
-  blogE2eeDefinitionTitle: "Qu'est-ce que le chiffrement de bout en bout ? Une définition cryptographique",
+  blogE2eeDefinitionTitle: "Qu'est-ce que le chiffrement de bout en bout ?",
+  blogE2eeDefinitionSubtitle: "Une définition cryptographique",
   blogE2eeDefinitionExcerpt: "Le chiffrement de bout en bout ne signifie pas simplement que les données sont chiffrées. Découvrez le test de possession des clés, le rôle des fragments d'URL et les risques du canal d'envoi.",
   blogE2eeDefinitionMetaTitle: "Qu'est-ce que le chiffrement E2E ?",
   blogE2eeDefinitionMetaDescription: "Définition du chiffrement de bout en bout : qui détient les clés, pourquoi TLS diffère et comment les notes éphémères chiffrées dans le navigateur fonctionnent.",
-  blogSecretNoAccountTitle: "Envoyer un message secret sans créer de compte",
+  blogSecretNoAccountTitle: "Envoyer un message secret",
+  blogSecretNoAccountSubtitle: "Sans créer de compte",
   blogSecretNoAccountExcerpt: "Pas besoin de s'inscrire pour partager un mot de passe, un code de récupération ou une note privée. Le chiffrement dans le navigateur suffit, avec un simple lien.",
   blogSecretNoAccountMetaTitle: "Message secret sans compte",
   blogSecretNoAccountMetaDescription: "Partagez mots de passe et notes privées sans inscription : chiffrement navigateur, liens expirants, mot de passe optionnel et critères de confiance.",
-  blogChatSecretsTitle: "10 secrets à ne jamais envoyer dans un chat (et quoi utiliser à la place)",
+  blogChatSecretsTitle: "10 secrets à ne jamais envoyer dans un chat",
+  blogChatSecretsSubtitle: "Et quoi utiliser à la place",
   blogChatSecretsExcerpt: "Slack, Teams et WhatsApp préservent les conversations—notamment pas les identifiants. Dix secrets qui n'ont pas leur place dans le chat, et les alternatives chiffrées dans le navigateur avec PrivateNote.",
   blogChatSecretsMetaTitle: "10 secrets à ne jamais envoyer dans un chat",
   blogChatSecretsMetaDescription: "Mots de passe, clés API et codes de récupération ne doivent pas rester dans l'historique du chat. Risques et liens éphémères chiffrés dans le navigateur.",
-  blogAgentSecurityTitle: "Les agents IA deviennent des employés. Il faut commencer à les sécuriser comme des employés.",
+  blogAgentSecurityTitle: "Sécuriser les agents IA comme des employés",
+  blogAgentSecuritySubtitle: "Les agents deviennent une infrastructure de la main-d'œuvre",
   blogAgentSecurityExcerpt: "L'injection de prompt n'est plus toute l'histoire. Quand les agents IA obtiennent des outils, de la mémoire et de l'autonomie, la sécurité doit gouverner l'ensemble du système—pas seulement le modèle.",
   blogTagDeveloper: "développeur",
   blogTagMcp: "mcp",
@@ -1716,55 +1743,64 @@ export const fr: Translations = {
   blogCrossLinksHeading: "Explorer PrivateNote",
   blogCrossLinksRelatedLabel: "Articles associés",
   blogCrossLinksTrustLabel: "Confiance et sécurité",
-  blogIntroductionPrivateAiTitle: "Introduction à l'IA privée : exécuter des modèles localement, dans le navigateur ou chez vous",
+  blogIntroductionPrivateAiTitle: "Introduction à l'IA privée",
+  blogIntroductionPrivateAiSubtitle: "Exécutez des modèles localement, dans le navigateur ou chez vous",
   blogIntroductionPrivateAiExcerpt:
     "L'évolution de l'IA privée, pourquoi les laboratoires publient des poids ouverts, et comment exécuter des modèles avec Ollama, dans le navigateur ou sur votre propre GPU—plus Gemma 4, Llama, Mistral, Qwen et Write with Private AI dans PrivateNote.",
   blogIntroductionPrivateAiMetaTitle: "Introduction à l'IA privée",
   blogIntroductionPrivateAiMetaDescription:
     "IA privée : poids ouverts, Ollama vs navigateur vs GPU maison, Gemma 4 et Llama, et Write with Private AI dans le navigateur.",
-  blogSharePasswordSecurelyTitle:
-    "Comment partager un mot de passe en toute sécurité (sans e-mail, Teams ni WhatsApp)",
+  blogSharePasswordSecurelyTitle: "Comment partager un mot de passe en toute sécurité",
+  blogSharePasswordSecurelySubtitle: "Sans e-mail, Teams ni WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Arrêtez de coller des mots de passe dans Microsoft Teams, WhatsApp ou les e-mails. Liens chiffrés à usage unique, RGPD et gestionnaire vs partage ponctuel.",
   blogSharePasswordSecurelyMetaTitle: "Partager un mot de passe en sécurité",
   blogSharePasswordSecurelyMetaDescription:
     "Partagez des mots de passe sans e-mail, Teams ni WhatsApp : liens chiffrés à usage unique, RGPD et exemples pratiques.",
-  blogCicdEnvGithubSecretsTitle:
-    "Secrets CI/CD, fichiers .env et GitHub : comment les développeurs fuient des clés (et comment arrêter)",
+  blogCicdEnvGithubSecretsTitle: "Comment les développeurs fuient des secrets dans CI/CD et GitHub",
+  blogCicdEnvGithubSecretsSubtitle: "Et comment arrêter",
   blogCicdEnvGithubSecretsExcerpt:
     "Arrêtez de committer des .env, de coller des tokens dans les PR et d’afficher des secrets dans les logs CI. Où les credentials fuient—et comment les liens chiffrés à usage unique aident.",
   blogCicdEnvGithubSecretsMetaTitle: "Secrets CI/CD, .env et fuites GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Comment les fichiers .env, l’historique Git et les pipelines CI/CD fuient des clés API—plus une checklist pour les garder hors de Git, des logs et du chat.",
-  blogSendSensitiveDocumentsTitle:
-    "Comment envoyer des documents sensibles en toute sécurité (sans perdre le contrôle)",
+  blogSendSensitiveDocumentsTitle: "Comment envoyer des documents sensibles en toute sécurité",
+  blogSendSensitiveDocumentsSubtitle: "Sans perdre le contrôle",
   blogSendSensitiveDocumentsExcerpt:
     "L'e-mail laisse des copies permanentes. Les liens chiffrés à usage unique, non. Découvrez pourquoi passeports, contrats et documents fiscaux ont besoin de chiffrement dans le navigateur, d'accès expirant et de moins de copies restantes.",
   blogSendSensitiveDocumentsMetaTitle: "Envoyer des documents sensibles",
   blogSendSensitiveDocumentsMetaDescription:
     "L'e-mail laisse des copies permanentes, les liens à usage unique non. Partage sécurisé : chiffrement navigateur, accès expirant, moins de fichiers restants.",
-  blogShareSshKeysSecurelyTitle:
-    "Comment partager des clés SSH en sécurité (sans Slack, e-mail ni historique Git)",
+  blogShareSshKeysSecurelyTitle: "Comment partager des clés SSH en sécurité",
+  blogShareSshKeysSecurelySubtitle: "Sans Slack, e-mail ni historique Git",
   blogShareSshKeysSecurelyExcerpt:
     "Les clés publiques se partagent. Les privées non. Quand éviter de transmettre une clé privée, comment la livrer via un lien chiffré à usage unique, et quelles extensions PrivateNote gardent les PEM hors du chat.",
   blogShareSshKeysSecurelyMetaTitle: "Partager des clés SSH en sécurité",
   blogShareSshKeysSecurelyMetaDescription:
     "Partagez des clés SSH privées sans Slack, e-mail ni Git. Préférez les clés publiques et les liens chiffrés uniques via VS Code, CLI ou Chrome.",
-  blogRcsE2eEncryptionTitle:
-    "Les messages Android et iPhone sont enfin chiffrés de bout en bout. Voici ce que cela signifie",
+  blogRcsE2eEncryptionTitle: "Chiffrement de bout en bout RCS Android et iPhone",
+  blogRcsE2eEncryptionSubtitle: "Ce qu'il protège—et ce qu'il ne protège pas",
   blogRcsE2eEncryptionExcerpt:
     "Le RCS cross-platform entre Android et iPhone gagne le chiffrement de bout en bout. Ce que l’E2EE protège, ce qu’il ne protège pas, et quand les liens à usage unique restent plus adaptés aux secrets.",
   blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone chiffrement E2EE",
   blogRcsE2eEncryptionMetaDescription:
     "Le RCS Android–iPhone déploie le chiffrement de bout en bout. Ce que l’E2EE protège, ses limites, et quand les liens secrets à usage unique comptent encore.",
-  blogSocialMediaBansTitle:
-    "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ? Ce que dit la science",
+  blogGoogleDriveVsOneTimeLinksTitle: "Google Drive vs liens à usage unique pour fichiers confidentiels",
+  blogGoogleDriveVsOneTimeLinksSubtitle: "Collaboration ou transmission temporaire ?",
+  blogGoogleDriveVsOneTimeLinksExcerpt:
+    "Google Drive excelle pour la collaboration à long terme. Les liens chiffrés à usage unique minimisent la rétention pour les transmissions confidentielles ponctuelles. Découvrez quand chaque approche convient.",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs liens à usage unique confidentiels",
+  blogGoogleDriveVsOneTimeLinksMetaDescription:
+    "Comparez Google Drive et les liens chiffrés à usage unique pour fichiers confidentiels. Quand chaque approche convient et comment minimiser l’exposition à long terme.",
+  blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
+  blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:
     "L'Australie, la France et la Norvège débattent d'interdictions pour les moins de 16 ans—mais les chercheurs alertent sur le déplacement des risques, la vérification d'âge et le vrai problème : la conception addictive des plateformes.",
   blogSocialMediaBansMetaTitle: "Interdictions de réseaux sociaux pour enfants : les preuves",
   blogSocialMediaBansMetaDescription:
     "Les interdictions pour les moins de 16 ans fonctionnent-elles ? Déplacement numérique, risques de vérification d'âge et alternatives selon le rapport Information Labs.",
-  blogMakePrivateNoteTitle: "Comment créer une note privée (et la garder vraiment privée)",
+  blogMakePrivateNoteTitle: "Comment créer une note privée",
+  blogMakePrivateNoteSubtitle: "Et la garder vraiment privée",
   blogMakePrivateNoteExcerpt:
     "Une icône de cadenas dans une app de notes n'est pas la même chose qu'une note vraiment privée. Découvrez ce que « privé » signifie vraiment, les réglages qui comptent et comment créer une note chiffrée qui disparaît après lecture—sans créer de compte.",
   blogMakePrivateNoteMetaTitle: "Comment créer une note privée",
@@ -1782,22 +1818,24 @@ export const fr: Translations = {
   blogEmailSecretsMetaTitle: "E-mail : pire canal pour les secrets",
   blogEmailSecretsMetaDescription:
     "Pourquoi l'e-mail est un mauvais canal pour mots de passe, clés API et données confidentielles — et comment les liens éphémères évitent les copies.",
-  blogChatControl10VoteTitle:
-    "Chat Control 1.0 est passé malgré plus de votes « non » que de votes « oui ». Voici ce qui s’est réellement passé.",
+  blogChatControl10VoteTitle: "Comment Chat Control 1.0 est passé avec plus de votes « non » que de votes « oui »",
+  blogChatControl10VoteSubtitle: "Ce qui s'est réellement passé",
   blogChatControl10VoteExcerpt:
     "Le 9 juillet 2026, le Parlement européen a prolongé Chat Control 1.0 alors que davantage de députés ont voté contre que pour. La raison tient à la procédure parlementaire, pas à la cryptographie.",
   blogChatControl10VoteMetaTitle: "Le vote sur Chat Control 1.0 expliqué",
   blogChatControl10VoteMetaDescription:
     "Pourquoi Chat Control 1.0 est passé malgré plus de votes contre que pour, ce que cela change pour le E2EE et ce que Chat Control 2.0 pourrait apporter.",
-  blogChatControlTitle: "Chat Control est de retour : pourquoi l’Europe devrait écouter ses cryptographes",
+  blogChatControlTitle: "Pourquoi l'Europe devrait écouter les cryptographes sur Chat Control",
+  blogChatControlSubtitle: "Le scan obligatoire entre toujours en conflit avec le chiffrement",
   blogChatControlExcerpt:
     "Aujourd’hui, mardi 7 juillet, le Parlement doit réexaminer le règlement CSAR. Protéger les enfants est une urgence, mais l’analyse obligatoire des communications privées reste en conflit avec le chiffrement, la vie privée et la réalité technique.",
   blogChatControlMetaTitle: "Chat Control et alertes cryptographes",
   blogChatControlMetaDescription:
     "Pourquoi les cryptographes alertent : le scan client obligatoire de Chat Control ne peut préserver le E2EE ni la vie privée à l'échelle Internet.",
-  blogApiKeySharingTitle: "Comment partager une clé API en sécurité sans exposer vos secrets",
+  blogApiKeySharingTitle: "Comment partager une clé API en sécurité",
+  blogApiKeySharingSubtitle: "Sans exposer vos secrets",
   blogApiKeySharingExcerpt:
-    "Les clés API n’ont rien à faire dans Slack, les e-mails, les tickets ou l’historique Git. Découvrez un flux plus sûr : limiter la portée de la clé, la chiffrer localement, utiliser un lien à usage unique et la faire tourner une fois la remise terminée.",
+    "Les clés API n’ont rien à faire dans Slack, Teams, les e-mails, les tickets ou l’historique Git. Découvrez un flux plus sûr : limiter la portée de la clé, la chiffrer localement, utiliser un lien à usage unique et la faire tourner une fois la remise terminée.",
   blogApiKeySharingMetaTitle: "Comment partager une clé API en sécurité",
   blogApiKeySharingMetaDescription:
     "Comment les clés API fuient via chats, e-mails, outils et Git — et comment les liens éphémères chiffrés dans le navigateur aident les développeurs.",

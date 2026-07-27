@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyIt: ShareApiKeyArticleCopy = {
-  heroAlt: "Chiavi di hotel appese a una rastrelliera di legno numerata",
-  heroCaptionPrefix: "Immagine di",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "da",
-  heroSource: "Pixabay",
+  heroAlt: "Due laptop che scambiano una chiave API tramite un link monouso cifrato PrivateNote",
+  heroCaption: "Illustrazione generata per PrivateNote.ai.",
+  takeawaysHeading: "Punti chiave",
+  takeaways: [
+    "Non incollare mai chiavi API in email, chat, ticket, documenti o Git.",
+    "Chiave più ristretta: least privilege, vita breve, poi rotazione.",
+    "Invia i segreti con un link monouso cifrato nel browser.",
+    "Per chiavi ad alto rischio, cifra prima in locale; condividi solo il ciphertext.",
+    "Controlla usi insoliti—PrivateNote è consegna, non un vault.",
+  ],
   intro:
     "Prima o poi ogni sviluppatore deve inviare una chiave API a qualcun altro: per l’accesso a staging, un contractor, un’integrazione webhook o un passaggio di consegne a un cliente. Il percorso più veloce è spesso anche quello che lascia la traccia più lunga.",
   avoidChannels: [
@@ -129,6 +134,8 @@ export const shareApiKeySecurelyIt: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Come PrivateNote si inserisce nella consegna",
       p1: "PrivateNote è pensato per il momento da persona a persona: chiavi API, chiavi private SSH, credenziali database, codici di recupero, segreti di firma webhook e password temporanee che devono raggiungere una persona senza diventare un record permanente.",
+      relatedSsh:
+        "Se il segreto è una chiave SSH invece di una credenziale API, vedi [come condividere chiavi SSH in modo sicuro](blog:how-to-share-ssh-keys-securely) su chiavi pubbliche vs private, deploy key ed estensioni dell’editor.",
       p2: "Il segreto viene cifrato nel browser prima dell’invio. PrivateNote conserva testo cifrato, non testo in chiaro. La chiave di decifratura vive nel frammento dell’URL, la parte dopo `#`, che i browser non inviano al server quando caricano la pagina.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Il server riceve l’ID della nota e il payload cifrato.",

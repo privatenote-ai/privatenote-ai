@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyPt: ShareApiKeyArticleCopy = {
-  heroAlt: "Chaves de hotel penduradas em um quadro de madeira numerado",
-  heroCaptionPrefix: "Imagem de",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "no",
-  heroSource: "Pixabay",
+  heroAlt: "Dois laptops trocando uma chave de API por um link criptografado de uso único do PrivateNote",
+  heroCaption: "Ilustração gerada para PrivateNote.ai.",
+  takeawaysHeading: "Principais conclusões",
+  takeaways: [
+    "Nunca cole chaves de API em e-mail, chat, tickets, docs ou Git.",
+    "Chave mais restrita: menor privilégio, vida curta, depois rotacione.",
+    "Envie segredos por um link de uso único cifrado no navegador.",
+    "Para chaves de alto risco, cifre localmente primeiro; compartilhe só o ciphertext.",
+    "Monitore uso incomum—PrivateNote é entrega, não um vault.",
+  ],
   intro:
     "Todo desenvolvedor eventualmente precisa enviar uma chave de API para outra pessoa — para acesso a staging, um contratado, uma integração webhook ou entrega a um cliente. O caminho mais rápido geralmente é também o que deixa o rastro mais longo.",
   avoidChannels: [
@@ -131,6 +136,8 @@ export const shareApiKeySecurelyPt: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Como o PrivateNote se encaixa na transferência",
       p1: "O PrivateNote foi construído para o momento humano-a-humano: chaves de API, chaves privadas SSH, credenciais de banco de dados, códigos de recuperação, segredos de assinatura webhook e senhas temporárias que precisam chegar a uma pessoa sem virar registro permanente.",
+      relatedSsh:
+        "Se o segredo for uma chave SSH em vez de uma credencial de API, veja [como compartilhar chaves SSH com segurança](blog:how-to-share-ssh-keys-securely) sobre chaves públicas vs privadas, deploy keys e extensões do editor.",
       p2: "O segredo é criptografado no seu navegador antes do upload. O PrivateNote armazena ciphertext, não texto plano. A chave de descriptografia fica no fragmento da URL — a parte após `#` — que o navegador não envia ao servidor ao carregar.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "O servidor recebe o ID da nota e o payload criptografado.",

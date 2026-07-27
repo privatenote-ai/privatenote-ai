@@ -1,11 +1,16 @@
 import type { ShareApiKeyArticleCopy } from "./shareApiKeySecurely.types";
 
 export const shareApiKeySecurelyHr: ShareApiKeyArticleCopy = {
-  heroAlt: "Hotelski ključ na drvenoj ploči s brojevima",
-  heroCaptionPrefix: "Slika:",
-  heroArtist: "Hans",
-  heroCaptionMiddle: "s",
-  heroSource: "Pixabay",
+  heroAlt: "Dva prijenosnika razmjenjuju API ključ putem jednokratne šifrirane PrivateNote poveznice",
+  heroCaption: "Ilustracija izrađena za PrivateNote.ai.",
+  takeawaysHeading: "Ključni zaključci",
+  takeaways: [
+    "Nikad ne lijepite API ključeve u e-poštu, chat, tickete, dokumente ili Git.",
+    "Najuži ključ: najmanje privilegije, kratki vijek, zatim rotacija.",
+    "Šaljite tajne putem jednokratne poveznice šifrirane u pregledniku.",
+    "Za visokorizične ključeve prvo šifrirajte lokalno; dijelite samo ciphertext.",
+    "Pratite neuobičajenu uporabu—PrivateNote je predaja, ne vault.",
+  ],
   intro:
     "Svaki developer mora u nekom trenutku poslati API ključ nekome drugome—za staging pristup, izvođača, webhook integraciju ili predaju klijentu. Najbrži put obično je i onaj koji ostavlja najduži trag.",
   avoidChannels: [
@@ -131,6 +136,8 @@ export const shareApiKeySecurelyHr: ShareApiKeyArticleCopy = {
     privateNote: {
       title: "Kako PrivateNote odgovara predaji",
       p1: "PrivateNote je izgrađen za trenutak čovjek-čovjek: API ključevi, SSH privatni ključevi, vjerodajnice baze podataka, kodovi za oporavak, webhook signing tajne i privremene lozinke koje treba doseći jednu osobu bez postajanja trajnim zapisom.",
+      relatedSsh:
+        "Ako je tajna SSH ključ umjesto API vjerodajnice, pogledajte [kako sigurno dijeliti SSH ključeve](blog:how-to-share-ssh-keys-securely) o javnim vs privatnim ključevima, deploy ključevima i proširenjima editora.",
       p2: "Tajna se šifrira u vašem pregledniku prije uploada. PrivateNote pohranjuje šifrirani tekst, ne čisti tekst. Ključ za dešifriranje leži u URL fragmentu—dijelu nakon `#`—koji preglednik pri učitavanju ne šalje poslužitelju.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Poslužitelj prima ID bilješke i šifrirani sadržaj.",

@@ -67,7 +67,7 @@ export const hr: Translations = {
   developers: "Programeri",
   security: "Sigurnost",
   blog: "Blog",
-  about: "Oko",
+  about: "O nama",
   navHowItWorksDesc: "Enkripcija, istek i rukovanje ključem",
   navSecurityDesc: "Vodiči i preporuke za privatnost",
   navDevelopersDesc: "Proširenje, MCP i samostalno hosting",
@@ -1187,6 +1187,25 @@ export const hr: Translations = {
   blogLoadFailedTitle: "Nije uspjelo učitavanje posta na blogu",
   blogLoadFailedBody: "Naišli smo na pogrešku prilikom učitavanja ovog članka. Pokušajte ponovno kasnije.",
   blogBackToBlog: "Povratak na blog",
+  blogBreadcrumbHome: "Početna",
+  blogCategorySecrets: "Tajne",
+  blogCategoryEncryption: "Enkripcija",
+  blogCategoryPrivacy: "Privatnost",
+  blogCategoryAi: "AI",
+  blogCategoryDevelopers: "Programeri",
+  blogCategorySecretsDescription:
+    "Vodiči za dijeljenje API ključeva, lozinki, SSH ključeva, dokumenata i drugih tajni bez trajnog traga.",
+  blogCategoryEncryptionDescription:
+    "Jasna objašnjenja end-to-end enkripcije, RCS-a i što „dovoljno sigurno“ zapravo znači.",
+  blogCategoryPrivacyDescription:
+    "Politika, poruke na poslu i praktični privacy stackovi za one koji žele zadržati kontrolu.",
+  blogCategoryAiDescription:
+    "Privatni AI, lokalni modeli i kako držati tajne izvan tokova agenata.",
+  blogCategoryDevelopersDescription:
+    "CLI, MCP, Codex i integracije za sigurno dijeljenje tajni iz vašeg alata.",
+  blogKeyTakeaways: "Ključni zaključci",
+
+  blogUpdatedLabel: "Ažurirano",
   blogNotFoundTitle: "Post na blogu nije pronađen",
   blogNotFoundBody: "Članak koji tražite ne postoji ili je uklonjen.",
   blogPrivacyTitle: "Praktičan stack alata za privatnost za 2026.",
@@ -1265,36 +1284,44 @@ export const hr: Translations = {
   blogGoodEnoughExcerpt: "Zašto moderne prijetnje zahtijevaju arhitektonsku sigurnost, kratkotrajne podatke, sigurnije zadane postavke i alate za privatnost.",
   blogPasswordTitle: "Kako generiramo sigurne lozinke",
   blogPasswordExcerpt: "Saznajte kako koristimo kriptografsku slučajnost, nepristran odabir i inteligentnu analizu snage za stvaranje sigurnih zaporki.",
-  blogWorkplaceTextsTitle: "Tekstovi na radnom mjestu, pravna otkrića i slučaj za prolazne bilješke",
+  blogWorkplaceTextsTitle: "Prolazne bilješke za tekstove na radnom mjestu i pravna otkrića",
+  blogWorkplaceTextsSubtitle: "Zašto trajni chat predstavlja rizik",
   blogWorkplaceTextsExcerpt: "Što kontroverza s tekstualnim porukama OpenAI uči o pisanim zapisima, higijeni radnog mjesta i korištenju PrivateNote za osjetljivu jednokratnu komunikaciju.",
   blogDevelopersMetaTitle: "PrivateNote za programere",
   blogGoodEnoughMetaTitle: "Mit o „dovoljno dobrog“ obezbeđenja",
   blogPasswordMetaTitle: "Kako generiramo sigurne lozinke",
-  blogDevelopersTitle: "Prestanite lijepiti lozinke u Slack. Umjesto toga upotrijebite PrivateNote.",
+  blogDevelopersTitle: "PrivateNote za programere",
+  blogDevelopersSubtitle: "Dijelite tajne bez lijepljenja u Slack",
   blogDevelopersExcerpt: "Jednostavan vodič za dijeljenje tajni iz VS koda, kursora, AI agenta ili bilo kojeg preglednika — s enkripcijom koja nikada ne napušta vaš stroj.",
   blogCodexTitle: "Korištenje PrivateNote s OpenAI Codexom",
   blogCodexExcerpt: "Jedna naredba povezuje PrivateNote MCP s Codex sesijom. Postavljanje, što Codex može učiniti i kako tajne držati izvan upita agenta.",
-  blogOneTimeLinksTitle: "Jednokratne tajne veze: Kako podijeliti osjetljive informacije bez ostavljanja trajnog zapisa",
+  blogOneTimeLinksTitle: "Jednokratne tajne veze",
+  blogOneTimeLinksSubtitle: "Dijelite osjetljive informacije bez ostavljanja trajnog zapisa",
   blogOneTimeLinksExcerpt: "E-pošta, WhatsApp, Facebook Messenger i Slack stvoreni su da zauvijek čuvaju poruke. Neke tajne nikada nisu trebale opstati. Evo kako funkcioniraju jednokratno šifrirane poveznice, kada ih koristiti i zašto je brisanje nakon čitanja sigurnosna značajka, a ne trik.",
   blogOneTimeLinksMetaTitle: "Objašnjene jednokratne tajne veze",
   blogOneTimeLinksMetaDescription: "Kako funkcioniraju šifrirane veze nakon čitanja, kada ih koristiti umjesto e-pošte ili Slacka i zašto kratkotrajnost smanjuje rizik.",
-  blogEncryptedFileSharingTitle: "Šifrirano dijeljenje datoteka u odnosu na sigurno dijeljenje datoteka: u čemu je razlika?",
+  blogEncryptedFileSharingTitle: "Šifrirano vs. sigurno dijeljenje datoteka",
+  blogEncryptedFileSharingSubtitle: "U čemu je razlika?",
   blogEncryptedFileSharingExcerpt: "TLS i šifriranje na strani preglednika nazivaju se \"sigurnim dijeljenjem datoteka\". Nisu isti. Saznajte gdje se šifriranje događa, zašto je važno i kako odabrati.",
   blogEncryptedFileSharingMetaTitle: "Šifrirano vs. sigurno dijeljenje datoteka",
   blogEncryptedFileSharingMetaDescription: "Enkripcija prijenosa naspram enkripcije u pregledniku: što štiti svaka, čemu pružatelji još pristupaju i kako odabrati model.",
-  blogE2eeDefinitionTitle: "Što je end-to-end šifriranje? Kriptografska definicija",
+  blogE2eeDefinitionTitle: "Što je end-to-end šifriranje?",
+  blogE2eeDefinitionSubtitle: "Kriptografska definicija",
   blogE2eeDefinitionExcerpt: "End-to-end šifriranje ne znači samo da su podaci šifrirani. Naučite test posjedovanja ključeva, kako se bilješke s URL fragmentom uklapaju u model i koji rizici ostaju u kanalu slanja.",
   blogE2eeDefinitionMetaTitle: "Što je end-to-end šifriranje?",
   blogE2eeDefinitionMetaDescription: "Jasna kriptografska definicija end-to-end šifriranja: tko drži ključeve, zašto je TLS drugačiji i kako rade jednokratne bilješke šifrirane u pregledniku.",
-  blogSecretNoAccountTitle: "Kako poslati tajnu poruku bez stvaranja računa",
+  blogSecretNoAccountTitle: "Kako poslati tajnu poruku",
+  blogSecretNoAccountSubtitle: "Bez stvaranja računa",
   blogSecretNoAccountExcerpt: "Ne morate se registrirati da biste sigurno podijelili lozinku, kod za oporavak ili privatnu bilješku. Enkripcija u pregledniku dovoljna je uz samo jednu poveznicu.",
   blogSecretNoAccountMetaTitle: "Tajna poruka bez računa",
   blogSecretNoAccountMetaDescription: "Dijelite lozinke i privatne bilješke bez registracije: enkripcija u pregledniku, poveznice koje istječu, opcionalna lozinka i na što paziti.",
-  blogChatSecretsTitle: "10 tajni koje nikada ne biste trebali slati u chat (i što koristiti umjesto toga)",
+  blogChatSecretsTitle: "10 tajni koje nikada ne biste trebali slati u chat",
+  blogChatSecretsSubtitle: "I što koristiti umjesto toga",
   blogChatSecretsExcerpt: "Slack, Teams i WhatsApp stvoreni su za čuvanje razgovora — ne vjerodajnica. Deset tajni koje ne pripadaju chatu i browser-enkriptirane jednokratne alternative PrivateNote-a.",
   blogChatSecretsMetaTitle: "10 tajni koje nikada ne slati u chat",
   blogChatSecretsMetaDescription: "Lozinke, API ključevi i kodovi za oporavak ne bi trebali ostati u povijesti chata. Razumijte rizike i koristite browser-enkriptirane jednokratne poveznice.",
-  blogAgentSecurityTitle: "AI Agenti postaju zaposlenici. Moramo ih početi osiguravati poput zaposlenika.",
+  blogAgentSecurityTitle: "Osiguravanje AI agenata poput zaposlenika",
+  blogAgentSecuritySubtitle: "Agenti postaju infrastruktura radne snage",
   blogAgentSecurityExcerpt: "Brzo ubrizgavanje više nije cijela priča. Kako AI agenti dobivaju alate, memoriju i autonomiju, sigurnost mora upravljati cijelim sustavom—ne samo modelom.",
   blogTagDeveloper: "programer",
   blogTagMcp: "mcp",
@@ -1723,55 +1750,64 @@ export const hr: Translations = {
   blogCrossLinksHeading: "Istražite PrivateNote",
   blogCrossLinksRelatedLabel: "Povezani članci",
   blogCrossLinksTrustLabel: "Povjerenje i sigurnost",
-  blogIntroductionPrivateAiTitle: "Uvod u privatnu AI: pokretanje modela lokalno, u pregledniku ili kod kuće",
+  blogIntroductionPrivateAiTitle: "Uvod u privatnu AI",
+  blogIntroductionPrivateAiSubtitle: "Pokrećite modele lokalno, u pregledniku ili kod kuće",
   blogIntroductionPrivateAiExcerpt:
     "Kako se privatna AI razvijala, zašto laboratoriji objavljuju otvorene težine (otvorene koeficiente) i kako pokretati modele s Ollamom, u pregledniku ili na vlastitom GPU-u—uz Gemma 4, Llama, Mistral, Qwen i Write with Private AI u PrivateNoteu.",
   blogIntroductionPrivateAiMetaTitle: "Uvod u privatnu AI",
   blogIntroductionPrivateAiMetaDescription:
     "Privatna AI: otvorene težine (otvoreni koeficienti), Ollama vs preglednik vs kućni GPU, Gemma 4 i Llama, Write with Private AI u pregledniku.",
-  blogSharePasswordSecurelyTitle:
-    "Kako sigurno podijeliti lozinku (bez e-pošte, Teamsa ili WhatsAppa)",
+  blogSharePasswordSecurelyTitle: "Kako sigurno podijeliti lozinku",
+  blogSharePasswordSecurelySubtitle: "Bez e-pošte, Teamsa ili WhatsAppa",
   blogSharePasswordSecurelyExcerpt:
     "Prestanite lijepiti lozinke u Microsoft Teams, WhatsApp ili e-poštu. Jednokratne šifrirane poveznice, GDPR i upravitelj lozinki naspram jednokratnog dijeljenja.",
   blogSharePasswordSecurelyMetaTitle: "Kako sigurno podijeliti lozinku",
   blogSharePasswordSecurelyMetaDescription:
     "Dijelite lozinke bez e-pošte, Teamsa ili WhatsAppa: jednokratne šifrirane poveznice, GDPR i praktični primjeri.",
-  blogCicdEnvGithubSecretsTitle:
-    "Tajne u CI/CD, .env datotekama i GitHubu: kako developeri propuštaju ključeve (i kako to zaustaviti)",
+  blogCicdEnvGithubSecretsTitle: "Kako developeri propuštaju tajne u CI/CD-u i GitHubu",
+  blogCicdEnvGithubSecretsSubtitle: "I kako to zaustaviti",
   blogCicdEnvGithubSecretsExcerpt:
     "Prestanite commitati .env, lijepiti tokene u PR-ove i ispisivati tajne u CI logovima. Gdje credentials cure—i kako jednokratne šifrirane poveznice pomažu.",
   blogCicdEnvGithubSecretsMetaTitle: "Tajne u CI/CD, .env i GitHub curenja",
   blogCicdEnvGithubSecretsMetaDescription:
     "Kako .env datoteke, Git povijest i CI/CD pipelineovi cure API ključeve—plus kontrolna lista da ih držite izvan Gita, logova i chata.",
-  blogSendSensitiveDocumentsTitle:
-    "Kako sigurno poslati povjerljive dokumente (bez gubitka kontrole)",
+  blogSendSensitiveDocumentsTitle: "Kako sigurno poslati povjerljive dokumente",
+  blogSendSensitiveDocumentsSubtitle: "Bez gubitka kontrole",
   blogSendSensitiveDocumentsExcerpt:
     "E-pošta ostavlja trajne kopije. Jednokratni enkriptirani linkovi ne. Saznajte zašto putovnice, ugovori i porezne datoteke zahtijevaju enkripciju u pregledniku, pristup koji ističe i manje zaostalih kopija.",
   blogSendSensitiveDocumentsMetaTitle: "Sigurno slanje povjerljivih dokumenata",
   blogSendSensitiveDocumentsMetaDescription:
     "E-pošta ostavlja trajne kopije. Jednokratni enkriptirani linkovi ne. Saznajte za sigurno slanje dokumenata uz enkripciju u pregledniku i pristup koji ističe.",
-  blogShareSshKeysSecurelyTitle:
-    "Kako sigurno dijeliti SSH ključeve (bez Slacka, e-pošte ili Git povijesti)",
+  blogShareSshKeysSecurelyTitle: "Kako sigurno dijeliti SSH ključeve",
+  blogShareSshKeysSecurelySubtitle: "Bez Slacka, e-pošte ili Git povijesti",
   blogShareSshKeysSecurelyExcerpt:
     "Javni ključevi smiju se dijeliti. Privatni ne. Kada izbjeći predaju privatnog ključa, kako ga isporučiti jednokratnim šifriranim linkom i koje PrivateNote ekstenzije drže PEM izvan chata.",
   blogShareSshKeysSecurelyMetaTitle: "Sigurno dijeljenje SSH ključeva",
   blogShareSshKeysSecurelyMetaDescription:
     "Dijelite SSH privatne ključeve bez Slacka, e-pošte ili Gita. Preferirajte javne ključeve i jednokratne šifrirane linkove iz VS Codea, CLI-ja ili Chromea.",
-  blogRcsE2eEncryptionTitle:
-    "Android i iPhone poruke konačno imaju enkripciju od kraja do kraja. Što to znači",
+  blogRcsE2eEncryptionTitle: "Android i iPhone RCS enkripcija od kraja do kraja",
+  blogRcsE2eEncryptionSubtitle: "Što štiti—a što ne",
   blogRcsE2eEncryptionExcerpt:
     "Cross-platform RCS između Androida i iPhonea dobiva enkripciju od kraja do kraja. Što E2EE štiti, što ne, i kada jednokratni linkovi i dalje imaju više smisla za tajne.",
   blogRcsE2eEncryptionMetaTitle: "Android/iPhone RCS E2EE enkripcija",
   blogRcsE2eEncryptionMetaDescription:
     "RCS razgovori između Androida i iPhonea dobivaju enkripciju od kraja do kraja. Što E2EE štiti, granice i kada jednokratni linkovi i dalje bitni.",
-  blogSocialMediaBansTitle:
-    "Hoće li zabrane društvenih mreža za djecu zaista djelovati? Što kaže evidencija",
+  blogGoogleDriveVsOneTimeLinksTitle: "Google Drive vs jednokratni linkovi za povjerljive datoteke",
+  blogGoogleDriveVsOneTimeLinksSubtitle: "Suradnja ili privremena predaja?",
+  blogGoogleDriveVsOneTimeLinksExcerpt:
+    "Google Drive blista u dugoročnoj suradnji. Jednokratni šifrirani linkovi minimiziraju zadržavanje za jednokratne povjerljive predaje. Saznajte kada koji pristup pristaje.",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs jednokratni linkovi za povjerljive datoteke",
+  blogGoogleDriveVsOneTimeLinksMetaDescription:
+    "Usporedite Google Drive i jednokratne šifrirane linkove za povjerljive datoteke. Kada koji pristup pristaje i kako minimizirati dugoročnu izloženost.",
+  blogSocialMediaBansTitle: "Hoće li zabrane društvenih mreža za djecu djelovati?",
+  blogSocialMediaBansSubtitle: "Što kaže evidencija",
   blogSocialMediaBansExcerpt:
     "Australija, Francuska i Norveška raspravljaju o zabrani ispod 16 godina—istraživači upozoravaju na premještanje rizika, provjeru dobi i pravi problem: ovisni dizajn platformi.",
   blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za djecu: evidencija",
   blogSocialMediaBansMetaDescription:
     "Hoće li zabrane ispod 16 godina funkcionirati? Evidencija o digitalnom premještanju, privatnosti provjere dobi i alternativama iz Information Labs izvještaja.",
-  blogMakePrivateNoteTitle: "Kako napraviti privatnu bilješku (i zaista je zadržati privatnom)",
+  blogMakePrivateNoteTitle: "Kako napraviti privatnu bilješku",
+  blogMakePrivateNoteSubtitle: "I zaista je zadržati privatnom",
   blogMakePrivateNoteExcerpt:
     "Ikona lokota u aplikaciji za bilješke nije isto što i zaista privatna bilješka. Saznajte što privatno zapravo znači, koje postavke su važne i kako stvoriti šifriranu bilješku koja nestaje nakon čitanja—bez otvaranja računa.",
   blogMakePrivateNoteMetaTitle: "Kako napraviti privatnu bilješku",
@@ -1789,22 +1825,24 @@ export const hr: Translations = {
   blogEmailSecretsMetaTitle: "Zašto je e-pošta najgore mjesto za tajne",
   blogEmailSecretsMetaDescription:
     "Zašto je e-pošta loš kanal za lozinke, API ključeve i povjerljive podatke — i kako jednokratne šifrirane veze izbjegavaju trajne kopije u inboxu.",
-  blogChatControl10VoteTitle:
-    "Chat Control 1.0 usvojen unatoč više glasova protiv nego za. Evo što se dogodilo.",
+  blogChatControl10VoteTitle: "Kako je Chat Control 1.0 usvojen s više glasova „ne“ nego „da“",
+  blogChatControl10VoteSubtitle: "Što se zapravo dogodilo",
   blogChatControl10VoteExcerpt:
     "9. srpnja 2026. Europski je parlament produžio Chat Control 1.0 iako je više zastupnika glasalo protiv nego za. Razlog je parlamentarna procedura — ne kriptografija.",
   blogChatControl10VoteMetaTitle: "Glasanje o Chat Control 1.0 objašnjeno",
   blogChatControl10VoteMetaDescription:
     "Zašto je Chat Control 1.0 usvojen sa 314 protiv i 276 za, što produženje znači za end-to-end šifriranje i što Chat Control 2.0 može donijeti.",
-  blogChatControlTitle: "Chat Control se vraća: zašto Europa treba slušati svoje kriptografe",
+  blogChatControlTitle: "Zašto Europa treba slušati kriptografe o Chat Controlu",
+  blogChatControlSubtitle: "Obvezno skeniranje i dalje je u sukobu sa šifriranjem",
   blogChatControlExcerpt:
     "U utorak 7. srpnja očekuje se da će Parlament ponovno razmotriti CSAR. Zaštita djece je hitna, ali obvezno skeniranje privatne komunikacije i dalje je u sukobu sa šifriranjem, privatnošću i tehničkom stvarnošću.",
   blogChatControlMetaTitle: "Chat Control i upozorenja kriptografa",
   blogChatControlMetaDescription:
     "Zašto kriptografi upozoravaju da obvezno skeniranje na klijentu pod Chat Controlom ne može očuvati end-to-end šifriranje i privatnost u internetskoj skali.",
-  blogApiKeySharingTitle: "Kako sigurno podijeliti API ključ (bez izlaganja tajni)",
+  blogApiKeySharingTitle: "Kako sigurno podijeliti API ključ",
+  blogApiKeySharingSubtitle: "Bez izlaganja tajni",
   blogApiKeySharingExcerpt:
-    "API ključevi ne pripadaju Slacku, e-pošti, tiketima ni Git povijesti. Naučite sigurniji tijek: ograničite ključ, šifrirajte lokalno, koristite jednokratnu vezu i rotirajte nakon predaje.",
+    "API ključevi ne pripadaju Slacku, Teams-u, e-pošti, tiketima ni Git povijesti. Naučite sigurniji tijek: ograničite ključ, šifrirajte lokalno, koristite jednokratnu vezu i rotirajte nakon predaje.",
   blogApiKeySharingMetaTitle: "Sigurno dijeljenje API ključa",
   blogApiKeySharingMetaDescription:
     "Kako API ključevi cure kroz chat, e-poštu, projektne alate i Git, te kako jednokratne šifrirane veze u pregledniku pomažu developerima sigurno dijeliti tajne.",

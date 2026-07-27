@@ -25,7 +25,9 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { secretsNeverSendInChatDe } from "@/components/blog/locale/secretsNeverSendInChat.de";
@@ -791,13 +793,12 @@ export const SecretsNeverSendInChatPost: React.FC = () => {
   };
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="secrets-never-send-in-chat">
       <article>
         <BlogPostHeader
           slug="secrets-never-send-in-chat"
           title={t.blogChatSecretsTitle}
+          subtitle={t.blogChatSecretsSubtitle}
           headerClassName="mb-8 sm:mb-10"
           mediaClassName="mt-0"
         >
@@ -817,6 +818,8 @@ export const SecretsNeverSendInChatPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="secrets-never-send-in-chat" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.slice(1).map((paragraph) => (
@@ -953,6 +956,6 @@ export const SecretsNeverSendInChatPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="secrets-never-send-in-chat" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

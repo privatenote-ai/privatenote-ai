@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { joinPublicPath, localizedPath, publicSitePath, blogPostPath } from "./localizedPath.ts";
+import { joinPublicPath, localizedPath, publicSitePath, blogPostPath, blogCategoryPath, switchLanguagePath } from "./localizedPath.ts";
 
 describe("publicSitePath", () => {
   it("keeps locale home trailing slash", () => {
@@ -55,6 +55,13 @@ describe("localizedPath", () => {
     assert.equal(blogPostPath("privacy-tools", "en"), "/blog/privacy-tools");
     assert.equal(blogPostPath("privacy-tools", "de"), "/de/blog/datenschutz-tools");
     assert.equal(joinPublicPath("blog", "privacy-tools"), "/blog/privacy-tools");
+  });
+
+  it("localizes blog category landing paths", () => {
+    assert.equal(blogCategoryPath("secrets", "en"), "/blog/category/secrets");
+    assert.equal(blogCategoryPath("encryption", "de"), "/de/blog/category/encryption");
+    assert.equal(switchLanguagePath("/blog/category/ai", "fr"), "/fr/blog/category/ai");
+    assert.equal(localizedPath("/blog/category/privacy", "nl"), "/nl/blog/category/privacy");
   });
 
   it("localizes secure file transfer for all locales", () => {

@@ -43,6 +43,7 @@ const HowItWorks = lazy(() => import("@/pages/HowItWorks"));
 const Developers = lazy(() => import("@/pages/Developers"));
 const DeveloperIntegrationDetail = lazy(() => import("@/pages/DeveloperIntegrationDetail"));
 const Blog = lazy(() => import("@/pages/Blog"));
+const BlogCategory = lazy(() => import("@/pages/BlogCategory"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SecurityGuideDetail = lazy(() => import("./pages/SecurityGuideDetail"));
@@ -208,7 +209,7 @@ function Router() {
   const showInternalRoutes = canAccessInternalAppRoutes();
 
   return (
-    <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
+    <div className="flex min-h-screen min-w-0 flex-col">
       {showNavbar && <Navbar />}
       <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
@@ -236,6 +237,7 @@ function Router() {
               <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
               <Route path={`/${language}/contact`} component={() => <LocalizedRoute language={language} component={Contact} />} />
+              <Route path={`/${language}/blog/category/:category`} component={() => <LocalizedRoute language={language} component={BlogCategory} />} />
               <Route path={`/${language}/blog/:slug`} component={() => <LocalizedRoute language={language} component={BlogPost} />} />
               <Route path={`/${language}/blog`} component={() => <LocalizedRoute language={language} component={Blog} />} />
               <Route path={`/${language}/privacy`} component={() => <LocalizedRoute language={language} component={Privacy} />} />
@@ -257,6 +259,7 @@ function Router() {
           <Route path="/about" component={() => <LazyRoute component={About} />} />
           <Route path="/contact" component={() => <LazyRoute component={Contact} />} />
           <Route path="/blog" component={() => <LazyRoute component={Blog} />} />
+          <Route path="/blog/category/:category" component={() => <LazyRoute component={BlogCategory} />} />
           <Route path="/blog/:slug" component={() => <LazyRoute component={BlogPost} />} />
           {/* /admin is protected by Cloudflare Access in production; the ADMIN_TOKEN login is a second factor */}
           <Route path="/admin" component={() => <LazyRoute component={AdminDashboard} />} />

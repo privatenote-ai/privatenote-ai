@@ -2,10 +2,12 @@ import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
 import { localizedSecurityGuideMeta } from "@/components/security-guides/locale";
 import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
+import { isBlogCategory } from "@shared/blogCategories";
 import { developerIntegrationMeta } from "@/pages/developers/integrationContent";
 import { isEnglishOnlyDeveloperIntegration } from "@shared/englishOnlyDeveloperIntegrations";
 import { isLocalizedSecurityGuideTopic } from "@shared/localizedSecurityGuides";
 import { isSupportedLanguage, NON_ENGLISH_LANGUAGE_CODES, type SupportedLanguage } from "@shared/supportedLanguages";
+import { blogCategoryDescription, blogCategoryLabel } from "@/utils/blogCategoryLabel";
 
 const LOCALE_PREFIXES = new Set<string>(NON_ENGLISH_LANGUAGE_CODES);
 
@@ -114,6 +116,11 @@ function blogSlugStaticMeta(
       return {
         title: buildDocumentTitle(t.blogRcsE2eEncryptionMetaTitle),
         description: t.blogRcsE2eEncryptionMetaDescription,
+      };
+    case "google-drive-vs-one-time-encrypted-links":
+      return {
+        title: buildDocumentTitle(t.blogGoogleDriveVsOneTimeLinksMetaTitle),
+        description: t.blogGoogleDriveVsOneTimeLinksMetaDescription,
       };
     case "how-to-make-a-private-note":
       return {
@@ -298,6 +305,14 @@ function metaForLocalizedRest(
   }
   if (rest.startsWith("blog/")) {
     const slugFromUrl = rest.slice("blog/".length);
+    const categoryMatch = slugFromUrl.match(/^category\/([^/]+)$/);
+    if (categoryMatch && isBlogCategory(categoryMatch[1]!)) {
+      const category = categoryMatch[1]!;
+      return {
+        title: buildDocumentTitle(`${blogCategoryLabel(category, t)} · ${t.blog}`),
+        description: blogCategoryDescription(category, t),
+      };
+    }
     if (!slugFromUrl || slugFromUrl.includes("/")) return null;
     const slug = resolveCanonicalBlogSlug(slugFromUrl) ?? slugFromUrl;
     return metaForBlogSubpath(slug, t);
@@ -495,6 +510,13 @@ export function resolveDocumentMeta(
   if (segments[0] === "blog") {
     if (segments.length === 1) {
       return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
+    }
+    if (segments.length === 3 && segments[1] === "category" && isBlogCategory(segments[2]!)) {
+      const category = segments[2]!;
+      return {
+        title: buildDocumentTitle(`${blogCategoryLabel(category, t)} · ${t.blog}`),
+        description: blogCategoryDescription(category, t),
+      };
     }
     if (segments.length === 2 && segments[1]) {
       return metaForBlogSubpath(segments[1], t);

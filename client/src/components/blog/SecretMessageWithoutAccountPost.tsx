@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
 import type { Translations } from "@/utils/translations/types";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { secretMessageWithoutAccountEs } from "@/components/blog/locale/secretMessageWithoutAccount.es";
@@ -688,13 +690,12 @@ export const SecretMessageWithoutAccountPost: React.FC = () => {
   };
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="send-secret-message-without-account">
       <article>
         <BlogPostHeader
           slug="send-secret-message-without-account"
           title={t.blogSecretNoAccountTitle}
+          subtitle={t.blogSecretNoAccountSubtitle}
           excerpt={t.blogSecretNoAccountExcerpt}
           headerClassName="mb-12"
         >
@@ -729,6 +730,8 @@ export const SecretMessageWithoutAccountPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="send-secret-message-without-account" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -789,6 +792,6 @@ export const SecretMessageWithoutAccountPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="send-secret-message-without-account" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

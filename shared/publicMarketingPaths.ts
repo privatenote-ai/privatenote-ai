@@ -2,6 +2,7 @@
  * Public marketing routes that must return 200 for crawlers (sitemap + nav).
  * Single source for prerender fallback list and Pages middleware SPA shell fallback.
  */
+import { allBlogCategoryMarketingPaths } from "./blogCategories.ts";
 import { allLocalizedBlogMarketingPaths } from "./localizedBlogSlugs.ts";
 import { ENGLISH_ONLY_DEVELOPER_MARKETING_PATHS } from "./englishOnlyDeveloperIntegrations.ts";
 import {
@@ -32,6 +33,7 @@ const ENGLISH_NON_BLOG_PATHS = NON_BLOG_LOCALIZED_MARKETING_PATHS.map((path) =>
 );
 
 const ENGLISH_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) => path.startsWith("/blog/"));
+const BLOG_CATEGORY_PATHS = allBlogCategoryMarketingPaths();
 
 /** Routes that are public but not mirrored under /de, /fr, etc. */
 const EXTRA_MARKETING_PATHS = [
@@ -58,6 +60,7 @@ const LOCALIZED_BLOG_PATHS = allLocalizedBlogMarketingPaths().filter((path) =>
 export const PUBLIC_MARKETING_PATHS = [
   ...ENGLISH_NON_BLOG_PATHS,
   ...ENGLISH_BLOG_PATHS,
+  ...BLOG_CATEGORY_PATHS,
   ...LOCALIZED_NON_BLOG_PATHS,
   ...LOCALIZED_BLOG_PATHS,
   ...LOCALIZED_SECURITY_GUIDE_PATHS,

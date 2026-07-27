@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { privateNoteCodexHr } from "@/components/blog/locale/privateNoteCodex.hr";
@@ -886,9 +888,7 @@ export function PrivateNoteCodexPost() {
   const c = getBlogArticleCopy(copy, language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="privatenote-codex">
       <article>
         <BlogPostHeader
           slug="privatenote-codex"
@@ -897,6 +897,8 @@ export function PrivateNoteCodexPost() {
           titleClassName="sm:text-4xl tracking-tight"
           headerClassName="mb-10"
         />
+
+        <BlogArticleTakeaways slug="privatenote-codex" />
 
       <div className="prose prose-gray dark:prose-invert max-w-none">
         {c.intro.map((p, i) => (
@@ -976,6 +978,6 @@ export function PrivateNoteCodexPost() {
 
       <BlogPostCrossLinks slug="privatenote-codex" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 }

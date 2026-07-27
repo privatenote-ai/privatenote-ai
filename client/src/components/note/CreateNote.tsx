@@ -2840,15 +2840,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     )}
                   </button>
 
-                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:max-w-[10.5rem]">
+                  <div
+                    className={
+                      selectedFile
+                        ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
+                        : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
+                    }
+                  >
                     <button
                       type="button"
                       onClick={handleAttachFileClick}
                       title={selectedFile ? selectedFile.name : undefined}
-                      className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
+                      className={
+                        selectedFile
+                          ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`
+                          : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`
+                      }
                     >
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                      <span className="truncate">{attachFileButtonLabel}</span>
+                      <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
+                        {attachFileButtonLabel}
+                      </span>
                     </button>
                     {selectedFile ? (
                       <button

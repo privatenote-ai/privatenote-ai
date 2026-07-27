@@ -4,7 +4,9 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { workplaceTextsHr } from "@/components/blog/locale/workplaceTexts.hr";
@@ -350,13 +352,12 @@ export const WorkplaceTextsPost: React.FC = () => {
   const notePath = localizedPath("/", language);
 
   return (
-    <div className={blogPostPageClass}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="workplace-texts-private-note">
       <article>
         <BlogPostHeader
           slug="workplace-texts-private-note"
           title={t.blogWorkplaceTextsTitle}
+          subtitle={t.blogWorkplaceTextsSubtitle}
           excerpt={t.blogWorkplaceTextsExcerpt}
           headerClassName="mb-10"
         >
@@ -384,6 +385,8 @@ export const WorkplaceTextsPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="workplace-texts-private-note" />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph) => (
@@ -432,6 +435,6 @@ export const WorkplaceTextsPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="workplace-texts-private-note" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

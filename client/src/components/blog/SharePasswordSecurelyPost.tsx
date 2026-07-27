@@ -4,10 +4,20 @@ import { ArrowRight, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { sharePasswordSecurelyDe } from "@/components/blog/locale/sharePasswordSecurely.de";
 import { sharePasswordSecurelyEn } from "@/components/blog/locale/sharePasswordSecurely.en";
+import { sharePasswordSecurelyEs } from "@/components/blog/locale/sharePasswordSecurely.es";
+import { sharePasswordSecurelyFr } from "@/components/blog/locale/sharePasswordSecurely.fr";
+import { sharePasswordSecurelyHr } from "@/components/blog/locale/sharePasswordSecurely.hr";
+import { sharePasswordSecurelyIt } from "@/components/blog/locale/sharePasswordSecurely.it";
+import { sharePasswordSecurelyNl } from "@/components/blog/locale/sharePasswordSecurely.nl";
+import { sharePasswordSecurelyPt } from "@/components/blog/locale/sharePasswordSecurely.pt";
+import { sharePasswordSecurelySr } from "@/components/blog/locale/sharePasswordSecurely.sr";
 import type {
   SharePasswordSecurelyArticleCopy,
   SharePasswordSecurelyFlowStep,
@@ -21,6 +31,14 @@ const copy: Partial<Record<SupportedLanguage, SharePasswordSecurelyArticleCopy>>
   en: SharePasswordSecurelyArticleCopy;
 } = {
   en: sharePasswordSecurelyEn,
+  de: sharePasswordSecurelyDe,
+  fr: sharePasswordSecurelyFr,
+  es: sharePasswordSecurelyEs,
+  it: sharePasswordSecurelyIt,
+  nl: sharePasswordSecurelyNl,
+  pt: sharePasswordSecurelyPt,
+  hr: sharePasswordSecurelyHr,
+  sr: sharePasswordSecurelySr,
 };
 
 function RichText({ text }: { text: string }) {
@@ -174,13 +192,12 @@ export const SharePasswordSecurelyPost: React.FC = () => {
   };
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug={slug}>
       <article>
         <BlogPostHeader
           slug={slug}
           title={t.blogSharePasswordSecurelyTitle}
+          subtitle={t.blogSharePasswordSecurelySubtitle}
           excerpt={t.blogSharePasswordSecurelyExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -197,6 +214,8 @@ export const SharePasswordSecurelyPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug={slug} />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
           <div className="space-y-5 sm:space-y-6">
@@ -369,6 +388,6 @@ export const SharePasswordSecurelyPost: React.FC = () => {
 
         <BlogPostCrossLinks slug={slug} />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

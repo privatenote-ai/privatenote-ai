@@ -9,6 +9,7 @@ import {
   homeLanguageFromRoute,
   isLocaleHomeRoute,
 } from "./homeSeoLinks.ts";
+import { isBlogCategory, blogCategoryPath } from "./blogCategories.ts";
 import { localizedBlogPostPath, resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
 import { isPublicMarketingPath, normalizeMarketingPathname } from "./publicMarketingPaths.ts";
 import { isSecurityGuideMarketingStem } from "./localizedSecurityGuides.ts";
@@ -37,6 +38,7 @@ type ParsedLocalizedMarketingRoute = {
   language: SupportedLanguage;
   stem: string;
   blogSlug: string | null;
+  blogCategory: string | null;
 };
 
 function parseLocalizedMarketingRoute(route: string): ParsedLocalizedMarketingRoute | null {
@@ -55,20 +57,23 @@ function parseLocalizedMarketingRoute(route: string): ParsedLocalizedMarketingRo
 
   if (rest[0] === "blog") {
     if (rest.length === 1) {
-      return { language, stem: "blog", blogSlug: null };
+      return { language, stem: "blog", blogSlug: null, blogCategory: null };
+    }
+    if (rest.length === 3 && rest[1] === "category" && isBlogCategory(rest[2]!)) {
+      return { language, stem: "blog", blogSlug: null, blogCategory: rest[2]! };
     }
     if (rest.length === 2) {
-      return { language, stem: "blog", blogSlug: rest[1]! };
+      return { language, stem: "blog", blogSlug: rest[1]!, blogCategory: null };
     }
     return null;
   }
 
   if (rest.length === 1 && LOCALIZED_MARKETING_STEMS.has(rest[0]!)) {
-    return { language, stem: rest[0]!, blogSlug: null };
+    return { language, stem: rest[0]!, blogSlug: null, blogCategory: null };
   }
 
   if (rest.length === 2 && rest[0] === "security-guides" && isSecurityGuideMarketingStem(`security-guides/${rest[1]!}`)) {
-    return { language, stem: `security-guides/${rest[1]!}`, blogSlug: null };
+    return { language, stem: `security-guides/${rest[1]!}`, blogSlug: null, blogCategory: null };
   }
 
   return null;
@@ -77,8 +82,13 @@ function parseLocalizedMarketingRoute(route: string): ParsedLocalizedMarketingRo
 function localizedMarketingPathForLanguage(
   stem: string,
   blogSlug: string | null,
+  blogCategory: string | null,
   language: SupportedLanguage,
 ): string {
+  if (stem === "blog" && blogCategory && isBlogCategory(blogCategory)) {
+    return blogCategoryPath(blogCategory, language);
+  }
+
   if (stem === "blog" && !blogSlug) {
     return language === "en" ? "/blog" : `/${language}/blog`;
   }
@@ -103,6 +113,9 @@ function localizedMarketingPathForLanguage(
 export function isLocalizedMarketingHreflangRoute(route: string): boolean {
   const parsed = parseLocalizedMarketingRoute(route);
   if (!parsed) return false;
+  if (parsed.stem === "blog" && parsed.blogCategory) {
+    return isBlogCategory(parsed.blogCategory);
+  }
   if (parsed.stem === "blog" && parsed.blogSlug) {
     return resolveCanonicalBlogSlug(parsed.blogSlug) !== null;
   }
@@ -116,15 +129,15 @@ export function localizedMarketingHreflangAlternates(route: string): LocalizedMa
   const parsed = parseLocalizedMarketingRoute(route);
   if (!parsed) return null;
 
-  const { stem, blogSlug } = parsed;
+  const { stem, blogSlug, blogCategory } = parsed;
   const alternates = SUPPORTED_LANGUAGES.map((language) => ({
     hrefLang: language,
-    path: localizedMarketingPathForLanguage(stem, blogSlug, language),
+    path: localizedMarketingPathForLanguage(stem, blogSlug, blogCategory, language),
   }));
 
   alternates.push({
     hrefLang: "x-default",
-    path: localizedMarketingPathForLanguage(stem, blogSlug, "en"),
+    path: localizedMarketingPathForLanguage(stem, blogSlug, blogCategory, "en"),
   });
 
   return alternates;

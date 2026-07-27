@@ -28,6 +28,16 @@ test("localizedMarketingHreflangAlternates includes localized blog slugs", () =>
   assert.equal(de.path, "/de/blog/datenschutz-tools");
 });
 
+test("localizedMarketingHreflangAlternates mirrors blog category landings", () => {
+  assert.equal(isLocalizedMarketingHreflangRoute("/blog/category/secrets"), true);
+  const alternates = localizedMarketingHreflangAlternates("/de/blog/category/secrets");
+  assert.ok(alternates);
+  const en = alternates.find((alternate) => alternate.hrefLang === "en");
+  const de = alternates.find((alternate) => alternate.hrefLang === "de");
+  assert.equal(en?.path, "/blog/category/secrets");
+  assert.equal(de?.path, "/de/blog/category/secrets");
+});
+
 test("buildLocalizedMarketingHreflangMarkup uses absolute production URLs", () => {
   const html = buildLocalizedMarketingHreflangMarkup("/de/how-it-works");
   assert.ok(html);

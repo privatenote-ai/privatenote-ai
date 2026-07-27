@@ -1187,6 +1187,25 @@ export const pt: Translations = {
   blogLoadFailedTitle: "Falha ao carregar a postagem do blog",
   blogLoadFailedBody: "Encontramos um erro ao carregar este artigo. Por favor, tente novamente mais tarde.",
   blogBackToBlog: "Voltar ao blog",
+  blogBreadcrumbHome: "Início",
+  blogCategorySecrets: "Segredos",
+  blogCategoryEncryption: "Criptografia",
+  blogCategoryPrivacy: "Privacidade",
+  blogCategoryAi: "IA",
+  blogCategoryDevelopers: "Desenvolvedores",
+  blogCategorySecretsDescription:
+    "Guias para partilhar chaves de API, palavras-passe, chaves SSH, documentos e outros segredos sem deixar um rasto permanente.",
+  blogCategoryEncryptionDescription:
+    "Explicações claras sobre encriptação ponta a ponta, RCS e o que «seguro o suficiente» realmente significa.",
+  blogCategoryPrivacyDescription:
+    "Política, mensagens no trabalho e stacks de privacidade práticos para quem quer manter o controlo.",
+  blogCategoryAiDescription:
+    "IA privada, modelos locais e como manter segredos fora dos fluxos de agentes.",
+  blogCategoryDevelopersDescription:
+    "CLI, MCP, Codex e integrações para partilhar segredos com segurança a partir da sua toolchain.",
+  blogKeyTakeaways: "Principais conclusões",
+
+  blogUpdatedLabel: "Atualizado",
   blogNotFoundTitle: "Postagem do blog não encontrada",
   blogNotFoundBody: "O artigo que você procura não existe ou foi removido.",
   blogPrivacyTitle: "Uma stack prática de ferramentas de privacidade para 2026",
@@ -1265,36 +1284,44 @@ export const pt: Translations = {
   blogGoodEnoughExcerpt: "Por que ameaças modernas exigem segurança arquitetônica, dados confidenciais efêmeros, padrões mais seguros e ferramentas de privacidade.",
   blogPasswordTitle: "Como geramos senhas seguras",
   blogPasswordExcerpt: "Saiba como usamos aleatoriedade criptográfica, seleção imparcial e análise inteligente de força para criar senhas seguras.",
-  blogWorkplaceTextsTitle: "Textos no local de trabalho, descoberta jurídica e argumentos para notas efêmeras",
+  blogWorkplaceTextsTitle: "Notas efêmeras para textos no trabalho e descoberta jurídica",
+  blogWorkplaceTextsSubtitle: "Por que o chat durável é um risco",
   blogWorkplaceTextsExcerpt: "O que a controvérsia da mensagem de texto OpenAI ensina sobre registros escritos, higiene no local de trabalho e uso de PrivateNote para comunicação sensível única.",
   blogDevelopersMetaTitle: "PrivateNote para desenvolvedores",
   blogGoodEnoughMetaTitle: "Mito da segurança “boa o suficiente”",
   blogPasswordMetaTitle: "Como geramos senhas seguras",
-  blogDevelopersTitle: "Pare de colar senhas no Slack. Use PrivateNote em vez disso.",
+  blogDevelopersTitle: "PrivateNote para desenvolvedores",
+  blogDevelopersSubtitle: "Compartilhe segredos sem colar no Slack",
   blogDevelopersExcerpt: "Guia simples para compartilhar segredos do VS Code, Cursor, um agente de IA ou qualquer navegador — com criptografia local.",
   blogCodexTitle: "Usando PrivateNote com OpenAI Codex",
   blogCodexExcerpt: "Um comando conecta o PrivateNote MCP a cada sessão Codex. Configuração, o que o Codex pode fazer e como manter segredos fora do prompt do agente.",
-  blogOneTimeLinksTitle: "Links secretos únicos: como compartilhar informações confidenciais sem deixar um registro permanente",
+  blogOneTimeLinksTitle: "Links secretos de uso único",
+  blogOneTimeLinksSubtitle: "Compartilhe informações confidenciais sem deixar um registro permanente",
   blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger e Slack foram feitos para guardar mensagens para sempre. Alguns segredos nunca deveriam persistir. Veja como funcionam links criptografados de uso único, quando usá-los e por que queimar após a leitura é um recurso de segurança—não um artifício.",
   blogOneTimeLinksMetaTitle: "Links secretos únicos explicados",
   blogOneTimeLinksMetaDescription: "Como funcionam links criptografados burn-after-reading, quando usá-los em vez de e-mail ou Slack e por que a efemeridade reduz riscos.",
-  blogEncryptedFileSharingTitle: "Compartilhamento de arquivos criptografados versus compartilhamento seguro de arquivos: qual é a diferença?",
+  blogEncryptedFileSharingTitle: "Compartilhamento criptografado vs. seguro de arquivos",
+  blogEncryptedFileSharingSubtitle: "Qual é a diferença?",
   blogEncryptedFileSharingExcerpt: "O TLS e a criptografia do lado do navegador são chamados de “compartilhamento seguro de arquivos”. Eles não são iguais. Saiba onde a criptografia acontece, por que ela é importante e como escolher.",
   blogEncryptedFileSharingMetaTitle: "Compartilhamento criptografado vs. seguro",
   blogEncryptedFileSharingMetaDescription: "Criptografia de transporte vs. no navegador: o que cada uma protege, o que provedores ainda acessam e como escolher o modelo certo.",
-  blogE2eeDefinitionTitle: "O que é criptografia de ponta a ponta? Uma definição criptográfica",
+  blogE2eeDefinitionTitle: "O que é criptografia de ponta a ponta?",
+  blogE2eeDefinitionSubtitle: "Uma definição criptográfica",
   blogE2eeDefinitionExcerpt: "Criptografia de ponta a ponta não significa apenas dados criptografados. Entenda o teste de posse das chaves, como notas com fragmento de URL se encaixam no modelo e quais riscos permanecem no canal de envio.",
   blogE2eeDefinitionMetaTitle: "O que é criptografia de ponta a ponta?",
   blogE2eeDefinitionMetaDescription: "Definição de criptografia ponta a ponta: quem possui as chaves, por que TLS difere e como notas efêmeras criptografadas no navegador funcionam.",
-  blogSecretNoAccountTitle: "Como enviar uma mensagem secreta sem criar uma conta",
+  blogSecretNoAccountTitle: "Como enviar uma mensagem secreta",
+  blogSecretNoAccountSubtitle: "Sem criar uma conta",
   blogSecretNoAccountExcerpt: "Você não precisa se cadastrar para compartilhar uma senha, código de recuperação ou nota privada com segurança. A criptografia no navegador basta com um link.",
   blogSecretNoAccountMetaTitle: "Mensagem secreta sem conta",
   blogSecretNoAccountMetaDescription: "Compartilhe senhas e notas privadas sem cadastro: criptografia no navegador, links que expiram, senha opcional e o que procurar em um serviço seguro.",
-  blogChatSecretsTitle: "10 segredos que você nunca deve enviar no chat (e o que usar em vez disso)",
+  blogChatSecretsTitle: "10 segredos que você nunca deve enviar no chat",
+  blogChatSecretsSubtitle: "E o que usar em vez disso",
   blogChatSecretsExcerpt: "Slack, Teams e WhatsApp foram feitos para preservar conversas — não credenciais. Dez segredos que não pertencem ao chat e as alternativas criptografadas no navegador com PrivateNote.",
   blogChatSecretsMetaTitle: "10 segredos para nunca enviar no chat",
   blogChatSecretsMetaDescription: "Senhas, chaves de API e códigos de recuperação não devem ficar no histórico do chat. Entenda os riscos e use links únicos criptografados no navegador.",
-  blogAgentSecurityTitle: "AI Agentes estão se tornando funcionários. Precisamos começar a protegê-los como funcionários.",
+  blogAgentSecurityTitle: "Protegendo agentes de IA como funcionários",
+  blogAgentSecuritySubtitle: "Os agentes estão se tornando infraestrutura da força de trabalho",
   blogAgentSecurityExcerpt: "A injeção imediata não é mais a história toda. À medida que os agentes AI ganham ferramentas, memória e autonomia, a segurança deve governar todo o sistema – não apenas o modelo.",
   blogTagDeveloper: "desenvolvedor",
   blogTagMcp: "MCP",
@@ -1723,55 +1750,64 @@ export const pt: Translations = {
   blogCrossLinksHeading: "Explore o PrivateNote",
   blogCrossLinksRelatedLabel: "Artigos relacionados",
   blogCrossLinksTrustLabel: "Confiança e segurança",
-  blogIntroductionPrivateAiTitle: "Introdução à IA privada: executar modelos localmente, no navegador ou em casa",
+  blogIntroductionPrivateAiTitle: "Introdução à IA privada",
+  blogIntroductionPrivateAiSubtitle: "Execute modelos localmente, no navegador ou em casa",
   blogIntroductionPrivateAiExcerpt:
     "Como a IA privada evoluiu, por que laboratórios publicam pesos abertos e como executar modelos com Ollama, no navegador ou na sua própria GPU—além de Gemma 4, Llama, Mistral, Qwen e Write with Private AI no PrivateNote.",
   blogIntroductionPrivateAiMetaTitle: "Introdução à IA privada",
   blogIntroductionPrivateAiMetaDescription:
     "IA privada: pesos abertos, Ollama vs navegador vs GPU em casa, Gemma 4 e Llama, e Write with Private AI no navegador.",
-  blogSharePasswordSecurelyTitle:
-    "Como partilhar uma palavra-passe com segurança (sem e-mail, Teams ou WhatsApp)",
+  blogSharePasswordSecurelyTitle: "Como partilhar uma palavra-passe com segurança",
+  blogSharePasswordSecurelySubtitle: "Sem e-mail, Teams ou WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Deixe de colar palavras-passe em Microsoft Teams, WhatsApp ou e-mail. Ligações encriptadas de uso único, RGPD e gestor vs partilha pontual.",
   blogSharePasswordSecurelyMetaTitle: "Como partilhar uma palavra-passe com segurança",
   blogSharePasswordSecurelyMetaDescription:
     "Partilhe palavras-passe sem e-mail, Teams ou WhatsApp: ligações encriptadas de uso único, RGPD e exemplos práticos.",
-  blogCicdEnvGithubSecretsTitle:
-    "Segredos em CI/CD, ficheiros .env e GitHub: como developers vazam chaves (e como parar)",
+  blogCicdEnvGithubSecretsTitle: "Como developers vazam segredos em CI/CD e GitHub",
+  blogCicdEnvGithubSecretsSubtitle: "E como parar",
   blogCicdEnvGithubSecretsExcerpt:
     "Pare de fazer commit de .env, colar tokens em PRs e ecoar segredos em logs de CI. Onde as credenciais escapam—e como ligações encriptadas de uso único ajudam.",
   blogCicdEnvGithubSecretsMetaTitle: "Segredos CI/CD, .env e GitHub",
   blogCicdEnvGithubSecretsMetaDescription:
     "Como ficheiros .env, histórico Git e pipelines CI/CD vazam chaves API—mais um checklist para as manter fora de Git, logs e chat.",
-  blogSendSensitiveDocumentsTitle:
-    "Como Enviar Documentos Sensíveis com Segurança (Sem Perder o Controle)",
+  blogSendSensitiveDocumentsTitle: "Como Enviar Documentos Sensíveis com Segurança",
+  blogSendSensitiveDocumentsSubtitle: "Sem perder o controle",
   blogSendSensitiveDocumentsExcerpt:
     "O e-mail deixa cópias permanentes. Links criptografados de uso único não. Saiba por que passaportes, contratos e arquivos fiscais precisam de criptografia no navegador, acesso com expiração e menos cópias remanescentes.",
   blogSendSensitiveDocumentsMetaTitle: "Envie documentos sensíveis com segurança",
   blogSendSensitiveDocumentsMetaDescription:
     "O e-mail deixa cópias permanentes. Links de uso único não. Partilhe documentos com criptografia no navegador, acesso com expiração e menos cópias.",
-  blogShareSshKeysSecurelyTitle:
-    "Como partilhar chaves SSH com segurança (sem Slack, e-mail ou histórico Git)",
+  blogShareSshKeysSecurelyTitle: "Como partilhar chaves SSH com segurança",
+  blogShareSshKeysSecurelySubtitle: "Sem Slack, e-mail ou histórico Git",
   blogShareSshKeysSecurelyExcerpt:
     "Chaves públicas podem partilhar-se. As privadas não. Quando evitar entregar uma chave privada, como a enviar com um link cifrado de uso único e que extensões PrivateNote mantêm PEMs fora do chat.",
   blogShareSshKeysSecurelyMetaTitle: "Partilhar chaves SSH com segurança",
   blogShareSshKeysSecurelyMetaDescription:
     "Partilhe chaves SSH privadas sem Slack, e-mail ou Git. Prefira chaves públicas e links cifrados de uso único via VS Code, CLI ou Chrome.",
-  blogRcsE2eEncryptionTitle:
-    "Mensagens Android e iPhone finalmente têm criptografia ponta a ponta. O que isso significa",
+  blogRcsE2eEncryptionTitle: "Criptografia ponta a ponta RCS no Android e iPhone",
+  blogRcsE2eEncryptionSubtitle: "O que protege—e o que não protege",
   blogRcsE2eEncryptionExcerpt:
     "O RCS entre Android e iPhone está a ganhar criptografia ponta a ponta. O que o E2EE protege, o que não protege, e quando links de uso único ainda fazem mais sentido para segredos.",
   blogRcsE2eEncryptionMetaTitle: "RCS Android/iPhone ponta a ponta",
   blogRcsE2eEncryptionMetaDescription:
     "Chats RCS entre Android e iPhone estão a receber criptografia ponta a ponta. O que o E2EE protege, os limites e quando links de uso único ainda importam.",
-  blogSocialMediaBansTitle:
-    "As proibições de redes sociais para crianças funcionarão? O que a evidência diz",
+  blogGoogleDriveVsOneTimeLinksTitle: "Google Drive vs links de uso único para ficheiros confidenciais",
+  blogGoogleDriveVsOneTimeLinksSubtitle: "Colaboração ou entrega temporária?",
+  blogGoogleDriveVsOneTimeLinksExcerpt:
+    "O Google Drive destaca-se na colaboração a longo prazo. Links encriptados de uso único minimizam a retenção em entregas confidenciais pontuais. Saiba quando cada abordagem encaixa.",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs links de uso único confidenciais",
+  blogGoogleDriveVsOneTimeLinksMetaDescription:
+    "Compare o Google Drive e links encriptados de uso único para ficheiros confidenciais. Quando cada um encaixa e como minimizar a exposição a longo prazo.",
+  blogSocialMediaBansTitle: "As proibições de redes sociais para crianças funcionarão?",
+  blogSocialMediaBansSubtitle: "O que a evidência diz",
   blogSocialMediaBansExcerpt:
     "Austrália, França e Noruega debatem proibições para menores de 16—pesquisadores alertam para deslocamento de danos, verificação de idade e o problema real: design viciante das plataformas.",
   blogSocialMediaBansMetaTitle: "Proibições de redes sociais para crianças: evidência",
   blogSocialMediaBansMetaDescription:
     "As proibições para menores de 16 funcionam? Evidência sobre deslocamento digital, privacidade na verificação de idade e alternativas no relatório Information Labs.",
-  blogMakePrivateNoteTitle: "Como fazer uma nota privada (e mantê-la realmente privada)",
+  blogMakePrivateNoteTitle: "Como fazer uma nota privada",
+  blogMakePrivateNoteSubtitle: "E mantê-la realmente privada",
   blogMakePrivateNoteExcerpt:
     "Um ícone de cadeado num app de notas não é o mesmo que uma nota verdadeiramente privada. Saiba o que privado realmente significa, quais definições importam e como criar uma nota cifrada que desaparece após a leitura—sem criar conta.",
   blogMakePrivateNoteMetaTitle: "Como fazer uma nota privada",
@@ -1790,24 +1826,24 @@ export const pt: Translations = {
   blogEmailSecretsMetaTitle: "Por que o e-mail é ruim para segredos",
   blogEmailSecretsMetaDescription:
     "Por que o e-mail é ruim para senhas, chaves de API e dados confidenciais — e como links únicos criptografados evitam cópias na caixa de entrada.",
-  blogChatControl10VoteTitle:
-    "Chat Control 1.0 aprovado apesar de mais votos contra do que a favor. Foi isto que aconteceu.",
+  blogChatControl10VoteTitle: "Como o Chat Control 1.0 passou com mais votos «Não» do que «Sim»",
+  blogChatControl10VoteSubtitle: "O que realmente aconteceu",
   blogChatControl10VoteExcerpt:
     "Em 9 de julho de 2026, o Parlamento Europeu prorrogou o Chat Control 1.0 embora mais eurodeputados tenham votado contra do que a favor. A razão está no procedimento parlamentar — não na criptografia.",
   blogChatControl10VoteMetaTitle: "Votação do Chat Control 1.0 explicada",
   blogChatControl10VoteMetaDescription:
     "Por que Chat Control 1.0 passou com mais votos contra que a favor, o que significa para E2E e o que Chat Control 2.0 pode trazer.",
-  blogChatControlTitle:
-    "Chat Control está de volta: por que a Europa deve ouvir seus criptógrafos",
+  blogChatControlTitle: "Por que a Europa deve ouvir os criptógrafos sobre o Chat Control",
+  blogChatControlSubtitle: "A varredura obrigatória ainda colide com a criptografia",
   blogChatControlExcerpt:
     "Na terça-feira, 7 de julho, espera-se que o Parlamento retome o CSAR. Proteger crianças é urgente, mas a varredura obrigatória de comunicações privadas ainda colide com criptografia, privacidade e realidade técnica.",
   blogChatControlMetaTitle: "Chat Control e alertas de criptógrafos",
   blogChatControlMetaDescription:
     "Por que criptógrafos alertam: varredura obrigatória no cliente sob Chat Control não preserva E2E nem privacidade em escala da internet.",
-  blogApiKeySharingTitle:
-    "Como compartilhar uma chave de API com segurança (sem expor seus segredos)",
+  blogApiKeySharingTitle: "Como compartilhar uma chave de API com segurança",
+  blogApiKeySharingSubtitle: "Sem expor seus segredos",
   blogApiKeySharingExcerpt:
-    "Chaves de API não pertencem ao Slack, e-mail, tickets ou histórico do Git. Aprenda o fluxo mais seguro: limite a chave, criptografe localmente, use um link de uso único e rotacione após a entrega.",
+    "Chaves de API não pertencem ao Slack, Teams, e-mail, tickets ou histórico do Git. Aprenda o fluxo mais seguro: limite a chave, criptografe localmente, use um link de uso único e rotacione após a entrega.",
   blogApiKeySharingMetaTitle: "Compartilhar chave API com segurança",
   blogApiKeySharingMetaDescription:
     "Como chaves de API vazam por chat, e-mail, ferramentas e Git — e como links únicos criptografados no navegador ajudam a compartilhar segredos.",

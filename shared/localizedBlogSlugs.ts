@@ -26,9 +26,27 @@ export const BLOG_CANONICAL_SLUGS = [
   "send-sensitive-documents-securely",
   "how-to-share-ssh-keys-securely",
   "android-iphone-rcs-end-to-end-encryption",
+  "google-drive-vs-one-time-encrypted-links",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
+
+/**
+ * Still routable (URLs, hreflang, direct links) but hidden from blog index,
+ * category listings, and homepage carousel — dated news / weak product fit.
+ */
+export const BLOG_LISTING_EXCLUDED_SLUGS = new Set<BlogCanonicalSlug>([
+  "social-media-bans-children-evidence",
+  "chat-control-1-0-vote-explained",
+  "chat-control-europe-cryptographers",
+]);
+
+export function isBlogListingSlug(slug: string): boolean {
+  return (
+    (BLOG_CANONICAL_SLUGS as readonly string[]).includes(slug) &&
+    !BLOG_LISTING_EXCLUDED_SLUGS.has(slug as BlogCanonicalSlug)
+  );
+}
 
 /** Localized URL slug per language (ASCII, no diacritics). English values match canonical slugs. */
 export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLanguage, string>> = {
@@ -295,6 +313,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "compartilhar-chaves-ssh-com-seguranca",
     sr: "bezbedno-deljenje-ssh-kljuceva",
     hr: "sigurno-dijeljenje-ssh-kljuceva",
+  },
+  "google-drive-vs-one-time-encrypted-links": {
+    en: "google-drive-vs-one-time-encrypted-links",
+    de: "google-drive-vs-einmalige-verschluesselte-links",
+    fr: "google-drive-vs-liens-chiffres-a-usage-unique",
+    es: "google-drive-vs-enlaces-cifrados-de-un-solo-uso",
+    it: "google-drive-vs-link-crittografati-monouso",
+    nl: "google-drive-vs-eenmalige-versleutelde-links",
+    pt: "google-drive-vs-links-criptografados-de-uso-unico",
+    sr: "google-drive-vs-jednokratni-sifrovani-linkovi",
+    hr: "google-drive-vs-jednokratni-sifrirani-linkovi",
   },
   "android-iphone-rcs-end-to-end-encryption": {
     en: "android-iphone-rcs-end-to-end-encryption",

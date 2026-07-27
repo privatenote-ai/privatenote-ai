@@ -13,7 +13,9 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
-import { BlogPostBackLink, BlogPostHeader, blogPostPageClass } from "@/components/blog/BlogPostChrome";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
 import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
 import { chatControl10VoteExplainedDe } from "@/components/blog/locale/chatControl10VoteExplained.de";
@@ -159,13 +161,12 @@ export const ChatControl10VoteExplainedPost: React.FC = () => {
   const voteLabel = (key: "against" | "for" | "abstentions") => article.voteLabels[key];
 
   return (
-    <div className={cn(blogPostPageClass, "pb-12 mb-28")}>
-      <BlogPostBackLink />
-
+    <BlogGuideArticle slug="chat-control-1-0-vote-explained">
       <article>
         <BlogPostHeader
           slug="chat-control-1-0-vote-explained"
           title={t.blogChatControl10VoteTitle}
+          subtitle={t.blogChatControl10VoteSubtitle}
           excerpt={t.blogChatControl10VoteExcerpt}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -182,6 +183,8 @@ export const ChatControl10VoteExplainedPost: React.FC = () => {
             </figcaption>
           </figure>
         </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="chat-control-1-0-vote-explained" />
 
         <div className="space-y-12 text-[1.0625rem] leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14 sm:leading-[1.9]">
           <ArticleParagraph text={article.intro} lead resolveLink={resolveLink} />
@@ -323,6 +326,6 @@ export const ChatControl10VoteExplainedPost: React.FC = () => {
 
         <BlogPostCrossLinks slug="chat-control-1-0-vote-explained" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

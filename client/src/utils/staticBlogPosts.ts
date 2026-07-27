@@ -29,6 +29,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "send-sensitive-documents-securely": "2026-07-20T12:00:00.000Z",
   "how-to-share-ssh-keys-securely": "2026-07-20T14:00:00.000Z",
   "android-iphone-rcs-end-to-end-encryption": "2026-07-20T16:00:00.000Z",
+  "google-drive-vs-one-time-encrypted-links": "2026-07-27T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -59,6 +60,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "send-sensitive-documents-securely": 7,
   "how-to-share-ssh-keys-securely": 7,
   "android-iphone-rcs-end-to-end-encryption": 7,
+  "google-drive-vs-one-time-encrypted-links": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -94,6 +96,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -26,
+      title: t.blogGoogleDriveVsOneTimeLinksTitle,
+      excerpt: t.blogGoogleDriveVsOneTimeLinksExcerpt,
+      author: "PrivateNote.ai",
+      slug: "google-drive-vs-one-time-encrypted-links",
+      publishedAt: at("google-drive-vs-one-time-encrypted-links"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy]),
+      content: "",
+      coverImage: "/images/blog-google-drive-vs-one-time-encrypted-links-hero.jpg",
+      published: true,
+      createdAt: at("google-drive-vs-one-time-encrypted-links"),
+      updatedAt: at("google-drive-vs-one-time-encrypted-links"),
+    },
     {
       id: -25,
       title: t.blogRcsE2eEncryptionTitle,
@@ -271,7 +287,7 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
       publishedAt: at("how-to-share-api-key-securely"),
       tags: JSON.stringify([t.blogTagDeveloper, t.blogTagSecurity, t.blogTagPasswords]),
       content: "",
-      coverImage: null,
+      coverImage: "/images/blog-api-key-sharing-hero.png",
       published: true,
       createdAt: at("how-to-share-api-key-securely"),
       updatedAt: at("how-to-share-api-key-securely"),
