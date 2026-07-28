@@ -122,6 +122,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogGoogleDriveVsOneTimeLinksMetaTitle),
         description: t.blogGoogleDriveVsOneTimeLinksMetaDescription,
       };
+    case "common-secret-handling-mistakes":
+      return {
+        title: buildDocumentTitle(t.blogCommonSecretHandlingMistakesMetaTitle),
+        description: t.blogCommonSecretHandlingMistakesMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

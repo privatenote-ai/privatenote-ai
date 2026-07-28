@@ -36,6 +36,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "one-time-secret-links": "secrets",
   "encrypted-vs-secure-file-sharing": "secrets",
   "google-drive-vs-one-time-encrypted-links": "secrets",
+  "common-secret-handling-mistakes": "secrets",
   "how-to-make-a-private-note": "secrets",
   "how-we-generate-passwords": "secrets",
 

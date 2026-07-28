@@ -1504,6 +1504,13 @@ export const en: Translations = {
   blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs one-time links for confidential files",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Compare Google Drive and one-time encrypted links for confidential files. Learn when each fits and how to minimise long-term exposure.",
+  blogCommonSecretHandlingMistakesTitle: "Are You Making These Common Mistakes When Handling Secrets?",
+  blogCommonSecretHandlingMistakesSubtitle: "Ten habits that leave secrets lying around",
+  blogCommonSecretHandlingMistakesExcerpt:
+    "From passwords and API keys to contracts and recovery codes, these are the most common mistakes people make when handling confidential information—and how to avoid them.",
+  blogCommonSecretHandlingMistakesMetaTitle: "Common mistakes when handling secrets",
+  blogCommonSecretHandlingMistakesMetaDescription:
+    "From passwords and API keys to contracts and recovery codes, these are the most common mistakes people make when handling confidential information—and how to avoid them.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

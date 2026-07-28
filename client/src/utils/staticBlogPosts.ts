@@ -30,6 +30,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "how-to-share-ssh-keys-securely": "2026-07-20T14:00:00.000Z",
   "android-iphone-rcs-end-to-end-encryption": "2026-07-20T16:00:00.000Z",
   "google-drive-vs-one-time-encrypted-links": "2026-07-27T12:00:00.000Z",
+  "common-secret-handling-mistakes": "2026-07-28T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -61,6 +62,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "how-to-share-ssh-keys-securely": 7,
   "android-iphone-rcs-end-to-end-encryption": 7,
   "google-drive-vs-one-time-encrypted-links": 7,
+  "common-secret-handling-mistakes": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -96,6 +98,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -27,
+      title: t.blogCommonSecretHandlingMistakesTitle,
+      excerpt: t.blogCommonSecretHandlingMistakesExcerpt,
+      author: "PrivateNote.ai",
+      slug: "common-secret-handling-mistakes",
+      publishedAt: at("common-secret-handling-mistakes"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy]),
+      content: "",
+      coverImage: "/images/blog-common-secret-handling-mistakes-hero.jpg",
+      published: true,
+      createdAt: at("common-secret-handling-mistakes"),
+      updatedAt: at("common-secret-handling-mistakes"),
+    },
     {
       id: -26,
       title: t.blogGoogleDriveVsOneTimeLinksTitle,

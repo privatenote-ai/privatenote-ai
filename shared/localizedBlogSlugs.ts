@@ -27,6 +27,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "how-to-share-ssh-keys-securely",
   "android-iphone-rcs-end-to-end-encryption",
   "google-drive-vs-one-time-encrypted-links",
+  "common-secret-handling-mistakes",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -335,6 +336,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "android-iphone-rcs-criptografia-ponta-a-ponta",
     sr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
     hr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
+  },
+  "common-secret-handling-mistakes": {
+    en: "common-secret-handling-mistakes",
+    de: "haeufige-fehler-beim-umgang-mit-geheimnissen",
+    fr: "erreurs-courantes-gestion-des-secrets",
+    es: "errores-comunes-al-manejar-secretos",
+    it: "errori-comuni-nella-gestione-dei-segreti",
+    nl: "veelgemaakte-fouten-bij-geheimbeheer",
+    pt: "erros-comuns-ao-lidar-com-segredos",
+    sr: "ceste-greske-pri-rukovanju-tajnama",
+    hr: "ceste-greske-pri-rukovanju-tajnama",
   },
 };
 

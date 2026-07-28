@@ -284,8 +284,19 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
       "one-time-secret-links",
       "why-email-is-worst-for-secrets",
       "what-is-end-to-end-encryption",
+      "common-secret-handling-mistakes",
     ],
     trust: "/how-it-works",
+  },
+  "common-secret-handling-mistakes": {
+    related: [
+      "why-email-is-worst-for-secrets",
+      "secrets-never-send-in-chat",
+      "one-time-secret-links",
+      "how-to-share-a-password-securely",
+      "google-drive-vs-one-time-encrypted-links",
+    ],
+    trust: "/security-resources",
   },
 };
 

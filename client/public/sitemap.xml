@@ -384,6 +384,7 @@
   <url><loc>https://privatenote.ai/blog/category/secrets</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/blog/chat-control-1-0-vote-explained</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/blog/chat-control-europe-cryptographers</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/blog/common-secret-handling-mistakes</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/blog/crypto-seed-phrase-one-time-link</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/blog/google-drive-vs-one-time-encrypted-links</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -423,6 +424,7 @@
   <url><loc>https://privatenote.ai/de/blog/geheime-nachricht-ohne-konto-senden</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/geheimnisse-in-cicd-env-github-lecks</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/google-drive-vs-einmalige-verschluesselte-links</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/de/blog/haeufige-fehler-beim-umgang-mit-geheimnissen</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/ki-agenten-wie-mitarbeiter-absichern</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/krypto-seed-phrase-einmal-link</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/de/blog/mythos-gut-genug-sicherheit</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -456,6 +458,7 @@
   <url><loc>https://privatenote.ai/es/blog/compartir-claves-ssh-de-forma-segura</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/enlaces-secretos-de-un-solo-uso</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/enviar-documentos-sensibles-de-forma-segura</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/es/blog/errores-comunes-al-manejar-secretos</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/frase-semilla-crypto-enlace-unico</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/google-drive-vs-enlaces-cifrados-de-un-solo-uso</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/es/blog/herramientas-de-privacidad</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -482,6 +485,7 @@
   <url><loc>https://privatenote.ai/fr/blog/comment-nous-generons-des-mots-de-passe</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/definition-du-chiffrement-de-bout-en-bout</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/envoyer-documents-sensibles-en-securite</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/fr/blog/erreurs-courantes-gestion-des-secrets</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/google-drive-vs-liens-chiffres-a-usage-unique</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/interdictions-reseaux-sociaux-enfants-preuves</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/fr/blog/introduction-a-l-ia-privee</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -508,6 +512,7 @@
   <url><loc>https://privatenote.ai/hr/blog/category/encryption</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/hr/blog/category/privacy</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/hr/blog/category/secrets</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/hr/blog/ceste-greske-pri-rukovanju-tajnama</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/hr/blog/chat-control-1-0-glasanje-objasnjeno</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/hr/blog/chat-control-europa-kriptografi</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/hr/blog/crypto-seed-fraza-jednokratna-poveznica</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -549,6 +554,7 @@
   <url><loc>https://privatenote.ai/it/blog/condivisione-crittografata-vs-sicura</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/cos-e-la-crittografia-end-to-end</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/divieti-social-media-minori-evidenze</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/it/blog/errori-comuni-nella-gestione-dei-segreti</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/garantire-agenti-ia-come-dipendenti</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/google-drive-vs-link-crittografati-monouso</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/it/blog/introduzione-all-ia-privata</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -588,6 +594,7 @@
   <url><loc>https://privatenote.ai/nl/blog/privatenote-voor-ontwikkelaars</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/social-media-verboden-kinderen-bewijs</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/ssh-sleutels-veilig-delen</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/nl/blog/veelgemaakte-fouten-bij-geheimbeheer</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/versleuteld-vs-veilig-delen</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/waarom-e-mail-slecht-is-voor-geheimen</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/nl/blog/wachtwoord-veilig-delen</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -609,6 +616,7 @@
   <url><loc>https://privatenote.ai/pt/blog/compartilhar-chave-api-com-seguranca</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/pt/blog/compartilhar-chaves-ssh-com-seguranca</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/pt/blog/enviar-documentos-sensiveis-com-seguranca</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/pt/blog/erros-comuns-ao-lidar-com-segredos</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/pt/blog/ferramentas-de-privacidade</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/pt/blog/frase-semente-crypto-link-unico</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/pt/blog/google-drive-vs-links-criptografados-de-uso-unico</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
@@ -635,6 +643,7 @@
   <url><loc>https://privatenote.ai/sr/blog/category/encryption</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/sr/blog/category/privacy</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/sr/blog/category/secrets</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://privatenote.ai/sr/blog/ceste-greske-pri-rukovanju-tajnama</loc><lastmod>2026-07-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/sr/blog/chat-control-1-0-glasanje-objasnjeno</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/sr/blog/chat-control-evropa-kriptografi</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://privatenote.ai/sr/blog/crypto-seed-fraza-jednokratna-veza</loc><lastmod>2026-07-03</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>

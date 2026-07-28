@@ -162,6 +162,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "One-time encrypted links minimise leftover copies and open permissions.",
     "Match the sharing method to how long the information actually needs to exist.",
   ],
+  "common-secret-handling-mistakes": [
+    "Most secret leaks result from everyday workflows rather than broken encryption.",
+    "Reducing long-term retention is often more important than changing communication tools.",
+    "Temporary sharing is usually safer than permanent storage.",
+    "Good secret handling means limiting both who can access information and how long it remains available.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

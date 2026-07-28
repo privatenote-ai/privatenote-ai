@@ -151,6 +151,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Einmalige verschlüsselte Links minimieren Restkopien und offene Berechtigungen.",
     "Passen Sie die Freigabemethode daran an, wie lange die Information tatsächlich existieren muss.",
   ],
+  "common-secret-handling-mistakes": [
+    "Die meisten Secret-Leaks entstehen durch Alltagsworkflows—nicht durch kaputte Verschlüsselung.",
+    "Weniger langfristige Aufbewahrung wirkt oft stärker als ein neues Kommunikationstool.",
+    "Temporäres Teilen ist meist sicherer als dauerhafte Speicherung.",
+    "Guter Umgang mit Secrets begrenzt Zugriff und Verweildauer.",
+  ],
 
 };
 
@@ -304,6 +310,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Les fichiers confidentiels temporaires bénéficient d’une rétention plus courte par conception.",
     "Les liens chiffrés à usage unique minimisent les copies restantes et les permissions ouvertes.",
     "Adaptez la méthode de partage à la durée pendant laquelle l’information doit réellement exister.",
+  ],
+  "common-secret-handling-mistakes": [
+    "La plupart des fuites viennent des habitudes quotidiennes, pas d’un chiffrement défaillant.",
+    "Réduire la rétention longue durée compte souvent plus que changer d’outil.",
+    "Le partage temporaire est en général plus sûr que le stockage permanent.",
+    "Bien gérer les secrets, c’est limiter qui y accède et combien de temps ils restent disponibles.",
   ],
 
 };
@@ -459,6 +471,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "Los enlaces cifrados de un solo uso minimizan copias sobrantes y permisos abiertos.",
     "Ajusta el método de uso compartido a cuánto tiempo la información realmente necesita existir.",
   ],
+  "common-secret-handling-mistakes": [
+    "La mayoría de fugas vienen de hábitos cotidianos, no de cifrado roto.",
+    "Reducir la retención a largo plazo suele importar más que cambiar de herramienta.",
+    "Compartir de forma temporal suele ser más seguro que el almacenamiento permanente.",
+    "Buen manejo de secretos significa limitar quién accede y durante cuánto tiempo.",
+  ],
 
 };
 
@@ -612,6 +630,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "I file confidenziali temporanei beneficiano di una conservazione più breve per progettazione.",
     "I link crittografati monouso minimizzano copie residue e permessi aperti.",
     "Adatta il metodo di condivisione a quanto a lungo l’informazione deve realmente esistere.",
+  ],
+  "common-secret-handling-mistakes": [
+    "La maggior parte delle fughe nasce da abitudini quotidiane, non da cifratura rotta.",
+    "Ridurre la conservazione a lungo termine spesso conta più di cambiare strumento.",
+    "La condivisione temporanea di solito è più sicura dello storage permanente.",
+    "Gestire bene i segreti significa limitare chi accede e per quanto restano disponibili.",
   ],
 
 };
@@ -767,6 +791,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Eenmalige versleutelde links minimaliseren restkopieën en open rechten.",
     "Stem de deelmethode af op hoe lang de informatie daadwerkelijk moet bestaan.",
   ],
+  "common-secret-handling-mistakes": [
+    "De meeste lekken komen door alledaagse workflows—niet door kapotte encryptie.",
+    "Minder langdurige retentie is vaak belangrijker dan een andere tool.",
+    "Tijdelijk delen is meestal veiliger dan permanente opslag.",
+    "Goede secret-handling beperkt wie toegang heeft én hoe lang iets blijft bestaan.",
+  ],
 
 };
 
@@ -920,6 +950,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "Ficheiros confidenciais temporários beneficiam de retenção mais curta por conceção.",
     "Links encriptados de uso único minimizam cópias restantes e permissões abertas.",
     "Adapte o método de partilha a quanto tempo a informação realmente precisa de existir.",
+  ],
+  "common-secret-handling-mistakes": [
+    "A maioria das fugas vem de hábitos do dia a dia—não de encriptação quebrada.",
+    "Reduzir a retenção a longo prazo costuma importar mais do que mudar de ferramenta.",
+    "Partilha temporária é geralmente mais segura do que armazenamento permanente.",
+    "Bom tratamento de segredos limita quem acede e durante quanto tempo fica disponível.",
   ],
 
 };
@@ -1075,6 +1111,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Jednokratni šifrirani linkovi minimiziraju preostale kopije i otvorene dozvole.",
     "Uskladite način dijeljenja s time koliko dugo informacija stvarno treba postojati.",
   ],
+  "common-secret-handling-mistakes": [
+    "Većina curenja tajni dolazi od svakodnevnih navika, ne od pokvarene enkripcije.",
+    "Smanjenje dugoročnog zadržavanja često znači više od promene alata.",
+    "Privremeno deljenje je obično bezbednije od trajnog skladištenja.",
+    "Dobar rad sa tajnama ograničava ko ima pristup i koliko dugo one ostaju dostupne.",
+  ],
 
 };
 
@@ -1228,6 +1270,12 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Privremene poverljive datoteke imaju koristi od kraćeg zadržavanja po dizajnu.",
     "Jednokratni šifrovani linkovi minimizuju preostale kopije i otvorene dozvole.",
     "Uskladite način deljenja sa tim koliko dugo informacija stvarno treba da postoji.",
+  ],
+  "common-secret-handling-mistakes": [
+    "Većina curenja tajni dolazi od svakodnevnih navika, ne od pokvarene enkripcije.",
+    "Smanjenje dugoročnog zadržavanja često znači više od promjene alata.",
+    "Privremeno dijeljenje obično je sigurnije od trajnog pohranjivanja.",
+    "Dobar rad s tajnama ograničava tko ima pristup i koliko dugo one ostaju dostupne.",
   ],
 
 };
