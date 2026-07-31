@@ -47,7 +47,12 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
           <DialogDescription asChild>
             <div className="space-y-3 pt-2 text-center">
               {progress?.detail ? (
-                <p className="text-sm font-medium leading-snug text-foreground/90">{progress.detail}</p>
+                <p
+                  className="mx-auto w-full max-w-full truncate px-1 text-sm font-medium leading-snug text-foreground/90"
+                  title={progress.detail}
+                >
+                  {progress.detail}
+                </p>
               ) : null}
               <div className="mx-auto h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted">
                 <div

@@ -89,10 +89,10 @@ const NOTE_RESERVATION = {
 };
 
 const SESSION_POLICY = {
-  TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days sliding
-  ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 90, // 90 days absolute
+  TTL_SECONDS: 60 * 60 * 24 * 7, // 7 days sliding
+  ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 30, // 30 days absolute
   ROTATE_SECONDS: 60 * 60 * 24, // 24 hours
-  /** Half-authenticated (magic link before TOTP): fixed window, no 14-day slide. */
+  /** Half-authenticated (magic link before TOTP): fixed window, no 7-day slide. */
   PENDING_TOTP_SESSION_TTL_SECONDS: 10 * 60,
 };
 

@@ -1,9 +1,16 @@
 const DEFAULT_MAX_WORDS = 3;
-const FULL_NAME_MAX_CHARS = 28;
+/** Max characters kept from the file stem (before ellipsis + extension). */
+const MAX_STEM_CHARS = 20;
+
+function truncateStem(stem: string, maxChars: number): string {
+  if (stem.length <= maxChars) return stem;
+  return stem.slice(0, maxChars).trimEnd();
+}
 
 /**
- * Compact attachment label for buttons and chips — keeps the extension and the
- * first few name tokens so action rows do not overflow.
+ * Compact attachment label for buttons, chips, and progress copy — keeps the
+ * extension and a short stem so action rows and dialogs do not overflow on
+ * mobile.
  */
 export function formatAttachmentDisplayName(
   fileName: string,
@@ -20,10 +27,12 @@ export function formatAttachmentDisplayName(
   const tokens = baseName.split(/[\s._-]+/).filter(Boolean);
   if (tokens.length === 0) return trimmed;
 
-  if (trimmed.length <= FULL_NAME_MAX_CHARS && tokens.length <= maxWords) {
+  const fitsAsIs =
+    baseName.length <= MAX_STEM_CHARS && tokens.length <= maxWords;
+  if (fitsAsIs) {
     return trimmed;
   }
 
-  const head = tokens.slice(0, maxWords).join(" ");
+  const head = truncateStem(tokens.slice(0, maxWords).join(" "), MAX_STEM_CHARS);
   return extension ? `${head}…${extension}` : `${head}…`;
 }

@@ -13,7 +13,7 @@ describe("formatAttachmentDisplayName", () => {
       formatAttachmentDisplayName(
         "Quarterly Financial Report Draft Final Version 2026.pdf",
       ),
-      "Quarterly Financial Report….pdf",
+      "Quarterly Financial….pdf",
     );
     assert.equal(
       formatAttachmentDisplayName("my_very_long_backup_archive_name.zip"),
@@ -24,7 +24,16 @@ describe("formatAttachmentDisplayName", () => {
   it("handles names without an extension", () => {
     assert.equal(
       formatAttachmentDisplayName("extremely_long_single_token_name_without_dots"),
-      "extremely long single…",
+      "extremely long singl…",
+    );
+  });
+
+  it("hard-truncates long unbroken stems so dialogs stay compact", () => {
+    assert.equal(
+      formatAttachmentDisplayName(
+        "verylongfilenamethatwouldbreaktheencryptingdialoglayout.pdf",
+      ),
+      "verylongfilenamethat….pdf",
     );
   });
 });

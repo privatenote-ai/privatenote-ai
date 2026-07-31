@@ -28,6 +28,7 @@ import {
   unwrapRootKeyWithPassword,
 } from '@/utils/encryption';
 import { formatNoteFileSize } from '@shared/noteFileLimits';
+import { formatAttachmentDisplayName } from '@/utils/formatAttachmentDisplayName';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -525,7 +526,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const reportAttachmentDecryptProgress = useCallback(
     (completedChunks: number, totalChunks: number) => {
       const ratio = totalChunks > 0 ? completedChunks / totalChunks : 1;
-      const name = attachmentMetadata?.name || "file";
+      const name = formatAttachmentDisplayName(attachmentMetadata?.name || "file");
       setAttachmentDecryptProgress({
         phase: "decrypt",
         progress: Math.round(ratio * 100),

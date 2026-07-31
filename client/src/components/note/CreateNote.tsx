@@ -1344,7 +1344,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             detail: t.attachmentProgressChunkDetail
               .replace("{done}", "0")
               .replace("{total}", String(earlyTotalChunks))
-              .replace("{name}", selectedFile.name),
+              .replace("{name}", formatAttachmentDisplayName(selectedFile.name)),
           }
         : null,
     );
@@ -1504,7 +1504,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             t.attachmentProgressChunkDetail
               .replace("{done}", String(done))
               .replace("{total}", String(total))
-              .replace("{name}", selectedFile.name);
+              .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
           // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
           // modal stuck with no chunk count for a long time on slow uplinks.
           const completedChunksRef = { current: 0 };
