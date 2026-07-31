@@ -69,10 +69,17 @@ const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter(
   (language): language is Exclude<SupportedLanguage, "en"> => language !== "en",
 );
 
-/** Auth routes hide the navbar/footer — a null Suspense fallback reads as a blank page. */
+/**
+ * Fill the viewport under the fixed navbar so the footer stays below the fold
+ * while a lazy route chunk loads (avoids a footer flash on first paint).
+ */
 function LazyRouteFallback() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center px-4" role="status" aria-live="polite">
+    <div
+      className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4"
+      role="status"
+      aria-live="polite"
+    >
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       <span className="sr-only">Loading</span>
     </div>
@@ -98,7 +105,7 @@ class LazyRouteErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+        <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
           <p className="text-base font-medium text-foreground">This page failed to load.</p>
           <p className="text-sm text-muted-foreground">Check your connection, then try again.</p>
           <button

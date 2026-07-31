@@ -2,11 +2,9 @@ import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
-import { HomeKeyFeaturesPeek } from '@/components/home/HomeKeyFeaturesPeek';
 import { useMountWhenInView } from '@/hooks/useMountWhenInView';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
-import { cn } from '@/lib/utils';
 
 const CreateNote = lazy(() =>
   import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
@@ -177,19 +175,13 @@ const Home: React.FC = () => {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 z-0 h-28 bg-gradient-to-b from-background via-background/95 to-gray-50/70 sm:h-36 dark:via-background/92 dark:to-gray-950/50"
         />
-        <div
-          className={cn(
-            'relative z-10 overflow-hidden border-b border-gray-200/45 bg-gradient-to-b from-gray-50/25 via-gray-50/70 to-gray-50/90 dark:border-gray-800/45 dark:from-gray-950/15 dark:via-gray-950/45 dark:to-gray-950/65',
-            'transition-[max-height] duration-500 ease-out motion-reduce:transition-none',
-            keyFeaturesMounted ? 'max-h-[1600px]' : 'max-h-[6rem]',
-          )}
-        >
+        <div className="relative z-10 border-b border-gray-200/45 bg-gradient-to-b from-gray-50/25 via-gray-50/70 to-gray-50/90 dark:border-gray-800/45 dark:from-gray-950/15 dark:via-gray-950/45 dark:to-gray-950/65">
           {keyFeaturesMounted ? (
             <Suspense fallback={<HomeKeyFeaturesSkeleton />}>
               <SecurityFeatures className="pt-8 pb-14 sm:pt-10 sm:pb-16 lg:pt-12 lg:pb-20" />
             </Suspense>
           ) : (
-            <HomeKeyFeaturesPeek title={t.keyFeatures} />
+            <HomeKeyFeaturesSkeleton />
           )}
         </div>
       </div>
