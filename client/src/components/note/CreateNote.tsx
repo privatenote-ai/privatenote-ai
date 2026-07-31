@@ -523,6 +523,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
   const cloudAssistSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=cloud_assist&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
 
+  // Prefetch sign-in chunk for signed-out attach/AI flows so /auth/sign-in is not a blank Suspense gap.
+  useEffect(() => {
+    if (canAttachFiles) return;
+    void import("@/pages/AuthSignIn");
+  }, [canAttachFiles]);
+
   const { toast } = useToast();
 
   const secondaryActionButtonClass =

@@ -1,5 +1,6 @@
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import {
+  Component,
   Fragment,
   Suspense,
   lazy,
@@ -68,15 +69,59 @@ const NON_ENGLISH_LANGUAGES = SUPPORTED_LANGUAGES.filter(
   (language): language is Exclude<SupportedLanguage, "en"> => language !== "en",
 );
 
-function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={null}>{children}</Suspense>;
+/** Auth routes hide the navbar/footer — a null Suspense fallback reads as a blank page. */
+function LazyRouteFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center px-4" role="status" aria-live="polite">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <span className="sr-only">Loading</span>
+    </div>
+  );
 }
 
-function LazyRoute({ component: Component }: { component: ComponentType }) {
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<LazyRouteFallback />}>{children}</Suspense>;
+}
+
+type LazyRouteErrorBoundaryState = { error: Error | null };
+
+class LazyRouteErrorBoundary extends Component<
+  { children: ReactNode },
+  LazyRouteErrorBoundaryState
+> {
+  state: LazyRouteErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): LazyRouteErrorBoundaryState {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+          <p className="text-base font-medium text-foreground">This page failed to load.</p>
+          <p className="text-sm text-muted-foreground">Check your connection, then try again.</p>
+          <button
+            type="button"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function LazyRoute({ component: Page }: { component: ComponentType }) {
   return (
-    <LazyPage>
-      <Component />
-    </LazyPage>
+    <LazyRouteErrorBoundary>
+      <LazyPage>
+        <Page />
+      </LazyPage>
+    </LazyRouteErrorBoundary>
   );
 }
 
@@ -272,9 +317,7 @@ function Router() {
               <Route path="/llm-ui" component={() => <LazyRoute component={LlmUi} />} />
             </>
           ) : null}
-          <Route path="/auth">
-            <Redirect to="/auth/sign-in" />
-          </Route>
+          {/* Specific /auth/* routes before /auth redirect so sign-in never matches empty. */}
           <Route path="/auth/sign-in" component={() => <LazyRoute component={AuthSignIn} />} />
           <Route path="/auth/sign-up" component={() => <LazyRoute component={AuthSignUp} />} />
           <Route path="/auth/magic" component={() => <LazyRoute component={AuthMagic} />} />
@@ -282,6 +325,9 @@ function Router() {
           <Route path="/auth/recovery" component={() => <LazyRoute component={AuthRecovery} />} />
           <Route path="/auth/email-change" component={() => <LazyRoute component={AuthEmailChange} />} />
           <Route path="/auth/totp" component={() => <LazyRoute component={AuthTotp} />} />
+          <Route path="/auth">
+            <Redirect to="/auth/sign-in" />
+          </Route>
           <Route path="/account/security" component={() => <LazyRoute component={SecuritySettings} />} />
           <Route path="/account/activity" component={() => <LazyRoute component={AccountActivity} />} />
           <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
