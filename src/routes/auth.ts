@@ -37,6 +37,7 @@ import {
   type MagicLinkEmailPurpose,
 } from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
+import { isStagingAppHost } from "@shared/pagesAppHosts";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -4902,6 +4903,22 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
 
     if (!isLocal && env.TURNSTILE_SECRET_KEY) {
+      // Staging QA: Pages builds often omit VITE_TURNSTILE_SITE_KEY, and
+      // premium.privatenote.ai may be missing from the Turnstile allowlist.
+      // Requiring Turnstile then returns silent 200 and never calls Resend.
+      let browserHost = "";
+      try {
+        const origin = request.headers.get("Origin");
+        if (origin) browserHost = new URL(origin).hostname;
+      } catch {
+        /* ignore */
+      }
+      if (!browserHost) {
+        browserHost = (request.headers.get("X-Forwarded-Host") || "").split(":")[0].trim().toLowerCase();
+      }
+      const skipTurnstile =
+        env.AUTH_RELAX_TURNSTILE === "1" || isStagingAppHost(browserHost);
+      if (!skipTurnstile) {
       const token = body?.turnstileToken;
       if (!token) {
         console.error(
@@ -4919,6 +4936,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         );
         await jitterDelay();
         return jsonResponse(responsePayload, 200, request);
+      }
       }
     }
 

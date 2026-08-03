@@ -10,6 +10,8 @@ export interface Env {
   SECURE_NOTES: DurableObjectNamespace;
   AI?: WorkersAiBinding;
   TURNSTILE_SECRET_KEY?: string;
+  /** Staging-only: skip Turnstile on magic/send so Resend is not silently dropped. */
+  AUTH_RELAX_TURNSTILE?: string;
   // Rate limiting KV namespace (can use same as NOTES_KV or separate)
   RATE_LIMIT_KV?: KVNamespace;
   // Analytics KV namespace (can use same as NOTES_KV or separate)
