@@ -1,6 +1,5 @@
 import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
 import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
-import { isSafariBrowser } from "@/lib/safariSafeChunkUpload";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -1298,14 +1297,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         return arrayBufferToBase64(copy.buffer);
       };
 
-      const { getAttachmentChunkSizeBytes } = await import("@/utils/libsodiumFileAttachment");
-      const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(selectedFile?.size);
+      const { SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES } = await import("@/utils/libsodiumFileAttachment");
       const attachmentReserveBinding = selectedFile
         ? {
             attachmentPlaintextSize: selectedFile.size,
             attachmentEncryptedSize:
               selectedFile.size +
-              Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes)) * 17,
+              Math.max(1, Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES)) * 17,
           }
         : undefined;
 
@@ -1404,7 +1402,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           const { encryptFileToSodiumChunks } = await import("@/utils/libsodiumFileAttachment");
           const totalChunks = Math.max(
             1,
-            Math.ceil(selectedFile.size / attachmentChunkSizeBytes),
+            Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
           );
           const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
           logFileUpload("info", "starting attachment encryption", {
@@ -1413,7 +1411,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             fileType: selectedFile.type || "application/octet-stream",
             fileSize: selectedFile.size,
             totalChunks,
-            chunkSizeBytes: attachmentChunkSizeBytes,
+            chunkSizeBytes: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
             encryptedSizeUpperBound,
             apiBase: getFileUploadTargetLabel(),
           });
@@ -1423,11 +1421,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             metadataKey!,
             reservedId,
             async (chunk) => {
-              const uploadPath = isSafariBrowser()
-                ? `/api/notes/${reservedId}/file`
-                : `/api/notes/${reservedId}/file/chunks/${chunk.index}`;
               await uploadEncryptedAttachmentChunk(
-                uploadPath,
+                `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
                 chunk.encryptedBytes,
                 {
                   "Content-Type": "application/octet-stream",
