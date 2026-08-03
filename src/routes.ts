@@ -8187,7 +8187,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
-  const noteFileChunkParams = parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
+  // encrypt.lu-style single Blob PUT lands on /file (not /file/chunks/0).
+  // Map it onto chunk index 0 so storage + finalize stay one code path.
+  const singleFileUploadParams = parsePathParams(pathname, "/api/notes/:id/file");
+  const isSingleFileUpload = Boolean(singleFileUploadParams && (method === "PUT" || method === "POST"));
+  const noteFileChunkParams = isSingleFileUpload
+    ? { id: singleFileUploadParams!.id, chunkIndex: "0" }
+    : parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
   if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
@@ -8254,7 +8260,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
     const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
-    const plaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
+    // Bearer + omitMetadata (encrypt.lu primary): sizes come from the reservation.
+    const requestedPlaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
+    const plaintextSize =
+      isSingleFileUpload && !Number.isInteger(requestedPlaintextSize)
+        ? reservation.attachmentPlaintextSize
+        : requestedPlaintextSize;
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
       return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
     }
@@ -8275,7 +8286,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: "Attachment plaintext size mismatch" }, 400, request);
     }
 
-    const encryptedTotalSize = readUploadInteger(request, "x-file-encrypted-size", "encryptedSize");
+    const requestedEncryptedTotalSize = readUploadInteger(
+      request,
+      "x-file-encrypted-size",
+      "encryptedSize",
+    );
+    const encryptedTotalSize =
+      isSingleFileUpload && !Number.isInteger(requestedEncryptedTotalSize)
+        ? reservation.attachmentEncryptedSize
+        : requestedEncryptedTotalSize;
     if (!Number.isInteger(encryptedTotalSize) || encryptedTotalSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-encrypted-size" }, 400, request);
     }
@@ -8303,7 +8322,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    const encryptedChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
+    const requestedEncryptedChunkSize = readUploadInteger(
+      request,
+      "x-file-chunk-encrypted-size",
+      "chunkEncryptedSize",
+    );
+    const encryptedChunkSize =
+      isSingleFileUpload && !Number.isInteger(requestedEncryptedChunkSize)
+        ? encryptedTotalSize
+        : requestedEncryptedChunkSize;
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
     }
