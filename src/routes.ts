@@ -8207,6 +8207,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
+
+    // Drain BEFORE auth/rate-limit. A 403 while Safari is still streaming ~20MB
+    // surfaces as status 0 / "network connection was lost" with no responseURL.
+    const encryptedBytes = await request.arrayBuffer();
+
     const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
     if (!uploadAuth.ok) {
       return uploadAuth.response;
@@ -8229,13 +8234,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-
-    // Drain the request body BEFORE any size/quota validation. Safari/WebKit reports
-    // an opaque "The network connection was lost" (masking the real HTTP status)
-    // whenever a Worker responds while the upload body is still streaming. Reading the
-    // body first guarantees the client sees real 4xx/5xx statuses so its retry and
-    // route-fallback logic can actually engage.
-    const encryptedBytes = await request.arrayBuffer();
 
     // Safari fires one empty-body probe to warm the HTTP/2 connection before real
     // chunks. Answer 204 so DevTools doesn't look like a failed upload.

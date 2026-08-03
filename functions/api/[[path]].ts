@@ -22,6 +22,7 @@
  *    PUTs from the SPA use this same-origin proxy (not cross-origin workers.dev).
  */
 import { PN_CLIENT_IP_HEADER } from "../../shared/clientRequestIdentity";
+import { isStagingAppHost } from "../../shared/pagesAppHosts";
 
 const ACCESS_COOKIE_NAME_PATTERN = /^CF_(?:Authorization|AppSession)=/;
 const PRODUCTION_API_WORKER_ORIGIN = "https://privatenote-api.marjan-skrobot.workers.dev";
@@ -29,11 +30,10 @@ const STAGING_API_WORKER_ORIGIN =
   "https://privatenote-api-staging.marjan-skrobot.workers.dev";
 
 function apiProxyTargetForHostname(hostname: string, configuredTarget?: string): string {
-  const normalized = hostname.trim().toLowerCase();
-  if (
-    normalized === "premium.privatenote-ai.pages.dev" ||
-    normalized === "develop.privatenote-ai.pages.dev"
-  ) {
+  // Must match client uploadWorkerOriginForAppHostname / isStagingAppHost.
+  // premium.privatenote.ai reserves on staging and PUTs to upload-staging; proxying
+  // reserve to production KV made staging uploads 403 mid-body (Safari status 0).
+  if (isStagingAppHost(hostname)) {
     return STAGING_API_WORKER_ORIGIN;
   }
   return configuredTarget || PRODUCTION_API_WORKER_ORIGIN;
