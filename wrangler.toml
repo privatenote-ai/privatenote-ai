@@ -2,6 +2,8 @@ name = "privatenote-api"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
+# Pages /api proxy targets privatenote-api.*.workers.dev — keep this enabled.
+workers_dev = true
 
 # Same-site upload relay (encrypt.lu ↔ relay.encrypt.lu). Without this hostname,
 # the SPA targets upload.privatenote.ai and DNS NXDOMAIN aborts Safari XHR as status 0.
