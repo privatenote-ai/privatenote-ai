@@ -126,6 +126,28 @@ async function uploadEncryptedAttachmentBlob(
   logFileUpload("info", "attachment blob uploaded", { url, bodyBytes: blob.size });
 }
 
+async function uploadEncryptedAttachmentChunk(
+  url: string,
+  encryptedBytes: Uint8Array,
+  headers: Record<string, string>,
+  uploadToken: string,
+): Promise<void> {
+  const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
+  const copy = new Uint8Array(encryptedBytes.byteLength);
+  copy.set(encryptedBytes);
+  const body = new Blob([copy.buffer]);
+  logFileUpload("info", "uploading chunk", {
+    chunkIndex,
+    encryptedBytes: encryptedBytes.byteLength,
+    bodyBytes: body.size,
+    url,
+  });
+  await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, {
+    uploadToken,
+  });
+  logFileUpload("info", "chunk uploaded", { chunkIndex, url });
+}
+
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
   if (!t) return localAiWorkingLabel();
@@ -1302,7 +1324,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       const {
         getAttachmentChunkSizeBytes,
         attachmentEncryptedSizeUpperBound,
+        usesSingleBlobAttachmentUpload,
         encryptFileToSodiumBlob,
+        encryptFileToSodiumChunks,
       } = await import("@/utils/libsodiumFileAttachment");
       const encryptedSizeBound = selectedFile
         ? attachmentEncryptedSizeUpperBound(selectedFile.size)
@@ -1407,51 +1431,114 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         }
         try {
           const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(selectedFile.size);
+          const singleBlob = usesSingleBlobAttachmentUpload(selectedFile.size);
+          const totalChunksHint = singleBlob
+            ? 1
+            : Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes));
           logFileUpload("info", "starting attachment encryption", {
             noteId: reservedId,
             fileName: selectedFile.name,
             fileType: selectedFile.type || "application/octet-stream",
             fileSize: selectedFile.size,
-            totalChunks: 1,
+            totalChunks: totalChunksHint,
             chunkSizeBytes: attachmentChunkSizeBytes,
             encryptedSizeBound,
+            singleBlob,
             apiBase: getFileUploadTargetLabel(),
           });
-          setAttachmentProgress({
-            phase: "encrypt",
-            progress: 8,
-            detail: formatAttachmentDisplayName(selectedFile.name),
-          });
-          const encrypted = await encryptFileToSodiumBlob(
-            selectedFile,
-            fileWrapKey!,
-            metadataKey!,
-            reservedId,
-            () => {
-              setAttachmentProgress((prev) => ({
-                phase: "encrypt",
-                progress: Math.max(prev?.progress ?? 0, 35),
-                detail: formatAttachmentDisplayName(selectedFile.name),
-              }));
-            },
-          );
-          attachment = encrypted.metadata;
-          setAttachmentProgress({
-            phase: "encrypt",
-            progress: 55,
-            detail: formatAttachmentDisplayName(selectedFile.name),
-          });
-          await uploadEncryptedAttachmentBlob(
-            `/api/notes/${reservedId}/file`,
-            encrypted.blob,
-            {
-              "x-file-plaintext-size": String(selectedFile.size),
-              "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
-              "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
-              "x-file-chunk-sha256": encrypted.sha256,
-            },
-            uploadToken,
-          );
+
+          if (singleBlob) {
+            setAttachmentProgress({
+              phase: "encrypt",
+              progress: 8,
+              detail: formatAttachmentDisplayName(selectedFile.name),
+            });
+            const encrypted = await encryptFileToSodiumBlob(
+              selectedFile,
+              fileWrapKey!,
+              metadataKey!,
+              reservedId,
+              () => {
+                setAttachmentProgress((prev) => ({
+                  phase: "encrypt",
+                  progress: Math.max(prev?.progress ?? 0, 35),
+                  detail: formatAttachmentDisplayName(selectedFile.name),
+                }));
+              },
+            );
+            attachment = encrypted.metadata;
+            setAttachmentProgress({
+              phase: "encrypt",
+              progress: 55,
+              detail: formatAttachmentDisplayName(selectedFile.name),
+            });
+            await uploadEncryptedAttachmentBlob(
+              `/api/notes/${reservedId}/file`,
+              encrypted.blob,
+              {
+                "x-file-plaintext-size": String(selectedFile.size),
+                "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
+                "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
+                "x-file-chunk-sha256": encrypted.sha256,
+              },
+              uploadToken,
+            );
+          } else {
+            const chunkDetail = (done: number, total: number) =>
+              t.attachmentProgressChunkDetail
+                .replace("{done}", String(done))
+                .replace("{total}", String(total))
+                .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
+            const completedChunksRef = { current: 0 };
+            setAttachmentProgress({
+              phase: "encrypt",
+              progress: 5,
+              detail: chunkDetail(0, totalChunksHint),
+            });
+            attachment = await encryptFileToSodiumChunks(
+              selectedFile,
+              fileWrapKey!,
+              metadataKey!,
+              reservedId,
+              async (chunk) => {
+                await uploadEncryptedAttachmentChunk(
+                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
+                  chunk.encryptedBytes,
+                  {
+                    "x-file-plaintext-size": String(selectedFile.size),
+                    "x-file-encrypted-size": String(encryptedSizeBound),
+                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                    "x-file-chunk-sha256": chunk.sha256,
+                  },
+                  uploadToken,
+                );
+              },
+              (pipeline) => {
+                if (pipeline.phase === "upload") {
+                  completedChunksRef.current = pipeline.completedChunks;
+                }
+                const done =
+                  pipeline.phase === "upload"
+                    ? pipeline.completedChunks
+                    : completedChunksRef.current;
+                const overall =
+                  pipeline.totalChunks > 0
+                    ? Math.min(
+                        1,
+                        (pipeline.phase === "encrypt"
+                          ? pipeline.completedChunks * 0.4
+                          : pipeline.totalChunks * 0.4 + done * 0.6) / pipeline.totalChunks,
+                      )
+                    : 1;
+                setAttachmentProgress({
+                  phase: "encrypt",
+                  progress: Math.round(5 + overall * 90),
+                  detail: chunkDetail(done, pipeline.totalChunks),
+                });
+              },
+            );
+          }
+
           setAttachmentProgress({
             phase: "finalize",
             progress: 98,
@@ -1461,6 +1548,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
             encryptedSize: attachment.encryptedSize,
+            singleBlob,
           });
         } catch (error) {
           logFileUpload("error", "attachment failed", {

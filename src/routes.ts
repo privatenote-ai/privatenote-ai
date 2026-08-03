@@ -6,7 +6,9 @@ import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
-  NOTE_FILE_AES_GCM_TAG_BYTES,
+  NOTE_FILE_MAX_CHUNK_INDEX,
+  NOTE_FILE_MAX_CHUNKS,
+  NOTE_FILE_SECRETSTREAM_ABYTES,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
 } from "@shared/noteFileLimits";
@@ -8189,7 +8191,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
-    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
       return jsonResponse({ error: "Invalid file chunk" }, 400, request);
     }
     if (!env.NOTE_FILES_R2) {
@@ -8283,7 +8285,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     ) {
       return jsonResponse({ error: "Attachment encrypted size mismatch" }, 400, request);
     }
-    const encryptedTotalLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES * 1000 + 24;
+    const encryptedTotalLimit =
+      plaintextLimit + NOTE_FILE_SECRETSTREAM_ABYTES * NOTE_FILE_MAX_CHUNKS + 24;
     if (encryptedTotalSize > encryptedTotalLimit) {
       return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
     }
@@ -8373,7 +8376,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (noteFileChunkParams && method === "GET") {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
-    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
       return jsonResponse({ error: "Invalid file chunk" }, 400, request);
     }
     if (!env.NOTE_FILES_R2) {

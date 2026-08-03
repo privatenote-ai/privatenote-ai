@@ -1,22 +1,29 @@
 ---
-description: Attachment uploads mirror encrypt.lu single-Blob relay (no HTTP chunks).
+description: Attachment uploads mirror encrypt.lu single-Blob relay; Safari large files use 1 MiB chunks.
 globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
 alwaysApply: false
 ---
 
-# Attachment upload = encrypt.lu single Blob + relay
+# Attachment upload = encrypt.lu single Blob + Safari large-file chunks
 
-Do **not** reintroduce HTTP chunking for new uploads.
+## Default (Chrome / non-Safari, and Safari ≤ 4 MiB)
 
-## What encrypt.lu does (verified from their bundle + relay)
-
-1. `POST /api/init-upload` → `{ transferId, uploadToken }`
-2. One ciphertext Blob
-3. Safari: XHR `PUT /api/upload/:id` + Bearer, then PUT + `?uploadToken=` (no POST)
+1. `POST /api/notes/reserve` → note id + upload token
+2. One ciphertext Blob (one secretstream FINAL frame)
+3. Safari small: XHR `PUT /api/notes/:id/file` + Bearer, then PUT + `?uploadToken=`
 4. Chrome: fetch PUT + Bearer, then PUT/POST + query token
-5. Blob without `Content-Type`; warm-up GET to the relay
-6. Page: **no COEP/COOP**
+5. Untyped Blob body; await warm-up `GET /api/health` on the relay
+6. SPA create-note surface: **no COEP/COOP** (keep COEP only on `/llm-ui` + `/test-llm`)
 7. Relay CORS: `Allow-Origin` + `Allow-Headers: authorization` + methods — **no** `Allow-Credentials`
+
+## Safari > 4 MiB (WebKit single-PUT cliff)
+
+WebKit aborts multi‑MiB single XHRs (`status: 0`, ~200 ms) even same-site to
+`upload-staging.privatenote.ai`. For those files only:
+
+1. ~1 MiB secretstream frames via `encryptFileToSodiumChunks`
+2. Headerless `POST /api/notes/:id/file/chunks/:i` with token + sizes in the query string
+3. Gate: `usesSingleBlobAttachmentUpload(file.size)` / `SAFARI_SINGLE_BLOB_MAX_BYTES`
 
 ## PrivateNote mapping
 
@@ -24,6 +31,7 @@ Do **not** reintroduce HTTP chunking for new uploads.
 |---|---|
 | `relay.encrypt.lu` | `upload.privatenote.ai` / `upload-staging.privatenote.ai` |
 | `POST /api/init-upload` | `POST /api/notes/reserve` |
-| `PUT /api/upload/:id` | `PUT /api/notes/:id/file` |
+| `PUT /api/upload/:id` | `PUT /api/notes/:id/file` (single Blob) |
+| — | `POST /api/notes/:id/file/chunks/:i` (Safari large only) |
 
-SPA upload surface must not send `Cross-Origin-Embedder-Policy` (keep COEP only on `/llm-ui` + `/test-llm`).
+Prefer same-site SPA hosts (`privatenote.ai` / `premium.privatenote.ai`); `*.pages.dev` is cross-site to the upload relay.

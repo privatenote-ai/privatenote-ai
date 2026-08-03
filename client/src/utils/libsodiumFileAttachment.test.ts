@@ -1,24 +1,41 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import {
+  SAFARI_ATTACHMENT_CHUNK_BYTES,
+  SAFARI_SINGLE_BLOB_MAX_BYTES,
+} from "../lib/safariSafeChunkUpload.ts";
 import { arrayBufferToBase64, deriveNoteRootKeys, generateRootKeyBytes } from "./encryption.ts";
 import {
   decryptSodiumAttachmentChunks,
   decryptSodiumAttachmentMetadata,
   encryptFileToSodiumChunks,
-  SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
   type SodiumAttachmentChunk,
 } from "./libsodiumFileAttachment.ts";
 
 (globalThis as unknown as { window: typeof globalThis }).window = globalThis;
 
+// Multi-chunk frames are Safari-only above SAFARI_SINGLE_BLOB_MAX_BYTES.
+Object.defineProperty(globalThis, "navigator", {
+  value: {
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+  },
+  configurable: true,
+});
+
 const NOTE_ID = "00000000-0000-4000-8000-000000044444";
 
+/** Just over the Safari single-Blob cap → multiple ~1 MiB secretstream frames. */
 function buildTestFile(): File {
-  const bytes = new Uint8Array(SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES + 97);
+  const bytes = new Uint8Array(SAFARI_SINGLE_BLOB_MAX_BYTES + 97);
   for (let i = 0; i < bytes.length; i += 1) {
     bytes[i] = i % 251;
   }
   return new File([bytes], "chunked.bin", { type: "application/octet-stream" });
+}
+
+function expectedSafariChunkCount(fileSize: number): number {
+  return Math.max(1, Math.ceil(fileSize / SAFARI_ATTACHMENT_CHUNK_BYTES));
 }
 
 function join(chunks: Uint8Array[]): Uint8Array {
@@ -34,8 +51,8 @@ function join(chunks: Uint8Array[]): Uint8Array {
 
 describe("libsodium attachment chunk encryption", () => {
   it("keeps upload chunks below proxy-sensitive sizes while supporting 1 GB files", () => {
-    assert.ok(SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES >= Math.ceil((1024 * 1024 * 1024) / 999));
-    assert.ok(Math.ceil((1024 * 1024 * 1024) / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES) <= 999);
+    assert.ok(SAFARI_ATTACHMENT_CHUNK_BYTES >= Math.ceil((1024 * 1024 * 1024) / 1024));
+    assert.ok(Math.ceil((1024 * 1024 * 1024) / SAFARI_ATTACHMENT_CHUNK_BYTES) <= 1024);
   });
 
   it("encrypts and decrypts a multi-chunk file", async () => {
@@ -43,6 +60,7 @@ describe("libsodium attachment chunk encryption", () => {
     const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
     rootKeyBytes.fill(0);
     const file = buildTestFile();
+    const expectedChunks = expectedSafariChunkCount(file.size);
     const encryptedChunks = new Map<number, Uint8Array>();
 
     const metadata = await encryptFileToSodiumChunks(
@@ -55,10 +73,11 @@ describe("libsodium attachment chunk encryption", () => {
       },
     );
 
-    assert.equal(metadata.totalChunks, 2);
+    assert.equal(metadata.totalChunks, expectedChunks);
+    assert.ok(expectedChunks > 1);
     assert.ok(metadata.encryptedMetadata);
     assert.match(metadata.encryptedContentSha256, /^[a-f0-9]{64}$/);
-    assert.equal(encryptedChunks.size, 2);
+    assert.equal(encryptedChunks.size, expectedChunks);
     assert.deepEqual(await decryptSodiumAttachmentMetadata(metadata, metadataKey, NOTE_ID), {
       name: "chunked.bin",
       type: "application/octet-stream",

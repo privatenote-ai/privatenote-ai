@@ -17,10 +17,12 @@ import {
   BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
+  SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE,
   SAFARI_UPLOAD_SETTLE_MS,
   UPLOAD_TRANSPORT_FAILURE_MESSAGE,
   uploadMaxRounds,
   uploadRetryDelayMs,
+  usesSingleBlobAttachmentUpload,
 } from "@/lib/safariSafeChunkUpload";
 import {
   isEntitlementRejectionResponse,
@@ -133,9 +135,13 @@ function redactUploadUrlForLog(url: string): string {
   }
 }
 
+function isAttachmentChunkUploadUrl(url: string): boolean {
+  return /\/file\/chunks\/\d+(?:\?|$)/.test(url);
+}
+
 function getBinaryUploadAttempts(
   url: string,
-  options: { uploadToken?: string } = {},
+  options: { uploadToken?: string; fileSize?: number } = {},
 ): BinaryUploadAttempt[] {
   // Binary bodies go to the dedicated upload relay (upload.privatenote.ai /
   // upload-staging.privatenote.ai) — same role as relay.encrypt.lu.
@@ -144,14 +150,18 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // encrypt.lu Safari: PUT + Bearer, then PUT + query token only (no POST).
+    // Safari large files: proven ~1 MiB headerless POST chunks.
+    // Chunk URLs always use this shape even if plaintext size was omitted.
+    if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
+      return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
+    }
+    // encrypt.lu Safari small / Chrome: PUT + Bearer, then PUT + query (± POST on Chrome).
     if (isSafariBrowser()) {
       return [
         { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
         { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
       ];
     }
-    // encrypt.lu Chrome: PUT Bearer → PUT query → POST query.
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
@@ -466,12 +476,20 @@ export async function apiBinaryRequest<T = any>(
   headers: Record<string, string> = {},
   options: {
     uploadToken?: string;
+    fileSize?: number;
     onUploadProgress?: (progress: BinaryUploadProgress) => void;
   } = {},
 ): Promise<T> {
   const uploadBody = resolveBinaryUploadBody(body);
   const bodyBytes = uploadBody instanceof ArrayBuffer ? uploadBody.byteLength : uploadBody.size;
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
+  const plaintextFromHeader = Number(headers["x-file-plaintext-size"] ?? NaN);
+  const fileSize =
+    typeof options.fileSize === "number" && Number.isFinite(options.fileSize)
+      ? options.fileSize
+      : Number.isFinite(plaintextFromHeader)
+        ? plaintextFromHeader
+        : undefined;
   const sharedLogBase = {
     usesUploadToken: Boolean(options.uploadToken),
     method,
@@ -482,8 +500,9 @@ export async function apiBinaryRequest<T = any>(
     plaintextSize: headers["x-file-plaintext-size"] ?? null,
     encryptedTotalSize: headers["x-file-encrypted-size"] ?? null,
     safariTransport: isSafariBrowser(),
+    singleBlob: usesSingleBlobAttachmentUpload(fileSize),
   };
-  const attempts = getBinaryUploadAttempts(url, options);
+  const attempts = getBinaryUploadAttempts(url, { ...options, fileSize });
   const maxRounds = uploadMaxRounds();
   let lastError: unknown = null;
 
