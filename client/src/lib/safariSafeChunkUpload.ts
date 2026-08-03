@@ -1,30 +1,34 @@
 /**
- * Attachment upload policy — encrypt.lu share-mode shape.
+ * Attachment upload policy.
  *
- * Both Chrome and Safari encrypt the file fully, collect one ciphertext Blob, then
- * upload it in a single HTTP request to the direct upload Worker. Only the transport
- * differs:
+ * Chrome (encrypt.lu share-mode):
+ *   Encrypt → one ciphertext Blob → one PUT to the upload Worker (fetch + Bearer).
+ *   Fallbacks: PUT + query token, POST + query token. One retry after ~1.8s.
  *
- *   Chrome  → fetch PUT  + Authorization: Bearer
- *   Safari  → XHR  PUT  + Authorization: Bearer  (fetch can drop bodies after CORS preflight)
- *
- * Fallbacks (same Blob, same host): PUT + token in query, then POST + token in query.
- * One network retry after ~1.8s. No HTTP chunking.
+ * Safari:
+ *   WebKit abandons multi‑MiB body-bearing XHRs to workers.dev before dispatch
+ *   (status 0 / "Load failed", no responseURL). Use ~1 MiB headerless POSTs with
+ *   the capability token in the query string — the shape that reaches the Worker.
  */
 
-/** One secretstream frame for the whole file (ABYTES overhead). Bound into attachment AAD. */
+/** One secretstream frame ABYTES overhead when Chrome uses a single Blob. */
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
 
-/** @deprecated Kept for older call sites; single-Blob mode does not HTTP-chunk. */
+/** Safari plaintext bytes per authenticated frame / HTTP body. */
 export const SAFARI_ATTACHMENT_CHUNK_BYTES = 1024 * 1024;
 export const DEFAULT_ATTACHMENT_CHUNK_BYTES = 4 * 1024 * 1024;
 
-export const UPLOAD_TRANSPORT_FAILURE_MESSAGE =
-  "Encrypted file upload failed before the server responded.";
+export const SAFARI_UPLOAD_CONCURRENCY = 1;
+export const DEFAULT_UPLOAD_CONCURRENCY = 8;
+export const SAFARI_UPLOAD_SETTLE_MS = 300;
 
-/** Primary + one full retry round, matching encrypt.lu's ~1.8s network retry. */
+export const SAFARI_UPLOAD_MAX_ROUNDS = 5;
+export const SAFARI_UPLOAD_RETRY_DELAYS_MS = [400, 900, 1800, 3000] as const;
 export const BLOB_UPLOAD_MAX_ROUNDS = 2;
 export const BLOB_UPLOAD_RETRY_MS = 1800;
+
+export const UPLOAD_TRANSPORT_FAILURE_MESSAGE =
+  "Encrypted file upload failed before the server responded.";
 
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {
@@ -34,35 +38,56 @@ export function isSafariBrowser(): boolean {
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
 }
 
-/** Exact ciphertext bytes for a single secretstream frame covering `plaintextBytes`. */
+/** Chrome/Firefox: one full ciphertext Blob. Safari: HTTP-chunked ~1 MiB frames. */
+export function usesSingleBlobAttachmentUpload(): boolean {
+  return !isSafariBrowser();
+}
+
 export function singleBlobEncryptedSizeUpperBound(plaintextBytes: number): number {
   return Math.max(0, plaintextBytes) + SINGLE_BLOB_SECRETSTREAM_ABYTES;
 }
 
-/**
- * Authenticated frame size recorded in attachment metadata. Single-Blob mode uses the
- * full plaintext length so totalChunks stays 1 (empty files use 1).
- */
 export function attachmentChunkSizeBytes(fileSize?: number): number {
-  if (typeof fileSize === "number" && Number.isFinite(fileSize) && fileSize > 0) {
-    return fileSize;
+  if (usesSingleBlobAttachmentUpload()) {
+    if (typeof fileSize === "number" && Number.isFinite(fileSize) && fileSize > 0) {
+      return fileSize;
+    }
+    return 1;
   }
-  return 1;
+  return SAFARI_ATTACHMENT_CHUNK_BYTES;
+}
+
+export function attachmentEncryptedSizeUpperBound(plaintextBytes: number): number {
+  if (usesSingleBlobAttachmentUpload()) {
+    return singleBlobEncryptedSizeUpperBound(plaintextBytes);
+  }
+  const frames = Math.max(1, Math.ceil(Math.max(0, plaintextBytes) / SAFARI_ATTACHMENT_CHUNK_BYTES));
+  return Math.max(0, plaintextBytes) + frames * SINGLE_BLOB_SECRETSTREAM_ABYTES;
+}
+
+export function attachmentUploadConcurrency(): number {
+  return isSafariBrowser() ? SAFARI_UPLOAD_CONCURRENCY : DEFAULT_UPLOAD_CONCURRENCY;
+}
+
+export function attachmentUploadSettleMs(): number {
+  return isSafariBrowser() ? SAFARI_UPLOAD_SETTLE_MS : 0;
 }
 
 export function uploadMaxRounds(): number {
-  return BLOB_UPLOAD_MAX_ROUNDS;
+  return isSafariBrowser() ? SAFARI_UPLOAD_MAX_ROUNDS : BLOB_UPLOAD_MAX_ROUNDS;
 }
 
-/** Delay before the retry round that follows `completedRounds` failures. */
-export function uploadRetryDelayMs(_completedRounds: number): number {
+export function uploadRetryDelayMs(completedRounds: number): number {
+  if (isSafariBrowser()) {
+    const index = Math.min(
+      Math.max(completedRounds - 1, 0),
+      SAFARI_UPLOAD_RETRY_DELAYS_MS.length - 1,
+    );
+    return SAFARI_UPLOAD_RETRY_DELAYS_MS[index]!;
+  }
   return BLOB_UPLOAD_RETRY_MS;
 }
 
-/**
- * WebKit "Load failed" / connection-lost style failures. These never reached a Worker
- * response, so they are the only errors worth retrying as a transport problem.
- */
 export function isRetriableUploadTransportError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
@@ -77,18 +102,13 @@ export function isRetriableUploadTransportError(error: unknown): boolean {
   );
 }
 
-/**
- * encrypt.lu primary shape: PUT the full Blob with a Bearer capability token and no
- * Content-Type (typed Blobs / octet-stream preflight the request). Size metadata is
- * omitted so the Worker uses the reservation recorded at /api/notes/reserve.
- */
+/** Chrome primary: PUT + Bearer, no Content-Type (reservation supplies sizes). */
 export const BLOB_UPLOAD_PUT_BEARER = {
   method: "PUT",
   omitContentType: true,
   omitMetadata: true,
 } as const;
 
-/** Fallback when Bearer/CORS fails: capability token + sizes in the query string. */
 export const BLOB_UPLOAD_PUT_QUERY = {
   method: "PUT",
   tokenInQuery: true,
@@ -96,7 +116,6 @@ export const BLOB_UPLOAD_PUT_QUERY = {
   omitContentType: true,
 } as const;
 
-/** Final fallback — some edges accept POST bodies more reliably than PUT. */
 export const BLOB_UPLOAD_POST_QUERY = {
   method: "POST",
   tokenInQuery: true,
@@ -104,5 +123,13 @@ export const BLOB_UPLOAD_POST_QUERY = {
   omitContentType: true,
 } as const;
 
-/** @deprecated Use BLOB_UPLOAD_POST_QUERY — name kept for transitional imports. */
-export const SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE = BLOB_UPLOAD_POST_QUERY;
+/**
+ * Safari chunk shape: headerless POST, token + sizes in the query string.
+ * Authorization / Content-Type would preflight and WebKit often loses the body.
+ */
+export const SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE = {
+  method: "POST",
+  tokenInQuery: true,
+  metadataInQuery: true,
+  omitContentType: true,
+} as const;
