@@ -17,11 +17,9 @@ import {
   BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
-  SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE,
   UPLOAD_TRANSPORT_FAILURE_MESSAGE,
   uploadMaxRounds,
   uploadRetryDelayMs,
-  usesSingleBlobAttachmentUpload,
 } from "@/lib/safariSafeChunkUpload";
 import {
   isEntitlementRejectionResponse,
@@ -138,16 +136,14 @@ function getBinaryUploadAttempts(
   url: string,
   options: { uploadToken?: string } = {},
 ): BinaryUploadAttempt[] {
+  // Binary bodies go to the dedicated upload relay (upload.privatenote.ai /
+  // upload-staging.privatenote.ai) — same role as relay.encrypt.lu.
   const directUpload: BinaryUploadAttempt = hasSameOriginApiProxy
     ? { url: getDirectWorkerUploadUrl(url), uploadRoute: "direct-worker", credentials: "omit" }
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari: only the proven ~1 MiB headerless POST shape reaches workers.dev.
-    if (!usesSingleBlobAttachmentUpload()) {
-      return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
-    }
-    // Chrome encrypt.lu share-mode: one full Blob, PUT Bearer → PUT query → POST query.
+    // One full ciphertext Blob: PUT Bearer → PUT query → POST query.
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },

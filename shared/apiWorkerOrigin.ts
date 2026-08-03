@@ -7,11 +7,9 @@ export const DEFAULT_API_WORKER_ORIGIN = "https://privatenote-api.marjan-skrobot
 export const STAGING_API_WORKER_ORIGIN =
   "https://privatenote-api-staging.marjan-skrobot.workers.dev";
 
-/** Dedicated cookie-less attachment upload origins, routed directly to Workers. */
+/** Dedicated cookie-less attachment upload origins (encrypt.lu-style relay hosts). */
 export const PRODUCTION_UPLOAD_WORKER_ORIGIN = "https://upload.privatenote.ai";
-// Safari reaches the Worker reliably on its native hostname. The staging custom
-// domain currently loses body-bearing XHRs at the edge before Worker invocation.
-export const STAGING_UPLOAD_WORKER_ORIGIN = STAGING_API_WORKER_ORIGIN;
+export const STAGING_UPLOAD_WORKER_ORIGIN = "https://upload-staging.privatenote.ai";
 
 export function normalizeApiWorkerOrigin(origin: string): string {
   let base = origin.trim();
