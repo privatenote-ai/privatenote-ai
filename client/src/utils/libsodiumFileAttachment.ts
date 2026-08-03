@@ -1,35 +1,30 @@
 import sodium from "libsodium-wrappers";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
-import { isRetriableUploadTransportError, isSafariBrowser } from "@/lib/binaryUploadTransport";
+import {
+  attachmentChunkSizeBytes,
+  DEFAULT_ATTACHMENT_CHUNK_BYTES,
+  singleBlobEncryptedSizeUpperBound,
+} from "@/lib/safariSafeChunkUpload";
 
-/**
- * Plaintext bytes per chunk. 4 MiB cuts round trips on Chrome (concurrency 8) and
- * Safari (concurrency 2). Still ≤999 chunks for a 1 GB premium file.
- */
-export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = 4 * 1024 * 1024;
+/** @deprecated Single-Blob mode records the full plaintext length as chunkSize. */
+export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = DEFAULT_ATTACHMENT_CHUNK_BYTES;
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
-/** Chunk size for the current browser — reserved for future per-browser tuning. */
-export function getAttachmentChunkSizeBytes(): number {
-  return SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
+/**
+ * Authenticated plaintext frame size for single-Blob attachments (full file → one frame).
+ */
+export function getAttachmentChunkSizeBytes(fileSize?: number): number {
+  return attachmentChunkSizeBytes(fileSize);
 }
 
-/** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
-const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
-/**
- * Safari/WebKit often aborts many concurrent body-bearing HTTP/2 requests. Start at 2;
- * degrade to 1 if a chunk hits a connection-lost style error. Chrome/Firefox can pipeline.
- */
-const UPLOAD_CONCURRENCY_SAFARI = 2;
-const UPLOAD_CONCURRENCY_SAFARI_FLOOR = 1;
-const UPLOAD_CONCURRENCY_DEFAULT = 8;
-const SAFARI_DEGRADE_RETRY_MS = 800;
+export { singleBlobEncryptedSizeUpperBound };
 
 export interface SodiumAttachmentChunk {
   index: number;
   encryptedSize: number;
   encryptedBytes: Uint8Array;
+  sha256: string;
 }
 
 export interface SodiumAttachmentMetadataChunk {
@@ -37,11 +32,18 @@ export interface SodiumAttachmentMetadataChunk {
   encryptedSize: number;
 }
 
-/** Progress while encrypting + uploading attachment chunks (streamed pipeline). */
+/** Progress while encrypting the attachment into one ciphertext Blob. */
 export type AttachmentPipelineProgress = {
   phase: "encrypt" | "upload";
   completedChunks: number;
   totalChunks: number;
+};
+
+export type SodiumAttachmentBlobResult = {
+  metadata: SodiumAttachmentMetadata;
+  /** Untyped Blob for encrypt.lu-style PUT (no Content-Type preflight). */
+  blob: Blob;
+  sha256: string;
 };
 
 export interface SodiumAttachmentPlainMetadata {
@@ -240,22 +242,23 @@ export async function unwrapSodiumAttachmentKey(
   return new Uint8Array(keyBytes);
 }
 
-export async function encryptFileToSodiumChunks(
+/**
+ * Encrypt a file into one secretstream frame and return a single ciphertext Blob
+ * (encrypt.lu share-mode shape). HTTP upload is a separate single PUT/POST.
+ */
+export async function encryptFileToSodiumBlob(
   file: File,
   contentKey: CryptoKey,
   metadataKey: CryptoKey,
   noteId: string,
-  onChunk: (chunk: SodiumAttachmentChunk) => Promise<void>,
   onProgress?: (progress: AttachmentPipelineProgress) => void,
-): Promise<SodiumAttachmentMetadata> {
+): Promise<SodiumAttachmentBlobResult> {
   await sodium.ready;
 
-  const chunkSize = getAttachmentChunkSizeBytes();
-  const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
-  const reportProgress = (phase: AttachmentPipelineProgress["phase"], completedChunks: number) => {
-    onProgress?.({ phase, completedChunks, totalChunks });
-  };
-  reportProgress("encrypt", 0);
+  const chunkSize = getAttachmentChunkSizeBytes(file.size);
+  const totalChunks = 1;
+  onProgress?.({ phase: "encrypt", completedChunks: 0, totalChunks });
+
   const streamAad = jsonAadBytes({
     v: 1,
     purpose: "privatenote-attachment-stream",
@@ -277,145 +280,114 @@ export async function encryptFileToSodiumChunks(
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
   const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
-  const chunks: SodiumAttachmentMetadataChunk[] = [];
-  let encryptedSize = 0;
-  const contentHasher = sha256.create();
-  const fileBytes =
-    file.size > 0 && file.size <= IN_MEMORY_FILE_READ_MAX_BYTES
-      ? new Uint8Array(await file.arrayBuffer())
-      : null;
-  const safariUpload = isSafariBrowser();
-  let uploadConcurrency = safariUpload ? UPLOAD_CONCURRENCY_SAFARI : UPLOAD_CONCURRENCY_DEFAULT;
-  let degradedToSerial = false;
   const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let encryptCpuMs = 0;
 
   try {
-    // Encrypt sequentially (secretstream is stateful), upload with limited concurrency.
-    // Do NOT buffer all ciphertext first — that doubled peak memory and made a ~30s
-    // Safari upload look like "slow encryption".
-    const inFlight = new Set<Promise<void>>();
-    let uploadedChunks = 0;
+    // Yield so the progress UI can paint before a large synchronous WASM push.
+    await new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, 0);
+    });
+    const plaintext = new Uint8Array(await file.arrayBuffer());
+    const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+    const encryptedBytes = sodium.crypto_secretstream_xchacha20poly1305_push(
+      state,
+      plaintext,
+      streamAad,
+      sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL,
+    );
+    const encryptedCopy = encryptedBytes.slice();
+    if (typeof performance !== "undefined") {
+      encryptCpuMs = performance.now() - encryptStartedAt;
+    }
+    plaintext.fill(0);
 
-    const enqueueUpload = async (chunk: SodiumAttachmentChunk): Promise<void> => {
-      while (inFlight.size >= uploadConcurrency) {
-        // Ignore settle outcome here — failures propagate via Promise.all at the end
-        // (or are recovered by the Safari degrade path below).
-        await Promise.race(
-          [...inFlight].map((pending) => pending.then(() => undefined, () => undefined)),
-        );
-      }
-      let task!: Promise<void>;
-      task = (async () => {
-        try {
-          await onChunk(chunk);
-        } catch (error) {
-          if (
-            safariUpload &&
-            uploadConcurrency > UPLOAD_CONCURRENCY_SAFARI_FLOOR &&
-            isRetriableUploadTransportError(error)
-          ) {
-            uploadConcurrency = UPLOAD_CONCURRENCY_SAFARI_FLOOR;
-            degradedToSerial = true;
-            console.warn(
-              "[FILE_UPLOAD] Safari upload degraded to serial after connection loss",
-              JSON.stringify({ noteId, chunkIndex: chunk.index }),
-            );
-            // Wait for sibling PUTs only — not this task (would deadlock).
-            const siblings = [...inFlight].filter((pending) => pending !== task);
-            if (siblings.length > 0) {
-              await Promise.allSettled(siblings);
-            }
-            await new Promise<void>((resolve) => {
-              globalThis.setTimeout(resolve, SAFARI_DEGRADE_RETRY_MS);
-            });
-            await onChunk(chunk);
-          } else {
-            throw error;
-          }
-        }
-        uploadedChunks += 1;
-        reportProgress("upload", uploadedChunks);
-      })().finally(() => {
-        inFlight.delete(task);
-      });
-      inFlight.add(task);
+    const expectedSize = singleBlobEncryptedSizeUpperBound(file.size);
+    if (encryptedCopy.byteLength !== expectedSize) {
+      throw new Error(
+        `Encrypted attachment size mismatch (got ${encryptedCopy.byteLength}, expected ${expectedSize}).`,
+      );
+    }
+
+    const digestHex = bytesToHex(sha256(encryptedCopy));
+    onProgress?.({ phase: "encrypt", completedChunks: 1, totalChunks });
+
+    const metadata: SodiumAttachmentMetadata = {
+      v: 2,
+      alg: SODIUM_ATTACHMENT_ALG,
+      encryptedSize: encryptedCopy.byteLength,
+      chunkSize,
+      totalChunks,
+      header: bytesToBase64(header),
+      aad: bytesToBase64(streamAad),
+      encryptedMetadata,
+      wrappedKey,
+      chunks: [{ index: 0, encryptedSize: encryptedCopy.byteLength }],
+      encryptedContentSha256: digestHex,
     };
 
-    for (let index = 0; index < totalChunks; index += 1) {
-      const start = index * chunkSize;
-      const end = Math.min(file.size, start + chunkSize);
-      const plaintext = fileBytes
-        ? fileBytes.subarray(start, end)
-        : new Uint8Array(await file.slice(start, end).arrayBuffer());
-      const tag =
-        index === totalChunks - 1
-          ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
-          : sodium.crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
-      const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
-      const encryptedBytes = sodium.crypto_secretstream_xchacha20poly1305_push(
-        state,
-        plaintext,
-        streamAad,
-        tag,
-      );
-      // Copy off the WASM heap before the next push reuses it.
-      const encryptedCopy = encryptedBytes.slice();
-      if (typeof performance !== "undefined") {
-        encryptCpuMs += performance.now() - encryptStartedAt;
-      }
-      encryptedSize += encryptedCopy.byteLength;
-      contentHasher.update(encryptedCopy);
-      chunks.push({ index, encryptedSize: encryptedCopy.byteLength });
-      reportProgress("encrypt", index + 1);
-      await enqueueUpload({
-        index,
-        encryptedSize: encryptedCopy.byteLength,
-        encryptedBytes: encryptedCopy,
-      });
-      // Keep the UI responsive during long attachments.
-      if (index % 4 === 3) {
-        await new Promise<void>((resolve) => {
-          globalThis.setTimeout(resolve, 0);
-        });
-      }
-    }
-    await Promise.all([...inFlight]);
-    reportProgress("upload", totalChunks);
+    // Untyped Blob — application/octet-stream would force a CORS preflight.
+    const blob = new Blob([uint8ArrayToExactArrayBuffer(encryptedCopy)]);
 
     const totalMs =
       typeof performance !== "undefined" ? Math.round(performance.now() - pipelineStartedAt) : null;
     console.warn(
-      "[FILE_UPLOAD] attachment pipeline complete",
+      "[FILE_UPLOAD] attachment encrypt complete",
       JSON.stringify({
         noteId,
         totalChunks,
         chunkSize,
         fileBytes: file.size,
+        encryptedBytes: encryptedCopy.byteLength,
         encryptCpuMs: Math.round(encryptCpuMs),
         totalMs,
-        uploadConcurrency,
-        degradedToSerial,
-        inMemoryRead: Boolean(fileBytes),
       }),
     );
+
+    return { metadata, blob, sha256: digestHex };
   } finally {
     fileKey.fill(0);
   }
+}
 
-  return {
-    v: 2,
-    alg: SODIUM_ATTACHMENT_ALG,
-    encryptedSize,
-    chunkSize,
-    totalChunks,
-    header: bytesToBase64(header),
-    aad: bytesToBase64(streamAad),
-    encryptedMetadata,
-    wrappedKey,
-    chunks,
-    encryptedContentSha256: bytesToHex(contentHasher.digest()),
-  };
+/** Exact ArrayBuffer view for Blob construction (avoid sharing a larger WASM heap buffer). */
+function uint8ArrayToExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer as ArrayBuffer;
+  }
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
+/**
+ * @deprecated Prefer {@link encryptFileToSodiumBlob} — HTTP chunking is no longer used.
+ * Kept so older call sites that upload per secretstream frame still compile.
+ */
+export async function encryptFileToSodiumChunks(
+  file: File,
+  contentKey: CryptoKey,
+  metadataKey: CryptoKey,
+  noteId: string,
+  onChunk: (chunk: SodiumAttachmentChunk) => Promise<void>,
+  onProgress?: (progress: AttachmentPipelineProgress) => void,
+): Promise<SodiumAttachmentMetadata> {
+  const { metadata, blob, sha256: digestHex } = await encryptFileToSodiumBlob(
+    file,
+    contentKey,
+    metadataKey,
+    noteId,
+    onProgress,
+  );
+  const encryptedBytes = new Uint8Array(await blob.arrayBuffer());
+  await onChunk({
+    index: 0,
+    encryptedSize: encryptedBytes.byteLength,
+    encryptedBytes,
+    sha256: digestHex,
+  });
+  onProgress?.({ phase: "upload", completedChunks: 1, totalChunks: 1 });
+  return metadata;
 }
 
 /** Progress while downloading + decrypting attachment chunks. */

@@ -1,8 +1,13 @@
 /**
- * Binary PUT transport — Safari fetch() can drop upload bodies and Blob-backed
- * XHR uploads can fail on WebKit. XHR with a Uint8Array body uses the most
- * reliable WebKit path for encrypted attachment chunks.
+ * Binary PUT/POST transport — encrypt.lu share-mode shape.
+ *
+ * Chrome uses fetch(Blob) for the primary PUT. Safari uses xhr.send(Blob) because
+ * WebKit can drop fetch PUT bodies after a CORS preflight. Progress callbacks also
+ * force XHR (fetch has no upload progress API); Safari never attaches upload.*
+ * listeners because that plumbing can abort the request before dispatch.
  */
+
+import { isSafariBrowser } from "@/lib/safariSafeChunkUpload";
 
 const BROWSER_FORBIDDEN_REQUEST_HEADERS = new Set([
   "accept-charset",
@@ -34,28 +39,6 @@ function responseBodyForStatus(status: number, text: string): string | null {
   return text;
 }
 
-export function isSafariBrowser(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-  const ua = navigator.userAgent;
-  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
-}
-
-/** WebKit "Load failed" / connection-lost style errors that warrant degrade + retry. */
-export function isRetriableUploadTransportError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return (
-    error.message === "Load failed" ||
-    error.message === "XHR network request failed" ||
-    error.message === "Encrypted file upload failed before the server responded." ||
-    error.name === "TypeError" ||
-    /network connection was lost/i.test(error.message)
-  );
-}
-
 function filterBrowserUploadHeaders(headers: Record<string, string>): Record<string, string> {
   const filtered: Record<string, string> = {};
   for (const [name, value] of Object.entries(headers)) {
@@ -81,14 +64,25 @@ function xhrBinaryRequest(
   onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
+    const startedAt = performance.now();
+    const readyStateTransitions: Array<{ state: number; elapsedMs: number }> = [];
     const xhr = new XMLHttpRequest();
     xhr.open(method, url);
-    xhr.withCredentials = credentials === "include";
-    xhr.responseType = "text";
+    if (credentials === "include") {
+      xhr.withCredentials = true;
+    }
     for (const [name, value] of Object.entries(filterBrowserUploadHeaders(headers))) {
       xhr.setRequestHeader(name, value);
     }
-    if (onUploadProgress) {
+    xhr.addEventListener("readystatechange", () => {
+      readyStateTransitions.push({
+        state: xhr.readyState,
+        elapsedMs: Math.round(performance.now() - startedAt),
+      });
+    });
+    // Match encrypt.lu's proven Safari request exactly: WebKit's upload-event
+    // plumbing can fail before a body-bearing cross-origin request is dispatched.
+    if (onUploadProgress && !isSafariBrowser()) {
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable || event.total <= 0) return;
         onUploadProgress({ loaded: event.loaded, total: event.total });
@@ -106,10 +100,72 @@ function xhrBinaryRequest(
         reject(error);
       }
     };
-    xhr.onerror = () => reject(new TypeError("Load failed"));
-    xhr.onabort = () => reject(new TypeError("Load failed"));
+    const rejectWithDiagnostic = (eventType: "error" | "abort" | "timeout") => {
+      let target: { origin: string; pathname: string } | null = null;
+      try {
+        const parsed = new URL(url, window.location.origin);
+        target = { origin: parsed.origin, pathname: parsed.pathname };
+      } catch {
+        // Keep malformed or sensitive URLs out of diagnostics.
+      }
+      const resource = performance.getEntriesByName(url).at(-1) as
+        | PerformanceResourceTiming
+        | undefined;
+      console.error(
+        "[SAFARI_XHR_DIAGNOSTIC]",
+        JSON.stringify({
+          eventType,
+          target,
+          method,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          readyState: xhr.readyState,
+          status: xhr.status,
+          responseUrlPresent: Boolean(xhr.responseURL),
+          bodyType: body instanceof Blob ? "Blob" : Object.prototype.toString.call(body),
+          bodyBytes:
+            body instanceof Blob
+              ? body.size
+              : body instanceof ArrayBuffer
+                ? body.byteLength
+                : null,
+          blobType: body instanceof Blob ? body.type : null,
+          requestHeaderNames: Object.keys(filterBrowserUploadHeaders(headers)).map((name) =>
+            name.toLowerCase(),
+          ),
+          withCredentials: xhr.withCredentials,
+          online: navigator.onLine,
+          readyStateTransitions,
+          resourceTiming: resource
+            ? {
+                duration: Math.round(resource.duration),
+                transferSize: resource.transferSize,
+                encodedBodySize: resource.encodedBodySize,
+                decodedBodySize: resource.decodedBodySize,
+                nextHopProtocol: resource.nextHopProtocol,
+              }
+            : null,
+        }),
+      );
+      reject(new TypeError(eventType === "timeout" ? "XHR request timed out" : "Load failed"));
+    };
+    xhr.onerror = () => rejectWithDiagnostic("error");
+    xhr.onabort = () => rejectWithDiagnostic("abort");
+    xhr.ontimeout = () => rejectWithDiagnostic("timeout");
     xhr.send(body);
   });
+}
+
+/**
+ * Safari's reliable WebKit path is xhr.send(Blob), and the Blob must not carry a type:
+ * `application/octet-stream` is not a CORS-safelisted Content-Type, so a typed Blob
+ * preflights every chunk even when no header was set. Callers that do want a
+ * Content-Type pass it as a header, which takes precedence over the Blob type anyway.
+ */
+function toXhrUploadBlob(body: Blob | ArrayBuffer): Blob {
+  if (!(body instanceof Blob)) {
+    return new Blob([body]);
+  }
+  return body.type ? new Blob([body]) : body;
 }
 
 export async function sendBinaryHttpRequest(
@@ -118,17 +174,21 @@ export async function sendBinaryHttpRequest(
   body: Blob | ArrayBuffer,
   headers: Record<string, string>,
   credentials: RequestCredentials,
-  onUploadProgress?: (progress: BinaryUploadProgress) => void,
+  _onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
   const isMutatingUpload = method === "PUT" || method === "POST";
-  // Safari always uses XHR for reliability; also use XHR when byte progress is needed
-  // (fetch has no upload progress API).
-  if (isMutatingUpload && (isSafariBrowser() || onUploadProgress)) {
-    // Prefer ArrayBufferView — browsers deprecate bare ArrayBuffer in XHR.send().
-    const bytes =
-      body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(await body.arrayBuffer());
-    return xhrBinaryRequest(url, method, bytes, safeHeaders, credentials, onUploadProgress);
+  // encrypt.lu: Safari → xhr.send(Blob); Chrome → fetch(Blob). Do not attach
+  // Safari upload.* listeners — that plumbing can abort before dispatch.
+  if (isMutatingUpload && isSafariBrowser()) {
+    return xhrBinaryRequest(
+      url,
+      method,
+      toXhrUploadBlob(body),
+      safeHeaders,
+      credentials,
+      undefined,
+    );
   }
   const fetchBody = body instanceof ArrayBuffer ? body : body;
   return fetch(url, {

@@ -1,6 +1,5 @@
 import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
-import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload, primeSafariAttachmentUploadTransport, resetSafariAttachmentUploadTransport } from "@/lib/queryClient";
-import { uint8ArrayToUploadArrayBuffer } from "@/lib/binaryUploadTransport";
+import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -110,103 +109,21 @@ function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
   return promptTemplatesModulePromise;
 }
 
-function encryptedChunkUploadBody(encryptedBytes: Uint8Array): ArrayBuffer {
-  return uint8ArrayToUploadArrayBuffer(encryptedBytes);
-}
-
-async function uploadEncryptedAttachmentChunk(
+async function uploadEncryptedAttachmentBlob(
   url: string,
-  encryptedBytes: Uint8Array,
+  blob: Blob,
   headers: Record<string, string>,
   uploadToken: string,
-  onUploadProgress?: (progress: { loaded: number; total: number }) => void,
 ): Promise<void> {
-  const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
-  const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const body = encryptedChunkUploadBody(encryptedBytes);
-  logFileUpload("info", "uploading chunk", {
-    chunkIndex,
-    encryptedBytes: encryptedBytes.byteLength,
-    bodyBytes: body.byteLength,
-    declaredChunkSize: Number.isFinite(declaredSize) ? declaredSize : null,
-    sizeMismatch: Number.isFinite(declaredSize) ? declaredSize !== body.byteLength : null,
+  logFileUpload("info", "uploading attachment blob", {
+    bodyBytes: blob.size,
+    declaredChunkSize: Number(headers["x-file-chunk-encrypted-size"] ?? NaN),
     url,
   });
-  try {
-    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, {
-      uploadToken,
-      onUploadProgress,
-    });
-    logFileUpload("info", "chunk uploaded", { chunkIndex, url });
-  } catch (error) {
-    if (error instanceof ApiRequestError) {
-      const safariChunkMismatch =
-        error.status === 400 && /File chunk size mismatch/i.test(error.bodyText);
-      logFileUpload("error", "chunk rejected by server", {
-        chunkIndex,
-        url,
-        status: error.status,
-        bodyPreview: error.bodyText.slice(0, 500),
-        safariChunkMismatch,
-      });
-      if (!safariChunkMismatch) {
-        throw error;
-      }
-      logFileUpload("warn", "Safari chunk size mismatch — retrying once", {
-        chunkIndex,
-        url,
-      });
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-      try {
-        await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
-          uploadToken,
-          onUploadProgress,
-        });
-        logFileUpload("info", "chunk uploaded after Safari size-mismatch retry", {
-          chunkIndex,
-          url,
-        });
-        return;
-      } catch (retryError) {
-        logFileUpload("error", "chunk Safari size-mismatch retry failed", {
-          chunkIndex,
-          url,
-          error:
-            retryError instanceof ApiRequestError
-              ? { status: retryError.status, bodyPreview: retryError.bodyText.slice(0, 500) }
-              : retryError instanceof Error
-                ? retryError.message
-                : String(retryError),
-        });
-        throw retryError;
-      }
-    }
-    logFileUpload("warn", "chunk upload failed, retrying once", {
-      chunkIndex,
-      url,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
-    try {
-      await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
-        uploadToken,
-        onUploadProgress,
-      });
-      logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
-    } catch (retryError) {
-      logFileUpload("error", "chunk retry failed", {
-        chunkIndex,
-        url,
-        error:
-          retryError instanceof ApiRequestError
-            ? { status: retryError.status, bodyPreview: retryError.bodyText.slice(0, 500) }
-            : retryError instanceof Error
-              ? retryError.message
-              : String(retryError),
-      });
-      throw retryError;
-    }
-  }
+  await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", blob, headers, {
+    uploadToken,
+  });
+  logFileUpload("info", "attachment blob uploaded", { url, bodyBytes: blob.size });
 }
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
@@ -1382,14 +1299,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         return arrayBufferToBase64(copy.buffer);
       };
 
-      const { getAttachmentChunkSizeBytes } = await import("@/utils/libsodiumFileAttachment");
-      const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes();
+      const {
+        getAttachmentChunkSizeBytes,
+        singleBlobEncryptedSizeUpperBound,
+      } = await import("@/utils/libsodiumFileAttachment");
+      const encryptedSizeExact = selectedFile
+        ? singleBlobEncryptedSizeUpperBound(selectedFile.size)
+        : 0;
       const attachmentReserveBinding = selectedFile
         ? {
             attachmentPlaintextSize: selectedFile.size,
-            attachmentEncryptedSize:
-              selectedFile.size +
-              Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes)) * 17,
+            attachmentEncryptedSize: encryptedSizeExact,
           }
         : undefined;
 
@@ -1485,108 +1405,52 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           throw new Error("Upload token missing from note reservation.");
         }
         try {
-          const { encryptFileToSodiumChunks } = await import("@/utils/libsodiumFileAttachment");
-          const totalChunks = Math.max(
-            1,
-            Math.ceil(selectedFile.size / attachmentChunkSizeBytes),
-          );
-          const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
+          const { encryptFileToSodiumBlob } = await import("@/utils/libsodiumFileAttachment");
+          const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(selectedFile.size);
           logFileUpload("info", "starting attachment encryption", {
             noteId: reservedId,
             fileName: selectedFile.name,
             fileType: selectedFile.type || "application/octet-stream",
             fileSize: selectedFile.size,
-            totalChunks,
+            totalChunks: 1,
             chunkSizeBytes: attachmentChunkSizeBytes,
-            encryptedSizeUpperBound,
+            encryptedSizeExact,
             apiBase: getFileUploadTargetLabel(),
           });
-          resetSafariAttachmentUploadTransport();
-          await primeSafariAttachmentUploadTransport(
-            `/api/notes/${reservedId}/file/chunks/0`,
-            uploadToken,
-          );
-          const chunkDetail = (done: number, total: number) =>
-            t.attachmentProgressChunkDetail
-              .replace("{done}", String(done))
-              .replace("{total}", String(total))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
-          // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
-          // modal stuck with no chunk count for a long time on slow uplinks.
-          const completedChunksRef = { current: 0 };
-          const inFlightChunkRatios = new Map<number, number>();
-          let lastProgressPublishMs = 0;
-          const publishUploadProgress = (force = false) => {
-            const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-            if (!force && now - lastProgressPublishMs < 80) return;
-            lastProgressPublishMs = now;
-            let inFlightSum = 0;
-            for (const ratio of inFlightChunkRatios.values()) {
-              inFlightSum += ratio;
-            }
-            const overall =
-              totalChunks > 0
-                ? Math.min(1, (completedChunksRef.current + inFlightSum) / totalChunks)
-                : 1;
-            const nextProgress = Math.round(5 + overall * 90);
-            setAttachmentProgress((prev) => ({
-              phase: "encrypt",
-              progress: Math.max(prev?.progress ?? 0, nextProgress),
-              detail: chunkDetail(completedChunksRef.current, totalChunks),
-            }));
-          };
           setAttachmentProgress({
             phase: "encrypt",
-            progress: 5,
-            detail: chunkDetail(0, totalChunks),
+            progress: 8,
+            detail: formatAttachmentDisplayName(selectedFile.name),
           });
-          attachment = await encryptFileToSodiumChunks(
+          const encrypted = await encryptFileToSodiumBlob(
             selectedFile,
             fileWrapKey!,
             metadataKey!,
             reservedId,
-            async (chunk) => {
-              inFlightChunkRatios.set(chunk.index, 0);
-              publishUploadProgress(true);
-              try {
-                await uploadEncryptedAttachmentChunk(
-                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                  chunk.encryptedBytes,
-                  {
-                    "Content-Type": "application/octet-stream",
-                    "x-file-plaintext-size": String(selectedFile.size),
-                    "x-file-encrypted-size": String(encryptedSizeUpperBound),
-                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
-                  },
-                  uploadToken,
-                  ({ loaded, total }) => {
-                    inFlightChunkRatios.set(
-                      chunk.index,
-                      total > 0 ? Math.min(1, loaded / total) : 0,
-                    );
-                    publishUploadProgress();
-                  },
-                );
-              } finally {
-                inFlightChunkRatios.delete(chunk.index);
-              }
+            () => {
+              setAttachmentProgress((prev) => ({
+                phase: "encrypt",
+                progress: Math.max(prev?.progress ?? 0, 35),
+                detail: formatAttachmentDisplayName(selectedFile.name),
+              }));
             },
-            (pipeline) => {
-              // Drive the bar and the "X of Y" label from uploaded chunks only. Encrypt
-              // runs ahead in the pipeline, so reacting to its callbacks made the label
-              // flip between the real uploaded count and 0. Keep the label on the last
-              // uploaded count instead of resetting it.
-              if (pipeline.phase !== "upload") {
-                setAttachmentProgress((prev) => ({
-                  phase: "encrypt",
-                  progress: Math.max(prev?.progress ?? 0, 5),
-                  detail: chunkDetail(completedChunksRef.current, pipeline.totalChunks),
-                }));
-                return;
-              }
-              completedChunksRef.current = pipeline.completedChunks;
-              publishUploadProgress(true);
+          );
+          attachment = encrypted.metadata;
+          setAttachmentProgress({
+            phase: "encrypt",
+            progress: 55,
+            detail: formatAttachmentDisplayName(selectedFile.name),
+          });
+          await uploadEncryptedAttachmentBlob(
+            `/api/notes/${reservedId}/file`,
+            encrypted.blob,
+            {
+              "x-file-plaintext-size": String(selectedFile.size),
+              "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
+              "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
+              "x-file-chunk-sha256": encrypted.sha256,
             },
+            uploadToken,
           );
           setAttachmentProgress({
             phase: "finalize",
