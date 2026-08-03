@@ -17,6 +17,7 @@ import {
   BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
+  SAFARI_UPLOAD_SETTLE_MS,
   UPLOAD_TRANSPORT_FAILURE_MESSAGE,
   uploadMaxRounds,
   uploadRetryDelayMs,
@@ -486,14 +487,19 @@ export async function apiBinaryRequest<T = any>(
   const maxRounds = uploadMaxRounds();
   let lastError: unknown = null;
 
-  // encrypt.lu warms the relay with GET /api/health before the Blob PUT.
+  // encrypt.lu warms the relay before the Blob PUT. Await it so Safari does not
+  // multiplex a large PUT on a brand-new connection alongside the warm-up GET.
   if (options.uploadToken && typeof window !== "undefined" && hasSameOriginApiProxy) {
     const relayOrigin = uploadWorkerOriginForAppHostname(window.location.hostname);
-    void fetch(`${relayOrigin}/api/health`, {
-      method: "GET",
-      mode: "cors",
-      credentials: "omit",
-    }).catch(() => undefined);
+    try {
+      await fetch(`${relayOrigin}/api/health`, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+      });
+    } catch {
+      // Warm-up is best-effort; upload attempts still run.
+    }
   }
 
   for (let round = 0; round < maxRounds; round += 1) {
@@ -604,6 +610,9 @@ export async function apiBinaryRequest<T = any>(
             ...errorDetails,
           },
         );
+        if (willRetry && isSafariBrowser() && SAFARI_UPLOAD_SETTLE_MS > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, SAFARI_UPLOAD_SETTLE_MS));
+        }
         if (error instanceof ApiRequestError) {
           // Fall through to the next upload route on transient server failures
           // (e.g. concurrent quota race on direct-worker) and Safari size mismatches.

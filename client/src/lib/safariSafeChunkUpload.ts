@@ -6,7 +6,8 @@
  * - Relay CORS has no Access-Control-Allow-Credentials
  * - Safari: XHR PUT + Bearer, then PUT + query token (no POST)
  * - Chrome: fetch PUT + Bearer, then PUT/POST + query token
- * - Blob body without Content-Type; warm-up GET to the relay first
+ * - Blob typed `application/octet-stream` (encrypt.lu collectStreamToBlob)
+ * - Await relay GET /api/health before the Blob PUT
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
  * Prefer same-site SPA hosts (privatenote.ai / premium.privatenote.ai).
@@ -20,6 +21,8 @@ export const UPLOAD_TRANSPORT_FAILURE_MESSAGE =
 
 export const BLOB_UPLOAD_MAX_ROUNDS = 2;
 export const BLOB_UPLOAD_RETRY_MS = 1800;
+/** Pause between Safari XHR attempts so WebKit can drop a broken connection. */
+export const SAFARI_UPLOAD_SETTLE_MS = 300;
 
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {

@@ -156,16 +156,18 @@ function xhrBinaryRequest(
 }
 
 /**
- * Safari's reliable WebKit path is xhr.send(Blob), and the Blob must not carry a type:
- * `application/octet-stream` is not a CORS-safelisted Content-Type, so a typed Blob
- * preflights every chunk even when no header was set. Callers that do want a
- * Content-Type pass it as a header, which takes precedence over the Blob type anyway.
+ * Safari's reliable WebKit path is xhr.send(Blob). encrypt.lu uses a Blob typed as
+ * `application/octet-stream` (CORS still preflights because of PUT + Authorization).
  */
 function toXhrUploadBlob(body: Blob | ArrayBuffer): Blob {
+  // encrypt.lu share-mode collects `new Blob(..., { type: "application/octet-stream" })`.
   if (!(body instanceof Blob)) {
-    return new Blob([body]);
+    return new Blob([body], { type: "application/octet-stream" });
   }
-  return body.type ? new Blob([body]) : body;
+  if (body.type === "application/octet-stream") {
+    return body;
+  }
+  return new Blob([body], { type: "application/octet-stream" });
 }
 
 export async function sendBinaryHttpRequest(
