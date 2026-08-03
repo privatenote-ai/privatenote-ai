@@ -24,20 +24,6 @@
 import { PN_CLIENT_IP_HEADER } from "../../shared/clientRequestIdentity";
 
 const ACCESS_COOKIE_NAME_PATTERN = /^CF_(?:Authorization|AppSession)=/;
-const PRODUCTION_API_WORKER_ORIGIN = "https://privatenote-api.marjan-skrobot.workers.dev";
-const STAGING_API_WORKER_ORIGIN =
-  "https://privatenote-api-staging.marjan-skrobot.workers.dev";
-
-function apiProxyTargetForHostname(hostname: string, configuredTarget?: string): string {
-  const normalized = hostname.trim().toLowerCase();
-  if (
-    normalized === "premium.privatenote-ai.pages.dev" ||
-    normalized === "develop.privatenote-ai.pages.dev"
-  ) {
-    return STAGING_API_WORKER_ORIGIN;
-  }
-  return configuredTarget || PRODUCTION_API_WORKER_ORIGIN;
-}
 
 function stripAccessCookies(value: string | null): string | null {
   if (!value) return null;
@@ -57,7 +43,7 @@ export async function onRequest(context: {
   env?: { API_PROXY_TARGET?: string };
 }) {
   const url = new URL(context.request.url);
-  const base = apiProxyTargetForHostname(url.hostname, context.env?.API_PROXY_TARGET);
+  const base = context.env?.API_PROXY_TARGET || "https://privatenote-api.marjan-skrobot.workers.dev";
   const target = new URL(base);
   target.pathname = url.pathname;
   target.search = url.search;
