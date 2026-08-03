@@ -89,6 +89,15 @@ export default {
 
       // Handle API routes
       if (pathname.startsWith("/api")) {
+        if (pathname === "/api/health" && request.method === "GET") {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              ...getCorsHeaders(request),
+            },
+          });
+        }
         return await registerRoutes(request, env);
       }
 
@@ -106,7 +115,10 @@ export default {
           }),
           {
             status: 200,
-            headers: { "Content-Type": "application/json" }
+            headers: {
+              "Content-Type": "application/json",
+              ...getCorsHeaders(request),
+            }
           }
         );
       }

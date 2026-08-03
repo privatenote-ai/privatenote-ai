@@ -489,9 +489,11 @@ export async function apiBinaryRequest<T = any>(
   // encrypt.lu warms the relay with GET /api/health before the Blob PUT.
   if (options.uploadToken && typeof window !== "undefined" && hasSameOriginApiProxy) {
     const relayOrigin = uploadWorkerOriginForAppHostname(window.location.hostname);
-    void fetch(`${relayOrigin}/`, { method: "GET", mode: "cors", credentials: "omit" }).catch(
-      () => undefined,
-    );
+    void fetch(`${relayOrigin}/api/health`, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit",
+    }).catch(() => undefined);
   }
 
   for (let round = 0; round < maxRounds; round += 1) {
