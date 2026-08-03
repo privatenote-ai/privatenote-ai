@@ -1511,6 +1511,21 @@ export const en: Translations = {
   blogCommonSecretHandlingMistakesMetaTitle: "Common mistakes when handling secrets",
   blogCommonSecretHandlingMistakesMetaDescription:
     "From passwords and API keys to contracts and recovery codes, these are the most common mistakes people make when handling confidential information—and how to avoid them.",
+  blogMythosAiCryptanalysisHawkTitle:
+    "Did Anthropic’s Mythos Break Cryptography? HAWK, AES, and the Real Result",
+  blogMythosAiCryptanalysisHawkSubtitle: "",
+  blogMythosAiCryptanalysisHawkExcerpt:
+    "Mythos helped produce a decisive attack on the HAWK signature candidate and a far smaller reduced-round AES result. Here is what changed—and what did not.",
+  blogMythosAiCryptanalysisHawkMetaTitle: "Mythos: HAWK attack vs. AES result",
+  blogMythosAiCryptanalysisHawkMetaDescription:
+    "Analyze Anthropic Mythos’ HAWK key-recovery attack and reduced-round AES result, with primary sources, expert context, and practical implications.",
+  blogHowToSharePhotosSecurelyTitle: "How to Share Photos Securely",
+  blogHowToSharePhotosSecurelySubtitle: "Reduce Persistent Copies and Metadata Exposure",
+  blogHowToSharePhotosSecurelyExcerpt:
+    "Sensitive photos can expose visible details, embedded location metadata, and long-lived copies. Learn how to crop, re-encode, encrypt, and limit service access—without confusing expiration with remote deletion.",
+  blogHowToSharePhotosSecurelyMetaTitle: "How to share photos securely",
+  blogHowToSharePhotosSecurelyMetaDescription:
+    "Share sensitive photos with fewer persistent copies. Remove common metadata locally, encrypt before upload, protect the full link, and limit access time.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

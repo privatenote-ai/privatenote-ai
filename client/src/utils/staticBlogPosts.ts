@@ -31,6 +31,8 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "android-iphone-rcs-end-to-end-encryption": "2026-07-20T16:00:00.000Z",
   "google-drive-vs-one-time-encrypted-links": "2026-07-27T12:00:00.000Z",
   "common-secret-handling-mistakes": "2026-07-28T12:00:00.000Z",
+  "mythos-ai-cryptanalysis-hawk": "2026-08-01T12:00:00.000Z",
+  "how-to-share-photos-securely": "2026-08-01T14:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -63,6 +65,8 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "android-iphone-rcs-end-to-end-encryption": 7,
   "google-drive-vs-one-time-encrypted-links": 7,
   "common-secret-handling-mistakes": 7,
+  "mythos-ai-cryptanalysis-hawk": 7,
+  "how-to-share-photos-securely": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -98,6 +102,34 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -29,
+      title: t.blogHowToSharePhotosSecurelyTitle,
+      excerpt: t.blogHowToSharePhotosSecurelyExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-share-photos-securely",
+      publishedAt: at("how-to-share-photos-securely"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy]),
+      content: "",
+      coverImage: "/images/blog-how-to-share-photos-securely-hero.jpg",
+      published: true,
+      createdAt: at("how-to-share-photos-securely"),
+      updatedAt: at("how-to-share-photos-securely"),
+    },
+    {
+      id: -28,
+      title: t.blogMythosAiCryptanalysisHawkTitle,
+      excerpt: t.blogMythosAiCryptanalysisHawkExcerpt,
+      author: "PrivateNote.ai",
+      slug: "mythos-ai-cryptanalysis-hawk",
+      publishedAt: at("mythos-ai-cryptanalysis-hawk"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagPrivacy]),
+      content: "",
+      coverImage: "/images/blog-mythos-ai-cryptanalysis-hawk-hero.jpg",
+      published: true,
+      createdAt: at("mythos-ai-cryptanalysis-hawk"),
+      updatedAt: at("mythos-ai-cryptanalysis-hawk"),
+    },
     {
       id: -27,
       title: t.blogCommonSecretHandlingMistakesTitle,

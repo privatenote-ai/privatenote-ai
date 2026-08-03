@@ -127,6 +127,16 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogCommonSecretHandlingMistakesMetaTitle),
         description: t.blogCommonSecretHandlingMistakesMetaDescription,
       };
+    case "mythos-ai-cryptanalysis-hawk":
+      return {
+        title: buildDocumentTitle(t.blogMythosAiCryptanalysisHawkMetaTitle),
+        description: t.blogMythosAiCryptanalysisHawkMetaDescription,
+      };
+    case "how-to-share-photos-securely":
+      return {
+        title: buildDocumentTitle(t.blogHowToSharePhotosSecurelyMetaTitle),
+        description: t.blogHowToSharePhotosSecurelyMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

@@ -114,4 +114,12 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/CommonSecretHandlingMistakesPost"),
     "CommonSecretHandlingMistakesPost",
   ),
+  "mythos-ai-cryptanalysis-hawk": lazyPost(
+    () => import("@/components/blog/MythosAiCryptanalysisHawkPost"),
+    "MythosAiCryptanalysisHawkPost",
+  ),
+  "how-to-share-photos-securely": lazyPost(
+    () => import("@/components/blog/HowToSharePhotosSecurelyPost"),
+    "HowToSharePhotosSecurelyPost",
+  ),
 };

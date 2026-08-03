@@ -157,6 +157,19 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Temporäres Teilen ist meist sicherer als dauerhafte Speicherung.",
     "Guter Umgang mit Secrets begrenzt Zugriff und Verweildauer.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos half, HAWK nach Halbierung der effektiven Schlüsselstärke zurückzuziehen.",
+    "Preneel, Green und Schmieg: echter Forschungsfortschritt—kein nächtlicher Kollaps alltäglicher Krypto.",
+    "KI kombinierte bekannte Kryptanalyse-Werkzeuge neu, statt neue Mathematik zu erfinden.",
+    "Bevorzugen Sie gut geprüfte Primitive und kurzlebige Freigaben, wenn Sicherheitsmargen schneller schrumpfen.",
+  ],
+    "how-to-share-photos-securely": [
+    "Das eigentliche Risiko ist Dauerhaftigkeit—Kopien in E-Mail, Chat und Backups.",
+    "PrivateNote kann GPS/EXIF im Browser vor der Verschlüsselung entfernen (JPEG/PNG/WebP/HEIC).",
+    "Im Browser verschlüsseln und einmalige oder kurzlebige Links nutzen.",
+    "Auf das Nötige zuschneiden; Passphrasen über einen separaten Kanal senden.",
+  ],
+
 
 };
 
@@ -317,6 +330,19 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Le partage temporaire est en général plus sûr que le stockage permanent.",
     "Bien gérer les secrets, c’est limiter qui y accède et combien de temps ils restent disponibles.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos a contribué au retrait de HAWK après avoir réduit de moitié la force effective de la clé.",
+    "Preneel, Green et Schmieg : vrai progrès de recherche—pas un effondrement nocturne de la crypto quotidienne.",
+    "L’IA a recombiné des outils de cryptanalyse connus plutôt que d’inventer de nouvelles mathématiques.",
+    "Préférez des primitives bien évaluées et un partage de courte durée alors que les marges se réduisent plus vite.",
+  ],
+    "how-to-share-photos-securely": [
+    "Le vrai risque est la permanence—copies dans e-mail, chat et sauvegardes.",
+    "PrivateNote peut supprimer GPS/EXIF dans le navigateur avant chiffrement (JPEG/PNG/WebP/HEIC).",
+    "Chiffrer dans le navigateur et utiliser des liens à usage unique ou de courte durée.",
+    "Recadrer au nécessaire ; envoyer les phrases secrètes sur un canal séparé.",
+  ],
+
 
 };
 
@@ -477,6 +503,19 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "Compartir de forma temporal suele ser más seguro que el almacenamiento permanente.",
     "Buen manejo de secretos significa limitar quién accede y durante cuánto tiempo.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos ayudó a forzar la retirada de HAWK tras reducir a la mitad la fuerza efectiva de la clave.",
+    "Preneel, Green y Schmieg: avance real de investigación—no un colapso nocturno de la cripto cotidiana.",
+    "La IA recombinó herramientas conocidas de criptoanálisis en lugar de inventar matemáticas nuevas.",
+    "Prefiera primitivas bien revisadas y compartición de corta duración mientras los márgenes se estrechan más rápido.",
+  ],
+    "how-to-share-photos-securely": [
+    "El riesgo real es la permanencia—copias en email, chat y copias de seguridad.",
+    "PrivateNote puede quitar GPS/EXIF en el navegador antes de cifrar (JPEG/PNG/WebP/HEIC).",
+    "Cifra en el navegador y usa enlaces de un solo uso o de corta duración.",
+    "Recorta a lo necesario; envía la frase secreta por un canal aparte.",
+  ],
+
 
 };
 
@@ -637,6 +676,19 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "La condivisione temporanea di solito è più sicura dello storage permanente.",
     "Gestire bene i segreti significa limitare chi accede e per quanto restano disponibili.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos ha contribuito al ritiro di HAWK dopo aver dimezzato la forza effettiva della chiave.",
+    "Preneel, Green e Schmieg: vero progresso di ricerca—non un crollo notturno della crypto di tutti i giorni.",
+    "L’IA ha ricombinato strumenti noti di crittoanalisi invece di inventare nuova matematica.",
+    "Preferite primitive ben riesaminate e condivisioni di breve durata mentre i margini si restringono più in fretta.",
+  ],
+    "how-to-share-photos-securely": [
+    "Il rischio reale è la permanenza—copie in email, chat e backup.",
+    "PrivateNote può rimuovere GPS/EXIF nel browser prima della cifratura (JPEG/PNG/WebP/HEIC).",
+    "Cifra nel browser e usa link monouso o di breve durata.",
+    "Ritaglia all’essenziale; invia le passphrase su un canale separato.",
+  ],
+
 
 };
 
@@ -797,6 +849,19 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Tijdelijk delen is meestal veiliger dan permanente opslag.",
     "Goede secret-handling beperkt wie toegang heeft én hoe lang iets blijft bestaan.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos hielp HAWK terug te trekken na halvering van de effectieve sleutelsterkte.",
+    "Preneel, Green en Schmieg: echte onderzoeksvooruitgang—geen overnight ineenstorting van alledaagse crypto.",
+    "AI recombineerde bekende cryptanalyse-tools in plaats van nieuwe wiskunde uit te vinden.",
+    "Kies goed beoordeelde primitives en kortlevende sharing als veiligheidsmarges sneller krimpen.",
+  ],
+    "how-to-share-photos-securely": [
+    "Het echte risico is permanentie—kopieën in e-mail, chat en backups.",
+    "PrivateNote kan GPS/EXIF in de browser strippen vóór versleuteling (JPEG/PNG/WebP/HEIC).",
+    "Versleutel in de browser en gebruik eenmalige of kortlevende links.",
+    "Bijsnijden tot het nodige; stuur wachtzinnen via een apart kanaal.",
+  ],
+
 
 };
 
@@ -957,6 +1022,19 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "Partilha temporária é geralmente mais segura do que armazenamento permanente.",
     "Bom tratamento de segredos limita quem acede e durante quanto tempo fica disponível.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos ajudou a forçar a retirada do HAWK após reduzir pela metade a força efetiva da chave.",
+    "Preneel, Green e Schmieg: progresso real de pesquisa—não um colapso overnight da cripto do dia a dia.",
+    "A IA recombinou ferramentas conhecidas de criptoanálise em vez de inventar nova matemática.",
+    "Prefira primitivas bem revisadas e partilha de curta duração enquanto as margens encolhem mais depressa.",
+  ],
+    "how-to-share-photos-securely": [
+    "O risco real é a permanência—cópias em email, chat e backups.",
+    "O PrivateNote pode remover GPS/EXIF no browser antes da encriptação (JPEG/PNG/WebP/HEIC).",
+    "Encripte no browser e use links de uso único ou curta duração.",
+    "Recorte ao necessário; envie frases-passe noutro canal.",
+  ],
+
 
 };
 
@@ -1117,6 +1195,19 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Privremeno deljenje je obično bezbednije od trajnog skladištenja.",
     "Dobar rad sa tajnama ograničava ko ima pristup i koliko dugo one ostaju dostupne.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos je pomogao da se HAWK povuče nakon prepolovljene efektivne jačine ključa.",
+    "Preneel, Green i Schmieg: stvarni istraživački napredak—ne overnight kolaps svakodnevne kriptografije.",
+    "AI je rekombinovao poznate alate kriptoanalize umesto da izmisli novu matematiku.",
+    "Preferirajte dobro pregledane primitive i kratkotrajno deljenje dok se margine brže smanjuju.",
+  ],
+    "how-to-share-photos-securely": [
+    "Pravi rizik je trajnost—kopije u emailu, chatu i rezervnim kopijama.",
+    "PrivateNote može ukloniti GPS/EXIF u pregledaču pre šifrovanja (JPEG/PNG/WebP/HEIC).",
+    "Šifrujte u pregledaču i koristite jednokratne ili kratkotrajne linkove.",
+    "Iscecite na potrebno; lozinke šaljite drugim kanalom.",
+  ],
+
 
 };
 
@@ -1277,5 +1368,18 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Privremeno dijeljenje obično je sigurnije od trajnog pohranjivanja.",
     "Dobar rad s tajnama ograničava tko ima pristup i koliko dugo one ostaju dostupne.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos je pomogao da se HAWK povuče nakon prepolovljene efektivne jačine ključa.",
+    "Preneel, Green i Schmieg: stvarni istraživački napredak—ne overnight kolaps svakodnevne kriptografije.",
+    "AI je rekombinirao poznate alate kriptoanalize umjesto da izmisli novu matematiku.",
+    "Preferirajte dobro pregledane primitive i kratkotrajno dijeljenje dok se margine brže smanjuju.",
+  ],
+    "how-to-share-photos-securely": [
+    "Pravi rizik je trajnost—kopije u emailu, chatu i sigurnosnim kopijama.",
+    "PrivateNote može ukloniti GPS/EXIF u pregledniku prije šifriranja (JPEG/PNG/WebP/HEIC).",
+    "Šifrirajte u pregledniku i koristite jednokratne ili kratkotrajne poveznice.",
+    "Izrežite na potrebno; lozinke šaljite drugim kanalom.",
+  ],
+
 
 };

@@ -295,8 +295,30 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
       "one-time-secret-links",
       "how-to-share-a-password-securely",
       "google-drive-vs-one-time-encrypted-links",
+      "how-to-share-photos-securely",
     ],
     trust: "/security-resources",
+  },
+  "mythos-ai-cryptanalysis-hawk": {
+    related: [
+      "what-is-end-to-end-encryption",
+      "introduction-to-private-ai",
+      "myth-good-enough-security",
+      "securing-ai-agents-like-employees",
+      "chat-control-europe-cryptographers",
+    ],
+    trust: "/security-resources",
+  },
+  "how-to-share-photos-securely": {
+    related: [
+      "send-sensitive-documents-securely",
+      "one-time-secret-links",
+      "encrypted-vs-secure-file-sharing",
+      "google-drive-vs-one-time-encrypted-links",
+      "why-email-is-worst-for-secrets",
+      "common-secret-handling-mistakes",
+    ],
+    trust: "/how-it-works",
   },
 };
 

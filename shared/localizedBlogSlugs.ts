@@ -28,6 +28,8 @@ export const BLOG_CANONICAL_SLUGS = [
   "android-iphone-rcs-end-to-end-encryption",
   "google-drive-vs-one-time-encrypted-links",
   "common-secret-handling-mistakes",
+  "mythos-ai-cryptanalysis-hawk",
+  "how-to-share-photos-securely",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -347,6 +349,28 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "erros-comuns-ao-lidar-com-segredos",
     sr: "ceste-greske-pri-rukovanju-tajnama",
     hr: "ceste-greske-pri-rukovanju-tajnama",
+  },
+  "mythos-ai-cryptanalysis-hawk": {
+    en: "mythos-ai-cryptanalysis-hawk",
+    de: "mythos-ki-kryptanalyse-hawk",
+    fr: "mythos-ia-cryptanalyse-hawk",
+    es: "mythos-ia-criptoanalisis-hawk",
+    it: "mythos-ia-crittoanalisi-hawk",
+    nl: "mythos-ai-cryptanalyse-hawk",
+    pt: "mythos-ia-criptoanalise-hawk",
+    sr: "mythos-ai-kriptoanaliza-hawk",
+    hr: "mythos-ai-kriptoanaliza-hawk",
+  },
+  "how-to-share-photos-securely": {
+    en: "how-to-share-photos-securely",
+    de: "wie-man-fotos-sicher-teilt",
+    fr: "comment-partager-des-photos-en-securite",
+    es: "como-compartir-fotos-de-forma-segura",
+    it: "come-condividere-foto-in-modo-sicuro",
+    nl: "hoe-deel-je-fotos-veilig",
+    pt: "como-compartilhar-fotos-com-seguranca",
+    sr: "kako-bezbedno-deliti-fotografije",
+    hr: "kako-sigurno-dijeliti-fotografije",
   },
 };
 

@@ -168,6 +168,18 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "Temporary sharing is usually safer than permanent storage.",
     "Good secret handling means limiting both who can access information and how long it remains available.",
   ],
+  "mythos-ai-cryptanalysis-hawk": [
+    "Mythos helped produce a key-recovery attack that led the HAWK team to request withdrawal.",
+    "Green: HAWK matters; the AES result is a small lab increment—not a panic headline.",
+    "The AES attack still needs about 2^89 operations and 2^105 chosen-plaintext encryptions.",
+    "AI synthesized known cryptanalysis tools; verifying plausible-looking results is the bottleneck.",
+  ],
+  "how-to-share-photos-securely": [
+    "Reduce visible details, embedded metadata, and long-lived service access.",
+    "PrivateNote re-encodes supported images locally before encryption; it cannot anonymise visible pixels.",
+    "A read-once note can still allow attachment downloads during its configured post-open window.",
+    "Treat the complete link as a bearer secret and send any passphrase separately.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

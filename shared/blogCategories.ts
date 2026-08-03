@@ -37,6 +37,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "encrypted-vs-secure-file-sharing": "secrets",
   "google-drive-vs-one-time-encrypted-links": "secrets",
   "common-secret-handling-mistakes": "secrets",
+  "how-to-share-photos-securely": "secrets",
   "how-to-make-a-private-note": "secrets",
   "how-we-generate-passwords": "secrets",
 
@@ -44,6 +45,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "what-is-end-to-end-encryption": "encryption",
   "android-iphone-rcs-end-to-end-encryption": "encryption",
   "myth-good-enough-security": "encryption",
+  "mythos-ai-cryptanalysis-hawk": "encryption",
 
   // Privacy — policy, workplace, stacks
   "chat-control-1-0-vote-explained": "privacy",
