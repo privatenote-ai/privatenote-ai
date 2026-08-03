@@ -14,7 +14,6 @@ import {
 import {
   isRetriableUploadTransportError,
   isSafariBrowser,
-  BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
   SAFARI_LARGE_CHUNK_UPLOAD_SHAPES,
@@ -150,21 +149,14 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari > ~6 MiB: few serial ~4 MiB PUTs (encrypt.lu shapes), not 1 MiB POSTs.
+    // Safari large-file chunk path only when SAFARI_CHUNKING_ENABLED (off by default).
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // encrypt.lu Safari single PUT: Bearer, then query token. Chrome also tries POST.
-    if (isSafariBrowser()) {
-      return [
-        { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
-        { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
-      ];
-    }
+    // Chrome + Safari: same encrypt.lu single-PUT shapes (Bearer, then query).
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
-      { ...directUpload, ...BLOB_UPLOAD_POST_QUERY },
     ];
   }
 

@@ -175,20 +175,22 @@ export async function sendBinaryHttpRequest(
   body: Blob | ArrayBuffer,
   headers: Record<string, string>,
   credentials: RequestCredentials,
-  _onUploadProgress?: (progress: BinaryUploadProgress) => void,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
   const isMutatingUpload = method === "PUT" || method === "POST";
-  // encrypt.lu: Safari → xhr.send(Blob); Chrome → fetch(Blob). Do not attach
-  // Safari upload.* listeners — that plumbing can abort before dispatch.
-  if (isMutatingUpload && isSafariBrowser()) {
+  // Same hop for Chrome and Safari: xhr.send(Blob) to the upload relay.
+  // Safari cannot use fetch for large PUTs; Chrome matches that path so both
+  // get the same fast single-Blob upload (encrypt.lu-style).
+  if (isMutatingUpload) {
     return xhrBinaryRequest(
       url,
       method,
       toXhrUploadBlob(body),
       safeHeaders,
       credentials,
-      undefined,
+      // Keep upload.* progress off on Safari — that plumbing can abort before dispatch.
+      isSafariBrowser() ? undefined : onUploadProgress,
     );
   }
   const fetchBody = body instanceof ArrayBuffer ? body : body;

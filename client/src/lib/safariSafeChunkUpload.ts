@@ -1,16 +1,11 @@
 /**
- * Attachment upload policy — match encrypt.lu’s working hop first.
+ * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
  *
- * Primary (encrypt.lu recipe):
- *   Same-site page → upload relay, Safari XHR PUT, one ciphertext Blob,
- *   Authorization: Bearer, credentials off, one retry after ~1.8s.
- *   Page: privatenote.ai → upload.privatenote.ai (not *.pages.dev).
+ * Same-site page → upload relay, XHR PUT, one ciphertext Blob,
+ * Authorization: Bearer, credentials off, one retry after ~1.8s.
+ * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
  *
- * Chunking is TEMPORARY and OFF by default. encrypt.lu proves ~22 MiB single
- * PUT works in Safari when the hop is equivalent. If PrivateNote aborts in
- * ~200 ms with no Worker log, the kill is before app code (site pairing,
- * CF Bot Fight / WAF / Access on the upload host, or CORS) — not “Safari
- * needs 1 MiB chunks.”
+ * Chunking is TEMPORARY and OFF by default.
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
  */
