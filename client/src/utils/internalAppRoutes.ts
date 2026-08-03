@@ -1,4 +1,4 @@
-import { isPagesStagingBranchHost } from "@shared/pagesAppHosts";
+import { isStagingAppHost } from "@shared/pagesAppHosts";
 
 /**
  * Internal tooling (/test-llm, /llm-ui, /admin/*) — not exposed on production privatenote.ai.
@@ -7,5 +7,5 @@ import { isPagesStagingBranchHost } from "@shared/pagesAppHosts";
 export function canAccessInternalAppRoutes(): boolean {
   if (import.meta.env.DEV) return true;
   if (typeof window === "undefined") return false;
-  return isPagesStagingBranchHost(window.location.hostname);
+  return isStagingAppHost(window.location.hostname);
 }

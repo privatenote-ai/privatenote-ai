@@ -7,9 +7,10 @@ import {
   PAGES_APEX_HOST,
   PAGES_PROJECT_LABEL,
   PAGES_STAGING_BRANCH_HOSTS,
+  STAGING_CUSTOM_APP_HOSTS,
 } from "@shared/pagesAppHosts";
 
-export { PAGES_STAGING_BRANCH_HOSTS } from "@shared/pagesAppHosts";
+export { PAGES_STAGING_BRANCH_HOSTS, STAGING_CUSTOM_APP_HOSTS } from "@shared/pagesAppHosts";
 
 export const ALLOWED_ORIGINS = [
   `https://${PAGES_APEX_HOST}`,
@@ -51,7 +52,7 @@ const PRIVATENOTE_AI_WEB_HOSTS = new Set([
   "privatenote.ai",
   "www.privatenote.ai",
   "app.privatenote.ai",
-  "premium.privatenote.ai",
+  ...STAGING_CUSTOM_APP_HOSTS,
 ]);
 
 /** Cookie names for API host-only session storage (SameSite=None). */

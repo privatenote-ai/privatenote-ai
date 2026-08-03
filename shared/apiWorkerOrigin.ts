@@ -1,4 +1,4 @@
-import { isPagesStagingBranchHost } from "./pagesAppHosts";
+import { isStagingAppHost } from "./pagesAppHosts";
 
 /** Production API Worker origin when the SPA uses the Pages /api proxy for JSON calls. */
 export const DEFAULT_API_WORKER_ORIGIN = "https://privatenote-api.marjan-skrobot.workers.dev";
@@ -32,7 +32,7 @@ export function apiWorkerOriginForAppHostname(
   configuredOrigin = "",
 ): string {
   const normalizedHostname = hostname.trim().toLowerCase();
-  if (isPagesStagingBranchHost(normalizedHostname)) {
+  if (isStagingAppHost(normalizedHostname)) {
     return STAGING_API_WORKER_ORIGIN;
   }
   return normalizeApiWorkerOrigin(configuredOrigin || DEFAULT_API_WORKER_ORIGIN);
@@ -40,7 +40,7 @@ export function apiWorkerOriginForAppHostname(
 
 /** Resolve the dedicated upload Worker without routing binary bodies through Pages. */
 export function uploadWorkerOriginForAppHostname(hostname: string): string {
-  return isPagesStagingBranchHost(hostname.trim().toLowerCase())
+  return isStagingAppHost(hostname.trim().toLowerCase())
     ? STAGING_UPLOAD_WORKER_ORIGIN
     : PRODUCTION_UPLOAD_WORKER_ORIGIN;
 }

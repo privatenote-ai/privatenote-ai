@@ -16,10 +16,28 @@ export const PAGES_STAGING_BRANCH_HOSTS = [
   "develop.privatenote-ai.pages.dev",
 ] as const;
 
+/**
+ * Same-site staging SPA hosts under privatenote.ai (encrypt.lu-style eTLD+1).
+ * Required for Safari large attachment uploads to upload-staging.privatenote.ai.
+ * Attach in Cloudflare Pages → Custom domains → map to the `premium` branch.
+ */
+export const STAGING_CUSTOM_APP_HOSTS = ["premium.privatenote.ai"] as const;
+
 export type PagesStagingBranchHost = (typeof PAGES_STAGING_BRANCH_HOSTS)[number];
+export type StagingCustomAppHost = (typeof STAGING_CUSTOM_APP_HOSTS)[number];
 
 export function isPagesStagingBranchHost(hostname: string): hostname is PagesStagingBranchHost {
   return (PAGES_STAGING_BRANCH_HOSTS as readonly string[]).includes(hostname);
+}
+
+export function isStagingCustomAppHost(hostname: string): hostname is StagingCustomAppHost {
+  return (STAGING_CUSTOM_APP_HOSTS as readonly string[]).includes(hostname);
+}
+
+/** Staging QA host (pages.dev branch URL or same-site custom domain). */
+export function isStagingAppHost(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return isPagesStagingBranchHost(normalized) || isStagingCustomAppHost(normalized);
 }
 
 /** Custom domains that host the SPA and use the Pages Functions /api proxy. */
@@ -27,7 +45,7 @@ const PRIVATENOTE_AI_APP_HOSTS = new Set([
   "privatenote.ai",
   "www.privatenote.ai",
   "app.privatenote.ai",
-  "premium.privatenote.ai",
+  ...STAGING_CUSTOM_APP_HOSTS,
 ]);
 
 function isCloudflarePagesProjectHost(hostname: string): boolean {

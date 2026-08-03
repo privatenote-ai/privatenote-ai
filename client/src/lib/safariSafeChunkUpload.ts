@@ -4,8 +4,10 @@
  * Both Chrome and Safari encrypt the file fully, collect one ciphertext Blob, then
  * upload it once to the dedicated upload relay (not the Pages /api proxy):
  *
- *   Production → https://upload.privatenote.ai
+ *   Production → https://upload.privatenote.ai  (from privatenote.ai — same-site)
  *   Staging    → https://upload-staging.privatenote.ai
+ *                Prefer https://premium.privatenote.ai (same-site).
+ *                premium.privatenote-ai.pages.dev is cross-site and Safari may drop large bodies.
  *
  * Transport differs only:
  *   Chrome  → fetch PUT  + Authorization: Bearer

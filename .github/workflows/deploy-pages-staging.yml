@@ -2,6 +2,7 @@ name: Deploy Pages (Staging branches)
 
 # Pre-main QA: push to `premium` or `develop` → branch URL on Cloudflare Pages.
 # URLs: https://premium.privatenote-ai.pages.dev , https://develop.privatenote-ai.pages.dev
+# Same-site Safari upload QA: https://premium.privatenote.ai → upload-staging.privatenote.ai
 # Trusted like production for API/auth (see shared/pagesAppHosts.ts, src/trustedOrigins.ts).
 
 on:
@@ -48,8 +49,6 @@ jobs:
       - name: Build and prerender
         run: npm run build:prerender
         env:
-          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
-          VITE_API_URL: https://privatenote-api-staging.marjan-skrobot.workers.dev
           PRERENDER_INCREMENTAL: "1"
           PRERENDER_HTML_CACHE_DIR: .prerender-html-cache
           PRERENDER_BASE_SHA: ${{ github.event.before }}
