@@ -48,6 +48,7 @@ jobs:
       - name: Build and prerender
         run: npm run build:prerender
         env:
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
           PRERENDER_INCREMENTAL: "1"
           PRERENDER_HTML_CACHE_DIR: .prerender-html-cache
           PRERENDER_BASE_SHA: ${{ github.event.before }}
