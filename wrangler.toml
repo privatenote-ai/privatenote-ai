@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Same-site upload relay (encrypt.lu ↔ relay.encrypt.lu). Without this hostname,
+# the SPA targets upload.privatenote.ai and DNS NXDOMAIN aborts Safari XHR as status 0.
+routes = [{ pattern = "upload.privatenote.ai", custom_domain = true }]
+
 # KV namespace binding
 [[kv_namespaces]]
 binding = "NOTES_KV"

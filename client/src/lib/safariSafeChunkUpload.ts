@@ -1,32 +1,34 @@
 /**
- * Attachment upload policy (encrypt.lu Safari single-PUT recipe).
+ * Attachment upload policy — match encrypt.lu’s working hop first.
  *
- * Chrome / non-Safari:
- *   Encrypt → one ciphertext Blob → one PUT to the upload relay.
+ * Primary (encrypt.lu recipe):
+ *   Same-site page → upload relay, Safari XHR PUT, one ciphertext Blob,
+ *   Authorization: Bearer, credentials off, one retry after ~1.8s.
+ *   Page: privatenote.ai → upload.privatenote.ai (not *.pages.dev).
  *
- * Safari (same-site page + upload host, XHR only, never Pages proxy):
- *   Prefer one XHR PUT of the full Blob (Bearer, then query-token fallback).
- *   If plaintext exceeds SAFARI_SINGLE_BLOB_MAX_BYTES (~6 MiB) and single PUT
- *   is unsafe, use a few serial ~4 MiB HTTP chunks — never many 1 MiB POSTs.
+ * Chunking is TEMPORARY and OFF by default. encrypt.lu proves ~22 MiB single
+ * PUT works in Safari when the hop is equivalent. If PrivateNote aborts in
+ * ~200 ms with no Worker log, the kill is before app code (site pairing,
+ * CF Bot Fight / WAF / Access on the upload host, or CORS) — not “Safari
+ * needs 1 MiB chunks.”
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
- * Prefer same-site SPA hosts (privatenote.ai / premium.privatenote.ai).
- * *.pages.dev → upload-*.privatenote.ai is cross-site; not this recipe.
  */
 
 /** One secretstream frame ABYTES overhead. */
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
 
 /**
- * Safari plaintext bytes per authenticated frame / HTTP body when chunking.
- * Recipe hybrid: few 4–8 MiB serial chunks (not many 1 MiB bodies).
+ * TEMPORARY. When true, Safari above SAFARI_SINGLE_BLOB_MAX_BYTES uses few
+ * ~4 MiB serial PUTs. Keep false until prod same-site single PUT A/B fails
+ * after CF/CORS deltas are ruled out.
  */
+export const SAFARI_CHUNKING_ENABLED = false;
+
+/** Safari plaintext bytes per frame when SAFARI_CHUNKING_ENABLED. */
 export const SAFARI_ATTACHMENT_CHUNK_BYTES = 4 * 1024 * 1024;
 
-/**
- * Above this plaintext size, Safari uses few large HTTP chunks.
- * Recipe: single PUT under ~6–8 MiB; cliff diagnosed around ~20+ MiB.
- */
+/** Only used when SAFARI_CHUNKING_ENABLED. */
 export const SAFARI_SINGLE_BLOB_MAX_BYTES = 6 * 1024 * 1024;
 
 /** @deprecated Prefer getAttachmentChunkSizeBytes(file.size). Kept for imports. */
@@ -35,7 +37,6 @@ export const DEFAULT_ATTACHMENT_CHUNK_BYTES = SAFARI_SINGLE_BLOB_MAX_BYTES;
 export const SAFARI_UPLOAD_CONCURRENCY = 1;
 export const DEFAULT_UPLOAD_CONCURRENCY = 8;
 export const SAFARI_UPLOAD_SETTLE_MS = 300;
-/** Extra rounds only when Safari is on the large-file chunk path. */
 export const SAFARI_CHUNK_UPLOAD_MAX_ROUNDS = 5;
 export const SAFARI_CHUNK_UPLOAD_RETRY_DELAYS_MS = [400, 900, 1800, 3000] as const;
 
@@ -46,6 +47,20 @@ export const BLOB_UPLOAD_RETRY_MS = 1800;
 export const UPLOAD_TRANSPORT_FAILURE_MESSAGE =
   "Encrypted file upload failed before the server responded.";
 
+/** Test-only override for multi-chunk crypto coverage. */
+let safariChunkingForTests: boolean | null = null;
+
+export function setSafariChunkingEnabledForTests(enabled: boolean | null): void {
+  safariChunkingForTests = enabled;
+}
+
+function safariChunkingActive(): boolean {
+  if (safariChunkingForTests !== null) {
+    return safariChunkingForTests;
+  }
+  return SAFARI_CHUNKING_ENABLED;
+}
+
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {
     return false;
@@ -54,9 +69,12 @@ export function isSafariBrowser(): boolean {
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
 }
 
-/** Chrome: always one Blob. Safari: one Blob only while under the size cap. */
+/**
+ * Prefer encrypt.lu single Blob always. Chunk path only when temporary
+ * Safari chunking is explicitly enabled and the file exceeds the cap.
+ */
 export function usesSingleBlobAttachmentUpload(fileSize?: number): boolean {
-  if (!isSafariBrowser()) {
+  if (!isSafariBrowser() || !safariChunkingActive()) {
     return true;
   }
   if (typeof fileSize !== "number" || !Number.isFinite(fileSize) || fileSize < 0) {
@@ -149,10 +167,7 @@ export const BLOB_UPLOAD_POST_QUERY = {
   omitContentType: true,
 } as const;
 
-/**
- * Safari large-file fallback: same PUT shapes as single-Blob (few ~4 MiB bodies).
- * Prefer Bearer PUT, then query-token PUT — not many 1 MiB POSTs.
- */
+/** Temporary large-file shapes (only if SAFARI_CHUNKING_ENABLED). */
 export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,

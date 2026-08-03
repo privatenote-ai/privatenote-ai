@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   SAFARI_ATTACHMENT_CHUNK_BYTES,
   SAFARI_SINGLE_BLOB_MAX_BYTES,
+  setSafariChunkingEnabledForTests,
 } from "../lib/safariSafeChunkUpload.ts";
 import { arrayBufferToBase64, deriveNoteRootKeys, generateRootKeyBytes } from "./encryption.ts";
 import {
@@ -14,7 +15,7 @@ import {
 
 (globalThis as unknown as { window: typeof globalThis }).window = globalThis;
 
-// Multi-chunk frames are Safari-only above SAFARI_SINGLE_BLOB_MAX_BYTES.
+// Multi-chunk frames are Safari-only when temporary chunking is enabled.
 Object.defineProperty(globalThis, "navigator", {
   value: {
     userAgent:
@@ -22,6 +23,7 @@ Object.defineProperty(globalThis, "navigator", {
   },
   configurable: true,
 });
+setSafariChunkingEnabledForTests(true);
 
 const NOTE_ID = "00000000-0000-4000-8000-000000044444";
 
