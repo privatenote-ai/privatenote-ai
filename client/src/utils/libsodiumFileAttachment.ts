@@ -13,11 +13,11 @@ export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = DEFAULT_ATTACHMENT_CHUNK_BYTES
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
 /**
- * Safari uses smaller authenticated frames because WebKit aborts larger in-memory
- * Blob requests before dispatch. This value is part of authenticated metadata.
+ * Safari uses one authenticated frame so its ciphertext is uploaded as one Blob.
+ * This value is part of authenticated metadata.
  */
-export function getAttachmentChunkSizeBytes(_fileSize?: number): number {
-  return attachmentChunkSizeBytes();
+export function getAttachmentChunkSizeBytes(fileSize?: number): number {
+  return attachmentChunkSizeBytes(fileSize);
 }
 
 /** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */

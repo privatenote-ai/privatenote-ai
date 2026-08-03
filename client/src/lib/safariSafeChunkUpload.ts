@@ -1,13 +1,13 @@
 /**
  * Safari-safe encrypted attachment upload policy.
  *
- * WebKit abandons body-bearing cross-origin requests before dispatch once they grow
- * past a few MiB: the XHR fails with status 0 / "Load failed" without the Worker ever
- * being invoked. It also cannot afford a CORS preflight on the upload path. Safari
- * uploads therefore stay inside one narrow envelope:
+ * Keep Safari aligned with the proven encrypt.lu transport. PrivateNote's former
+ * multi-request upload amplified intermittent WebKit connection resets and could leave
+ * an otherwise complete note missing one encrypted frame. Safari uploads now stay
+ * inside one narrow envelope:
  *
- *   XHR + ~1 MiB Blob bodies · one request in flight · direct Worker origin ·
- *   capability token in the query string · no custom request headers.
+ *   one complete ciphertext Blob · one XHR PUT · direct upload Worker origin ·
+ *   Bearer capability token · no cookies or streaming request body.
  *
  * The envelope is defined here so the transport, the request-shape selection and the
  * encrypt pipeline cannot drift apart.
@@ -27,12 +27,11 @@ export const DEFAULT_UPLOAD_CONCURRENCY = 8;
 export const SAFARI_UPLOAD_SETTLE_MS = 300;
 
 /**
- * Chunk uploads are hash-idempotent server-side, and Safari can lose only the response
- * of a chunk it already stored, so bounded retries are safe and much cheaper than making
- * the user restart the whole attachment.
+ * The complete upload is capability-bound and overwrites the same reserved object, so
+ * one bounded retry is safe if WebKit loses the first response.
  */
-export const SAFARI_UPLOAD_MAX_ROUNDS = 5;
-export const SAFARI_UPLOAD_RETRY_DELAYS_MS = [400, 900, 1800, 3000] as const;
+export const SAFARI_UPLOAD_MAX_ROUNDS = 2;
+export const SAFARI_UPLOAD_RETRY_DELAYS_MS = [1800] as const;
 export const DEFAULT_UPLOAD_MAX_ROUNDS = 2;
 export const DEFAULT_UPLOAD_RETRY_MS = 1800;
 
@@ -47,7 +46,13 @@ export function isSafariBrowser(): boolean {
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
 }
 
-export function attachmentChunkSizeBytes(): number {
+export function attachmentChunkSizeBytes(fileSize?: number): number {
+  // Match encrypt.lu's network shape on Safari: one secretstream frame is collected
+  // into one Blob and sent by one XHR PUT. A minimum of one byte keeps empty-file
+  // metadata valid while the encrypted frame itself still contains the final tag.
+  if (isSafariBrowser() && Number.isFinite(fileSize)) {
+    return Math.max(1, Math.floor(fileSize!));
+  }
   return isSafariBrowser() ? SAFARI_ATTACHMENT_CHUNK_BYTES : DEFAULT_ATTACHMENT_CHUNK_BYTES;
 }
 

@@ -38,7 +38,7 @@ const UPLOAD_METADATA_HEADERS = [
 
 const PRODUCTION_UPLOAD_WORKER_ORIGIN = "https://upload.privatenote.ai";
 const STAGING_UPLOAD_WORKER_ORIGIN =
-  "https://privatenote-api-staging.marjan-skrobot.workers.dev";
+  "https://upload-staging.privatenote.ai";
 
 function uploadWorkerOriginForAppHostname(hostname: string): string {
   const normalized = hostname.trim().toLowerCase();
@@ -144,9 +144,15 @@ function getBinaryUploadAttempts(
     ? { url: getDirectWorkerUploadUrl(url), uploadRoute: "direct-worker", credentials: "omit" }
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
-  // Safari aborts a multi-MiB Blob before dispatch, and a preflight on the upload path
-  // costs it the request as well. Serialized ~1 MiB headerless POSTs straight to the
-  // Worker are the only shape WebKit completes, on every deployment.
+  // The complete-file Safari route mirrors encrypt.lu: one XHR PUT of one untyped
+  // ciphertext Blob, directly to the custom upload Worker, with only Bearer auth.
+  // Metadata is already bound into the reservation, so it does not ride as headers.
+  const isCompleteFileUpload = /\/api\/notes\/[^/]+\/file(?:\?|$)/.test(url);
+  if (options.uploadToken && isSafariBrowser() && isCompleteFileUpload) {
+    return [{ ...directUpload, omitMetadata: true, omitContentType: true }];
+  }
+
+  // Compatibility for older Safari clients that still upload individual frames.
   if (options.uploadToken && isSafariBrowser()) {
     return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
   }
