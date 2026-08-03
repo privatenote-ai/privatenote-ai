@@ -21,7 +21,8 @@ export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = DEFAULT_ATTACHMENT_CHUNK_BYTES
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
 
 /**
- * Authenticated plaintext frame size for attachments (full file on Chrome, 1 MiB on Safari).
+ * Authenticated plaintext frame size for attachments (full file on Chrome;
+ * ~4 MiB frames on Safari when above the single-PUT cap).
  */
 export function getAttachmentChunkSizeBytes(fileSize?: number): number {
   return attachmentChunkSizeBytes(fileSize);
@@ -366,8 +367,8 @@ function uint8ArrayToExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 /**
- * Safari path: encrypt into ~1 MiB secretstream frames and upload each via onChunk.
- * WebKit cannot complete a multi‑MiB single XHR to workers.dev.
+ * Safari path: encrypt into ~4 MiB secretstream frames and upload each via onChunk.
+ * Used only above SAFARI_SINGLE_BLOB_MAX_BYTES (encrypt.lu single PUT preferred below).
  */
 export async function encryptFileToSodiumChunks(
   file: File,

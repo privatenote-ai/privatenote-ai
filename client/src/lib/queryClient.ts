@@ -17,7 +17,7 @@ import {
   BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
-  SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE,
+  SAFARI_LARGE_CHUNK_UPLOAD_SHAPES,
   SAFARI_UPLOAD_SETTLE_MS,
   UPLOAD_TRANSPORT_FAILURE_MESSAGE,
   uploadMaxRounds,
@@ -150,12 +150,11 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari large files: proven ~1 MiB headerless POST chunks.
-    // Chunk URLs always use this shape even if plaintext size was omitted.
+    // Safari > ~6 MiB: few serial ~4 MiB PUTs (encrypt.lu shapes), not 1 MiB POSTs.
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
-      return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
+      return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // encrypt.lu Safari small / Chrome: PUT + Bearer, then PUT + query (± POST on Chrome).
+    // encrypt.lu Safari single PUT: Bearer, then query token. Chrome also tries POST.
     if (isSafariBrowser()) {
       return [
         { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
@@ -503,7 +502,7 @@ export async function apiBinaryRequest<T = any>(
     singleBlob: usesSingleBlobAttachmentUpload(fileSize),
   };
   const attempts = getBinaryUploadAttempts(url, { ...options, fileSize });
-  const maxRounds = uploadMaxRounds();
+  const maxRounds = uploadMaxRounds(fileSize);
   let lastError: unknown = null;
 
   // encrypt.lu warms the relay before the Blob PUT. Await it so Safari does not
@@ -534,7 +533,7 @@ export async function apiBinaryRequest<T = any>(
       }
       // WebKit needs the connection to reset between tries. Keep Safari's
       // recovery bounded so a lost success response does not stall the file.
-      const delayMs = uploadRetryDelayMs(round);
+      const delayMs = uploadRetryDelayMs(round, fileSize);
       logFileUpload("warn", "network retry after delay", {
         ...sharedLogBase,
         delayMs,

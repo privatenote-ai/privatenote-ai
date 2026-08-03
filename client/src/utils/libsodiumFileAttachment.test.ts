@@ -25,7 +25,7 @@ Object.defineProperty(globalThis, "navigator", {
 
 const NOTE_ID = "00000000-0000-4000-8000-000000044444";
 
-/** Just over the Safari single-Blob cap → multiple ~1 MiB secretstream frames. */
+/** Just over the Safari single-Blob cap → few ~4 MiB secretstream frames. */
 function buildTestFile(): File {
   const bytes = new Uint8Array(SAFARI_SINGLE_BLOB_MAX_BYTES + 97);
   for (let i = 0; i < bytes.length; i += 1) {

@@ -3,7 +3,7 @@ export const NOTE_FILE_PREMIUM_MAX_BYTES = 1024 * 1024 * 1024;
 export const NOTE_FILE_FREE_TOTAL_STORAGE_BYTES = 250 * 1024 * 1024;
 export const NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES = 20 * 1024 * 1024 * 1024;
 export const NOTE_FILE_AES_GCM_TAG_BYTES = 16;
-/** Max secretstream HTTP chunks (indices 0..MAX-1). 1 MiB Safari frames × 1024 = 1 GiB. */
+/** Max secretstream HTTP chunks (indices 0..MAX-1). 4 MiB Safari frames × 256 = 1 GiB. */
 export const NOTE_FILE_MAX_CHUNKS = 1024;
 export const NOTE_FILE_MAX_CHUNK_INDEX = NOTE_FILE_MAX_CHUNKS - 1;
 /** libsodium secretstream ABYTES per frame (used for encrypted-size headroom). */

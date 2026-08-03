@@ -156,18 +156,17 @@ function xhrBinaryRequest(
 }
 
 /**
- * Safari's reliable WebKit path is xhr.send(Blob). encrypt.lu uses a Blob typed as
- * `application/octet-stream` (CORS still preflights because of PUT + Authorization).
+ * Safari's reliable WebKit path is xhr.send(Blob). Recipe: untyped Blob
+ * (`type: ""`), withCredentials false, no Content-Type unless required.
  */
 function toXhrUploadBlob(body: Blob | ArrayBuffer): Blob {
-  // encrypt.lu share-mode collects `new Blob(..., { type: "application/octet-stream" })`.
   if (!(body instanceof Blob)) {
-    return new Blob([body], { type: "application/octet-stream" });
+    return new Blob([body]);
   }
-  if (body.type === "application/octet-stream") {
+  if (!body.type) {
     return body;
   }
-  return new Blob([body], { type: "application/octet-stream" });
+  return new Blob([body]);
 }
 
 export async function sendBinaryHttpRequest(
