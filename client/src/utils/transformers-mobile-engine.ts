@@ -7,6 +7,7 @@ import {
   pipeline,
 } from "@huggingface/transformers";
 import type { ModelLoadProgress } from "./clientLLM";
+import { localAiLoadingPrivateLabel, localAiReadyToGenerateLabel, localAiPreparingPrivateLabel, localAiPreparingPrivateAttemptLabel } from "./localAiUxText";
 
 type ProgressCallback = (progress: ModelLoadProgress) => void;
 
@@ -201,13 +202,13 @@ function configureTransformersEnv(): void {
 
 function mapTransformersProgress(status: Record<string, unknown>): ModelLoadProgress | null {
   if (status.status === "ready") {
-    return { progress: 100, text: "Ready to generate" };
+    return { progress: 100, text: localAiReadyToGenerateLabel() };
   }
 
   if (typeof status.progress === "number") {
     return {
       progress: Math.round(Math.min(1, Math.max(0, status.progress)) * 100),
-      text: "Loading private AI…",
+      text: localAiLoadingPrivateLabel(),
     };
   }
 
@@ -217,7 +218,7 @@ function mapTransformersProgress(status: Record<string, unknown>): ModelLoadProg
         typeof status.progress === "number"
           ? Math.round(Math.min(1, Math.max(0, status.progress)) * 100)
           : 0,
-      text: "Loading private AI…",
+      text: localAiLoadingPrivateLabel(),
     };
   }
 
@@ -447,18 +448,18 @@ export async function initializeTransformersGemma4Text(
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
   if (gemma4InitInFlight) {
     await gemma4InitInFlight;
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
   configureTransformersEnv();
-  onProgress?.({ progress: 0, text: "Preparing private AI…" });
+  onProgress?.({ progress: 0, text: localAiPreparingPrivateLabel() });
 
   gemma4InitInFlight = (async () => {
     const attempts = buildBackendAttempts(TRANSFORMERS_GEMMA4_DTYPE);
@@ -493,7 +494,7 @@ export async function initializeTransformersGemma4Text(
       console.log("[AI] Trying Gemma 4 Transformers backend:", attempt.label);
       onProgress?.({
         progress: 2,
-        text: `Preparing private AI (${attempt.label})…`,
+        text: localAiPreparingPrivateAttemptLabel(attempt.label),
         detail:
           attempt.device === "wasm"
             ? "CPU backend startup can take several minutes on first load for larger models."
@@ -526,7 +527,7 @@ export async function initializeTransformersGemma4Text(
           backend: attempt.label,
           note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
         });
-        onProgress?.({ progress: 100, text: "Ready to generate" });
+        onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
         return;
       } catch (error) {
         lastError = error;
@@ -600,7 +601,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
@@ -610,12 +611,12 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       modelId: activeTransformersLoadedModelId,
       backend: activeBackendLabel,
     });
-    onProgress?.({ progress: 100, text: "Ready to generate" });
+    onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
     return;
   }
 
   configureTransformersEnv();
-  onProgress?.({ progress: 0, text: "Preparing private AI…" });
+  onProgress?.({ progress: 0, text: localAiPreparingPrivateLabel() });
 
   try {
     const attempts = getPreferredBackendAttempts();
@@ -646,7 +647,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
       console.log("[AI] Trying mobile Transformers backend:", attempt.label);
       onProgress?.({
         progress: 2,
-        text: `Preparing private AI (${attempt.label})…`,
+        text: localAiPreparingPrivateAttemptLabel(attempt.label),
         detail:
           attempt.device === "wasm"
             ? TRANSFORMERS_DESKTOP_MAC_DEV_FLAG && isDesktopMacAgentLikely()
@@ -678,7 +679,7 @@ export async function initializeTransformersMobile(onProgress?: ProgressCallback
           backend: attempt.label,
           note: "Weights live in the browser cache (Transformers.js / Hugging Face hub cache).",
         });
-        onProgress?.({ progress: 100, text: "Ready to generate" });
+        onProgress?.({ progress: 100, text: localAiReadyToGenerateLabel() });
         return;
       } catch (error) {
         lastError = error;

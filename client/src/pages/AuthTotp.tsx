@@ -6,12 +6,14 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 
 export default function AuthTotp() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { refreshUntilAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +31,15 @@ export default function AuthTotp() {
     setError(null);
     try {
       await apiRequest("/api/auth/totp/verify", "POST", { code: otpCode });
-      toast({ title: "Verified", description: "You're signed in." });
-      // Retry refresh: D1 read-after-write lag can briefly return authenticated:false
-      // even though the verify endpoint just set auth_complete=1.
+      toast({ title: t.authTotpVerifiedTitle, description: t.authTotpVerifiedDesc });
       await refreshUntilAuthenticated();
       setLocation("/");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Verification failed";
+      const msg = err instanceof Error ? err.message : t.authTotpVerificationFailed;
       if (msg.includes("429") || msg.includes("Too many")) {
-        setError("Too many attempts. Please wait a few minutes and try again.");
+        setError(t.authTotpTooManyAttempts);
       } else if (msg.includes("Invalid")) {
-        setError("Invalid code. Please try again.");
+        setError(t.authTotpInvalidCode);
       } else {
         setError(msg);
       }
@@ -58,10 +58,8 @@ export default function AuthTotp() {
               <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl">2-step verification</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Enter the 6-digit code from your authenticator app to continue signing in.
-          </CardDescription>
+          <CardTitle className="text-2xl">{t.authTotpTitle}</CardTitle>
+          <CardDescription className="text-base mt-2">{t.authTotpDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <form
@@ -72,12 +70,7 @@ export default function AuthTotp() {
             }}
             className="flex flex-col items-center gap-4"
           >
-            <InputOTP
-              maxLength={6}
-              value={code}
-              onChange={setCode}
-              disabled={verifying}
-            >
+            <InputOTP maxLength={6} value={code} onChange={setCode} disabled={verifying}>
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
                 <InputOTPSlot index={1} />
@@ -95,28 +88,23 @@ export default function AuthTotp() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              disabled={verifying || code.length !== 6}
-              className="w-full"
-              size="lg"
-            >
+            <Button type="submit" disabled={verifying || code.length !== 6} className="w-full" size="lg">
               {verifying ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
+                  {t.authTotpVerifying}
                 </>
               ) : (
-                "Verify"
+                t.authTotpVerify
               )}
             </Button>
           </form>
 
           <div className="text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <p>Lost access to your authenticator app?</p>
+            <p>{t.authTotpLostAuthenticator}</p>
             <p>
               <a href="/auth/recovery" className="text-primary hover:underline">
-                Use a recovery code
+                {t.authTotpUseRecoveryCode}
               </a>
             </p>
           </div>

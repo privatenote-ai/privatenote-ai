@@ -4,10 +4,19 @@ import { ArrowLeft, Lock, Zap, BarChart3, Shield, Check } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { passwordGenerationHr } from "@/components/blog/locale/passwordGeneration.hr";
+import { passwordGenerationNl } from "@/components/blog/locale/passwordGeneration.nl";
+import { passwordGenerationPt } from "@/components/blog/locale/passwordGeneration.pt";
+import type { PasswordPostCopy } from "@/components/blog/locale/passwordGeneration.types";
+import { passwordGenerationSr } from "@/components/blog/locale/passwordGeneration.sr";
 
-type CardCopy = { title: string; body: string; icon: React.ComponentType<{ className?: string }> };
-type SectionCopy = { title: string; icon: React.ComponentType<{ className?: string }>; paragraphs: string[]; notes?: { title: string; body: string }[]; bullets?: { title: string; body: string }[] };
-type PasswordPostCopy = { intro: string; lead: string; cards: CardCopy[]; sections: SectionCopy[]; bestPracticesTitle: string; bestPractices: { title: string; body: string }[] };
+type CardCopy = PasswordPostCopy["cards"][number];
+type SectionCopy = PasswordPostCopy["sections"][number];
 
 const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: PasswordPostCopy } = {
   en: {
@@ -242,26 +251,81 @@ const copy: Partial<Record<SupportedLanguage, PasswordPostCopy>> & { en: Passwor
       { title: "No compartas contraseñas", body: "Nunca las compartas con alguien que diga ser soporte." },
     ],
   },
+  it: {
+    intro: "Creare una password forte non significa soltanto combinare caratteri casuali. In PrivateNote.ai il generatore si basa su tre principi:",
+    lead: "Ecco come ogni componente contribuisce a proteggere i tuoi account.",
+    cards: [
+      { icon: Lock, title: "Sicurezza crittografica", body: "Usa la stessa classe di casualità sicura impiegata per chiavi e token." },
+      { icon: Zap, title: "Casualità senza bias", body: "Ogni carattere ha la stessa probabilità di essere selezionato." },
+      { icon: BarChart3, title: "Analisi intelligente della robustezza", body: "Analisi avanzata oltre il semplice controllo della lunghezza." },
+    ],
+    sections: [
+      {
+        icon: Lock,
+        title: "Crypto Web API",
+        paragraphs: [
+          "Il generatore usa la Web Crypto API per ottenere valori casuali crittograficamente sicuri, adatti ad attività critiche per la sicurezza.",
+          "La casualità è alimentata dal sistema operativo ed è progettata in modo che i valori futuri non siano prevedibili nella pratica senza accesso allo stato interno.",
+          "Tutta la generazione avviene nel browser. La password non lascia mai il dispositivo, quindi non può essere registrata, intercettata o esposta dai nostri server.",
+        ],
+        notes: [
+          {
+            title: "Perché è importante",
+            body: "La generazione lato server crea esposizione aggiuntiva tramite transito di rete e log. La generazione locale evita del tutto questi rischi.",
+          },
+        ],
+      },
+      {
+        icon: Zap,
+        title: "Casualità senza bias",
+        paragraphs: [
+          "Usiamo il campionamento per rifiuto, così ogni carattere ha la stessa probabilità di apparire. Questo elimina bias sottili che renderebbero alcuni caratteri più probabili di altri.",
+          "Una semplice selezione modulo può essere distorta quando l’intervallo dei numeri casuali non è divisibile in modo uniforme per la dimensione del set di caratteri. Il campionamento per rifiuto scarta i valori non equi e pesca di nuovo.",
+          "Questo rende le password più difficili da prevedere, perché gli attaccanti non possono sfruttare pattern nella selezione dei caratteri.",
+        ],
+      },
+      {
+        icon: BarChart3,
+        title: "Analisi intelligente della robustezza",
+        paragraphs: [
+          "Un buon indicatore di robustezza deve andare oltre lunghezza e regole sui simboli. Stringhe prevedibili possono sembrare complesse pur restando deboli.",
+          "Usiamo un’analisi in stile zxcvbn per controllare pattern comuni, parole di dizionario, sequenze, caratteri ripetuti, entropia e stime realistiche del tempo di cracking.",
+          "Il risultato è una visione più realistica della robustezza della password rispetto a una semplice checklist.",
+        ],
+        bullets: [
+          { title: "Pattern comuni", body: "percorsi sulla tastiera, sequenze e caratteri ripetuti" },
+          { title: "Attacchi a dizionario", body: "parole comuni, nomi e varianti da password già violate" },
+          { title: "Entropia", body: "quanto della password è davvero imprevedibile" },
+          { title: "Tempo di cracking", body: "quanto tempo servirebbe realisticamente a un attaccante" },
+        ],
+      },
+    ],
+    bestPracticesTitle: "Buone pratiche per le password",
+    bestPractices: [
+      { title: "Usa password uniche", body: "Non riutilizzare mai la stessa password su account diversi." },
+      { title: "Più lunga è meglio", body: "Punta ad almeno 16 caratteri; per account di alto valore, ancora di più." },
+      { title: "Usa un gestore di password", body: "Conserva le password generate in modo sicuro, così non devi ricordarle." },
+      { title: "Attiva l’autenticazione a due fattori", body: "Anche le password forti beneficiano di un livello aggiuntivo." },
+      { title: "Non condividere password", body: "Non condividere mai password con chi sostiene di essere il supporto." },
+    ],
+  },
+  nl: passwordGenerationNl,
+  pt: passwordGenerationPt,
+  hr: passwordGenerationHr,
+  sr: passwordGenerationSr,
 };
 
 export const PasswordGenerationPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const passwordPath = localizedPath("/password-generator", language);
   const blogPath = localizedPath("/blog", language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
+    <BlogGuideArticle slug="how-we-generate-passwords">
       <article>
-        <header className="mb-16">
-          <h1 className="text-3xl font-bold mb-6">{t.blogPasswordTitle}</h1>
-          <div className="space-y-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mb-8">
+        <BlogPostHeader slug="how-we-generate-passwords" title={t.blogPasswordTitle} headerClassName="mb-16">
+          <div className="mt-6 space-y-6 text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl mb-8">
             <p className="text-lg">{article.intro}</p>
           </div>
 
@@ -280,7 +344,9 @@ export const PasswordGenerationPost: React.FC = () => {
           <div className="text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl">
             <p>{article.lead}</p>
           </div>
-        </header>
+        </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="how-we-generate-passwords" />
 
         {article.sections.map(({ icon: Icon, title, paragraphs, notes, bullets }) => (
           <React.Fragment key={title}>
@@ -348,7 +414,9 @@ export const PasswordGenerationPost: React.FC = () => {
             {t.blogViewAllArticles} →
           </Link>
         </div>
+
+        <BlogPostCrossLinks slug="how-we-generate-passwords" className="mt-10 border-t-0 pt-0" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

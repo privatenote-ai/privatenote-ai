@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrivateNote</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="composeView">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(32 32) scale(0.84) translate(-32 -32)">
+          <defs>
+            <linearGradient id="fn-paper" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFFDF8" />
+              <stop offset="100%" stop-color="#EDE6D8" />
+            </linearGradient>
+          </defs>
+          <rect x="4" y="4" width="56" height="56" rx="14" fill="#0000FF" />
+          <g transform="translate(0 -4.5)">
+            <path d="M14 23 L32 39 L50 23 V50 H14Z" fill="url(#fn-paper)" stroke="white" stroke-opacity="0.45" stroke-width="0.85" />
+            <path d="M14 23 L32 39 L50 23Z" fill="url(#fn-paper)" fill-opacity="0.97" />
+            <path d="M14 23 L32 39 L50 23" fill="none" stroke="#0000FF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+        </g>
+      </svg>
+      <span class="brand-name" id="brandName">PrivateNote</span>
+      <span class="brand-tagline" id="brandTagline"></span>
+      <a class="brand-link" href="https://privatenote.ai" target="_blank" rel="noopener">privatenote.ai ↗</a>
+    </div>
+
+    <hr class="divider" />
+
+    <div id="errorBanner" class="error-banner" hidden></div>
+
+    <div class="privacy-note">
+      <svg class="privacy-note-icon" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 1a4 4 0 0 0-4 4v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm2.5 5H5.5V5a2.5 2.5 0 0 1 5 0v1z"/>
+      </svg>
+      <span id="privacyNote"></span>
+    </div>
+
+    <div class="field">
+      <label for="title"><span id="titleLabel"></span> <span id="titleOptional" style="opacity:0.5"></span></label>
+      <input id="title" type="text" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label for="content" id="contentLabel"></label>
+      <textarea id="content" autocomplete="off" spellcheck="false"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="password"><span id="passwordLabel"></span> <span id="passwordOptional" style="opacity:0.5"></span></label>
+      <input id="password" type="password" autocomplete="new-password" />
+    </div>
+
+    <div class="action-bar">
+      <div class="settings">
+        <div class="setting-item">
+          <label for="expiresIn" id="expiresInLabel"></label>
+          <select id="expiresIn" class="inline">
+            <option value="15m">15 minutes</option>
+            <option value="1h">1 hour</option>
+            <option value="24h">1 day</option>
+            <option value="7d">7 days</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <input type="checkbox" id="burn" />
+          <label for="burn" id="burnLabel"></label>
+        </div>
+      </div>
+      <button id="submit" class="submit-btn"></button>
+    </div>
+
+    <p class="options-link"><a href="#" id="openOptions">Settings</a></p>
+  </div>
+
+  <div id="successView" class="success-view" hidden>
+    <div class="success-icon" aria-hidden="true">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" fill="#22c55e"/>
+        <path d="M12 20.5L17.5 26L28 15" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 class="success-title" id="successTitle"></h2>
+    <p class="success-subtitle" id="successSubtitle"></p>
+    <div class="success-link-box" id="successUrl"></div>
+    <p class="success-meta" id="successMeta"></p>
+    <div class="success-actions">
+      <button type="button" id="copyBtn" class="submit-btn"></button>
+      <button type="button" id="shareBtn" class="secondary" hidden></button>
+      <button type="button" id="openBtn" class="secondary"></button>
+      <button type="button" id="createAnotherBtn" class="secondary create-another"></button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

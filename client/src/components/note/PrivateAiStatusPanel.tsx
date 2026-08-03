@@ -42,7 +42,7 @@ export function PrivateAiStatusPanel({
   ];
   const cons = [
     tx("aiComposerPrivateAiCon1", "Slower than Cloud Assist"),
-    tx("aiComposerPrivateAiCon2", "Weaker model (Gemma 2 2B)"),
+    tx("aiComposerPrivateAiCon2", "Weaker model ({model})").replace("{model}", modelName),
     tx("aiComposerPrivateAiCon3", "Needs capable device + download"),
   ];
 

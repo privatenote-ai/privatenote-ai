@@ -8,12 +8,14 @@ import {
 } from "./homeSeoLinks.ts";
 
 test("absolutePublicUrl uses production origin", () => {
-  assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr");
+  assert.equal(absolutePublicUrl("/fr"), "https://privatenote.ai/fr/");
   assert.equal(absolutePublicUrl("/fr/"), "https://privatenote.ai/fr/");
 });
 
-test("canonicalAbsoluteUrlForRoute has no trailing slash except root", () => {
+test("canonicalAbsoluteUrlForRoute keeps locale home trailing slash", () => {
   assert.equal(canonicalAbsoluteUrlForRoute("/"), "https://privatenote.ai/");
+  assert.equal(canonicalAbsoluteUrlForRoute("/de/"), "https://privatenote.ai/de/");
+  assert.equal(canonicalAbsoluteUrlForRoute("/de"), "https://privatenote.ai/de/");
   assert.equal(canonicalAbsoluteUrlForRoute("/terms"), "https://privatenote.ai/terms");
   assert.equal(canonicalAbsoluteUrlForRoute("/terms/"), "https://privatenote.ai/terms");
 });
@@ -24,6 +26,9 @@ test("buildHomeSeoHeadMarkup includes reciprocal hreflang set", () => {
   assert.match(html, /hreflang="fr" href="https:\/\/privatenote\.ai\/fr\/"/);
   assert.match(html, /hreflang="it" href="https:\/\/privatenote\.ai\/it\/"/);
   assert.match(html, /hreflang="nl" href="https:\/\/privatenote\.ai\/nl\/"/);
+  assert.match(html, /hreflang="pt" href="https:\/\/privatenote\.ai\/pt\/"/);
+  assert.match(html, /hreflang="sr" href="https:\/\/privatenote\.ai\/sr\/"/);
+  assert.match(html, /hreflang="hr" href="https:\/\/privatenote\.ai\/hr\/"/);
   assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/"/);
   assert.doesNotMatch(html, /href="\/fr\/"/);
 });

@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
-import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
+import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload, primeSafariAttachmentUploadTransport, resetSafariAttachmentUploadTransport } from "@/lib/queryClient";
+import { uint8ArrayToUploadArrayBuffer } from "@/lib/binaryUploadTransport";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -37,6 +38,8 @@ import {
   localAiAnalyzingPromptLabel,
   localAiAnalyzingDetailHint,
   LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS,
+  isLocalAiReadyToGenerateProgress,
+  localAiWorkingLabel,
 } from "@/utils/localAiUxText";
 import { useToast } from "@/hooks/use-toast";
 import type { PromptTemplate, AiSentenceLengthId } from "@/components/note/promptTemplates";
@@ -59,6 +62,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
+import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
+import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import type { AiPostGenTransform } from "./AiComposer";
@@ -79,7 +84,7 @@ import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { GravityDropZone } from "./GravityDropZone";
 import { useLanguage } from "@/context/LanguageContext";
-import type { SupportedLanguage } from "@/utils/translation";
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
 import {
   generateHostedCloudDraft,
@@ -93,6 +98,7 @@ import { useAuth } from "@/context/AuthContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { saveNoteLabel } from "@/utils/noteLabelsStorage";
+import type { ReaderLanguageSetting } from "./NoteSettingsPanel";
 
 type PromptTemplatesModule = typeof import("@/components/note/promptTemplates");
 let promptTemplatesModulePromise: Promise<PromptTemplatesModule> | null = null;
@@ -104,10 +110,8 @@ function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
   return promptTemplatesModulePromise;
 }
 
-function copyToExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-  return copy.buffer;
+function encryptedChunkUploadBody(encryptedBytes: Uint8Array): ArrayBuffer {
+  return uint8ArrayToUploadArrayBuffer(encryptedBytes);
 }
 
 async function uploadEncryptedAttachmentChunk(
@@ -115,10 +119,11 @@ async function uploadEncryptedAttachmentChunk(
   encryptedBytes: Uint8Array,
   headers: Record<string, string>,
   uploadToken: string,
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void,
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const declaredSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
-  const body = copyToExactArrayBuffer(encryptedBytes);
+  const body = encryptedChunkUploadBody(encryptedBytes);
   logFileUpload("info", "uploading chunk", {
     chunkIndex,
     encryptedBytes: encryptedBytes.byteLength,
@@ -128,17 +133,53 @@ async function uploadEncryptedAttachmentChunk(
     url,
   });
   try {
-    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, { uploadToken });
+    await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, {
+      uploadToken,
+      onUploadProgress,
+    });
     logFileUpload("info", "chunk uploaded", { chunkIndex, url });
   } catch (error) {
     if (error instanceof ApiRequestError) {
+      const safariChunkMismatch =
+        error.status === 400 && /File chunk size mismatch/i.test(error.bodyText);
       logFileUpload("error", "chunk rejected by server", {
         chunkIndex,
         url,
         status: error.status,
         bodyPreview: error.bodyText.slice(0, 500),
+        safariChunkMismatch,
       });
-      throw error;
+      if (!safariChunkMismatch) {
+        throw error;
+      }
+      logFileUpload("warn", "Safari chunk size mismatch — retrying once", {
+        chunkIndex,
+        url,
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      try {
+        await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
+          uploadToken,
+          onUploadProgress,
+        });
+        logFileUpload("info", "chunk uploaded after Safari size-mismatch retry", {
+          chunkIndex,
+          url,
+        });
+        return;
+      } catch (retryError) {
+        logFileUpload("error", "chunk Safari size-mismatch retry failed", {
+          chunkIndex,
+          url,
+          error:
+            retryError instanceof ApiRequestError
+              ? { status: retryError.status, bodyPreview: retryError.bodyText.slice(0, 500) }
+              : retryError instanceof Error
+                ? retryError.message
+                : String(retryError),
+        });
+        throw retryError;
+      }
     }
     logFileUpload("warn", "chunk upload failed, retrying once", {
       chunkIndex,
@@ -149,6 +190,7 @@ async function uploadEncryptedAttachmentChunk(
     try {
       await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body.slice(0), headers, {
         uploadToken,
+        onUploadProgress,
       });
       logFileUpload("info", "chunk uploaded after retry", { chunkIndex, url });
     } catch (retryError) {
@@ -169,9 +211,9 @@ async function uploadEncryptedAttachmentChunk(
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const t = progress?.text?.trim() ?? "";
-  if (!t) return "Working…";
-  // After load, WebLLM reports "ready"; keep "analyzing" until streaming updates the headline.
-  if (t === "Ready to generate") return localAiAnalyzingPromptLabel();
+  if (!t) return localAiWorkingLabel();
+  // After load, WebLLM reports ready; keep "analyzing" until streaming updates the headline.
+  if (isLocalAiReadyToGenerateProgress(t)) return localAiAnalyzingPromptLabel();
   return t;
 }
 
@@ -218,6 +260,7 @@ type CreateNoteAuthDraft = {
   expiryValue: NoteExpiryPresetId;
   readCount: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  readerLanguage: ReaderLanguageSetting;
   preferHostedCloudAfterLocalFailure: boolean;
   cloudAssistConsentGiven: boolean;
 };
@@ -250,6 +293,10 @@ function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolea
   } catch {
     /* private mode */
   }
+}
+
+function isReaderLanguageSetting(value: unknown): value is ReaderLanguageSetting {
+  return value === "auto" || (typeof value === "string" && SUPPORTED_LANGUAGES.includes(value as SupportedLanguage));
 }
 
 function normalizeAccountType(value: unknown): AccountType {
@@ -333,6 +380,8 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
         parsed.fileAccessWindowSeconds === 60 * 60
           ? (parsed.fileAccessWindowSeconds as NoteFileAccessWindowSeconds)
           : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      readerLanguage:
+        isReaderLanguageSetting(parsed.readerLanguage) ? parsed.readerLanguage : "auto",
       preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
       cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
@@ -359,6 +408,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   // ── Submission ────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
+  const [attachmentProgress, setAttachmentProgress] = useState<{
+    phase: "prepare" | "encrypt" | "upload" | "finalize";
+    progress: number;
+    detail?: string;
+  } | null>(null);
 
   // ── Success state ─────────────────────────────────────────────────────────
   const [createdNote, setCreatedNote] = useState<CreatedNoteState | null>(null);
@@ -449,6 +503,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
+  const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
@@ -467,6 +522,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       : `${window.location.pathname}${window.location.search}` || localizedPath("/", language);
   const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
   const cloudAssistSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=cloud_assist&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
+
+  // Prefetch sign-in chunk for signed-out attach/AI flows so /auth/sign-in is not a blank Suspense gap.
+  useEffect(() => {
+    if (canAttachFiles) return;
+    void import("@/pages/AuthSignIn");
+  }, [canAttachFiles]);
 
   const { toast } = useToast();
 
@@ -493,6 +554,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           expiryValue,
           readCount,
           fileAccessWindowSeconds,
+          readerLanguage,
           preferHostedCloudAfterLocalFailure,
           cloudAssistConsentGiven,
           ...overrides,
@@ -514,6 +576,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       noteContent,
       originalPrompt,
       preferHostedCloudAfterLocalFailure,
+      readerLanguage,
       readCount,
       selectedTemplateId,
       showPrompt,
@@ -642,7 +705,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const attachFileButtonLabel = selectedFile
-    ? selectedFile.name
+    ? formatAttachmentDisplayName(selectedFile.name)
     : isFileTransferMode
       ? t.sftAttachFile
       : t.attachFile;
@@ -702,6 +765,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setExpiryValue(draft.expiryValue);
     setReadCount(draft.readCount);
     setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
+    setReaderLanguage(draft.readerLanguage);
     if (draft.preferHostedCloudAfterLocalFailure) {
       setPreferHostedCloudAfterLocalFailure(true);
       setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
@@ -791,9 +855,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (restrictRecipientEmail) setRestrictRecipientEmail(false);
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
+    if (readerLanguage !== "auto") setReaderLanguage("auto");
   }, [
     isPremiumUser,
     recipientEmail,
+    readerLanguage,
     requireRecipientVerification,
     restrictRecipientEmail,
   ]);
@@ -889,7 +955,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const llm = await loadClientLLM();
     if (llm.isEngineLoaded() || isAiModelLoading) return;
     setIsAiModelLoading(true);
-    setAiModelProgress({ progress: 0, text: "Preparing private AI…" });
+    setAiModelProgress({ progress: 0, text: t.aiComposerGettingReady });
     try {
       await ensureFreeLocalModel((progress) => setAiModelProgress(progress));
       setAiModelProgress(null);
@@ -958,7 +1024,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     enhancementType: "improve" | "summarize" | "secure" | "ask" | "simplify",
     options?: { useBuiltTemplatePrompt?: boolean; promptAnalysisDwellMs?: number },
   ): Promise<string> => {
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       await ensureFreeLocalModel((progress) => setAiProgress(progress));
       const m = await loadPromptTemplatesModule();
@@ -1115,7 +1181,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         },
         "error-callback": () => {
           setAiTurnstileToken(null);
-          setAiTurnstileError("Human verification failed. Please try again.");
+          setAiTurnstileError(t.createNoteTurnstileFailed);
           aiTurnstileWidgetIdRef.current = null;
         },
         "expired-callback": () => {
@@ -1131,7 +1197,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       })
       .catch(() => {
         if (!cancelled) {
-          setAiTurnstileError("Human verification failed to load. Please try again.");
+          setAiTurnstileError(t.createNoteTurnstileFailedLoad);
         }
       });
 
@@ -1217,6 +1283,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
+    const applyReaderLanguage =
+      isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
       (notifyOnOpen && canNotifyOnOpen) ||
       (notifyOnDestroyed && canNotifyOnOpen) ||
@@ -1269,6 +1337,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsLoading(true);
+    // 4 MiB matches SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES — avoid awaiting the sodium
+    // module just to show an immediate 0/N chunk label.
+    const earlyTotalChunks = selectedFile
+      ? Math.max(1, Math.ceil(selectedFile.size / (4 * 1024 * 1024)))
+      : 0;
+    setAttachmentProgress(
+      selectedFile
+        ? {
+            phase: "prepare",
+            progress: 2,
+            detail: t.attachmentProgressChunkDetail
+              .replace("{done}", "0")
+              .replace("{total}", String(earlyTotalChunks))
+              .replace("{name}", formatAttachmentDisplayName(selectedFile.name)),
+          }
+        : null,
+    );
 
     try {
       const {
@@ -1297,13 +1382,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         return arrayBufferToBase64(copy.buffer);
       };
 
-      const { SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES } = await import("@/utils/libsodiumFileAttachment");
+      const { getAttachmentChunkSizeBytes } = await import("@/utils/libsodiumFileAttachment");
+      const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes();
       const attachmentReserveBinding = selectedFile
         ? {
             attachmentPlaintextSize: selectedFile.size,
             attachmentEncryptedSize:
               selectedFile.size +
-              Math.max(1, Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES)) * 17,
+              Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes)) * 17,
           }
         : undefined;
 
@@ -1402,7 +1488,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           const { encryptFileToSodiumChunks } = await import("@/utils/libsodiumFileAttachment");
           const totalChunks = Math.max(
             1,
-            Math.ceil(selectedFile.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES),
+            Math.ceil(selectedFile.size / attachmentChunkSizeBytes),
           );
           const encryptedSizeUpperBound = selectedFile.size + totalChunks * 17;
           logFileUpload("info", "starting attachment encryption", {
@@ -1411,9 +1497,48 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             fileType: selectedFile.type || "application/octet-stream",
             fileSize: selectedFile.size,
             totalChunks,
-            chunkSizeBytes: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+            chunkSizeBytes: attachmentChunkSizeBytes,
             encryptedSizeUpperBound,
             apiBase: getFileUploadTargetLabel(),
+          });
+          resetSafariAttachmentUploadTransport();
+          await primeSafariAttachmentUploadTransport(
+            `/api/notes/${reservedId}/file/chunks/0`,
+            uploadToken,
+          );
+          const chunkDetail = (done: number, total: number) =>
+            t.attachmentProgressChunkDetail
+              .replace("{done}", String(done))
+              .replace("{total}", String(total))
+              .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
+          // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
+          // modal stuck with no chunk count for a long time on slow uplinks.
+          const completedChunksRef = { current: 0 };
+          const inFlightChunkRatios = new Map<number, number>();
+          let lastProgressPublishMs = 0;
+          const publishUploadProgress = (force = false) => {
+            const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+            if (!force && now - lastProgressPublishMs < 80) return;
+            lastProgressPublishMs = now;
+            let inFlightSum = 0;
+            for (const ratio of inFlightChunkRatios.values()) {
+              inFlightSum += ratio;
+            }
+            const overall =
+              totalChunks > 0
+                ? Math.min(1, (completedChunksRef.current + inFlightSum) / totalChunks)
+                : 1;
+            const nextProgress = Math.round(5 + overall * 90);
+            setAttachmentProgress((prev) => ({
+              phase: "encrypt",
+              progress: Math.max(prev?.progress ?? 0, nextProgress),
+              detail: chunkDetail(completedChunksRef.current, totalChunks),
+            }));
+          };
+          setAttachmentProgress({
+            phase: "encrypt",
+            progress: 5,
+            detail: chunkDetail(0, totalChunks),
           });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
@@ -1421,20 +1546,54 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             metadataKey!,
             reservedId,
             async (chunk) => {
-              await uploadEncryptedAttachmentChunk(
-                `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                chunk.encryptedBytes,
-                {
-                  "Content-Type": "application/octet-stream",
-                  "x-file-plaintext-size": String(selectedFile.size),
-                  "x-file-encrypted-size": String(encryptedSizeUpperBound),
-                  "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
-                },
-                uploadToken,
-              );
+              inFlightChunkRatios.set(chunk.index, 0);
+              publishUploadProgress(true);
+              try {
+                await uploadEncryptedAttachmentChunk(
+                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
+                  chunk.encryptedBytes,
+                  {
+                    "Content-Type": "application/octet-stream",
+                    "x-file-plaintext-size": String(selectedFile.size),
+                    "x-file-encrypted-size": String(encryptedSizeUpperBound),
+                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                  },
+                  uploadToken,
+                  ({ loaded, total }) => {
+                    inFlightChunkRatios.set(
+                      chunk.index,
+                      total > 0 ? Math.min(1, loaded / total) : 0,
+                    );
+                    publishUploadProgress();
+                  },
+                );
+              } finally {
+                inFlightChunkRatios.delete(chunk.index);
+              }
+            },
+            (pipeline) => {
+              // Drive the bar and the "X of Y" label from uploaded chunks only. Encrypt
+              // runs ahead in the pipeline, so reacting to its callbacks made the label
+              // flip between the real uploaded count and 0. Keep the label on the last
+              // uploaded count instead of resetting it.
+              if (pipeline.phase !== "upload") {
+                setAttachmentProgress((prev) => ({
+                  phase: "encrypt",
+                  progress: Math.max(prev?.progress ?? 0, 5),
+                  detail: chunkDetail(completedChunksRef.current, pipeline.totalChunks),
+                }));
+                return;
+              }
+              completedChunksRef.current = pipeline.completedChunks;
+              publishUploadProgress(true);
             },
           );
-          logFileUpload("info", "attachment encryption complete", {
+          setAttachmentProgress({
+            phase: "finalize",
+            progress: 98,
+            detail: selectedFile.name,
+          });
+          logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
             encryptedSize: attachment.encryptedSize,
@@ -1482,6 +1641,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           ? { requireRecipientVerification: true }
           : {}),
         fileAccessWindowSeconds,
+        ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -1491,6 +1651,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           ? { attachment, attachmentContentHash: attachment.encryptedContentSha256 }
           : {}),
         _hp: honeypotValue,
+        creationSource: "web",
+        creationEntryPoint: isFileTransferMode ? "file-share" : "home",
         ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
         ...(isPasswordProtected && {
@@ -1509,16 +1671,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       }
 
       clearCreateNoteAuthDraft();
+      recordWebNoteCreated();
       setCreatedNote({
         url,
         meta: {
           expiryValue,
           readCount,
           isPasswordProtected,
-          localLabel:
-            applyNoteLabel ||
-            (isFileTransferMode && selectedFile ? selectedFile.name.slice(0, 120) : undefined),
-          deliveryTrackingEnabled: tracksDelivery,
           recipientVerificationCode:
             typeof recipientVerificationCode === "string"
               ? recipientVerificationCode
@@ -1581,6 +1740,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       toast({ title: t.error, description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
+      setAttachmentProgress(null);
     }
   };
 
@@ -1808,7 +1968,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsGeneratingContent(true);
-    setHostedCloudAiStatusText("Cloud Assist is writing with Gemma 4 26B...");
+    setHostedCloudAiStatusText(t.aiComposerHostedCloudAiWriting);
     if (!originalPrompt) setOriginalPrompt(promptToUse);
     if (!options?.skipPromptHistoryUpdate) {
       setUserPromptHistory((prev) => {
@@ -2027,7 +2187,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "improve");
       setNoteContentFromAiOutput(content);
@@ -2064,7 +2224,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "summarize");
       setNoteContentFromAiOutput(content);
@@ -2101,7 +2261,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(noteContent, "simplify");
       setNoteContentFromAiOutput(content);
@@ -2143,7 +2303,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     setIsGeneratingContent(true);
-    setAiProgress({ progress: 0, text: "Initializing AI..." });
+    setAiProgress({ progress: 0, text: t.aiComposerInitializingAi });
     try {
       const content = await runFreeLocalEnhancement(promptToUse, enhancementTypeToUse, {
         useBuiltTemplatePrompt: true,
@@ -2165,42 +2325,46 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
   };
 
-  // ── Privacy banner (passed to AiComposer) ────────────────────────────────
-  const privacyBannerItems = (
-    <>
-      <span className="flex items-center whitespace-nowrap">
-        <Eye className="h-3 w-3 mr-1 text-orange-500" />
-        {t.expiresAfter} {translatedExpiryLabel(expiryValue, t)} {t.orOneRead}
-      </span>
-      {isPasswordProtected && (
-        <>
-          <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-          <span className="flex items-center whitespace-nowrap">
-            <Key className="h-3 w-3 mr-1 text-yellow-500" />
-            {t.passwordProtected}
-          </span>
-        </>
-      )}
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Shield className="h-3 w-3 mr-1 text-green-500" />
-        {t.endToEndEncrypted}
-      </span>
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Lock className="h-3 w-3 mr-1 text-blue-500" />
-        AES-256 GCM
-      </span>
-      <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-      <span className="flex items-center whitespace-nowrap">
-        <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
-        {t.noTracking}
-      </span>
-    </>
-  );
+  // ── Privacy banner (English desktop only; passed to AiComposer) ───────────
+  const privacyBannerItems =
+    language === "en" && !isMobile ? (
+      <>
+        <span className="flex items-center whitespace-nowrap">
+          <Eye className="h-3 w-3 mr-1 text-orange-500" />
+          {t.expiresAfter} {translatedExpiryLabel(expiryValue, t)} {t.orOneRead}
+        </span>
+        {isPasswordProtected && (
+          <>
+            <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+            <span className="flex items-center whitespace-nowrap">
+              <Key className="h-3 w-3 mr-1 text-yellow-500" />
+              {t.passwordProtected}
+            </span>
+          </>
+        )}
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Shield className="h-3 w-3 mr-1 text-green-500" />
+          {t.endToEndEncrypted}
+        </span>
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Lock className="h-3 w-3 mr-1 text-blue-500" />
+          AES-256 GCM
+        </span>
+        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+        <span className="flex items-center whitespace-nowrap">
+          <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
+          {t.noTracking}
+        </span>
+      </>
+    ) : null;
 
   const shouldRenderDeferredDialogs =
-    isGeneratingContent || cellularPreloadConfirmOpen || showTemplateOfferPrompt;
+    isGeneratingContent ||
+    cellularPreloadConfirmOpen ||
+    showTemplateOfferPrompt ||
+    Boolean(attachmentProgress);
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
@@ -2365,15 +2529,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div
               className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40 px-4 py-4"
               role="region"
-              aria-label="Human verification"
+              aria-label={t.createNoteTurnstileAriaLabel}
             >
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                This check appears only when our systems flag unusual activity (for example many quick requests).
-                Complete it once to keep using AI mode.
+                {t.createNoteTurnstileExplanation}
               </p>
               <div id="create-note-turnstile-container" className="min-h-[65px] flex justify-center" />
               {!aiTurnstileReady && !aiTurnstileError && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">Loading verification…</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">{t.createNoteTurnstileLoading}</p>
               )}
               {aiTurnstileError && (
                 <p className="text-xs text-red-500 text-center mt-2">{aiTurnstileError}</p>
@@ -2388,10 +2551,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 referrer={prefillReferrer}
                 onDismiss={dismissPrefillBanner}
               />
-              <div className="mb-2 hidden md:flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
-                  {privacyBannerItems}
-                </div>
+              <div
+                className={`mb-2 hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 ${privacyBannerItems ? "justify-between" : "justify-end"}`}
+              >
+                {privacyBannerItems ? (
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    {privacyBannerItems}
+                  </div>
+                ) : null}
                 <NotePlaintextUtf8Meter
                   noteContent={noteContent}
                   maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}
@@ -2419,8 +2586,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div className="mb-4 space-y-4">
               <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {selectedFile.name}
+                <span
+                  className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
+                  title={selectedFile.name}
+                >
+                  {formatAttachmentDisplayName(selectedFile.name)}
                 </span>
                 <button
                   type="button"
@@ -2470,7 +2640,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               }
             >
               <NoteSettingsPanel
-                variant={isFileTransferMode ? "file-transfer" : "note"}
                 showAdvancedOptions={showAdvancedOptions}
                 password={password}
                 setPassword={setPassword}
@@ -2502,6 +2671,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
+                readerLanguage={readerLanguage}
+                setReaderLanguage={setReaderLanguage}
               />
             </Suspense>
           )}
@@ -2624,7 +2795,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                    className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                   >
                     {isLoading ? (
                       <>
@@ -2650,7 +2821,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onChange={handleAttachFileSelected}
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="flex w-full min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -2675,19 +2846,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     )}
                   </button>
 
-                  <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none sm:max-w-none">
+                  <div
+                    className={
+                      selectedFile
+                        ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
+                        : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
+                    }
+                  >
                     <button
                       type="button"
                       onClick={handleAttachFileClick}
-                      title={
+                      title={selectedFile ? selectedFile.name : undefined}
+                      className={
                         selectedFile
-                          ? (t.attachFileChangeHint ?? "Click to choose a different file")
-                          : undefined
+                          ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`
+                          : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`
                       }
-                      className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
                     >
                       <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                      <span className="truncate">{attachFileButtonLabel}</span>
+                      <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
+                        {attachFileButtonLabel}
+                      </span>
                     </button>
                     {selectedFile ? (
                       <button
@@ -2705,7 +2884,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>
@@ -2754,7 +2933,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             isMobile={isMobile}
             settings={{
               password,
-              variant: isFileTransferMode ? "file-transfer" : "note",
               setPassword,
               showPassword,
               setShowPassword,
@@ -2784,6 +2962,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setReadCount,
               fileAccessWindowSeconds,
               setFileAccessWindowSeconds,
+              readerLanguage,
+              setReaderLanguage,
             }}
           />
         </Suspense>
@@ -2793,6 +2973,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         <Suspense fallback={null}>
           <CreateNoteDeferredDialogs
             aiProgress={aiProgress}
+            attachmentProgress={attachmentProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
             isGeneratingContent={isGeneratingContent && !usesHostedCloudAi}
             onStartFreeModelDownload={() => {

@@ -1,4 +1,5 @@
 import { ApiRequestError, apiRequest } from "@/lib/queryClient";
+import type { Translations } from "@/utils/translations/types";
 import {
   WebAuthnOptions,
   coerceRegisterOptions,
@@ -6,14 +7,14 @@ import {
   describeWebAuthnEffectiveDomainError,
 } from "@/utils/webauthn";
 
-export function passkeyRegistrationErrorMessage(error: unknown): string {
+export function passkeyRegistrationErrorMessage(error: unknown, t: Translations): string {
   const domainHint = describeWebAuthnEffectiveDomainError(error);
   if (domainHint) return domainHint;
   if (error instanceof DOMException && error.name === "InvalidStateError") {
-    return "This passkey may already exist on this device. Try another authenticator or remove the old passkey and retry.";
+    return t.authPasskeyExistsError;
   }
   if (error instanceof DOMException && error.name === "NotAllowedError") {
-    return "Passkey creation was cancelled or timed out. Please try again.";
+    return t.authPasskeyCreationCancelled;
   }
   if (error instanceof ApiRequestError && error.bodyText) {
     try {
@@ -25,13 +26,13 @@ export function passkeyRegistrationErrorMessage(error: unknown): string {
       /* use raw message */
     }
   }
-  return error instanceof Error ? error.message : "Try again.";
+  return error instanceof Error ? error.message : t.authSecToastTryAgain;
 }
 
 /**
  * Register a passkey; on stale platform authenticator state, retries once with a fresh challenge.
  */
-export async function registerPasskeyWithRetry(): Promise<void> {
+export async function registerPasskeyWithRetry(t: Translations): Promise<void> {
   const registerWithFreshChallenge = async () => {
     const data = await apiRequest<{ challengeId: string; options: WebAuthnOptions }>(
       "/api/auth/webauthn/register/options",
@@ -40,14 +41,14 @@ export async function registerPasskeyWithRetry(): Promise<void> {
     );
 
     if (!data?.options) {
-      throw new Error("Missing WebAuthn options from server.");
+      throw new Error(t.authPasskeyMissingOptions);
     }
 
     const publicKey = coerceRegisterOptions(data.options);
     const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
 
     if (!credential) {
-      throw new Error("No credential returned.");
+      throw new Error(t.authPasskeyNoCredential);
     }
 
     await apiRequest("/api/auth/webauthn/register/verify", "POST", {

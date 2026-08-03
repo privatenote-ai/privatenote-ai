@@ -28,12 +28,17 @@ function getPathLanguage(): SupportedLanguage | null {
 
 function getInitialLanguage(): SupportedLanguage {
   if (typeof window === "undefined") return "en";
-  return getPathLanguage() ?? normalizeLanguageCode(window.localStorage.getItem(STORAGE_KEY) ?? getUserLanguage());
+  const pathLanguage = getPathLanguage();
+  if (pathLanguage) {
+    window.localStorage.setItem(STORAGE_KEY, pathLanguage);
+    return pathLanguage;
+  }
+  return normalizeLanguageCode(window.localStorage.getItem(STORAGE_KEY) ?? getUserLanguage());
 }
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<SupportedLanguage>(() => getInitialLanguage());
-  const [t, setT] = useState<Translations>(en);
+  const [t, setT] = useState<Translations>(() => getTranslations(getInitialLanguage()));
 
   const setLanguage = (nextLanguage: SupportedLanguage) => {
     setLanguageState(nextLanguage);

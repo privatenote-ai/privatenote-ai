@@ -1,183 +1,330 @@
-import React from 'react';
-import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
-import { Calendar, ArrowRight, Tag, Clock } from 'lucide-react';
-import { getQueryFn } from '@/lib/queryClient';
-import { type BlogPost } from '@shared/schema';
-import { parseBlogPostTags } from '@/utils/blogPostTags';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { useLanguage } from '@/context/LanguageContext';
-import { joinPublicPath, localizedPath } from '@/utils/localizedPath';
-import { buildFeaturedBlogPost, buildStaticBlogPosts } from '@/utils/staticBlogPosts';
+import React, { useEffect, useMemo } from "react";
+import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Calendar, ArrowRight, Tag, Clock } from "lucide-react";
+import { getQueryFn } from "@/lib/queryClient";
+import { type BlogPost } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/context/LanguageContext";
+import { blogCategoryPath, blogPostPath, localizedPath } from "@/utils/localizedPath";
+import type { SupportedLanguage } from "@/utils/translation";
+import { buildFeaturedBlogPost, buildStaticBlogPosts } from "@/utils/staticBlogPosts";
+import { cn } from "@/lib/utils";
+import {
+  BLOG_CATEGORIES,
+  getBlogCategory,
+  isBlogCategory,
+  type BlogCategory,
+} from "@shared/blogCategories";
+import { isBlogListingSlug } from "@shared/localizedBlogSlugs";
+import { blogCategoryLabel } from "@/utils/blogCategoryLabel";
 
-export default function Blog() {
-  const { language, t } = useLanguage();
-  const lp = (path: string) => localizedPath(path, language);
-  const featuredPost = buildFeaturedBlogPost(t);
-  const staticPosts = buildStaticBlogPosts(t);
+const pageContainerClass =
+  "mx-auto max-w-[1150px] px-4 pb-8 pt-24 sm:px-6 lg:px-8 lg:pt-28";
 
-  const {
-    data: posts,
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['/api/blog'],
-    queryFn: getQueryFn<BlogPost[]>({ on401: 'returnNull' })
-  });
-  const hasError = Boolean(error);
-  const combinedPosts = [
-    ...staticPosts,
-    ...(posts ?? []).filter((post) => !staticPosts.some((staticPost) => staticPost.slug === post.slug)),
-  ];
+function blogPostHref(slug: string, language: SupportedLanguage) {
+  return blogPostPath(slug, language);
+}
+
+function formatBlogDate(language: string, publishedAt: Date | string | null | undefined) {
+  if (!publishedAt) return "";
+  return new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(publishedAt));
+}
+
+function BlogMetadataRow({
+  date,
+  categoryId,
+  categoryLabel,
+  featured,
+  compact = false,
+}: {
+  date: string;
+  categoryId?: BlogCategory | null;
+  categoryLabel?: string | null;
+  featured?: boolean;
+  compact?: boolean;
+}) {
+  const { t, language } = useLanguage();
+
+  const renderCategory = () => {
+    if (!categoryLabel || !categoryId) return null;
+    const href = blogCategoryPath(categoryId, language);
+    return (
+      <Link
+        href={href}
+        className={cn(
+          "inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/10",
+        )}
+      >
+        {categoryLabel}
+      </Link>
+    );
+  };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24">
-      <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
-        <h1 className="page-title mb-12 pb-2 leading-[1.1] text-primary relative z-10">
-          {t.blog}
-        </h1>
-        <p className="mx-auto max-w-2xl text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-[17px] sm:leading-7 relative z-10">
-          {t.blogSubtitle}
-        </p>
-      </div>
-
-      {hasError ? (
-        <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
-          {staticPosts.map((post) => (
-            <BlogPostCard key={post.id} post={post} blogPath={lp("/blog")} />
-          ))}
-        </div>
-      ) : isLoading ? (
-        <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="backdrop-blur-sm rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <div className="p-6">
-                <Skeleton className="h-8 w-3/4 mb-4" />
-                <Skeleton className="h-4 w-1/4 mb-2" />
-                <div className="space-y-2 mt-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : combinedPosts.length > 0 ? (
-        <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
-          {combinedPosts.map((post) => (
-            <BlogPostCard key={post.id} post={post} blogPath={lp("/blog")} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-8">
-          <FeaturedPostCard post={featuredPost} blogPath={lp("/blog")} />
-          <div className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 rounded-lg p-8 text-center">
-            <h2 className="text-xl font-medium mb-2">{t.blogEmptyTitle}</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {t.blogEmptyBody}
-            </p>
-          </div>
-        </div>
+    <div
+      className={cn(
+        "flex flex-wrap items-center text-sm text-gray-500 dark:text-gray-400",
+        compact ? "mb-3 gap-2" : "mb-4 gap-4",
       )}
+    >
+      {date ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Calendar className="h-4 w-4 shrink-0" aria-hidden />
+          <time>{date}</time>
+        </span>
+      ) : null}
+      {featured ? (
+        <Badge className="text-xs" variant="default">
+          {t.blogFeatured}
+        </Badge>
+      ) : null}
+      {categoryLabel ? (
+        <div className={cn("flex flex-wrap items-center", compact ? "gap-2" : "gap-2 sm:ml-auto")}>
+          <Tag className="hidden h-4 w-4 sm:block" aria-hidden />
+          {renderCategory()}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function BlogPostCard({ post, blogPath }: { post: BlogPost; blogPath: string }) {
-  const { language, t } = useLanguage();
-  const formattedDate = post.publishedAt
-    ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt))
-    : '';
-  const tagList = parseBlogPostTags(post.tags);
+function ReadLink({ href, className }: { href: string; className?: string }) {
+  const { t } = useLanguage();
 
   return (
-    <Card className="backdrop-blur-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-1">
-          <Calendar className="h-4 w-4 mr-1" />
-          <span>{formattedDate}</span>
-          {tagList.length > 0 && (
-            <div className="ml-auto flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              <div className="flex gap-1">
-                {tagList.slice(0, 3).map((tag, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                {tagList.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{tagList.length - 3}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        <CardTitle className="text-xl font-bold leading-tight">
-          <Link href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)} className="hover:text-primary transition-colors">
-            <span className="line-clamp-2">{post.title}</span>
-          </Link>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <p className="line-clamp-3 text-gray-600 dark:text-gray-400">{post.excerpt}</p>
-      </CardContent>
-      <CardFooter className="pt-0 flex justify-between items-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-          <Clock className="h-4 w-4 mr-1" />
-          <span>{t.blogByAuthor} {post.author}</span>
-        </div>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)} className="flex items-center">
-            {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+    <Link
+      href={href}
+      className={cn(
+        "group inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80",
+        className,
+      )}
+    >
+      {t.homeBlogReadArticle}
+      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+    </Link>
   );
 }
 
-function FeaturedPostCard({ post, blogPath }: { post: { title: string; excerpt: string; author: string; slug: string; publishedAt: string; tags: string[] }; blogPath: string }) {
+function BlogPostCard({ post }: { post: BlogPost }) {
   const { language, t } = useLanguage();
-  const formattedDate = new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(post.publishedAt));
+  const formattedDate = formatBlogDate(language, post.publishedAt);
+  const href = blogPostHref(post.slug, language);
+  const categoryId = getBlogCategory(post.slug);
+  const categoryLabel = categoryId ? blogCategoryLabel(categoryId, t) : null;
 
   return (
-    <Card className="backdrop-blur-sm border border-primary/30 bg-primary/5 overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-1">
-          <Calendar className="h-4 w-4 mr-1" />
-          <span>{formattedDate}</span>
-          <div className="ml-auto flex items-center gap-2">
-            <Badge className="text-xs" variant="default">{t.blogFeatured}</Badge>
-          </div>
-        </div>
-        <CardTitle className="text-xl font-bold leading-tight">
-          <Link href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)} className="hover:text-primary transition-colors">
+    <article className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="h-2 bg-primary/15 dark:bg-primary/25" aria-hidden />
+      <div className="flex flex-1 flex-col p-6">
+        <BlogMetadataRow
+          date={formattedDate}
+          categoryId={categoryId}
+          categoryLabel={categoryLabel}
+          compact
+        />
+        <h3 className="mb-3 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
+          <Link href={href} className="transition-colors hover:text-primary">
             <span className="line-clamp-2">{post.title}</span>
           </Link>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <p className="line-clamp-3 text-gray-600 dark:text-gray-400">{post.excerpt}</p>
-      </CardContent>
-      <CardFooter className="pt-0 flex justify-between items-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-          <Clock className="h-4 w-4 mr-1" />
-          <span>{t.blogByAuthor} {post.author}</span>
+        </h3>
+        <p className="mb-4 flex-1 line-clamp-3 leading-relaxed text-gray-600 dark:text-gray-400">
+          {post.excerpt}
+        </p>
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+          <div className="flex min-w-0 items-center text-sm text-gray-500 dark:text-gray-400">
+            <Clock className="mr-1 h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">
+              {t.blogByAuthor} {post.author}
+            </span>
+          </div>
+          <ReadLink href={href} className="shrink-0" />
         </div>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={joinPublicPath(...blogPath.split("/").filter(Boolean), post.slug)} className="flex items-center">
-            {t.blogReadMore} <ArrowRight className="ml-2 h-4 w-4" />
+      </div>
+    </article>
+  );
+}
+
+function FeaturedPostCard({
+  post,
+}: {
+  post: {
+    title: string;
+    excerpt: string;
+    author: string;
+    slug: string;
+    publishedAt: string;
+  };
+}) {
+  const { language, t } = useLanguage();
+  const formattedDate = formatBlogDate(language, post.publishedAt);
+  const href = blogPostHref(post.slug, language);
+  const categoryId = getBlogCategory(post.slug);
+  const categoryLabel = categoryId ? blogCategoryLabel(categoryId, t) : null;
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-primary/25 bg-primary/[0.04] shadow-sm dark:border-primary/30 dark:bg-primary/10">
+      <div className="h-2 bg-primary" aria-hidden />
+      <div className="p-8 lg:p-10">
+        <BlogMetadataRow
+          date={formattedDate}
+          categoryId={categoryId}
+          categoryLabel={categoryLabel}
+          featured
+        />
+        <h2 className="mb-4 text-2xl font-bold leading-tight text-gray-900 dark:text-white sm:text-3xl">
+          <Link href={href} className="transition-colors hover:text-primary">
+            <span className="line-clamp-2">{post.title}</span>
           </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+        </h2>
+        <p className="mb-6 max-w-3xl leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[17px] sm:leading-7">
+          {post.excerpt}
+        </p>
+        <ReadLink href={href} />
+      </div>
+    </article>
+  );
+}
+
+function BlogCategoryNav() {
+  const { t, language } = useLanguage();
+
+  return (
+    <div className="mb-8">
+      <p className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+        {t.blogFilterByTopic}
+      </p>
+      <div className="flex flex-wrap gap-2" role="navigation" aria-label={t.blogFilterByTopic}>
+        <span className="rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+          {t.blogFilterAll}
+        </span>
+        {BLOG_CATEGORIES.map((category) => (
+          <Link
+            key={category}
+            href={blogCategoryPath(category, language)}
+            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-primary/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+          >
+            {blogCategoryLabel(category, t)}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BlogSecondaryCta() {
+  const { t, language } = useLanguage();
+  const homePath = localizedPath("/", language);
+  const howItWorksPath = localizedPath("/how-it-works", language);
+
+  return (
+    <section className="mx-auto mb-12 max-w-[450px] text-center">
+      <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
+        {t.createNewNote}
+      </h2>
+      <p className="mb-5 leading-relaxed text-gray-600 dark:text-gray-400">
+        {t.authSignUpSubtitle}
+      </p>
+      <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <Link
+          href={homePath}
+          className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          {t.createNewNote}
+        </Link>
+        <Link
+          href={howItWorksPath}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80"
+        >
+          {t.howItWorks}
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export default function Blog() {
+  const { language, t } = useLanguage();
+  const [, setLocation] = useLocation();
+  const featuredPost = buildFeaturedBlogPost(t);
+  const staticPosts = buildStaticBlogPosts(t);
+
+  // Legacy ?category= → category landing
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get("category");
+    if (value && isBlogCategory(value)) {
+      setLocation(blogCategoryPath(value, language));
+    }
+  }, [language, setLocation]);
+
+  const { data: posts } = useQuery({
+    queryKey: ["/api/blog"],
+    queryFn: getQueryFn<BlogPost[]>({ on401: "returnNull" }),
+  });
+
+  const allPosts = useMemo(
+    () =>
+      [
+        ...staticPosts,
+        ...(posts ?? []).filter((post) => !staticPosts.some((staticPost) => staticPost.slug === post.slug)),
+      ].filter((post) => isBlogListingSlug(post.slug)),
+    [staticPosts, posts],
+  );
+
+  const gridPosts = useMemo(
+    () =>
+      allPosts
+        .filter((post) => post.slug !== featuredPost.slug)
+        .sort((a, b) => {
+          const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return bTime - aTime;
+        }),
+    [allPosts, featuredPost.slug],
+  );
+
+  const articlesHeading = t.homeBlogEyebrow;
+
+  return (
+    <div className={pageContainerClass}>
+      <header className="py-10 text-center">
+        <h1 className="page-title mx-auto max-w-4xl text-primary">
+          <span className="line-clamp-2">{t.blog}</span>
+        </h1>
+        <p className="mx-auto mt-4 max-w-[670px] text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-[17px] sm:leading-7">
+          {t.blogSubtitle}
+        </p>
+      </header>
+
+      <section className="mb-16">
+        <FeaturedPostCard post={featuredPost} />
+      </section>
+
+      <section>
+        <h2 className="mb-8 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          {articlesHeading}
+        </h2>
+
+        <BlogCategoryNav />
+
+        {gridPosts.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {gridPosts.map((post) => (
+              <BlogPostCard key={post.id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-gray-200 p-8 text-center dark:border-gray-800">
+            <h3 className="mb-2 text-xl font-medium text-gray-900 dark:text-white">{t.blogEmptyTitle}</h3>
+            <p className="text-gray-600 dark:text-gray-400">{t.blogEmptyBody}</p>
+          </div>
+        )}
+      </section>
+
+      <div className="mt-16">
+        <BlogSecondaryCta />
+      </div>
+    </div>
   );
 }

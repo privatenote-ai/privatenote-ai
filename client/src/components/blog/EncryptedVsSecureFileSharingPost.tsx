@@ -11,8 +11,20 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
-import { joinPublicPath, localizedPath } from "@/utils/localizedPath";
+import { blogPostPath, localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { encryptedVsSecureFileSharingDe } from "@/components/blog/locale/encryptedVsSecureFileSharing.de";
+import { encryptedVsSecureFileSharingEs } from "@/components/blog/locale/encryptedVsSecureFileSharing.es";
+import { encryptedVsSecureFileSharingFr } from "@/components/blog/locale/encryptedVsSecureFileSharing.fr";
+import { encryptedVsSecureFileSharingHr } from "@/components/blog/locale/encryptedVsSecureFileSharing.hr";
+import { encryptedVsSecureFileSharingNl } from "@/components/blog/locale/encryptedVsSecureFileSharing.nl";
+import { encryptedVsSecureFileSharingPt } from "@/components/blog/locale/encryptedVsSecureFileSharing.pt";
+import { encryptedVsSecureFileSharingSr } from "@/components/blog/locale/encryptedVsSecureFileSharing.sr";
 
 type FlowKind = "tls" | "browser";
 
@@ -34,7 +46,7 @@ type ArticleCopy = {
   relatedReading: string;
 };
 
-const heroImagePath = "/images/blog-encrypted-file-sharing-hero.png";
+const heroImagePath = "/images/blog-encrypted-file-sharing-hero.jpg";
 
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -312,43 +324,177 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     ctaLabel: "Try secure file transfer",
     relatedReading: "Related reading",
   },
+  it: {
+    intro: [
+      'Quando le persone cercano "condivisione sicura di file", spesso danno per scontato che ogni servizio con HTTPS o TLS protegga i file nello stesso modo. Purtroppo non è così.',
+      'Due servizi possono pubblicizzare entrambi un "trasferimento file cifrato" offrendo garanzie di privacy molto diverse. La differenza sta interamente in **dove avviene la cifratura**. Capire questa distinzione spiega perché alcuni servizi possono ispezionare, indicizzare ed elaborare i tuoi file, mentre altri semplicemente non possono.',
+    ],
+    sections: [
+      {
+        title: "I due tipi di cifratura",
+        level: "primary",
+        paragraphs: ["Esistono due modi principali con cui i servizi moderni di condivisione file proteggono i dati."],
+      },
+      {
+        title: "1. Cifratura di trasporto (TLS)",
+        level: "secondary",
+        paragraphs: [
+          "È la cifratura standard usata oggi da quasi tutti i siti web. Quando carichi un file, il browser stabilisce una connessione sicura Transport Layer Security (TLS) con il server host. La connessione è cifrata mentre il file viaggia sulla rete, proteggendoti da attaccanti su Wi‑Fi pubblici, router compromessi o chiunque intercetti il traffico.",
+        ],
+        flow: "tls",
+        bullets: [
+          "TLS è essenziale, e ogni servizio affidabile deve usarlo.",
+          "Quando il caricamento raggiunge il server, il provider riceve il file originale in chiaro.",
+          "Da quel momento, a seconda delle policy, il servizio può conservare il file, generare anteprime, indicizzare il contenuto, scannerizzare malware o usare metadati per analisi.",
+          'Molti provider cifrano anche i file "a riposo". Questo protegge dal furto fisico dei dischi, ma il servizio possiede comunque le chiavi e può leggere i file.',
+        ],
+        callout:
+          "**La vulnerabilità centrale del cloud storage tradizionale:** il server può cifrare solo ciò che ha già potuto leggere.",
+      },
+      {
+        title: "2. Cifratura nel browser",
+        level: "secondary",
+        paragraphs: [
+          "Un approccio radicalmente diverso consiste nel cifrare il file **prima** che lasci il dispositivo. Invece di caricare il file originale, il browser usa API crittografiche locali per cifrarlo. Il server riceve solo testo cifrato: dati che appaiono casuali e sono inutili senza la chiave di decifratura.",
+        ],
+        flow: "browser",
+        bullets: [
+          "La cifratura nel browser non sostituisce TLS: lo completa.",
+          "TLS continua a proteggere la connessione da intercettazioni a livello di rete.",
+          "I server del provider ricevono solo testo cifrato illeggibile, perché non ricevono mai né il file in chiaro né la chiave di decifratura.",
+        ],
+      },
+      {
+        title: "Perché questa differenza conta",
+        level: "primary",
+        paragraphs: [
+          "Supponi di condividere dati molto sensibili: contratti legali, fogli finanziari, codice sorgente proprietario, cartelle cliniche o documenti aziendali riservati.",
+          "Con la sola cifratura di trasporto, la tua privacy è **contrattuale**. Devi fidarti dell’implementazione del provider, dei controlli di accesso dei dipendenti e delle policy aziendali presenti e future.",
+          "Con la cifratura nel browser, la tua privacy è **architetturale**. Il provider conserva solo testo cifrato. Anche se viene violato, riceve un ordine legale o cambia modello di business, non può consegnare testo in chiaro che non ha mai posseduto.",
+        ],
+        callout:
+          "Con la sola cifratura di trasporto, la privacy è **contrattuale**. Con la cifratura nel browser, la privacy è **architetturale**.",
+      },
+      {
+        title: "Un promemoria recente: il fattore fiducia",
+        level: "primary",
+        paragraphs: [
+          "Nel 2025 WeTransfer ha aggiornato i Termini di servizio con un linguaggio che sembrava concedere ampi diritti sui contenuti caricati, anche per migliorare sistemi di machine learning usati nella moderazione dei contenuti.",
+          "La modifica ha provocato una reazione immediata da artisti, giornalisti e professionisti creativi, preoccupati che la loro proprietà intellettuale venisse usata per addestrare sistemi IA. WeTransfer ha chiarito rapidamente che i contenuti dei clienti non venivano usati per l’addestramento IA e ha rimosso il linguaggio ambiguo, ma l’episodio ha evidenziato una lezione cruciale:",
+          "Se un provider riceve i tuoi file in chiaro, dipendi interamente dalle sue promesse. Quando un provider conserva solo testo cifrato, la quantità di fiducia che devi riporre in lui è ridotta strutturalmente. È l’architettura a far rispettare la privacy.",
+        ],
+      },
+      {
+        title: "Come PrivateNote gestisce la condivisione file",
+        level: "primary",
+        paragraphs: [
+          "La cifratura moderna basata sul browser combina diversi componenti crittografici consolidati per mantenere i dati sicuri senza affidarsi alla fiducia nel server.",
+        ],
+      },
+      {
+        title: "Generazione e isolamento della chiave",
+        level: "secondary",
+        paragraphs: [
+          "Quando un utente prepara un file da condividere, PrivateNote genera direttamente nel browser una chiave simmetrica casuale e crittograficamente sicura usando la Web Crypto API.",
+          "Questa chiave non viene mai trasmessa alla nostra infrastruttura. Viene invece aggiunta al link di condivisione come frammento URL, cioè la parte dopo il simbolo `#`:",
+          "`https://privatenote.ai/note/your-note-id#your-secret-key`",
+          "Per design, i browser non inviano mai il frammento URL al server durante una richiesta HTTP. Questo comportamento è definito dallo standard URL e funziona così da decenni. La chiave di decifratura resta nel browser del destinatario.",
+        ],
+      },
+      {
+        title: "Cifratura streaming autenticata",
+        level: "secondary",
+        paragraphs: [
+          "Invece di caricare dati grezzi, il browser cifra il file prima che tocchi la rete. Poiché PrivateNote supporta allegati grandi, usa **cifratura streaming a blocchi**: i file vengono cifrati blocco per blocco, di solito in chunk da diversi megabyte, così gli upload grandi non devono essere caricati interamente in memoria.",
+          "Gli account gratuiti possono allegare file fino a 25 MB; gli account Premium supportano payload molto più grandi, fino a 1 GB per file. In ogni caso, ai nostri server arriva solo testo cifrato.",
+          "L’implementazione usa **AES-GCM** (Authenticated Encryption with Associated Data), che offre sia confidenzialità sia integrità:",
+        ],
+        bullets: [
+          "**Confidenzialità**: il payload è illeggibile senza la chiave.",
+          "**Integrità**: manomissioni del testo cifrato a riposo vengono rilevate e rifiutate durante la decifratura lato client.",
+          "Quando è attiva la protezione con password, viene generata una chiave derivata dalla password usando algoritmi memory-hard come **Argon2id**, rendendo impraticabile il brute force.",
+        ],
+      },
+      {
+        title: "Quali metadati restano visibili",
+        level: "primary",
+        paragraphs: [
+          "Un’architettura di sicurezza rigorosa deve riconoscere i propri limiti. La cifratura nel browser protegge il **contenuto** dei file, ma alcuni metadati restano visibili alla rete e al servizio:",
+        ],
+        bullets: [
+          "Timestamp di upload e download.",
+          "Dimensione approssimativa del payload cifrato.",
+          "Scadenza, limiti di visualizzazione e finestre di accesso ai file.",
+          "Indirizzo IP del destinatario durante il download, visibile al server web che instrada la richiesta.",
+        ],
+        callout:
+          "I sistemi orientati alla privacy minimizzano i metadati dove possibile, ma nessun servizio web può eliminarli del tutto. PrivateNote tratta i metadati con la stessa disciplina di conservazione dei payload cifrati: vengono eliminati quando una nota scade o viene cancellata.",
+      },
+      {
+        title: "I compromessi della vera privacy",
+        level: "primary",
+        paragraphs: ["La cifratura nel browser offre massima privacy del contenuto, ma comporta compromessi intenzionali:"],
+        bullets: [
+          "**Nessuna scansione malware lato server**: poiché il server non può leggere il file, non può scannerizzarlo per virus. Devi fidarti del mittente.",
+          "**Nessuna anteprima generata dal server**: miniature e anteprime dei documenti vengono renderizzate localmente nel browser del destinatario dopo la decifratura, non sul server.",
+          "**Nessun recupero di password o chiave**: se perdi il link o la chiave di cifratura, il provider non può recuperare il file. Non esiste “Password dimenticata” per dati a cui l’host non può accedere.",
+        ],
+      },
+      {
+        title: "Scegliere il servizio giusto",
+        level: "primary",
+        paragraphs: [
+          "Non ogni trasferimento file richiede una cifratura rigorosa nel browser. Foto delle vacanze condivise con la famiglia possono andare bene anche con la sola cifratura di trasporto.",
+          "Se stai condividendo proprietà intellettuale, accordi legali o dati personali sensibili, poniti una domanda architetturale:",
+          "**Il servizio riceve il mio file originale o solo una versione cifrata?**",
+          "Questa singola distinzione determina chi può tecnicamente accedere ai tuoi dati, non solo oggi, ma anche mentre policy aziendali, proprietà e leggi sulla privacy evolvono nel tempo.",
+        ],
+      },
+    ],
+    closingTitle: "Condividi file senza consegnare testo in chiaro al server",
+    closingBody:
+      "Il trasferimento sicuro di file di PrivateNote usa lo stesso modello di cifratura nel browser delle nostre note effimere: cifra localmente, carica testo cifrato, condividi la chiave nel frammento URL e fai scadere l’accesso alle tue condizioni.",
+    ctaLabel: "Prova il trasferimento sicuro di file",
+    relatedReading: "Letture correlate",
+  },
+  de: encryptedVsSecureFileSharingDe,
+  es: encryptedVsSecureFileSharingEs,
+  fr: encryptedVsSecureFileSharingFr,
+  hr: encryptedVsSecureFileSharingHr,
+  nl: encryptedVsSecureFileSharingNl,
+  pt: encryptedVsSecureFileSharingPt,
+  sr: encryptedVsSecureFileSharingSr,
 };
 
 export const EncryptedVsSecureFileSharingPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
   const fileTransferPath = localizedPath("/secure-file-transfer", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 mt-16 mb-24 sm:px-6">
-      <Link
-        href={blogPath}
-        className="mb-6 inline-flex items-center text-sm text-gray-600 transition-colors hover:text-primary dark:text-gray-400 dark:hover:text-primary"
-      >
-        <ArrowLeft className="mr-1 h-4 w-4" /> {t.blogBackToBlog}
-      </Link>
-
+    <BlogGuideArticle slug="encrypted-vs-secure-file-sharing">
       <article>
-        <header className="mb-14">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
-            {t.blogTagSecurity} · {t.blogTagCryptography}
-          </p>
-          <h1 className="mb-5 text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-            {t.blogEncryptedFileSharingTitle}
-          </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400">
-            {t.blogEncryptedFileSharingExcerpt}
-          </p>
+        <BlogPostHeader
+          slug="encrypted-vs-secure-file-sharing"
+          title={t.blogEncryptedFileSharingTitle}
+          subtitle={t.blogEncryptedFileSharingSubtitle}
+          excerpt={t.blogEncryptedFileSharingExcerpt}
+          titleClassName="mb-5 text-3xl leading-tight tracking-tight sm:text-4xl"
+          headerClassName="mb-14"
+        >
           <figure className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/80 shadow-sm dark:border-gray-800 dark:bg-gray-900/40">
             <img
               src={heroImagePath}
               alt="Illustration comparing plaintext cloud upload versus encrypting files in the browser before upload"
+              width={1000}
+              height={666}
               className="mx-auto h-auto w-full object-contain"
-              loading="lazy"
             />
           </figure>
-        </header>
+        </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="encrypted-vs-secure-file-sharing" />
 
         <div className="space-y-7">
           {article.intro.map((paragraph, index) => (
@@ -417,30 +563,8 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
           </Link>
         </div>
 
-        <div className="mt-14 border-t border-gray-200 pt-10 dark:border-gray-800">
-          <p className="mb-5 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {article.relatedReading}
-          </p>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href={joinPublicPath(...blogPath.split("/").filter(Boolean), "one-time-secret-links")}
-                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-              >
-                {t.blogOneTimeLinksTitle}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={joinPublicPath(...blogPath.split("/").filter(Boolean), "myth-good-enough-security")}
-                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-              >
-                {t.blogGoodEnoughTitle}
-              </Link>
-            </li>
-          </ul>
-        </div>
+        <BlogPostCrossLinks slug="encrypted-vs-secure-file-sharing" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

@@ -1,42 +1,53 @@
 import type { Translations } from "@/utils/translation";
 import { buildDocumentTitle } from "@/utils/documentMeta";
+import { localizedSecurityGuideMeta } from "@/components/security-guides/locale";
+import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
+import { isBlogCategory } from "@shared/blogCategories";
+import { developerIntegrationMeta } from "@/pages/developers/integrationContent";
+import { isEnglishOnlyDeveloperIntegration } from "@shared/englishOnlyDeveloperIntegrations";
+import { isLocalizedSecurityGuideTopic } from "@shared/localizedSecurityGuides";
+import { isSupportedLanguage, NON_ENGLISH_LANGUAGE_CODES, type SupportedLanguage } from "@shared/supportedLanguages";
+import { blogCategoryDescription, blogCategoryLabel } from "@/utils/blogCategoryLabel";
 
-const LOCALE_PREFIXES = new Set(["de", "fr", "es", "it", "nl"]);
-const LOCALE_TITLE_LABELS: Record<string, string> = {
-  de: "Deutsch",
-  fr: "Français",
-  es: "Español",
-  it: "Italiano",
-  nl: "Nederlands",
-};
+const LOCALE_PREFIXES = new Set<string>(NON_ENGLISH_LANGUAGE_CODES);
 
 const SECURITY_GUIDE_META: Record<string, { title: string; description: string }> = {
-  vpn: {
-    title: "VPN Services Guide",
-    description:
-      "Learn how VPNs protect internet browsing, reduce exposure on public Wi-Fi, hide your IP address, and fit into a practical privacy setup.",
-  },
-  password: {
-    title: "Password Managers Guide",
-    description:
-      "Learn how password managers generate unique passwords, store them safely, reduce reuse, and make stronger account security practical.",
-  },
   messenger: {
     title: "Secure Messaging Guide",
     description:
-      "Compare safer messaging habits for private conversations, including end-to-end encryption, disappearing messages, metadata exposure, and secure sharing limits.",
+      "Signal is our top pick for default E2EE. Understand trade-offs with Telegram, WhatsApp, and Messenger — and when chat is the wrong channel for secrets.",
   },
   email: {
     title: "Secure Email Guide",
     description:
-      "Protect email communications from scanning, surveillance, account takeover, and data mining with encrypted providers and safer handling habits.",
+      "Proton Mail and Tuta offer zero-access encrypted email. Safer habits for aliases, phishing, and why secrets belong in one-time links — not inboxes.",
   },
   browser: {
     title: "Privacy Browsers Guide",
     description:
-      "Browse with less tracking by choosing privacy-focused browsers, blocking invasive trackers, limiting fingerprinting, and controlling cookies.",
+      "Brave blocks trackers by default; Tor Browser maximizes anonymity; Firefox hardens well. Compare privacy browsers and why Chrome and Edge need extra caution.",
   },
 };
+
+function languageFromDocumentPath(pathname: string): SupportedLanguage {
+  const first = normalizeDocumentPath(pathname).split("/").filter(Boolean)[0];
+  if (first && isSupportedLanguage(first) && first !== "en") return first;
+  return "en";
+}
+
+function metaForSecurityGuideTopic(
+  topic: string,
+  pathname: string,
+): { title: string; description: string } | null {
+  if (isLocalizedSecurityGuideTopic(topic)) {
+    const language = languageFromDocumentPath(pathname);
+    const { title, description } = localizedSecurityGuideMeta(topic, language);
+    return { title: buildDocumentTitle(title), description };
+  }
+  const guide = SECURITY_GUIDE_META[topic];
+  if (!guide) return null;
+  return { title: buildDocumentTitle(guide.title), description: guide.description };
+}
 
 const AUTH_META_DESCRIPTIONS = {
   signIn:
@@ -66,35 +77,106 @@ function notFoundDocumentMeta(t: Translations): { title: string; description: st
   };
 }
 
-function withLocaleTitleLabel(
-  meta: { title: string; description: string },
-  locale: string | undefined,
-): { title: string; description: string } {
-  const label = locale ? LOCALE_TITLE_LABELS[locale] : undefined;
-  if (!label) return meta;
-
-  const suffix = " · PrivateNote.ai";
-  if (meta.title.endsWith(suffix)) {
-    return {
-      ...meta,
-      title: `${meta.title.slice(0, -suffix.length)} (${label})${suffix}`,
-    };
-  }
-  return { ...meta, title: `${meta.title} (${label})` };
-}
-
 function blogSlugStaticMeta(
   slug: string,
   t: Translations,
 ): { title: string; description: string } | null {
   switch (slug) {
+    case "introduction-to-private-ai":
+      return {
+        title: buildDocumentTitle(t.blogIntroductionPrivateAiMetaTitle),
+        description: t.blogIntroductionPrivateAiMetaDescription,
+      };
+    case "social-media-bans-children-evidence":
+      return {
+        title: buildDocumentTitle(t.blogSocialMediaBansMetaTitle),
+        description: t.blogSocialMediaBansMetaDescription,
+      };
+    case "how-to-share-a-password-securely":
+      return {
+        title: buildDocumentTitle(t.blogSharePasswordSecurelyMetaTitle),
+        description: t.blogSharePasswordSecurelyMetaDescription,
+      };
+    case "secrets-in-cicd-env-github-leaks":
+      return {
+        title: buildDocumentTitle(t.blogCicdEnvGithubSecretsMetaTitle),
+        description: t.blogCicdEnvGithubSecretsMetaDescription,
+      };
+    case "send-sensitive-documents-securely":
+      return {
+        title: buildDocumentTitle(t.blogSendSensitiveDocumentsMetaTitle),
+        description: t.blogSendSensitiveDocumentsMetaDescription,
+      };
+    case "how-to-share-ssh-keys-securely":
+      return {
+        title: buildDocumentTitle(t.blogShareSshKeysSecurelyMetaTitle),
+        description: t.blogShareSshKeysSecurelyMetaDescription,
+      };
+    case "android-iphone-rcs-end-to-end-encryption":
+      return {
+        title: buildDocumentTitle(t.blogRcsE2eEncryptionMetaTitle),
+        description: t.blogRcsE2eEncryptionMetaDescription,
+      };
+    case "google-drive-vs-one-time-encrypted-links":
+      return {
+        title: buildDocumentTitle(t.blogGoogleDriveVsOneTimeLinksMetaTitle),
+        description: t.blogGoogleDriveVsOneTimeLinksMetaDescription,
+      };
+    case "common-secret-handling-mistakes":
+      return {
+        title: buildDocumentTitle(t.blogCommonSecretHandlingMistakesMetaTitle),
+        description: t.blogCommonSecretHandlingMistakesMetaDescription,
+      };
+    case "mythos-ai-cryptanalysis-hawk":
+      return {
+        title: buildDocumentTitle(t.blogMythosAiCryptanalysisHawkMetaTitle),
+        description: t.blogMythosAiCryptanalysisHawkMetaDescription,
+      };
+    case "how-to-share-photos-securely":
+      return {
+        title: buildDocumentTitle(t.blogHowToSharePhotosSecurelyMetaTitle),
+        description: t.blogHowToSharePhotosSecurelyMetaDescription,
+      };
+    case "how-to-make-a-private-note":
+      return {
+        title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),
+        description: t.blogMakePrivateNoteMetaDescription,
+      };
+    case "crypto-seed-phrase-one-time-link":
+      return {
+        title: buildDocumentTitle(t.blogCryptoSeedMetaTitle),
+        description: t.blogCryptoSeedMetaDescription,
+      };
+    case "why-email-is-worst-for-secrets":
+      return {
+        title: buildDocumentTitle(t.blogEmailSecretsMetaTitle),
+        description: t.blogEmailSecretsMetaDescription,
+      };
+    case "chat-control-1-0-vote-explained":
+      return {
+        title: buildDocumentTitle(t.blogChatControl10VoteMetaTitle),
+        description: t.blogChatControl10VoteMetaDescription,
+      };
+    case "chat-control-europe-cryptographers":
+      return {
+        title: buildDocumentTitle(t.blogChatControlMetaTitle),
+        description: t.blogChatControlMetaDescription,
+      };
+    case "how-to-share-api-key-securely":
+      return {
+        title: buildDocumentTitle(t.blogApiKeySharingMetaTitle),
+        description: t.blogApiKeySharingMetaDescription,
+      };
     case "privacy-tools":
-      return { title: buildDocumentTitle(t.blogPrivacyTitle), description: t.blogPrivacyExcerpt };
+      return {
+        title: buildDocumentTitle(t.blogPrivacyMetaTitle),
+        description: t.blogPrivacyMetaDescription,
+      };
     case "myth-good-enough-security":
-      return { title: buildDocumentTitle(t.blogGoodEnoughTitle), description: t.blogGoodEnoughExcerpt };
+      return { title: buildDocumentTitle(t.blogGoodEnoughMetaTitle), description: t.blogGoodEnoughExcerpt };
     case "how-we-generate-passwords":
       return {
-        title: buildDocumentTitle(t.blogPasswordTitle),
+        title: buildDocumentTitle(t.blogPasswordMetaTitle),
         description: t.blogPasswordMetaDescription,
       };
     case "workplace-texts-private-note":
@@ -104,7 +186,7 @@ function blogSlugStaticMeta(
       };
     case "privatenote-for-developers":
       return {
-        title: buildDocumentTitle(t.blogDevelopersTitle),
+        title: buildDocumentTitle(t.blogDevelopersMetaTitle),
         description: t.blogDevelopersExcerpt,
       };
     case "privatenote-codex":
@@ -127,9 +209,32 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogEncryptedFileSharingMetaTitle),
         description: t.blogEncryptedFileSharingMetaDescription,
       };
+    case "send-secret-message-without-account":
+      return {
+        title: buildDocumentTitle(t.blogSecretNoAccountMetaTitle),
+        description: t.blogSecretNoAccountMetaDescription,
+      };
+    case "secrets-never-send-in-chat":
+      return {
+        title: buildDocumentTitle(t.blogChatSecretsMetaTitle),
+        description: t.blogChatSecretsMetaDescription,
+      };
+    case "what-is-end-to-end-encryption":
+      return {
+        title: buildDocumentTitle(t.blogE2eeDefinitionMetaTitle),
+        description: t.blogE2eeDefinitionMetaDescription,
+      };
     default:
       return null;
   }
+}
+
+function titleFromHeroParts(prefix: string, accent: string): string {
+  const accentStartsLowercase =
+    accent.length > 0 && accent[0] === accent[0].toLowerCase() && /[a-z\u00df\u00e0-\u00ff]/i.test(accent[0]!);
+  const prefixEndsWithLinker = /\b(?:de|par|durch|di|por|van)$/i.test(prefix.trim());
+  const compound = accentStartsLowercase && !prefixEndsWithLinker;
+  return buildDocumentTitle(compound ? `${prefix}${accent}` : `${prefix} ${accent}`);
 }
 
 function pageMetaForPublicPage(rest: string, t: Translations): { title: string; description: string } | null {
@@ -141,9 +246,8 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "secure-file-transfer":
       return {
-        title: buildDocumentTitle("Secure File Transfer"),
-        description:
-          "Share encrypted files and folders with PrivateNote. Folders are zipped locally, then encrypted before upload.",
+        title: buildDocumentTitle(t.documentMetaSecureFileTransferTitle),
+        description: t.documentMetaSecureFileTransferDescription,
       };
     case "privacy-tools":
       return {
@@ -152,12 +256,12 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "security-resources":
       return {
-        title: buildDocumentTitle(`${t.securityHeroPrefix} ${t.securityHeroAccent}`),
+        title: titleFromHeroParts(t.securityHeroPrefix, t.securityHeroAccent),
         description: t.securityHeroSubtitle,
       };
     case "how-it-works":
       return {
-        title: buildDocumentTitle(`${t.howHeroPrefix} ${t.howHeroAccent}`),
+        title: titleFromHeroParts(t.howHeroPrefix, t.howHeroAccent),
         description: t.documentMetaHowItWorksDescription,
       };
     case "developers":
@@ -206,14 +310,45 @@ function metaForBlogSubpath(slug: string, t: Translations): { title: string; des
 }
 
 /** Inner path after locale prefix, e.g. `password-generator` or `blog/my-slug`. */
-function metaForLocalizedRest(rest: string, t: Translations): { title: string; description: string } | null {
+function metaForLocalizedRest(
+  rest: string,
+  t: Translations,
+  pathname: string,
+): { title: string; description: string } | null {
   if (rest === "blog") {
     return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
   }
   if (rest.startsWith("blog/")) {
-    const slug = rest.slice("blog/".length);
-    if (!slug || slug.includes("/")) return null;
+    const slugFromUrl = rest.slice("blog/".length);
+    const categoryMatch = slugFromUrl.match(/^category\/([^/]+)$/);
+    if (categoryMatch && isBlogCategory(categoryMatch[1]!)) {
+      const category = categoryMatch[1]!;
+      return {
+        title: buildDocumentTitle(`${blogCategoryLabel(category, t)} · ${t.blog}`),
+        description: blogCategoryDescription(category, t),
+      };
+    }
+    if (!slugFromUrl || slugFromUrl.includes("/")) return null;
+    const slug = resolveCanonicalBlogSlug(slugFromUrl) ?? slugFromUrl;
     return metaForBlogSubpath(slug, t);
+  }
+  if (rest.startsWith("security-guides/")) {
+    const topic = rest.slice("security-guides/".length);
+    if (!topic.includes("/")) {
+      return metaForSecurityGuideTopic(topic, pathname);
+    }
+  }
+  if (rest.startsWith("developers/")) {
+    const integrationId = rest.slice("developers/".length);
+    if (!integrationId.includes("/") && isEnglishOnlyDeveloperIntegration(integrationId)) {
+      const meta = developerIntegrationMeta(integrationId);
+      if (meta) {
+        return {
+          title: buildDocumentTitle(meta.title),
+          description: meta.description,
+        };
+      }
+    }
   }
   return pageMetaForPublicPage(rest, t);
 }
@@ -367,22 +502,36 @@ export function resolveDocumentMeta(
   }
 
   if (segments[0] === "security-guides" && segments[1] && segments.length === 2) {
-    const guide = SECURITY_GUIDE_META[segments[1]];
-    if (guide) {
-      return {
-        title: buildDocumentTitle(guide.title),
-        description: guide.description,
-      };
-    }
+    const guideMeta = metaForSecurityGuideTopic(segments[1], p);
+    if (guideMeta) return guideMeta;
     return {
       title: buildDocumentTitle(t.documentMetaSecurityGuideTitle),
       description: t.documentMetaSecurityGuideDescription,
     };
   }
 
+  if (segments[0] === "developers" && segments[1] && segments.length === 2) {
+    if (isEnglishOnlyDeveloperIntegration(segments[1])) {
+      const meta = developerIntegrationMeta(segments[1]);
+      if (meta) {
+        return {
+          title: buildDocumentTitle(meta.title),
+          description: meta.description,
+        };
+      }
+    }
+  }
+
   if (segments[0] === "blog") {
     if (segments.length === 1) {
       return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
+    }
+    if (segments.length === 3 && segments[1] === "category" && isBlogCategory(segments[2]!)) {
+      const category = segments[2]!;
+      return {
+        title: buildDocumentTitle(`${blogCategoryLabel(category, t)} · ${t.blog}`),
+        description: blogCategoryDescription(category, t),
+      };
     }
     if (segments.length === 2 && segments[1]) {
       return metaForBlogSubpath(segments[1], t);
@@ -392,9 +541,9 @@ export function resolveDocumentMeta(
 
   if (segments.length >= 2 && LOCALE_PREFIXES.has(segments[0])) {
     const rest = segments.slice(1).join("/");
-    const localized = metaForLocalizedRest(rest, t);
-    if (localized) return withLocaleTitleLabel(localized, segments[0]);
-    return withLocaleTitleLabel(notFoundDocumentMeta(t), segments[0]);
+    const localized = metaForLocalizedRest(rest, t, p);
+    if (localized) return localized;
+    return notFoundDocumentMeta(t);
   }
 
   if (segments.length === 1) {

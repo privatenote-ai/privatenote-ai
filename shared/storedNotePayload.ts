@@ -11,6 +11,7 @@ import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   isNoteFileAccessWindowSeconds,
 } from "./noteFileAccess.ts";
+import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
@@ -63,6 +64,7 @@ export interface ParsedStoredNoteCiphertext {
   keyDerivation?: typeof NOTE_KEY_DERIVATION_HKDF_ROOT_V2;
   attachment?: StoredNoteAttachment;
   fileAccessWindowSeconds?: number;
+  readerLanguage?: SupportedLanguage;
 }
 
 function decodeJsonAad(value: string): Record<string, unknown> | null {
@@ -315,6 +317,12 @@ export function parseStoredNoteCiphertextForReveal(
   }
   if (keyDerivation) {
     ciphertext.keyDerivation = keyDerivation;
+  }
+  if (typeof o.readerLanguage === "string") {
+    if (!isSupportedLanguage(o.readerLanguage)) return null;
+    ciphertext.readerLanguage = o.readerLanguage;
+  } else if (o.readerLanguage != null) {
+    return null;
   }
   const attachment = parseStoredNoteAttachmentForNote(o.attachment, noteId);
   if (o.attachment != null && !attachment) return null;

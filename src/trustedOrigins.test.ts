@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   getSessionCookieKindForRequest,
+  isChromeExtensionOrigin,
   isPagesPreviewBrowserOrigin,
   isTrustedBrowserOrigin,
   isWebAuthnRpAllowedOrigin,
@@ -54,6 +55,16 @@ describe("isTrustedBrowserOrigin", () => {
 
   it("rejects lookalike registrable-style hosts", () => {
     assert.equal(isTrustedBrowserOrigin("https://evilprivatenote.ai"), false);
+  });
+
+  it("allows Chrome extension origins", () => {
+    assert.equal(isChromeExtensionOrigin("chrome-extension://abcdefghijklmnop"), true);
+    assert.equal(isTrustedBrowserOrigin("chrome-extension://abcdefghijklmnop"), true);
+    assert.equal(isChromeExtensionOrigin("https://privatenote.ai"), false);
+  });
+
+  it("does not allow Chrome extension origins for WebAuthn rpID selection", () => {
+    assert.equal(isWebAuthnRpAllowedOrigin("chrome-extension://abcdefghijklmnop"), false);
   });
 });
 

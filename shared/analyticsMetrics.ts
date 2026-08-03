@@ -13,6 +13,8 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     aiEnhancedNotes: 0,
     blogViews: {},
     referrerCounts: {},
+    creationSourceCounts: {},
+    creationEntryPointCounts: {},
     averageExpirationDays: 0,
     expiryRangeDistribution: {
       oneHourOrLess: 0,
@@ -42,6 +44,15 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     cloudAiUsed: 0,
     countryDistribution: {},
     languageDistribution: {},
+    fileSharePageViews: 0,
+    passwordSharePageViews: 0,
+    notesWithFileAttachment: 0,
+    fileSizeBucketDistribution: {
+      under5mb: 0,
+      from5to15mb: 0,
+      from15to25mb: 0,
+      over25mb: 0,
+    },
   };
 }
 
@@ -55,6 +66,8 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     ...metrics,
     blogViews: metrics.blogViews || {},
     referrerCounts: metrics.referrerCounts || {},
+    creationSourceCounts: metrics.creationSourceCounts || {},
+    creationEntryPointCounts: metrics.creationEntryPointCounts || {},
     countryDistribution: metrics.countryDistribution || {},
     languageDistribution: metrics.languageDistribution || {},
     expiryRangeDistribution: {
@@ -68,6 +81,13 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     contentLengthDistribution: {
       ...base.contentLengthDistribution,
       ...(metrics.contentLengthDistribution || {}),
+    },
+    fileSharePageViews: metrics.fileSharePageViews ?? 0,
+    passwordSharePageViews: metrics.passwordSharePageViews ?? 0,
+    notesWithFileAttachment: metrics.notesWithFileAttachment ?? 0,
+    fileSizeBucketDistribution: {
+      ...base.fileSizeBucketDistribution!,
+      ...(metrics.fileSizeBucketDistribution || {}),
     },
   };
 }
@@ -88,6 +108,8 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
     averageExpirationDays: totalNotes > 0 ? totalExpirationDays / totalNotes : 0,
     blogViews: { ...base.blogViews },
     referrerCounts: { ...(base.referrerCounts || {}) },
+    creationSourceCounts: { ...(base.creationSourceCounts || {}) },
+    creationEntryPointCounts: { ...(base.creationEntryPointCounts || {}) },
     countryDistribution: { ...(base.countryDistribution || {}) },
     languageDistribution: { ...(base.languageDistribution || {}) },
     notesFailedToView: base.notesFailedToView + add.notesFailedToView,
@@ -116,6 +138,15 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
       medium: base.contentLengthDistribution.medium + add.contentLengthDistribution.medium,
       long: base.contentLengthDistribution.long + add.contentLengthDistribution.long,
     },
+    fileSharePageViews: (base.fileSharePageViews ?? 0) + (add.fileSharePageViews ?? 0),
+    passwordSharePageViews: (base.passwordSharePageViews ?? 0) + (add.passwordSharePageViews ?? 0),
+    notesWithFileAttachment: (base.notesWithFileAttachment ?? 0) + (add.notesWithFileAttachment ?? 0),
+    fileSizeBucketDistribution: {
+      under5mb: (base.fileSizeBucketDistribution?.under5mb ?? 0) + (add.fileSizeBucketDistribution?.under5mb ?? 0),
+      from5to15mb: (base.fileSizeBucketDistribution?.from5to15mb ?? 0) + (add.fileSizeBucketDistribution?.from5to15mb ?? 0),
+      from15to25mb: (base.fileSizeBucketDistribution?.from15to25mb ?? 0) + (add.fileSizeBucketDistribution?.from15to25mb ?? 0),
+      over25mb: (base.fileSizeBucketDistribution?.over25mb ?? 0) + (add.fileSizeBucketDistribution?.over25mb ?? 0),
+    },
   };
 
   for (const [slug, views] of Object.entries(add.blogViews)) {
@@ -123,6 +154,13 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
   }
   for (const [ref, count] of Object.entries(add.referrerCounts || {})) {
     merged.referrerCounts[ref] = (merged.referrerCounts[ref] || 0) + count;
+  }
+  for (const [source, count] of Object.entries(add.creationSourceCounts || {})) {
+    merged.creationSourceCounts[source] = (merged.creationSourceCounts[source] || 0) + count;
+  }
+  for (const [entryPoint, count] of Object.entries(add.creationEntryPointCounts || {})) {
+    merged.creationEntryPointCounts[entryPoint] =
+      (merged.creationEntryPointCounts[entryPoint] || 0) + count;
   }
   for (const [country, count] of Object.entries(add.countryDistribution || {})) {
     merged.countryDistribution[country] = (merged.countryDistribution[country] || 0) + count;

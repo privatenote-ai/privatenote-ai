@@ -52,10 +52,47 @@ Default environment:
 Runs:
 
 ```bash
-npx wrangler dev --local --ip 0.0.0.0 --port 8787 --persist-to /data/wrangler
+npx wrangler dev --config wrangler.local.toml --local --ip 0.0.0.0 --port 8787 --persist-to /data/wrangler
 ```
 
 The `/data/wrangler` path is backed by the `privatenote_wrangler_state` Docker volume.
+
+### Note create fails with “SQL is not enabled for this Durable Object class”
+
+Local Wrangler must register `SecureNoteStorageSql` with `new_sqlite_classes` (see `wrangler.local.toml`). Production uses `wrangler.toml` without that migration to avoid deploy error 10074.
+
+Stop the running API first (Ctrl+C on `npm run dev`). Reset persisted local state, then restart:
+
+```bash
+# bare-metal local dev (one command — stops :8787, clears state, restarts)
+npm run dev:fresh
+
+# or manually
+npm run dev:reset-local-state
+npm run dev
+
+# Docker self-host
+npm run self-host:clean
+npm run self-host:up
+```
+
+### CLI against local API
+
+The CLI requires HTTPS by default. For the local HTTP API (`http://localhost:8787`), add `--insecure`:
+
+```bash
+echo 'sk-live-demo-replace-me' | npx privatenote-cli \
+  --insecure --api-base-url http://localhost:8787 \
+  --expire 1h --output-url-only
+```
+
+`wrangler.local.toml` sets `LOCAL_DEV=1` so note reserve uses Miniflare KV instead of the EU D1 KV shim (which needs a migrated local D1).
+
+Against production (default), no flags needed:
+
+```bash
+echo 'sk-live-demo-replace-me' | npx privatenote-cli --expire 1h --output-url-only
+```
 
 ## Configuration
 

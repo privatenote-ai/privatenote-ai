@@ -1,6 +1,6 @@
 import { escapeHtml } from "./escapeHtml.ts";
 
-export type AuthEmailLocale = "en" | "de" | "fr" | "es";
+export type AuthEmailLocale = "en" | "de" | "fr" | "es" | "nl";
 export type MagicLinkEmailPurpose = "default" | "file_attach";
 
 export const MAGIC_LINK_TTL_MINUTES = 10;
@@ -8,7 +8,7 @@ export const MAGIC_LINK_TTL_MINUTES = 10;
 export function normalizeAuthEmailLocale(raw: unknown): AuthEmailLocale {
   if (typeof raw !== "string") return "en";
   const v = raw.trim().toLowerCase();
-  return v === "de" || v === "fr" || v === "es" ? v : "en";
+  return v === "de" || v === "fr" || v === "es" || v === "nl" ? v : "en";
 }
 
 export function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailLocale {
@@ -19,6 +19,7 @@ export function detectAuthEmailLocale(request: Request, explicit?: unknown): Aut
   if (primary.startsWith("de")) return "de";
   if (primary.startsWith("fr")) return "fr";
   if (primary.startsWith("es")) return "es";
+  if (primary.startsWith("nl")) return "nl";
   return normalizedExplicit;
 }
 
@@ -76,15 +77,26 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       footer: "Notes privees chiffrees de bout en bout — seuls vous et vos destinataires pouvez les lire.",
     },
     es: {
-      subject: "Tu codigo de inicio de sesion de PrivateNote",
-      preheader: "Tu codigo y enlace caducan en 10 minutos.",
-      title: "Tu codigo de inicio de sesion de PrivateNote",
-      codeExpiry: "Este codigo caduca a los 10 minutos o si solicitas uno nuevo.",
-      linkAlternativeHeading: "O inicia sesion con un toque",
-      linkAlternativeBody: "Termina el inicio de sesion en {host} abajo.",
-      cta: "Iniciar sesion",
+      subject: "Tu código de inicio de sesión de PrivateNote",
+      preheader: "Tu código y enlace caducan en 10 minutos.",
+      title: "Tu código de inicio de sesión de PrivateNote",
+      codeExpiry: "Este código caduca a los 10 minutos o si solicitas uno nuevo.",
+      linkAlternativeHeading: "O inicia sesión con un toque",
+      linkAlternativeBody: "Completa el inicio de sesión en {host} con el botón de abajo.",
+      cta: "Iniciar sesión",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
-      footer: "Notas privadas cifradas de extremo a extremo — solo tu y tus destinatarios pueden leerlas.",
+      footer: "Notas privadas cifradas de extremo a extremo — solo tú y tus destinatarios pueden leerlas.",
+    },
+    nl: {
+      subject: "Je PrivateNote-inlogcode",
+      preheader: "Je inlogcode en link verlopen over 10 minuten.",
+      title: "Je PrivateNote-inlogcode",
+      codeExpiry: "Deze code verloopt na 10 minuten of als je een nieuwe code aanvraagt.",
+      linkAlternativeHeading: "Of log in met één tik",
+      linkAlternativeBody: "Rond het inloggen af op {host} hieronder.",
+      cta: "Inloggen",
+      ignore: "Als je deze e-mail niet hebt aangevraagd, kun je hem negeren.",
+      footer: "End-to-end versleutelde privénotities — alleen jij en je ontvangers kunnen ze lezen.",
     },
   },
   file_attach: {
@@ -122,15 +134,26 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       footer: "Notes chiffrees de bout en bout et partage de fichiers.",
     },
     es: {
-      subject: "Tu codigo de inicio de sesion de PrivateNote",
-      preheader: "Inicia sesion para adjuntar archivos cifrados.",
-      title: "Tu codigo de inicio de sesion de PrivateNote",
-      codeExpiry: "Este codigo caduca a los 10 minutos o si solicitas uno nuevo.",
-      linkAlternativeHeading: "O inicia sesion con un toque",
+      subject: "Tu código de inicio de sesión de PrivateNote",
+      preheader: "Inicia sesión para adjuntar archivos cifrados — el código y el enlace caducan en 10 minutos.",
+      title: "Tu código de inicio de sesión de PrivateNote",
+      codeExpiry: "Este código caduca a los 10 minutos o si solicitas uno nuevo.",
+      linkAlternativeHeading: "O inicia sesión con un toque",
       linkAlternativeBody: "Vuelve a {host} para adjuntar archivos cifrados.",
-      cta: "Iniciar sesion",
+      cta: "Iniciar sesión",
       ignore: "Si no solicitaste este correo, puedes ignorarlo sin problema.",
-      footer: "Notas cifradas de extremo a extremo y archivos compartidos.",
+      footer: "Notas cifradas de extremo a extremo y envío de archivos.",
+    },
+    nl: {
+      subject: "Je PrivateNote-inlogcode",
+      preheader: "Log in om versleutelde bestanden bij te voegen — code en link verlopen over 10 minuten.",
+      title: "Je PrivateNote-inlogcode",
+      codeExpiry: "Deze code verloopt na 10 minuten of als je een nieuwe code aanvraagt.",
+      linkAlternativeHeading: "Of log in met één tik",
+      linkAlternativeBody: "Ga terug naar {host} om versleutelde bestanden bij te voegen.",
+      cta: "Inloggen",
+      ignore: "Als je deze e-mail niet hebt aangevraagd, kun je hem negeren.",
+      footer: "End-to-end versleutelde notities en veilig bestanden delen.",
     },
   },
 };

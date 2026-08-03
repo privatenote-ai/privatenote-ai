@@ -3,6 +3,8 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
+import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
   NOTE_FILE_AES_GCM_TAG_BYTES,
   noteFileLimitBytesForAccount,
@@ -165,8 +167,8 @@ const NOTE_FILE_STORAGE_CLEANUP = {
 };
 
 const SESSION_POLICY = {
-  TTL_SECONDS: 60 * 60 * 24 * 14, // 14 days sliding
-  ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 90, // 90 days absolute
+  TTL_SECONDS: 60 * 60 * 24 * 7, // 7 days sliding
+  ABSOLUTE_TTL_SECONDS: 60 * 60 * 24 * 30, // 30 days absolute
   ROTATE_SECONDS: 60 * 60 * 24, // 24 hours
 };
 
@@ -519,11 +521,11 @@ function normalizeMagicEmailCode(raw: unknown): string | null {
   return digits.length === 6 ? digits : null;
 }
 
-type AuthEmailLocale = "en" | "de" | "fr" | "es";
+type AuthEmailLocale = "en" | "de" | "fr" | "es" | "nl";
 function normalizeAuthEmailLocale(raw: unknown): AuthEmailLocale {
   if (typeof raw !== "string") return "en";
   const v = raw.trim().toLowerCase();
-  return v === "de" || v === "fr" || v === "es" ? v : "en";
+  return v === "de" || v === "fr" || v === "es" || v === "nl" ? v : "en";
 }
 
 function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailLocale {
@@ -534,7 +536,15 @@ function detectAuthEmailLocale(request: Request, explicit?: unknown): AuthEmailL
   if (primary.startsWith("de")) return "de";
   if (primary.startsWith("fr")) return "fr";
   if (primary.startsWith("es")) return "es";
+  if (primary.startsWith("nl")) return "nl";
   return normalizedExplicit;
+}
+
+function pickAuthEmailCopy<T>(
+  copy: Partial<Record<AuthEmailLocale, T>> & { en: T },
+  locale: AuthEmailLocale,
+): T {
+  return copy[locale] ?? copy.en;
 }
 
 async function sendMagicSignInOtpEmail(
@@ -543,7 +553,7 @@ async function sendMagicSignInOtpEmail(
   code: string,
   locale: AuthEmailLocale = "en",
 ): Promise<{ ok: boolean; error?: string }> {
-  const copy = {
+  const copy = pickAuthEmailCopy({
     en: {
       subject: "Your PrivateNote sign-in code",
       title: "PrivateNote sign-in code",
@@ -572,7 +582,14 @@ async function sendMagicSignInOtpEmail(
       hint: "Introduce este codigo en la pagina despues de pulsar Continuar inicio de sesion.",
       ignore: "Si no solicitaste esto, puedes ignorar este correo.",
     },
-  }[locale];
+    nl: {
+      subject: "Je PrivateNote-inlogcode",
+      title: "PrivateNote-inlogcode",
+      lead: "Je bevestigingscode is:",
+      hint: "Voer deze code in op de pagina nadat je op Doorgaan met inloggen hebt gedrukt.",
+      ignore: "Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.",
+    },
+  }, locale);
   const subject = copy.subject;
   const text = [copy.title, "", `${copy.lead} ${code}`, "", copy.hint, "", copy.ignore].join("\n");
   const html = [
@@ -626,7 +643,7 @@ async function sendMagicLinkEmail(
     return { ok: false, error: "AUTH_EMAIL_FROM not configured" };
   }
 
-  const copy = {
+  const copy = pickAuthEmailCopy({
     en: {
       subject: "Continue to PrivateNote",
       title: "Continue to PrivateNote",
@@ -680,7 +697,19 @@ async function sendMagicLinkEmail(
       footer:
         "Crea, comparte y destruye notas privadas de forma segura — solo el destinatario puede leerlas.",
     },
-  }[locale];
+    nl: {
+      subject: "Doorgaan naar PrivateNote",
+      title: "Doorgaan naar PrivateNote",
+      intro: "Klik op de beveiligde link hieronder om door te gaan:",
+      security:
+        "Log voor de veiligheid in op dezelfde browser en hetzelfde apparaat waar je de link hebt geopend.",
+      expiry: "Deze link verloopt automatisch en kan alleen voor dit inlogverzoek worden gebruikt.",
+      cta: "Doorgaan naar PrivateNote",
+      ignore: "Als je deze e-mail niet hebt aangevraagd, kun je hem negeren.",
+      footer:
+        "Maak, deel en vernietig privénotities veilig — alleen de ontvanger kan ze lezen.",
+    },
+  }, locale);
   const subject = copy.subject;
   const text = [
     copy.title,
@@ -705,7 +734,9 @@ async function sendMagicLinkEmail(
         ? "Aus Sicherheitsgruenden schliessen Sie die Anmeldung im <strong>selben Browser und auf demselben Geraet</strong> ab, auf dem Sie den Link geoeffnet haben."
         : locale === "fr"
           ? "Pour votre securite, terminez la connexion dans le <strong>meme navigateur et sur le meme appareil</strong> que lors de l ouverture du lien."
-          : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
+          : locale === "nl"
+            ? "Log voor de veiligheid in op de <strong>zelfde browser en hetzelfde apparaat</strong> waar je de link hebt geopend."
+            : "Por seguridad, completa el inicio de sesion en el <strong>mismo navegador y dispositivo</strong> donde abriste el enlace.";
   const html = [
     "<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #111827; max-width: 480px; margin: 0; padding: 0 16px 16px; -webkit-text-size-adjust: 100%; box-sizing: border-box;\">",
     `  <div style="font-size: 18px; font-weight: 700; margin: 0 0 6px; line-height: 1.25;">${copy.title}</div>`,
@@ -2864,7 +2895,7 @@ async function schedulePendingAccountDeletion(
   const webOrigin = getMagicLinkOrigin(env, request);
   const cancelUrl = `${webOrigin}/api/auth/account/delete/cancel?token=${encodeURIComponent(cancelToken)}`;
   const locale = detectAuthEmailLocale(request);
-  const pendingDeletionCopy = {
+  const pendingDeletionCopy = pickAuthEmailCopy({
     en: {
       subject: "Account deletion scheduled (48 hours) - PrivateNote",
       title: "Account deletion scheduled",
@@ -2901,7 +2932,16 @@ async function schedulePendingAccountDeletion(
       cta: "Revisar cancelacion",
       body4: "Si no haces nada, la eliminacion se completara automaticamente despues del periodo de espera.",
     },
-  }[locale];
+    nl: {
+      subject: "Accountverwijdering gepland (48 uur) - PrivateNote",
+      title: "Accountverwijdering gepland",
+      body1: "De verwijdering van je PrivateNote-account is aangevraagd via een back-up e-mailverificatie.",
+      body2: "Je account staat gepland voor permanente verwijdering over 48 uur.",
+      body3: "Als jij dit niet was, annuleer de verwijdering meteen:",
+      cta: "Annulering bekijken",
+      body4: "Als je niets doet, wordt de verwijdering na de wachttijd automatisch voltooid.",
+    },
+  }, locale);
 
   const emailResult = await sendEmail(env, {
     to: userEmail,
@@ -3676,7 +3716,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       const passkeyDevice = credentialMetadata.deviceInfo || "this device";
       const passkeyType = getPasskeyLabel(transports || null);
       const securityUrl = `${getMagicLinkOrigin(env, request)}/account/security`;
-      const passkeyAddedCopy = {
+      const passkeyAddedCopy = pickAuthEmailCopy({
         en: {
           subject: "Passkey added to your PrivateNote account",
           title: "Passkey added",
@@ -3721,7 +3761,18 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           cta: "Abrir configuracion de seguridad",
           line4: "Si algo parece incorrecto, protege tu cuenta de inmediato y contacta a",
         },
-      }[locale];
+        nl: {
+          subject: "Passkey toegevoegd aan je PrivateNote-account",
+          title: "Passkey toegevoegd",
+          line1: "Er is een nieuwe passkey toegevoegd aan je PrivateNote-account.",
+          typeLabel: "Passkey-type:",
+          deviceLabel: "Apparaat:",
+          line2: "Als jij dit was, hoef je niets te doen.",
+          line3: "Als jij dit niet was, controleer je passkeys in Beveiligingsinstellingen en verwijder wat je niet herkent.",
+          cta: "Beveiligingsinstellingen openen",
+          line4: "Als iets niet klopt, beveilig je account meteen en neem contact op met",
+        },
+      }, locale);
       const emailResult = await sendEmail(env, {
         to: accountEmail,
         subject: passkeyAddedCopy.subject,
@@ -4671,7 +4722,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       const recoveryEmailWebOrigin = getMagicLinkOrigin(env, request);
       const recoveryEmailLogoUrl = `${recoveryEmailWebOrigin}/brand/privateNote-logo-lockup.png`;
       const locale = detectAuthEmailLocale(request);
-      const recoveryCodesCopy = {
+      const recoveryCodesCopy = pickAuthEmailCopy({
         en: {
           subject: "Recovery codes regenerated - PrivateNote",
           title: "Recovery codes regenerated",
@@ -4708,7 +4759,16 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
           li2: "Agrega o verifica tu passkey",
           footer: "Esta es una notificacion de seguridad automatica.",
         },
-      }[locale];
+        nl: {
+          subject: "Herstelcodes opnieuw gegenereerd - PrivateNote",
+          title: "Herstelcodes opnieuw gegenereerd",
+          body1: "Je PrivateNote-herstelcodes zijn opnieuw gegenereerd. Je vorige ongebruikte codes werken niet meer.",
+          body2: "Als jij dit niet was, beveilig je account:",
+          li1: "Herroep andere sessies in Beveiligingsinstellingen",
+          li2: "Voeg een passkey toe of controleer je passkey",
+          footer: "Dit is een automatische beveiligingsmelding.",
+        },
+      }, locale);
       const emailResult = await sendEmail(env, {
         to: userEmail,
         subject: recoveryCodesCopy.subject,
@@ -5428,7 +5488,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     const webOrigin = getMagicLinkOrigin(env, request);
     const verifyUrl = `${webOrigin}/auth/email-change?token=${encodeURIComponent(token)}`;
     const locale = detectAuthEmailLocale(request);
-    const verifyEmailCopy = {
+    const verifyEmailCopy = pickAuthEmailCopy({
       en: {
         subject: "Verify your new email address - PrivateNote",
         title: "Verify your new email address",
@@ -5469,7 +5529,17 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expiry: "Este enlace vence en 1 hora.",
         ignore: "Si no solicitaste este cambio, ignora este correo y tu cuenta seguira sin cambios.",
       },
-    }[locale];
+      nl: {
+        subject: "Bevestig je nieuwe e-mailadres - PrivateNote",
+        title: "Bevestig je nieuwe e-mailadres",
+        body1: "Je hebt gevraagd het e-mailadres van je PrivateNote-account te wijzigen.",
+        body2:
+          "Open de link hieronder en druk daarna op Bevestig nieuw e-mailadres om de wijziging door te voeren (zo voorkom je dat geautomatiseerd linkscannen de update voltooit).",
+        cta: "Doorgaan naar verificatie",
+        expiry: "Deze link verloopt over 1 uur.",
+        ignore: "Als je deze wijziging niet hebt aangevraagd, negeer deze e-mail. Je account blijft ongewijzigd.",
+      },
+    }, locale);
 
     console.log(
       `[AUTH] Email change request: userId=${session.id}, currentEmail=${maskEmailForLog(normalizedCurrentEmail)}, newEmail=${maskEmailForLog(normalizedNewEmail)}`,
@@ -5860,7 +5930,7 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
     );
 
     const locale = detectAuthEmailLocale(request);
-    const deleteCodeCopy = {
+    const deleteCodeCopy = pickAuthEmailCopy({
       en: {
         subject: "Your account deletion confirmation code - PrivateNote",
         title: "Account deletion confirmation",
@@ -5893,7 +5963,15 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
         expiry: "Este codigo vence en 15 minutos y solo puede usarse una vez.",
         ignore: "Si no solicitaste esto, protege tu cuenta e ignora este correo.",
       },
-    }[locale];
+      nl: {
+        subject: "Je bevestigingscode voor accountverwijdering - PrivateNote",
+        title: "Accountverwijdering bevestigen",
+        body1: "Je hebt gevraagd je PrivateNote-account te verwijderen. Bevestig dat jij het bent door deze code in te voeren waar je de verwijdering bent gestart:",
+        codeLabel: "Bevestigingscode",
+        expiry: "Deze code verloopt over 15 minuten en kan maar een keer worden gebruikt.",
+        ignore: "Als je dit niet hebt aangevraagd, beveilig je account en negeer deze e-mail.",
+      },
+    }, locale);
 
     const emailResult = await sendEmail(env, {
       to: toEmail,
@@ -7309,6 +7387,30 @@ export async function reserveAccountFileStorageBytes(
       .bind(noteId, userId, encryptedSize)
       .run();
   } catch (error) {
+    // Concurrent chunk PUTs often race past the SELECT above; the loser hits the
+    // note_id PRIMARY KEY. Treat a matching reservation as success instead of 500.
+    const raced = await env.AUTH_DB.prepare(
+      "SELECT user_id, encrypted_size, status FROM account_file_storage_reservations WHERE note_id = ? LIMIT 1",
+    )
+      .bind(noteId)
+      .first<{ user_id: string; encrypted_size: number; status: string }>();
+    if (
+      raced &&
+      raced.user_id === userId &&
+      raced.status === "reserved" &&
+      raced.encrypted_size === encryptedSize
+    ) {
+      // Roll back the duplicate usage increment from this losing request.
+      await env.AUTH_DB.prepare(
+        `UPDATE account_file_storage_usage
+           SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
+         WHERE user_id = ?`,
+      )
+        .bind(encryptedSize, userId)
+        .run();
+      return { ok: true };
+    }
+
     await env.AUTH_DB.prepare(
       `UPDATE account_file_storage_usage
          SET used_bytes = max(0, used_bytes - ?), updated_at = datetime('now')
@@ -8110,6 +8212,20 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
 
+    // Drain the request body BEFORE any size/quota validation. Safari/WebKit reports
+    // an opaque "The network connection was lost" (masking the real HTTP status)
+    // whenever a Worker responds while the upload body is still streaming. Reading the
+    // body first guarantees the client sees real 4xx/5xx statuses so its retry and
+    // route-fallback logic can actually engage.
+    const encryptedBytes = await request.arrayBuffer();
+
+    // Safari fires one empty-body probe to warm the HTTP/2 connection before real
+    // chunks. Answer 204 so DevTools doesn't look like a failed upload.
+    const probeChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
+    if (encryptedBytes.byteLength === 0 && probeChunkSize === 0) {
+      return applyCorsHeaders(new Response(null, { status: 204 }), request);
+    }
+
     const premiumUserId = uploadAuth.premiumUserId;
     const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
@@ -8178,57 +8294,70 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
     }
-    const contentLength = Number(request.headers.get("Content-Length") ?? NaN);
-    if (Number.isFinite(contentLength) && contentLength !== encryptedChunkSize) {
-      return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
-    }
-
-    const encryptedBytes = await request.arrayBuffer();
     if (encryptedBytes.byteLength !== encryptedChunkSize) {
       return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
     }
 
     const chunkSha256Hex = sha256HexBytes(new Uint8Array(encryptedBytes));
     const chunkKey = uploadedChunkHashKey(chunkIndex);
-    const existingHash = reservation.uploadedChunkHashes?.[chunkKey];
-    if (existingHash) {
-      if (existingHash !== chunkSha256Hex) {
-        return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+
+    try {
+      // Re-read reservation so concurrent chunk PUTs merge hashes instead of
+      // last-write-wins wiping sibling chunk hashes.
+      const freshRaw = await env.NOTES_KV.get(getReservationKey(id));
+      const freshReservation = freshRaw
+        ? (JSON.parse(freshRaw) as NoteReservationRecord)
+        : reservation;
+      const existingHash = freshReservation.uploadedChunkHashes?.[chunkKey];
+      if (existingHash) {
+        if (existingHash !== chunkSha256Hex) {
+          return jsonResponse({ error: "Attachment chunk already uploaded" }, 409, request);
+        }
+        const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
+        if (
+          existingObject &&
+          existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
+          Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
+        ) {
+          return jsonResponse(
+            { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
+            200,
+            request,
+          );
+        }
       }
-      const existingObject = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, chunkIndex));
-      if (
-        existingObject &&
-        existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
-        Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
-      ) {
-        return jsonResponse(
-          { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
-          200,
-          request,
-        );
-      }
+
+      await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
+        httpMetadata: { contentType: "application/octet-stream" },
+        customMetadata: {
+          encryptedSize: String(encryptedTotalSize),
+          chunkIndex: String(chunkIndex),
+          chunkEncryptedSize: String(encryptedBytes.byteLength),
+          chunkSha256: chunkSha256Hex,
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      await persistNoteReservation(env, id, {
+        ...freshReservation,
+        uploadedChunkHashes: {
+          ...(freshReservation.uploadedChunkHashes ?? {}),
+          [chunkKey]: chunkSha256Hex,
+        },
+      });
+
+      return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
+    } catch (error) {
+      console.error(`[NOTE_FILES] Chunk upload failed for ${id}#${chunkIndex}:`, error);
+      return jsonResponse(
+        {
+          error: "file_chunk_upload_failed",
+          message: "Encrypted file chunk upload failed. Please retry.",
+        },
+        500,
+        request,
+      );
     }
-
-    await env.NOTE_FILES_R2.put(noteFileChunkObjectKey(id, chunkIndex), encryptedBytes, {
-      httpMetadata: { contentType: "application/octet-stream" },
-      customMetadata: {
-        encryptedSize: String(encryptedTotalSize),
-        chunkIndex: String(chunkIndex),
-        chunkEncryptedSize: String(encryptedBytes.byteLength),
-        chunkSha256: chunkSha256Hex,
-        createdAt: new Date().toISOString(),
-      },
-    });
-
-    await persistNoteReservation(env, id, {
-      ...reservation,
-      uploadedChunkHashes: {
-        ...(reservation.uploadedChunkHashes ?? {}),
-        [chunkKey]: chunkSha256Hex,
-      },
-    });
-
-    return jsonResponse({ ok: true, encryptedSize: encryptedBytes.byteLength }, 201, request);
   }
 
   if (noteFileChunkParams && method === "GET") {
@@ -8362,11 +8491,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
+    let attachmentPlaintextBytes: number | null = null;
+
     if (requestedId && requestBody?.attachment != null) {
       const reservation = await getNoteReservationRecord(env, requestedId);
       if (!reservation?.attachmentEncryptedSize || reservation.attachmentPlaintextSize == null) {
         return jsonResponse({ error: "Attachment upload was not initialized" }, 400, request);
       }
+      attachmentPlaintextBytes = reservation.attachmentPlaintextSize;
       if (!reservation.fileStorageUserId && !reservation.premiumUserId) {
         return jsonResponse(
           { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
@@ -8439,11 +8571,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "invalid attachment chunk metadata");
           return jsonResponse({ error: "Attachment chunks are invalid" }, 400, request);
         }
-        const expectedChunkHash = reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)];
-        if (!expectedChunkHash) {
-          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from reservation");
-          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
-        }
         const uploadedChunk = await env.NOTE_FILES_R2.head(noteFileChunkObjectKey(id, index));
         if (!uploadedChunk) {
           await cleanupNoteFileChunks(env, id, "missing attachment upload");
@@ -8454,7 +8581,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }
-        if (uploadedChunk.customMetadata?.chunkSha256 !== expectedChunkHash) {
+        const r2ChunkHash = uploadedChunk.customMetadata?.chunkSha256;
+        if (!r2ChunkHash) {
+          await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from R2");
+          return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
+        }
+        // Prefer reservation hash when present; fall back to R2 metadata so concurrent
+        // chunk PUTs that race on KV last-write-wins still finalize successfully.
+        const expectedChunkHash =
+          reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)] ?? r2ChunkHash;
+        if (r2ChunkHash !== expectedChunkHash) {
           await cleanupNoteFileChunks(env, id, "attachment chunk hash mismatch");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }
@@ -8504,12 +8640,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
         ? "cloud"
         : null;
+      const sanitizedCreationSource = sanitizeNoteCreationSource(requestBody?.creationSource);
+      const sanitizedCreationEntryPoint = sanitizeNoteCreationEntryPoint(requestBody?.creationEntryPoint);
       await storage.trackNoteCreation(noteForAnalytics, {
         aiEnhanced: aiMode,
         aiMode: sanitizedAiMode,
         referrer: sanitizedReferrer,
+        creationSource: sanitizedCreationSource,
+        creationEntryPoint: sanitizedCreationEntryPoint,
         country: country ?? null,
         language: sanitizedLang,
+        attachmentPlaintextBytes,
 	      });
 	    }
 
@@ -8920,17 +9061,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // No auth required — only accepts a fixed allow-list of event types.
   if (pathname === "/api/analytics/event" && method === "POST") {
     try {
-      const body = await request.json().catch(() => ({})) as { event?: unknown };
+      const body = await request.json().catch(() => ({})) as { event?: unknown; page?: unknown };
       const allowed = ["wrong_password", "qr_share"] as const;
       type AllowedEvent = typeof allowed[number];
       const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
         ? (body.event as AllowedEvent)
         : null;
-      if (!event) {
-        return jsonResponse({ message: "Invalid event type" }, 400, request);
+      if (event) {
+        storage.trackClientEvent(event).catch(() => {});
+        return jsonResponse({ ok: true }, 200, request);
       }
-      storage.trackClientEvent(event).catch(() => {});
-      return jsonResponse({ ok: true }, 200, request);
+      const pageAllowed = ["file-share", "password-share"] as const;
+      type AllowedPage = typeof pageAllowed[number];
+      const page = typeof body?.page === "string" && (pageAllowed as readonly string[]).includes(body.page)
+        ? (body.page as AllowedPage)
+        : null;
+      if (page) {
+        storage.trackPageView(page).catch(() => {});
+        return jsonResponse({ ok: true }, 200, request);
+      }
+      return jsonResponse({ message: "Invalid event type" }, 400, request);
     } catch {
       return jsonResponse({ message: "Bad request" }, 400, request);
     }

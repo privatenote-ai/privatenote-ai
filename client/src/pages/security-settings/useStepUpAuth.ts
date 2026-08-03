@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
 import { executeStepUp } from "./stepUp";
 import { toastStepUpFailure } from "./stepUpNotifications";
 
@@ -10,10 +11,11 @@ import { toastStepUpFailure } from "./stepUpNotifications";
  */
 export function useStepUpAuth() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   return useCallback(async () => {
     const r = await executeStepUp();
     if (r.ok) return true;
-    toastStepUpFailure(toast, r);
+    toastStepUpFailure(toast, r, t);
     return false;
-  }, [toast]);
+  }, [toast, t]);
 }

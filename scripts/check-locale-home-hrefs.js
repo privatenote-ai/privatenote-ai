@@ -5,29 +5,24 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const ORIGIN = "https://privatenote.ai";
+const LOCALE_CODES = ["de", "fr", "es", "it", "nl", "pt", "sr", "hr"];
 
 const HOME_FILES = [
   { file: "index.html", language: "en" },
-  { file: "de/index.html", language: "de" },
-  { file: "fr/index.html", language: "fr" },
-  { file: "es/index.html", language: "es" },
-  { file: "it/index.html", language: "it" },
-  { file: "nl/index.html", language: "nl" },
+  ...LOCALE_CODES.map((language) => ({ file: `${language}/index.html`, language })),
 ];
 
 const REQUIRED_HREFLANG = [
   { hrefLang: "en", href: `${ORIGIN}/` },
-  { hrefLang: "de", href: `${ORIGIN}/de/` },
-  { hrefLang: "fr", href: `${ORIGIN}/fr/` },
-  { hrefLang: "es", href: `${ORIGIN}/es/` },
-  { hrefLang: "it", href: `${ORIGIN}/it/` },
-  { hrefLang: "nl", href: `${ORIGIN}/nl/` },
+  ...LOCALE_CODES.map((code) => ({ hrefLang: code, href: `${ORIGIN}/${code}/` })),
   { hrefLang: "x-default", href: `${ORIGIN}/` },
 ];
 
 /** In <link> tags only — avoids matching route strings buried in bundled JS */
-const BAD_REL_LOCALE_ROOT =
-  /<link\b[^>]*\bhref=(["'])\/(de|fr|es|it|nl)\1[^>]*>/gi;
+const BAD_REL_LOCALE_ROOT = new RegExp(
+  `<link\\b[^>]*\\bhref=(["'])\\/(${LOCALE_CODES.join("|")})\\1[^>]*>`,
+  "gi",
+);
 
 const BAD_REL_ROOT_CANONICAL = /<link\b[^>]*\brel=["']canonical["'][^>]*\bhref=(["'])\/\1/i;
 
@@ -54,6 +49,20 @@ async function main() {
       const needle = `hreflang="${hrefLang}" href="${href}"`;
       if (!html.includes(needle)) {
         failures.push(`${file}: missing ${needle}`);
+      }
+    }
+
+    const ogChecks = [
+      ['property="og:title"', "og:title"],
+      ['property="og:description"', "og:description"],
+      ['property="og:image" content="https://privatenote.ai/og-image.png"', "og:image"],
+      ['property="og:image:width" content="1200"', "og:image:width"],
+      ['property="og:image:height" content="630"', "og:image:height"],
+      [`property="og:url" content="${canonicalHref}"`, "og:url"],
+    ];
+    for (const [needle, label] of ogChecks) {
+      if (!html.includes(needle)) {
+        failures.push(`${file}: missing ${label}`);
       }
     }
 

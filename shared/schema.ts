@@ -93,6 +93,10 @@ export interface DailyMetrics {
   aiEnhancedNotes: number;
   blogViews: Record<string, number>; // slug -> views
   referrerCounts: Record<string, number>; // sanitized referrer name -> note count
+  /** Client that created the note (web app, VS Code extension, Cursor extension). */
+  creationSourceCounts: Record<string, number>;
+  /** Page or flow where the note was started (home, password share, file share, extension). */
+  creationEntryPointCounts: Record<string, number>;
   averageExpirationDays: number;
   expiryRangeDistribution: {
     oneHourOrLess: number;
@@ -140,6 +144,32 @@ export interface DailyMetrics {
   countryDistribution: Record<string, number>;
   /** UI language active at note-creation time → count. */
   languageDistribution: Record<string, number>;
+
+  // --- Feature page views ---
+  /**
+   * Unique-ish daily visits to the "Share a file" page (`/secure-file-transfer`).
+   * Incremented once per page load (client fires a lightweight beacon). Not
+   * deduplicated per user — serves as a relative engagement signal only.
+   */
+  fileSharePageViews?: number;
+  /**
+   * Unique-ish daily visits to the "Share a password" page (`/password-generator`).
+   */
+  passwordSharePageViews?: number;
+
+  // --- File attachments ---
+  /** Notes created that included an encrypted file attachment. */
+  notesWithFileAttachment?: number;
+  /**
+   * Coarse plaintext file-size buckets (no exact sizes stored).
+   * Buckets match the free-tier limit (25 MB) for easy capacity analysis.
+   */
+  fileSizeBucketDistribution?: {
+    under5mb: number;    // < 5 MB
+    from5to15mb: number; // 5 MB – 14.99 MB
+    from15to25mb: number; // 15 MB – 24.99 MB
+    over25mb: number;    // ≥ 25 MB (premium)
+  };
 }
 
 export const insertAnalyticsSchema = createInsertSchema(analyticsData).omit({

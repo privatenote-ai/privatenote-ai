@@ -9,7 +9,7 @@
   "homepage": "https://privatenote.ai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/privatenote-ai/privatenote.git",
+    "url": "https://github.com/privatenote-ai/privatenote-ai.git",
     "directory": "packages/privatenote-vscode"
   },
   "icon": "icons/icon.png",

@@ -69,6 +69,15 @@ export function normalizeOrigin(origin: string): string {
   return origin.replace(/\/$/, "");
 }
 
+/** True for Chrome MV3 extension pages and service workers (`chrome-extension://<id>`). */
+export function isChromeExtensionOrigin(origin: string): boolean {
+  try {
+    return new URL(origin).protocol === "chrome-extension:";
+  } catch {
+    return false;
+  }
+}
+
 /** True for http(s)://localhost|127.0.0.1|[::1] with an allowed dev port (explicit or default 80/443). */
 function isLocalLoopbackDevUrl(url: URL): boolean {
   if (url.protocol !== "http:" && url.protocol !== "https:") return false;
@@ -161,6 +170,7 @@ export function sessionCookieNameForKind(kind: SessionCookieKind): string {
 export function isTrustedBrowserOrigin(origin: string): boolean {
   const normalized = normalizeOrigin(origin);
   if (ALLOWED_ORIGIN_SET.has(normalized)) return true;
+  if (isChromeExtensionOrigin(origin)) return true;
 
   let url: URL;
   try {

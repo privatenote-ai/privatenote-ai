@@ -1,0 +1,25 @@
+{
+  "name": "privatenote-chrome",
+  "displayName": "PrivateNote - Encrypted Note Sharing",
+  "description": "Create encrypted PrivateNote links from any page. Encryption happens locally in your browser.",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://privatenote.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/privatenote-ai/privatenote-ai.git",
+    "directory": "packages/privatenote-chrome"
+  },
+  "scripts": {
+    "icons": "python3 scripts/generate-icons.py",
+    "build": "node build.mjs",
+    "build:all": "npm run icons && npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^20.19.0",
+    "typescript": "5.6.3"
+  }
+}

@@ -4,23 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { privateNoteCodexHr } from "@/components/blog/locale/privateNoteCodex.hr";
+import { privateNoteCodexNl } from "@/components/blog/locale/privateNoteCodex.nl";
+import { privateNoteCodexPt } from "@/components/blog/locale/privateNoteCodex.pt";
+import { privateNoteCodexSr } from "@/components/blog/locale/privateNoteCodex.sr";
+import type { PrivateNoteCodexArticleCopy } from "@/components/blog/locale/privateNoteCodex.types";
 
-type SectionLink = { label: string; href: string };
-
-type ArticleCopy = {
-  intro: string[];
-  sections: Array<{
-    title: string;
-    body: string[];
-    bullets?: string[];
-    code?: string;
-    codeLabel?: string;
-    links?: SectionLink[];
-  }>;
-  ctaTitle: string;
-  ctaBody: string;
-  ctaButton: string;
-};
+type ArticleCopy = PrivateNoteCodexArticleCopy;
 
 const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy } = {
   en: {
@@ -214,6 +209,198 @@ PRIVATENOTE_API_BASE_URL = "https://notes.your-domain.com"`,
     ctaBody:
       "One command or one JSON block registers the MCP server. Every session after that has a secure secret-sharing tool built in.",
     ctaButton: "Try PrivateNote →",
+  },
+  it: {
+    intro: [
+      "OpenAI Codex è un agente di coding IA. Descrivi ciò che vuoi ottenere, correggere un bug, aggiungere una funzionalità o scrivere un test, e lui lavora autonomamente in un ambiente sandbox.",
+      "Ma gli agenti hanno bisogno di segreti. Devono clonare repository via SSH, scaricare pacchetti da registry privati, connettersi a database di staging o chiamare API interne. Questo significa passare loro credenziali.",
+      "Incollare una chiave API in un prompt di un agente non è molto diverso dall’incollarla in Slack: può finire nella cronologia del contesto, nei log o in memoria tra sessioni. PrivateNote offre un percorso più pulito: cifra il segreto prima che l’agente lo veda, condividi un link che si autodistrugge dopo una lettura e non lasciare tracce permanenti.",
+      "Ecco come collegare i due strumenti.",
+    ],
+    sections: [
+      {
+        title: "Che cos’è MCP?",
+        body: [
+          "MCP (Model Context Protocol) è un protocollo aperto che permette alle applicazioni IA di connettersi a strumenti, fonti dati e servizi tramite server standardizzati. Qualsiasi client compatibile MCP, come Claude Desktop, Cursor, Codex, Windsurf o un altro assistente, può chiamare gli strumenti esposti da un server MCP.",
+          "Il server MCP di PrivateNote espone un solo strumento: create_private_note. Quando un’IA lo chiama, un processo Node.js locale cifra il contenuto prima che tocchi la rete. Il risultato è un link sicuro e in scadenza che puoi condividere con chiunque.",
+        ],
+        links: [
+          { label: "Documentazione Model Context Protocol", href: "https://modelcontextprotocol.io" },
+          { label: "Trasporti MCP", href: "https://modelcontextprotocol.io/docs/concepts/transports" },
+          { label: "Configurazione MCP per Claude Desktop", href: "https://docs.anthropic.com/en/docs/claude-desktop" },
+        ],
+      },
+      {
+        title: "Requisiti",
+        body: ["Prima dell’installazione, assicurati di avere:"],
+        bullets: [
+          "Un client compatibile MCP: Claude Desktop, Cursor, Codex CLI, Windsurf o qualsiasi client che implementi la specifica MCP",
+          "Node.js 18 o successivo, da verificare con: node --version",
+          "npx disponibile, da verificare con: npx --version",
+          "Accesso di rete a privatenote.ai o alla tua istanza self-hosted",
+        ],
+      },
+      {
+        title: "Il percorso più veloce: un comando (Codex)",
+        body: [
+          "Se usi Codex CLI, aggiungere PrivateNote come server MCP globale richiede un solo comando:",
+        ],
+        code: "codex mcp add privatenote -- npx -y privatenote-mcp",
+        codeLabel: "Terminale",
+        bullets: [
+          "Il server viene registrato globalmente in ~/.codex/config.toml",
+          "Ogni nuova sessione Codex ha accesso allo strumento create_private_note",
+          "Non serve configurazione a livello di progetto: ti segue tra repository diversi",
+        ],
+      },
+      {
+        title: "Claude Desktop e altri client MCP",
+        body: [
+          "La maggior parte dei client MCP accetta un file di configurazione JSON. Per Claude Desktop, apri il file di configurazione del tuo sistema operativo:",
+          "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json",
+          "Windows: %APPDATA%\\Claude\\claude_desktop_config.json",
+          "Aggiungi la voce seguente, salva il file e riavvia Claude Desktop:",
+        ],
+        code: `{
+  "mcpServers": {
+    "privatenote": {
+      "command": "npx",
+      "args": ["-y", "privatenote-mcp"]
+    }
+  }
+}`,
+        codeLabel: "claude_desktop_config.json",
+        bullets: [
+          "Dopo il riavvio, Claude rileverà il server ed esporrà automaticamente in chat lo strumento create_private_note",
+          "Cursor: aggiungi la stessa voce in Settings → MCP",
+          "Qualsiasi altro client conforme alla specifica MCP usa lo stesso blocco JSON",
+        ],
+      },
+      {
+        title: "Cosa puoi chiedere ora al tuo assistente IA",
+        body: [
+          "Una volta collegato il server MCP, puoi usare linguaggio naturale:",
+        ],
+        bullets: [
+          "\"Create a PrivateNote that says: The temporary password is X. Make it expire in 24 hours.\"",
+          "\"Wrap this database password in a self-destructing link for the contractor\"",
+          "\"Send the SSH key securely — 15-minute expiry, burn after reading\"",
+          "\"Generate a PrivateNote for the staging credentials and give me the link\"",
+        ],
+        code: `# Esempio di risposta dell’assistente:
+
+PrivateNote created:
+https://privatenote.ai/note/xK9m2p...#A3f7...
+
+Expires in 24 hours · Burns after reading`,
+        codeLabel: "Esempio",
+      },
+      {
+        title: "Che cosa fa davvero lo strumento",
+        body: [
+          "Quando l’IA chiama create_private_note, il server MCP esegue un processo Node.js locale sul tuo computer. La cifratura avviene lì, prima che qualcosa tocchi la rete.",
+          "Il server genera una chiave AES casuale a 256 bit, cifra il contenuto con AES-256-GCM e invia a privatenote.ai solo il testo cifrato. La chiave non è nella richiesta.",
+          "La chiave di decifratura vive solo nel frammento dell’URL, la parte dopo # che i browser non inviano mai ai server. Quello che torna è un link. Chi apre il link decifra la nota nel browser. La nota si elimina subito dopo.",
+          "privatenote.ai conserva blob cifrati. Senza il frammento, quei blob sono privi di significato.",
+        ],
+      },
+      {
+        title: "Opzioni comuni dello strumento",
+        body: ["Lo strumento create_private_note accetta questi parametri:"],
+        bullets: [
+          "content: il testo sensibile da cifrare e conservare (obbligatorio)",
+          "expiresIn: per quanto tempo la nota resta accessibile: 15m, 1h, 24h o 7d (default: 24h)",
+          "burnAfterReading: distrugge la nota dopo la prima visualizzazione (default: true)",
+          "title: etichetta opzionale anteposta al contenuto prima della cifratura",
+        ],
+        code: `# Esempio di prompt strutturato:
+
+Create a PrivateNote with:
+content: "The deployment token is ghp_abc123"
+expiresIn: "15m"
+burnAfterReading: true`,
+        codeLabel: "Prompt",
+      },
+      {
+        title: "La cautela privacy da capire",
+        body: [
+          "La parte onesta è questa: quando digiti un segreto in un prompt Codex, Codex lo legge prima che lo strumento MCP venga eseguito. I server di OpenAI elaborano quel messaggio.",
+          "Quindi “create a PrivateNote for sk_live_abc123” significa che il valore sk_live_abc123 è apparso brevemente in un contesto cloud. Il passaggio PrivateNote fa sì che non resti in Slack, e-mail o cronologia chat, ma non equivale a dire che l’IA non lo abbia mai visto.",
+          "Ci sono due modi per chiudere questo divario:",
+        ],
+        bullets: [
+          "Usa l’estensione VS Code quando sei in Codex IDE: seleziona il segreto nell’editor, clic destro → Share as PrivateNote. Il segreto passa direttamente dall’editor al link cifrato. Codex non è coinvolto",
+          "Usa un modello locale per la sessione dell’agente. Nulla lascia il computer finché non è già cifrato",
+        ],
+      },
+      {
+        title: "Usare l’estensione VS Code in Codex IDE",
+        body: [
+          "Codex gira dentro un editor compatibile con VS Code. L’estensione VS Code di PrivateNote si installa e funziona lì esattamente come in VS Code standard.",
+        ],
+        code: "code --install-extension PrivateNote.privatenote-vscode",
+        codeLabel: "Terminale",
+        bullets: [
+          "Dopo l’installazione compare un’icona a busta nella barra attività: cliccala per aprire il pannello PrivateNote",
+          "Seleziona testo nell’editor, clic destro → Share as PrivateNote per un invio rapido",
+          "L’icona a lucchetto nella barra del titolo dell’editor appare quando hai testo selezionato",
+          "Con questo percorso, Codex non tocca mai il testo in chiaro: l’estensione cifra localmente nel processo host di VS Code",
+        ],
+      },
+      {
+        title: "Se preferisci il file di configurazione",
+        body: [
+          "Puoi anche aggiungere manualmente il server MCP. Il comando codex mcp add scrive in ~/.codex/config.toml, ma puoi modificare direttamente quel file:",
+        ],
+        code: `[mcp_servers.privatenote]
+command = "npx"
+args = ["-y", "privatenote-mcp"]`,
+        codeLabel: "~/.codex/config.toml",
+      },
+      {
+        title: "Puntare a un’istanza self-hosted",
+        body: [
+          "Se il tuo team gestisce un server PrivateNote privato, imposta l’URL base tramite una variabile d’ambiente nella configurazione MCP:",
+        ],
+        code: `[mcp_servers.privatenote]
+command = "npx"
+args = ["-y", "privatenote-mcp"]
+
+[mcp_servers.privatenote.env]
+PRIVATENOTE_API_BASE_URL = "https://notes.your-domain.com"`,
+        codeLabel: "~/.codex/config.toml",
+        bullets: [
+          "Tutti i segreti restano sulla tua infrastruttura: nulla raggiunge privatenote.ai",
+          "Si applica la stessa cifratura AES-256-GCM; cambia solo la destinazione dello storage",
+        ],
+      },
+      {
+        title: "Risoluzione dei problemi",
+        body: ["Se lo strumento PrivateNote non appare nel client dopo la configurazione:"],
+        bullets: [
+          "Riavvia il client MCP: le modifiche di configurazione non vengono lette mentre l’app è in esecuzione",
+          "Conferma che Node.js sia installato e nel PATH: node --version",
+          "Conferma che npx funzioni: npx --version",
+          "Valida la configurazione JSON: una virgola finale è l’errore di sintassi più comune",
+          "Controlla i log MCP o dell’estensione del client per errori di avvio",
+          "Assicurati che il computer abbia accesso di rete a privatenote.ai o al tuo host self-hosted",
+        ],
+      },
+      {
+        title: "Alcune cose da ricordare",
+        body: [
+          "L’URL è il segreto. Il link contiene la chiave di decifratura nel frammento. Trattalo con la stessa cura della credenziale stessa: non committarlo, non loggarlo, non pubblicarlo in un canale pubblico.",
+          "Burn-after-reading significa esattamente questo. Una volta aperto il link, è sparito. Né tu né il destinatario potete riaprirlo.",
+          "Ruota dopo la condivisione. Se una credenziale è apparsa in un prompt IA, anche brevemente, trattala come potenzialmente vista. Condividi il valore corrente con PrivateNote, poi ruotalo.",
+          "PrivateNote serve alla consegna, non all’archiviazione. Se un segreto deve restare accessibile per più di pochi giorni, usa un vero secrets manager. PrivateNote è il passaggio sicuro di consegna, non il vault.",
+          "Usa finestre di scadenza brevi. Per segreti monouso, 15m o 1h sono quasi sempre sufficienti. Scegli per impostazione predefinita la finestra più breve che funzioni per il destinatario.",
+        ],
+      },
+    ],
+    ctaTitle: "Collega il tuo assistente IA a PrivateNote",
+    ctaBody:
+      "Un comando o un blocco JSON registra il server MCP. Da quel momento ogni sessione ha integrato uno strumento sicuro per condividere segreti.",
+    ctaButton: "Prova PrivateNote →",
   },
   de: {
     intro: [
@@ -689,41 +876,29 @@ PRIVATENOTE_API_BASE_URL = "https://notes.tu-dominio.com"`,
     ctaBody: "Un comando o un bloque JSON registra el servidor MCP. Cada sesión siguiente tiene una herramienta de compartición segura integrada.",
     ctaButton: "Probar PrivateNote →",
   },
+  nl: privateNoteCodexNl,
+  pt: privateNoteCodexPt,
+  hr: privateNoteCodexHr,
+  sr: privateNoteCodexSr,
 };
 
 export function PrivateNoteCodexPost() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
-  const c = copy[language] ?? copy.en;
+  const c = getBlogArticleCopy(copy, language);
 
   return (
-    <article className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-      <Link
-        href={lp("/blog")}
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All posts
-      </Link>
+    <BlogGuideArticle slug="privatenote-codex">
+      <article>
+        <BlogPostHeader
+          slug="privatenote-codex"
+          title={t.blogCodexTitle}
+          excerpt={t.blogCodexExcerpt}
+          titleClassName="sm:text-4xl tracking-tight"
+          headerClassName="mb-10"
+        />
 
-      <header className="mb-10">
-        <div className="mb-3 flex flex-wrap gap-2">
-          {["Developer", "MCP", "Codex", "Security"].map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary dark:bg-primary/20"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">
-          Using PrivateNote with OpenAI Codex
-        </h1>
-        <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
-          PrivateNote.ai · {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-        </p>
-      </header>
+        <BlogArticleTakeaways slug="privatenote-codex" />
 
       <div className="prose prose-gray dark:prose-invert max-w-none">
         {c.intro.map((p, i) => (
@@ -800,6 +975,9 @@ export function PrivateNoteCodexPost() {
           {c.ctaButton}
         </Link>
       </div>
-    </article>
+
+      <BlogPostCrossLinks slug="privatenote-codex" />
+      </article>
+    </BlogGuideArticle>
   );
 }

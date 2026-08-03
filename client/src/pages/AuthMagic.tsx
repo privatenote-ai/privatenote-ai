@@ -280,7 +280,7 @@ export default function AuthMagic() {
     }
     setIsRegistering(true);
     try {
-      await registerPasskeyWithRetry();
+      await registerPasskeyWithRetry(t);
       setHasPasskeys(true);
       toast({
         title: tx("authMagicPasskeyAddedTitle", "Passkey added"),
@@ -289,7 +289,7 @@ export default function AuthMagic() {
     } catch (error) {
       toast({
         title: tx("authMagicPasskeyFailedTitle", "Passkey registration failed"),
-        description: passkeyRegistrationErrorMessage(error),
+        description: passkeyRegistrationErrorMessage(error, t),
         variant: "destructive",
       });
     } finally {

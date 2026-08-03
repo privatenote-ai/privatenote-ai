@@ -6,6 +6,7 @@ import {
   Timer,
   Shield,
   User,
+  Languages,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -34,6 +35,7 @@ import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachChe
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
+import { LANGUAGE_OPTIONS, type SupportedLanguage } from "@/utils/translation";
 import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
 import {
   Dialog,
@@ -119,6 +121,22 @@ function SettingsFieldLabel({
   return <div className={className}>{content}</div>;
 }
 
+function translatedFileAccessWindowLabel(
+  seconds: NoteFileAccessWindowSeconds,
+  t: Record<string, string>,
+): string {
+  if (seconds === 15 * 60) {
+    return t.fileAccessWindow15Min ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 30 * 60) {
+    return t.fileAccessWindow30Min ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 60 * 60) {
+    return t.fileAccessWindow1Hour ?? formatNoteFileAccessWindow(seconds);
+  }
+  return formatNoteFileAccessWindow(seconds);
+}
+
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
   if (expiryValue === "10m") return t.expiry10m;
@@ -197,6 +215,8 @@ type PremiumFeature = {
   title: string;
   description: string;
 };
+
+export type ReaderLanguageSetting = "auto" | SupportedLanguage;
 
 function SectionHeading({
   title,
@@ -338,6 +358,8 @@ export type NoteSettingsPanelProps = {
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
+  readerLanguage: ReaderLanguageSetting;
+  setReaderLanguage: (value: ReaderLanguageSetting) => void;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
@@ -374,6 +396,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setReadCount,
   fileAccessWindowSeconds,
   setFileAccessWindowSeconds,
+  readerLanguage,
+  setReaderLanguage,
 }) => {
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
@@ -411,7 +435,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-access-controls-heading"
             >
-              <SectionHeading id="note-access-controls-heading" title="Access Controls" />
+              <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
               <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
                 <div className="sm:col-span-1">
@@ -658,7 +682,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
                   return (
                     <option key={seconds} value={seconds} disabled={locked}>
-                      {formatNoteFileAccessWindow(seconds)}
+                      {translatedFileAccessWindowLabel(seconds, t)}
                       {locked ? ` (${t.premium ?? "Premium"})` : ""}
                     </option>
                   );
@@ -776,6 +800,49 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </p>
               ) : null}
               <SettingsOptionList>
+                <div className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start">
+                  <div className="min-w-0">
+                    <SettingsFieldLabel
+                      htmlFor="reader-language"
+                      icon={<Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
+                      iconToneClassName="bg-sky-50 dark:bg-sky-900/30"
+                      label={t.settingsReaderLanguage ?? "Reader Language"}
+                      info={
+                        t.settingsReaderLanguageInfo ??
+                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
+                      }
+                    />
+                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.settingsReaderLanguageDescription ??
+                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."}
+                    </p>
+                  </div>
+                  <select
+                    id="reader-language"
+                    value={readerLanguage}
+                    disabled={!isPremiumUser || premiumStatusLoading}
+                    onChange={(event) => setReaderLanguage(event.target.value as ReaderLanguageSetting)}
+                    onClick={() => {
+                      if (!isPremiumUser) {
+                        setSelectedPremiumFeature({
+                          title: t.settingsReaderLanguage ?? "Reader Language",
+                          description:
+                            t.settingsReaderLanguageDescription ??
+                            "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
+                        });
+                      }
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm appearance-none cursor-pointer focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    style={SELECT_CHEVRON_STYLE}
+                  >
+                    <option value="auto">{t.settingsReaderLanguageAuto ?? "Auto"}</option>
+                    {LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.nativeName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <SettingsToggleRow
                   id="restrict-recipient-email"
                   locked={!isPremiumUser}

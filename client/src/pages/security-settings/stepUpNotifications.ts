@@ -1,4 +1,5 @@
 import type { StepUpResult } from "./stepUp";
+import type { Translations } from "@/utils/translations/types";
 
 type Toast = (props: {
   title: string;
@@ -6,35 +7,35 @@ type Toast = (props: {
   variant?: "default" | "destructive";
 }) => void;
 
-export function toastStepUpFailure(toast: Toast, result: StepUpResult): void {
+export function toastStepUpFailure(toast: Toast, result: StepUpResult, t: Translations): void {
   if (result.ok) return;
   switch (result.reason) {
     case "not_supported":
-      toast({ title: "Passkeys not supported", description: "This browser does not support passkeys." });
+      toast({ title: t.authStepUpNotSupportedTitle, description: t.authStepUpNotSupportedDesc });
       return;
     case "no_credential":
-      toast({ title: "Step-up cancelled", description: "No credential returned." });
+      toast({ title: t.authStepUpCancelledTitle, description: t.authStepUpNoCredentialDesc });
       return;
     case "no_passkey":
       toast({
-        title: "Verification unavailable",
-        description: "Set up a passkey first to perform this action.",
+        title: t.authStepUpUnavailableTitle,
+        description: t.authStepUpNoPasskeyDesc,
         variant: "destructive",
       });
       return;
     case "timeout":
       toast({
-        title: "Verification timed out",
-        description: "The passkey prompt timed out. Please try again.",
+        title: t.authStepUpTimeoutTitle,
+        description: t.authStepUpTimeoutDesc,
       });
       return;
     case "cancelled":
-      toast({ title: "Verification cancelled", description: "You cancelled the passkey prompt." });
+      toast({ title: t.authStepUpUserCancelledTitle, description: t.authStepUpUserCancelledDesc });
       return;
     default:
       toast({
-        title: "Verification failed",
-        description: result.reason === "unknown" ? result.message : "Please try again.",
+        title: t.authStepUpFailedTitle,
+        description: result.reason === "unknown" ? result.message : t.authStepUpTryAgain,
         variant: "destructive",
       });
   }

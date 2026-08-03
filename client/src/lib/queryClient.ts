@@ -2,7 +2,13 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
-import { bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+import {
+  bodyInitToUploadArrayBuffer,
+  bodyInitToUploadBlob,
+  isSafariBrowser,
+  sendBinaryHttpRequest,
+  type BinaryUploadProgress,
+} from "@/lib/binaryUploadTransport";
 
 type BinaryUploadRoute = "direct-worker" | "same-origin";
 
@@ -15,7 +21,56 @@ type BinaryUploadAttempt = {
   metadataInQuery?: boolean;
 };
 
-const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
+const BINARY_UPLOAD_NETWORK_RETRY_MS = 1200;
+/** Total attempt rounds for a chunk (WebKit "network connection was lost" needs several). */
+const BINARY_UPLOAD_MAX_ROUNDS = 4;
+
+/** After one sacrificial Safari/WebKit request, prefer the warmed same-origin route. */
+let safariAttachmentUploadPrimed = false;
+
+export function resetSafariAttachmentUploadTransport(): void {
+  safariAttachmentUploadPrimed = false;
+}
+
+/**
+ * Safari/WebKit drops the first upload on a fresh HTTP/2 connection. Prime the
+ * **same-origin Pages /api proxy** once per attachment — that is the route real
+ * chunks use after priming. (Priming the direct Worker left the same-origin
+ * connection cold and caused 400 chunk size mismatches on ~30MB+ uploads.)
+ */
+export async function primeSafariAttachmentUploadTransport(
+  sampleChunkUrl: string,
+  uploadToken: string,
+): Promise<void> {
+  if (
+    safariAttachmentUploadPrimed ||
+    !isSafariBrowser() ||
+    typeof window === "undefined" ||
+    !hasPagesSameOriginApiProxy(window.location.hostname)
+  ) {
+    return;
+  }
+
+  try {
+    await sendBinaryHttpRequest(
+      getApiUrl(sampleChunkUrl),
+      "POST",
+      new Blob([], { type: "application/octet-stream" }),
+      {
+        "Content-Type": "application/octet-stream",
+        Authorization: noteUploadAuthorizationHeader(uploadToken),
+        "x-file-plaintext-size": "0",
+        "x-file-encrypted-size": "1",
+        "x-file-chunk-encrypted-size": "0",
+      },
+      "include",
+    );
+  } catch {
+    // Expected — absorbs the WebKit connection glitch before real chunk uploads.
+  } finally {
+    safariAttachmentUploadPrimed = true;
+  }
+}
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_URL || "").trim();
@@ -127,23 +182,20 @@ function getBinaryUploadAttempts(
   };
 
   if (options.uploadToken) {
-    if (isSafariBrowser()) {
-      // Safari/WebKit drops the *first* upload request it sends on a freshly (re)used
-      // HTTP/2 connection with "network connection was lost" — including the same-origin
-      // Pages proxy. Empirically the same-origin proxy reliably succeeds only as a
-      // follow-up attempt, so we send a cross-origin direct-worker request first (token +
-      // metadata in the query string to avoid a CORS preflight). That attempt absorbs the
-      // WebKit connection glitch, and the same-origin retry then goes through. Putting
-      // same-origin first instead caused every chunk to fail outright.
-      return [
-        {
-          ...directWorker,
-          method: "POST",
-          tokenInQuery: true,
-          metadataInQuery: true,
-        },
-        sameOrigin,
-      ];
+    if (isSafariBrowser() && hasPagesSameOriginApiProxy(window.location.hostname)) {
+      const directWorkerSafariFallback: BinaryUploadAttempt = {
+        ...directWorker,
+        method: "POST",
+        tokenInQuery: true,
+        metadataInQuery: true,
+      };
+      if (safariAttachmentUploadPrimed) {
+        // Prefer the warmed same-origin connection; keep direct-worker as fallback
+        // for WebKit truncated-body 400s.
+        return [sameOrigin, directWorkerSafariFallback];
+      }
+      // First chunk only (before explicit prime): sacrificial direct-worker, then same-origin.
+      return [directWorkerSafariFallback, sameOrigin];
     }
     return [directWorker, sameOrigin];
   }
@@ -171,6 +223,16 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.bodyText = bodyText;
   }
+}
+
+/** Safari sometimes truncates the first body on a cold connection → server 400 size mismatch. */
+function isRetriableSafariChunkUploadError(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError &&
+    isSafariBrowser() &&
+    error.status === 400 &&
+    /File chunk size mismatch/i.test(error.bodyText)
+  );
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -345,8 +407,9 @@ function isBinaryUploadNetworkError(error: unknown): boolean {
 async function executeBinaryUploadAttempt(
   attempt: BinaryUploadAttempt,
   method: string,
-  body: Blob,
+  body: Blob | ArrayBuffer,
   requestHeaders: Record<string, string>,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   return sendBinaryHttpRequest(
     attempt.url,
@@ -354,7 +417,20 @@ async function executeBinaryUploadAttempt(
     body,
     requestHeaders,
     attempt.credentials,
+    onUploadProgress,
   );
+}
+
+function resolveBinaryUploadBody(body: BodyInit): Blob | ArrayBuffer {
+  const arrayBuffer = bodyInitToUploadArrayBuffer(body);
+  if (arrayBuffer) {
+    return arrayBuffer;
+  }
+  const uploadBlob = bodyInitToUploadBlob(body);
+  if (!uploadBlob) {
+    throw new Error("Unsupported upload body type.");
+  }
+  return uploadBlob;
 }
 
 export async function apiBinaryRequest<T = any>(
@@ -362,13 +438,13 @@ export async function apiBinaryRequest<T = any>(
   method: string,
   body: BodyInit,
   headers: Record<string, string> = {},
-  options: { uploadToken?: string } = {},
+  options: {
+    uploadToken?: string;
+    onUploadProgress?: (progress: BinaryUploadProgress) => void;
+  } = {},
 ): Promise<T> {
-  const uploadBlob = bodyInitToUploadBlob(body);
-  if (!uploadBlob) {
-    throw new Error("Unsupported upload body type.");
-  }
-  const bodyBytes = uploadBlob.size;
+  const uploadBody = resolveBinaryUploadBody(body);
+  const bodyBytes = uploadBody instanceof ArrayBuffer ? uploadBody.byteLength : uploadBody.size;
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
   const sharedLogBase = {
     usesUploadToken: Boolean(options.uploadToken),
@@ -384,16 +460,27 @@ export async function apiBinaryRequest<T = any>(
   const attempts = getBinaryUploadAttempts(url, options);
   let lastError: unknown = null;
 
-  for (let round = 0; round < 2; round += 1) {
-    if (round === 1) {
-      if (!isBinaryUploadNetworkError(lastError)) {
+  for (let round = 0; round < BINARY_UPLOAD_MAX_ROUNDS; round += 1) {
+    if (round > 0) {
+      const status = lastError instanceof ApiRequestError ? lastError.status : 0;
+      const retriable =
+        isBinaryUploadNetworkError(lastError) ||
+        isRetriableSafariChunkUploadError(lastError) ||
+        status >= 500 ||
+        status === 429;
+      if (!retriable) {
         break;
       }
+      // Exponential backoff — WebKit needs the connection to fully reset between tries.
+      const delayMs = BINARY_UPLOAD_NETWORK_RETRY_MS * 2 ** (round - 1);
       logFileUpload("warn", "network retry after delay", {
         ...sharedLogBase,
-        delayMs: BINARY_UPLOAD_NETWORK_RETRY_MS,
+        delayMs,
+        round: round + 1,
+        safariChunkMismatchRetry: isRetriableSafariChunkUploadError(lastError),
+        status: lastError instanceof ApiRequestError ? lastError.status : null,
       });
-      await new Promise((resolve) => window.setTimeout(resolve, BINARY_UPLOAD_NETWORK_RETRY_MS));
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
     }
 
     for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
@@ -434,8 +521,9 @@ export async function apiBinaryRequest<T = any>(
         const res = await executeBinaryUploadAttempt(
           { ...attempt, url: requestUrl },
           requestMethod,
-          uploadBlob,
+          uploadBody,
           requestHeaders,
+          options.onUploadProgress,
         );
         const responseText = await res.text();
         const elapsedMs = Math.round(performance.now() - startedAt);
@@ -464,6 +552,17 @@ export async function apiBinaryRequest<T = any>(
           ...errorDetails,
         });
         if (error instanceof ApiRequestError) {
+          // Fall through to the next upload route on transient server failures
+          // (e.g. concurrent quota race on direct-worker) and Safari size mismatches.
+          const canTryNextRoute =
+            attemptIndex < attempts.length - 1 &&
+            (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429);
+          if (canTryNextRoute) {
+            continue;
+          }
+          if (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429) {
+            break;
+          }
           throw error;
         }
       }

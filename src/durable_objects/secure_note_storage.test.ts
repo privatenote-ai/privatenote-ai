@@ -2,17 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { DurableObjectState } from "@cloudflare/workers-types";
 import { buildNoteAadBytes, encodeNoteAadBytesForWire } from "@shared/noteAad";
-import {
-  ARGON2ID_HASH_LEN,
-  ARGON2ID_MEMORY_KIB_V2,
-  ARGON2ID_PARAM_TAG_V2,
-  ARGON2ID_PARALLELISM_V2,
-  ARGON2ID_TIME_COST_V2,
-  KDF_VERSION_2,
-} from "@shared/kdfParamsV2";
 import { NOTE_AES_GCM_IV_BYTE_LENGTH } from "@shared/noteCryptoWire";
 import {
-  NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
   parseStoredNoteCiphertextForReveal,
   STORED_NOTE_CIPHER_ALG,
   STORED_NOTE_PAYLOAD_VERSION,
@@ -23,16 +14,6 @@ const VALID_NOTE_ID = "00000000-0000-4000-8000-000000022222";
 const BASE = "http://do.test";
 
 const twelveZeroB64 = btoa(String.fromCharCode(...new Uint8Array(NOTE_AES_GCM_IV_BYTE_LENGTH)));
-const sixteenZeroB64 = btoa(String.fromCharCode(...new Uint8Array(16)));
-const validKdfParams = {
-  version: KDF_VERSION_2,
-  algorithm: "argon2id",
-  timeCost: ARGON2ID_TIME_COST_V2,
-  memoryKiB: ARGON2ID_MEMORY_KIB_V2,
-  parallelism: ARGON2ID_PARALLELISM_V2,
-  hashLength: ARGON2ID_HASH_LEN,
-  profile: ARGON2ID_PARAM_TAG_V2,
-};
 
 const SQL = {
   createMeta:
@@ -215,39 +196,28 @@ describe("SecureNoteStorageSql (mock SQLite)", () => {
     assert.equal(store.cipher.size, 0);
   });
 
-  it("stores hkdf-root-v2 password notes without encryptedKey", async () => {
+  it("stores readerLanguage metadata and returns it on meta GET and reveal", async () => {
     const store = createMockStorage();
     const dox = new SecureNoteStorageSql(makeDurableState(store));
 
-    const res = await dox.fetch(
+    let res = await dox.fetch(
       new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          createBody({
-            isPasswordProtected: true,
-            keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
-            salt: sixteenZeroB64,
-            encryptedKeyIv: twelveZeroB64,
-            kdfParams: validKdfParams,
-          }),
-        ),
+        body: JSON.stringify(createBody({ readerLanguage: "fr" })),
       }),
     );
     assert.equal(res.status, 201);
 
-    const stored = parseStoredNoteCiphertextForReveal(store.cipher.get(VALID_NOTE_ID)!);
-    assert.ok(stored);
-    assert.equal(stored!.keyDerivation, NOTE_KEY_DERIVATION_HKDF_ROOT_V2);
-    assert.equal(stored!.encryptedKey, null);
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, { method: "GET" }));
+    assert.equal(res.status, 200);
+    const meta = (await readJson(res)) as { readerLanguage?: string };
+    assert.equal(meta.readerLanguage, "fr");
 
-    const reveal = await dox.fetch(
-      new Request(`${BASE}/api/notes/${VALID_NOTE_ID}/reveal`, { method: "POST" }),
-    );
-    assert.equal(reveal.status, 200);
-    const body = (await readJson(reveal)) as { encryptedKey?: string; encryptedKeyIv?: string };
-    assert.equal(body.encryptedKey, undefined);
-    assert.equal(body.encryptedKeyIv, twelveZeroB64);
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}/reveal`, { method: "POST" }));
+    assert.equal(res.status, 200);
+    const reveal = (await readJson(res)) as { readerLanguage?: string };
+    assert.equal(reveal.readerLanguage, "fr");
   });
 
   it("max_reads 0 allows multiple reveals until expiry", async () => {

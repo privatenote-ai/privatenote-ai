@@ -4,6 +4,15 @@ import { ArrowLeft, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { agentSecurityHr } from "@/components/blog/locale/agentSecurity.hr";
+import { agentSecurityNl } from "@/components/blog/locale/agentSecurity.nl";
+import { agentSecurityPt } from "@/components/blog/locale/agentSecurity.pt";
+import { agentSecuritySr } from "@/components/blog/locale/agentSecurity.sr";
 
 type BulletItem = {
   label: string;
@@ -223,6 +232,125 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
     closingCallout: {
       title: "Protecting context, not just data",
       body: "At PrivateNote.ai, we believe protecting context is becoming just as important as protecting data itself. As AI systems gain access to more of our personal notes, business knowledge, and operational workflows, security must extend beyond storage and encryption to include the information agents consume, remember, and act upon.",
+    },
+  },
+  it: {
+    intro: [
+      "Negli ultimi anni l’industria dell’IA si è concentrata quasi ossessivamente sulla **prompt injection**, cioè sul rischio che un prompt malevolo induca un chatbot a produrre una risposta non prevista.",
+      "Ma la prompt injection non è più tutta la storia.",
+      "I sistemi di IA di oggi stanno evolvendo rapidamente da assistenti passivi ad **agenti autonomi**. Non si limitano più a rispondere a domande. Accedono a file, leggono e-mail, invocano API, eseguono workflow multi-step e prendono decisioni operative per conto degli utenti.",
+      "Nel momento in cui un sistema di IA acquisisce la capacità di **agire**, il manuale della sicurezza cambia completamente.",
+      "Un recente paper USENIX Security 2026, **SoK: Attack and Defense Landscape of Agentic AI Systems** di Kim et al., offre una delle analisi più complete finora sulla sicurezza degli agenti. I ricercatori hanno esaminato 128 articoli accademici, identificato 51 tecniche di attacco e 60 strategie di difesa, e proposto un framework per comprendere le nuove sfide di sicurezza dei sistemi IA autonomi.",
+      "La conclusione centrale è semplice:",
+      "Per le organizzazioni che costruiscono, distribuiscono o usano prodotti basati su IA, dovrebbe essere un campanello d’allarme.",
+    ],
+    introCallout:
+      "Più autonomia ottiene un agente IA, più ampia diventa la sua superficie di attacco.",
+    sections: [
+      {
+        title: "Perché la sicurezza degli agenti è diversa",
+        paragraphs: [
+          "Il software tradizionale segue una logica predefinita. Le applicazioni LLM tradizionali generano soprattutto testo. **I sistemi agentici funzionano diversamente.**",
+          "Combinano modelli linguistici con strumenti esterni, sistemi di memoria, database, API e capacità decisionali autonome. Un agente aziendale può leggere un’e-mail in arrivo, recuperare informazioni dalla documentazione interna, interrogare un CRM, aggiornare un database e inviare una risposta, tutto dentro un unico workflow.",
+          "Questa flessibilità è ciò che rende gli agenti così potenti. È anche ciò che li rende difficili da mettere in sicurezza.",
+          "Il paper USENIX sostiene che concentrarsi solo sulla sicurezza del modello non basta. La sicurezza deve essere valutata lungo **l’intero ecosistema dell’agente**: modello, memoria, strumenti, fonti dati e azioni che può eseguire.",
+        ],
+      },
+      {
+        title: "Le sette dimensioni del rischio degli agenti",
+        paragraphs: [
+          "I ricercatori identificano sette dimensioni chiave che influenzano la postura di sicurezza di un agente:",
+        ],
+        bullets: [
+          { label: "Fiducia nell’input", body: "Da dove provengono le informazioni?" },
+          { label: "Sensibilità dell’accesso ai dati", body: "A quali informazioni può accedere l’agente?" },
+          { label: "Autonomia del workflow", body: "Può decidere autonomamente cosa fare dopo?" },
+          { label: "Capacità di azione", body: "Può modificare, eliminare o trasmettere dati?" },
+          { label: "Persistenza della memoria", body: "Le informazioni persistono tra sessioni?" },
+          { label: "Disponibilità degli strumenti", body: "Quali sistemi esterni può invocare?" },
+          { label: "Potere dell’interfaccia utente", body: "Quanto può influenzare le decisioni dell’utente?" },
+        ],
+        afterBullets: [
+          "Considera la differenza tra un chatbot di assistenza clienti e un assistente esecutivo autonomo.",
+          "Ogni capacità aggiuntiva aumenta l’utilità. Ma amplia anche la superficie di attacco e crea nuove opportunità di abuso, manipolazione o comportamento indesiderato.",
+          "La sicurezza diventa meno una questione di proteggere un modello e più una questione di **governare un sistema complesso**.",
+        ],
+      },
+      {
+        title: "Il contesto è il nuovo confine di sicurezza",
+        paragraphs: [
+          "Per decenni la cybersecurity si è concentrata su tre principi: confidenzialità, integrità e disponibilità. Restano essenziali.",
+          "Ma l’IA agentica introduce una nuova sfida: la **sicurezza contestuale**.",
+          "Un agente può avere autenticazione forte, comunicazioni cifrate e controlli di accesso rigorosi, e fallire comunque in modo catastrofico perché agisce su informazioni malevole o manipolate.",
+          "Immagina un agente che elabora un PDF apparentemente innocuo caricato da una parte esterna. Istruzioni nascoste nel documento gli dicono di ignorare le indicazioni precedenti, recuperare informazioni sensibili e trasmetterle altrove.",
+          "Questa distinzione conta perché molti attacchi IA emergenti sfruttano il flusso delle informazioni invece di vulnerabilità software tradizionali.",
+        ],
+        emphasisBlock: [
+          "Il sistema non è stato compromesso tramite credenziali rubate.",
+          "L’infrastruttura non è stata violata.",
+          "L’agente ha semplicemente seguito il contesto sbagliato.",
+        ],
+        callout:
+          "Per i sistemi agentici, il contesto diventa un confine di sicurezza importante quanto autenticazione, cifratura o segmentazione di rete.",
+      },
+      {
+        title: "Perché la memoria crea nuovi rischi",
+        paragraphs: [
+          "La memoria dell’IA viene spesso presentata come una funzione di esperienza utente. L’argomento è semplice: una memoria migliore abilita una personalizzazione migliore.",
+          "Ma la memoria crea anche persistenza. E la persistenza crea rischio.",
+          "Il paper USENIX evidenzia come gli attaccanti possano tentare di avvelenare archivi di memoria a lungo termine con istruzioni malevole o informazioni fuorvianti. Una volta scritto in memoria, quel contenuto può influenzare decisioni future molto dopo la fine dell’interazione originale.",
+          "A differenza di un attacco temporaneo di prompt injection, l’avvelenamento della memoria può persistere attraverso workflow, utenti e tempo. Il risultato è una sfida di sicurezza fondamentalmente diversa.",
+        ],
+        emphasisBlock: [
+          "La memoria non è più solo una funzione comoda.",
+          "La memoria è infrastruttura.",
+          "E l’infrastruttura richiede governance.",
+        ],
+      },
+      {
+        title: "Gli agenti più pericolosi sono quelli con permessi",
+        paragraphs: [
+          "I rischi maggiori dell’IA agentica non derivano necessariamente dall’intelligenza del modello. **Derivano dall’autorità che gli viene concessa.**",
+          "Un modello che genera un paragrafo sbagliato è un inconveniente. Un agente con accesso a record clienti, documenti interni, sistemi finanziari, piattaforme di comunicazione e strumenti di automazione può produrre conseguenze nel mondo reale.",
+          "Man mano che le organizzazioni collegano gli agenti a sistemi sempre più potenti, l’attenzione deve spostarsi dalla capacità del modello al controllo operativo.",
+        ],
+        callout: "La domanda critica non è più “Quanto è intelligente il modello?”. È: “Che cosa è autorizzato a fare il modello?”",
+      },
+      {
+        title: "Costruire sistemi agentici affidabili",
+        paragraphs: [
+          "La lezione più ampia del paper è che la sicurezza degli agenti richiede **difesa in profondità**.",
+          "Le organizzazioni che distribuiscono agenti IA dovrebbero dare priorità a:",
+        ],
+        bullets: [
+          { label: "Dati fidati vs non fidati", body: "Separazione forte tra fonti dati fidate e non fidate" },
+          { label: "Confini dei permessi", body: "Limiti espliciti su ciò che gli agenti possono fare" },
+          { label: "Governance della memoria", body: "Controlli per i sistemi di memoria a lungo termine" },
+          { label: "Approvazione umana", body: "Conferma per operazioni ad alto rischio" },
+          { label: "Audit e osservabilità", body: "Logging e monitoraggio completi" },
+          { label: "Policy di accesso agli strumenti", body: "Regole chiare per le integrazioni esterne" },
+        ],
+        afterBullets: [
+          "Questi principi rispecchiano pratiche di cybersecurity consolidate perché, sempre più spesso, gli agenti IA assomigliano a dipendenti più che a funzionalità software.",
+        ],
+      },
+      {
+        title: "La lezione più grande",
+        paragraphs: [
+          "Il settore descrive spesso gli agenti IA come **dipendenti digitali**. L’analogia diventa sempre più accurata.",
+          "I dipendenti ricevono formazione. Operano sotto policy. Hanno permessi definiti. Sono monitorati. Possono commettere errori.",
+          "Gli agenti IA non sono diversi. L’unica differenza è che possono commettere errori alla velocità della macchina.",
+          "I prodotti IA di maggior successo nel prossimo decennio non avranno semplicemente i modelli più capaci. **Avranno l’architettura di fiducia più solida.**",
+        ],
+        emphasisBlock: [
+          "L’intelligenza attira gli utenti.",
+          "La fiducia li trattiene.",
+        ],
+      },
+    ],
+    closingCallout: {
+      title: "Proteggere il contesto, non solo i dati",
+      body: "In PrivateNote.ai crediamo che proteggere il contesto stia diventando importante quanto proteggere i dati stessi. Man mano che i sistemi IA ottengono accesso a più note personali, conoscenza aziendale e workflow operativi, la sicurezza deve estendersi oltre archiviazione e cifratura per includere le informazioni che gli agenti consumano, ricordano e su cui agiscono.",
     },
   },
   de: {
@@ -585,27 +713,29 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       body: "En PrivateNote.ai, creemos que proteger el contexto se vuelve tan importante como proteger los datos en sí. A medida que los sistemas de IA acceden a más notas personales, conocimiento empresarial y flujos operativos, la seguridad debe ir más allá del almacenamiento y el cifrado para incluir la información que los agentes consumen, recuerdan y sobre la que actúan.",
     },
   },
+  nl: agentSecurityNl,
+  pt: agentSecurityPt,
+  hr: agentSecurityHr,
+  sr: agentSecuritySr,
 };
 
 export const AgentSecurityPost: React.FC = () => {
   const { t, language } = useLanguage();
   const blogPath = localizedPath("/blog", language);
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
-
+    <BlogGuideArticle slug="securing-ai-agents-like-employees">
       <article>
-        <header className="mb-12">
-          <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">{t.blogAgentSecurityTitle}</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl leading-relaxed">{t.blogAgentSecurityExcerpt}</p>
-        </header>
+        <BlogPostHeader
+          slug="securing-ai-agents-like-employees"
+          title={t.blogAgentSecurityTitle}
+          subtitle={t.blogAgentSecuritySubtitle}
+          excerpt={t.blogAgentSecurityExcerpt}
+          headerClassName="mb-12"
+        />
+
+        <BlogArticleTakeaways slug="securing-ai-agents-like-employees" />
 
         <div className="space-y-6 leading-relaxed">
           {article.intro.map((paragraph, index) => (
@@ -647,7 +777,9 @@ export const AgentSecurityPost: React.FC = () => {
             </p>
           </div>
         ) : null}
+
+        <BlogPostCrossLinks slug="securing-ai-agents-like-employees" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

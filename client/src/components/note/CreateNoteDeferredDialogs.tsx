@@ -16,21 +16,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel } from "@/utils/localAiUxText";
+import { useLanguage } from "@/context/LanguageContext";
+import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel, isLocalAiReadyToGenerateProgress, localAiWorkingLabel } from "@/utils/localAiUxText";
 import type { ModelLoadProgress } from "@/utils/clientLLM";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
 import { WritingPencilIcon } from "./WritingPencilIcon";
+import { AttachmentProgressDialog } from "./AttachmentProgressDialog";
 
 function localAiDialogPrimaryLine(progress: { text: string } | null): string {
   const text = progress?.text?.trim() ?? "";
-  if (!text) return "Working...";
-  if (text === "Ready to generate") return localAiAnalyzingPromptLabel();
+  if (!text) return localAiWorkingLabel();
+  if (isLocalAiReadyToGenerateProgress(text)) return localAiAnalyzingPromptLabel();
   return text;
 }
 
+export type AttachmentUploadUiProgress = {
+  phase: "prepare" | "encrypt" | "upload" | "finalize";
+  progress: number;
+  detail?: string;
+};
+
 type CreateNoteDeferredDialogsProps = {
   aiProgress: ModelLoadProgress | null;
+  attachmentProgress: AttachmentUploadUiProgress | null;
   cellularPreloadConfirmOpen: boolean;
   isGeneratingContent: boolean;
   onStartFreeModelDownload: () => void;
@@ -43,16 +51,26 @@ type CreateNoteDeferredDialogsProps = {
 
 export function CreateNoteDeferredDialogs({
   aiProgress,
+  attachmentProgress,
   cellularPreloadConfirmOpen,
   isGeneratingContent,
   onStartFreeModelDownload,
   onUseCloudAssist,
-  onWriteWithoutAi,
+  onWriteWithoutAi: _onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
 }: CreateNoteDeferredDialogsProps) {
+  const { t } = useLanguage();
   const primaryLine = localAiDialogPrimaryLine(aiProgress);
+
+  const attachmentTitle =
+    attachmentProgress?.phase === "prepare"
+      ? t.attachmentProgressPreparing
+      : attachmentProgress?.phase === "finalize"
+        ? t.attachmentProgressFinalizing
+        : // Encrypt and upload are streamed together — keep one stable title.
+          t.attachmentProgressEncrypting;
 
   return (
     <>
@@ -90,8 +108,7 @@ export function CreateNoteDeferredDialogs({
                   />
                 </div>
                 <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground/85">
-                  Private AI runs entirely in your browser. Longer tasks and slower devices can take
-                  noticeably more time than cloud APIs - that&apos;s normal for local generation.
+                  {t.aiComposerLocalAiDialogFootnote}
                 </p>
               </div>
             </DialogDescription>
@@ -99,29 +116,38 @@ export function CreateNoteDeferredDialogs({
         </DialogContent>
       </Dialog>
 
+      <AttachmentProgressDialog
+        progress={
+          attachmentProgress
+            ? {
+                phase: attachmentProgress.phase === "upload" ? "encrypt" : attachmentProgress.phase,
+                progress: attachmentProgress.progress,
+                title: attachmentTitle,
+                detail: attachmentProgress.detail,
+                footnote: t.attachmentProgressFootnote,
+              }
+            : null
+        }
+      />
+
       <AlertDialog
         open={cellularPreloadConfirmOpen}
         onOpenChange={setCellularPreloadConfirmOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Download the on-device AI now?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This connection looks like cellular or a slower network (for example 3G). The private
-              AI model is a large download and can use a noticeable amount of mobile data. You can
-              download it now, or cancel and use Wi-Fi first. If you skip, the model will still
-              download when you run your first generation.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t.aiComposerCellularDownloadTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.aiComposerCellularDownloadBody}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogCancel>{t.aiComposerDialogNotNow}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setCellularPreloadConfirmOpen(false);
                 onStartFreeModelDownload();
               }}
             >
-              Download
+              {t.aiComposerDialogDownload}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -130,30 +156,32 @@ export function CreateNoteDeferredDialogs({
       <AlertDialog open={showTemplateOfferPrompt} onOpenChange={setShowTemplateOfferPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Private AI isn&apos;t available on this device</AlertDialogTitle>
+            <AlertDialogTitle>{t.aiComposerLocalAiUnavailableDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  On-device AI couldn't start on this device. You can use{" "}
-                  <span className="font-semibold text-foreground">Cloud Assist</span> instead —
-                  it runs on <span className="font-semibold text-foreground">Google Gemma 4 26B</span> via Cloudflare Workers AI.
+                  {t.aiComposerLocalAiUnavailableIntro}{" "}
+                  <span className="font-semibold text-foreground">{t.aiComposerEnableCloudAssist}</span>{" "}
+                  {t.aiComposerLocalAiUnavailableRunsOn}{" "}
+                  <span className="font-semibold text-foreground">{t.aiComposerLocalAiUnavailableModel}</span>{" "}
+                  {t.aiComposerLocalAiUnavailableVia}
                 </p>
                 <p>
-                  <span className="font-semibold text-red-600 dark:text-red-400">Not fully private:</span>{" "}
-                  your prompt is sent to the cloud for processing.
+                  <span className="font-semibold text-red-600 dark:text-red-400">
+                    {t.aiComposerLocalAiUnavailableNotPrivateLabel}
+                  </span>{" "}
+                  {t.aiComposerLocalAiUnavailableNotPrivateBody}
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-            <AlertDialogCancel className="w-full sm:w-auto">
-              Not now
-            </AlertDialogCancel>
+            <AlertDialogCancel className="w-full sm:w-auto">{t.aiComposerDialogNotNow}</AlertDialogCancel>
             <AlertDialogAction
               className="w-full bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-600 sm:w-auto"
               onClick={onUseCloudAssist}
             >
-              Enable Cloud Assist ›
+              {t.aiComposerEnableCloudAssistLink}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

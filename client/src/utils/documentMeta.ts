@@ -1,3 +1,5 @@
+import { canonicalPublicPath } from "@shared/homeSeoLinks";
+
 /** Visible brand suffix for HTML <title> tags. */
 export const DOCUMENT_META_BRAND = "PrivateNote.ai";
 
@@ -11,6 +13,9 @@ const OG_LOCALE_BY_LANG: Record<string, string> = {
   es: "es_ES",
   it: "it_IT",
   nl: "nl_NL",
+  pt: "pt_PT",
+  sr: "sr_RS",
+  hr: "hr_HR",
 };
 
 export type DocumentMetaOptions = {
@@ -46,11 +51,7 @@ function canonicalPageUrl(canonicalPath?: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const path = canonicalPath ?? (typeof window !== "undefined" ? window.location.pathname : "/");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const canonicalPathname =
-    normalizedPath === "/" || normalizedPath.includes(".")
-      ? normalizedPath
-      : normalizedPath.replace(/\/+$/, "") || "/";
-  return `${origin}${canonicalPathname}`;
+  return `${origin}${canonicalPublicPath(normalizedPath)}`;
 }
 
 function upsertMetaProperty(property: string, content: string): void {
@@ -91,6 +92,32 @@ function clearArticleOnlyTags(): void {
   removeMetaProperty("article:published_time");
   removeMetaProperty("article:modified_time");
   removeMetaProperty("article:author");
+}
+
+export function removeStructuredDataScript(id: string): void {
+  document.head.querySelector<HTMLScriptElement>(`script[type="application/ld+json"][data-structured-data-id="${id}"]`)?.remove();
+}
+
+export function setStructuredDataScript(id: string, data: Record<string, unknown> | null): void {
+  if (!data) {
+    removeStructuredDataScript(id);
+    return;
+  }
+
+  let el = document.head.querySelector<HTMLScriptElement>(
+    `script[type="application/ld+json"][data-structured-data-id="${id}"]`,
+  );
+  if (!el) {
+    el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.dataset.structuredDataId = id;
+    const nonce = document.head.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content;
+    if (nonce) {
+      el.nonce = nonce;
+    }
+    document.head.appendChild(el);
+  }
+  el.text = JSON.stringify(data);
 }
 
 function ogLocaleFromDocument(): string {
@@ -150,6 +177,8 @@ export function setDocumentMeta(title: string, description: string, options?: Do
   upsertMetaProperty("og:type", ogType);
   upsertMetaProperty("og:site_name", DOCUMENT_META_BRAND);
   upsertMetaProperty("og:image", imageUrl);
+  upsertMetaProperty("og:image:width", "1200");
+  upsertMetaProperty("og:image:height", "630");
   upsertMetaProperty("og:locale", ogLocaleFromDocument());
 
   upsertMetaName("twitter:card", "summary_large_image");
@@ -175,5 +204,6 @@ export function setDocumentMeta(title: string, description: string, options?: Do
     }
   } else {
     clearArticleOnlyTags();
+    removeStructuredDataScript("blog-article");
   }
 }

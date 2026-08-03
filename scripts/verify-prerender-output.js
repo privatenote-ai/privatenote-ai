@@ -28,13 +28,24 @@ const REQUIRED_FLAT_HTML = [
   "it/about.html",
   "nl/index.html",
   "nl/about.html",
+  "pt/index.html",
+  "pt/about.html",
+  "sr/index.html",
+  "sr/about.html",
+  "hr/index.html",
+  "hr/about.html",
   "de/terms.html",
 ];
+
+const LOCALE_HOME_PATTERN = "de|fr|es|it|nl|pt|sr|hr";
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
 /** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/, /it/, /nl/) */
 const BAD_CANONICAL_TRAILING_SLASH_RE =
-  /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\/\/privatenote\.ai\/(?!(de|fr|es|it|nl)\/["'])[^"']+\/["']/i;
+  new RegExp(
+    `<link\\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\\/\\/privatenote\\.ai\\/(?!(${LOCALE_HOME_PATTERN})\\/["'])[^"']+\\/["']`,
+    "i",
+  );
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
@@ -43,8 +54,26 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "contact.html", mustContain: "Contact" },
   { file: "fr/contact.html", mustContain: "Contact" },
   { file: "de/developers.html", mustContain: "Entwickler" },
+  { file: "hr/developers.html", mustContain: "Integracije programera" },
   { file: "blog/how-we-generate-passwords.html", mustContain: "password" },
   { file: "blog/encrypted-vs-secure-file-sharing.html", mustContain: "Encrypted" },
+  { file: "secure-file-transfer.html", mustContain: "Secure File Transfer" },
+  { file: "de/secure-file-transfer.html", mustContain: "Dateiübertragung" },
+  { file: "it/secure-file-transfer.html", mustContain: "Trasferimento" },
+  { file: "sr/secure-file-transfer.html", mustContain: "prenos datoteka" },
+  { file: "hr/secure-file-transfer.html", mustContain: "prijenos datoteka" },
+];
+
+const BLOG_H1_CHECKS = [
+  { file: "blog/privacy-tools.html", h1MustContain: "Privacy Tools" },
+  { file: "de/blog/datenschutz-tools.html", h1MustContain: "Datenschutz" },
+  { file: "fr/blog/outils-de-confidentialite.html", h1MustContain: "confidentialité" },
+  { file: "es/blog/herramientas-de-privacidad.html", h1MustContain: "privacidad" },
+  { file: "it/blog/strumenti-per-la-privacy.html", h1MustContain: "privacy" },
+  { file: "nl/blog/privacytools.html", h1MustContain: "privacy" },
+  { file: "pt/blog/ferramentas-de-privacidade.html", h1MustContain: "privacidade" },
+  { file: "sr/blog/alati-za-privatnost.html", h1MustContain: "privatnost" },
+  { file: "hr/blog/alati-za-privatnost.html", h1MustContain: "privatnost" },
 ];
 
 function exists(p) {
@@ -56,13 +85,19 @@ function exists(p) {
   }
 }
 
+function firstH1Text(html) {
+  const match = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!match) return "";
+  return match[1].replace(/<[^>]+>/g, "").trim();
+}
+
 function htmlFilesForRoute(route, dir) {
   const trimmed = route.replace(/\/+$/, "");
   const rel = trimmed.replace(/^\//, "");
   if (!rel) {
     return [path.join(dir, "index.html")];
   }
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATTERN})$`).test(rel);
   const files = [path.join(dir, rel, "index.html")];
   if (!isLocaleHome) {
     files.unshift(path.join(dir, `${rel}.html`));
@@ -164,6 +199,29 @@ function main() {
     console.error(
       "Prerender HTML still uses generic shell <title> or wrong page title:\n\n" +
         badTitles.map((r) => `  - ${r}`).join("\n"),
+    );
+    process.exit(1);
+  }
+
+  const badH1 = [];
+  for (const { file, h1MustContain } of BLOG_H1_CHECKS) {
+    const htmlPath = path.join(dir, file);
+    if (!exists(htmlPath)) {
+      badH1.push(`${file} (missing file)`);
+      continue;
+    }
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const h1 = firstH1Text(html);
+    if (!h1 || !h1.toLowerCase().includes(h1MustContain.toLowerCase())) {
+      badH1.push(
+        `${file} (expected h1 to contain "${h1MustContain}", got: ${h1 || "(missing)"})`,
+      );
+    }
+  }
+  if (badH1.length) {
+    console.error(
+      "Prerender blog article <h1> checks failed:\n\n" +
+        badH1.map((r) => `  - ${r}`).join("\n"),
     );
     process.exit(1);
   }

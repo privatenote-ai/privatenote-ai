@@ -198,26 +198,13 @@ export const AiComposer: React.FC<AiComposerProps> = ({
       const { loadClientLLM } = await import("@/utils/loadClientLLM");
       const llm = await loadClientLLM();
       if (cancelled) return;
-      const modelId = await llm.getRecommendedLocalModelId();
+      const loadedId = llm.getLoadedLocalModelId();
+      const recommendedId = await llm.getRecommendedLocalModelId();
+      const modelId = loadedId ?? recommendedId;
       if (modelId) {
         setRecommendedModelLabel(publicModelNameForLoadProgress(modelId));
       }
       setLocalPrivateAiReady(llm.isEngineLoaded());
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [localAiSupported]);
-
-  useEffect(() => {
-    if (!localAiSupported || isAiModelLoading) return;
-    let cancelled = false;
-    void (async () => {
-      const { loadClientLLM } = await import("@/utils/loadClientLLM");
-      const llm = await loadClientLLM();
-      if (!cancelled) {
-        setLocalPrivateAiReady(llm.isEngineLoaded());
-      }
     })();
     return () => {
       cancelled = true;
@@ -561,7 +548,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                 className="mb-0 shrink-0 text-right"
               />
             </div>
-            {aiDraftAccepted ? (
+            {aiDraftAccepted && privacyBannerItems ? (
               <div className="mb-2 hidden md:flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
                 {privacyBannerItems}
               </div>

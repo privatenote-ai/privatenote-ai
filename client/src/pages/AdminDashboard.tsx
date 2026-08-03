@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { AnalyticsData, DailyMetrics } from '@shared/schema';
+import { NOTE_CREATION_SOURCE_LABELS, NOTE_CREATION_SOURCES } from '@shared/noteCreationSource';
+import {
+  FILE_SIZE_BUCKET_LABELS,
+  NOTE_CREATION_ENTRY_POINT_LABELS,
+  NOTE_CREATION_ENTRY_POINTS,
+} from '@shared/noteCreationEntryPoint';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import {
   Lock, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight,
   FileText, Eye, Shield, Sparkles, Activity, CheckCircle, XCircle, AlertTriangle,
-  UserPlus, LogIn, QrCode, Cpu, Cloud, Globe, Languages, Trash2, KeyRound,
+  UserPlus, LogIn, QrCode, Cpu, Cloud, Globe, Languages, Trash2, KeyRound, Monitor, FolderArchive,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +48,7 @@ const ANALYTICS_ALL_TIME_START = '2020-01-01';
 
 const EMPTY_METRICS: DailyMetrics = {
   notesCreated: 0, notesViewed: 0, passwordProtectedNotes: 0, aiEnhancedNotes: 0,
-  blogViews: {}, referrerCounts: {}, averageExpirationDays: 0,
+  blogViews: {}, referrerCounts: {}, creationSourceCounts: {}, creationEntryPointCounts: {}, averageExpirationDays: 0,
   expiryRangeDistribution: { oneHourOrLess: 0, oneDayOrLess: 0, oneWeekOrLess: 0, moreThanWeek: 0 },
   viewLimitsDistribution: { once: 0, twice: 0, threeToFive: 0, moreThanFive: 0, unlimited: 0 },
   contentLengthDistribution: { short: 0, medium: 0, long: 0 },
@@ -50,6 +56,8 @@ const EMPTY_METRICS: DailyMetrics = {
   accountSignups: 0, accountLogins: 0,
   qrSharesGenerated: 0, localAiUsed: 0, cloudAiUsed: 0,
   countryDistribution: {}, languageDistribution: {},
+  fileSharePageViews: 0, passwordSharePageViews: 0, notesWithFileAttachment: 0,
+  fileSizeBucketDistribution: { under5mb: 0, from5to15mb: 0, from15to25mb: 0, over25mb: 0 },
 };
 
 function normalizeMetrics(m?: DailyMetrics | null): DailyMetrics {
@@ -58,8 +66,14 @@ function normalizeMetrics(m?: DailyMetrics | null): DailyMetrics {
     ...EMPTY_METRICS, ...m,
     blogViews: m.blogViews || {},
     referrerCounts: m.referrerCounts || {},
+    creationSourceCounts: m.creationSourceCounts || {},
+    creationEntryPointCounts: m.creationEntryPointCounts || {},
     countryDistribution: m.countryDistribution || {},
     languageDistribution: m.languageDistribution || {},
+    fileSizeBucketDistribution: {
+      ...EMPTY_METRICS.fileSizeBucketDistribution!,
+      ...(m.fileSizeBucketDistribution || {}),
+    },
     expiryRangeDistribution: { ...EMPTY_METRICS.expiryRangeDistribution, ...(m.expiryRangeDistribution || {}) },
     viewLimitsDistribution: { ...EMPTY_METRICS.viewLimitsDistribution, ...(m.viewLimitsDistribution || {}) },
     contentLengthDistribution: { ...EMPTY_METRICS.contentLengthDistribution, ...(m.contentLengthDistribution || {}) },
@@ -249,6 +263,9 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
     { label: 'QR Shares', value: metrics.qrSharesGenerated ?? 0, icon: QrCode, color: 'text-indigo-600 dark:text-indigo-400' },
     { label: 'Local AI Used', value: metrics.localAiUsed ?? 0, icon: Cpu, color: 'text-emerald-600 dark:text-emerald-400' },
     { label: 'Cloud AI Used', value: metrics.cloudAiUsed ?? 0, icon: Cloud, color: 'text-sky-600 dark:text-sky-400' },
+    { label: 'Password Page Views', value: metrics.passwordSharePageViews ?? 0, icon: Lock, color: 'text-amber-600 dark:text-amber-400' },
+    { label: 'File Page Views', value: metrics.fileSharePageViews ?? 0, icon: FolderArchive, color: 'text-orange-600 dark:text-orange-400' },
+    { label: 'Notes with File', value: metrics.notesWithFileAttachment ?? 0, icon: FileText, color: 'text-lime-600 dark:text-lime-400' },
   ];
 
   return (
@@ -421,6 +438,141 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
                         ))}
                       </tbody>
                     </table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {Object.keys(metrics.creationSourceCounts ?? {}).length > 0 && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Monitor className="h-4 w-4 text-indigo-500" /> Note Creation Source
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={NOTE_CREATION_SOURCES
+                            .map((source) => ({
+                              name: NOTE_CREATION_SOURCE_LABELS[source],
+                              count: metrics.creationSourceCounts?.[source] ?? 0,
+                            }))
+                            .filter(({ count }) => count > 0)}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#6366f1" name="Notes" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {Object.keys(metrics.creationEntryPointCounts ?? {}).length > 0 && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Activity className="h-4 w-4 text-teal-500" /> Note Entry Point
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={NOTE_CREATION_ENTRY_POINTS
+                            .map((entryPoint) => ({
+                              name: NOTE_CREATION_ENTRY_POINT_LABELS[entryPoint],
+                              count: metrics.creationEntryPointCounts?.[entryPoint] ?? 0,
+                            }))
+                            .filter(({ count }) => count > 0)}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#14b8a6" name="Notes" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {((metrics.passwordSharePageViews ?? 0) > 0 ||
+                (metrics.fileSharePageViews ?? 0) > 0 ||
+                (metrics.creationEntryPointCounts?.['password-share'] ?? 0) > 0 ||
+                (metrics.creationEntryPointCounts?.['file-share'] ?? 0) > 0) && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <Lock className="h-4 w-4 text-amber-500" /> Feature Funnel
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Page visits vs notes actually created from Share a password / Share a file
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={[
+                            {
+                              name: 'Share a password',
+                              pageViews: metrics.passwordSharePageViews ?? 0,
+                              notesCreated: metrics.creationEntryPointCounts?.['password-share'] ?? 0,
+                            },
+                            {
+                              name: 'Share a file',
+                              pageViews: metrics.fileSharePageViews ?? 0,
+                              notesCreated: metrics.creationEntryPointCounts?.['file-share'] ?? 0,
+                            },
+                          ]}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="pageViews" fill="#f59e0b" name="Page views" />
+                          <Bar dataKey="notesCreated" fill="#6366f1" name="Notes created" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {(metrics.notesWithFileAttachment ?? 0) > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                      <FolderArchive className="h-4 w-4 text-orange-500" /> File Attachment Sizes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={Object.entries(metrics.fileSizeBucketDistribution ?? {})
+                              .filter(([, count]) => count > 0)
+                              .map(([bucket, value]) => ({
+                                name: FILE_SIZE_BUCKET_LABELS[bucket as keyof typeof FILE_SIZE_BUCKET_LABELS],
+                                value,
+                              }))}
+                            cx="50%" cy="50%" outerRadius={65} dataKey="value"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {CHART_COLORS.map((c, i) => <Cell key={i} fill={c} />)}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                   </CardContent>
                 </Card>
               )}

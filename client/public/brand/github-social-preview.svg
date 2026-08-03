@@ -1,0 +1,30 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai GitHub social preview</title>
+  <desc id="desc">1280 by 640 social preview image for GitHub repository and organization profile cards.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="36" x2="0" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="#F8FBFF"/>
+  <circle cx="1140" cy="56" r="280" fill="#E0E7FF" opacity=".72"/>
+  <circle cx="64" cy="620" r="240" fill="#DBEAFE" opacity=".66"/>
+
+  <g transform="translate(64 48)">
+    <rect width="72" height="72" rx="18" fill="#0000FF"/>
+    <g transform="translate(0 -7) scale(0.692308)">
+      <path d="M23 45L52 71L81 45V88H23V45Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="1.8"/>
+      <path d="M23 45L52 71L81 45Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M23 45L52 71L81 45" stroke="#0000FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <text x="152" y="92" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="850" fill="#0000FF" letter-spacing="-0.02em">privateNote</text>
+  <text x="324" y="74" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="850" fill="#0000FF">.ai</text>
+
+  <text x="640" y="288" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850" fill="#0F172A" letter-spacing="-0.02em">Share secrets.</text>
+  <text x="640" y="356" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="850" fill="#0000FF" letter-spacing="-0.02em">Leave no trail.</text>
+
+  <text x="1216" y="592" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500" fill="#475569">Encrypted in browser &#183; Read once &#183; No plaintext on server</text>
+</svg>

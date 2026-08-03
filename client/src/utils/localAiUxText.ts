@@ -4,14 +4,28 @@
  * Generation follows four phases: analyze → think (pre-token) → draft (streaming) → finalize (strip/validate).
  */
 
+import { getActiveTranslations } from "./translation";
+
+function tx() {
+  return getActiveTranslations();
+}
+
+function interpolate(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replaceAll(`{${key}}`, value);
+  }
+  return result;
+}
+
 /** Phase 1 — after the model is loaded, before the request is sent (replaces internal “Ready to generate” in the UI). */
 export function localAiAnalyzingPromptLabel(): string {
-  return "Analyzing your prompt…";
+  return tx().localAiAnalyzingPrompt;
 }
 
 /** Optional second line during phase 1. */
 export function localAiAnalyzingDetailHint(): string {
-  return "Understanding your template and instructions.";
+  return tx().localAiAnalyzingDetail;
 }
 
 /**
@@ -22,12 +36,12 @@ export const LOCAL_AI_PROMPT_ANALYSIS_DWELL_MS = 5200;
 
 /** Phase 2 — request in flight, no assistant tokens yet (often the slowest part on CPU). */
 export function localAiThinkingLabel(): string {
-  return "Thinking…";
+  return tx().localAiThinking;
 }
 
 /** Longer reassurance for phase 2 (shown as `detail` under the headline). */
 export function localAiThinkingDetailHint(): string {
-  return "This step often takes the longest—especially on slower devices. The model may be working through your request before any text appears.";
+  return tx().localAiThinkingDetail;
 }
 
 /**
@@ -41,35 +55,95 @@ export function localAiOnDeviceSlownessHint(): string {
 export function localAiDraftingLabel(
   type: "improve" | "summarize" | "secure" | "ask" | "simplify",
 ): string {
+  const strings = tx();
   switch (type) {
     case "summarize":
-      return "Writing your summary…";
+      return strings.localAiDraftingSummary;
     case "secure":
-      return "Writing redacted text…";
+      return strings.localAiDraftingSecure;
     case "improve":
-      return "Writing clearer wording…";
+      return strings.localAiDraftingImprove;
     case "simplify":
-      return "Writing simpler wording…";
+      return strings.localAiDraftingSimplify;
     case "ask":
-      return "Writing…";
+      return strings.localAiDraftingAsk;
   }
+}
+
+/** Model load complete — internal progress headline before generation starts. */
+export function localAiReadyToGenerateLabel(): string {
+  return tx().localAiReadyToGenerate;
+}
+
+export function localAiWorkingLabel(): string {
+  return tx().localAiWorking;
+}
+
+export function localAiPreparingPrivateLabel(): string {
+  return tx().localAiPreparingPrivate;
+}
+
+export function localAiPreparingPrivateAttemptLabel(label: string): string {
+  return interpolate(tx().localAiPreparingPrivateAttempt, { label });
+}
+
+export function localAiLoadingPrivateLabel(): string {
+  return tx().localAiLoadingPrivate;
+}
+
+export function isLocalAiReadyToGenerateProgress(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return trimmed === tx().localAiReadyToGenerate || trimmed === "Ready to generate";
+}
+
+export function localAiResettingDownloadLabel(modelId: string): string {
+  return interpolate(tx().localAiResettingDownload, {
+    model: publicModelNameForLoadProgress(modelId),
+  });
+}
+
+export function localAiRetryingDownloadLabel(modelId: string): string {
+  return interpolate(tx().localAiRetryingDownload, {
+    model: publicModelNameForLoadProgress(modelId),
+  });
 }
 
 /**
  * Which animated affordance matches the current headline (brain = cognitive / setup; pencil = streaming text).
  */
 export function getLocalAiGenerationGlyph(headline: string): "brain" | "pencil" {
-  const t = headline.trim().toLowerCase();
-  if (
-    t.includes("thinking") ||
-    t.includes("analyzing") ||
-    t.includes("finalizing") ||
-    (t.includes("loading") &&
-      (t.includes("private ai") || /^loading .+\(\d{1,3}%\)$/i.test(t.trim()))) ||
-    t.includes("preparing private ai") ||
-    t === "working…" ||
-    t === "working"
-  ) {
+  const strings = tx();
+  const h = headline.trim().toLowerCase();
+  const brainNeedles = [
+    strings.localAiThinking,
+    strings.localAiAnalyzingPrompt,
+    strings.localAiFinalizing,
+    strings.localAiWorking,
+    strings.localAiLoadingPrivate,
+    strings.localAiReadyToGenerate,
+    interpolate(strings.localAiLoadingModel, { model: "" }).replace(/\s+/g, " ").trim(),
+    "thinking",
+    "analyzing",
+    "finalizing",
+    "loading",
+    "working",
+    "ready to generate",
+    "učitavanje",
+    "razmišl",
+    "analiz",
+    "završav",
+  ]
+    .map((s) => s.toLowerCase())
+    .filter(Boolean);
+
+  if (brainNeedles.some((needle) => h.includes(needle))) {
+    return "brain";
+  }
+  if (/^(loading|učitavanje) .+\(\d{1,3}%\)$/i.test(h.trim())) {
+    return "brain";
+  }
+  if (h.includes("preparing private ai")) {
     return "brain";
   }
   return "pencil";
@@ -77,7 +151,7 @@ export function getLocalAiGenerationGlyph(headline: string): "brain" | "pencil" 
 
 /** Phase 4 — parse, strip reasoning tags, clean, validate (and optional repair). */
 export function localAiFinalizingLabel(): string {
-  return "Finalizing answer…";
+  return tx().localAiFinalizing;
 }
 
 /** @deprecated Streaming phases use {@link localAiDraftingLabel} + {@link localAiFinalizingLabel}; kept for older call sites. */
@@ -89,6 +163,10 @@ export function localAiGenerationPhaseLabel(
 
 const TECHNICAL_LOAD_PROGRESS_LINE =
   /Qwen|Llama|Gemma|gemma|DeepSeek|MLC|SmolLM|smollm|\.wasm|https?:\/\/|model_lib|params_|\/models\/|indexeddb|shard/i;
+
+/** Generic MLC / engine status lines — replace with localized headline + percent only. */
+const GENERIC_LOAD_PROGRESS_LINE =
+  /^(loading\b|fetching\b|initiate\b|download\b|start to fetch)/i;
 
 /**
  * Short label for load progress (catalog id → readable name; avoids raw URLs and internal paths).
@@ -108,17 +186,18 @@ export function userFacingLocalAiLoadProgress(
   modelId?: string,
 ): string {
   const percent = Math.round(Math.min(1, Math.max(0, progressFraction)) * 100);
-  const t = (raw ?? "").trim();
+  const rawText = (raw ?? "").trim();
+  const strings = tx();
   const headline = modelId
-    ? `Loading ${publicModelNameForLoadProgress(modelId)}`
-    : "Loading private AI";
+    ? interpolate(strings.localAiLoadingModel, { model: publicModelNameForLoadProgress(modelId) })
+    : strings.localAiLoadingPrivate;
 
-  if (!t) return `${headline} (${percent}%)`;
-  if (TECHNICAL_LOAD_PROGRESS_LINE.test(t)) {
+  if (!rawText) return `${headline} (${percent}%)`;
+  if (TECHNICAL_LOAD_PROGRESS_LINE.test(rawText) || GENERIC_LOAD_PROGRESS_LINE.test(rawText)) {
     return `${headline} (${percent}%)`;
   }
   if (modelId) {
-    return `${headline}: ${t} (${percent}%)`;
+    return `${headline}: ${rawText} (${percent}%)`;
   }
-  return t;
+  return rawText;
 }

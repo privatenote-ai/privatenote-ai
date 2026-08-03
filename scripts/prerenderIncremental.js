@@ -3,6 +3,9 @@ import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { PUBLIC_MARKETING_PATHS } from "../shared/publicMarketingPaths.ts";
+import { LOCALE_HOME_PATH_PATTERN } from "../shared/supportedLanguages.ts";
+
+const LOCALE_HOME_RE = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`);
 
 /** Patterns that require a full Playwright pass for every sitemap route. */
 export const FULL_PRERENDER_PATTERNS = [
@@ -10,12 +13,16 @@ export const FULL_PRERENDER_PATTERNS = [
   /^scripts\/prerenderIncremental/,
   /^shared\/injectPrerenderDocumentMeta\.ts$/,
   /^shared\/homeSeoLinks\.ts$/,
+  /^shared\/localizedMarketingHreflang\.ts$/,
   /^shared\/publicMarketingPaths\.ts$/,
+  /^shared\/supportedLanguages\.ts$/,
   /^client\/index\.html$/,
   /^client\/src\/App\.tsx$/,
   /^client\/src\/components\/Navbar\.tsx$/,
   /^client\/src\/components\/Footer\.tsx$/,
+  /^client\/src\/utils\/localizedPath\.ts$/,
   /^client\/src\/utils\/resolveDocumentMeta\.ts$/,
+  /^scripts\/check-locale-home-anchor-hrefs\.js$/,
   /^client\/src\/utils\/translations\//,
   /^client\/public\/sitemap\.xml$/,
   /^vite\.config\.ts$/,
@@ -42,6 +49,10 @@ const PAGE_ROUTE_RULES = [
   { test: /client\/src\/pages\/About\.tsx$/, bases: ["/about"] },
   { test: /client\/src\/pages\/Blog\.tsx$/, bases: ["/blog"] },
   {
+    test: /client\/src\/pages\/BlogCategory\.tsx$|shared\/blogCategories\.ts$|client\/src\/components\/blog\/BlogGuideArticle\.tsx$/,
+    kind: "blog",
+  },
+  {
     test: /client\/src\/pages\/BlogPost\.tsx$|client\/src\/utils\/staticBlogPosts\.ts$|client\/src\/components\/blog\/.*Post\.tsx$/,
     kind: "blog",
   },
@@ -53,6 +64,18 @@ const PAGE_ROUTE_RULES = [
   { test: /client\/src\/pages\/Privacy\.tsx$/, bases: ["/privacy"] },
   { test: /client\/src\/pages\/Terms\.tsx$/, bases: ["/terms"] },
   { test: /client\/src\/pages\/SecurityResources\.tsx$/, bases: ["/security-resources"] },
+  {
+    test: /client\/src\/components\/security-guides\/locale\//,
+    kind: "security-guides",
+  },
+  {
+    test: /client\/src\/components\/security-guides\/VpnServicesGuide\.tsx$/,
+    kind: "security-guides",
+  },
+  {
+    test: /client\/src\/components\/security-guides\/PasswordManagersGuide\.tsx$/,
+    kind: "security-guides",
+  },
   {
     test: /client\/src\/pages\/SecurityGuideDetail\.tsx$/,
     kind: "security-guides",
@@ -96,6 +119,7 @@ export function shouldFullPrerender(changedFiles) {
   );
 }
 
+
 function isAppOnlyChange(file) {
   const f = normalizeChangedFile(file);
   return APP_ONLY_PATTERNS.some((re) => re.test(f));
@@ -107,7 +131,7 @@ export function expandBasePaths(basePaths) {
   for (const route of PUBLIC_MARKETING_PATHS) {
     for (const base of basePaths) {
       if (base === "/") {
-        if (route === "/" || /^\/(de|fr|es|it|nl)$/.test(route)) set.add(route);
+        if (route === "/" || LOCALE_HOME_RE.test(route.replace(/^\//, ""))) set.add(route);
       } else if (route === base || route.endsWith(base)) {
         set.add(route);
       }
@@ -175,7 +199,7 @@ export async function routeHasCachedHtml(cacheDir, route) {
   if (!cacheDir) return false;
   const trimmed = route.replace(/\/+$/, "");
   const rel = trimmed.replace(/^\//, "");
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = LOCALE_HOME_RE.test(rel);
   const candidates = [];
   if (!rel) {
     candidates.push(path.join(cacheDir, "index.html"));
@@ -216,6 +240,47 @@ export async function saveHtmlCache(distDir, cacheDir) {
     await fs.copyFile(file, dest);
   }
   return files.length;
+}
+
+/** Relative paths under dist for each marketing route (matches scripts/prerender.js saveHTML). */
+export function expectedMarketingHtmlRelPaths(route) {
+  const trimmed = route.replace(/\/+$/, "") || "/";
+  const rel = trimmed.replace(/^\//, "");
+  const paths = new Set();
+
+  if (!rel) {
+    paths.add("index.html");
+    return paths;
+  }
+
+  const isLocaleHome = LOCALE_HOME_RE.test(rel);
+  if (!isLocaleHome) {
+    paths.add(`${rel}.html`);
+  }
+  paths.add(`${rel}/index.html`);
+  return paths;
+}
+
+const PRERENDER_SHELL_HTML = new Set(["index.html", "404.html"]);
+
+/** Drop cached marketing HTML no longer in the sitemap/route list (e.g. legacy /de/blog/english-slug). */
+export async function pruneStaleMarketingHtml(distDir, routes) {
+  const keep = new Set(PRERENDER_SHELL_HTML);
+  for (const route of routes) {
+    for (const rel of expectedMarketingHtmlRelPaths(route)) {
+      keep.add(rel.split(path.sep).join("/"));
+    }
+  }
+
+  const files = await walkHtmlFiles(distDir);
+  let removed = 0;
+  for (const file of files) {
+    const rel = path.relative(distDir, file).split(path.sep).join("/");
+    if (keep.has(rel)) continue;
+    await fs.rm(file, { force: true });
+    removed++;
+  }
+  return removed;
 }
 
 /**

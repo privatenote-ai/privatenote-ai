@@ -24,8 +24,12 @@ interface AnalyticsContext {
   aiEnhanced?: boolean;
   aiMode?: 'local' | 'cloud' | null;
   referrer?: string | null;
+  creationSource?: string | null;
+  creationEntryPoint?: string | null;
   country?: string | null;
   language?: string | null;
+  /** Plaintext file size in bytes when a file attachment is included. Null/undefined = no attachment. */
+  attachmentPlaintextBytes?: number | null;
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
@@ -71,6 +75,7 @@ export interface IStorage {
   trackAccountSignup(): Promise<void>;
   trackAccountLogin(): Promise<void>;
   trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void>;
+  trackPageView(page: 'file-share' | 'password-share'): Promise<void>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
   getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult>;
 }
@@ -301,6 +306,18 @@ class MemStorage {
       metrics.referrerCounts[context.referrer] =
         (metrics.referrerCounts[context.referrer] ?? 0) + 1;
     }
+
+    if (context?.creationSource) {
+      if (!metrics.creationSourceCounts) metrics.creationSourceCounts = {};
+      metrics.creationSourceCounts[context.creationSource] =
+        (metrics.creationSourceCounts[context.creationSource] ?? 0) + 1;
+    }
+
+    if (context?.creationEntryPoint) {
+      if (!metrics.creationEntryPointCounts) metrics.creationEntryPointCounts = {};
+      metrics.creationEntryPointCounts[context.creationEntryPoint] =
+        (metrics.creationEntryPointCounts[context.creationEntryPoint] ?? 0) + 1;
+    }
     
     // Track expiration days
     const expirationDate = new Date(note.expiresAt);
@@ -382,6 +399,7 @@ class MemStorage {
   async trackAccountSignup(): Promise<void> { /* MemStorage no-op */ }
   async trackAccountLogin(): Promise<void> { /* MemStorage no-op */ }
   async trackClientEvent(_event: 'wrong_password' | 'qr_share'): Promise<void> { /* MemStorage no-op */ }
+  async trackPageView(_page: 'file-share' | 'password-share'): Promise<void> { /* MemStorage no-op */ }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     return Array.from(this.analytics.values()).filter(data => {
@@ -512,6 +530,18 @@ class KVAnalyticsStorage {
         (metrics.referrerCounts[context.referrer] ?? 0) + 1;
     }
 
+    if (context?.creationSource) {
+      if (!metrics.creationSourceCounts) metrics.creationSourceCounts = {};
+      metrics.creationSourceCounts[context.creationSource] =
+        (metrics.creationSourceCounts[context.creationSource] ?? 0) + 1;
+    }
+
+    if (context?.creationEntryPoint) {
+      if (!metrics.creationEntryPointCounts) metrics.creationEntryPointCounts = {};
+      metrics.creationEntryPointCounts[context.creationEntryPoint] =
+        (metrics.creationEntryPointCounts[context.creationEntryPoint] ?? 0) + 1;
+    }
+
     if (context?.country) {
       if (!metrics.countryDistribution) metrics.countryDistribution = {};
       metrics.countryDistribution[context.country] =
@@ -570,6 +600,26 @@ class KVAnalyticsStorage {
       metrics.contentLengthDistribution.long++;
     }
 
+    if (context?.attachmentPlaintextBytes != null) {
+      metrics.notesWithFileAttachment = (metrics.notesWithFileAttachment ?? 0) + 1;
+      const buckets = (metrics.fileSizeBucketDistribution ??= {
+        under5mb: 0,
+        from5to15mb: 0,
+        from15to25mb: 0,
+        over25mb: 0,
+      });
+      const mb = context.attachmentPlaintextBytes / (1024 * 1024);
+      if (mb < 5) {
+        buckets.under5mb++;
+      } else if (mb < 15) {
+        buckets.from5to15mb++;
+      } else if (mb < 25) {
+        buckets.from15to25mb++;
+      } else {
+        buckets.over25mb++;
+      }
+    }
+
     await this.saveDailyMetrics(today, metrics);
   }
 
@@ -594,6 +644,17 @@ class KVAnalyticsStorage {
     const today = new Date();
     const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
     metrics.blogViews[slug] = (metrics.blogViews[slug] || 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+  }
+
+  async trackPageView(page: "file-share" | "password-share"): Promise<void> {
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    if (page === "file-share") {
+      metrics.fileSharePageViews = (metrics.fileSharePageViews ?? 0) + 1;
+    } else {
+      metrics.passwordSharePageViews = (metrics.passwordSharePageViews ?? 0) + 1;
+    }
     await this.saveDailyMetrics(today, metrics);
   }
 
@@ -783,6 +844,10 @@ export class CompositeStorage implements IStorage {
 
   async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
     return this.analyticsStorage.trackClientEvent(event);
+  }
+
+  async trackPageView(page: 'file-share' | 'password-share'): Promise<void> {
+    return this.analyticsStorage.trackPageView(page);
   }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {

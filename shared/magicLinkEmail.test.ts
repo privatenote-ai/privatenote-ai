@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildMagicLinkEmailContent,
+  detectAuthEmailLocale,
   normalizeMagicLinkEmailPurpose,
 } from "./magicLinkEmail.ts";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "./sanitizeAuthReturnTo.ts";
@@ -46,6 +47,25 @@ describe("magicLinkEmail", () => {
     assert.match(html, /End-to-end encrypted notes and file sharing/);
     assert.ok(text.includes(magicUrl));
     assert.match(text, /238242/);
+  });
+
+  it("uses Dutch copy for nl locale", () => {
+    const { subject, html } = buildMagicLinkEmailContent({
+      magicUrl: SAMPLE_URL,
+      signInCode: SAMPLE_CODE,
+      locale: "nl",
+      purpose: "default",
+    });
+    assert.equal(subject, "Je PrivateNote-inlogcode");
+    assert.match(html, /Of log in met één tik/);
+    assert.match(html, />Inloggen</);
+  });
+
+  it("detects Dutch from Accept-Language", () => {
+    const request = new Request("https://privatenote.ai/", {
+      headers: { "Accept-Language": "nl-NL,nl;q=0.9" },
+    });
+    assert.equal(detectAuthEmailLocale(request), "nl");
   });
 
   it("normalizes email purpose", () => {

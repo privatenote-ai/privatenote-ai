@@ -48,4 +48,6 @@ export interface Env {
   AUTH_DEBUG?: string;
   /** Base64-encoded 256-bit key for AES-GCM encryption of TOTP secrets at rest. Set via `wrangler secret put TOTP_ENCRYPTION_KEY`. */
   TOTP_ENCRYPTION_KEY?: string;
+  /** Set in wrangler.local.toml — skip EU D1-backed KV shim and use Miniflare KV bindings. */
+  LOCAL_DEV?: string;
 }

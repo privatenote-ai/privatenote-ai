@@ -9,23 +9,32 @@ import http from "node:http";
 import https from "node:https";
 import { chromium } from "playwright";
 import {
+  absolutePublicUrl,
   buildHomeSeoHeadMarkup,
   canonicalAbsoluteUrlForRoute,
+  canonicalPathForHomeLanguage,
   homeLanguageFromRoute,
   isLocaleHomeRoute,
   PUBLIC_SITE_ORIGIN,
 } from "../shared/homeSeoLinks.ts";
+import {
+  buildMarketingHreflangMarkup,
+} from "../shared/localizedMarketingHreflang.ts";
 import { injectPrerenderDocumentMeta } from "../shared/injectPrerenderDocumentMeta.ts";
+import { LEGACY_IMAGE_REDIRECTS } from "../shared/legacyImageRedirects.ts";
 import {
   isPublicMarketingPath,
   PUBLIC_MARKETING_PATHS,
 } from "../shared/publicMarketingPaths.ts";
+import { LOCALE_HOME_PATH_PATTERN, SUPPORTED_LANGUAGES } from "../shared/supportedLanguages.ts";
 import {
   getChangedFiles,
+  pruneStaleMarketingHtml,
   restoreHtmlCache,
   saveHtmlCache,
   selectRoutesToPrerender,
 } from "./prerenderIncremental.js";
+import { fixSlashlessLocaleHomeAnchorHrefs } from "./check-locale-home-anchor-hrefs.js";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const HTML_CACHE_DIR = process.env.PRERENDER_HTML_CACHE_DIR || "";
@@ -43,6 +52,16 @@ const PREVIEW_PORT = PREVIEW_ORIGIN.port || "4173";
 // Fallback routes (public-only; keep in sync with shared/publicMarketingPaths.ts)
 // -------------------------------
 const FALLBACK_ROUTES = [...PUBLIC_MARKETING_PATHS];
+
+const LANGUAGE_STORAGE_KEY = "privatenote.language";
+
+function languageForPrerenderRoute(route) {
+  const first = route.split("/").filter(Boolean)[0];
+  if (first && SUPPORTED_LANGUAGES.includes(first) && first !== "en") {
+    return first;
+  }
+  return "en";
+}
 
 // -------------------------------
 // Preview server helpers
@@ -126,8 +145,13 @@ function normalizeRoutePath(input, siteOrigin) {
     // Only keep same-origin paths
     const site = new URL(siteOrigin);
     if (u.origin !== site.origin) return null;
-    // Keep pathname only; strip trailing slash except for root
     let p = u.pathname;
+    const bare = p.replace(/\/+$/, "") || "/";
+    const parts = bare.split("/").filter(Boolean);
+    if (parts.length === 1 && new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(parts[0])) {
+      return `/${parts[0]}/`;
+    }
+    // Keep pathname only; strip trailing slash except for root
     if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
     return p || "/";
   } catch {
@@ -218,8 +242,20 @@ function stripStaleModulePreloads(html) {
   );
 }
 
+function rewriteLegacyImageUrls(html) {
+  let out = html;
+  for (const [from, to] of Object.entries(LEGACY_IMAGE_REDIRECTS)) {
+    out = out.split(from).join(to);
+    const absoluteFrom = `${PUBLIC_SITE_ORIGIN}${from}`;
+    const absoluteTo = `${PUBLIC_SITE_ORIGIN}${to}`;
+    out = out.split(absoluteFrom).join(absoluteTo);
+  }
+  return out;
+}
+
 function postProcessHTML(html, route) {
   let out = injectPrerenderDocumentMeta(html, route);
+  out = rewriteLegacyImageUrls(out);
 
   // Rewrite preview absolute URLs -> root-relative (except locale-home SEO links; fixed below).
   out = out.replace(/https?:\/\/(?:localhost|127\.0\.0\.1):4173/gi, "");
@@ -240,14 +276,28 @@ function postProcessHTML(html, route) {
       /<link\b[^>]*\bdata-privatenote-home-locale=["']true["'][^>]*>/gi,
       "",
     );
-    const seoBlock = buildHomeSeoHeadMarkup(homeLanguageFromRoute(route));
+    const language = homeLanguageFromRoute(route);
+    const pageUrl = absolutePublicUrl(canonicalPathForHomeLanguage(language));
+    const seoBlock = [
+      buildHomeSeoHeadMarkup(language),
+      `<meta property="og:url" content="${pageUrl}" />`,
+    ].join("\n");
     out = out.replace("</head>", `${seoBlock}\n</head>`);
   } else if (isPublicSitemapRoute) {
-    const pageUrl = canonicalAbsoluteUrlForRoute(route);
     out = out.replace(
-      "</head>",
-      `<link rel="canonical" href="${pageUrl}" />\n<meta property="og:url" content="${pageUrl}" />\n</head>`,
+      /<link\b[^>]*\bdata-privatenote-localized-marketing=["']true["'][^>]*>/gi,
+      "",
     );
+    const pageUrl = canonicalAbsoluteUrlForRoute(route);
+    const hreflang = buildMarketingHreflangMarkup(route);
+    const seoExtras = [
+      `<link rel="canonical" href="${pageUrl}" />`,
+      `<meta property="og:url" content="${pageUrl}" />`,
+      hreflang,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    out = out.replace("</head>", `${seoExtras}\n</head>`);
   }
 
   // Strip feature-chunk modulepreload hints baked in by Vite's polyfill at render time.
@@ -271,20 +321,65 @@ function postProcessHTML(html, route) {
     </style></head>`
   );
 
+  // Cached incremental HTML may still ship slashless locale home anchors from before localizedPath used /de/.
+  out = fixSlashlessLocaleHomeAnchorHrefs(out);
+
   return out;
 }
 
-const ENTRY_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
+/** Re-apply SEO head injection for every marketing route (fixes stale cached HTML snapshots). */
+async function repostProcessAllMarketingHtml(routes) {
+  let updated = 0;
+  for (const route of routes) {
+    const trimmed = route.replace(/\/+$/, "") || "/";
+    const rel = trimmed.replace(/^\//, "");
+    const files = [];
+    if (!rel) {
+      files.push(path.join(DIST_DIR, "index.html"));
+    } else {
+      const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(rel);
+      files.push(path.join(DIST_DIR, rel, "index.html"));
+      if (!isLocaleHome) {
+        files.push(path.join(DIST_DIR, `${rel}.html`));
+      }
+    }
+    for (const file of files) {
+      try {
+        const html = await fs.readFile(file, "utf8");
+        const cleaned = postProcessHTML(html, route);
+        if (cleaned !== html) {
+          await fs.writeFile(file, cleaned, "utf8");
+          updated++;
+        }
+      } catch {
+        /* route file may not exist for every path shape */
+      }
+    }
+  }
+  if (updated > 0) {
+    console.log(`🔁 Re-post-processed SEO markup in ${updated} HTML file(s).`);
+  }
+}
+
+const INDEX_SCRIPT_RE = /\/assets\/index-[A-Za-z0-9_-]+\.js/g;
+const INDEX_STYLESHEET_RE = /\/assets\/index-[A-Za-z0-9_-]+\.css/g;
 const ASSET_REF_RE = /\/assets\/([A-Za-z0-9_.-]+\.(?:js|css))/g;
 
-function readCanonicalEntryScript() {
+function readCanonicalShellAssets() {
   const shellPath = path.join(BUILD_DIR, "index.html");
   const shell = readFileSync(shellPath, "utf8");
-  const match = shell.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/);
-  if (!match) {
+  const scriptMatch = shell.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/);
+  const stylesheetMatch = shell.match(/href="(\/assets\/index-[A-Za-z0-9_-]+\.css)"/);
+  if (!scriptMatch) {
     throw new Error(`Could not find Vite entry script in ${shellPath}`);
   }
-  return match[1];
+  if (!stylesheetMatch) {
+    throw new Error(`Could not find Vite entry stylesheet in ${shellPath}`);
+  }
+  return {
+    entryScript: scriptMatch[1],
+    entryStylesheet: stylesheetMatch[1],
+  };
 }
 
 async function walkHtmlFiles(dir, out = []) {
@@ -300,20 +395,26 @@ async function walkHtmlFiles(dir, out = []) {
   return out;
 }
 
-/** Align every prerendered page with the current Vite entry (avoids stale hashed JS after redeploy). */
-async function syncEntryScriptRefs(canonicalEntry) {
+/** Align cached prerender HTML with the current Vite shell assets (JS + CSS hashes). */
+async function syncShellAssetRefs({ entryScript, entryStylesheet }) {
   const files = await walkHtmlFiles(DIST_DIR);
-  let updated = 0;
+  let scriptUpdates = 0;
+  let stylesheetUpdates = 0;
   for (const file of files) {
     const html = await fs.readFile(file, "utf8");
-    const next = html.replace(ENTRY_SCRIPT_RE, canonicalEntry);
+    const withScript = html.replace(INDEX_SCRIPT_RE, entryScript);
+    const next = withScript.replace(INDEX_STYLESHEET_RE, entryStylesheet);
     if (next !== html) {
       await fs.writeFile(file, next, "utf8");
-      updated++;
+      if (withScript !== html) scriptUpdates++;
+      if (next !== withScript) stylesheetUpdates++;
     }
   }
-  if (updated > 0) {
-    console.log(`🔧 Synced entry script to ${canonicalEntry} in ${updated} HTML file(s).`);
+  if (scriptUpdates > 0 || stylesheetUpdates > 0) {
+    console.log(
+      `🔧 Synced shell assets to ${entryScript} + ${entryStylesheet}` +
+        ` (${scriptUpdates} script, ${stylesheetUpdates} stylesheet HTML file(s)).`,
+    );
   }
 }
 
@@ -361,7 +462,7 @@ async function saveHTML(route, html) {
     return;
   }
 
-  const isLocaleHome = /^(de|fr|es|it|nl)$/.test(rel);
+  const isLocaleHome = new RegExp(`^(${LOCALE_HOME_PATH_PATTERN})$`).test(rel);
 
   if (!isLocaleHome) {
     const flatFile = path.join(DIST_DIR, `${rel}.html`);
@@ -384,7 +485,7 @@ async function main() {
   try {
     await waitForServer(PREVIEW_URL);
     await prepareOutputDir();
-    const canonicalEntryScript = readCanonicalEntryScript();
+    const canonicalShellAssets = readCanonicalShellAssets();
 
     browser = await chromium.launch({
       headless: true,
@@ -438,11 +539,30 @@ async function main() {
       } catch { }
     });
 
-    const waitForStableAboveTheFold = async () => {
-      try {
-        await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
-      } catch {
-        await page.waitForTimeout(200);
+    const isBlogArticleRoute = (route) => {
+      const parts = route.replace(/\/+$/, "").split("/").filter(Boolean);
+      const blogIndex = parts.indexOf("blog");
+      if (blogIndex < 0) return false;
+      const slug = parts[blogIndex + 1];
+      return Boolean(slug) && parts.length === blogIndex + 2;
+    };
+
+    const waitForStableAboveTheFold = async (route) => {
+      if (isBlogArticleRoute(route)) {
+        try {
+          await page.waitForSelector(
+            '[data-privatenote-prerender-h1="true"], main article h1, main header h1, #root h1',
+            { timeout: 12_000 },
+          );
+        } catch {
+          await page.waitForTimeout(800);
+        }
+      } else {
+        try {
+          await page.waitForSelector("[data-lcp-element]", { timeout: 3000 });
+        } catch {
+          await page.waitForTimeout(200);
+        }
       }
       try {
         await page.waitForFunction(
@@ -477,12 +597,21 @@ async function main() {
       );
     }
 
+    // Establish preview origin before route loop so localStorage writes are allowed.
+    await page.goto(`${PREVIEW_URL}/`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+
     for (const route of selection.routes) {
       const url = `${PREVIEW_URL}${route}`;
       console.log(`→ prerendering ${url}`);
       try {
+        await page.evaluate(
+          ({ lang, storageKey }) => {
+            localStorage.setItem(storageKey, lang);
+          },
+          { lang: languageForPrerenderRoute(route), storageKey: LANGUAGE_STORAGE_KEY },
+        );
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
-        await waitForStableAboveTheFold();
+        await waitForStableAboveTheFold(route);
         const html = await page.content();
         await saveHTML(route, html);
         console.log(`✓ prerendered: ${route}`);
@@ -491,7 +620,12 @@ async function main() {
       }
     }
 
-    await syncEntryScriptRefs(canonicalEntryScript);
+    await syncShellAssetRefs(canonicalShellAssets);
+    await repostProcessAllMarketingHtml(routes);
+    const pruned = await pruneStaleMarketingHtml(DIST_DIR, routes);
+    if (pruned > 0) {
+      console.log(`🧹 Removed ${pruned} stale marketing HTML file(s) not in current route list.`);
+    }
     await verifyPrerenderAssetRefs();
 
     if (INCREMENTAL && HTML_CACHE_DIR) {

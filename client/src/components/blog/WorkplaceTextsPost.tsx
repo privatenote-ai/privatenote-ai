@@ -4,6 +4,15 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import type { SupportedLanguage } from "@/utils/translation";
+import { BlogPostHeader } from "@/components/blog/BlogPostChrome";
+import { BlogGuideArticle } from "@/components/blog/BlogGuideArticle";
+import { BlogArticleTakeaways } from "@/components/blog/BlogArticleTakeaways";
+import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
+import { getBlogArticleCopy } from "@/components/blog/blogArticleLocale";
+import { workplaceTextsHr } from "@/components/blog/locale/workplaceTexts.hr";
+import { workplaceTextsNl } from "@/components/blog/locale/workplaceTexts.nl";
+import { workplaceTextsPt } from "@/components/blog/locale/workplaceTexts.pt";
+import { workplaceTextsSr } from "@/components/blog/locale/workplaceTexts.sr";
 
 type ArticleCopy = {
   sourceLabel: string;
@@ -268,33 +277,99 @@ const copy: Partial<Record<SupportedLanguage, ArticleCopy>> & { en: ArticleCopy 
       "Las herramientas de privacidad funcionan mejor cuando se adoptan antes del problema. Usa comunicación efímera para secretos, instrucciones de un solo uso y contexto breve que no debería convertirse en historial laboral permanente.",
     ctaButton: "Escribir una nota privada",
   },
+  it: {
+    sourceLabel: "Ispirato a un articolo di Business Insider",
+    intro: [
+      "La recente copertura di Business Insider sul processo OpenAI ricorda che la comunicazione moderna sul lavoro è, di fatto, permanente.",
+      "Messaggi di testo, conversazioni Slack, trascrizioni di riunioni generate dall’IA, dispositivi sincronizzati, chat su telefoni personali e strumenti collaborativi possono diventare prove molto dopo che il contesto originale è scomparso.",
+      "La lezione non è nascondere comportamenti scorretti. È essere intenzionali su ciò che viene scritto, dove vive e per quanto tempo sopravvive.",
+    ],
+    sections: [
+      {
+        title: "I messaggi scritti vivono più a lungo di quanto si pensi",
+        body: [
+          "Un messaggio rapido può sembrare informale e temporaneo, ma la comunicazione digitale raramente resta confinata.",
+          "Screenshot, anteprime delle notifiche, backup cloud, dispositivi sincronizzati, e-mail inoltrate, riepiloghi generati dall’IA e archivi chat creano copie aggiuntive che possono persistere per anni.",
+          "Man mano che i team si affidano a strumenti basati sull’IA, i record automatici continuano a crescere. Gli assistenti alle riunioni generano trascrizioni, i copilot riassumono conversazioni e le piattaforme di produttività trasformano sempre più discussioni temporanee in memoria istituzionale ricercabile.",
+        ],
+      },
+      {
+        title: "Non ogni messaggio deve diventare storia permanente",
+        body: [
+          "Alcune comunicazioni devono assolutamente essere conservate per accountability, operatività, compliance o obblighi legali. Ma molti messaggi non hanno bisogno di archiviazione durevole.",
+          "Credenziali temporanee, codici di recupero, istruzioni monouso, bozze sensibili, feedback privato, contesto legalmente delicato e dettagli operativi di breve durata hanno spesso uno scopo e una vita limitati.",
+          "Una buona igiene della comunicazione significa distinguere le informazioni che devono persistere da quelle che devono esistere solo per poco.",
+        ],
+      },
+      {
+        title: "Dove aiuta PrivateNote",
+        body: [
+          "PrivateNote è utile quando un’informazione deve essere condivisa brevemente senza creare un altro record ricercabile a lungo termine.",
+          "Le note vengono cifrate nel browser prima dell’invio. Il server conserva solo testo cifrato, mentre la chiave di decifratura resta nel frammento dell’URL e non viene trasmessa al server nelle richieste standard.",
+          "Questo aiuta i team a condividere informazioni temporanee senza aggiungerle automaticamente agli archivi Slack, alla cronologia Teams, alle caselle e-mail, ai backup SMS o ai sistemi documentali collaborativi.",
+        ],
+        bullets: [
+          "Password e codici di recupero",
+          "Istruzioni di accesso temporanee",
+          "Dettagli operativi sensibili e monouso",
+          "Bozze o contesto legalmente delicati",
+          "Passaggi privati tra colleghi",
+          "Informazioni con una vita operativa breve",
+        ],
+      },
+      {
+        title: "Che cosa PrivateNote non risolve",
+        body: [
+          "Nessuno strumento può rendere sicuro un messaggio inappropriato. I destinatari possono comunque fare screenshot, copiare, fotografare o inoltrare ciò che vedono.",
+          "Un dispositivo compromesso può esporre il testo in chiaro mentre una nota è aperta. Gli strumenti effimeri inoltre non sostituiscono obblighi legali, policy aziendali, requisiti di conservazione o giudizio professionale.",
+          "PrivateNote riduce l’esposizione lato server e la conservazione a lungo termine. Non elimina il rischio e non sostituisce una conversazione dal vivo quando le sfumature contano più della comodità.",
+        ],
+      },
+      {
+        title: "Una regola migliore per comunicazioni lavorative sensibili",
+        body: [
+          "Prima di inviare un messaggio, poniti due domande: deve essere scritto? Deve persistere?",
+          "Se la risposta alla prima domanda è no, parlane dal vivo. Se la risposta alla seconda è no, usa un canale effimero e cifrato progettato per comunicazioni temporanee.",
+          "Questa piccola abitudine può evitare che un contesto temporaneo diventi prova permanente.",
+        ],
+      },
+    ],
+    ctaTitle: "Usa la privacy come flusso di lavoro, non come pulsante di emergenza",
+    ctaBody:
+      "Gli strumenti di privacy sono più efficaci quando vengono adottati prima che esista un problema. Usa comunicazioni effimere per segreti, istruzioni monouso e contesti di breve durata che non dovrebbero diventare cronologia permanente del lavoro.",
+    ctaButton: "Scrivi una nota privata",
+  },
+  nl: workplaceTextsNl,
+  pt: workplaceTextsPt,
+  hr: workplaceTextsHr,
+  sr: workplaceTextsSr,
 };
 
 export const WorkplaceTextsPost: React.FC = () => {
   const { language, t } = useLanguage();
-  const article = copy[language] ?? copy.en;
+  const article = getBlogArticleCopy(copy, language);
   const blogPath = localizedPath("/blog", language);
   const notePath = localizedPath("/", language);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8 mt-16 mb-20">
-      <Link
-        href={blogPath}
-        className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" /> {t.blogBackToBlog}
-      </Link>
-
+    <BlogGuideArticle slug="workplace-texts-private-note">
       <article>
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">{t.blogWorkplaceTextsTitle}</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl">{t.blogWorkplaceTextsExcerpt}</p>
+        <BlogPostHeader
+          slug="workplace-texts-private-note"
+          title={t.blogWorkplaceTextsTitle}
+          subtitle={t.blogWorkplaceTextsSubtitle}
+          excerpt={t.blogWorkplaceTextsExcerpt}
+          headerClassName="mb-10"
+        >
           <figure className="mt-6">
             <img
               src={heroImagePath}
               alt="Man using smartphone in an urban setting"
+              width={1000}
+              height={666}
+              decoding="async"
+              fetchPriority="high"
               className="w-full max-w-2xl max-h-[340px] mx-auto rounded-2xl border border-gray-200 dark:border-gray-800 object-cover"
-              loading="lazy"
             />
             <figcaption className="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">
               Photo by{" "}
@@ -309,7 +384,9 @@ export const WorkplaceTextsPost: React.FC = () => {
               on Unsplash.
             </figcaption>
           </figure>
-        </header>
+        </BlogPostHeader>
+
+        <BlogArticleTakeaways slug="workplace-texts-private-note" />
 
         <div className="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
           {article.intro.map((paragraph) => (
@@ -355,7 +432,9 @@ export const WorkplaceTextsPost: React.FC = () => {
             <ExternalLink className="ml-1 h-4 w-4" />
           </a>
         </div>
+
+        <BlogPostCrossLinks slug="workplace-texts-private-note" />
       </article>
-    </div>
+    </BlogGuideArticle>
   );
 };

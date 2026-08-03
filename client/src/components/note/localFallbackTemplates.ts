@@ -19,6 +19,8 @@ import { GUIDED_WRITING_TEMPLATES_EN } from "./guidedWritingTemplatesEn";
 import { GUIDED_WRITING_TEMPLATES_DE } from "./guidedWritingTemplatesDe";
 import { GUIDED_WRITING_TEMPLATES_FR } from "./guidedWritingTemplatesFr";
 import { GUIDED_WRITING_TEMPLATES_ES } from "./guidedWritingTemplatesEs";
+import { GUIDED_WRITING_TEMPLATES_IT } from "./guidedWritingTemplatesIt";
+import { GUIDED_WRITING_TEMPLATES_NL } from "./guidedWritingTemplatesNl";
 
 export type {
   GuidedWritingTone,
@@ -31,16 +33,16 @@ export type {
 
 export { LOCAL_FALLBACK_TEMPLATE_IDS, type LocalFallbackTemplateId };
 
-const GUIDED_BY_LANG: Record<
+const GUIDED_BY_LANG: Partial<Record<
   SupportedLanguage,
   GuidedWritingTemplateRecord
-> = {
+>> = {
   en: GUIDED_WRITING_TEMPLATES_EN,
   de: GUIDED_WRITING_TEMPLATES_DE,
   fr: GUIDED_WRITING_TEMPLATES_FR,
   es: GUIDED_WRITING_TEMPLATES_ES,
-  it: GUIDED_WRITING_TEMPLATES_EN,
-  nl: GUIDED_WRITING_TEMPLATES_EN,
+  it: GUIDED_WRITING_TEMPLATES_IT,
+  nl: GUIDED_WRITING_TEMPLATES_NL,
 };
 
 export const GUIDED_WRITING_PLACEHOLDER_LABELS = {
@@ -87,13 +89,97 @@ export const GUIDED_WRITING_PLACEHOLDER_LABELS = {
   hopeOrGoal: "Hope or goal",
 } as const;
 
-const PLACEHOLDER_LABELS_BY_LANG: Record<
+const PLACEHOLDER_LABELS_BY_LANG: Partial<Record<
   SupportedLanguage,
   Record<GuidedWritingPlaceholder, string>
-> = {
+>> = {
   en: GUIDED_WRITING_PLACEHOLDER_LABELS,
-  it: GUIDED_WRITING_PLACEHOLDER_LABELS,
-  nl: GUIDED_WRITING_PLACEHOLDER_LABELS,
+  it: {
+    recipientName: "Nome del destinatario",
+    groupName: "Persona o gruppo",
+    topic: "Argomento",
+    mainMessage: "Messaggio principale",
+    reason: "Motivo",
+    relevantDetail: "Dettaglio rilevante",
+    specificDetail: "Dettaglio specifico",
+    timeframe: "Periodo",
+    extraDetail: "Dettaglio aggiuntivo",
+    nextStep: "Prossimo passo",
+    actionTaken: "Cosa hanno fatto",
+    supportType: "Aiuto, regalo o supporto",
+    result: "Risultato",
+    resultOrSituation: "Risultato o situazione",
+    positiveResult: "Risultato positivo",
+    dayOrTime: "Giorno o orario",
+    alternateTime: "Orario alternativo",
+    issue: "Problema",
+    happened: "Cosa è successo",
+    impact: "Impatto",
+    fixStep: "Come rimediare",
+    quality: "Qualità",
+    feeling: "Sensazione",
+    memory: "Ricordo o dettaglio",
+    achievement: "Traguardo",
+    eventName: "Evento",
+    occasion: "Occasione",
+    date: "Data",
+    time: "Orario",
+    place: "Luogo",
+    rsvpDate: "Data di risposta",
+    eventDetail: "Dettaglio dell'evento",
+    loss: "Perdita",
+    personName: "Nome della persona",
+    tribute: "Semplice omaggio",
+    task: "Compito",
+    deadline: "Scadenza",
+    item: "Punto",
+    joyWish: "Gioia, successo o avventura",
+    goalOrWish: "Desiderio o obiettivo",
+    hopeOrGoal: "Speranza o obiettivo",
+  },
+  nl: {
+    recipientName: "Naam ontvanger",
+    groupName: "Persoon of groep",
+    topic: "Onderwerp",
+    mainMessage: "Kernboodschap",
+    reason: "Reden",
+    relevantDetail: "Relevant detail",
+    specificDetail: "Concreet detail",
+    timeframe: "Periode",
+    extraDetail: "Extra detail",
+    nextStep: "Volgende stap",
+    actionTaken: "Wat ze deden",
+    supportType: "Hulp, cadeau of steun",
+    result: "Resultaat",
+    resultOrSituation: "Resultaat of situatie",
+    positiveResult: "Positief resultaat",
+    dayOrTime: "Dag of tijd",
+    alternateTime: "Alternatief tijdstip",
+    issue: "Onderwerp / probleem",
+    happened: "Wat er gebeurde",
+    impact: "Gevolg",
+    fixStep: "Goedmaken",
+    quality: "Eigenschap",
+    feeling: "Gevoel",
+    memory: "Herinnering of detail",
+    achievement: "Prestatie / mijlpaal",
+    eventName: "Evenement",
+    occasion: "Gelegenheid",
+    date: "Datum",
+    time: "Tijd",
+    place: "Plaats",
+    rsvpDate: "Antwoord voor",
+    eventDetail: "Evenementdetail",
+    loss: "Verlies",
+    personName: "Naam van de persoon",
+    tribute: "Eenvoudige hulde",
+    task: "Taak",
+    deadline: "Deadline",
+    item: "Punt",
+    joyWish: "Vreugde, succes of avontuur",
+    goalOrWish: "Wens of doel",
+    hopeOrGoal: "Hoop of doel",
+  },
   de: {
     recipientName: "Empfängername",
     groupName: "Person oder Gruppe",
@@ -231,14 +317,14 @@ export const GUIDED_WRITING_TEMPLATES = GUIDED_WRITING_TEMPLATES_EN;
 export function getGuidedWritingTemplatesForLanguage(
   language: SupportedLanguage,
 ): GuidedWritingTemplateRecord {
-  return GUIDED_BY_LANG[language] ?? GUIDED_BY_LANG.en;
+  return GUIDED_BY_LANG[language] ?? GUIDED_WRITING_TEMPLATES_EN;
 }
 
 function renderPlaceholderToken(
   token: GuidedWritingPlaceholder,
   language: SupportedLanguage,
 ): string {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   return `[${labels[token]}]`;
 }
 
@@ -246,7 +332,7 @@ export function renderGuidedWritingTemplateText(
   textTemplate: string,
   language: SupportedLanguage = "en",
 ): string {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   return textTemplate.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_match, token) => {
     if (token in labels) {
       return renderPlaceholderToken(token as GuidedWritingPlaceholder, language);
@@ -317,7 +403,7 @@ export function listUnresolvedGuidedPlaceholderLabelsInNote(
   text: string,
   language: SupportedLanguage,
 ): string[] {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   const labelValues = new Set(Object.values(labels));
   const found: string[] = [];
   const seen = new Set<string>();

@@ -25,6 +25,9 @@ const localeLoaders: Record<Exclude<SupportedLanguage, "en">, () => Promise<Tran
   es: () => import("./translations/es").then((m) => ({ ...en, ...m.es })),
   it: () => import("./translations/it").then((m) => ({ ...en, ...m.it })),
   nl: () => import("./translations/nl").then((m) => ({ ...en, ...m.nl })),
+  pt: () => import("./translations/pt").then((m) => ({ ...en, ...m.pt })),
+  sr: () => import("./translations/sr").then((m) => ({ ...en, ...m.sr })),
+  hr: () => import("./translations/hr").then((m) => ({ ...en, ...m.hr })),
 };
 
 const cache: Partial<Record<SupportedLanguage, Translations>> = { en };
@@ -64,4 +67,19 @@ export async function loadTranslations(lang: SupportedLanguage): Promise<Transla
 export function getTranslations(lang: string = "en"): Translations {
   const normalized = normalizeLanguageCode(lang);
   return cache[normalized] ?? en;
+}
+
+const LANGUAGE_STORAGE_KEY = "privatenote.language";
+
+/** Best-effort active UI language (path prefix, then saved preference). */
+export function getActiveLanguage(): SupportedLanguage {
+  if (typeof window === "undefined") return "en";
+  const pathLang = pathLanguageFromWindow();
+  if (pathLang) return pathLang;
+  return normalizeLanguageCode(window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? getUserLanguage());
+}
+
+/** Translations for the active UI language (sync; uses cache when loaded). */
+export function getActiveTranslations(): Translations {
+  return getTranslations(getActiveLanguage());
 }

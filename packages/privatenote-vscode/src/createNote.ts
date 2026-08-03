@@ -12,6 +12,7 @@ import {
 import { noteExpiryPresetIdToSeconds } from "@shared/noteExpiry";
 import { MAX_NOTE_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
 import { reserveNoteId, createNote as apiCreateNote } from "./apiClient.ts";
+import { detectEditorCreationSource } from "./editorSource.ts";
 
 export type ExpiresIn = "15m" | "1h" | "24h" | "7d";
 
@@ -101,6 +102,8 @@ export async function createPrivateNote(
     isPasswordProtected: false,
     _hp: "",
     aiMode: false,
+    creationSource: detectEditorCreationSource(),
+    creationEntryPoint: "extension",
   });
 
   const secureUrl = `${webOrigin}/note/${id}#${exportedKey}`;
