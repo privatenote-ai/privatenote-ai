@@ -143,7 +143,14 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // One full ciphertext Blob: PUT Bearer → PUT query → POST query.
+    // encrypt.lu Safari: PUT + Bearer, then PUT + query token only (no POST).
+    if (isSafariBrowser()) {
+      return [
+        { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
+        { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
+      ];
+    }
+    // encrypt.lu Chrome: PUT Bearer → PUT query → POST query.
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
@@ -478,6 +485,14 @@ export async function apiBinaryRequest<T = any>(
   const attempts = getBinaryUploadAttempts(url, options);
   const maxRounds = uploadMaxRounds();
   let lastError: unknown = null;
+
+  // encrypt.lu warms the relay with GET /api/health before the Blob PUT.
+  if (options.uploadToken && typeof window !== "undefined" && hasSameOriginApiProxy) {
+    const relayOrigin = uploadWorkerOriginForAppHostname(window.location.hostname);
+    void fetch(`${relayOrigin}/`, { method: "GET", mode: "cors", credentials: "omit" }).catch(
+      () => undefined,
+    );
+  }
 
   for (let round = 0; round < maxRounds; round += 1) {
     if (round > 0) {

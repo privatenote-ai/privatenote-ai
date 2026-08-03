@@ -11,6 +11,16 @@ export const STAGING_API_WORKER_ORIGIN =
 export const PRODUCTION_UPLOAD_WORKER_ORIGIN = "https://upload.privatenote.ai";
 export const STAGING_UPLOAD_WORKER_ORIGIN = "https://upload-staging.privatenote.ai";
 
+const UPLOAD_RELAY_HOSTNAMES = new Set([
+  new URL(PRODUCTION_UPLOAD_WORKER_ORIGIN).hostname,
+  new URL(STAGING_UPLOAD_WORKER_ORIGIN).hostname,
+]);
+
+/** True for cookie-less attachment relays (encrypt.lu-style `relay.encrypt.lu`). */
+export function isUploadRelayHostname(hostname: string): boolean {
+  return UPLOAD_RELAY_HOSTNAMES.has(hostname.trim().toLowerCase());
+}
+
 export function normalizeApiWorkerOrigin(origin: string): string {
   let base = origin.trim();
   if (!base) return DEFAULT_API_WORKER_ORIGIN;

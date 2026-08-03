@@ -42,8 +42,9 @@ import {
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
 import {
   type NoteReservationRecord,
   type NoteReserveAttachmentBinding,
@@ -252,6 +253,15 @@ const SECOND_FACTOR_STEP_UP_CODE = "second_factor_step_up_required";
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
+  let hostname = "";
+  try {
+    hostname = new URL(request.url).hostname;
+  } catch {
+    hostname = "";
+  }
+  if (isUploadRelayHostname(hostname)) {
+    return buildUploadRelayCorsHeaders(request, allowedOrigin);
+  }
 
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,

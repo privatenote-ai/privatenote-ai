@@ -1,19 +1,15 @@
 /**
  * Attachment upload policy — encrypt.lu share-mode (single Blob, no HTTP chunks).
  *
- * Both Chrome and Safari encrypt the file fully, collect one ciphertext Blob, then
- * upload it once to the dedicated upload relay (not the Pages /api proxy):
+ * Observed encrypt.lu differences we mirror:
+ * - Page has no COEP/COOP on the upload surface
+ * - Relay CORS has no Access-Control-Allow-Credentials
+ * - Safari: XHR PUT + Bearer, then PUT + query token (no POST)
+ * - Chrome: fetch PUT + Bearer, then PUT/POST + query token
+ * - Blob body without Content-Type; warm-up GET to the relay first
  *
- *   Production → https://upload.privatenote.ai  (from privatenote.ai — same-site)
- *   Staging    → https://upload-staging.privatenote.ai
- *                Prefer https://premium.privatenote.ai (same-site).
- *                premium.privatenote-ai.pages.dev is cross-site and Safari may drop large bodies.
- *
- * Transport differs only:
- *   Chrome  → fetch PUT  + Authorization: Bearer
- *   Safari  → XHR  PUT  + Authorization: Bearer
- *
- * Fallbacks: PUT + query token, then POST + query token. One retry after ~1.8s.
+ * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
+ * Prefer same-site SPA hosts (privatenote.ai / premium.privatenote.ai).
  */
 
 /** One secretstream frame ABYTES overhead. */

@@ -1,39 +1,29 @@
 ---
-description: Attachment uploads use a dedicated upload relay (encrypt.lu-style), one Blob, no HTTP chunks.
-globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,shared/pagesAppHosts.ts,wrangler*.toml
+description: Attachment uploads mirror encrypt.lu single-Blob relay (no HTTP chunks).
+globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
 alwaysApply: false
 ---
 
-# Attachment upload = upload relay + single Blob
+# Attachment upload = encrypt.lu single Blob + relay
 
-Do **not** reintroduce HTTP chunking (`/file/chunks/:i`) for new uploads.
+Do **not** reintroduce HTTP chunking for new uploads.
 
-## Relays (like relay.encrypt.lu)
+## What encrypt.lu does (verified from their bundle + relay)
 
-| Environment | App host | Upload origin |
-|---|---|---|
-| Production | `privatenote.ai` | `https://upload.privatenote.ai` |
-| Staging (same-site) | `premium.privatenote.ai` | `https://upload-staging.privatenote.ai` |
-| Staging (pages.dev) | `premium.privatenote-ai.pages.dev` | `https://upload-staging.privatenote.ai` (cross-site — Safari large bodies fail) |
+1. `POST /api/init-upload` → `{ transferId, uploadToken }`
+2. One ciphertext Blob
+3. Safari: XHR `PUT /api/upload/:id` + Bearer, then PUT + `?uploadToken=` (no POST)
+4. Chrome: fetch PUT + Bearer, then PUT/POST + query token
+5. Blob without `Content-Type`; warm-up GET to the relay
+6. Page: **no COEP/COOP**
+7. Relay CORS: `Allow-Origin` + `Allow-Headers: authorization` + methods — **no** `Allow-Credentials`
 
-Resolved by `uploadWorkerOriginForAppHostname()` / `isStagingAppHost()` in `shared/`.
+## PrivateNote mapping
 
-## Same-site requirement (Safari)
+| encrypt.lu | PrivateNote |
+|---|---|
+| `relay.encrypt.lu` | `upload.privatenote.ai` / `upload-staging.privatenote.ai` |
+| `POST /api/init-upload` | `POST /api/notes/reserve` |
+| `PUT /api/upload/:id` | `PUT /api/notes/:id/file` |
 
-encrypt.lu works because SPA and relay share eTLD+1. Test large Safari uploads from:
-
-- Prod: `https://privatenote.ai` → `upload.privatenote.ai`
-- Staging: `https://premium.privatenote.ai` → `upload-staging.privatenote.ai`
-
-Not from `*.pages.dev`.
-
-## Flow (Chrome and Safari)
-
-1. Encrypt → one secretstream frame (`totalChunks = 1`)
-2. One untyped ciphertext Blob
-3. `POST /api/notes/reserve` with exact `plaintext + 17`
-4. One `PUT /api/notes/:id/file` to the **upload relay** (not Pages `/api`)
-5. Chrome: `fetch` + Bearer · Safari: `xhr.send(blob)` + Bearer
-6. Fallbacks: PUT + query token → POST + query token
-
-Never point Safari binary uploads at `*.workers.dev` for large bodies.
+SPA upload surface must not send `Cross-Origin-Embedder-Policy` (keep COEP only on `/llm-ui` + `/test-llm`).
