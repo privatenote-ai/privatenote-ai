@@ -1,37 +1,29 @@
 /**
- * Attachment upload policy.
+ * Attachment upload policy — encrypt.lu share-mode (single Blob, no HTTP chunks).
  *
- * Chrome (encrypt.lu share-mode):
- *   Encrypt → one ciphertext Blob → one PUT to the upload relay (fetch + Bearer).
- *   Fallbacks: PUT + query token, POST + query token. One retry after ~1.8s.
+ * Both Chrome and Safari encrypt the file fully, collect one ciphertext Blob, then
+ * upload it once to the dedicated upload relay (not the Pages /api proxy):
  *
- * Safari:
- *   WebKit aborts multi‑MiB body-bearing XHRs (status 0 / "Load failed") even to
- *   same-site upload-staging.privatenote.ai / upload.privatenote.ai. Use ~1 MiB
- *   headerless POSTs with the capability token in the query string.
+ *   Production → https://upload.privatenote.ai  (from privatenote.ai — same-site)
+ *   Staging    → https://upload-staging.privatenote.ai
+ *                Prefer https://premium.privatenote.ai (same-site).
+ *                premium.privatenote-ai.pages.dev is cross-site and Safari may drop large bodies.
  *
- * Relays: production upload.privatenote.ai · staging upload-staging.privatenote.ai
- * Prefer same-site SPA hosts (privatenote.ai / premium.privatenote.ai).
+ * Transport differs only:
+ *   Chrome  → fetch PUT  + Authorization: Bearer
+ *   Safari  → XHR  PUT  + Authorization: Bearer
+ *
+ * Fallbacks: PUT + query token, then POST + query token. One retry after ~1.8s.
  */
 
-/** One secretstream frame ABYTES overhead when Chrome uses a single Blob. */
+/** One secretstream frame ABYTES overhead. */
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
-
-/** Safari plaintext bytes per authenticated frame / HTTP body. */
-export const SAFARI_ATTACHMENT_CHUNK_BYTES = 1024 * 1024;
-export const DEFAULT_ATTACHMENT_CHUNK_BYTES = 4 * 1024 * 1024;
-
-export const SAFARI_UPLOAD_CONCURRENCY = 1;
-export const DEFAULT_UPLOAD_CONCURRENCY = 8;
-export const SAFARI_UPLOAD_SETTLE_MS = 300;
-
-export const SAFARI_UPLOAD_MAX_ROUNDS = 5;
-export const SAFARI_UPLOAD_RETRY_DELAYS_MS = [400, 900, 1800, 3000] as const;
-export const BLOB_UPLOAD_MAX_ROUNDS = 2;
-export const BLOB_UPLOAD_RETRY_MS = 1800;
 
 export const UPLOAD_TRANSPORT_FAILURE_MESSAGE =
   "Encrypted file upload failed before the server responded.";
+
+export const BLOB_UPLOAD_MAX_ROUNDS = 2;
+export const BLOB_UPLOAD_RETRY_MS = 1800;
 
 export function isSafariBrowser(): boolean {
   if (typeof navigator === "undefined") {
@@ -41,53 +33,32 @@ export function isSafariBrowser(): boolean {
   return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
 }
 
-/** Chrome/Firefox: one full ciphertext Blob. Safari: HTTP-chunked ~1 MiB frames. */
+/** Always one full ciphertext Blob (no HTTP chunking). */
 export function usesSingleBlobAttachmentUpload(): boolean {
-  return !isSafariBrowser();
+  return true;
 }
 
 export function singleBlobEncryptedSizeUpperBound(plaintextBytes: number): number {
   return Math.max(0, plaintextBytes) + SINGLE_BLOB_SECRETSTREAM_ABYTES;
 }
 
-export function attachmentChunkSizeBytes(fileSize?: number): number {
-  if (usesSingleBlobAttachmentUpload()) {
-    if (typeof fileSize === "number" && Number.isFinite(fileSize) && fileSize > 0) {
-      return fileSize;
-    }
-    return 1;
-  }
-  return SAFARI_ATTACHMENT_CHUNK_BYTES;
-}
-
 export function attachmentEncryptedSizeUpperBound(plaintextBytes: number): number {
-  if (usesSingleBlobAttachmentUpload()) {
-    return singleBlobEncryptedSizeUpperBound(plaintextBytes);
+  return singleBlobEncryptedSizeUpperBound(plaintextBytes);
+}
+
+/** Authenticated frame size in metadata = full plaintext (totalChunks stays 1). */
+export function attachmentChunkSizeBytes(fileSize?: number): number {
+  if (typeof fileSize === "number" && Number.isFinite(fileSize) && fileSize > 0) {
+    return fileSize;
   }
-  const frames = Math.max(1, Math.ceil(Math.max(0, plaintextBytes) / SAFARI_ATTACHMENT_CHUNK_BYTES));
-  return Math.max(0, plaintextBytes) + frames * SINGLE_BLOB_SECRETSTREAM_ABYTES;
-}
-
-export function attachmentUploadConcurrency(): number {
-  return isSafariBrowser() ? SAFARI_UPLOAD_CONCURRENCY : DEFAULT_UPLOAD_CONCURRENCY;
-}
-
-export function attachmentUploadSettleMs(): number {
-  return isSafariBrowser() ? SAFARI_UPLOAD_SETTLE_MS : 0;
+  return 1;
 }
 
 export function uploadMaxRounds(): number {
-  return isSafariBrowser() ? SAFARI_UPLOAD_MAX_ROUNDS : BLOB_UPLOAD_MAX_ROUNDS;
+  return BLOB_UPLOAD_MAX_ROUNDS;
 }
 
-export function uploadRetryDelayMs(completedRounds: number): number {
-  if (isSafariBrowser()) {
-    const index = Math.min(
-      Math.max(completedRounds - 1, 0),
-      SAFARI_UPLOAD_RETRY_DELAYS_MS.length - 1,
-    );
-    return SAFARI_UPLOAD_RETRY_DELAYS_MS[index]!;
-  }
+export function uploadRetryDelayMs(_completedRounds: number): number {
   return BLOB_UPLOAD_RETRY_MS;
 }
 
@@ -105,7 +76,6 @@ export function isRetriableUploadTransportError(error: unknown): boolean {
   );
 }
 
-/** Chrome primary: PUT + Bearer, no Content-Type (reservation supplies sizes). */
 export const BLOB_UPLOAD_PUT_BEARER = {
   method: "PUT",
   omitContentType: true,
@@ -120,17 +90,6 @@ export const BLOB_UPLOAD_PUT_QUERY = {
 } as const;
 
 export const BLOB_UPLOAD_POST_QUERY = {
-  method: "POST",
-  tokenInQuery: true,
-  metadataInQuery: true,
-  omitContentType: true,
-} as const;
-
-/**
- * Safari chunk shape: headerless POST, token + sizes in the query string.
- * Authorization / Content-Type would preflight and WebKit often loses the body.
- */
-export const SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE = {
   method: "POST",
   tokenInQuery: true,
   metadataInQuery: true,

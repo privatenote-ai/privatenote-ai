@@ -17,11 +17,9 @@ import {
   BLOB_UPLOAD_POST_QUERY,
   BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
-  SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE,
   UPLOAD_TRANSPORT_FAILURE_MESSAGE,
   uploadMaxRounds,
   uploadRetryDelayMs,
-  usesSingleBlobAttachmentUpload,
 } from "@/lib/safariSafeChunkUpload";
 import {
   isEntitlementRejectionResponse,
@@ -145,11 +143,7 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari: only the proven ~1 MiB headerless POST shape reaches the Worker.
-    if (!usesSingleBlobAttachmentUpload()) {
-      return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
-    }
-    // Chrome: one full ciphertext Blob — PUT Bearer → PUT query → POST query.
+    // One full ciphertext Blob: PUT Bearer → PUT query → POST query.
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
