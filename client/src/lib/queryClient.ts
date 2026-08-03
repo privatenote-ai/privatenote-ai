@@ -1,8 +1,20 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { DEFAULT_API_WORKER_ORIGIN, normalizeApiWorkerOrigin } from "@shared/apiWorkerOrigin";
 import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
-import { bodyInitToUploadBlob, isSafariBrowser, sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+import {
+  bodyInitToUploadArrayBuffer,
+  bodyInitToUploadBlob,
+  sendBinaryHttpRequest,
+  type BinaryUploadProgress,
+} from "@/lib/binaryUploadTransport";
+import {
+  isRetriableUploadTransportError,
+  isSafariBrowser,
+  SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE,
+  UPLOAD_TRANSPORT_FAILURE_MESSAGE,
+  uploadMaxRounds,
+  uploadRetryDelayMs,
+} from "@/lib/safariSafeChunkUpload";
 
 type BinaryUploadRoute = "direct-worker" | "same-origin";
 
@@ -13,9 +25,28 @@ type BinaryUploadAttempt = {
   method?: string;
   tokenInQuery?: boolean;
   metadataInQuery?: boolean;
+  omitMetadata?: boolean;
+  omitContentType?: boolean;
 };
 
-const BINARY_UPLOAD_NETWORK_RETRY_MS = 1800;
+const UPLOAD_METADATA_HEADERS = [
+  "x-file-plaintext-size",
+  "x-file-encrypted-size",
+  "x-file-chunk-encrypted-size",
+  "x-file-chunk-sha256",
+] as const;
+
+const PRODUCTION_UPLOAD_WORKER_ORIGIN = "https://upload.privatenote.ai";
+const STAGING_UPLOAD_WORKER_ORIGIN =
+  "https://privatenote-api-staging.marjan-skrobot.workers.dev";
+
+function uploadWorkerOriginForAppHostname(hostname: string): string {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === "premium.privatenote-ai.pages.dev" ||
+    normalized === "develop.privatenote-ai.pages.dev"
+    ? STAGING_UPLOAD_WORKER_ORIGIN
+    : PRODUCTION_UPLOAD_WORKER_ORIGIN;
+}
 
 // In local dev, prefer Vite's /api proxy unless VITE_API_URL points to localhost.
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_URL || "").trim();
@@ -71,7 +102,8 @@ function normalizeApiPath(url: string): string {
 }
 
 function getDirectWorkerUploadUrl(url: string): string {
-  return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)}${normalizeApiPath(url)}`;
+  const hostname = typeof window === "undefined" ? "" : window.location.hostname;
+  return `${uploadWorkerOriginForAppHostname(hostname)}${normalizeApiPath(url)}`;
 }
 
 function appendQuery(url: string, params: Record<string, string | undefined>): string {
@@ -106,54 +138,38 @@ function getBinaryUploadAttempts(
   url: string,
   options: { uploadToken?: string } = {},
 ): BinaryUploadAttempt[] {
-  if (!hasSameOriginApiProxy) {
-    return [{ url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" }];
+  // Binary bodies never go through the Pages /api proxy when a direct upload Worker
+  // exists. Deployments without that proxy already address the API origin directly.
+  const directUpload: BinaryUploadAttempt = hasSameOriginApiProxy
+    ? { url: getDirectWorkerUploadUrl(url), uploadRoute: "direct-worker", credentials: "omit" }
+    : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
+
+  // Safari aborts a multi-MiB Blob before dispatch, and a preflight on the upload path
+  // costs it the request as well. Serialized ~1 MiB headerless POSTs straight to the
+  // Worker are the only shape WebKit completes, on every deployment.
+  if (options.uploadToken && isSafariBrowser()) {
+    return [{ ...directUpload, ...SAFARI_SIMPLE_CHUNK_UPLOAD_SHAPE }];
   }
 
-  const directWorker: BinaryUploadAttempt = {
-    url: getDirectWorkerUploadUrl(url),
-    uploadRoute: "direct-worker",
-    credentials: "omit",
-  };
+  if (!hasSameOriginApiProxy) {
+    return [directUpload];
+  }
 
   // Same-origin upload through the Pages /api proxy. Token rides in the Authorization
   // header and metadata stays in headers, so this stays valid as a fallback for the
-  // token path when a cross-origin direct-worker request is blocked by the browser
-  // (e.g. Safari/WebKit "Load failed" on cross-site XHR).
+  // token path when a cross-origin direct-worker request is blocked by the browser.
   const sameOrigin: BinaryUploadAttempt = {
     url: getApiUrl(url),
     uploadRoute: "same-origin",
     credentials: "include",
   };
 
-  if (options.uploadToken) {
-    if (isSafariBrowser()) {
-      // Safari/WebKit drops the *first* upload request it sends on a freshly (re)used
-      // HTTP/2 connection with "network connection was lost" — including the same-origin
-      // Pages proxy. Empirically the same-origin proxy reliably succeeds only as a
-      // follow-up attempt, so we send a cross-origin direct-worker request first (token +
-      // metadata in the query string to avoid a CORS preflight). That attempt absorbs the
-      // WebKit connection glitch, and the same-origin retry then goes through. Putting
-      // same-origin first instead caused every chunk to fail outright.
-      return [
-        {
-          ...directWorker,
-          method: "POST",
-          tokenInQuery: true,
-          metadataInQuery: true,
-        },
-        sameOrigin,
-      ];
-    }
-    return [directWorker, sameOrigin];
-  }
-
-  return [directWorker, sameOrigin];
+  return [directUpload, sameOrigin];
 }
 
 export function getFileUploadTargetLabel(): string {
   if (typeof window !== "undefined" && hasPagesSameOriginApiProxy(window.location.hostname)) {
-    return `${normalizeApiWorkerOrigin(RAW_API_BASE_URL || DEFAULT_API_WORKER_ORIGIN)} (direct Worker)`;
+    return `${uploadWorkerOriginForAppHostname(window.location.hostname)} (upload Worker)`;
   }
   return RAW_API_BASE_URL || "(same-origin /api proxy)";
 }
@@ -171,6 +187,16 @@ export class ApiRequestError extends Error {
     this.status = status;
     this.bodyText = bodyText;
   }
+}
+
+/** Safari sometimes truncates the first body on a cold connection → server 400 size mismatch. */
+function isRetriableSafariChunkUploadError(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError &&
+    isSafariBrowser() &&
+    error.status === 400 &&
+    /File chunk size mismatch/i.test(error.bodyText)
+  );
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -263,6 +289,27 @@ export async function apiRequest<T = any>(
   }
 }
 
+export async function apiUploadRequest<T = any>(
+  url: string,
+  body: Blob,
+  method = "PUT",
+): Promise<T> {
+  const response = await fetch(getApiUrl(url), {
+    method,
+    body,
+    headers: body.type ? { "Content-Type": body.type } : undefined,
+    credentials: "include",
+  });
+  const responseText = await response.text();
+  const responseClone = new Response(responseText, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  await throwIfResNotOk(responseClone);
+  return JSON.parse(responseText) as T;
+}
+
 function redactFileUploadDetailsForProduction(details: Record<string, unknown>): Record<string, unknown> {
   const allowedKeys = [
     "kind",
@@ -277,6 +324,7 @@ function redactFileUploadDetailsForProduction(details: Record<string, unknown>):
     "attemptCount",
     "retryRound",
     "delayMs",
+    "willRetry",
   ] as const;
   const redacted: Record<string, unknown> = {};
   for (const key of allowedKeys) {
@@ -332,21 +380,46 @@ function isBinaryUploadNetworkError(error: unknown): boolean {
   if (error instanceof ApiRequestError) {
     return false;
   }
-  if (error instanceof Error) {
-    return (
-      error.message === "Load failed" ||
-      error.message === "XHR network request failed" ||
-      error.name === "TypeError"
-    );
+  return isRetriableUploadTransportError(error);
+}
+
+function withoutHeaders(
+  headers: Record<string, string>,
+  names: readonly string[],
+): Record<string, string> {
+  const dropped = new Set(names.map((name) => name.toLowerCase()));
+  return Object.fromEntries(
+    Object.entries(headers).filter(([name]) => !dropped.has(name.toLowerCase())),
+  );
+}
+
+/** Mirrors the retry control flow below so a recoverable attempt is not logged as an error. */
+function binaryUploadWillRetry(
+  error: unknown,
+  round: number,
+  attemptIndex: number,
+  attemptCount: number,
+  maxRounds: number,
+): boolean {
+  const hasNextRoute = attemptIndex < attemptCount - 1;
+  const hasNextRound = round < maxRounds - 1;
+  const retriable =
+    isBinaryUploadNetworkError(error) ||
+    isRetriableSafariChunkUploadError(error) ||
+    (error instanceof ApiRequestError && (error.status >= 500 || error.status === 429));
+  if (error instanceof ApiRequestError) {
+    return retriable && (hasNextRoute || hasNextRound);
   }
-  return false;
+  // Transport failures always fall through to the remaining route in this round.
+  return hasNextRoute || (hasNextRound && retriable);
 }
 
 async function executeBinaryUploadAttempt(
   attempt: BinaryUploadAttempt,
   method: string,
-  body: Blob,
+  body: Blob | ArrayBuffer,
   requestHeaders: Record<string, string>,
+  onUploadProgress?: (progress: BinaryUploadProgress) => void,
 ): Promise<Response> {
   return sendBinaryHttpRequest(
     attempt.url,
@@ -354,7 +427,20 @@ async function executeBinaryUploadAttempt(
     body,
     requestHeaders,
     attempt.credentials,
+    onUploadProgress,
   );
+}
+
+function resolveBinaryUploadBody(body: BodyInit): Blob | ArrayBuffer {
+  const arrayBuffer = bodyInitToUploadArrayBuffer(body);
+  if (arrayBuffer) {
+    return arrayBuffer;
+  }
+  const uploadBlob = bodyInitToUploadBlob(body);
+  if (!uploadBlob) {
+    throw new Error("Unsupported upload body type.");
+  }
+  return uploadBlob;
 }
 
 export async function apiBinaryRequest<T = any>(
@@ -362,13 +448,13 @@ export async function apiBinaryRequest<T = any>(
   method: string,
   body: BodyInit,
   headers: Record<string, string> = {},
-  options: { uploadToken?: string } = {},
+  options: {
+    uploadToken?: string;
+    onUploadProgress?: (progress: BinaryUploadProgress) => void;
+  } = {},
 ): Promise<T> {
-  const uploadBlob = bodyInitToUploadBlob(body);
-  if (!uploadBlob) {
-    throw new Error("Unsupported upload body type.");
-  }
-  const bodyBytes = uploadBlob.size;
+  const uploadBody = resolveBinaryUploadBody(body);
+  const bodyBytes = uploadBody instanceof ArrayBuffer ? uploadBody.byteLength : uploadBody.size;
   const declaredChunkSize = Number(headers["x-file-chunk-encrypted-size"] ?? NaN);
   const sharedLogBase = {
     usesUploadToken: Boolean(options.uploadToken),
@@ -382,30 +468,44 @@ export async function apiBinaryRequest<T = any>(
     safariTransport: isSafariBrowser(),
   };
   const attempts = getBinaryUploadAttempts(url, options);
+  const maxRounds = uploadMaxRounds();
   let lastError: unknown = null;
 
-  for (let round = 0; round < 2; round += 1) {
-    if (round === 1) {
-      if (!isBinaryUploadNetworkError(lastError)) {
+  for (let round = 0; round < maxRounds; round += 1) {
+    if (round > 0) {
+      const status = lastError instanceof ApiRequestError ? lastError.status : 0;
+      const retriable =
+        isBinaryUploadNetworkError(lastError) ||
+        isRetriableSafariChunkUploadError(lastError) ||
+        status >= 500 ||
+        status === 429;
+      if (!retriable) {
         break;
       }
+      // WebKit needs the connection to reset between tries. Keep Safari's
+      // recovery bounded so a lost success response does not stall the file.
+      const delayMs = uploadRetryDelayMs(round);
       logFileUpload("warn", "network retry after delay", {
         ...sharedLogBase,
-        delayMs: BINARY_UPLOAD_NETWORK_RETRY_MS,
+        delayMs,
+        round: round + 1,
+        safariChunkMismatchRetry: isRetriableSafariChunkUploadError(lastError),
+        status: lastError instanceof ApiRequestError ? lastError.status : null,
       });
-      await new Promise((resolve) => window.setTimeout(resolve, BINARY_UPLOAD_NETWORK_RETRY_MS));
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
     }
 
     for (let attemptIndex = 0; attemptIndex < attempts.length; attemptIndex += 1) {
       const attempt = attempts[attemptIndex]!;
-      const requestHeaders: Record<string, string> = { ...headers };
+      let requestHeaders: Record<string, string> = { ...headers };
+      if (attempt.metadataInQuery || attempt.omitMetadata) {
+        requestHeaders = withoutHeaders(requestHeaders, UPLOAD_METADATA_HEADERS);
+      }
+      if (attempt.omitContentType) {
+        requestHeaders = withoutHeaders(requestHeaders, ["content-type"]);
+      }
       if (options.uploadToken && !attempt.tokenInQuery) {
         requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
-      }
-      if (attempt.metadataInQuery) {
-        delete requestHeaders["x-file-plaintext-size"];
-        delete requestHeaders["x-file-encrypted-size"];
-        delete requestHeaders["x-file-chunk-encrypted-size"];
       }
       const requestMethod = attempt.method ?? method;
       const requestUrl =
@@ -415,6 +515,7 @@ export async function apiBinaryRequest<T = any>(
               plaintextSize: headers["x-file-plaintext-size"],
               encryptedSize: headers["x-file-encrypted-size"],
               chunkEncryptedSize: headers["x-file-chunk-encrypted-size"],
+              chunkSha256: headers["x-file-chunk-sha256"],
             })
           : attempt.url;
       const logBase = {
@@ -434,8 +535,9 @@ export async function apiBinaryRequest<T = any>(
         const res = await executeBinaryUploadAttempt(
           { ...attempt, url: requestUrl },
           requestMethod,
-          uploadBlob,
+          uploadBody,
           requestHeaders,
+          options.onUploadProgress,
         );
         const responseText = await res.text();
         const elapsedMs = Math.round(performance.now() - startedAt);
@@ -457,13 +559,38 @@ export async function apiBinaryRequest<T = any>(
         lastError = error;
         const elapsedMs = Math.round(performance.now() - startedAt);
         const errorDetails = formatBinaryRequestError(error);
-        logFileUpload("error", "request failed", {
-          ...logBase,
-          elapsedMs,
-          online: typeof navigator !== "undefined" ? navigator.onLine : null,
-          ...errorDetails,
-        });
+        const willRetry = binaryUploadWillRetry(
+          error,
+          round,
+          attemptIndex,
+          attempts.length,
+          maxRounds,
+        );
+        // A probe another route recovers is not a user-visible failure. Keep it out
+        // of the production console so genuine upload errors stay readable.
+        logFileUpload(
+          willRetry ? "info" : "error",
+          willRetry ? "request failed, falling back" : "request failed",
+          {
+            ...logBase,
+            elapsedMs,
+            online: typeof navigator !== "undefined" ? navigator.onLine : null,
+            willRetry,
+            ...errorDetails,
+          },
+        );
         if (error instanceof ApiRequestError) {
+          // Fall through to the next upload route on transient server failures
+          // (e.g. concurrent quota race on direct-worker) and Safari size mismatches.
+          const canTryNextRoute =
+            attemptIndex < attempts.length - 1 &&
+            (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429);
+          if (canTryNextRoute) {
+            continue;
+          }
+          if (isRetriableSafariChunkUploadError(error) || error.status >= 500 || error.status === 429) {
+            break;
+          }
           throw error;
         }
       }
@@ -474,11 +601,7 @@ export async function apiBinaryRequest<T = any>(
     throw lastError;
   }
   const message = lastError instanceof Error && lastError.message ? lastError.message : "Upload failed";
-  throw new Error(
-    message === "Load failed"
-      ? "Encrypted file upload failed before the server responded."
-      : message,
-  );
+  throw new Error(message === "Load failed" ? UPLOAD_TRANSPORT_FAILURE_MESSAGE : message);
 }
 
 export async function apiBlobRequest(

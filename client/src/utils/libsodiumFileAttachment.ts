@@ -1,21 +1,46 @@
 import sodium from "libsodium-wrappers";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "@/utils/encryption";
+import {
+  attachmentChunkSizeBytes,
+  attachmentUploadConcurrency,
+  attachmentUploadSettleMs,
+  DEFAULT_ATTACHMENT_CHUNK_BYTES,
+} from "@/lib/safariSafeChunkUpload";
 
-/** Plaintext bytes per chunk — min size so 1 GB premium files stay within 999 chunks; ~1 MiB per PUT for Safari. */
-export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = Math.ceil((1024 * 1024 * 1024) / 999);
+/** Default plaintext bytes per chunk for browsers that tolerate larger requests. */
+export const SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES = DEFAULT_ATTACHMENT_CHUNK_BYTES;
 export const SODIUM_ATTACHMENT_ALG = "libsodium-secretstream-xchacha20poly1305" as const;
+
+/**
+ * Safari uses smaller authenticated frames because WebKit aborts larger in-memory
+ * Blob requests before dispatch. This value is part of authenticated metadata.
+ */
+export function getAttachmentChunkSizeBytes(_fileSize?: number): number {
+  return attachmentChunkSizeBytes();
+}
+
+/** Read smaller files into memory once — avoids dozens of slow File.slice() calls in Safari. */
+const IN_MEMORY_FILE_READ_MAX_BYTES = 128 * 1024 * 1024;
 
 export interface SodiumAttachmentChunk {
   index: number;
   encryptedSize: number;
   encryptedBytes: Uint8Array;
+  sha256: string;
 }
 
 export interface SodiumAttachmentMetadataChunk {
   index: number;
   encryptedSize: number;
 }
+
+/** Progress while encrypting + uploading attachment chunks (streamed pipeline). */
+export type AttachmentPipelineProgress = {
+  phase: "encrypt" | "upload";
+  completedChunks: number;
+  totalChunks: number;
+};
 
 export interface SodiumAttachmentPlainMetadata {
   name: string;
@@ -53,7 +78,11 @@ export interface SodiumAttachmentMetadata {
 }
 
 function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    out += bytes[i]!.toString(16).padStart(2, "0");
+  }
+  return out;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -215,16 +244,22 @@ export async function encryptFileToSodiumChunks(
   metadataKey: CryptoKey,
   noteId: string,
   onChunk: (chunk: SodiumAttachmentChunk) => Promise<void>,
+  onProgress?: (progress: AttachmentPipelineProgress) => void,
 ): Promise<SodiumAttachmentMetadata> {
   await sodium.ready;
 
-  const totalChunks = Math.max(1, Math.ceil(file.size / SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES));
+  const chunkSize = getAttachmentChunkSizeBytes(file.size);
+  const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
+  const reportProgress = (phase: AttachmentPipelineProgress["phase"], completedChunks: number) => {
+    onProgress?.({ phase, completedChunks, totalChunks });
+  };
+  reportProgress("encrypt", 0);
   const streamAad = jsonAadBytes({
     v: 1,
     purpose: "privatenote-attachment-stream",
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
-    chunkSize: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+    chunkSize,
     totalChunks,
   });
   const encryptedMetadata = await encryptSodiumAttachmentMetadata(
@@ -243,41 +278,112 @@ export async function encryptFileToSodiumChunks(
   const chunks: SodiumAttachmentMetadataChunk[] = [];
   let encryptedSize = 0;
   const contentHasher = sha256.create();
+  const fileBytes =
+    file.size > 0 && file.size <= IN_MEMORY_FILE_READ_MAX_BYTES
+      ? new Uint8Array(await file.arrayBuffer())
+      : null;
+  // Safari serializes its 1 MiB POSTs and pauses between them so WebKit does not reuse
+  // a connection whose preceding response is still settling at the network-process edge.
+  const uploadConcurrency = attachmentUploadConcurrency();
+  const uploadSettleMs = attachmentUploadSettleMs();
+  const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+  let encryptCpuMs = 0;
 
   try {
+    // Encrypt sequentially (secretstream is stateful), upload with limited concurrency.
+    // Do NOT buffer all ciphertext first — that doubled peak memory and made a ~30s
+    // Safari upload look like "slow encryption".
+    const inFlight = new Set<Promise<void>>();
+    let uploadedChunks = 0;
+    let uploadError: unknown = null;
+
+    const enqueueUpload = async (chunk: SodiumAttachmentChunk): Promise<void> => {
+      if (uploadError) throw uploadError;
+      while (inFlight.size >= uploadConcurrency) {
+        // Ignore settle outcome here — failures propagate via Promise.all at the end
+        // (or are recovered by the Safari degrade path below).
+        await Promise.race(
+          [...inFlight].map((pending) => pending.then(() => undefined, () => undefined)),
+        );
+        if (uploadError) throw uploadError;
+      }
+      let task!: Promise<void>;
+      task = (async () => {
+        await onChunk(chunk);
+        uploadedChunks += 1;
+        reportProgress("upload", uploadedChunks);
+        if (uploadSettleMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, uploadSettleMs));
+        }
+      })()
+        .catch((error) => {
+          uploadError ??= error;
+          throw error;
+        })
+        .finally(() => {
+          inFlight.delete(task);
+        });
+      inFlight.add(task);
+    };
+
     for (let index = 0; index < totalChunks; index += 1) {
-      const start = index * SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES;
-      const end = Math.min(file.size, start + SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES);
-      const plaintext = new Uint8Array(await file.slice(start, end).arrayBuffer());
+      const start = index * chunkSize;
+      const end = Math.min(file.size, start + chunkSize);
+      const plaintext = fileBytes
+        ? fileBytes.subarray(start, end)
+        : new Uint8Array(await file.slice(start, end).arrayBuffer());
       const tag =
         index === totalChunks - 1
           ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
           : sodium.crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
+      const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
       const encryptedBytes = sodium.crypto_secretstream_xchacha20poly1305_push(
         state,
         plaintext,
         streamAad,
         tag,
       );
-      encryptedSize += encryptedBytes.byteLength;
-      contentHasher.update(encryptedBytes);
-      chunks.push({ index, encryptedSize: encryptedBytes.byteLength });
-      if (import.meta.env?.DEV) {
-        console.info(
-          "[FILE_UPLOAD] chunk encrypted locally",
-          JSON.stringify({
-            noteId,
-            chunkIndex: index,
-            totalChunks,
-            plaintextBytes: plaintext.byteLength,
-            encryptedBytes: encryptedBytes.byteLength,
-            bufferBytes: encryptedBytes.buffer.byteLength,
-            byteOffset: encryptedBytes.byteOffset,
-          }),
-        );
+      // Copy off the WASM heap before the next push reuses it.
+      const encryptedCopy = encryptedBytes.slice();
+      if (typeof performance !== "undefined") {
+        encryptCpuMs += performance.now() - encryptStartedAt;
       }
-      await onChunk({ index, encryptedSize: encryptedBytes.byteLength, encryptedBytes });
+      encryptedSize += encryptedCopy.byteLength;
+      contentHasher.update(encryptedCopy);
+      chunks.push({ index, encryptedSize: encryptedCopy.byteLength });
+      reportProgress("encrypt", index + 1);
+      await enqueueUpload({
+        index,
+        encryptedSize: encryptedCopy.byteLength,
+        encryptedBytes: encryptedCopy,
+        sha256: bytesToHex(sha256(encryptedCopy)),
+      });
+      // Keep the UI responsive during long attachments.
+      if (index % 4 === 3) {
+        await new Promise<void>((resolve) => {
+          globalThis.setTimeout(resolve, 0);
+        });
+      }
     }
+    if (uploadError) throw uploadError;
+    await Promise.all([...inFlight]);
+    reportProgress("upload", totalChunks);
+
+    const totalMs =
+      typeof performance !== "undefined" ? Math.round(performance.now() - pipelineStartedAt) : null;
+    console.warn(
+      "[FILE_UPLOAD] attachment pipeline complete",
+      JSON.stringify({
+        noteId,
+        totalChunks,
+        chunkSize,
+        fileBytes: file.size,
+        encryptCpuMs: Math.round(encryptCpuMs),
+        totalMs,
+        uploadConcurrency,
+        inMemoryRead: Boolean(fileBytes),
+      }),
+    );
   } finally {
     fileKey.fill(0);
   }
@@ -286,7 +392,7 @@ export async function encryptFileToSodiumChunks(
     v: 2,
     alg: SODIUM_ATTACHMENT_ALG,
     encryptedSize,
-    chunkSize: SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES,
+    chunkSize,
     totalChunks,
     header: bytesToBase64(header),
     aad: bytesToBase64(streamAad),
@@ -297,10 +403,18 @@ export async function encryptFileToSodiumChunks(
   };
 }
 
+/** Progress while downloading + decrypting attachment chunks. */
+export type AttachmentDecryptProgress = {
+  phase: "download" | "decrypt";
+  completedChunks: number;
+  totalChunks: number;
+};
+
 export async function decryptSodiumAttachmentChunks(
   attachment: SodiumAttachmentMetadata,
   contentKey: CryptoKey,
   getChunk: (index: number) => Promise<Uint8Array>,
+  onProgress?: (progress: AttachmentDecryptProgress) => void,
 ): Promise<Uint8Array[]> {
   await sodium.ready;
 
@@ -311,22 +425,25 @@ export async function decryptSodiumAttachmentChunks(
   );
   const aad = base64ToUint8Array(attachment.aad);
   const plaintextChunks: Uint8Array[] = [];
+  const totalChunks = attachment.totalChunks;
 
   try {
-    for (let index = 0; index < attachment.totalChunks; index += 1) {
+    for (let index = 0; index < totalChunks; index += 1) {
       const encryptedChunk = await getChunk(index);
       const result = sodium.crypto_secretstream_xchacha20poly1305_pull(state, encryptedChunk, aad);
       if (!result) {
         throw new Error("Attachment chunk authentication failed");
       }
       const expectedTag =
-        index === attachment.totalChunks - 1
+        index === totalChunks - 1
           ? sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
           : sodium.crypto_secretstream_xchacha20poly1305_TAG_MESSAGE;
       if (result.tag !== expectedTag) {
         throw new Error("Attachment chunk sequence is invalid");
       }
       plaintextChunks.push(result.message);
+      // One tick per finished chunk (download + decrypt) so the bar stays linear.
+      onProgress?.({ phase: "decrypt", completedChunks: index + 1, totalChunks });
     }
   } finally {
     fileKey.fill(0);
