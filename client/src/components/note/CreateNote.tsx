@@ -1542,7 +1542,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           setAttachmentProgress({
             phase: "finalize",
             progress: 98,
-            detail: selectedFile.name,
+            detail: formatAttachmentDisplayName(selectedFile.name),
           });
           logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,

@@ -28,7 +28,7 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
   return (
     <Dialog open={Boolean(progress)}>
       <DialogContent
-        className="[&>button]:hidden sm:max-w-md border-primary/15"
+        className="[&>button]:hidden sm:max-w-md overflow-hidden border-primary/15"
         onPointerDownOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => event.preventDefault()}
@@ -48,7 +48,7 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
             <div className="space-y-3 pt-2 text-center">
               {progress?.detail ? (
                 <p
-                  className="mx-auto w-full max-w-full truncate px-1 text-sm font-medium leading-snug text-foreground/90"
+                  className="mx-auto w-full min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-1 text-sm font-medium leading-snug text-foreground/90"
                   title={progress.detail}
                 >
                   {progress.detail}

@@ -1014,7 +1014,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
-        ? `${attachmentMetadata.name} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+        ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
         : undefined,
       footnote: t.attachmentDecryptProgressFootnote,
     });
@@ -1088,7 +1088,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
-        ? `${attachmentMetadata.name} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+        ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
         : undefined,
       footnote: t.attachmentDecryptProgressFootnote,
     });
