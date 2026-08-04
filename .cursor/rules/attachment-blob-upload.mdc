@@ -6,40 +6,37 @@ alwaysApply: false
 
 # Attachment upload = encrypt.lu single PUT (find the delta)
 
-encrypt.lu proves Safari can PUT ~22 MiB in one XHR when the hop is equivalent.
-Do **not** treat “Safari needs 1 MiB chunks” as the main story.
+encrypt.lu proves Safari can PUT ~22–100 MiB in one XHR when the hop is equivalent.
+Do **not** treat “Safari needs chunks” as the main story.
 
 ## Primary recipe (always on)
 
 | Requirement | Value |
 |---|---|
-| Page | `https://privatenote.ai` (not `*.pages.dev`, not staging for the A/B) |
-| Upload | `https://upload.privatenote.ai` |
-| Transport | **XHR** `xhr.send(Blob)` (credentials omit) |
-| Body | one untyped Blob |
+| Page | `https://privatenote.ai` (prod A/B); staging QA: `https://premium.privatenote.ai` |
+| Upload | `https://upload.privatenote.ai` / `https://upload-staging.privatenote.ai` |
+| Transport | **XHR** `xhr.send(Blob)` (never Safari `fetch` for the binary PUT) |
+| Body | one Blob `{ type: "application/octet-stream" }` |
 | Method | PUT `/api/notes/:id/file` |
-| Auth | `?uploadToken=` query only (no `Authorization` Bearer) |
+| Auth | **`Authorization: Bearer {uploadToken}`** (primary). Query `?uploadToken=` is client fallback only. |
+| Headers | Do **not** set `Content-Type` / `Content-Length` from JS for Blob PUTs |
+| Credentials | omit / `withCredentials` false |
 | Proxy | never Pages `/api` for the binary body |
 
-Staging QA hop (same recipe, different hosts):
-`https://premium.privatenote.ai` → `https://upload-staging.privatenote.ai`
+## CORS (upload relay)
+
+Match `relay.encrypt.lu`: echo Origin, **echo `Access-Control-Request-Headers`**, Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, allow `Authorization` + `Content-Length`, **no** Allow-Credentials, **no** Set-Cookie.
 
 ## Fast A/B (do this once)
 
 Same Mac Safari, same ~22 MiB file:
 
-1. encrypt.lu → one PUT, ~<3 s, 200
-2. privatenote.ai → upload.privatenote.ai → same shape
+1. encrypt.lu → relay.encrypt.lu → one PUT, ~<3 s, 200
+2. privatenote.ai → upload.privatenote.ai → same shape (Bearer + XHR + Blob)
 
-If (2) fails: compare request headers with (1); check CF on **upload.privatenote.ai** (Bot Fight, WAF, Access, rate limit).
-If (2) works: staging/cross-site was the bug — ship prod path; keep chunking off.
-
-If prod same-site still aborts in ~200 ms with no Worker log, the kill is **before** app code (browser or CF edge on the upload host).
-
-## CORS (upload relay)
-
-Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo, Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials, **no** Set-Cookie.
+If (2) fails with ~200 ms `status: 0` and no Worker log: check CF on **upload host** (Bot Fight, WAF, Access) — curl OK + Safari large PUT silent is the usual Bot Fight signature.
+If (2) works: staging zone/hop was the bug.
 
 ## Temporary chunking
 
-`SAFARI_CHUNKING_ENABLED` defaults **false**. Re-enable only after prod same-site single PUT A/B fails and CF/CORS deltas are ruled out. Then: few ~4 MiB serial PUTs — not many 1 MiB POSTs.
+`SAFARI_CHUNKING_ENABLED` defaults **false**. Re-enable only after prod same-site single PUT A/B fails and CF/CORS deltas are ruled out.

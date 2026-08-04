@@ -156,17 +156,17 @@ function xhrBinaryRequest(
 }
 
 /**
- * Safari's reliable WebKit path is xhr.send(Blob). Recipe: untyped Blob
- * (`type: ""`), withCredentials false, no Content-Type unless required.
+ * Safari: xhr.send(Blob). Match encrypt.lu — Blob type application/octet-stream,
+ * withCredentials false, do not setRequestHeader("Content-Type").
  */
 function toXhrUploadBlob(body: Blob | ArrayBuffer): Blob {
   if (!(body instanceof Blob)) {
-    return new Blob([body]);
+    return new Blob([body], { type: "application/octet-stream" });
   }
-  if (!body.type) {
+  if (body.type === "application/octet-stream") {
     return body;
   }
-  return new Blob([body]);
+  return new Blob([body], { type: "application/octet-stream" });
 }
 
 export async function sendBinaryHttpRequest(

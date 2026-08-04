@@ -3,7 +3,10 @@ import {
   apiWorkerOriginForAppHostname,
   uploadWorkerOriginForAppHostname,
 } from "@shared/apiWorkerOrigin";
-import { NOTE_UPLOAD_QUERY_PARAM } from "@shared/noteFileUploadAuth";
+import {
+  NOTE_UPLOAD_QUERY_PARAM,
+  noteUploadAuthorizationHeader,
+} from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 import {
   bodyInitToUploadArrayBuffer,
@@ -14,6 +17,7 @@ import {
 import {
   isRetriableUploadTransportError,
   isSafariBrowser,
+  BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
   SAFARI_LARGE_CHUNK_UPLOAD_SHAPES,
   SAFARI_UPLOAD_SETTLE_MS,
@@ -152,9 +156,11 @@ function getBinaryUploadAttempts(
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // One capability token per transfer, in the query string only — no Authorization
-    // Bearer (avoids the CORS preflight header Safari has aborted on this hop).
-    return [{ ...directUpload, ...BLOB_UPLOAD_PUT_QUERY }];
+    // Match encrypt.lu: Bearer primary, query-token PUT as client fallback.
+    return [
+      { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
+      { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
+    ];
   }
 
   if (!hasSameOriginApiProxy) {
@@ -448,7 +454,11 @@ function resolveBinaryUploadBody(body: BodyInit): Blob | ArrayBuffer {
   }
   const uploadBlob = bodyInitToUploadBlob(body);
   if (uploadBlob) {
-    return uploadBlob.type ? new Blob([uploadBlob]) : uploadBlob;
+    // encrypt.lu: Blob type application/octet-stream; do not set Content-Type via headers.
+    if (uploadBlob.type === "application/octet-stream") {
+      return uploadBlob;
+    }
+    return new Blob([uploadBlob], { type: "application/octet-stream" });
   }
   const arrayBuffer = bodyInitToUploadArrayBuffer(body);
   if (arrayBuffer) {
@@ -542,7 +552,10 @@ export async function apiBinaryRequest<T = any>(
       if (attempt.omitContentType) {
         requestHeaders = withoutHeaders(requestHeaders, ["content-type"]);
       }
-      // Upload capability is the per-transfer uploadToken only (query). No Bearer.
+      // encrypt.lu primary: Authorization Bearer. Query token is fallback only.
+      if (options.uploadToken && !attempt.tokenInQuery) {
+        requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
+      }
       const requestMethod = attempt.method ?? method;
       const requestUrl =
         options.uploadToken && attempt.tokenInQuery

@@ -1,8 +1,9 @@
 /**
  * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
  *
- * Same-site page → upload relay, XHR PUT, one ciphertext Blob,
- * Authorization: Bearer, credentials off, one retry after ~1.8s.
+ * Page → upload relay, XHR PUT, one ciphertext Blob with
+ * type application/octet-stream, Authorization: Bearer (primary),
+ * credentials off, one retry after ~1.8s. Query-token PUT is fallback only.
  * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
  *
  * Chunking is TEMPORARY and OFF by default.
@@ -140,7 +141,15 @@ export function isRetriableUploadTransportError(error: unknown): boolean {
   );
 }
 
-/** PUT + uploadToken in query only — no Authorization header. */
+/** encrypt.lu primary: PUT + Authorization Bearer, no manual Content-Type. */
+export const BLOB_UPLOAD_PUT_BEARER = {
+  method: "PUT",
+  tokenInQuery: false,
+  omitMetadata: true,
+  omitContentType: true,
+} as const;
+
+/** Client fallback only — Worker also accepts query uploadToken. */
 export const BLOB_UPLOAD_PUT_QUERY = {
   method: "PUT",
   tokenInQuery: true,
@@ -156,4 +165,4 @@ export const BLOB_UPLOAD_POST_QUERY = {
 } as const;
 
 /** Temporary large-file shapes (only if SAFARI_CHUNKING_ENABLED). */
-export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [BLOB_UPLOAD_PUT_QUERY] as const;
+export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [BLOB_UPLOAD_PUT_BEARER, BLOB_UPLOAD_PUT_QUERY] as const;

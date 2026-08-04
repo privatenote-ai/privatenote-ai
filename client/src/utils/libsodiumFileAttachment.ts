@@ -333,7 +333,11 @@ export async function encryptFileToSodiumBlob(
       encryptedContentSha256: digestHex,
     };
 
-    const blob = new Blob([uint8ArrayToExactArrayBuffer(encryptedCopy)]);
+    // encrypt.lu share mode: typed octet-stream Blob (browser may set Content-Type;
+    // we still omit a manual Content-Type request header on the XHR).
+    const blob = new Blob([uint8ArrayToExactArrayBuffer(encryptedCopy)], {
+      type: "application/octet-stream",
+    });
 
     const totalMs =
       typeof performance !== "undefined" ? Math.round(performance.now() - pipelineStartedAt) : null;
