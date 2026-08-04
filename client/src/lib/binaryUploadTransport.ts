@@ -1,9 +1,10 @@
 /**
  * Binary PUT/POST transport — encrypt.lu share-mode shape.
  *
- * Safari: xhr.send(Blob) only (WebKit drops fetch PUT bodies after CORS preflight).
- * Never attach Safari upload.* listeners — that plumbing can abort before dispatch.
- * Chrome: fetch(Blob) primary; XHR only when upload progress is requested.
+ * Chrome uses fetch(Blob) for the primary PUT. Safari uses xhr.send(Blob) because
+ * WebKit can drop fetch PUT bodies after a CORS preflight. Progress callbacks also
+ * force XHR (fetch has no upload progress API); Safari never attaches upload.*
+ * listeners because that plumbing can abort the request before dispatch.
  */
 
 import { isSafariBrowser } from "@/lib/safariSafeChunkUpload";
@@ -178,26 +179,18 @@ export async function sendBinaryHttpRequest(
 ): Promise<Response> {
   const safeHeaders = filterBrowserUploadHeaders(headers);
   const isMutatingUpload = method === "PUT" || method === "POST";
-  // Safari must use XHR without upload.* listeners. Chrome uses fetch unless
-  // progress is needed (fetch has no upload progress API).
-  if (isMutatingUpload && isSafariBrowser()) {
+  // Same hop for Chrome and Safari: xhr.send(Blob) to the upload relay.
+  // Safari cannot use fetch for large PUTs; Chrome matches that path so both
+  // get the same fast single-Blob upload (encrypt.lu-style).
+  if (isMutatingUpload) {
     return xhrBinaryRequest(
       url,
       method,
       toXhrUploadBlob(body),
       safeHeaders,
       credentials,
-      undefined,
-    );
-  }
-  if (isMutatingUpload && onUploadProgress) {
-    return xhrBinaryRequest(
-      url,
-      method,
-      toXhrUploadBlob(body),
-      safeHeaders,
-      credentials,
-      onUploadProgress,
+      // Keep upload.* progress off on Safari — that plumbing can abort before dispatch.
+      isSafariBrowser() ? undefined : onUploadProgress,
     );
   }
   const fetchBody = body instanceof ArrayBuffer ? body : body;
