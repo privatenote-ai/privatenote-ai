@@ -1,6 +1,6 @@
 ---
 description: WORKING Safari single-PUT hop (encrypt.lu + CF HTTP/3 off). Chunking stays off.
-globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
+globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload,r2DirectUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes,r2Presign}.ts
 alwaysApply: false
 ---
 
@@ -24,6 +24,7 @@ alwaysApply: false
 | Credentials | omit / `withCredentials` false |
 | Proxy | never Pages `/api` for the binary body |
 | Worker | Stream single-blob body to R2 (no full `arrayBuffer()` buffer) |
+| Large (≥ ~90 MB ciphertext) | Presigned PUT → `*.r2.cloudflarestorage.com` (bypasses CF CDN ~100 MB body limit; required for Premium 1 GB) |
 | Chunking | `SAFARI_CHUNKING_ENABLED = false` |
 
 ## CORS (upload relay)

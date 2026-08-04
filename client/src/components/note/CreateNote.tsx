@@ -1,5 +1,9 @@
 import React, { Suspense, lazy, useEffect, useId, useRef, useState, useCallback } from "react";
 import { apiBinaryRequest, apiRequest, ApiRequestError, getFileUploadTargetLabel, logFileUpload } from "@/lib/queryClient";
+import {
+  shouldUseDirectR2Upload,
+  uploadEncryptedAttachmentViaPresignedR2,
+} from "@/lib/r2DirectUpload";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
   MAX_NOTE_PLAINTEXT_UTF8_BYTES,
@@ -1464,26 +1468,44 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               progress: 4,
               detail: fileLabel,
             });
-            await uploadEncryptedAttachmentBlob(
-              `/api/notes/${reservedId}/file`,
-              encrypted.blob,
-              {
-                "x-file-plaintext-size": String(selectedFile.size),
-                "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
-                "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
-                "x-file-chunk-sha256": encrypted.sha256,
-              },
-              uploadToken,
-              ({ loaded, total }) => {
-                if (!Number.isFinite(total) || total <= 0) return;
-                const ratio = Math.min(1, Math.max(0, loaded / total));
-                setAttachmentProgress({
-                  phase: "upload",
-                  progress: Math.max(4, Math.round(ratio * 100)),
-                  detail: fileLabel,
-                });
-              },
-            );
+            if (shouldUseDirectR2Upload(encrypted.blob.size)) {
+              await uploadEncryptedAttachmentViaPresignedR2({
+                noteId: reservedId,
+                blob: encrypted.blob,
+                chunkSha256: encrypted.sha256,
+                uploadToken,
+                onUploadProgress: ({ loaded, total }) => {
+                  if (!Number.isFinite(total) || total <= 0) return;
+                  const ratio = Math.min(1, Math.max(0, loaded / total));
+                  setAttachmentProgress({
+                    phase: "upload",
+                    progress: Math.max(4, Math.round(ratio * 100)),
+                    detail: fileLabel,
+                  });
+                },
+              });
+            } else {
+              await uploadEncryptedAttachmentBlob(
+                `/api/notes/${reservedId}/file`,
+                encrypted.blob,
+                {
+                  "x-file-plaintext-size": String(selectedFile.size),
+                  "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
+                  "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
+                  "x-file-chunk-sha256": encrypted.sha256,
+                },
+                uploadToken,
+                ({ loaded, total }) => {
+                  if (!Number.isFinite(total) || total <= 0) return;
+                  const ratio = Math.min(1, Math.max(0, loaded / total));
+                  setAttachmentProgress({
+                    phase: "upload",
+                    progress: Math.max(4, Math.round(ratio * 100)),
+                    detail: fileLabel,
+                  });
+                },
+              );
+            }
             setAttachmentProgress({
               phase: "upload",
               progress: 100,

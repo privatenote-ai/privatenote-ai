@@ -28,6 +28,7 @@ export const PAGE_CSP_CONNECT_SRC = [
   "https://cdn-lfs-eu-1.hf.co",
   "https://*.hf.co",
   "https://*.r2.dev",
+  "https://*.r2.cloudflarestorage.com",
   "https://raw.githubusercontent.com",
   "https://cdn.jsdelivr.net",
 ].join(" ");

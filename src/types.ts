@@ -50,6 +50,13 @@ export interface Env {
   AUTH_DEBUG?: string;
   /** Base64-encoded 256-bit key for AES-GCM encryption of TOTP secrets at rest. Set via `wrangler secret put TOTP_ENCRYPTION_KEY`. */
   TOTP_ENCRYPTION_KEY?: string;
+  /** R2 S3 API credentials for browser presigned PUTs (large attachments). */
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  /** Cloudflare account id — used as `https://{id}.r2.cloudflarestorage.com`. */
+  R2_ACCOUNT_ID?: string;
+  /** Note-files bucket name for S3 API presigns (e.g. privatenote-files-staging-eu). */
+  R2_BUCKET_NAME?: string;
   /** Set in wrangler.local.toml — skip EU D1-backed KV shim and use Miniflare KV bindings. */
   LOCAL_DEV?: string;
 }

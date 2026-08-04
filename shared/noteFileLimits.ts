@@ -2,6 +2,11 @@ export const NOTE_FILE_FREE_MAX_BYTES = 25 * 1024 * 1024;
 export const NOTE_FILE_PREMIUM_MAX_BYTES = 1024 * 1024 * 1024;
 export const NOTE_FILE_FREE_TOTAL_STORAGE_BYTES = 250 * 1024 * 1024;
 export const NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES = 20 * 1024 * 1024 * 1024;
+/**
+ * Ciphertext size at/above which the client uses R2 presigned PUT instead of the
+ * upload Worker (Cloudflare Free/Pro reject bodies above ~100 MB with 413).
+ */
+export const NOTE_FILE_DIRECT_R2_MIN_BYTES = 90 * 1024 * 1024;
 export const NOTE_FILE_AES_GCM_TAG_BYTES = 16;
 /** Max secretstream HTTP chunks (indices 0..MAX-1). 4 MiB Safari frames × 256 = 1 GiB. */
 export const NOTE_FILE_MAX_CHUNKS = 1024;

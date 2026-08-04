@@ -91,12 +91,40 @@ Copy **production** Pages environment variables to these branch deployments (or 
 npx wrangler r2 bucket cors put <bucket> --file scripts/r2-cors-transformers-browser.json
 ```
 
+### Large attachments (≥ ~90 MB) — R2 direct upload (required for Premium 1 GB)
+
+Cloudflare Free/Pro reject proxied request bodies above **~100 MB** with **413** (Safari often mislabels this as CORS). Premium’s plan limit is **1 GB**, so ciphertext at/above `NOTE_FILE_DIRECT_R2_MIN_BYTES` (90 MB) uses:
+
+1. `POST /api/notes/:id/file/presign` → short-lived S3 PUT URL  
+2. Browser XHR `PUT` Blob → `https://{accountId}.r2.cloudflarestorage.com/...` (Blob `type: application/octet-stream`; matches signed Content-Type)  
+3. `POST /api/notes/:id/file/complete` → Worker verifies size + SHA-256 into KV  
+4. Existing `POST /api/notes` finalize  
+
+**One-time setup (staging):**
+
+```bash
+# 1) Create an R2 API token (Object Read & Write) for privatenote-files-staging-eu
+npx wrangler secret put R2_ACCESS_KEY_ID -c wrangler.staging.toml
+npx wrangler secret put R2_SECRET_ACCESS_KEY -c wrangler.staging.toml
+
+# 2) Bucket CORS for browser PUTs
+npx wrangler r2 bucket cors set privatenote-files-staging-eu \
+  --file scripts/r2-cors-note-files-upload.json
+
+# 3) Deploy Worker (vars R2_ACCOUNT_ID + R2_BUCKET_NAME are in wrangler.staging.toml)
+npx wrangler deploy -c wrangler.staging.toml
+```
+
+Production: same secrets on `wrangler.toml`, CORS on `privatenote-files-eu`.
+
+CSP already allows `https://*.r2.cloudflarestorage.com` in `connect-src`.
+
 ## Quick smoke test on staging
 
 1. Open **https://premium.privatenote.ai** (same-site) for Safari attachment QA; pages.dev is fine for non-upload checks.
 2. Create a note → should succeed (Turnstile + API).
 3. `/auth/sign-in` → magic link or passkey (passkey uses rpID of the host you opened).
-4. DevTools → Network: JSON `/api/*` same origin; binary `PUT …/file` → `upload-staging.privatenote.ai`.
+4. DevTools → Network: JSON `/api/*` same origin; binary `PUT …/file` → `upload-staging.privatenote.ai` (under ~90 MB ciphertext); larger files `PUT` → `*.r2.cloudflarestorage.com` after `/file/presign`.
 
 ### Magic links
 

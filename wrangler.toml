@@ -81,6 +81,10 @@ AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
 # The Premium page also needs `VITE_STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK` and/or `VITE_STRIPE_PREMIUM_YEARLY_PAYMENT_LINK` at frontend build time.
 # Uncomment while debugging WebAuthn / auth: API returns { debug, route, phase } on failures; see `wrangler tail`.
 # AUTH_DEBUG = "1"
+# Large attachment uploads (≥ ~90 MB ciphertext) use S3-compatible R2 presigns.
+# Secrets: `wrangler secret put R2_ACCESS_KEY_ID` and `wrangler secret put R2_SECRET_ACCESS_KEY`
+R2_ACCOUNT_ID = "4cf4e785755949c2f0a61d2f3b532b69"
+R2_BUCKET_NAME = "privatenote-files-eu"
 
 [build]
 command = "npm run build"

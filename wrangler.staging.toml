@@ -63,6 +63,10 @@ STRIPE_PRICE_PERSONAL_YEARLY_EUR = "price_1TzFpb38iAwYhBTaeab1Qgs1"
 STRIPE_PRICE_BUSINESS_MONTHLY_EUR = "price_1TzFqn38iAwYhBTaKC7w91tQ"
 STRIPE_PRICE_BUSINESS_YEARLY_EUR = "price_1TzFr938iAwYhBTaW0rjzTot"
 STRIPE_PORTAL_CONFIGURATION_ID = "bpc_1TyZrU38iAwYhBTa0GD7Zk8F"
+# S3 API identity for browser → R2 presigned PUTs (large attachments ≥ ~90 MB).
+# Secrets: wrangler secret put R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY -c wrangler.staging.toml
+R2_ACCOUNT_ID = "4cf4e785755949c2f0a61d2f3b532b69"
+R2_BUCKET_NAME = "privatenote-files-staging-eu"
 
 [build]
 command = "npm run build:staging"

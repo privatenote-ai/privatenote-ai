@@ -5,9 +5,14 @@
  * Blob type application/octet-stream, credentials off, one retry ~1.8s.
  * Chunking stays OFF (`SAFARI_CHUNKING_ENABLED = false`).
  *
- * Cloudflare (required): HTTP/3 / QUIC aborted Safari ~30 MiB PUTs with
- * status 0 before the Worker. Fix: Speed → Protocol Optimization →
- * HTTP/3 Off (or strip Alt-Svc on upload-staging / upload hosts).
+ * Large ciphertext (≥ NOTE_FILE_DIRECT_R2_MIN_BYTES ≈ 90 MB): browser PUT goes
+ * directly to R2 via S3-compatible presign (see client/src/lib/r2DirectUpload.ts).
+ * That bypasses the Cloudflare CDN max request body on the upload Worker hop
+ * (Free/Pro ~100 MB → 413), which is required for Premium’s 1 GB plan limit.
+ *
+ * Cloudflare (required for Worker-path Safari PUTs): HTTP/3 / QUIC aborted
+ * Safari ~30 MiB PUTs with status 0 before the Worker. Fix: Speed → Protocol
+ * Optimization → HTTP/3 Off (or strip Alt-Svc on upload-staging / upload hosts).
  * See `.cursor/rules/attachment-blob-upload.mdc` and docs/STAGING_BRANCHES.md.
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai

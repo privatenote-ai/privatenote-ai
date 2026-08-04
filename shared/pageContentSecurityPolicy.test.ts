@@ -35,6 +35,11 @@ describe("page content security policy", () => {
     assert.match(csp, /https:\/\/privatenote-api-staging\.marjan-skrobot\.workers\.dev/);
   });
 
+  it("allows browser PUTs to R2 S3 API for large attachments", () => {
+    const csp = buildPageContentSecurityPolicy("abc123");
+    assert.match(csp, /https:\/\/\*\.r2\.cloudflarestorage\.com/);
+  });
+
   it("builds dev CSP with unsafe-inline for Vite HMR", () => {
     const csp = buildDevPageContentSecurityPolicy();
     assert.match(csp, /script-src 'self' 'unsafe-inline'/);
