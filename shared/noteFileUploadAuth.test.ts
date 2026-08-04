@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   isValidAttachmentContentHash,
+  noteReservationExpirationTtlSeconds,
   noteUploadAuthorizationHeader,
   noteUploadQueryParam,
   noteReservationClientMatches,
   noteReservationUploadClientMatches,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
+  redactNoteUploadTokenInUrl,
+  resolveNoteUploadToken,
   uploadedChunkHashKey,
 } from "./noteFileUploadAuth.ts";
 
@@ -18,6 +21,51 @@ describe("note file upload auth", () => {
     assert.equal(parseNoteUploadBearerToken(null), null);
     assert.equal(parseNoteUploadBearerToken("Basic abc"), null);
     assert.equal(parseNoteUploadBearerToken("Bearer "), null);
+  });
+
+  it("prefers Bearer over query and reports via", () => {
+    assert.deepEqual(
+      resolveNoteUploadToken({
+        authorizationHeader: "Bearer bearer-tok",
+        requestUrl: "https://upload.example/api/notes/x/file?uploadToken=query-tok",
+      }),
+      { token: "bearer-tok", via: "bearer" },
+    );
+    assert.deepEqual(
+      resolveNoteUploadToken({
+        authorizationHeader: null,
+        requestUrl: "https://upload.example/api/notes/x/file?uploadToken=query-tok",
+      }),
+      { token: "query-tok", via: "query" },
+    );
+    assert.equal(
+      resolveNoteUploadToken({ authorizationHeader: null, requestUrl: "https://upload.example/file" }),
+      null,
+    );
+  });
+
+  it("redacts upload tokens in URLs", () => {
+    assert.equal(
+      redactNoteUploadTokenInUrl("https://upload.example/file?uploadToken=secret&x=1"),
+      "https://upload.example/file?uploadToken=%5Bredacted%5D&x=1",
+    );
+  });
+
+  it("shortens reservation TTL after upload completes", () => {
+    assert.equal(
+      noteReservationExpirationTtlSeconds(
+        { fileStorageUserId: "u1", uploadCompletedAt: "2026-01-01T00:00:00.000Z" },
+        { attachmentTtlSeconds: 900, noteTtlSeconds: 1800, postUploadFinalizeTtlSeconds: 300 },
+      ),
+      300,
+    );
+    assert.equal(
+      noteReservationExpirationTtlSeconds(
+        { fileStorageUserId: "u1" },
+        { attachmentTtlSeconds: 900, noteTtlSeconds: 1800, postUploadFinalizeTtlSeconds: 300 },
+      ),
+      900,
+    );
   });
 
   it("builds Authorization headers", () => {

@@ -50,10 +50,11 @@ import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
 import {
   type NoteReservationRecord,
   type NoteReserveAttachmentBinding,
-  NOTE_UPLOAD_QUERY_PARAM,
+  NOTE_UPLOAD_POST_UPLOAD_FINALIZE_TTL_SECONDS,
   isValidAttachmentContentHash,
+  noteReservationExpirationTtlSeconds,
   parseNoteReserveAttachmentBinding,
-  parseNoteUploadBearerToken,
+  resolveNoteUploadToken,
   noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
@@ -154,6 +155,8 @@ const TURNSTILE_CHALLENGE = {
 const NOTE_RESERVATION = {
   TTL_SECONDS: 30 * 60,
   ATTACHMENT_TTL_SECONDS: 15 * 60,
+  /** After ciphertext is stored, shrink window before note finalize clears the reservation. */
+  POST_UPLOAD_FINALIZE_TTL_SECONDS: NOTE_UPLOAD_POST_UPLOAD_FINALIZE_TTL_SECONDS,
   KEY_PREFIX: "note_reserve:",
 };
 
@@ -7150,9 +7153,11 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
-  const expiresIn = record.fileStorageUserId
-    ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
-    : NOTE_RESERVATION.TTL_SECONDS;
+  const expiresIn = noteReservationExpirationTtlSeconds(record, {
+    attachmentTtlSeconds: NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS,
+    noteTtlSeconds: NOTE_RESERVATION.TTL_SECONDS,
+    postUploadFinalizeTtlSeconds: NOTE_RESERVATION.POST_UPLOAD_FINALIZE_TTL_SECONDS,
+  });
   await env.NOTES_KV.put(getReservationKey(noteId), JSON.stringify(record), {
     expirationTtl: expiresIn,
   });
@@ -7196,10 +7201,13 @@ async function authorizeNoteFileChunkUpload(
     return { ok: false, response: jsonResponse({ error: "Invalid note reservation" }, 403, request) };
   }
 
-  const bearer = parseNoteUploadBearerToken(request.headers.get("Authorization"));
-  const queryToken = new URL(request.url).searchParams.get(NOTE_UPLOAD_QUERY_PARAM)?.trim() || null;
-  const uploadToken = bearer || queryToken;
-  if (!uploadToken) {
+  // Working recipe: Bearer first, query-token fallback. Prefer Bearer so the
+  // token stays out of URLs/proxy logs; do not remove query fallback (Safari).
+  const resolved = resolveNoteUploadToken({
+    authorizationHeader: request.headers.get("Authorization"),
+    requestUrl: request.url,
+  });
+  if (!resolved) {
     return { ok: false, response: jsonResponse({ error: "Upload token required" }, 403, request) };
   }
   if (!record.uploadTokenHash) {
@@ -7209,7 +7217,7 @@ async function authorizeNoteFileChunkUpload(
     };
   }
 
-  const tokenHash = await sha256Hex(uploadToken);
+  const tokenHash = await sha256Hex(resolved.token);
   if (tokenHash !== record.uploadTokenHash) {
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
   }
@@ -7220,6 +7228,11 @@ async function authorizeNoteFileChunkUpload(
     readClientIpFromRequestHeaders(request.headers),
   )) {
     return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
+  }
+
+  if (resolved.via === "query") {
+    // Token value never logged — only that query fallback was required.
+    console.info("[NOTE_FILES] upload auth via query fallback", { noteId });
   }
 
   return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
@@ -8357,6 +8370,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           existingObject.customMetadata?.chunkSha256 === chunkSha256Hex &&
           Number(existingObject.customMetadata?.chunkEncryptedSize ?? NaN) === encryptedBytes.byteLength
         ) {
+          // Lost-response retry: keep token valid, but shrink finalize window.
+          if (!freshReservation.uploadCompletedAt) {
+            await persistNoteReservation(env, id, {
+              ...freshReservation,
+              uploadCompletedAt: new Date().toISOString(),
+            });
+          }
           return jsonResponse(
             { ok: true, encryptedSize: encryptedBytes.byteLength, idempotent: true },
             200,
@@ -8376,8 +8396,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         },
       });
 
+      // Token remains for idempotent retries; TTL shrinks to finalize window.
+      // clearReservation on successful note create is the true one-shot kill.
       await persistNoteReservation(env, id, {
         ...freshReservation,
+        uploadCompletedAt: freshReservation.uploadCompletedAt ?? new Date().toISOString(),
         uploadedChunkHashes: {
           ...(freshReservation.uploadedChunkHashes ?? {}),
           [chunkKey]: chunkSha256Hex,

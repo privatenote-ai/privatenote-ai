@@ -1,6 +1,6 @@
 ---
 description: Match encrypt.lu Safari single-PUT hop; chunking is temporary and off by default.
-globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
+globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts,shared/noteFileUploadAuth.ts
 alwaysApply: false
 ---
 
@@ -9,18 +9,20 @@ alwaysApply: false
 encrypt.lu proves Safari can PUT ~22 MiB in one XHR when the hop is equivalent.
 Do **not** treat “Safari needs 1 MiB chunks” as the main story. Find the delta.
 
-## Primary recipe (always on)
+## Primary recipe (always on — do not “secure away”)
 
 | Requirement | Value |
 |---|---|
 | Page | `https://privatenote.ai` (not `*.pages.dev`) |
 | Upload | `https://upload.privatenote.ai` |
-| Transport | Safari **XHR** only for the body |
+| Transport | Safari **XHR** only for the body (Chrome uses the same XHR single-PUT path) |
 | Body | one untyped Blob |
 | Method | PUT `/api/notes/:id/file` |
-| Auth | Bearer first, then query-token fallback |
+| Auth | **Bearer first**, then **query-token fallback** (required for WebKit) |
 | Cookies | off (`credentials: "omit"`) |
 | Proxy | never Pages `/api` for the binary body |
+
+**Do not remove query-token fallback** to “improve security.” Bearer is preferred (token stays out of URLs); query is the proven Safari recovery path. Harden around it instead: redact tokens in logs, shrink post-upload finalize TTL, clear reservation on note create, reject hash mismatches (409).
 
 A/B: same Mac Safari, same ~22 MiB file — encrypt.lu one PUT 200, then privatenote.ai → upload.privatenote.ai. If prod same-site still aborts in ~200 ms with no Worker log, bug is CF/Worker on the upload host (Bot Fight, WAF, Access, rate limit), not the encrypt algorithm.
 
