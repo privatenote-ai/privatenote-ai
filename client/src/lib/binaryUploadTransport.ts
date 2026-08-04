@@ -57,14 +57,14 @@ export type BinaryUploadProgress = {
 
 /**
  * Safari cannot use xhr.upload.onprogress without risking abort before dispatch.
- * While the PUT is in flight, synthesize a conservative byte estimate so the UI
- * does not sit at 4% for minutes on large R2 uploads.
+ * Advance loaded bytes linearly over an ETA (elapsed / eta), not a bursty fixed
+ * rate that hits 92% early then stalls.
  */
 export async function withEstimatedBinaryUploadProgress<T>(
   totalBytes: number,
   onUploadProgress: ((progress: BinaryUploadProgress) => void) | undefined,
   work: () => Promise<T>,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; bytesPerSec?: number } = {},
 ): Promise<T> {
   const enabled = options.enabled ?? true;
   if (!onUploadProgress || !enabled || !Number.isFinite(totalBytes) || totalBytes <= 0) {
@@ -72,18 +72,26 @@ export async function withEstimatedBinaryUploadProgress<T>(
   }
 
   const startedAt = performance.now();
-  // Conservative UI estimate (~8 MiB/s). Caps at 92% until the real request finishes.
-  const assumedBytesPerSec = 8 * 1024 * 1024;
+  // Safari large R2 PUTs are often slower than Chrome; keep ETA long enough that
+  // the bar stays linear instead of slamming into the 95% ceiling mid-upload.
+  const assumedBytesPerSec =
+    typeof options.bytesPerSec === "number" && options.bytesPerSec > 0
+      ? options.bytesPerSec
+      : isSafariBrowser()
+        ? 3 * 1024 * 1024
+        : 8 * 1024 * 1024;
+  const etaSec = Math.max(0.75, totalBytes / assumedBytesPerSec);
   let lastLoaded = 0;
   const tick = () => {
     const elapsedSec = Math.max(0, (performance.now() - startedAt) / 1000);
-    const estimated = Math.min(totalBytes * 0.92, elapsedSec * assumedBytesPerSec);
+    const linearRatio = Math.min(0.95, elapsedSec / etaSec);
+    const estimated = linearRatio * totalBytes;
     if (estimated <= lastLoaded) return;
     lastLoaded = estimated;
     onUploadProgress({ loaded: estimated, total: totalBytes });
   };
   tick();
-  const timer = globalThis.setInterval(tick, 200);
+  const timer = globalThis.setInterval(tick, 100);
   try {
     const result = await work();
     onUploadProgress({ loaded: totalBytes, total: totalBytes });

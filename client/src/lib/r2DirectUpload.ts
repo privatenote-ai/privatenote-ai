@@ -109,7 +109,11 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
         "omit",
         isSafariBrowser() ? undefined : onUploadProgress,
       ),
-    { enabled: isSafariBrowser() },
+    {
+      enabled: isSafariBrowser(),
+      // Keep ETA conservative so Safari's bar stays linear for multi‑hundred‑MB PUTs.
+      bytesPerSec: 2.5 * 1024 * 1024,
+    },
   );
   if (!putResponse.ok) {
     const text = await putResponse.text().catch(() => "");

@@ -22,6 +22,13 @@
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
 
 /**
+ * Plaintext frame size for single-Blob encrypt. Multiple secretstream frames are
+ * concatenated into one HTTP Blob so the UI can yield between frames (linear
+ * progress) without changing the one-PUT upload shape.
+ */
+export const SINGLE_BLOB_PROGRESS_FRAME_BYTES = 4 * 1024 * 1024;
+
+/**
  * TEMPORARY. When true, Safari above SAFARI_SINGLE_BLOB_MAX_BYTES uses few
  * ~4 MiB serial PUTs. Keep false until prod same-site single PUT A/B fails
  * after CF/CORS deltas are ruled out.
@@ -86,14 +93,24 @@ export function usesSingleBlobAttachmentUpload(fileSize?: number): boolean {
   return fileSize <= SAFARI_SINGLE_BLOB_MAX_BYTES;
 }
 
+export function singleBlobProgressFrameBytes(plaintextBytes: number): number {
+  const size = Math.max(0, plaintextBytes);
+  if (size <= SINGLE_BLOB_PROGRESS_FRAME_BYTES) {
+    return Math.max(1, size);
+  }
+  return SINGLE_BLOB_PROGRESS_FRAME_BYTES;
+}
+
 export function singleBlobEncryptedSizeUpperBound(plaintextBytes: number): number {
-  return Math.max(0, plaintextBytes) + SINGLE_BLOB_SECRETSTREAM_ABYTES;
+  const frame = singleBlobProgressFrameBytes(plaintextBytes);
+  const frames = Math.max(1, Math.ceil(Math.max(0, plaintextBytes) / frame));
+  return Math.max(0, plaintextBytes) + frames * SINGLE_BLOB_SECRETSTREAM_ABYTES;
 }
 
 export function attachmentChunkSizeBytes(fileSize?: number): number {
   if (usesSingleBlobAttachmentUpload(fileSize)) {
     if (typeof fileSize === "number" && Number.isFinite(fileSize) && fileSize > 0) {
-      return fileSize;
+      return singleBlobProgressFrameBytes(fileSize);
     }
     return 1;
   }

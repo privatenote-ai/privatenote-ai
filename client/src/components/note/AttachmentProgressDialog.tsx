@@ -96,7 +96,7 @@ function StepRow({
       <div className="h-2 overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full bg-primary ${
-            active ? "transition-[width] duration-100 ease-linear" : "transition-all duration-200"
+            active ? "transition-[width] duration-75 ease-linear" : "transition-all duration-200"
           }`}
           style={{ width: `${value}%` }}
         />
