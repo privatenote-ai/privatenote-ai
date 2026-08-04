@@ -1,25 +1,45 @@
 ---
-description: Safari large attachments use few ~4 MiB serial PUTs; Chrome stays single Blob.
+description: Match encrypt.lu Safari single-PUT hop; chunking is temporary and off by default.
 globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
 alwaysApply: false
 ---
 
-# Attachment upload hop
+# Attachment upload = encrypt.lu single PUT (find the delta)
 
-| Browser | Body | Transport |
-|---|---|---|
-| Chrome | one Blob PUT `/file` | XHR (or fetch if no progress) |
-| Safari ≤ 6 MiB | one Blob PUT `/file` | XHR, no `upload.*` listeners, query-token |
-| Safari > 6 MiB | few ~4 MiB serial PUTs `/file/chunks/:i` | XHR, query-token, no `upload.*` |
+encrypt.lu proves Safari can PUT ~22 MiB in one XHR when the hop is equivalent.
+Do **not** treat “Safari needs 1 MiB chunks” as the main story.
 
-Common: same-site page → `upload[-staging].privatenote.ai`, `credentials: "omit"`, never Pages `/api` for the binary body. Auth capability is the upload token (no reserve/upload IP bind).
+## Primary recipe (always on)
 
-Safari multi‑tens‑of‑MiB single PUT currently aborts in ~0.3–1.5 s (`status: 0`, no `responseURL`) while Chrome succeeds — keep Safari chunking on until that delta is fixed (CF/Bot Fight / WebKit).
+| Requirement | Value |
+|---|---|
+| Page | `https://privatenote.ai` (not `*.pages.dev`, not staging for the A/B) |
+| Upload | `https://upload.privatenote.ai` |
+| Transport | **XHR** `xhr.send(Blob)` (credentials omit) |
+| Body | one untyped Blob |
+| Method | PUT `/api/notes/:id/file` |
+| Auth | `Authorization: Bearer {token}` first, then query-token fallback |
+| Proxy | never Pages `/api` for the binary body |
+
+Staging QA hop (same recipe, different hosts):
+`https://premium.privatenote.ai` → `https://upload-staging.privatenote.ai`
+
+## Fast A/B (do this once)
+
+Same Mac Safari, same ~22 MiB file:
+
+1. encrypt.lu → one PUT, ~<3 s, 200
+2. privatenote.ai → upload.privatenote.ai → same shape
+
+If (2) fails: compare request headers with (1); check CF on **upload.privatenote.ai** (Bot Fight, WAF, Access, rate limit).
+If (2) works: staging/cross-site was the bug — ship prod path; keep chunking off.
+
+If prod same-site still aborts in ~200 ms with no Worker log, the kill is **before** app code (browser or CF edge on the upload host).
 
 ## CORS (upload relay)
 
 Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo (authorization), Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials, **no** Set-Cookie.
 
-## Server
+## Temporary chunking
 
-Drain `request.arrayBuffer()` **before** any 4xx/5xx on attachment PUT/POST — early closes become Safari status 0.
+`SAFARI_CHUNKING_ENABLED` defaults **false**. Re-enable only after prod same-site single PUT A/B fails and CF/CORS deltas are ruled out. Then: few ~4 MiB serial PUTs — not many 1 MiB POSTs.

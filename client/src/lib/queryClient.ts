@@ -149,14 +149,11 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari > ~6 MiB: few serial ~4 MiB PUTs (Chrome stays on one Blob).
+    // Chunk shapes only when SAFARI_CHUNKING_ENABLED (off — temporary escape hatch).
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // Single Blob: Safari query-token only; Chrome Bearer then query.
-    if (isSafariBrowser()) {
-      return [{ ...directUpload, ...BLOB_UPLOAD_PUT_QUERY }];
-    }
+    // encrypt.lu hop: Bearer first, then query-token fallback. Same for Chrome + Safari.
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },

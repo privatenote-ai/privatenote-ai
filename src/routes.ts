@@ -7223,9 +7223,10 @@ async function authorizeNoteFileChunkUpload(
   }
 
   // Capability = uploadToken only. Do not also bind reserve client IP/cookie:
-  // reserve hits Pages /api (one CF edge) while the Blob PUT hits upload-staging
-  // (another). IPv4/IPv6 disagreement caused 403 while Safari was still streaming
-  // the body, which WebKit surfaces as status 0 / "network connection was lost".
+  // reserve hits Pages /api (one CF edge) while the Blob PUT hits
+  // upload[.privatenote.ai]|upload-staging (another). IPv4/IPv6 disagreement
+  // returned 403 while Safari was still streaming — WebKit surfaces that as
+  // status 0 / "network connection was lost". Token hash is the capability.
 
   return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
 }
