@@ -1449,12 +1449,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               fileWrapKey!,
               metadataKey!,
               reservedId,
-              () => {
-                setAttachmentProgress((prev) => ({
+              (pipeline) => {
+                const ratio =
+                  typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
+                    ? pipeline.ratio
+                    : pipeline.totalChunks > 0
+                      ? pipeline.completedChunks / pipeline.totalChunks
+                      : 0;
+                setAttachmentProgress({
                   phase: "encrypt",
-                  progress: Math.max(prev?.progress ?? 0, 55),
+                  progress: Math.max(2, Math.min(99, Math.round(ratio * 100))),
                   detail: fileLabel,
-                }));
+                });
               },
             );
             attachment = encrypted.metadata;
@@ -1547,10 +1553,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   pipeline.phase === "upload"
                     ? pipeline.completedChunks
                     : completedChunksRef.current;
-                const within =
-                  pipeline.totalChunks > 0
-                    ? Math.round((pipeline.completedChunks / pipeline.totalChunks) * 100)
-                    : 100;
+                const ratio =
+                  typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
+                    ? pipeline.ratio
+                    : pipeline.totalChunks > 0
+                      ? pipeline.completedChunks / pipeline.totalChunks
+                      : 1;
+                const within = Math.round(ratio * 100);
                 setAttachmentProgress({
                   phase: pipeline.phase === "upload" ? "upload" : "encrypt",
                   progress: Math.min(100, Math.max(pipeline.phase === "encrypt" ? 5 : 4, within)),

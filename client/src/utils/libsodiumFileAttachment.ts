@@ -40,11 +40,16 @@ export interface SodiumAttachmentMetadataChunk {
   encryptedSize: number;
 }
 
-/** Progress while encrypting the attachment into one ciphertext Blob. */
+/** Progress while encrypting / uploading an attachment. */
 export type AttachmentPipelineProgress = {
   phase: "encrypt" | "upload";
   completedChunks: number;
   totalChunks: number;
+  /**
+   * 0–1 within the current phase when byte-accurate progress is available
+   * (preferred over completedChunks/totalChunks for single-blob encrypt).
+   */
+  ratio?: number;
 };
 
 export type SodiumAttachmentBlobResult = {
@@ -253,6 +258,10 @@ export async function unwrapSodiumAttachmentKey(
 /**
  * Encrypt a file into one secretstream frame and return a single ciphertext Blob
  * (encrypt.lu / Chrome share-mode shape). HTTP upload is a separate single PUT/POST.
+ *
+ * Progress: report byte ratio while reading the file (main wait for large files),
+ * then after encrypt + hash. One secretstream frame is required for single-blob
+ * decrypt (totalChunks === 1), so CPU encrypt itself is still one sync step.
  */
 export async function encryptFileToSodiumBlob(
   file: File,
@@ -265,7 +274,15 @@ export async function encryptFileToSodiumBlob(
 
   const chunkSize = getAttachmentChunkSizeBytes(file.size);
   const totalChunks = 1;
-  onProgress?.({ phase: "encrypt", completedChunks: 0, totalChunks });
+  const reportEncryptRatio = (ratio: number) => {
+    onProgress?.({
+      phase: "encrypt",
+      completedChunks: ratio >= 1 ? 1 : 0,
+      totalChunks,
+      ratio: Math.min(1, Math.max(0, ratio)),
+    });
+  };
+  reportEncryptRatio(0.02);
 
   const streamAad = jsonAadBytes({
     v: 1,
@@ -285,9 +302,11 @@ export async function encryptFileToSodiumBlob(
     noteId,
     totalChunks,
   );
+  reportEncryptRatio(0.06);
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
   const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
+  reportEncryptRatio(0.1);
   const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let encryptCpuMs = 0;
 
@@ -295,7 +314,33 @@ export async function encryptFileToSodiumBlob(
     await new Promise<void>((resolve) => {
       globalThis.setTimeout(resolve, 0);
     });
-    const plaintext = new Uint8Array(await file.arrayBuffer());
+
+    // Slice-read so large files can paint progress before the sync secretstream push.
+    const READ_SLICE_BYTES = 4 * 1024 * 1024;
+    const plaintext = new Uint8Array(file.size);
+    let bytesRead = 0;
+    let sliceIndex = 0;
+    while (bytesRead < file.size) {
+      const end = Math.min(file.size, bytesRead + READ_SLICE_BYTES);
+      const slice = new Uint8Array(await file.slice(bytesRead, end).arrayBuffer());
+      plaintext.set(slice, bytesRead);
+      bytesRead = end;
+      // Reading is ~0.10 → 0.55 of the encrypt phase for large files.
+      const readRatio = file.size > 0 ? bytesRead / file.size : 1;
+      reportEncryptRatio(0.1 + readRatio * 0.45);
+      sliceIndex += 1;
+      if (sliceIndex % 2 === 0) {
+        await new Promise<void>((resolve) => {
+          globalThis.setTimeout(resolve, 0);
+        });
+      }
+    }
+
+    reportEncryptRatio(0.58);
+    await new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, 0);
+    });
+
     const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
     const encryptedBytes = sodium.crypto_secretstream_xchacha20poly1305_push(
       state,
@@ -308,6 +353,7 @@ export async function encryptFileToSodiumBlob(
       encryptCpuMs = performance.now() - encryptStartedAt;
     }
     plaintext.fill(0);
+    reportEncryptRatio(0.88);
 
     const expectedSize = singleBlobEncryptedSizeUpperBound(file.size);
     if (encryptedCopy.byteLength !== expectedSize) {
@@ -316,8 +362,11 @@ export async function encryptFileToSodiumBlob(
       );
     }
 
+    await new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, 0);
+    });
     const digestHex = bytesToHex(sha256(encryptedCopy));
-    onProgress?.({ phase: "encrypt", completedChunks: 1, totalChunks });
+    reportEncryptRatio(1);
 
     const metadata: SodiumAttachmentMetadata = {
       v: 2,
@@ -405,8 +454,16 @@ export async function encryptFileToSodiumChunks(
 
   const chunkSize = getAttachmentChunkSizeBytes(file.size);
   const totalChunks = Math.max(1, Math.ceil(file.size / chunkSize));
-  const reportProgress = (phase: AttachmentPipelineProgress["phase"], completedChunks: number) => {
-    onProgress?.({ phase, completedChunks, totalChunks });
+  const reportProgress = (
+    phase: AttachmentPipelineProgress["phase"],
+    completedChunks: number,
+  ) => {
+    onProgress?.({
+      phase,
+      completedChunks,
+      totalChunks,
+      ratio: totalChunks > 0 ? completedChunks / totalChunks : 1,
+    });
   };
   reportProgress("encrypt", 0);
   const streamAad = jsonAadBytes({
