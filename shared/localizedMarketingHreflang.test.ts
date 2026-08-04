@@ -11,6 +11,8 @@ import {
 
 test("isLocalizedMarketingHreflangRoute matches mirrored marketing paths", () => {
   assert.equal(isLocalizedMarketingHreflangRoute("/how-it-works"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/premium"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/de/premium"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/security-resources"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/fr/blog"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/blog/privacy-tools"), true);

@@ -1,19 +1,40 @@
 /**
  * Subscription plan catalog — single source for limits, pricing display, and feature flags.
- * Payment integration (Stripe) is not wired yet; account_type is set after purchase or for staging tests.
+ * Stripe billing maps configured Price IDs to these account types. Runtime
+ * capabilities still come from the central subscription entitlement resolver.
+ *
+ * Principle: people pay for trust and workflow, not encryption or storage.
+ * Launch: Free → Starter → Business. Teams is deferred.
  */
 
 export type AccountType = "free" | "personal_premium" | "business_premium";
+export type BillingCurrency = "usd" | "eur";
+export type BillingInterval = "month" | "year";
 
 export type PlanFeatureFlags = {
   hostedAiMonthly: number;
+  attachmentMaxBytes: number;
+  /** Active encrypted payload still live (unread / not burned). */
+  activePayloadBufferBytes: number;
+  /** Max attachment download window after reveal. */
+  maxFileAccessWindowSeconds: number;
+  /** Longest exact note-expiry preset the plan may submit. */
+  maxExpirySeconds: number;
+  /** Exact note-open counts the plan may submit. */
+  allowedReadCounts: readonly number[];
+  extendedFileAccess: boolean;
+  recipientLinkDelivery: boolean;
+  readerLanguage: boolean;
+  /** Business: company profile / logo / accent on reveal. */
+  revealBranding: boolean;
   proofOfAccess: boolean;
   recipientVerification: boolean;
   sentNotesDashboard: boolean;
   revokeUnopened: boolean;
   openNotifications: boolean;
   savedDefaults: boolean;
-  customTemplates: boolean;
+  /** Browser-saved custom AI prompt templates. */
+  customPromptTemplates: boolean;
   premiumTemplatePacks: boolean;
 };
 
@@ -23,61 +44,100 @@ export type PlanDefinition = {
   tagline: string;
   priceMonthlyUsd: number;
   priceYearlyUsd: number;
+  priceMonthlyEur: number;
+  priceYearlyEur: number;
   features: PlanFeatureFlags;
 };
+
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+const DAY = 24 * 60 * 60;
 
 export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
   free: {
     id: "free",
     label: "Free",
-    tagline: "Encrypted one-time notes with optional on-device AI.",
+    tagline: "Encrypted one-time notes. No account required to open.",
     priceMonthlyUsd: 0,
     priceYearlyUsd: 0,
+    priceMonthlyEur: 0,
+    priceYearlyEur: 0,
     features: {
       hostedAiMonthly: 3,
+      attachmentMaxBytes: 25 * MB,
+      activePayloadBufferBytes: 250 * MB,
+      maxFileAccessWindowSeconds: 15 * 60,
+      maxExpirySeconds: 3 * DAY,
+      allowedReadCounts: [1],
+      extendedFileAccess: false,
+      recipientLinkDelivery: false,
+      readerLanguage: false,
+      revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
       sentNotesDashboard: false,
       revokeUnopened: false,
-      openNotifications: false,
+      openNotifications: true,
       savedDefaults: false,
-      customTemplates: false,
+      customPromptTemplates: false,
       premiumTemplatePacks: false,
     },
   },
   personal_premium: {
     id: "personal_premium",
-    label: "Premium Individual",
-    tagline: "Proof of access, recipient checks, and more hosted AI.",
-    priceMonthlyUsd: 3,
-    priceYearlyUsd: 24,
+    label: "Starter",
+    tagline: "Proof of access, recipient verification, and everything needed for secure sharing.",
+    priceMonthlyUsd: 4,
+    priceYearlyUsd: 40,
+    priceMonthlyEur: 4,
+    priceYearlyEur: 40,
     features: {
-      hostedAiMonthly: 100,
+      hostedAiMonthly: 50,
+      attachmentMaxBytes: 250 * MB,
+      activePayloadBufferBytes: 5 * GB,
+      maxFileAccessWindowSeconds: 30 * 60,
+      maxExpirySeconds: 30 * DAY,
+      allowedReadCounts: [1, 2, 3, 5],
+      extendedFileAccess: true,
+      recipientLinkDelivery: true,
+      readerLanguage: true,
+      revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,
       savedDefaults: true,
-      customTemplates: true,
+      customPromptTemplates: false,
       premiumTemplatePacks: true,
     },
   },
   business_premium: {
     id: "business_premium",
-    label: "Premium Plus",
-    tagline: "Higher hosted AI limits for power users and teams (future).",
-    priceMonthlyUsd: 5,
-    priceYearlyUsd: 48,
+    label: "Business",
+    tagline: "Branded secure delivery for professionals, on one account.",
+    priceMonthlyUsd: 12,
+    priceYearlyUsd: 120,
+    priceMonthlyEur: 12,
+    priceYearlyEur: 120,
     features: {
-      hostedAiMonthly: 500,
+      hostedAiMonthly: 300,
+      attachmentMaxBytes: 1 * GB,
+      activePayloadBufferBytes: 50 * GB,
+      maxFileAccessWindowSeconds: 60 * 60,
+      maxExpirySeconds: 30 * DAY,
+      allowedReadCounts: [1, 2, 3, 5],
+      extendedFileAccess: true,
+      recipientLinkDelivery: true,
+      readerLanguage: true,
+      revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,
       savedDefaults: true,
-      customTemplates: true,
+      customPromptTemplates: true,
       premiumTemplatePacks: true,
     },
   },
@@ -85,8 +145,17 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
 
 export function normalizeAccountType(raw: string | null | undefined): AccountType {
   const value = (raw || "free").toLowerCase();
-  if (value === "personal_premium" || value === "pro") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
+  if (value === "personal_premium" || value === "pro" || value === "premium" || value === "starter") {
+    return "personal_premium";
+  }
+  if (
+    value === "business_premium" ||
+    value === "business" ||
+    value === "premium_plus" ||
+    value === "plus"
+  ) {
+    return "business_premium";
+  }
   return "free";
 }
 
@@ -94,11 +163,54 @@ export function planDefinitionFor(accountType: string | null | undefined): PlanD
   return PLAN_CATALOG[normalizeAccountType(accountType)];
 }
 
+export function planPriceFor(
+  accountType: string | null | undefined,
+  currency: BillingCurrency,
+  interval: BillingInterval,
+): number {
+  const plan = planDefinitionFor(accountType);
+  if (currency === "eur") {
+    return interval === "month" ? plan.priceMonthlyEur : plan.priceYearlyEur;
+  }
+  return interval === "month" ? plan.priceMonthlyUsd : plan.priceYearlyUsd;
+}
+
+export function annualPlanSavingsPercent(
+  accountType: string | null | undefined,
+  currency: BillingCurrency,
+): number {
+  const monthly = planPriceFor(accountType, currency, "month");
+  const yearly = planPriceFor(accountType, currency, "year");
+  if (monthly <= 0 || yearly >= monthly * 12) return 0;
+  return Math.round((1 - yearly / (monthly * 12)) * 100);
+}
+
+export function planFeaturesFor(
+  accountType: string | null | undefined,
+): PlanFeatureFlags {
+  return planDefinitionFor(accountType).features;
+}
+
 export function hostedAiMonthlyLimit(accountType: string | null | undefined): number {
   return planDefinitionFor(accountType).features.hostedAiMonthly;
 }
 
+/** True for any paid plan (Starter or Business). */
 export function hasPremiumFeatures(accountType: string | null | undefined): boolean {
-  const t = normalizeAccountType(accountType);
-  return t === "personal_premium" || t === "business_premium";
+  return normalizeAccountType(accountType) !== "free";
+}
+
+/** Opened/destroyed email alerts (available on free once signed in). */
+export function hasOpenNotifications(accountType: string | null | undefined): boolean {
+  return planDefinitionFor(accountType).features.openNotifications;
+}
+
+/** Revoke unopened tracked notes (Starter+). */
+export function hasRevokeUnopened(accountType: string | null | undefined): boolean {
+  return planDefinitionFor(accountType).features.revokeUnopened;
+}
+
+/** Coarse open receipt metadata for the sender (Starter+). */
+export function hasProofOfAccess(accountType: string | null | undefined): boolean {
+  return planDefinitionFor(accountType).features.proofOfAccess;
 }

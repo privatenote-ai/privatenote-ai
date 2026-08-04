@@ -21,6 +21,7 @@ const LOCALIZED_MARKETING_STEMS = new Set([
   "privacy-tools",
   "security-resources",
   "how-it-works",
+  "premium",
   "developers",
   "about",
   "contact",
@@ -130,10 +131,11 @@ export function localizedMarketingHreflangAlternates(route: string): LocalizedMa
   if (!parsed) return null;
 
   const { stem, blogSlug, blogCategory } = parsed;
-  const alternates = SUPPORTED_LANGUAGES.map((language) => ({
-    hrefLang: language,
-    path: localizedMarketingPathForLanguage(stem, blogSlug, blogCategory, language),
-  }));
+  const alternates: LocalizedMarketingHreflangAlternate[] =
+    SUPPORTED_LANGUAGES.map((language) => ({
+      hrefLang: language,
+      path: localizedMarketingPathForLanguage(stem, blogSlug, blogCategory, language),
+    }));
 
   alternates.push({
     hrefLang: "x-default",
