@@ -149,13 +149,11 @@ function getBinaryUploadAttempts(
     : { url: getApiUrl(url), uploadRoute: "same-origin", credentials: "include" };
 
   if (options.uploadToken) {
-    // Safari large-file chunk path only when SAFARI_CHUNKING_ENABLED (off by default).
+    // Safari > ~6 MiB: few serial ~4 MiB PUTs (Chrome stays on one Blob).
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // Safari single Blob: query-token only (no Authorization). Bearer triggers a
-    // CORS preflight that WebKit has aborted mid-body on this hop; Chrome keeps
-    // Bearer-first then query like encrypt.lu.
+    // Single Blob: Safari query-token only; Chrome Bearer then query.
     if (isSafariBrowser()) {
       return [{ ...directUpload, ...BLOB_UPLOAD_PUT_QUERY }];
     }

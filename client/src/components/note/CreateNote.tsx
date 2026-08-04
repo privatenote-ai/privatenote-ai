@@ -1477,16 +1477,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               uploadToken,
             );
           } else {
+            const fileLabel = formatAttachmentDisplayName(selectedFile.name);
             const chunkDetail = (done: number, total: number) =>
-              t.attachmentProgressChunkDetail
-                .replace("{done}", String(done))
-                .replace("{total}", String(total))
-                .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
+              total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
             const completedChunksRef = { current: 0 };
             setAttachmentProgress({
               phase: "encrypt",
               progress: 5,
-              detail: chunkDetail(0, totalChunksHint),
+              detail: fileLabel,
             });
             attachment = await encryptFileToSodiumChunks(
               selectedFile,
