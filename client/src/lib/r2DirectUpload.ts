@@ -7,7 +7,10 @@
 import { uploadWorkerOriginForAppHostname } from "@shared/apiWorkerOrigin";
 import { NOTE_FILE_DIRECT_R2_MIN_BYTES } from "@shared/noteFileLimits";
 import { noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
-import { sendBinaryHttpRequest } from "@/lib/binaryUploadTransport";
+import {
+  sendBinaryHttpRequest,
+  withEstimatedBinaryUploadProgress,
+} from "@/lib/binaryUploadTransport";
 import { ApiRequestError, logFileUpload } from "@/lib/queryClient";
 import { isSafariBrowser, UPLOAD_TRANSPORT_FAILURE_MESSAGE } from "@/lib/safariSafeChunkUpload";
 
@@ -55,8 +58,8 @@ async function postUploadJson<T>(
 }
 
 /**
- * Presign → XHR PUT Blob to R2 (no Content-Type header) → complete.
- * Progress: Safari skips upload.* listeners (same as Worker path); non-Safari reports bytes.
+ * Presign → XHR PUT Blob to R2 → complete.
+ * Safari: no xhr.upload listeners (abort risk); use elapsed-time byte estimate instead.
  */
 export async function uploadEncryptedAttachmentViaPresignedR2(options: {
   noteId: string;
@@ -71,6 +74,10 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
     bodyBytes: blob.size,
     thresholdBytes: NOTE_FILE_DIRECT_R2_MIN_BYTES,
   });
+
+  if (onUploadProgress) {
+    onUploadProgress({ loaded: Math.min(blob.size * 0.02, blob.size), total: blob.size });
+  }
 
   const { uploadUrl } = await postUploadJson<{
     uploadUrl: string;
@@ -90,13 +97,19 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
 
   // Blob type application/octet-stream matches the signed Content-Type on the
   // presign. Do not also setRequestHeader("Content-Type") — WebKit may double-send.
-  const putResponse = await sendBinaryHttpRequest(
-    uploadUrl,
-    "PUT",
-    uploadBody,
-    {},
-    "omit",
-    isSafariBrowser() ? undefined : onUploadProgress,
+  const putResponse = await withEstimatedBinaryUploadProgress(
+    uploadBody.size,
+    onUploadProgress,
+    () =>
+      sendBinaryHttpRequest(
+        uploadUrl,
+        "PUT",
+        uploadBody,
+        {},
+        "omit",
+        isSafariBrowser() ? undefined : onUploadProgress,
+      ),
+    { enabled: isSafariBrowser() },
   );
   if (!putResponse.ok) {
     const text = await putResponse.text().catch(() => "");
@@ -111,10 +124,18 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
     );
   }
 
+  if (onUploadProgress) {
+    onUploadProgress({ loaded: Math.min(uploadBody.size * 0.96, uploadBody.size), total: uploadBody.size });
+  }
+
   await postUploadJson(`/api/notes/${noteId}/file/complete`, uploadToken, {
     chunkSha256,
     encryptedSize: blob.size,
   });
+
+  if (onUploadProgress) {
+    onUploadProgress({ loaded: uploadBody.size, total: uploadBody.size });
+  }
 
   logFileUpload("info", "R2 direct upload complete", {
     noteId,

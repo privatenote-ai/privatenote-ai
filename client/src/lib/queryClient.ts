@@ -12,6 +12,7 @@ import {
   bodyInitToUploadArrayBuffer,
   bodyInitToUploadBlob,
   sendBinaryHttpRequest,
+  withEstimatedBinaryUploadProgress,
   type BinaryUploadProgress,
 } from "@/lib/binaryUploadTransport";
 import {
@@ -586,12 +587,18 @@ export async function apiBinaryRequest<T = any>(
       logFileUpload("info", "request start", logBase);
 
       try {
-        const res = await executeBinaryUploadAttempt(
-          { ...attempt, url: requestUrl },
-          requestMethod,
-          uploadBody,
-          requestHeaders,
+        const res = await withEstimatedBinaryUploadProgress(
+          bodyBytes,
           options.onUploadProgress,
+          () =>
+            executeBinaryUploadAttempt(
+              { ...attempt, url: requestUrl },
+              requestMethod,
+              uploadBody,
+              requestHeaders,
+              options.onUploadProgress,
+            ),
+          { enabled: isSafariBrowser() },
         );
         const responseText = await res.text();
         const elapsedMs = Math.round(performance.now() - startedAt);

@@ -1456,11 +1456,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     : pipeline.totalChunks > 0
                       ? pipeline.completedChunks / pipeline.totalChunks
                       : 0;
-                setAttachmentProgress({
+                const next = Math.max(2, Math.min(99, Math.round(ratio * 100)));
+                setAttachmentProgress((prev) => ({
                   phase: "encrypt",
-                  progress: Math.max(2, Math.min(99, Math.round(ratio * 100))),
+                  // Never jump backwards (initial 8% must not drop to 2%).
+                  progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, next),
                   detail: fileLabel,
-                });
+                }));
               },
             );
             attachment = encrypted.metadata;
@@ -1483,11 +1485,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onUploadProgress: ({ loaded, total }) => {
                   if (!Number.isFinite(total) || total <= 0) return;
                   const ratio = Math.min(1, Math.max(0, loaded / total));
-                  setAttachmentProgress({
+                  const next = Math.max(4, Math.round(ratio * 100));
+                  setAttachmentProgress((prev) => ({
                     phase: "upload",
-                    progress: Math.max(4, Math.round(ratio * 100)),
+                    progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
                     detail: fileLabel,
-                  });
+                  }));
                 },
               });
             } else {
@@ -1504,11 +1507,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 ({ loaded, total }) => {
                   if (!Number.isFinite(total) || total <= 0) return;
                   const ratio = Math.min(1, Math.max(0, loaded / total));
-                  setAttachmentProgress({
+                  const next = Math.max(4, Math.round(ratio * 100));
+                  setAttachmentProgress((prev) => ({
                     phase: "upload",
-                    progress: Math.max(4, Math.round(ratio * 100)),
+                    progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
                     detail: fileLabel,
-                  });
+                  }));
                 },
               );
             }

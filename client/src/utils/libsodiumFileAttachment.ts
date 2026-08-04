@@ -274,15 +274,23 @@ export async function encryptFileToSodiumBlob(
 
   const chunkSize = getAttachmentChunkSizeBytes(file.size);
   const totalChunks = 1;
-  const reportEncryptRatio = (ratio: number) => {
+  const reportEncryptRatio = async (ratio: number) => {
     onProgress?.({
       phase: "encrypt",
       completedChunks: ratio >= 1 ? 1 : 0,
       totalChunks,
       ratio: Math.min(1, Math.max(0, ratio)),
     });
+    // Let Safari paint between slice reads (sync secretstream still blocks later).
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => resolve());
+      } else {
+        globalThis.setTimeout(resolve, 0);
+      }
+    });
   };
-  reportEncryptRatio(0.02);
+  await reportEncryptRatio(0.02);
 
   const streamAad = jsonAadBytes({
     v: 1,
@@ -302,24 +310,19 @@ export async function encryptFileToSodiumBlob(
     noteId,
     totalChunks,
   );
-  reportEncryptRatio(0.06);
+  await reportEncryptRatio(0.06);
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
   const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
-  reportEncryptRatio(0.1);
+  await reportEncryptRatio(0.1);
   const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let encryptCpuMs = 0;
 
   try {
-    await new Promise<void>((resolve) => {
-      globalThis.setTimeout(resolve, 0);
-    });
-
     // Slice-read so large files can paint progress before the sync secretstream push.
     const READ_SLICE_BYTES = 4 * 1024 * 1024;
     const plaintext = new Uint8Array(file.size);
     let bytesRead = 0;
-    let sliceIndex = 0;
     while (bytesRead < file.size) {
       const end = Math.min(file.size, bytesRead + READ_SLICE_BYTES);
       const slice = new Uint8Array(await file.slice(bytesRead, end).arrayBuffer());
@@ -327,18 +330,13 @@ export async function encryptFileToSodiumBlob(
       bytesRead = end;
       // Reading is ~0.10 → 0.55 of the encrypt phase for large files.
       const readRatio = file.size > 0 ? bytesRead / file.size : 1;
-      reportEncryptRatio(0.1 + readRatio * 0.45);
-      sliceIndex += 1;
-      if (sliceIndex % 2 === 0) {
-        await new Promise<void>((resolve) => {
-          globalThis.setTimeout(resolve, 0);
-        });
-      }
+      await reportEncryptRatio(0.1 + readRatio * 0.45);
     }
 
-    reportEncryptRatio(0.58);
+    await reportEncryptRatio(0.58);
+    // Extra frame so Safari paints ~58% before the sync crypto blocks the main thread.
     await new Promise<void>((resolve) => {
-      globalThis.setTimeout(resolve, 0);
+      globalThis.setTimeout(resolve, 16);
     });
 
     const encryptStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
@@ -353,7 +351,7 @@ export async function encryptFileToSodiumBlob(
       encryptCpuMs = performance.now() - encryptStartedAt;
     }
     plaintext.fill(0);
-    reportEncryptRatio(0.88);
+    await reportEncryptRatio(0.88);
 
     const expectedSize = singleBlobEncryptedSizeUpperBound(file.size);
     if (encryptedCopy.byteLength !== expectedSize) {
@@ -362,11 +360,8 @@ export async function encryptFileToSodiumBlob(
       );
     }
 
-    await new Promise<void>((resolve) => {
-      globalThis.setTimeout(resolve, 0);
-    });
     const digestHex = bytesToHex(sha256(encryptedCopy));
-    reportEncryptRatio(1);
+    await reportEncryptRatio(1);
 
     const metadata: SodiumAttachmentMetadata = {
       v: 2,

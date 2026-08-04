@@ -55,6 +55,44 @@ export type BinaryUploadProgress = {
   total: number;
 };
 
+/**
+ * Safari cannot use xhr.upload.onprogress without risking abort before dispatch.
+ * While the PUT is in flight, synthesize a conservative byte estimate so the UI
+ * does not sit at 4% for minutes on large R2 uploads.
+ */
+export async function withEstimatedBinaryUploadProgress<T>(
+  totalBytes: number,
+  onUploadProgress: ((progress: BinaryUploadProgress) => void) | undefined,
+  work: () => Promise<T>,
+  options: { enabled?: boolean } = {},
+): Promise<T> {
+  const enabled = options.enabled ?? true;
+  if (!onUploadProgress || !enabled || !Number.isFinite(totalBytes) || totalBytes <= 0) {
+    return work();
+  }
+
+  const startedAt = performance.now();
+  // Conservative UI estimate (~8 MiB/s). Caps at 92% until the real request finishes.
+  const assumedBytesPerSec = 8 * 1024 * 1024;
+  let lastLoaded = 0;
+  const tick = () => {
+    const elapsedSec = Math.max(0, (performance.now() - startedAt) / 1000);
+    const estimated = Math.min(totalBytes * 0.92, elapsedSec * assumedBytesPerSec);
+    if (estimated <= lastLoaded) return;
+    lastLoaded = estimated;
+    onUploadProgress({ loaded: estimated, total: totalBytes });
+  };
+  tick();
+  const timer = globalThis.setInterval(tick, 200);
+  try {
+    const result = await work();
+    onUploadProgress({ loaded: totalBytes, total: totalBytes });
+    return result;
+  } finally {
+    globalThis.clearInterval(timer);
+  }
+}
+
 function xhrBinaryRequest(
   url: string,
   method: string,
