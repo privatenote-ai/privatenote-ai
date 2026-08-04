@@ -54,7 +54,6 @@ import {
   isValidAttachmentContentHash,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
-  noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
 import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
@@ -7223,13 +7222,10 @@ async function authorizeNoteFileChunkUpload(
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
   }
 
-  if (!noteReservationUploadClientMatches(
-    record,
-    getClientIdentifier(request),
-    readClientIpFromRequestHeaders(request.headers),
-  )) {
-    return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
-  }
+  // Capability = uploadToken only. Do not also bind reserve client IP/cookie:
+  // reserve hits Pages /api (one CF edge) while the Blob PUT hits upload-staging
+  // (another). IPv4/IPv6 disagreement caused 403 while Safari was still streaming
+  // the body, which WebKit surfaces as status 0 / "network connection was lost".
 
   return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
 }

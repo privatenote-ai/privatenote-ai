@@ -153,7 +153,12 @@ function getBinaryUploadAttempts(
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // Chrome + Safari: same encrypt.lu single-PUT shapes (Bearer, then query).
+    // Safari single Blob: query-token only (no Authorization). Bearer triggers a
+    // CORS preflight that WebKit has aborted mid-body on this hop; Chrome keeps
+    // Bearer-first then query like encrypt.lu.
+    if (isSafariBrowser()) {
+      return [{ ...directUpload, ...BLOB_UPLOAD_PUT_QUERY }];
+    }
     return [
       { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
       { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
