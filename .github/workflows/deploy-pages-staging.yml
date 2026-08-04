@@ -11,6 +11,12 @@ on:
       - premium
       - develop
 
+# Rapid pushes otherwise race two prerenders onto the same Pages branch and
+# briefly 404 hashed chunks (composer missing / white screen on premium).
+concurrency:
+  group: pages-staging-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
