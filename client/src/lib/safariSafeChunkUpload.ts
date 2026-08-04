@@ -140,30 +140,20 @@ export function isRetriableUploadTransportError(error: unknown): boolean {
   );
 }
 
-/** encrypt.lu Safari primary: PUT + Bearer, no Content-Type. */
-export const BLOB_UPLOAD_PUT_BEARER = {
-  method: "PUT",
-  omitContentType: true,
-  omitMetadata: true,
-} as const;
-
-/** encrypt.lu Safari fallback: PUT + uploadToken in query, no Authorization. */
+/** PUT + uploadToken in query only — no Authorization header. */
 export const BLOB_UPLOAD_PUT_QUERY = {
   method: "PUT",
   tokenInQuery: true,
-  metadataInQuery: true,
+  omitMetadata: true,
   omitContentType: true,
 } as const;
 
 export const BLOB_UPLOAD_POST_QUERY = {
   method: "POST",
   tokenInQuery: true,
-  metadataInQuery: true,
+  omitMetadata: true,
   omitContentType: true,
 } as const;
 
 /** Temporary large-file shapes (only if SAFARI_CHUNKING_ENABLED). */
-export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [
-  BLOB_UPLOAD_PUT_BEARER,
-  BLOB_UPLOAD_PUT_QUERY,
-] as const;
+export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [BLOB_UPLOAD_PUT_QUERY] as const;

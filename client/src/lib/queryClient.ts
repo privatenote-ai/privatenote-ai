@@ -3,7 +3,7 @@ import {
   apiWorkerOriginForAppHostname,
   uploadWorkerOriginForAppHostname,
 } from "@shared/apiWorkerOrigin";
-import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
+import { NOTE_UPLOAD_QUERY_PARAM } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 import {
   bodyInitToUploadArrayBuffer,
@@ -14,7 +14,6 @@ import {
 import {
   isRetriableUploadTransportError,
   isSafariBrowser,
-  BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
   SAFARI_LARGE_CHUNK_UPLOAD_SHAPES,
   SAFARI_UPLOAD_SETTLE_MS,
@@ -153,11 +152,9 @@ function getBinaryUploadAttempts(
     if (isAttachmentChunkUploadUrl(url) || !usesSingleBlobAttachmentUpload(options.fileSize)) {
       return SAFARI_LARGE_CHUNK_UPLOAD_SHAPES.map((shape) => ({ ...directUpload, ...shape }));
     }
-    // encrypt.lu hop: Bearer first, then query-token fallback. Same for Chrome + Safari.
-    return [
-      { ...directUpload, ...BLOB_UPLOAD_PUT_BEARER },
-      { ...directUpload, ...BLOB_UPLOAD_PUT_QUERY },
-    ];
+    // One capability token per transfer, in the query string only — no Authorization
+    // Bearer (avoids the CORS preflight header Safari has aborted on this hop).
+    return [{ ...directUpload, ...BLOB_UPLOAD_PUT_QUERY }];
   }
 
   if (!hasSameOriginApiProxy) {
@@ -545,19 +542,22 @@ export async function apiBinaryRequest<T = any>(
       if (attempt.omitContentType) {
         requestHeaders = withoutHeaders(requestHeaders, ["content-type"]);
       }
-      if (options.uploadToken && !attempt.tokenInQuery) {
-        requestHeaders.Authorization = noteUploadAuthorizationHeader(options.uploadToken);
-      }
+      // Upload capability is the per-transfer uploadToken only (query). No Bearer.
       const requestMethod = attempt.method ?? method;
       const requestUrl =
         options.uploadToken && attempt.tokenInQuery
-          ? appendQuery(attempt.url, {
-              [NOTE_UPLOAD_QUERY_PARAM]: options.uploadToken,
-              plaintextSize: headers["x-file-plaintext-size"],
-              encryptedSize: headers["x-file-encrypted-size"],
-              chunkEncryptedSize: headers["x-file-chunk-encrypted-size"],
-              chunkSha256: headers["x-file-chunk-sha256"],
-            })
+          ? appendQuery(
+              attempt.url,
+              attempt.omitMetadata || !attempt.metadataInQuery
+                ? { [NOTE_UPLOAD_QUERY_PARAM]: options.uploadToken }
+                : {
+                    [NOTE_UPLOAD_QUERY_PARAM]: options.uploadToken,
+                    plaintextSize: headers["x-file-plaintext-size"],
+                    encryptedSize: headers["x-file-encrypted-size"],
+                    chunkEncryptedSize: headers["x-file-chunk-encrypted-size"],
+                    chunkSha256: headers["x-file-chunk-sha256"],
+                  },
+            )
           : attempt.url;
       const logBase = {
         ...sharedLogBase,

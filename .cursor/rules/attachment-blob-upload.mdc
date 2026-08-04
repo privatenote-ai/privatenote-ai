@@ -18,7 +18,7 @@ Do **not** treat “Safari needs 1 MiB chunks” as the main story.
 | Transport | **XHR** `xhr.send(Blob)` (credentials omit) |
 | Body | one untyped Blob |
 | Method | PUT `/api/notes/:id/file` |
-| Auth | `Authorization: Bearer {token}` first, then query-token fallback |
+| Auth | `?uploadToken=` query only (no `Authorization` Bearer) |
 | Proxy | never Pages `/api` for the binary body |
 
 Staging QA hop (same recipe, different hosts):
@@ -38,7 +38,7 @@ If prod same-site still aborts in ~200 ms with no Worker log, the kill is **befo
 
 ## CORS (upload relay)
 
-Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo (authorization), Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials, **no** Set-Cookie.
+Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo, Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials, **no** Set-Cookie.
 
 ## Temporary chunking
 
