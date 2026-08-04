@@ -604,7 +604,22 @@ export type AttachmentDecryptProgress = {
   phase: "download" | "decrypt";
   completedChunks: number;
   totalChunks: number;
+  /**
+   * 0–1 within the decrypt phase when byte-accurate progress is available
+   * (preferred over completedChunks/totalChunks for single-blob multi-frame decrypt).
+   */
+  ratio?: number;
 };
+
+async function yieldForDecryptProgressPaint(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      globalThis.setTimeout(resolve, 0);
+    }
+  });
+}
 
 export async function decryptSodiumAttachmentChunks(
   attachment: SodiumAttachmentMetadata,
@@ -624,6 +639,18 @@ export async function decryptSodiumAttachmentChunks(
   const totalChunks = attachment.totalChunks;
   const maxFrameEncrypted = Math.max(1, attachment.chunkSize) + 17;
 
+  const reportDecryptProgress = async (completedChunks: number, ratio: number) => {
+    onProgress?.({
+      phase: "decrypt",
+      completedChunks,
+      totalChunks,
+      ratio: Math.min(1, Math.max(0, ratio)),
+    });
+    // Multi-frame decrypt is otherwise a tight sync loop; yield so the progress
+    // bar can paint (same approach as encryptFileToSodiumBlob).
+    await yieldForDecryptProgressPaint();
+  };
+
   try {
     for (let index = 0; index < totalChunks; index += 1) {
       const encryptedChunk = await getChunk(index);
@@ -631,7 +658,6 @@ export async function decryptSodiumAttachmentChunks(
       // encrypt). Older notes used one frame for the whole file (chunkSize ≈ plaintext).
       if (totalChunks === 1 && encryptedChunk.byteLength > maxFrameEncrypted) {
         let offset = 0;
-        let frameIndex = 0;
         while (offset < encryptedChunk.byteLength) {
           const remaining = encryptedChunk.byteLength - offset;
           const frameLen = remaining > maxFrameEncrypted ? maxFrameEncrypted : remaining;
@@ -649,12 +675,8 @@ export async function decryptSodiumAttachmentChunks(
           }
           plaintextChunks.push(result.message);
           offset += frameLen;
-          frameIndex += 1;
-          onProgress?.({
-            phase: "decrypt",
-            completedChunks: Math.min(totalChunks, Math.max(1, Math.round((offset / encryptedChunk.byteLength) * totalChunks))),
-            totalChunks,
-          });
+          const ratio = offset / encryptedChunk.byteLength;
+          await reportDecryptProgress(ratio >= 1 ? 1 : 0, ratio);
         }
       } else {
         const result = sodium.crypto_secretstream_xchacha20poly1305_pull(state, encryptedChunk, aad);
@@ -669,7 +691,11 @@ export async function decryptSodiumAttachmentChunks(
           throw new Error("Attachment chunk sequence is invalid");
         }
         plaintextChunks.push(result.message);
-        onProgress?.({ phase: "decrypt", completedChunks: index + 1, totalChunks });
+        const completed = index + 1;
+        await reportDecryptProgress(
+          completed,
+          totalChunks > 0 ? completed / totalChunks : 1,
+        );
       }
     }
   } finally {

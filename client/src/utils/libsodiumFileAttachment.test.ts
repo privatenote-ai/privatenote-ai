@@ -3,13 +3,16 @@ import { describe, it } from "node:test";
 import {
   SAFARI_ATTACHMENT_CHUNK_BYTES,
   SAFARI_SINGLE_BLOB_MAX_BYTES,
+  SINGLE_BLOB_PROGRESS_FRAME_BYTES,
   setSafariChunkingEnabledForTests,
 } from "../lib/safariSafeChunkUpload.ts";
 import { arrayBufferToBase64, deriveNoteRootKeys, generateRootKeyBytes } from "./encryption.ts";
 import {
   decryptSodiumAttachmentChunks,
   decryptSodiumAttachmentMetadata,
+  encryptFileToSodiumBlob,
   encryptFileToSodiumChunks,
+  type AttachmentDecryptProgress,
   type SodiumAttachmentChunk,
 } from "./libsodiumFileAttachment.ts";
 
@@ -207,6 +210,41 @@ describe("libsodium attachment chunk encryption", () => {
         ),
       /authentication|sequence/i,
     );
+  });
+
+  it("reports linear decrypt progress for single-blob multi-frame files", async () => {
+    const { rootKeyBytes } = generateRootKeyBytes();
+    const { fileWrapKey, metadataKey } = await deriveNoteRootKeys(rootKeyBytes);
+    rootKeyBytes.fill(0);
+
+    // Large enough for multiple ~4 MiB secretstream frames inside one Blob.
+    const bytes = new Uint8Array(SINGLE_BLOB_PROGRESS_FRAME_BYTES + 64 * 1024);
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = i % 251;
+    }
+    const file = new File([bytes], "single-blob.bin", { type: "application/octet-stream" });
+    const encrypted = await encryptFileToSodiumBlob(file, fileWrapKey, metadataKey, NOTE_ID);
+    assert.equal(encrypted.metadata.totalChunks, 1);
+
+    const encryptedBytes = new Uint8Array(await encrypted.blob.arrayBuffer());
+    const ratios: number[] = [];
+    const decrypted = await decryptSodiumAttachmentChunks(
+      encrypted.metadata,
+      fileWrapKey,
+      async () => encryptedBytes,
+      (progress: AttachmentDecryptProgress) => {
+        assert.equal(progress.phase, "decrypt");
+        assert.equal(typeof progress.ratio, "number");
+        ratios.push(progress.ratio!);
+      },
+    );
+
+    assert.deepEqual(join(decrypted), bytes);
+    assert.ok(ratios.length >= 2, `expected multiple progress ticks, got ${ratios.length}`);
+    for (let i = 1; i < ratios.length; i += 1) {
+      assert.ok(ratios[i]! >= ratios[i - 1]!, `progress went backwards at ${i}`);
+    }
+    assert.equal(ratios[ratios.length - 1], 1);
   });
 
   it("rejects truncated chunks", async () => {

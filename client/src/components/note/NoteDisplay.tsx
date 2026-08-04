@@ -524,12 +524,20 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   );
 
   const reportAttachmentDecryptProgress = useCallback(
-    (completedChunks: number, totalChunks: number) => {
-      const ratio = totalChunks > 0 ? completedChunks / totalChunks : 1;
+    (completedChunks: number, totalChunks: number, ratio?: number) => {
+      const resolvedRatio =
+        typeof ratio === "number" && Number.isFinite(ratio)
+          ? Math.min(1, Math.max(0, ratio))
+          : totalChunks > 0
+            ? completedChunks / totalChunks
+            : 1;
+      const next = Math.max(1, Math.min(100, Math.round(resolvedRatio * 100)));
       const name = formatAttachmentDisplayName(attachmentMetadata?.name || "file");
-      setAttachmentDecryptProgress({
+      setAttachmentDecryptProgress((prev) => ({
         phase: "decrypt",
-        progress: Math.round(ratio * 100),
+        mode: "download",
+        // Never jump backwards while decrypt frames paint.
+        progress: Math.max(prev?.phase === "decrypt" ? prev.progress : 0, next),
         title: t.attachmentDecryptProgressTitle,
         detail:
           totalChunks <= 1
@@ -539,7 +547,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 .replace("{total}", String(totalChunks))
                 .replace("{name}", name),
         footnote: t.attachmentDecryptProgressFootnote,
-      });
+      }));
     },
     [attachmentMetadata?.name, t],
   );
@@ -569,7 +577,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       },
       options?.onProgress
         ? (pipeline) => {
-            reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+            reportAttachmentDecryptProgress(
+              pipeline.completedChunks,
+              pipeline.totalChunks,
+              pipeline.ratio,
+            );
           }
         : undefined,
     );
@@ -1014,6 +1026,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setIsDownloadingFile(true);
     setAttachmentDecryptProgress({
       phase: "decrypt",
+      mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
@@ -1036,7 +1049,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
         },
         (pipeline) => {
-          reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+          reportAttachmentDecryptProgress(
+            pipeline.completedChunks,
+            pipeline.totalChunks,
+            pipeline.ratio,
+          );
         },
       )) as BlobPart[];
       const blob = new Blob(decryptedParts, {
@@ -1088,6 +1105,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setIsViewingFile(true);
     setAttachmentDecryptProgress({
       phase: "decrypt",
+      mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
