@@ -11,6 +11,7 @@
     "dev:workers": "wrangler dev --config wrangler.local.toml --port 8787",
     "dev:pages": "npm run build && node scripts/serve-pages.js",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
     "preview": "vite preview",
     "prerender": "tsx scripts/prerender.js",
     "check:locale-home-hrefs": "node scripts/check-locale-home-hrefs.js prerender",
