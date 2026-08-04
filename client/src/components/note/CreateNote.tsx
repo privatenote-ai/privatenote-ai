@@ -448,6 +448,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const fileTransferFileInputId = useId();
+  const noteFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
@@ -2640,7 +2641,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     type="file"
                     className="sr-only"
                     tabIndex={-1}
-                    aria-hidden
                     onChange={handleAttachFileSelected}
                   />
                   {folderInputMounted ? (
@@ -2649,7 +2649,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       type="file"
                       className="sr-only"
                       tabIndex={-1}
-                      aria-hidden
                       multiple
                       onChange={handleAttachFolderSelected}
                       {...({
@@ -2766,10 +2765,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <>
               <input
                 ref={fileInputRef}
+                id={canAttachFiles ? noteFileInputId : undefined}
                 type="file"
                 className="sr-only"
                 tabIndex={-1}
-                aria-hidden
                 onChange={handleAttachFileSelected}
               />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2805,21 +2804,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
                     }
                   >
-                    <button
-                      type="button"
-                      onClick={handleAttachFileClick}
-                      title={selectedFile ? selectedFile.name : undefined}
-                      className={
-                        selectedFile
-                          ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`
-                          : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`
-                      }
-                    >
-                      <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                      <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
-                        {attachFileButtonLabel}
-                      </span>
-                    </button>
+                    {canAttachFiles ? (
+                      <label
+                        htmlFor={noteFileInputId}
+                        title={selectedFile ? selectedFile.name : undefined}
+                        className={
+                          selectedFile
+                            ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`
+                            : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:w-auto sm:flex-none sm:px-5`
+                        }
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
+                          {attachFileButtonLabel}
+                        </span>
+                      </label>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAttachFileClick}
+                        className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
+                      </button>
+                    )}
                     {selectedFile ? (
                       <button
                         type="button"
