@@ -27,8 +27,6 @@ import { localizedPath } from "@/utils/localizedPath";
 
 const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
 const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
-/** Public page uses EUR labels; checkout still picks regional currency in Stripe. */
-const DISPLAY_CURRENCY: BillingCurrency = "eur";
 
 type PaidPlanId = Exclude<AccountType, "free">;
 
@@ -43,6 +41,25 @@ function formatMoney(amount: number, currency: BillingCurrency): string {
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Show both list prices; checkout still picks regional currency in Stripe. */
+function formatDualMoney(amountUsd: number, amountEur: number): string {
+  if (amountUsd === amountEur) {
+    return `${formatMoney(amountUsd, "usd")} / ${formatMoney(amountEur, "eur")}`;
+  }
+  return `${formatMoney(amountUsd, "usd")} · ${formatMoney(amountEur, "eur")}`;
+}
+
+function planAmountFor(
+  planId: AccountType,
+  currency: BillingCurrency,
+  interval: BillingInterval,
+): number {
+  const monthly = planPriceFor(planId, currency, "month");
+  const yearly = planPriceFor(planId, currency, "year");
+  if (planId === "free") return 0;
+  return interval === "month" ? monthly : yearly / 12;
 }
 
 function formatBytesLabel(bytes: number): string {
@@ -191,11 +208,11 @@ const faqs = [
   },
   {
     q: "What is the difference between Starter and Business?",
-    a: `Starter (${formatMoney(PLAN_CATALOG.personal_premium.priceMonthlyEur, "eur")}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${formatMoney(PLAN_CATALOG.business_premium.priceMonthlyEur, "eur")}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits.`,
+    a: `Starter (${formatDualMoney(PLAN_CATALOG.personal_premium.priceMonthlyUsd, PLAN_CATALOG.personal_premium.priceMonthlyEur)}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${formatDualMoney(PLAN_CATALOG.business_premium.priceMonthlyUsd, PLAN_CATALOG.business_premium.priceMonthlyEur)}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits.`,
   },
   {
     q: "How does annual billing work?",
-    a: `Annual plans are charged once per year at ${formatMoney(PLAN_CATALOG.personal_premium.priceYearlyEur, "eur")} for Starter and ${formatMoney(PLAN_CATALOG.business_premium.priceYearlyEur, "eur")} for Business — two months free versus paying monthly.`,
+    a: `Annual plans are charged once per year at ${formatDualMoney(PLAN_CATALOG.personal_premium.priceYearlyUsd, PLAN_CATALOG.personal_premium.priceYearlyEur)} for Starter and ${formatDualMoney(PLAN_CATALOG.business_premium.priceYearlyUsd, PLAN_CATALOG.business_premium.priceYearlyEur)} for Business — two months free versus paying monthly. Checkout charges USD or EUR based on your region.`,
   },
   {
     q: "Can I pay online today?",
@@ -238,24 +255,20 @@ function PlanCard({
 }) {
   const plan = PLAN_CATALOG[planId];
   const highlighted = planId === HIGHLIGHTED_PLAN;
-  const monthlyPrice = planPriceFor(planId, DISPLAY_CURRENCY, "month");
-  const yearlyPrice = planPriceFor(planId, DISPLAY_CURRENCY, "year");
-  const annualSavings = annualPlanSavingsPercent(planId, DISPLAY_CURRENCY);
+  const yearlyUsd = planPriceFor(planId, "usd", "year");
+  const yearlyEur = planPriceFor(planId, "eur", "year");
+  const annualSavings = annualPlanSavingsPercent(planId, "usd");
   const isFree = planId === "free";
-  const displayAmount =
-    isFree
-      ? 0
-      : interval === "month"
-        ? monthlyPrice
-        : yearlyPrice / 12;
+  const displayUsd = planAmountFor(planId, "usd", interval);
+  const displayEur = planAmountFor(planId, "eur", interval);
   const priceNote = isFree
     ? "No payment required."
     : interval === "month"
       ? "Billed monthly. Cancel anytime before renewal."
-      : `${formatMoney(yearlyPrice, DISPLAY_CURRENCY)} billed annually · save ${annualSavings}%`;
+      : `${formatDualMoney(yearlyUsd, yearlyEur)} billed annually · save ${annualSavings}%`;
 
   const buttonClassName = [
-    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
+    "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
     highlighted
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
       : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
@@ -264,7 +277,7 @@ function PlanCard({
   return (
     <article
       className={[
-        "relative flex min-w-0 flex-col rounded-xl border bg-white p-5 dark:bg-gray-950",
+        "relative flex min-w-0 flex-col rounded-2xl border bg-white p-6 sm:p-7 dark:bg-gray-950",
         highlighted
           ? "border-primary/40 shadow-lg shadow-primary/10 ring-2 ring-primary/10"
           : "border-gray-200 dark:border-gray-800",
@@ -275,21 +288,44 @@ function PlanCard({
           Recommended
         </div>
       ) : null}
-      <h2 className="pr-28 text-xl font-semibold text-gray-950 dark:text-white">{plan.label}</h2>
-      <p className="mt-2 min-h-[3rem] text-sm leading-6 text-gray-600 dark:text-gray-400">
+      <h2 className="pr-28 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
+        {plan.label}
+      </h2>
+      <p className="mt-3 min-h-[3.25rem] text-base leading-7 text-gray-600 dark:text-gray-400">
         {plan.tagline}
       </p>
-      <div className="mt-5 flex items-end gap-2">
-        <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
-          {formatMoney(displayAmount, DISPLAY_CURRENCY)}
-        </span>
-        <span className="pb-1 text-sm text-gray-500 dark:text-gray-400">
-          {isFree ? "forever" : "per month"}
-        </span>
+      <div className="mt-6">
+        {isFree ? (
+          <div className="flex items-end gap-2">
+            <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
+              {formatMoney(0, "usd")}
+            </span>
+            <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">forever</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+              <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
+                {formatMoney(displayUsd, "usd")}
+              </span>
+              <span className="pb-1 text-2xl font-semibold tracking-tight text-gray-700 dark:text-gray-200 sm:text-3xl">
+                / {formatMoney(displayEur, "eur")}
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+              per month · USD and EUR
+            </p>
+          </>
+        )}
       </div>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{priceNote}</p>
+      <p className="mt-2 text-sm leading-5 text-gray-500 dark:text-gray-400">{priceNote}</p>
+      {!isFree ? (
+        <p className="mt-1 text-xs leading-5 text-gray-400 dark:text-gray-500">
+          Stripe charges USD or EUR for your region at checkout.
+        </p>
+      ) : null}
       {planId === "business_premium" ? (
-        <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+        <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-sm leading-6 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
           One professional account. Team seats and organization administration are not included.
         </p>
       ) : null}
@@ -307,13 +343,19 @@ function PlanCard({
           {planCta(planId)}
         </Link>
       )}
-      <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <p className="mt-7 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         Includes
       </p>
-      <ul className="mt-3 space-y-2.5">
+      <ul className="mt-4 space-y-3.5">
         {planHighlights(planId).map((feature) => (
-          <li key={feature} className="flex gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <li
+            key={feature}
+            className="flex gap-3 text-[15px] leading-6 text-gray-700 dark:text-gray-300"
+          >
+            <CheckCircle2
+              className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+              aria-hidden
+            />
             <span>{feature}</span>
           </li>
         ))}
@@ -349,11 +391,6 @@ export default function Premium() {
     }
   };
 
-  const signUpForCheckoutHref = (plan: PaidPlanId) => {
-    const returnTo = `${lp("/premium")}?checkout=${plan}&interval=${billingInterval}`;
-    return `${lp("/auth/sign-up")}?returnTo=${encodeURIComponent(returnTo)}`;
-  };
-
   const planHref = useMemo(
     (): Record<AccountType, string> => {
       const returnBase = localizedPath("/premium", language);
@@ -387,7 +424,7 @@ export default function Premium() {
     void startCheckout(plan, interval);
   }, [user]);
 
-  const starterSavings = annualPlanSavingsPercent("personal_premium", DISPLAY_CURRENCY);
+  const starterSavings = annualPlanSavingsPercent("personal_premium", "usd");
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
@@ -420,16 +457,18 @@ export default function Premium() {
           ))}
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Starter {formatMoney(PLAN_CATALOG.personal_premium.priceMonthlyEur, "eur")}/month · Business{" "}
-          {formatMoney(PLAN_CATALOG.business_premium.priceMonthlyEur, "eur")}/month.
+          Starter {formatDualMoney(PLAN_CATALOG.personal_premium.priceMonthlyUsd, PLAN_CATALOG.personal_premium.priceMonthlyEur)}
+          /month · Business{" "}
+          {formatDualMoney(PLAN_CATALOG.business_premium.priceMonthlyUsd, PLAN_CATALOG.business_premium.priceMonthlyEur)}
+          /month.
           {billingInterval === "year"
             ? ` Annual billing saves about ${starterSavings}%.`
             : " Switch to yearly for two months free."}{" "}
-          Checkout confirms currency and tax in Stripe.
+          Checkout charges USD or EUR for your region.
         </p>
       </section>
 
-      <section className="mx-auto mt-12 grid max-w-6xl gap-5 lg:grid-cols-3">
+      <section className="mx-auto mt-12 grid max-w-7xl gap-6 lg:grid-cols-3 lg:gap-7">
         {PLAN_ORDER.map((planId) => (
           <PlanCard
             key={planId}
