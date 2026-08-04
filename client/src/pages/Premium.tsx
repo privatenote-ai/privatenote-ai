@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Bell,
@@ -21,12 +21,16 @@ import {
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
 
 const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
 const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
 /** Public page uses EUR labels; checkout still picks regional currency in Stripe. */
 const DISPLAY_CURRENCY: BillingCurrency = "eur";
+
+type PaidPlanId = Exclude<AccountType, "free">;
 
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
@@ -223,10 +227,14 @@ function PlanCard({
   planId,
   interval,
   href,
+  onCheckout,
+  checkoutBusy,
 }: {
   planId: AccountType;
   interval: BillingInterval;
   href: string;
+  onCheckout?: (plan: PaidPlanId) => void;
+  checkoutBusy?: boolean;
 }) {
   const plan = PLAN_CATALOG[planId];
   const highlighted = planId === HIGHLIGHTED_PLAN;
@@ -247,7 +255,7 @@ function PlanCard({
       : `${formatMoney(yearlyPrice, DISPLAY_CURRENCY)} billed annually · save ${annualSavings}%`;
 
   const buttonClassName = [
-    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40",
+    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
     highlighted
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
       : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
@@ -285,9 +293,20 @@ function PlanCard({
           One professional account. Team seats and organization administration are not included.
         </p>
       ) : null}
-      <Link href={href} className={buttonClassName}>
-        {planCta(planId)}
-      </Link>
+      {onCheckout && planId !== "free" ? (
+        <button
+          type="button"
+          className={buttonClassName}
+          disabled={checkoutBusy}
+          onClick={() => onCheckout(planId)}
+        >
+          {checkoutBusy ? "Opening checkout…" : planCta(planId)}
+        </button>
+      ) : (
+        <Link href={href} className={buttonClassName}>
+          {planCta(planId)}
+        </Link>
+      )}
       <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         Includes
       </p>
@@ -306,21 +325,68 @@ function PlanCard({
 export default function Premium() {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
+  const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<PaidPlanId | null>(null);
   const lp = (path: string) => localizedPath(path, language);
-  const paidHref = user ? lp("/account") : lp("/auth/sign-up");
+
+  const startCheckout = async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
+    setCheckoutBusyPlan(plan);
+    try {
+      const checkout = await apiRequest<{ url: string }>(
+        "/api/auth/billing/checkout",
+        "POST",
+        { plan, interval },
+      );
+      window.location.assign(checkout.url);
+    } catch {
+      toast({
+        title: "Could not start checkout",
+        description: "Please try again, or open Account to manage an existing subscription.",
+        variant: "destructive",
+      });
+      setCheckoutBusyPlan(null);
+    }
+  };
+
+  const signUpForCheckoutHref = (plan: PaidPlanId) => {
+    const returnTo = `${lp("/premium")}?checkout=${plan}&interval=${billingInterval}`;
+    return `${lp("/auth/sign-up")}?returnTo=${encodeURIComponent(returnTo)}`;
+  };
+
   const planHref = useMemo(
-    (): Record<AccountType, string> => ({
-      free: localizedPath("/auth/sign-up", language),
-      personal_premium: user
-        ? localizedPath("/account", language)
-        : localizedPath("/auth/sign-up", language),
-      business_premium: user
-        ? localizedPath("/account", language)
-        : localizedPath("/auth/sign-up", language),
-    }),
-    [language, user],
+    (): Record<AccountType, string> => {
+      const returnBase = localizedPath("/premium", language);
+      const signUp = localizedPath("/auth/sign-up", language);
+      const withCheckout = (plan: PaidPlanId) => {
+        const returnTo = `${returnBase}?checkout=${plan}&interval=${billingInterval}`;
+        return `${signUp}?returnTo=${encodeURIComponent(returnTo)}`;
+      };
+      return {
+        free: signUp,
+        personal_premium: withCheckout("personal_premium"),
+        business_premium: withCheckout("business_premium"),
+      };
+    },
+    [language, billingInterval],
   );
+
+  // After sign-up/sign-in, resume checkout from ?checkout=&interval=
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get("checkout");
+    const intervalParam = params.get("interval");
+    if (plan !== "personal_premium" && plan !== "business_premium") return;
+    const interval: BillingInterval =
+      intervalParam === "month" || intervalParam === "year" ? intervalParam : "year";
+    params.delete("checkout");
+    params.delete("interval");
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", next);
+    void startCheckout(plan, interval);
+  }, [user]);
+
   const starterSavings = annualPlanSavingsPercent("personal_premium", DISPLAY_CURRENCY);
 
   return (
@@ -370,6 +436,14 @@ export default function Premium() {
             planId={planId}
             interval={billingInterval}
             href={planHref[planId]}
+            onCheckout={
+              user && planId !== "free"
+                ? (plan) => void startCheckout(plan)
+                : undefined
+            }
+            checkoutBusy={
+              planId !== "free" && checkoutBusyPlan === planId
+            }
           />
         ))}
       </section>
@@ -398,7 +472,7 @@ export default function Premium() {
             </p>
           </div>
           <Link
-            href={paidHref}
+            href={user ? lp("/account") : lp("/auth/sign-up")}
             className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
           >
             {user ? "Go to account" : "Create account to subscribe"}

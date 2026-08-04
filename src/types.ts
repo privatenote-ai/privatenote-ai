@@ -27,6 +27,24 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;
   /** Stripe webhook signing secret. Required for `/api/auth/billing/stripe/webhook`. */
   STRIPE_WEBHOOK_SECRET?: string;
+  /** Stripe API version pinned on every outbound request. Defaults to 2025-03-31.basil. */
+  STRIPE_API_VERSION?: string;
+  /** USD prices. */
+  STRIPE_PRICE_PERSONAL_MONTHLY?: string;
+  STRIPE_PRICE_PERSONAL_YEARLY?: string;
+  STRIPE_PRICE_BUSINESS_MONTHLY?: string;
+  STRIPE_PRICE_BUSINESS_YEARLY?: string;
+  /** EUR prices selected server-side for customers detected in Europe. */
+  STRIPE_PRICE_PERSONAL_MONTHLY_EUR?: string;
+  STRIPE_PRICE_PERSONAL_YEARLY_EUR?: string;
+  STRIPE_PRICE_BUSINESS_MONTHLY_EUR?: string;
+  STRIPE_PRICE_BUSINESS_YEARLY_EUR?: string;
+  /** Optional Billing Portal configuration that controls allowed plan switches. */
+  STRIPE_PORTAL_CONFIGURATION_ID?: string;
+  /** Explicit payment-failure grace window. Defaults to 3 days when omitted. */
+  STRIPE_GRACE_PERIOD_DAYS?: string;
+  /** Maximum Stripe subscriptions reconciled by each cron run. Defaults to 100. */
+  STRIPE_RECONCILIATION_LIMIT?: string;
   // Required in production for magic-link KV integrity and recipient email gate HMACs.
   // Optional only when AUTH_ALLOW_UNSIGNED_MAGIC_LINK=1 or Worker URL is localhost and recipient email gates are not used.
   AUTH_SECRET_KEY?: string;

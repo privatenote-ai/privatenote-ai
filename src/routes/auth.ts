@@ -7,6 +7,18 @@ import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "../types";
 import {
+  billingCountryFromRequest,
+  billingCurrencyForCountry,
+} from "@shared/billingRegion";
+import {
+  checkoutIdempotencyKey,
+  createStripeCheckoutSession,
+  createStripePortalSession,
+  StripeBillingError,
+  type BillingInterval,
+  type PaidBillingPlan,
+} from "../stripeCheckout";
+import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
@@ -3692,6 +3704,149 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       headers.set("Set-Cookie", sessionCookie(session.sessionId, getSessionCookieKindForRequest(request)));
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/billing/checkout" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    let body: { plan?: unknown; interval?: unknown };
+    try {
+      body = (await readJsonBody(request)) as typeof body;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const plan =
+      body.plan === "personal_premium" || body.plan === "business_premium"
+        ? (body.plan as PaidBillingPlan)
+        : null;
+    const interval =
+      body.interval === "month" || body.interval === "year"
+        ? (body.interval as BillingInterval)
+        : null;
+    if (!plan || !interval) {
+      return jsonResponse(
+        {
+          error: "invalid_billing_selection",
+          message: "Select a valid paid plan and billing interval.",
+        },
+        400,
+        request,
+      );
+    }
+    const user = await env.AUTH_DB.prepare(
+      `SELECT email, stripe_customer_id, stripe_subscription_id, subscription_status
+       FROM users WHERE id = ? LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{
+        email: string | null;
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        subscription_status: string | null;
+      }>();
+    if (!user) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const changeable = new Set(["active", "trialing", "past_due", "unpaid", "paused"]);
+    if (
+      user.stripe_subscription_id &&
+      changeable.has(user.subscription_status?.toLowerCase() ?? "")
+    ) {
+      return jsonResponse(
+        {
+          error: "subscription_already_exists",
+          message: "Manage the existing subscription in the billing portal.",
+        },
+        409,
+        request,
+      );
+    }
+    const appOrigin = getMagicLinkOrigin(env, request);
+    const billingCountry = billingCountryFromRequest(request);
+    const billingCurrency = billingCurrencyForCountry(billingCountry);
+    try {
+      const checkout = await createStripeCheckoutSession(env, {
+        userId: session.id,
+        email: user.email,
+        stripeCustomerId: user.stripe_customer_id,
+        plan,
+        interval,
+        currency: billingCurrency,
+        successUrl: `${appOrigin}/account?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appOrigin}/premium?billing=cancelled`,
+        idempotencyKey: checkoutIdempotencyKey(
+          session.id,
+          plan,
+          interval,
+          new Date(),
+          billingCurrency,
+        ),
+      });
+      return jsonResponse(
+        {
+          ok: true,
+          url: checkout.url,
+          billingCountry,
+          billingCurrency,
+        },
+        200,
+        request,
+      );
+    } catch (error) {
+      console.error("[BILLING] Checkout session creation failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "checkout_failed",
+          message: billingError?.message ?? "Checkout could not be started.",
+        },
+        billingError?.status ?? 502,
+        request,
+      );
+    }
+  }
+
+  if (pathname === "/api/auth/billing/portal" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const user = await env.AUTH_DB.prepare(
+      `SELECT stripe_customer_id FROM users WHERE id = ? LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{ stripe_customer_id: string | null }>();
+    if (!user?.stripe_customer_id) {
+      return jsonResponse(
+        {
+          error: "no_billing_customer",
+          message: "No Stripe customer is linked to this account yet.",
+        },
+        404,
+        request,
+      );
+    }
+    const appOrigin = getMagicLinkOrigin(env, request);
+    try {
+      const portal = await createStripePortalSession(env, {
+        stripeCustomerId: user.stripe_customer_id,
+        returnUrl: `${appOrigin}/account`,
+      });
+      return jsonResponse({ ok: true, url: portal.url }, 200, request);
+    } catch (error) {
+      console.error("[BILLING] Portal session creation failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "portal_failed",
+          message: billingError?.message ?? "Billing portal could not be opened.",
+        },
+        billingError?.status ?? 502,
+        request,
+      );
+    }
   }
 
   if (pathname === "/api/auth/me" && method === "GET") {
