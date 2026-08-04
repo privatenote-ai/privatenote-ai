@@ -23,6 +23,8 @@ describe("note file limits", () => {
     assert.equal(NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES, 20 * 1024 * 1024 * 1024);
     assert.equal(noteFileTotalStorageBytesForAccount(false), NOTE_FILE_FREE_TOTAL_STORAGE_BYTES);
     assert.equal(noteFileTotalStorageBytesForAccount(true), NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES);
-    assert.equal(formatNoteFileSize(NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES), "20480 MB");
+    assert.equal(formatNoteFileSize(NOTE_FILE_PREMIUM_TOTAL_STORAGE_BYTES), "20 GB");
+    assert.equal(formatNoteFileSize(NOTE_FILE_PREMIUM_MAX_BYTES), "1 GB");
+    assert.equal(formatNoteFileSize(NOTE_FILE_FREE_MAX_BYTES), "25 MB");
   });
 });

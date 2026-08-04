@@ -8,6 +8,7 @@ import {
 } from "@shared/noteSizeLimits";
 import {
   formatNoteFileSize,
+  NOTE_FILE_PREMIUM_MAX_BYTES,
   noteFileLimitBytesForAccount,
 } from "@shared/noteFileLimits";
 import {
@@ -114,6 +115,7 @@ async function uploadEncryptedAttachmentBlob(
   blob: Blob,
   headers: Record<string, string>,
   uploadToken: string,
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void,
 ): Promise<void> {
   logFileUpload("info", "uploading attachment blob", {
     bodyBytes: blob.size,
@@ -122,6 +124,7 @@ async function uploadEncryptedAttachmentBlob(
   });
   await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", blob, headers, {
     uploadToken,
+    onUploadProgress,
   });
   logFileUpload("info", "attachment blob uploaded", { url, bodyBytes: blob.size });
 }
@@ -456,6 +459,32 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const canAttachFiles = Boolean(user);
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
+  const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
+    "{limit}",
+    fileLimitLabel,
+  );
+
+  const rejectOversizedAttachment = (file: File): boolean => {
+    if (file.size <= fileLimitBytes) return false;
+    const description = (t.fileTooLargeDescription ?? "This file is {size}. Your plan allows up to {limit} per file.")
+      .replace("{size}", formatNoteFileSize(file.size))
+      .replace("{limit}", fileLimitLabel);
+    const upgradeHint =
+      !isPremiumUser && file.size <= NOTE_FILE_PREMIUM_MAX_BYTES
+        ? (t.fileTooLargeUpgradeHint ?? "Premium allows up to {premiumLimit} per file.").replace(
+            "{premiumLimit}",
+            formatNoteFileSize(NOTE_FILE_PREMIUM_MAX_BYTES),
+          )
+        : null;
+    toast({
+      title: t.fileTooLarge,
+      description: upgradeHint ? `${description} ${upgradeHint}` : description,
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const attachFileReturnTo =
     typeof window === "undefined"
       ? localizedPath("/", language)
@@ -565,16 +594,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!file) return;
-    if (file.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: (
-          t.fileTooLargeDescription
-        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
-        variant: "destructive",
-      });
-      return;
-    }
+    if (rejectOversizedAttachment(file)) return;
     setSelectedFile(file);
   };
 
@@ -586,17 +606,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     try {
       const { createStoredZipFromFiles } = await import("@/utils/createStoredZip");
       const zippedFolder = await createStoredZipFromFiles(files);
-      if (zippedFolder.size > fileLimitBytes) {
-        toast({
-          title: t.fileTooLarge,
-          description: t.fileTooLargeDescription.replace(
-            "{limit}",
-            formatNoteFileSize(fileLimitBytes),
-          ),
-          variant: "destructive",
-        });
-        return;
-      }
+      if (rejectOversizedAttachment(zippedFolder)) return;
       setSelectedFile(zippedFolder);
     } catch (error) {
       toast({
@@ -631,16 +641,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       window.location.href = attachFileSignInHref;
       return;
     }
-    if (file.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: (
-          t.fileTooLargeDescription
-        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
-        variant: "destructive",
-      });
-      return;
-    }
+    if (rejectOversizedAttachment(file)) return;
     setSelectedFile(file);
   };
 
@@ -1187,15 +1188,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (selectedFile && selectedFile.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: t.fileTooLargeDescription.replace(
-          "{limit}",
-          formatNoteFileSize(fileLimitBytes),
-        ),
-        variant: "destructive",
-      });
+    if (selectedFile && rejectOversizedAttachment(selectedFile)) {
       return;
     }
 
@@ -1441,10 +1434,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           });
 
           if (singleBlob) {
+            const fileLabel = formatAttachmentDisplayName(selectedFile.name);
             setAttachmentProgress({
               phase: "encrypt",
               progress: 8,
-              detail: formatAttachmentDisplayName(selectedFile.name),
+              detail: fileLabel,
             });
             const encrypted = await encryptFileToSodiumBlob(
               selectedFile,
@@ -1454,16 +1448,21 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               () => {
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
-                  progress: Math.max(prev?.progress ?? 0, 35),
-                  detail: formatAttachmentDisplayName(selectedFile.name),
+                  progress: Math.max(prev?.progress ?? 0, 55),
+                  detail: fileLabel,
                 }));
               },
             );
             attachment = encrypted.metadata;
             setAttachmentProgress({
               phase: "encrypt",
-              progress: 55,
-              detail: formatAttachmentDisplayName(selectedFile.name),
+              progress: 100,
+              detail: fileLabel,
+            });
+            setAttachmentProgress({
+              phase: "upload",
+              progress: 4,
+              detail: fileLabel,
             });
             await uploadEncryptedAttachmentBlob(
               `/api/notes/${reservedId}/file`,
@@ -1475,7 +1474,21 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 "x-file-chunk-sha256": encrypted.sha256,
               },
               uploadToken,
+              ({ loaded, total }) => {
+                if (!Number.isFinite(total) || total <= 0) return;
+                const ratio = Math.min(1, Math.max(0, loaded / total));
+                setAttachmentProgress({
+                  phase: "upload",
+                  progress: Math.max(4, Math.round(ratio * 100)),
+                  detail: fileLabel,
+                });
+              },
             );
+            setAttachmentProgress({
+              phase: "upload",
+              progress: 100,
+              detail: fileLabel,
+            });
           } else {
             const fileLabel = formatAttachmentDisplayName(selectedFile.name);
             const chunkDetail = (done: number, total: number) =>
@@ -1512,27 +1525,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   pipeline.phase === "upload"
                     ? pipeline.completedChunks
                     : completedChunksRef.current;
-                const overall =
+                const within =
                   pipeline.totalChunks > 0
-                    ? Math.min(
-                        1,
-                        (pipeline.phase === "encrypt"
-                          ? pipeline.completedChunks * 0.4
-                          : pipeline.totalChunks * 0.4 + done * 0.6) / pipeline.totalChunks,
-                      )
-                    : 1;
+                    ? Math.round((pipeline.completedChunks / pipeline.totalChunks) * 100)
+                    : 100;
                 setAttachmentProgress({
-                  phase: "encrypt",
-                  progress: Math.round(5 + overall * 90),
+                  phase: pipeline.phase === "upload" ? "upload" : "encrypt",
+                  progress: Math.min(100, Math.max(pipeline.phase === "encrypt" ? 5 : 4, within)),
                   detail: chunkDetail(done, pipeline.totalChunks),
                 });
               },
             );
+            setAttachmentProgress({
+              phase: "upload",
+              progress: 100,
+              detail: fileLabel,
+            });
           }
 
           setAttachmentProgress({
             phase: "finalize",
-            progress: 98,
+            progress: 35,
             detail: formatAttachmentDisplayName(selectedFile.name),
           });
           logFileUpload("info", "attachment encryption+upload complete", {
@@ -2529,12 +2542,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div className="mb-4 space-y-4">
               <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                <span
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
-                  title={selectedFile.name}
-                >
-                  {formatAttachmentDisplayName(selectedFile.name)}
-                </span>
+                    <span
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
+                      title={selectedFile.name}
+                    >
+                      {formatAttachmentDisplayName(selectedFile.name)}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                      {formatNoteFileSize(selectedFile.size)}
+                    </span>
                 <button
                   type="button"
                   onClick={() => setSelectedFile(null)}
@@ -2658,7 +2674,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     ariaLabel={t.sftDropZoneAriaLabel}
                     dropTitle={t.sftDropZoneTitle}
                     dropTitleDragging={t.sftDropZoneTitleDragging}
-                    subtitle={t.sftDropZoneSubtitle}
+                    subtitle={`${t.sftDropZoneSubtitle} · ${attachFileMaxSizeHint}`}
                   >
                     {canAttachFiles ? (
                       <label
@@ -2869,6 +2885,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   )}
                 </button>
               </div>
+              {canAttachFiles ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {attachFileMaxSizeHint}
+                  {!isPremiumUser ? (
+                    <>
+                      {" · "}
+                      {(t.fileTooLargeUpgradeHint ?? "Premium allows up to {premiumLimit} per file.").replace(
+                        "{premiumLimit}",
+                        formatNoteFileSize(NOTE_FILE_PREMIUM_MAX_BYTES),
+                      )}
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
                 </>
               )}
             </div>
