@@ -2,20 +2,6 @@
 export const NOTE_UPLOAD_BEARER_PREFIX = "Bearer ";
 export const NOTE_UPLOAD_QUERY_PARAM = "uploadToken";
 
-/**
- * After the ciphertext Blob lands, keep the reservation only long enough to
- * finalize the note. Token stays valid for idempotent retries (lost 201), then
- * clearReservation on successful create kills it.
- */
-export const NOTE_UPLOAD_POST_UPLOAD_FINALIZE_TTL_SECONDS = 5 * 60;
-
-export type NoteUploadTokenVia = "bearer" | "query";
-
-export interface ResolvedNoteUploadToken {
-  token: string;
-  via: NoteUploadTokenVia;
-}
-
 export interface NoteReserveResponse {
   id: string;
   uploadToken: string;
@@ -33,8 +19,6 @@ export interface NoteReservationRecord {
   premiumUserId?: string | null;
   attachmentPlaintextSize?: number;
   attachmentEncryptedSize?: number;
-  /** ISO time when ciphertext was accepted (shortens remaining reservation TTL). */
-  uploadCompletedAt?: string;
   /** chunkIndex (string) → SHA-256 hex of uploaded ciphertext bytes */
   uploadedChunkHashes?: Record<string, string>;
 }
@@ -81,54 +65,6 @@ export function parseNoteUploadBearerToken(authHeader: string | null | undefined
   if (!trimmed.startsWith(NOTE_UPLOAD_BEARER_PREFIX)) return null;
   const token = trimmed.slice(NOTE_UPLOAD_BEARER_PREFIX.length).trim();
   return token.length > 0 ? token : null;
-}
-
-/**
- * Resolve the upload token without changing the working recipe:
- * Bearer first (preferred; stays out of URLs/logs), then query fallback for
- * Safari/WebKit when Authorization does not survive the hop.
- */
-export function resolveNoteUploadToken(input: {
-  authorizationHeader?: string | null;
-  requestUrl?: string | null;
-}): ResolvedNoteUploadToken | null {
-  const bearer = parseNoteUploadBearerToken(input.authorizationHeader);
-  if (bearer) {
-    return { token: bearer, via: "bearer" };
-  }
-  if (!input.requestUrl) return null;
-  try {
-    const queryToken = new URL(input.requestUrl).searchParams.get(NOTE_UPLOAD_QUERY_PARAM)?.trim() || null;
-    if (queryToken) {
-      return { token: queryToken, via: "query" };
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-/** Strip upload tokens from URLs before logging (Worker or client). */
-export function redactNoteUploadTokenInUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.searchParams.has(NOTE_UPLOAD_QUERY_PARAM)) {
-      parsed.searchParams.set(NOTE_UPLOAD_QUERY_PARAM, "[redacted]");
-    }
-    return parsed.toString();
-  } catch {
-    return url.replace(new RegExp(`([?&]${NOTE_UPLOAD_QUERY_PARAM}=)[^&]+`, "g"), "$1[redacted]");
-  }
-}
-
-export function noteReservationExpirationTtlSeconds(
-  record: Pick<NoteReservationRecord, "fileStorageUserId" | "uploadCompletedAt">,
-  defaults: { attachmentTtlSeconds: number; noteTtlSeconds: number; postUploadFinalizeTtlSeconds: number },
-): number {
-  if (record.uploadCompletedAt) {
-    return defaults.postUploadFinalizeTtlSeconds;
-  }
-  return record.fileStorageUserId ? defaults.attachmentTtlSeconds : defaults.noteTtlSeconds;
 }
 
 export function noteUploadAuthorizationHeader(uploadToken: string): string {

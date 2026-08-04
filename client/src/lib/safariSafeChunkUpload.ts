@@ -2,8 +2,7 @@
  * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
  *
  * Same-site page → upload relay, XHR PUT, one ciphertext Blob,
- * Authorization: Bearer first then query-token fallback (do not remove),
- * credentials off, one retry after ~1.8s.
+ * Authorization: Bearer, credentials off, one retry after ~1.8s.
  * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
  *
  * Chunking is TEMPORARY and OFF by default.

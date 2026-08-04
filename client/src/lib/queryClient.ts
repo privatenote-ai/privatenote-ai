@@ -3,11 +3,7 @@ import {
   apiWorkerOriginForAppHostname,
   uploadWorkerOriginForAppHostname,
 } from "@shared/apiWorkerOrigin";
-import {
-  NOTE_UPLOAD_QUERY_PARAM,
-  noteUploadAuthorizationHeader,
-  redactNoteUploadTokenInUrl,
-} from "@shared/noteFileUploadAuth";
+import { NOTE_UPLOAD_QUERY_PARAM, noteUploadAuthorizationHeader } from "@shared/noteFileUploadAuth";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 import {
   bodyInitToUploadArrayBuffer,
@@ -125,15 +121,16 @@ function appendQuery(url: string, params: Record<string, string | undefined>): s
 
 function redactUploadUrlForLog(url: string): string {
   try {
-    const parsed = new URL(url, typeof window !== "undefined" ? window.location.origin : "https://local.invalid");
-    const redacted = redactNoteUploadTokenInUrl(parsed.toString());
-    if (!/^https?:\/\//i.test(url)) {
-      const out = new URL(redacted);
-      return `${out.pathname}${out.search}${out.hash}`;
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.searchParams.has(NOTE_UPLOAD_QUERY_PARAM)) {
+      parsed.searchParams.set(NOTE_UPLOAD_QUERY_PARAM, "[redacted]");
     }
-    return redacted;
+    if (!/^https?:\/\//i.test(url)) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return parsed.toString();
   } catch {
-    return redactNoteUploadTokenInUrl(url);
+    return url.replace(new RegExp(`([?&]${NOTE_UPLOAD_QUERY_PARAM}=)[^&]+`, "g"), "$1[redacted]");
   }
 }
 
