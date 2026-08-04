@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Bell,
+  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -9,245 +10,201 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import {
+  PLAN_CATALOG,
+  annualPlanSavingsPercent,
+  planPriceFor,
+  type AccountType,
+  type BillingCurrency,
+  type BillingInterval,
+} from "@shared/planCatalog";
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 
-type BillingMode = "monthly" | "yearly";
-type PlanId = "free" | "premium";
+const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
+const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
+/** Public page uses EUR labels; checkout still picks regional currency in Stripe. */
+const DISPLAY_CURRENCY: BillingCurrency = "eur";
 
-const stripePaymentLinks: Record<BillingMode, string> = {
-  monthly: (import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK as string | undefined)?.trim() || "",
-  yearly: (import.meta.env.VITE_STRIPE_PREMIUM_YEARLY_PAYMENT_LINK as string | undefined)?.trim() || "",
-};
-const stripePrefilledPromoCode =
-  (import.meta.env.VITE_STRIPE_PREMIUM_PREFILLED_PROMO_CODE as string | undefined)?.trim() || "";
-const earlyAdopterPricingEnabled =
-  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_PRICING_ENABLED as string | undefined)?.trim().toLowerCase() !== "false";
-const earlyAdopterUserLimit = Number.parseInt(
-  (import.meta.env.VITE_PREMIUM_EARLY_ADOPTER_USER_LIMIT as string | undefined)?.trim() || "100",
-  10,
-);
-const earlyAdopterDisplayLimit =
-  Number.isFinite(earlyAdopterUserLimit) && earlyAdopterUserLimit > 0
-    ? earlyAdopterUserLimit
-    : 100;
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+const DAY = 24 * 60 * 60;
 
-function withStripePromoCode(href: string): string {
-  if (!stripePrefilledPromoCode || !/^https?:\/\//i.test(href)) return href;
-
-  const url = new URL(href);
-  url.searchParams.set("prefilled_promo_code", stripePrefilledPromoCode);
-  return url.toString();
+function formatMoney(amount: number, currency: BillingCurrency): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
-const planOrder: PlanId[] = ["free", "premium"];
+function formatBytesLabel(bytes: number): string {
+  if (bytes >= GB) return `${Math.round(bytes / GB)} GB`;
+  return `${Math.round(bytes / MB)} MB`;
+}
 
-const planCopy: Record<PlanId, {
-  title: string;
-  audience: string;
-  cta: string;
-  highlight?: string;
-  features: string[];
-}> = {
-  free: {
-    title: "Free",
-    audience: "Core PrivateNote.",
-    cta: "Start free",
-    features: [
-      "Encrypted secure notes",
-      "Burn after reading",
-      "Password protection",
-      "Basic expiry controls",
-      "25 MB encrypted file sharing when signed in",
-    ],
-  },
-  premium: {
-    title: "Premium",
-    audience: "Delivery controls for notes that need proof, verification, and a branded reveal experience.",
-    cta: "Upgrade to Premium",
-    highlight: "Recommended",
-    features: [
-      "Notifications",
-      "Recipient verification",
-      "Branding and customization",
-      "1 GB encrypted file sharing",
-      "20 GB total encrypted storage",
-    ],
-  },
-};
+function formatFileWindowLabel(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes >= 60) return `${Math.round(minutes / 60)} hour`;
+  return `${minutes} minute`;
+}
 
-const premiumPrices: Record<BillingMode, { price: string; cadence: string; note: string }> = {
-  monthly: {
-    price: "€3.99",
-    cadence: "per month",
-    note: "Early adopter price. Later Premium price: €4.99/month.",
-  },
-  yearly: {
-    price: "€39",
-    cadence: "per year",
-    note: "Early adopter yearly price for ongoing secure note delivery.",
-  },
-};
+function planCta(planId: AccountType): string {
+  if (planId === "free") return "Start free";
+  if (planId === "personal_premium") return "Choose Starter";
+  return "Choose Business";
+}
 
-const featureCards = [
-  {
-    icon: Bell,
-    title: "Notifications",
-    text: "Know when a note is opened or destroyed.",
-  },
-  {
-    icon: MailCheck,
-    title: "Recipient verification",
-    text: "Restrict access to the intended recipient.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Branding and customization",
-    text: "Add branded reveal pages and customize the delivery experience.",
-  },
-  {
-    icon: Sparkles,
-    title: "Encrypted file sharing",
-    text: "Attach browser-encrypted files up to 1 GB, with 20 GB total encrypted storage.",
-  },
-];
+function planHighlights(planId: AccountType): string[] {
+  const features = PLAN_CATALOG[planId].features;
+  const attachment = formatBytesLabel(features.attachmentMaxBytes);
+  const buffer = formatBytesLabel(features.activePayloadBufferBytes);
+  const expiryDays = Math.round(features.maxExpirySeconds / DAY);
+  const readCounts = features.allowedReadCounts.join(", ").replace(/, ([^,]*)$/, " or $1");
+  const items = [
+    "Unlimited basic encrypted notes · fair use",
+    `${attachment} attachments · ${buffer} active payload buffer`,
+    `Notes can expire up to ${expiryDays} days`,
+    `${readCounts} permitted open${features.allowedReadCounts.length > 1 ? "s" : ""} per note`,
+    `${formatFileWindowLabel(features.maxFileAccessWindowSeconds)} attachment download window`,
+    `${features.hostedAiMonthly} hosted AI drafts each month`,
+  ];
+  if (features.proofOfAccess) items.push("Proof of access and recipient verification");
+  if (features.sentNotesDashboard) items.push("Sent-notes dashboard and revoke unopened");
+  if (features.premiumTemplatePacks) items.push("Premium prompt template packs");
+  if (features.savedDefaults) items.push("Synchronized note defaults");
+  if (features.revealBranding) items.push("Company branding on reveal pages");
+  if (features.customPromptTemplates) items.push("Browser-saved custom AI prompt templates");
+  return items;
+}
 
-const comparisonSections = [
+type ComparisonCell = string;
+
+function comparisonValue(planId: AccountType, key: string): ComparisonCell {
+  const features = PLAN_CATALOG[planId].features;
+  switch (key) {
+    case "encryptedNotes":
+    case "burnAfterReading":
+    case "passwordProtection":
+      return "Included";
+    case "openNotifications":
+      return features.openNotifications ? "Included" : "No";
+    case "proofOfAccess":
+      return features.proofOfAccess ? "Included" : "No";
+    case "recipientVerification":
+      return features.recipientVerification ? "Included" : "No";
+    case "sentNotesDashboard":
+      return features.sentNotesDashboard ? "Included" : "No";
+    case "revokeUnopened":
+      return features.revokeUnopened ? "Included" : "No";
+    case "revealBranding":
+      return features.revealBranding ? "Included" : "No";
+    case "attachments":
+      return formatBytesLabel(features.attachmentMaxBytes);
+    case "payloadBuffer":
+      return formatBytesLabel(features.activePayloadBufferBytes);
+    case "expiry":
+      return `Up to ${Math.round(features.maxExpirySeconds / DAY)} days`;
+    case "readCounts":
+      return features.allowedReadCounts.join(", ");
+    case "fileWindow":
+      return formatFileWindowLabel(features.maxFileAccessWindowSeconds);
+    case "hostedAi":
+      return `${features.hostedAiMonthly} / month`;
+    case "templates":
+      if (features.customPromptTemplates) return "Premium packs + custom";
+      if (features.premiumTemplatePacks) return "Premium packs";
+      return "On-device templates";
+    default:
+      return "—";
+  }
+}
+
+const comparisonSections: { title: string; rows: { key: string; label: string }[] }[] = [
   {
     title: "Core",
     rows: [
-      ["Encrypted secure notes", "Included", "Included"],
-      ["Burn after reading", "Included", "Included"],
-      ["Password protection", "Included", "Included"],
-      ["Basic expiry controls", "Included", "Included"],
+      { key: "encryptedNotes", label: "Encrypted secure notes" },
+      { key: "burnAfterReading", label: "Burn after reading" },
+      { key: "passwordProtection", label: "Password protection" },
+      { key: "expiry", label: "Note expiry" },
+      { key: "readCounts", label: "Permitted opens per note" },
     ],
   },
   {
     title: "Delivery and verification",
     rows: [
-      ["Open and destroy notifications", "No", "Included"],
-      ["Recipient verification", "No", "Included"],
-      ["Branding and customization", "No", "Included"],
-      ["Encrypted file sharing", "25 MB per file when signed in", "Up to 1 GB per file"],
-      ["Total encrypted file storage", "250 MB when signed in", "20 GB"],
-      ["Longer retention", "Basic", "Included"],
+      { key: "openNotifications", label: "Open and destroy notifications" },
+      { key: "proofOfAccess", label: "Proof of access" },
+      { key: "recipientVerification", label: "Recipient verification" },
+      { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
+      { key: "revokeUnopened", label: "Revoke unopened notes" },
+      { key: "revealBranding", label: "Company branding on reveal" },
     ],
+  },
+  {
+    title: "Capacity and AI",
+    rows: [
+      { key: "attachments", label: "Max attachment size" },
+      { key: "payloadBuffer", label: "Active payload buffer" },
+      { key: "fileWindow", label: "Post-open download window" },
+      { key: "hostedAi", label: "Hosted AI drafts" },
+      { key: "templates", label: "Prompt templates" },
+    ],
+  },
+];
+
+const featureCards = [
+  {
+    icon: Bell,
+    title: "Open notifications",
+    text: "Know when a note is opened or destroyed — available once you are signed in.",
+  },
+  {
+    icon: MailCheck,
+    title: "Recipient verification",
+    text: "Starter and Business can restrict reveal to the intended recipient.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Proof of access",
+    text: "Coarse open receipts for the sender without storing message content.",
+  },
+  {
+    icon: Building2,
+    title: "Business branding",
+    text: "Business adds company profile, logo, and accent on reveal pages.",
   },
 ];
 
 const faqs = [
   {
-    q: "Does Premium make notes more encrypted?",
-    a: "No. The encryption promise is the same across plans: note plaintext is encrypted in your browser before upload. Premium adds delivery controls and workflow features.",
+    q: "Do paid plans change the encryption?",
+    a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
   },
   {
-    q: "What is included in Premium?",
-    a: "Premium includes notifications, recipient verification, branding and customization, longer retention, encrypted file sharing up to 1 GB per file, and 20 GB total encrypted file storage.",
+    q: "What is the difference between Starter and Business?",
+    a: `Starter (${formatMoney(PLAN_CATALOG.personal_premium.priceMonthlyEur, "eur")}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${formatMoney(PLAN_CATALOG.business_premium.priceMonthlyEur, "eur")}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits.`,
+  },
+  {
+    q: "How does annual billing work?",
+    a: `Annual plans are charged once per year at ${formatMoney(PLAN_CATALOG.personal_premium.priceYearlyEur, "eur")} for Starter and ${formatMoney(PLAN_CATALOG.business_premium.priceYearlyEur, "eur")} for Business — two months free versus paying monthly.`,
   },
   {
     q: "Can I pay online today?",
-    a: "Yes, once Stripe Payment Links and the verified webhook are configured. Until then the Premium button falls back to the contact page for staging or early access.",
+    a: "Yes. Choose a plan, sign in or create an account, then complete Stripe Checkout from the subscription page. The final total, including any tax, is shown before you pay.",
   },
   {
-    q: "Can I use a discount code?",
-    a: "Yes, when promotion codes are enabled on the Stripe Payment Link. Stripe shows the code field during checkout, and the app can optionally prefill a public promo code for testing.",
-  },
-  {
-    q: "When should I use recipient verification?",
-    a: "Use it when the link alone is not enough assurance, such as client credentials, vendor onboarding, or any note that should only be revealed by a specific recipient.",
-  },
-  {
-    q: "How are files encrypted?",
-    a: "Files are encrypted in the browser with libsodium secretstream before upload. AES-GCM is used only to wrap the attachment key with the note key; PrivateNote stores only encrypted file bytes. The server still sees operational metadata such as encrypted size and chunk count.",
+    q: "What happens if I downgrade?",
+    a: "Existing paid-plan notes keep the conditions under which they were created. Starter and Business controls for new notes lock until the subscription is renewed.",
   },
 ];
 
-function PlanCard({
-  plan,
-  billingMode,
-  href,
-}: {
-  plan: PlanId;
-  billingMode: BillingMode;
-  href: string;
-}) {
-  const copy = planCopy[plan];
-  const highlighted = plan === "premium";
-  const price = plan === "free" ? { price: "€0", cadence: "forever", note: "No payment required." } : premiumPrices[billingMode];
-  const buttonClassName = [
-    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40",
-    highlighted
-      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-      : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
-  ].join(" ");
-  const externalHref = /^https?:\/\//i.test(href);
-
-  return (
-    <article
-      className={[
-        "relative flex min-w-0 flex-col rounded-xl border bg-white p-5 dark:bg-gray-950",
-        highlighted
-          ? "border-primary/40 shadow-lg shadow-primary/10 ring-2 ring-primary/10"
-          : "border-gray-200 dark:border-gray-800",
-      ].join(" ")}
-    >
-      {copy.highlight ? (
-        <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
-          {copy.highlight}
-        </div>
-      ) : null}
-      <h2 className="pr-28 text-xl font-semibold text-gray-950 dark:text-white">{copy.title}</h2>
-      <p className="mt-2 min-h-[3rem] text-sm leading-6 text-gray-600 dark:text-gray-400">
-        {copy.audience}
-      </p>
-      <div className="mt-5 flex items-end gap-2">
-        <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
-          {price.price}
-        </span>
-        <span className="pb-1 text-sm text-gray-500 dark:text-gray-400">
-          {price.cadence}
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{price.note}</p>
-      {externalHref ? (
-        <a href={href} className={buttonClassName} rel="noopener noreferrer">
-          {copy.cta}
-        </a>
-      ) : (
-        <Link href={href} className={buttonClassName}>
-          {copy.cta}
-        </Link>
-      )}
-      <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Includes
-      </p>
-      <ul className="mt-3 space-y-2.5">
-        {copy.features.map((feature) => (
-          <li key={feature} className="flex gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-      {highlighted && earlyAdopterPricingEnabled ? (
-        <div className="mt-6 border-t border-primary/15 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-            Early adopter pricing
-          </p>
-          <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
-            Existing subscribers keep this price forever. Limited to the first{" "}
-            {earlyAdopterDisplayLimit} Premium users.
-          </p>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
 function FeatureValue({ value }: { value: string }) {
-  const yes = value === "Yes" || value === "Included";
+  const yes = value === "Included";
   const no = value === "No";
   return (
     <span
@@ -262,19 +219,109 @@ function FeatureValue({ value }: { value: string }) {
   );
 }
 
+function PlanCard({
+  planId,
+  interval,
+  href,
+}: {
+  planId: AccountType;
+  interval: BillingInterval;
+  href: string;
+}) {
+  const plan = PLAN_CATALOG[planId];
+  const highlighted = planId === HIGHLIGHTED_PLAN;
+  const monthlyPrice = planPriceFor(planId, DISPLAY_CURRENCY, "month");
+  const yearlyPrice = planPriceFor(planId, DISPLAY_CURRENCY, "year");
+  const annualSavings = annualPlanSavingsPercent(planId, DISPLAY_CURRENCY);
+  const isFree = planId === "free";
+  const displayAmount =
+    isFree
+      ? 0
+      : interval === "month"
+        ? monthlyPrice
+        : yearlyPrice / 12;
+  const priceNote = isFree
+    ? "No payment required."
+    : interval === "month"
+      ? "Billed monthly. Cancel anytime before renewal."
+      : `${formatMoney(yearlyPrice, DISPLAY_CURRENCY)} billed annually · save ${annualSavings}%`;
+
+  const buttonClassName = [
+    "mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40",
+    highlighted
+      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+      : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
+  ].join(" ");
+
+  return (
+    <article
+      className={[
+        "relative flex min-w-0 flex-col rounded-xl border bg-white p-5 dark:bg-gray-950",
+        highlighted
+          ? "border-primary/40 shadow-lg shadow-primary/10 ring-2 ring-primary/10"
+          : "border-gray-200 dark:border-gray-800",
+      ].join(" ")}
+    >
+      {highlighted ? (
+        <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
+          Recommended
+        </div>
+      ) : null}
+      <h2 className="pr-28 text-xl font-semibold text-gray-950 dark:text-white">{plan.label}</h2>
+      <p className="mt-2 min-h-[3rem] text-sm leading-6 text-gray-600 dark:text-gray-400">
+        {plan.tagline}
+      </p>
+      <div className="mt-5 flex items-end gap-2">
+        <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
+          {formatMoney(displayAmount, DISPLAY_CURRENCY)}
+        </span>
+        <span className="pb-1 text-sm text-gray-500 dark:text-gray-400">
+          {isFree ? "forever" : "per month"}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{priceNote}</p>
+      {planId === "business_premium" ? (
+        <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+          One professional account. Team seats and organization administration are not included.
+        </p>
+      ) : null}
+      <Link href={href} className={buttonClassName}>
+        {planCta(planId)}
+      </Link>
+      <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        Includes
+      </p>
+      <ul className="mt-3 space-y-2.5">
+        {planHighlights(planId).map((feature) => (
+          <li key={feature} className="flex gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
 export default function Premium() {
   const { language } = useLanguage();
   const { user } = useAuth();
-  const [billingMode, setBillingMode] = useState<BillingMode>("yearly");
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
   const lp = (path: string) => localizedPath(path, language);
-  const accountHref = user ? "/account" : "/auth/sign-up";
-  const premiumCheckoutHref = stripePaymentLinks[billingMode]
-    ? withStripePromoCode(stripePaymentLinks[billingMode])
-    : lp("/contact");
+  const paidHref = user ? lp("/account") : lp("/auth/sign-up");
   const planHref = useMemo(
-    () => ({ free: accountHref, premium: premiumCheckoutHref }),
-    [accountHref, premiumCheckoutHref]
+    (): Record<AccountType, string> => ({
+      free: localizedPath("/auth/sign-up", language),
+      personal_premium: user
+        ? localizedPath("/account", language)
+        : localizedPath("/auth/sign-up", language),
+      business_premium: user
+        ? localizedPath("/account", language)
+        : localizedPath("/auth/sign-up", language),
+    }),
+    [language, user],
   );
+  const starterSavings = annualPlanSavingsPercent("personal_premium", DISPLAY_CURRENCY);
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
@@ -283,35 +330,47 @@ export default function Premium() {
           Simple plans for secure notes.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Free gives you Core PrivateNote. Premium adds delivery controls, recipient verification,
-          branding, longer retention, and encrypted file sharing up to 1 GB per file.
+          Free covers encrypted one-time notes. Starter adds proof of access and secure-sharing
+          workflow. Business adds branded reveal pages on one professional account.
         </p>
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
-          {(["monthly", "yearly"] as BillingMode[]).map((mode) => (
+          {([
+            { id: "month" as const, label: "Pay monthly" },
+            { id: "year" as const, label: "Pay yearly" },
+          ]).map((mode) => (
             <button
-              key={mode}
+              key={mode.id}
               type="button"
-              onClick={() => setBillingMode(mode)}
+              onClick={() => setBillingInterval(mode.id)}
               className={[
-                "rounded-md px-4 py-2 text-sm font-semibold capitalize transition",
-                billingMode === mode
+                "rounded-md px-4 py-2 text-sm font-semibold transition",
+                billingInterval === mode.id
                   ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
                   : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
               ].join(" ")}
             >
-              Pay {mode}
+              {mode.label}
             </button>
           ))}
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Premium is €3.99 monthly for the first {earlyAdopterDisplayLimit} adopters, then €4.99 monthly.
-          {stripePaymentLinks[billingMode] ? " Secure checkout opens via Stripe." : " Add the Stripe link and webhook env vars to enable checkout."}
+          Starter {formatMoney(PLAN_CATALOG.personal_premium.priceMonthlyEur, "eur")}/month · Business{" "}
+          {formatMoney(PLAN_CATALOG.business_premium.priceMonthlyEur, "eur")}/month.
+          {billingInterval === "year"
+            ? ` Annual billing saves about ${starterSavings}%.`
+            : " Switch to yearly for two months free."}{" "}
+          Checkout confirms currency and tax in Stripe.
         </p>
       </section>
 
-      <section className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
-        {planOrder.map((plan) => (
-          <PlanCard key={plan} plan={plan} billingMode={billingMode} href={planHref[plan]} />
+      <section className="mx-auto mt-12 grid max-w-6xl gap-5 lg:grid-cols-3">
+        {PLAN_ORDER.map((planId) => (
+          <PlanCard
+            key={planId}
+            planId={planId}
+            interval={billingInterval}
+            href={planHref[planId]}
+          />
         ))}
       </section>
 
@@ -335,46 +394,62 @@ export default function Premium() {
               Plans and features
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Compare Core PrivateNote with the Premium delivery controls.
+              Limits and capabilities come from the shared plan catalog used by billing and the app.
             </p>
           </div>
           <Link
-            href={lp("/contact")}
+            href={paidHref}
             className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
           >
-            Request early access
+            {user ? "Go to account" : "Create account to subscribe"}
           </Link>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <div className="overflow-x-auto">
-            <div className="min-w-[640px]">
-              <div className="grid grid-cols-[minmax(220px,1.35fr)_repeat(2,minmax(150px,1fr))] border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-[minmax(220px,1.35fr)_repeat(3,minmax(130px,1fr))] border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
                 <div className="px-5 py-4">Feature</div>
-                <div className="px-5 py-4">Free</div>
-                <div className="bg-primary/5 px-5 py-4 text-primary dark:bg-primary/10">
-                  Premium
-                </div>
+                {PLAN_ORDER.map((planId) => (
+                  <div
+                    key={planId}
+                    className={[
+                      "px-5 py-4",
+                      planId === HIGHLIGHTED_PLAN
+                        ? "bg-primary/5 text-primary dark:bg-primary/10"
+                        : "",
+                    ].join(" ")}
+                  >
+                    {PLAN_CATALOG[planId].label}
+                  </div>
+                ))}
               </div>
               {comparisonSections.map((section) => (
                 <div key={section.title}>
                   <div className="border-b border-gray-100 bg-white px-5 py-4 text-sm font-semibold text-gray-950 dark:border-gray-900 dark:bg-gray-950 dark:text-white">
                     {section.title}
                   </div>
-                  {section.rows.map(([feature, free, premium]) => (
+                  {section.rows.map((row) => (
                     <div
-                      key={feature}
-                      className="grid grid-cols-[minmax(220px,1.35fr)_repeat(2,minmax(150px,1fr))] border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 dark:border-gray-900 dark:hover:bg-gray-900/35"
+                      key={row.key}
+                      className="grid grid-cols-[minmax(220px,1.35fr)_repeat(3,minmax(130px,1fr))] border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 dark:border-gray-900 dark:hover:bg-gray-900/35"
                     >
                       <div className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {feature}
+                        {row.label}
                       </div>
-                      <div className="px-5 py-4">
-                        <FeatureValue value={free} />
-                      </div>
-                      <div className="bg-primary/5 px-5 py-4 dark:bg-primary/10">
-                        <FeatureValue value={premium} />
-                      </div>
+                      {PLAN_ORDER.map((planId) => (
+                        <div
+                          key={planId}
+                          className={[
+                            "px-5 py-4",
+                            planId === HIGHLIGHTED_PLAN
+                              ? "bg-primary/5 dark:bg-primary/10"
+                              : "",
+                          ].join(" ")}
+                        >
+                          <FeatureValue value={comparisonValue(planId, row.key)} />
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -390,11 +465,11 @@ export default function Premium() {
             <Sparkles className="mt-0.5 h-5 w-5 text-amber-700 dark:text-amber-300" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-amber-950 dark:text-amber-100">
-                Premium does not change the encryption promise.
+                Paid plans do not change the encryption promise.
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900/85 dark:text-amber-100/80">
-                Notes are still encrypted in your browser before upload. Premium adds delivery controls,
-                convenience, and capacity; it does not give PrivateNote access to plaintext.
+                Notes are still encrypted in your browser before upload. Starter and Business add
+                delivery controls, capacity, and branding — not plaintext access for PrivateNote.
               </p>
             </div>
           </div>
