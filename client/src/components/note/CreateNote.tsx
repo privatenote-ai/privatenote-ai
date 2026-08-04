@@ -1277,20 +1277,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsLoading(true);
-    // 4 MiB matches SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES — avoid awaiting the sodium
-    // module just to show an immediate 0/N chunk label.
-    const earlyTotalChunks = selectedFile
-      ? Math.max(1, Math.ceil(selectedFile.size / (4 * 1024 * 1024)))
-      : 0;
     setAttachmentProgress(
       selectedFile
         ? {
             phase: "prepare",
             progress: 2,
-            detail: t.attachmentProgressChunkDetail
-              .replace("{done}", "0")
-              .replace("{total}", String(earlyTotalChunks))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name)),
+            detail: formatAttachmentDisplayName(selectedFile.name),
           }
         : null,
     );

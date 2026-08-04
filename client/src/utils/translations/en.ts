@@ -739,7 +739,7 @@ export const en: Translations = {
   attachmentProgressEncrypting: "Encrypting in your browser…",
   attachmentProgressUploading: "Uploading encrypted file…",
   attachmentProgressFinalizing: "Creating secure note…",
-  attachmentProgressChunkDetail: "{done} of {total} chunks · {name}",
+  attachmentProgressChunkDetail: "{done}/{total} · {name}",
   attachmentProgressFootnote:
     "Your file is encrypted in this browser before upload. Keep this tab in the foreground — background tabs are throttled and uploads slow down a lot.",
   attachmentDecryptProgressTitle: "Decrypting in your browser…",

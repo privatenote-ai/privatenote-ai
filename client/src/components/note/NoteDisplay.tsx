@@ -531,10 +531,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         phase: "decrypt",
         progress: Math.round(ratio * 100),
         title: t.attachmentDecryptProgressTitle,
-        detail: t.attachmentProgressChunkDetail
-          .replace("{done}", String(completedChunks))
-          .replace("{total}", String(totalChunks))
-          .replace("{name}", name),
+        detail:
+          totalChunks <= 1
+            ? name
+            : t.attachmentProgressChunkDetail
+                .replace("{done}", String(completedChunks))
+                .replace("{total}", String(totalChunks))
+                .replace("{name}", name),
         footnote: t.attachmentDecryptProgressFootnote,
       });
     },
