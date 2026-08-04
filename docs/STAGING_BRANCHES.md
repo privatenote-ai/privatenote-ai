@@ -20,6 +20,16 @@ For staging, use:
 
 **Do not** rely on `*.pages.dev` → `upload-staging.privatenote.ai` for large Safari attachment tests (still cross-site).
 
+### WORKING: Cloudflare HTTP/3 (QUIC) must not carry large Safari PUTs
+
+Confirmed root cause of Safari ~30 MiB attach failing with `status: 0` in ~200 ms (Worker never logged the PUT), while curl 31 MiB to the same host succeeded:
+
+Safari used **HTTP/3 / QUIC** (`Alt-Svc: h3`). Turning **HTTP/3 (with QUIC) Off** under **Speed → Settings → Protocol Optimization** on zone `privatenote.ai` fixed uploads.
+
+Long-term: leave zone HTTP/3 on if desired, but add a Response Header Transform Rule that **removes `Alt-Svc`** for `upload-staging.privatenote.ai` and `upload.privatenote.ai` so the upload relay stays on HTTP/2.
+
+App recipe (Bearer + XHR + `application/octet-stream` Blob, no chunking): see `.cursor/rules/attachment-blob-upload.mdc` (**WORKING COPY**).
+
 ### One-time: attach the custom domain
 
 In Cloudflare Dashboard → Pages → `privatenote-ai` → Custom domains:

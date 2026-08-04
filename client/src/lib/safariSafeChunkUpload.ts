@@ -1,12 +1,14 @@
 /**
- * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
+ * Attachment upload policy — WORKING COPY (premium / staging verified).
  *
- * Page → upload relay, XHR PUT, one ciphertext Blob with
- * type application/octet-stream, Authorization: Bearer (primary),
- * credentials off, one retry after ~1.8s. Query-token PUT is fallback only.
- * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
+ * App: encrypt.lu-style single Blob PUT — XHR, Bearer primary, query fallback,
+ * Blob type application/octet-stream, credentials off, one retry ~1.8s.
+ * Chunking stays OFF (`SAFARI_CHUNKING_ENABLED = false`).
  *
- * Chunking is TEMPORARY and OFF by default.
+ * Cloudflare (required): HTTP/3 / QUIC aborted Safari ~30 MiB PUTs with
+ * status 0 before the Worker. Fix: Speed → Protocol Optimization →
+ * HTTP/3 Off (or strip Alt-Svc on upload-staging / upload hosts).
+ * See `.cursor/rules/attachment-blob-upload.mdc` and docs/STAGING_BRANCHES.md.
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
  */
