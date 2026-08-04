@@ -1,10 +1,11 @@
 /**
- * Attachment upload policy — Chrome + Safari to the upload relay.
+ * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
  *
- * Chrome: single Blob PUT works on this hop.
- * Safari: same-site single PUT still aborts (~200–1400ms, status 0) for large
- * bodies (observed ~30–77 MiB); use few serial ~4 MiB PUTs above
- * SAFARI_SINGLE_BLOB_MAX_BYTES. Chunking stays Safari-only.
+ * Same-site page → upload relay, XHR PUT, one ciphertext Blob,
+ * Authorization: Bearer, credentials off, one retry after ~1.8s.
+ * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
+ *
+ * Chunking is TEMPORARY and OFF by default.
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
  */
@@ -13,15 +14,16 @@
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
 
 /**
- * Safari-only. Chrome keeps one Blob. Revisit when Safari same-site single PUT
- * is stable again on upload[-staging].privatenote.ai for multi‑tens‑of‑MiB files.
+ * TEMPORARY. When true, Safari above SAFARI_SINGLE_BLOB_MAX_BYTES uses few
+ * ~4 MiB serial PUTs. Keep false until prod same-site single PUT A/B fails
+ * after CF/CORS deltas are ruled out.
  */
-export const SAFARI_CHUNKING_ENABLED = true;
+export const SAFARI_CHUNKING_ENABLED = false;
 
-/** Safari plaintext bytes per frame when chunking. */
+/** Safari plaintext bytes per frame when SAFARI_CHUNKING_ENABLED. */
 export const SAFARI_ATTACHMENT_CHUNK_BYTES = 4 * 1024 * 1024;
 
-/** Safari stays on one Blob at or below this plaintext size. */
+/** Only used when SAFARI_CHUNKING_ENABLED. */
 export const SAFARI_SINGLE_BLOB_MAX_BYTES = 6 * 1024 * 1024;
 
 /** @deprecated Prefer getAttachmentChunkSizeBytes(file.size). Kept for imports. */
@@ -162,6 +164,6 @@ export const BLOB_UPLOAD_POST_QUERY = {
 
 /** Temporary large-file shapes (only if SAFARI_CHUNKING_ENABLED). */
 export const SAFARI_LARGE_CHUNK_UPLOAD_SHAPES = [
-  // Query-token only — Bearer+CORS preflight has aborted Safari bodies on this hop.
+  BLOB_UPLOAD_PUT_BEARER,
   BLOB_UPLOAD_PUT_QUERY,
 ] as const;
