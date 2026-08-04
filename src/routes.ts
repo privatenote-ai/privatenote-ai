@@ -8409,26 +8409,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
 
-      // Verify ciphertext bytes match the client hash (stream — no full buffer).
-      const object = await env.NOTE_FILES_R2.get(objectKey);
-      if (!object?.body) {
-        return jsonResponse({ error: "Attachment upload missing" }, 400, request);
-      }
-      const { hex: streamedHash, byteLength } = await sha256HexOfStream(object.body as any);
-      if (byteLength !== encryptedTotalSize || streamedHash !== claimedHash) {
-        try {
-          await env.NOTE_FILES_R2.delete(objectKey);
-        } catch {
-          /* best effort */
-        }
-        return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
-      }
-
+      // Trust client ciphertext hash after size check. Re-streaming ~1 GB from R2 to
+      // recompute SHA-256 hits Worker timeouts (Safari sees 503/CORS). A lying client
+      // only breaks their own note; finalize binds attachmentContentHash to this value.
       await persistNoteReservation(env, id, {
         ...freshReservation,
         uploadedChunkHashes: {
           ...(freshReservation.uploadedChunkHashes ?? {}),
-          [chunkKey]: streamedHash,
+          [chunkKey]: claimedHash,
         },
       });
       return jsonResponse({ ok: true, encryptedSize: encryptedTotalSize }, 200, request);
@@ -9082,15 +9070,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         await cleanupNoteFileChunks(env, id, "missing attachment content hash");
         return jsonResponse({ error: "Attachment content hash is required" }, 400, request);
       }
-      // Single-blob direct R2: /file/complete already streamed SHA-256 into KV.
-      // Skip a second full object read when that hash matches the client content hash.
+      // Single-blob direct R2: /file/complete recorded client chunkSha256 after R2 size check.
+      // Skip a full object re-hash when that value matches attachmentContentHash (required for ~1 GB).
       const singleChunkReservationHash =
         totalChunks === 1
           ? reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(0)]?.toLowerCase()
           : null;
       const expectedContentHash = attachmentContentHash.toLowerCase();
       if (singleChunkReservationHash && singleChunkReservationHash === expectedContentHash) {
-        // verified on complete
+        // size-checked on complete; content hash bound here
       } else {
         const computedContentHash = await computeUploadedAttachmentContentHash(env, id, totalChunks);
         if (!computedContentHash || computedContentHash !== expectedContentHash) {

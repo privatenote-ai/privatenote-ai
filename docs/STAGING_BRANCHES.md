@@ -97,7 +97,7 @@ Cloudflare Free/Pro reject proxied request bodies above **~100 MB** with **413**
 
 1. `POST /api/notes/:id/file/presign` → short-lived S3 PUT URL  
 2. Browser XHR `PUT` Blob → `https://{accountId}.r2.cloudflarestorage.com/...` (Blob `type: application/octet-stream`; matches signed Content-Type)  
-3. `POST /api/notes/:id/file/complete` → Worker verifies size + SHA-256 into KV  
+3. `POST /api/notes/:id/file/complete` → Worker checks R2 object size, stores client `chunkSha256` in KV (no full-object re-hash)  
 4. Existing `POST /api/notes` finalize  
 
 **One-time setup (staging):**
