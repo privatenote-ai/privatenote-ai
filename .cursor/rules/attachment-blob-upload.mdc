@@ -1,33 +1,25 @@
 ---
-description: Match encrypt.lu Safari single-PUT hop; chunking is temporary and off by default.
+description: Safari attachment uploads — Chrome single PUT; Safari chunks above 6 MiB.
 globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes}.ts
 alwaysApply: false
 ---
 
-# Attachment upload = encrypt.lu single PUT (chunking temporary)
+# Attachment upload hop
 
-encrypt.lu proves Safari can PUT ~22 MiB in one XHR when the hop is equivalent.
-Do **not** treat “Safari needs 1 MiB chunks” as the main story. Find the delta.
+| Browser | Body | Transport |
+|---|---|---|
+| Chrome | one Blob PUT `/file` | `fetch(Blob)` (XHR only if progress) |
+| Safari ≤ 6 MiB | one Blob PUT `/file` | XHR, no `upload.*` listeners |
+| Safari > 6 MiB | few ~4 MiB serial PUTs `/file/chunks/:i` | XHR, no `upload.*` listeners |
 
-## Primary recipe (always on)
+Common: same-site page → `upload[-staging].privatenote.ai`, Bearer then query, `credentials: "omit"`, never Pages `/api` for the binary body.
 
-| Requirement | Value |
-|---|---|
-| Page | `https://privatenote.ai` (not `*.pages.dev`) |
-| Upload | `https://upload.privatenote.ai` |
-| Transport | Safari **XHR** only for the body |
-| Body | one untyped Blob |
-| Method | PUT `/api/notes/:id/file` |
-| Auth | Bearer first, then query-token fallback |
-| Cookies | off (`credentials: "omit"`) |
-| Proxy | never Pages `/api` for the binary body |
-
-A/B: same Mac Safari, same ~22 MiB file — encrypt.lu one PUT 200, then privatenote.ai → upload.privatenote.ai. If prod same-site still aborts in ~200 ms with no Worker log, bug is CF/Worker on the upload host (Bot Fight, WAF, Access, rate limit), not the encrypt algorithm.
+Safari multi‑MiB single PUT currently aborts in ~200–600 ms (`status: 0`, no `responseURL`) while Chrome succeeds on the same hop — keep Safari chunking on until that delta is fixed (CF/Bot Fight / WebKit).
 
 ## CORS (upload relay)
 
-Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo (authorization), Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials.
+Match `relay.encrypt.lu`: echo Origin, Allow-Headers echo (authorization), Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, **no** Allow-Credentials, **no** Set-Cookie.
 
-## Temporary chunking
+## Server
 
-`SAFARI_CHUNKING_ENABLED` defaults **false**. Re-enable only after prod same-site single PUT fails and CF/CORS deltas are ruled out. Then: few ~4 MiB serial PUTs — not many 1 MiB POSTs.
+Drain `request.arrayBuffer()` **before** any 4xx/5xx on attachment PUT/POST — early closes become Safari status 0.

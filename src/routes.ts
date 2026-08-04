@@ -8206,6 +8206,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
+
+    // Drain BEFORE any 4xx/5xx. Safari still streaming a multi‑MiB body treats an
+    // early close as status 0 / "network connection was lost" with no responseURL.
+    const encryptedBytes = await request.arrayBuffer();
+
     if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
       return jsonResponse({ error: "Invalid file chunk" }, 400, request);
     }
@@ -8216,10 +8221,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-
-    // Drain BEFORE auth/rate-limit. A 403 while Safari is still streaming ~20MB
-    // surfaces as status 0 / "network connection was lost" with no responseURL.
-    const encryptedBytes = await request.arrayBuffer();
 
     const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
     if (!uploadAuth.ok) {

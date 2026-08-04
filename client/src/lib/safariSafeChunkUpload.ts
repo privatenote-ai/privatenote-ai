@@ -1,11 +1,9 @@
 /**
- * Attachment upload policy — match encrypt.lu’s working hop (Chrome + Safari).
+ * Attachment upload policy — Chrome + Safari to the upload relay.
  *
- * Same-site page → upload relay, XHR PUT, one ciphertext Blob,
- * Authorization: Bearer, credentials off, one retry after ~1.8s.
- * Page: privatenote.ai → upload.privatenote.ai (or premium → upload-staging).
- *
- * Chunking is TEMPORARY and OFF by default.
+ * Chrome: single Blob PUT works on this hop.
+ * Safari: same-site single PUT still aborts ~200–600ms (status 0) for multi‑MiB
+ * bodies; use few serial ~4 MiB PUTs above SAFARI_SINGLE_BLOB_MAX_BYTES.
  *
  * Relays: upload.privatenote.ai / upload-staging.privatenote.ai
  */
@@ -14,16 +12,15 @@
 export const SINGLE_BLOB_SECRETSTREAM_ABYTES = 17;
 
 /**
- * TEMPORARY. When true, Safari above SAFARI_SINGLE_BLOB_MAX_BYTES uses few
- * ~4 MiB serial PUTs. Keep false until prod same-site single PUT A/B fails
- * after CF/CORS deltas are ruled out.
+ * Safari-only. Chrome keeps one Blob. Revisit when Safari same-site single PUT
+ * is stable again on upload[-staging].privatenote.ai.
  */
-export const SAFARI_CHUNKING_ENABLED = false;
+export const SAFARI_CHUNKING_ENABLED = true;
 
-/** Safari plaintext bytes per frame when SAFARI_CHUNKING_ENABLED. */
+/** Safari plaintext bytes per frame when chunking. */
 export const SAFARI_ATTACHMENT_CHUNK_BYTES = 4 * 1024 * 1024;
 
-/** Only used when SAFARI_CHUNKING_ENABLED. */
+/** Safari stays on one Blob at or below this plaintext size. */
 export const SAFARI_SINGLE_BLOB_MAX_BYTES = 6 * 1024 * 1024;
 
 /** @deprecated Prefer getAttachmentChunkSizeBytes(file.size). Kept for imports. */
