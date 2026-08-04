@@ -4,6 +4,9 @@ name: Deploy Pages (Staging branches)
 # URLs: https://premium.privatenote-ai.pages.dev , https://develop.privatenote-ai.pages.dev
 # Same-site Safari upload QA: https://premium.privatenote.ai → upload-staging.privatenote.ai
 # Trusted like production for API/auth (see shared/pagesAppHosts.ts, src/trustedOrigins.ts).
+#
+# Staging skips prerender (SPA shell only) so QA deploys stay fast. Production
+# SEO prerender remains on Deploy Pages (Prerender) for `main`.
 
 on:
   push:
@@ -11,7 +14,7 @@ on:
       - premium
       - develop
 
-# Rapid pushes otherwise race two prerenders onto the same Pages branch and
+# Rapid pushes otherwise race two deploys onto the same Pages branch and
 # briefly 404 hashed chunks (composer missing / white screen on premium).
 concurrency:
   group: pages-staging-${{ github.ref_name }}
@@ -26,17 +29,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Restore prerender HTML cache
-        uses: actions/cache/restore@v4
-        id: prerender-html-cache
-        with:
-          path: .prerender-html-cache
-          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            prerender-html-${{ github.ref_name }}-
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -49,26 +41,13 @@ jobs:
         env:
           ONNXRUNTIME_NODE_INSTALL: skip
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Build and prerender
-        run: npm run build:prerender
+      - name: Build (no prerender)
+        run: npm run build:staging
         env:
-          PRERENDER_INCREMENTAL: "1"
-          PRERENDER_HTML_CACHE_DIR: .prerender-html-cache
-          PRERENDER_BASE_SHA: ${{ github.event.before }}
-          PRERENDER_HEAD_SHA: ${{ github.sha }}
-
-      - name: Save prerender HTML cache
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: .prerender-html-cache
-          key: prerender-html-${{ github.ref_name }}-${{ github.sha }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy prerender --project-name "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch "${{ github.ref_name }}"
+        run: npx wrangler pages deploy dist --project-name "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch "${{ github.ref_name }}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
