@@ -227,7 +227,10 @@ export default function NotificationCenter() {
           <div className="rounded-xl border border-gray-200 px-6 py-10 text-center dark:border-gray-800">
             <Bell className="mx-auto mb-3 h-8 w-8 text-gray-300 dark:text-gray-600" />
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {tx("notificationPremiumRequired", "Premium delivery tracking")}
+              {tx(
+                "notificationPremiumRequired",
+                "Starter and Business delivery tracking",
+              )}
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {tx(
@@ -236,7 +239,7 @@ export default function NotificationCenter() {
               )}
             </p>
             <Button asChild className="mt-4" size="sm">
-              <Link href="/premium">{tx("upgradeToPremium", "Upgrade to Premium")}</Link>
+              <Link href="/premium">{tx("upgradeToPremium", "Compare plans")}</Link>
             </Button>
           </div>
         </div>

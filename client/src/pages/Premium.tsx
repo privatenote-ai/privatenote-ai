@@ -74,7 +74,7 @@ function planHighlights(planId: AccountType): string[] {
   ];
   if (features.proofOfAccess) items.push("Proof of access and recipient verification");
   if (features.sentNotesDashboard) items.push("Sent-notes dashboard and revoke unopened");
-  if (features.premiumTemplatePacks) items.push("Premium prompt template packs");
+  if (features.premiumTemplatePacks) items.push("Starter prompt template packs");
   if (features.savedDefaults) items.push("Synchronized note defaults");
   if (features.revealBranding) items.push("Company branding on reveal pages");
   if (features.customPromptTemplates) items.push("Browser-saved custom AI prompt templates");
@@ -115,8 +115,8 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
     case "hostedAi":
       return `${features.hostedAiMonthly} / month`;
     case "templates":
-      if (features.customPromptTemplates) return "Premium packs + custom";
-      if (features.premiumTemplatePacks) return "Premium packs";
+      if (features.customPromptTemplates) return "Starter packs + custom";
+      if (features.premiumTemplatePacks) return "Starter packs";
       return "On-device templates";
     default:
       return "—";

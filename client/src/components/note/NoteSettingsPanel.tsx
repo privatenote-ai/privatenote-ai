@@ -641,7 +641,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   return (
                     <option key={limit} value={limit} disabled={locked}>
                       {translatedReadLimitLabel(limit, t)}
-                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                      {locked ? ` (${t.premium ?? "Starter"})` : ""}
                     </option>
                   );
                 })}
@@ -683,7 +683,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   return (
                     <option key={seconds} value={seconds} disabled={locked}>
                       {translatedFileAccessWindowLabel(seconds, t)}
-                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
+                      {locked ? ` (${t.premium ?? "Starter"})` : ""}
                     </option>
                   );
                 })}
@@ -706,7 +706,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 id="note-email-alerts-heading"
                 title={t.settingsEmailAlerts ?? "Email alerts"}
                 showPremiumBadge={!canNotifyOnOpen && !isPremiumUser}
-                premiumLabel={t.premium ?? "Premium"}
+                premiumLabel={t.premium ?? "Starter"}
               />
               <SettingsOptionList>
                 <SettingsToggleRow
@@ -771,7 +771,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </>
                   ) : (
                     <>
-                      {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                      {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
                       <a
                         href={premiumUpgradeHref}
                         className="font-medium text-primary hover:underline"
@@ -792,7 +792,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 id="note-delivery-verification-heading"
                 title={isFileTransfer ? "Recipient verification" : t.settingsDeliveryVerification ?? "Delivery & verification"}
                 showPremiumBadge={!isPremiumUser}
-                premiumLabel={t.premium ?? "Premium"}
+                premiumLabel={t.premium ?? "Starter"}
               />
               {isFileTransfer ? (
                 <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
@@ -923,7 +923,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               ) : null}
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
-                  {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                  {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
                   <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
                     {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
                   </a>
@@ -958,20 +958,29 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Premium Feature</DialogTitle>
+            <DialogTitle>
+              {t.settingsPremiumFeatureDialogTitle ?? "Available with Starter and Business"}
+            </DialogTitle>
             <DialogDescription>
               {selectedPremiumFeature?.description ??
-                "Upgrade to Premium to unlock delivery and verification controls."}
+                t.settingsPremiumFeatureDialogFallback ??
+                "Choose Starter or Business to unlock delivery and verification controls."}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
-            {selectedPremiumFeature?.title ?? "Delivery & Verification"} is part of Premium.
+            {(
+              t.settingsPremiumFeaturePartOfPremium ??
+              "{feature} is included with Starter and Business."
+            ).replace(
+              "{feature}",
+              selectedPremiumFeature?.title ?? "Delivery & Verification",
+            )}
           </div>
           <a
             href={premiumUpgradeHref}
             className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            {t.settingsUpgradeToPremium ?? "Upgrade to Premium"}
+            {t.settingsUpgradeToPremium ?? "Compare plans"}
           </a>
         </DialogContent>
       </Dialog>

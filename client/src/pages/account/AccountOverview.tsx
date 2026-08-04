@@ -28,10 +28,13 @@ import {
   CreditCard,
 } from "lucide-react";
 import { getThemePreference } from "@/hooks/useThemePreference";
+import {
+  PLAN_CATALOG,
+  normalizeAccountType,
+  type AccountType,
+} from "@shared/planCatalog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type AccountType = "free" | "personal_premium" | "business_premium";
 
 type AccountSummary = {
   ok: boolean;
@@ -69,19 +72,6 @@ type ActivityEvent = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function normalizeAccountType(raw: string | null | undefined): AccountType {
-  const v = (raw ?? "free").toLowerCase();
-  if (v === "personal_premium" || v === "pro") return "personal_premium";
-  if (v === "business_premium" || v === "business") return "business_premium";
-  return "free";
-}
-
-const PLAN_LABEL: Record<AccountType, string> = {
-  free: "Free",
-  personal_premium: "Personal Premium",
-  business_premium: "Business Premium",
-};
 
 const PLAN_BADGE_CLASS: Record<AccountType, string> = {
   free: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
@@ -269,7 +259,7 @@ export default function AccountOverview() {
   }
 
   const accountType = normalizeAccountType(summary?.accountType ?? summary?.plan);
-  const planLabel = PLAN_LABEL[accountType];
+  const planLabel = PLAN_CATALOG[accountType].label;
   const planBadge = PLAN_BADGE_CLASS[accountType];
   const hasPasskeys = me?.hasPasskeys ?? false;
   const emailVerified = me?.emailVerified ?? false;
@@ -512,7 +502,7 @@ export default function AccountOverview() {
             <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
               {tx(
                 "authPlanHostedAiNote",
-                "Premium unlocks higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
+                "Starter and Business unlock higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
               )}
             </p>
             {summary?.billing?.stripeCustomerLinked ? (
@@ -536,10 +526,20 @@ export default function AccountOverview() {
             <div className="mt-4 pt-4 border-t border-blue-200/60 dark:border-blue-900/40 grid gap-3 sm:grid-cols-2">
               {(["personal_premium", "business_premium"] as AccountType[]).map((t) => (
                 <div key={t} className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{PLAN_LABEL[t]}</p>
-                  <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
-                    {tx("authPlanned", "Planned")}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {PLAN_CATALOG[t].label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {PLAN_CATALOG[t].tagline}
+                    </p>
+                  </div>
+                  <Link
+                    href="/premium"
+                    className="shrink-0 text-[11px] font-medium text-primary rounded-full bg-primary/10 px-2 py-0.5 hover:bg-primary/15"
+                  >
+                    {tx("authComparePlans", "Compare")}
+                  </Link>
                 </div>
               ))}
             </div>

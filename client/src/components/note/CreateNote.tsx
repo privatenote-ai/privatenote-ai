@@ -12,7 +12,8 @@ import {
 } from "@shared/noteSizeLimits";
 import {
   formatNoteFileSize,
-  NOTE_FILE_PREMIUM_MAX_BYTES,
+  NOTE_FILE_BUSINESS_MAX_BYTES,
+  NOTE_FILE_STARTER_MAX_BYTES,
   noteFileLimitBytesForAccount,
 } from "@shared/noteFileLimits";
 import {
@@ -462,8 +463,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
   const canAttachFiles = Boolean(user);
   const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
-  const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
+  const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
+    "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.")
+    .replace("{starterLimit}", formatNoteFileSize(NOTE_FILE_STARTER_MAX_BYTES))
+    .replace("{businessLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES))
+    .replace("{premiumLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES));
   const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
     "{limit}",
     fileLimitLabel,
@@ -475,12 +481,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       .replace("{size}", formatNoteFileSize(file.size))
       .replace("{limit}", fileLimitLabel);
     const upgradeHint =
-      !isPremiumUser && file.size <= NOTE_FILE_PREMIUM_MAX_BYTES
-        ? (t.fileTooLargeUpgradeHint ?? "Premium allows up to {premiumLimit} per file.").replace(
-            "{premiumLimit}",
-            formatNoteFileSize(NOTE_FILE_PREMIUM_MAX_BYTES),
-          )
-        : null;
+      accountType === "free" && file.size <= NOTE_FILE_BUSINESS_MAX_BYTES
+        ? paidFileUpgradeHint
+        : accountType === "personal_premium" && file.size <= NOTE_FILE_BUSINESS_MAX_BYTES
+          ? (t.fileTooLargeBusinessUpgradeHint ??
+              "Business allows up to {businessLimit} per file.").replace(
+              "{businessLimit}",
+              formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES),
+            )
+          : null;
     toast({
       title: t.fileTooLarge,
       description: upgradeHint ? `${description} ${upgradeHint}` : description,
@@ -2926,10 +2935,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   {!isPremiumUser ? (
                     <>
                       {" · "}
-                      {(t.fileTooLargeUpgradeHint ?? "Premium allows up to {premiumLimit} per file.").replace(
-                        "{premiumLimit}",
-                        formatNoteFileSize(NOTE_FILE_PREMIUM_MAX_BYTES),
-                      )}
+                      {paidFileUpgradeHint}
                     </>
                   ) : null}
                 </p>
