@@ -406,7 +406,22 @@ export default function Premium() {
         { plan, interval },
       );
       window.location.assign(checkout.url);
-    } catch {
+    } catch (error) {
+      const alreadySubscribed =
+        error instanceof Error &&
+        (/409/.test(error.message) || /subscription_already_exists/.test(String(error)));
+      if (alreadySubscribed) {
+        try {
+          const portal = await apiRequest<{ url: string }>(
+            "/api/auth/billing/portal",
+            "POST",
+          );
+          window.location.assign(portal.url);
+          return;
+        } catch {
+          // Fall through to toast.
+        }
+      }
       toast({
         title: "Could not start checkout",
         description: "Please try again, or open Account to manage an existing subscription.",

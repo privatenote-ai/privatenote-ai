@@ -3907,21 +3907,55 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         subscription_status: string | null;
       }>();
     if (!user) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const appOrigin = getMagicLinkOrigin(env, request);
     const changeable = new Set(["active", "trialing", "past_due", "unpaid", "paused"]);
+    // Existing paid subscriptions must change plans in the Customer Portal
+    // (not a second Checkout session). Return a portal URL so upgrade CTAs work.
     if (
       user.stripe_subscription_id &&
       changeable.has(user.subscription_status?.toLowerCase() ?? "")
     ) {
-      return jsonResponse(
-        {
-          error: "subscription_already_exists",
-          message: "Manage the existing subscription in the billing portal.",
-        },
-        409,
-        request,
-      );
+      if (!user.stripe_customer_id) {
+        return jsonResponse(
+          {
+            error: "subscription_already_exists",
+            message: "Manage the existing subscription in the billing portal.",
+          },
+          409,
+          request,
+        );
+      }
+      try {
+        const portal = await createStripePortalSession(env, {
+          stripeCustomerId: user.stripe_customer_id,
+          subscriptionId: user.stripe_subscription_id,
+          flow: "subscription_update",
+          returnUrl: `${appOrigin}/account?billing=updated`,
+        });
+        return jsonResponse(
+          {
+            ok: true,
+            url: portal.url,
+            mode: "portal",
+          },
+          200,
+          request,
+        );
+      } catch (error) {
+        console.error("[BILLING] Portal fallback for checkout failed:", error);
+        const billingError = error instanceof StripeBillingError ? error : null;
+        return jsonResponse(
+          {
+            error: billingError?.code ?? "subscription_already_exists",
+            message:
+              billingError?.message ??
+              "Manage the existing subscription in the billing portal.",
+          },
+          billingError?.status ?? 409,
+          request,
+        );
+      }
     }
-    const appOrigin = getMagicLinkOrigin(env, request);
     const billingCountry = billingCountryFromRequest(request);
     const billingCurrency = billingCurrencyForCountry(billingCountry);
     try {
@@ -3946,6 +3980,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         {
           ok: true,
           url: checkout.url,
+          mode: "checkout",
           billingCountry,
           billingCurrency,
         },
