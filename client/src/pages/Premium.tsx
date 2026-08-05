@@ -481,7 +481,7 @@ export default function Premium() {
             className={[
               "rounded-md px-4 py-2 text-sm font-semibold transition",
               billingInterval === "month"
-                ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
+                ? "bg-primary text-primary-foreground"
                 : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
             ].join(" ")}
           >
@@ -493,7 +493,7 @@ export default function Premium() {
             className={[
               "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition",
               billingInterval === "year"
-                ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
+                ? "bg-primary text-primary-foreground"
                 : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
             ].join(" ")}
           >
@@ -502,7 +502,7 @@ export default function Premium() {
               className={[
                 "rounded-full px-2 py-0.5 text-[11px] font-semibold",
                 billingInterval === "year"
-                  ? "bg-emerald-400/20 text-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-200"
+                  ? "bg-white/20 text-primary-foreground"
                   : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
               ].join(" ")}
             >
