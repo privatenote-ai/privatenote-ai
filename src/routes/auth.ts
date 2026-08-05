@@ -19,6 +19,12 @@ import {
   type PaidBillingPlan,
 } from "../stripeCheckout";
 import {
+  clearSentNoteNotifications,
+  deleteSentNoteNotification,
+  listSentNoteNotificationsForUser,
+} from "../sentNotesService";
+import { hasPremiumFeatures } from "@shared/planCatalog";
+import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
@@ -3981,6 +3987,68 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       }),
       { status: 200, headers }
     );
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const userColumns = await getUsersTableColumns(env);
+    const userSelect = buildUserSelect(["id"], userColumns);
+    const user = await env.AUTH_DB.prepare(
+      `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{ account_type?: string | null; plan?: string | null }>();
+    const accountType = normalizeAccountType(user?.account_type ?? user?.plan);
+    if (!hasPremiumFeatures(accountType)) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    const limitRaw = Number(url.searchParams.get("limit") ?? "50");
+    const limit = Math.min(50, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50));
+    const notifications = await listSentNoteNotificationsForUser(env, session.id, limit);
+    const headers = new Headers(getCorsHeaders(request));
+    headers.set("Content-Type", "application/json");
+    applyRotatedSession(request, headers, session);
+    return new Response(JSON.stringify({ ok: true, notifications }), { status: 200, headers });
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const cleared = await clearSentNoteNotifications(env, session.id);
+    return jsonResponse({ ok: true, cleared }, 200, request);
+  }
+
+  {
+    const deleteOneMatch = pathname.match(/^\/api\/auth\/account\/notifications\/([^/]+)$/);
+    if (deleteOneMatch && method === "DELETE") {
+      if (!env.AUTH_DB) {
+        return jsonResponse({ message: "Auth database not configured" }, 501, request);
+      }
+      const session = await getSessionFromRequest(env, request, { rotate: false });
+      if (!session) {
+        return jsonResponse({ message: "Unauthorized" }, 401, request);
+      }
+      const notificationId = decodeURIComponent(deleteOneMatch[1] ?? "");
+      if (!notificationId) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      const deleted = await deleteSentNoteNotification(env, session.id, notificationId);
+      if (!deleted) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      return jsonResponse({ ok: true }, 200, request);
+    }
   }
 
   if (pathname === "/api/auth/account/activity" && method === "GET") {
