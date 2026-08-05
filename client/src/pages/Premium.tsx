@@ -404,12 +404,6 @@ function PlanCard({
           at Stripe Checkout.
         </p>
       ) : null}
-      {planId === "business_premium" ? (
-        <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-sm leading-6 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-          Branded delivery for solo professionals and consultants. Team seats and organization
-          administration are not included.
-        </p>
-      ) : null}
       {isCurrent || (signedIn && planId === "free" && currentPlan && currentPlan !== "free") ? (
         <button type="button" className={buttonClassName} disabled>
           {ctaLabel}
@@ -445,6 +439,12 @@ function PlanCard({
           </li>
         ))}
       </ul>
+      {planId === "business_premium" ? (
+        <p className="mt-6 rounded-lg border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-sm leading-6 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+          Branded delivery for solo professionals and consultants. Team seats and organization
+          administration are not included.
+        </p>
+      ) : null}
     </article>
   );
 }
