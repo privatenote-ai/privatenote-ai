@@ -18,6 +18,7 @@ import {
   type BillingCurrency,
   type BillingInterval,
 } from "@shared/planCatalog";
+import { billingCurrencyFromBrowser } from "@shared/billingRegion";
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -43,23 +44,13 @@ function formatMoney(amount: number, currency: BillingCurrency): string {
   }).format(amount);
 }
 
-/** Show both list prices; checkout still picks regional currency in Stripe. */
-function formatDualMoney(amountUsd: number, amountEur: number): string {
-  if (amountUsd === amountEur) {
-    return `${formatMoney(amountUsd, "usd")} / ${formatMoney(amountEur, "eur")}`;
-  }
-  return `${formatMoney(amountUsd, "usd")} · ${formatMoney(amountEur, "eur")}`;
-}
-
 function planAmountFor(
   planId: AccountType,
   currency: BillingCurrency,
   interval: BillingInterval,
 ): number {
-  const monthly = planPriceFor(planId, currency, "month");
-  const yearly = planPriceFor(planId, currency, "year");
   if (planId === "free") return 0;
-  return interval === "month" ? monthly : yearly / 12;
+  return planPriceFor(planId, currency, interval);
 }
 
 function formatBytesLabel(bytes: number): string {
@@ -79,27 +70,35 @@ function planCta(planId: AccountType): string {
   return "Choose Business";
 }
 
+/** Short outcome bullets for cards; capacity details live in the comparison table. */
 function planHighlights(planId: AccountType): string[] {
-  const features = PLAN_CATALOG[planId].features;
-  const attachment = formatBytesLabel(features.attachmentMaxBytes);
-  const buffer = formatBytesLabel(features.activePayloadBufferBytes);
-  const expiryDays = Math.round(features.maxExpirySeconds / DAY);
-  const readCounts = features.allowedReadCounts.join(", ").replace(/, ([^,]*)$/, " or $1");
-  const items = [
-    "Unlimited basic encrypted notes · fair use",
-    `${attachment} attachments · ${buffer} active payload buffer`,
-    `Notes can expire up to ${expiryDays} days`,
-    `${readCounts} permitted open${features.allowedReadCounts.length > 1 ? "s" : ""} per note`,
-    `${formatFileWindowLabel(features.maxFileAccessWindowSeconds)} attachment download window`,
-    `${features.hostedAiMonthly} hosted AI drafts each month`,
+  if (planId === "free") {
+    return [
+      "Unlimited basic encrypted notes · fair use",
+      "Burn after reading and password protection",
+      "Open notes without creating an account",
+      "Open notifications when signed in",
+      "On-device AI templates · a few hosted drafts",
+    ];
+  }
+  if (planId === "personal_premium") {
+    return [
+      "Everything in Free",
+      "Proof of access and recipient verification",
+      "Sent-notes dashboard and revoke unopened",
+      "Larger attachments and longer expiry",
+      "Starter prompt template packs",
+      "Synchronized note defaults",
+    ];
+  }
+  return [
+    "Everything in Starter",
+    "Company branding on reveal pages",
+    "Custom AI prompt templates",
+    "Largest attachments and payload capacity",
+    "Highest hosted AI draft allowance",
+    "One professional account — no team seats",
   ];
-  if (features.proofOfAccess) items.push("Proof of access and recipient verification");
-  if (features.sentNotesDashboard) items.push("Sent-notes dashboard and revoke unopened");
-  if (features.premiumTemplatePacks) items.push("Starter prompt template packs");
-  if (features.savedDefaults) items.push("Synchronized note defaults");
-  if (features.revealBranding) items.push("Company branding on reveal pages");
-  if (features.customPromptTemplates) items.push("Browser-saved custom AI prompt templates");
-  return items;
 }
 
 type ComparisonCell = string;
@@ -201,28 +200,46 @@ const featureCards = [
   },
 ];
 
-const faqs = [
-  {
-    q: "Do paid plans change the encryption?",
-    a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
-  },
-  {
-    q: "What is the difference between Starter and Business?",
-    a: `Starter (${formatDualMoney(PLAN_CATALOG.personal_premium.priceMonthlyUsd, PLAN_CATALOG.personal_premium.priceMonthlyEur)}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${formatDualMoney(PLAN_CATALOG.business_premium.priceMonthlyUsd, PLAN_CATALOG.business_premium.priceMonthlyEur)}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits.`,
-  },
-  {
-    q: "How does annual billing work?",
-    a: `Annual plans are charged once per year at ${formatDualMoney(PLAN_CATALOG.personal_premium.priceYearlyUsd, PLAN_CATALOG.personal_premium.priceYearlyEur)} for Starter and ${formatDualMoney(PLAN_CATALOG.business_premium.priceYearlyUsd, PLAN_CATALOG.business_premium.priceYearlyEur)} for Business — two months free versus paying monthly. Checkout charges USD or EUR based on your region.`,
-  },
-  {
-    q: "Can I pay online today?",
-    a: "Yes. Choose a plan, sign in or create an account, then complete Stripe Checkout from the subscription page. The final total, including any tax, is shown before you pay.",
-  },
-  {
-    q: "What happens if I downgrade?",
-    a: "Existing paid-plan notes keep the conditions under which they were created. Starter and Business controls for new notes lock until the subscription is renewed.",
-  },
-];
+function buildFaqs(currency: BillingCurrency) {
+  const starterMonthly = formatMoney(
+    planPriceFor("personal_premium", currency, "month"),
+    currency,
+  );
+  const businessMonthly = formatMoney(
+    planPriceFor("business_premium", currency, "month"),
+    currency,
+  );
+  const starterYearly = formatMoney(
+    planPriceFor("personal_premium", currency, "year"),
+    currency,
+  );
+  const businessYearly = formatMoney(
+    planPriceFor("business_premium", currency, "year"),
+    currency,
+  );
+  return [
+    {
+      q: "Do paid plans change the encryption?",
+      a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
+    },
+    {
+      q: "What is the difference between Starter and Business?",
+      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
+    },
+    {
+      q: "How does annual billing work?",
+      a: `Annual plans are charged once per year at ${starterYearly} for Starter and ${businessYearly} for Business — two months free versus paying monthly. Stripe charges USD or EUR based on your region at checkout.`,
+    },
+    {
+      q: "Can I pay online today?",
+      a: "Yes. Choose a plan, sign in or create an account, then complete Stripe Checkout from the subscription page. The final total, including any tax, is shown before you pay.",
+    },
+    {
+      q: "What happens if I downgrade?",
+      a: "Existing paid-plan notes keep the conditions under which they were created. Starter and Business controls for new notes lock until the subscription is renewed.",
+    },
+  ];
+}
 
 function FeatureValue({ value }: { value: string }) {
   const yes = value === "Included";
@@ -243,29 +260,28 @@ function FeatureValue({ value }: { value: string }) {
 function PlanCard({
   planId,
   interval,
+  currency,
   href,
   onCheckout,
   checkoutBusy,
 }: {
   planId: AccountType;
   interval: BillingInterval;
+  currency: BillingCurrency;
   href: string;
   onCheckout?: (plan: PaidPlanId) => void;
   checkoutBusy?: boolean;
 }) {
   const plan = PLAN_CATALOG[planId];
   const highlighted = planId === HIGHLIGHTED_PLAN;
-  const yearlyUsd = planPriceFor(planId, "usd", "year");
-  const yearlyEur = planPriceFor(planId, "eur", "year");
-  const annualSavings = annualPlanSavingsPercent(planId, "usd");
+  const annualSavings = annualPlanSavingsPercent(planId, currency);
   const isFree = planId === "free";
-  const displayUsd = planAmountFor(planId, "usd", interval);
-  const displayEur = planAmountFor(planId, "eur", interval);
+  const displayAmount = planAmountFor(planId, currency, interval);
   const priceNote = isFree
     ? "No payment required."
     : interval === "month"
       ? "Billed monthly. Cancel anytime before renewal."
-      : `${formatDualMoney(yearlyUsd, yearlyEur)} billed annually · save ${annualSavings}%`;
+      : `Billed annually · save ${annualSavings}%. Cancel anytime before renewal.`;
 
   const buttonClassName = [
     "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
@@ -285,7 +301,7 @@ function PlanCard({
     >
       {highlighted ? (
         <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
-          Recommended
+          Most popular
         </div>
       ) : null}
       <h2 className="pr-28 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
@@ -298,35 +314,34 @@ function PlanCard({
         {isFree ? (
           <div className="flex items-end gap-2">
             <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-              {formatMoney(0, "usd")}
+              {formatMoney(0, currency)}
             </span>
             <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">forever</span>
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+            <div className="flex items-end gap-2">
               <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-                {formatMoney(displayUsd, "usd")}
+                {formatMoney(displayAmount, currency)}
               </span>
-              <span className="pb-1 text-2xl font-semibold tracking-tight text-gray-700 dark:text-gray-200 sm:text-3xl">
-                / {formatMoney(displayEur, "eur")}
+              <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">
+                {interval === "month" ? "per month" : "per year"}
               </span>
             </div>
-            <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
-              per month · USD and EUR
-            </p>
           </>
         )}
       </div>
       <p className="mt-2 text-sm leading-5 text-gray-500 dark:text-gray-400">{priceNote}</p>
       {!isFree ? (
         <p className="mt-1 text-xs leading-5 text-gray-400 dark:text-gray-500">
-          Stripe charges USD or EUR for your region at checkout.
+          Shown in {currency.toUpperCase()} for your region. Final charge currency is confirmed
+          at Stripe Checkout.
         </p>
       ) : null}
       {planId === "business_premium" ? (
         <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-sm leading-6 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-          One professional account. Team seats and organization administration are not included.
+          Branded delivery for solo professionals and consultants. Team seats and organization
+          administration are not included.
         </p>
       ) : null}
       {onCheckout && planId !== "free" ? (
@@ -371,6 +386,13 @@ export default function Premium() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<PaidPlanId | null>(null);
   const lp = (path: string) => localizedPath(path, language);
+
+  const displayCurrency = useMemo(
+    () => billingCurrencyFromBrowser(language),
+    [language],
+  );
+  const starterSavings = annualPlanSavingsPercent("personal_premium", displayCurrency);
+  const faqs = useMemo(() => buildFaqs(displayCurrency), [displayCurrency]);
 
   const startCheckout = async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
     setCheckoutBusyPlan(plan);
@@ -424,7 +446,23 @@ export default function Premium() {
     void startCheckout(plan, interval);
   }, [user]);
 
-  const starterSavings = annualPlanSavingsPercent("personal_premium", "usd");
+  const starterPrice = formatMoney(
+    planPriceFor(
+      "personal_premium",
+      displayCurrency,
+      billingInterval === "year" ? "year" : "month",
+    ),
+    displayCurrency,
+  );
+  const businessPrice = formatMoney(
+    planPriceFor(
+      "business_premium",
+      displayCurrency,
+      billingInterval === "year" ? "year" : "month",
+    ),
+    displayCurrency,
+  );
+  const intervalLabel = billingInterval === "year" ? "/year" : "/month";
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
@@ -433,38 +471,53 @@ export default function Premium() {
           Simple plans for secure notes.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Free covers encrypted one-time notes. Starter adds proof of access and secure-sharing
-          workflow. Business adds branded reveal pages on one professional account.
+          Free for sending secrets without an account. Starter when you need to know who opened
+          it. Business when the reveal should carry your brand.
         </p>
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
-          {([
-            { id: "month" as const, label: "Pay monthly" },
-            { id: "year" as const, label: "Pay yearly" },
-          ]).map((mode) => (
-            <button
-              key={mode.id}
-              type="button"
-              onClick={() => setBillingInterval(mode.id)}
+          <button
+            type="button"
+            onClick={() => setBillingInterval("month")}
+            className={[
+              "rounded-md px-4 py-2 text-sm font-semibold transition",
+              billingInterval === "month"
+                ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
+                : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
+            ].join(" ")}
+          >
+            Pay monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingInterval("year")}
+            className={[
+              "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition",
+              billingInterval === "year"
+                ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
+                : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
+            ].join(" ")}
+          >
+            Pay yearly
+            <span
               className={[
-                "rounded-md px-4 py-2 text-sm font-semibold transition",
-                billingInterval === mode.id
-                  ? "bg-gray-950 text-white dark:bg-white dark:text-gray-950"
-                  : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
+                "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                billingInterval === "year"
+                  ? "bg-emerald-400/20 text-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-200"
+                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
               ].join(" ")}
             >
-              {mode.label}
-            </button>
-          ))}
+              Save {starterSavings}%
+            </span>
+          </button>
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Starter {formatDualMoney(PLAN_CATALOG.personal_premium.priceMonthlyUsd, PLAN_CATALOG.personal_premium.priceMonthlyEur)}
-          /month · Business{" "}
-          {formatDualMoney(PLAN_CATALOG.business_premium.priceMonthlyUsd, PLAN_CATALOG.business_premium.priceMonthlyEur)}
-          /month.
+          Starter {starterPrice}
+          {intervalLabel} · Business {businessPrice}
+          {intervalLabel}.
           {billingInterval === "year"
-            ? ` Annual billing saves about ${starterSavings}%.`
+            ? ` Two months free versus monthly.`
             : " Switch to yearly for two months free."}{" "}
-          Checkout charges USD or EUR for your region.
+          Prices shown in {displayCurrency.toUpperCase()}; checkout confirms the charge currency.
         </p>
       </section>
 
@@ -474,6 +527,7 @@ export default function Premium() {
             key={planId}
             planId={planId}
             interval={billingInterval}
+            currency={displayCurrency}
             href={planHref[planId]}
             onCheckout={
               user && planId !== "free"
@@ -486,6 +540,11 @@ export default function Premium() {
           />
         ))}
       </section>
+
+      <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
+        Client-side encryption on every plan · Self-serve Stripe checkout · Cancel anytime before
+        renewal
+      </p>
 
       <section className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {featureCards.map(({ icon: Icon, title, text }) => (

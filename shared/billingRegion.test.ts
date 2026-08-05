@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import {
   billingCountryFromRequest,
   billingCurrencyForCountry,
+  billingCurrencyFromBrowser,
   normalizeBillingCountry,
+  regionFromLocaleTag,
 } from "./billingRegion";
 
 describe("billing region", () => {
@@ -35,5 +37,50 @@ describe("billing region", () => {
     }) as Request & { cf?: { country?: string } };
     request.cf = { country: "LU" };
     assert.equal(billingCountryFromRequest(request), "LU");
+  });
+
+  it("parses region subtags from locale tags", () => {
+    assert.equal(regionFromLocaleTag("en-GB"), "GB");
+    assert.equal(regionFromLocaleTag("de_AT"), "AT");
+    assert.equal(regionFromLocaleTag("zh-Hans-CN"), "CN");
+    assert.equal(regionFromLocaleTag("fr"), null);
+  });
+
+  it("guesses display currency from browser signals", () => {
+    assert.equal(
+      billingCurrencyFromBrowser("en", {
+        languages: ["en-US"],
+        timeZone: "America/New_York",
+      }),
+      "usd",
+    );
+    assert.equal(
+      billingCurrencyFromBrowser("en", {
+        languages: ["en-GB"],
+        timeZone: "Europe/London",
+      }),
+      "eur",
+    );
+    assert.equal(
+      billingCurrencyFromBrowser("de", {
+        languages: ["de"],
+        timeZone: "America/New_York",
+      }),
+      "eur",
+    );
+    assert.equal(
+      billingCurrencyFromBrowser("en", {
+        languages: ["en"],
+        timeZone: "Europe/Berlin",
+      }),
+      "eur",
+    );
+    assert.equal(
+      billingCurrencyFromBrowser("en", {
+        languages: ["en"],
+        timeZone: "America/Chicago",
+      }),
+      "usd",
+    );
   });
 });

@@ -57,7 +57,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
   free: {
     id: "free",
     label: "Free",
-    tagline: "Encrypted one-time notes. No account required to open.",
+    tagline: "Send secrets without an account — open without signing up.",
     priceMonthlyUsd: 0,
     priceYearlyUsd: 0,
     priceMonthlyEur: 0,
@@ -86,7 +86,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
   personal_premium: {
     id: "personal_premium",
     label: "Starter",
-    tagline: "Proof of access, recipient verification, and everything needed for secure sharing.",
+    tagline: "Know who opened it — proof, verification, and revoke when needed.",
     priceMonthlyUsd: 4,
     priceYearlyUsd: 40,
     priceMonthlyEur: 4,
@@ -115,7 +115,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
   business_premium: {
     id: "business_premium",
     label: "Business",
-    tagline: "Branded secure delivery for professionals, on one account.",
+    tagline: "Brand the reveal for clients — on one professional account.",
     priceMonthlyUsd: 12,
     priceYearlyUsd: 120,
     priceMonthlyEur: 12,
