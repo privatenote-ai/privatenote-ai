@@ -88,7 +88,12 @@ export const en: Translations = {
     "Your plan allows files up to {currentLimit}. Business supports encrypted attachments up to {nextLimit}.",
   fileSizeUpgradeHighlightStarter: "Starter includes attachments up to {nextLimit}.",
   fileSizeUpgradeHighlightBusiness: "Business includes attachments up to {nextLimit}.",
-  fileSizeUpgradeCta: "Compare plans",
+  fileSizeUpgradeCtaStarter: "Upgrade to Starter",
+  fileSizeUpgradeCtaBusiness: "Upgrade to Business",
+  fileSizeUpgradeOpeningCheckout: "Opening checkout…",
+  fileSizeUpgradeCheckoutFailedTitle: "Could not start checkout",
+  fileSizeUpgradeCheckoutFailedDesc:
+    "Please try again, or open Account to manage an existing subscription.",
   attachFileMaxSizeHint: "Up to {limit} per file",
   signInToAttachFiles: "Sign in to attach files",
   signInToAttachFilesHint: "Sign in to add encrypted file attachments.",
