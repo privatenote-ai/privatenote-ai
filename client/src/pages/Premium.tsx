@@ -340,12 +340,14 @@ function PlanCard({
       ? "Billed monthly. Cancel anytime before renewal."
       : `Billed annually · about ${annualSavings}% less than monthly. Cancel anytime before renewal.`;
   const ctaLabel = planCta(planId, { isCurrent, currentPlan, signedIn });
+  const primaryCta =
+    !isCurrent && (highlighted || ctaLabel === "Upgrade to Business");
 
   const buttonClassName = [
     "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
     isCurrent
       ? "border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
-      : highlighted
+      : primaryCta
         ? "bg-primary text-primary-foreground hover:bg-primary/90"
         : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
   ].join(" ");
