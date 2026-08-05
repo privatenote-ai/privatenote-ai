@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -123,6 +124,7 @@ export default function AccountOverview() {
   const { t } = useLanguage();
   const tx = (key: string, fallback: string) => t[key] || fallback;
   const { user, loading: authLoading } = useAuth();
+  const { entitlements } = useAccountEntitlements();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null);
@@ -258,11 +260,18 @@ export default function AccountOverview() {
     );
   }
 
-  const accountType = normalizeAccountType(summary?.accountType ?? summary?.plan);
+  const accountType = entitlements.accountType;
   const planLabel = PLAN_CATALOG[accountType].label;
   const planBadge = PLAN_BADGE_CLASS[accountType];
   const hasPasskeys = me?.hasPasskeys ?? false;
   const emailVerified = me?.emailVerified ?? false;
+  const stripeCustomerLinked =
+    entitlements.billingCustomerLinked ||
+    summary?.billing?.stripeCustomerLinked === true;
+  const subscriptionStatus =
+    entitlements.subscriptionState !== "free"
+      ? entitlements.subscriptionState
+      : summary?.billing?.subscriptionStatus ?? null;
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
@@ -494,9 +503,9 @@ export default function AccountOverview() {
               {tx("authCurrentPlan", "Current plan")}
             </p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
-            {summary?.billing?.subscriptionStatus ? (
+            {subscriptionStatus ? (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {tx("authBillingStatus", "Billing status")}: {summary.billing.subscriptionStatus}
+                {tx("authBillingStatus", "Billing status")}: {subscriptionStatus}
               </p>
             ) : null}
             <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
@@ -505,7 +514,7 @@ export default function AccountOverview() {
                 "Starter and Business unlock higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
               )}
             </p>
-            {summary?.billing?.stripeCustomerLinked ? (
+            {stripeCustomerLinked ? (
               <Button
                 type="button"
                 variant="outline"

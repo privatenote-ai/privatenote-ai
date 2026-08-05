@@ -103,6 +103,7 @@ import {
   writeLocalHostedAiAllowed,
 } from "@/utils/hostedAiPreference";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { saveNoteLabel } from "@/utils/noteLabelsStorage";
@@ -188,8 +189,6 @@ interface CreateNoteProps {
   mode?: "note" | "file-transfer";
 }
 
-type AccountType = "free" | "personal_premium" | "business_premium";
-
 const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
 const CREATE_NOTE_AUTH_DRAFT_TTL_MS = 30 * 60 * 1000;
 const CLOUD_ASSIST_MODE_SESSION_KEY = "privatenote:cloud-assist-mode-session:v1";
@@ -248,12 +247,6 @@ function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolea
 
 function isReaderLanguageSetting(value: unknown): value is ReaderLanguageSetting {
   return value === "auto" || (typeof value === "string" && SUPPORTED_LANGUAGES.includes(value as SupportedLanguage));
-}
-
-function normalizeAccountType(value: unknown): AccountType {
-  if (value === "personal_premium" || value === "pro" || value === "premium") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
-  return "free";
 }
 
 function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
@@ -352,6 +345,11 @@ function clearCreateNoteAuthDraft(): void {
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mode = "note" }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const { entitlements, loading: entitlementsLoading } = useAccountEntitlements();
+  const accountType = entitlements.accountType;
+  const accountEmailNotifications = entitlements.emailNotifications;
+  const accountEmailVerified = entitlements.emailVerified;
+  const premiumStatusLoading = Boolean(user) && entitlementsLoading;
   const isFileTransferMode = mode === "file-transfer";
 
   // ── Note content ──────────────────────────────────────────────────────────
@@ -449,10 +447,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [deliverRecipientEmail, setDeliverRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
-  const [accountType, setAccountType] = useState<AccountType>("free");
-  const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
-  const [accountEmailVerified, setAccountEmailVerified] = useState(false);
-  const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
@@ -754,100 +748,69 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   useEffect(() => {
     let cancelled = false;
     if (!user) {
-      setAccountType("free");
-      setAccountEmailNotifications(false);
-      setAccountEmailVerified(false);
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
       setRestrictRecipientEmail(false);
       setRequireRecipientVerification(false);
       setRecipientEmail("");
       setNoteLabel("");
-      setPremiumStatusLoading(false);
       return;
     }
 
-    setPremiumStatusLoading(true);
+    if (
+      authDraftAppliedRef.current ||
+      prefillText ||
+      !planFeaturesFor(accountType).savedDefaults ||
+      premiumStatusLoading
+    ) {
+      return;
+    }
+
     void (async () => {
       try {
-        const summary = await apiRequest<{
+        const defaultsResponse = await apiRequest<{
           ok?: boolean;
-          accountType?: unknown;
-          plan?: unknown;
-          emailNotifications?: boolean;
-          emailVerified?: boolean;
-        }>("/api/auth/account/summary", "GET");
-        if (cancelled) return;
-        const nextAccountType = normalizeAccountType(summary.accountType ?? summary.plan);
-        setAccountType(nextAccountType);
-        setAccountEmailNotifications(summary.emailNotifications === true);
-        setAccountEmailVerified(summary.emailVerified === true);
-
+          defaults: {
+            expirySeconds: number | null;
+            maxReads: NoteReadLimit | null;
+            fileAccessWindowSeconds: number | null;
+            readerLanguage: SupportedLanguage | null;
+            notifyOnOpen: boolean;
+            requireRecipientVerification: boolean;
+          } | null;
+        }>("/api/auth/account/note-defaults", "GET");
+        if (cancelled || !defaultsResponse.defaults) return;
+        const defaults = defaultsResponse.defaults;
+        const expiryPreset =
+          typeof defaults.expirySeconds === "number"
+            ? noteExpirySecondsToPresetId(defaults.expirySeconds)
+            : null;
+        if (expiryPreset) setExpiryValue(expiryPreset);
+        if (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5) {
+          setReadCount(defaults.maxReads);
+        }
+        if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
+          setFileAccessWindowSeconds(defaults.fileAccessWindowSeconds);
+        }
         if (
-          !authDraftAppliedRef.current &&
-          !prefillText &&
-          planFeaturesFor(nextAccountType).savedDefaults
+          defaults.readerLanguage &&
+          SUPPORTED_LANGUAGES.includes(defaults.readerLanguage)
         ) {
-          try {
-            const defaultsResponse = await apiRequest<{
-              ok?: boolean;
-              defaults: {
-                expirySeconds: number | null;
-                maxReads: NoteReadLimit | null;
-                fileAccessWindowSeconds: number | null;
-                readerLanguage: SupportedLanguage | null;
-                notifyOnOpen: boolean;
-                requireRecipientVerification: boolean;
-              } | null;
-            }>("/api/auth/account/note-defaults", "GET");
-            if (cancelled || !defaultsResponse.defaults) return;
-            const defaults = defaultsResponse.defaults;
-            const expiryPreset =
-              typeof defaults.expirySeconds === "number"
-                ? noteExpirySecondsToPresetId(defaults.expirySeconds)
-                : null;
-            if (expiryPreset) setExpiryValue(expiryPreset);
-            if (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5) {
-              setReadCount(defaults.maxReads);
-            }
-            if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
-              setFileAccessWindowSeconds(defaults.fileAccessWindowSeconds);
-            }
-            if (
-              defaults.readerLanguage &&
-              SUPPORTED_LANGUAGES.includes(defaults.readerLanguage)
-            ) {
-              setReaderLanguage(defaults.readerLanguage);
-            } else {
-              setReaderLanguage("auto");
-            }
-            setNotifyOnOpen(defaults.notifyOnOpen === true);
-            setRequireRecipientVerification(defaults.requireRecipientVerification === true);
-          } catch {
-            /* defaults are optional */
-          }
+          setReaderLanguage(defaults.readerLanguage);
+        } else {
+          setReaderLanguage("auto");
         }
+        setNotifyOnOpen(defaults.notifyOnOpen === true);
+        setRequireRecipientVerification(defaults.requireRecipientVerification === true);
       } catch {
-        if (!cancelled) {
-          setAccountType("free");
-          setAccountEmailNotifications(false);
-          setAccountEmailVerified(false);
-          setNotifyOnOpen(false);
-          setNotifyOnDestroyed(false);
-          setRestrictRecipientEmail(false);
-          setRequireRecipientVerification(false);
-          setRecipientEmail("");
-          setNoteLabel("");
-        }
-      } finally {
-        if (!cancelled) setPremiumStatusLoading(false);
+        /* defaults are optional */
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, accountType, premiumStatusLoading, prefillText]);
 
   useEffect(() => {
     if (premiumStatusLoading) return;

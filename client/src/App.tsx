@@ -12,6 +12,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
+import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
 import Home from "@/pages/Home";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
@@ -357,9 +358,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <AuthProvider>
-          <ThemePreferenceRoot />
-          <Router />
-          <DeferredToaster />
+          <AccountEntitlementsProvider>
+            <ThemePreferenceRoot />
+            <Router />
+            <DeferredToaster />
+          </AccountEntitlementsProvider>
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>

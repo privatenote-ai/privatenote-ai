@@ -11,6 +11,8 @@ import {
   billingCurrencyForCountry,
 } from "@shared/billingRegion";
 import {
+  billingCurrencyForStripePrice,
+  billingIntervalForStripePrice,
   checkoutIdempotencyKey,
   createStripeCheckoutSession,
   createStripePortalSession,
@@ -68,6 +70,14 @@ import {
 } from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { isStagingAppHost } from "@shared/pagesAppHosts";
+
+const STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+]);
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -3767,6 +3777,94 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
   }
 
+  if (pathname === "/api/auth/billing/status" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    let billing: {
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+      subscription_status: string | null;
+      stripe_price_id: string | null;
+      subscription_cancel_at_period_end: number | null;
+      subscription_updated_at: string | null;
+      manual_entitlement_expires_at: string | null;
+    } | null = null;
+    try {
+      billing = await env.AUTH_DB.prepare(
+        `SELECT
+           stripe_customer_id,
+           stripe_subscription_id,
+           subscription_status,
+           stripe_price_id,
+           subscription_cancel_at_period_end,
+           subscription_updated_at,
+           manual_entitlement_expires_at
+         FROM users WHERE id = ? LIMIT 1`,
+      ).bind(session.id).first<{
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        subscription_status: string | null;
+        stripe_price_id: string | null;
+        subscription_cancel_at_period_end: number | null;
+        subscription_updated_at: string | null;
+        manual_entitlement_expires_at: string | null;
+      }>();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[BILLING] Could not load billing status:", error);
+      const migrationMissing = /no such (?:table|column)/i.test(message);
+      return jsonResponse(
+        {
+          error: migrationMissing
+            ? "billing_migration_required"
+            : "billing_status_unavailable",
+          message: migrationMissing
+            ? "Apply the billing database migration before using subscriptions."
+            : "Billing status is temporarily unavailable. Please try again.",
+        },
+        migrationMissing ? 503 : 500,
+        request,
+      );
+    }
+    return jsonResponse({
+      ok: true,
+      accountType: entitlements.accountType,
+      configuredAccountType: entitlements.configuredAccountType,
+      subscriptionState: entitlements.state,
+      paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+      billingCustomerLinked: Boolean(billing?.stripe_customer_id),
+      billingSubscriptionLinked: Boolean(billing?.stripe_subscription_id),
+      canChangeSubscription:
+        Boolean(billing?.stripe_subscription_id) &&
+        STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES.has(
+          billing?.subscription_status?.toLowerCase() ?? "",
+        ),
+      managementMode: billing?.stripe_customer_id
+        ? "stripe"
+        : billing?.manual_entitlement_expires_at
+          ? "manual"
+          : "none",
+      billingInterval: billingIntervalForStripePrice(
+        env,
+        billing?.stripe_price_id ?? null,
+      ),
+      billingCountry: billingCountryFromRequest(request),
+      billingCurrency:
+        billingCurrencyForStripePrice(
+          env,
+          billing?.stripe_price_id ?? null,
+        ) ??
+        billingCurrencyForCountry(billingCountryFromRequest(request)),
+      cancelAtPeriodEnd: billing?.subscription_cancel_at_period_end === 1,
+      subscriptionUpdatedAt: billing?.subscription_updated_at ?? null,
+      serverNow: new Date().toISOString(),
+    }, 200, request);
+  }
+
   if (pathname === "/api/auth/billing/checkout" && method === "POST") {
     if (!env.AUTH_DB) {
       return jsonResponse({ error: "billing_not_configured" }, 503, request);
@@ -3955,6 +4053,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         createdAt: user?.created_at ?? null,
         plan: entitlements.accountType,
         accountType: entitlements.accountType,
+        configuredAccountType: entitlements.configuredAccountType,
+        subscriptionState: entitlements.state,
+        paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
@@ -3972,7 +4073,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const userColumns = await getUsersTableColumns(env);
-    const userSelect = buildUserSelect(["id", "email", "created_at"], userColumns);
+    const userSelect = buildUserSelect(["id", "email", "email_verified", "created_at"], userColumns);
     const user = await env.AUTH_DB.prepare(
       `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`
     )
@@ -3980,6 +4081,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       .first<{
         id: string;
         email: string | null;
+        email_verified?: number | null;
         created_at: string | null;
         plan?: string | null;
         account_type?: string | null;
@@ -4080,6 +4182,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         createdAt: user?.created_at ?? null,
         plan: normalizedAccountType,
         accountType: normalizedAccountType,
+        configuredAccountType: entitlements.configuredAccountType,
+        subscriptionState: entitlements.state,
+        paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+        billingCustomerLinked: billing.stripeCustomerLinked,
+        emailVerified: (user?.email_verified ?? 0) === 1,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
