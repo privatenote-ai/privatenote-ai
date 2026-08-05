@@ -80,6 +80,15 @@ export const en: Translations = {
   fileTooLargeUpgradeHint:
     "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.",
   fileTooLargeBusinessUpgradeHint: "Business allows up to {businessLimit} per file.",
+  fileSizeUpgradeTitleStarter: "Upgrade to Starter for larger files",
+  fileSizeUpgradeTitleBusiness: "Upgrade to Business for larger files",
+  fileSizeUpgradeDescriptionStarter:
+    "Your plan allows files up to {currentLimit}. Starter supports encrypted attachments up to {nextLimit}.",
+  fileSizeUpgradeDescriptionBusiness:
+    "Your plan allows files up to {currentLimit}. Business supports encrypted attachments up to {nextLimit}.",
+  fileSizeUpgradeHighlightStarter: "Starter includes attachments up to {nextLimit}.",
+  fileSizeUpgradeHighlightBusiness: "Business includes attachments up to {nextLimit}.",
+  fileSizeUpgradeCta: "Compare plans",
   attachFileMaxSizeHint: "Up to {limit} per file",
   signInToAttachFiles: "Sign in to attach files",
   signInToAttachFilesHint: "Sign in to add encrypted file attachments.",

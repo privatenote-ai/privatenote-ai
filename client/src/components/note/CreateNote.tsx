@@ -12,9 +12,8 @@ import {
 } from "@shared/noteSizeLimits";
 import {
   formatNoteFileSize,
-  NOTE_FILE_BUSINESS_MAX_BYTES,
-  NOTE_FILE_STARTER_MAX_BYTES,
   noteFileLimitBytesForAccount,
+  resolveFileSizeUpgradePlan,
 } from "@shared/noteFileLimits";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
@@ -452,6 +451,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
+    "personal_premium" | "business_premium" | null
+  >(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
@@ -471,38 +473,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
-  const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
-    "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.")
-    .replace("{starterLimit}", formatNoteFileSize(NOTE_FILE_STARTER_MAX_BYTES))
-    .replace("{businessLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES))
-    .replace("{premiumLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES));
   const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
     "{limit}",
     fileLimitLabel,
   );
-
-  const rejectOversizedAttachment = (file: File): boolean => {
-    if (file.size <= fileLimitBytes) return false;
-    const description = (t.fileTooLargeDescription ?? "This file is {size}. Your plan allows up to {limit} per file.")
-      .replace("{size}", formatNoteFileSize(file.size))
-      .replace("{limit}", fileLimitLabel);
-    const upgradeHint =
-      accountType === "free" && file.size <= NOTE_FILE_BUSINESS_MAX_BYTES
-        ? paidFileUpgradeHint
-        : accountType === "personal_premium" && file.size <= NOTE_FILE_BUSINESS_MAX_BYTES
-          ? (t.fileTooLargeBusinessUpgradeHint ??
-              "Business allows up to {businessLimit} per file.").replace(
-              "{businessLimit}",
-              formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES),
-            )
-          : null;
-    toast({
-      title: t.fileTooLarge,
-      description: upgradeHint ? `${description} ${upgradeHint}` : description,
-      variant: "destructive",
-    });
-    return true;
-  };
 
   const attachFileReturnTo =
     typeof window === "undefined"
@@ -518,6 +492,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [canAttachFiles]);
 
   const { toast } = useToast();
+
+  const rejectOversizedAttachment = (file: File): boolean => {
+    if (file.size <= fileLimitBytes) return false;
+    const upgradePlan = resolveFileSizeUpgradePlan(accountType, file.size);
+    if (upgradePlan) {
+      setFileSizeUpgradePlan(upgradePlan);
+      return true;
+    }
+    toast({
+      title: t.fileTooLarge,
+      description: (t.fileTooLargeDescription ?? "This file is {size}. Your plan allows up to {limit} per file.")
+        .replace("{size}", formatNoteFileSize(file.size))
+        .replace("{limit}", fileLimitLabel),
+      variant: "destructive",
+    });
+    return true;
+  };
 
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
@@ -2497,7 +2488,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     isGeneratingContent ||
     cellularPreloadConfirmOpen ||
     showTemplateOfferPrompt ||
-    Boolean(attachmentProgress);
+    Boolean(attachmentProgress) ||
+    fileSizeUpgradePlan !== null;
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
@@ -2901,18 +2893,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     {t.sftNeedHigherLimits}{" "}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toast({
-                          title: t.sftPremiumComingSoonTitle,
-                          description: t.sftPremiumComingSoonDescription,
-                        })
-                      }
+                    <a
+                      href={localizedPath("/premium", language)}
                       className="font-medium text-primary hover:underline focus:outline-none"
                     >
                       {t.sftPremiumUpsell}
-                    </button>
+                    </a>
                   </p>
                 </>
               ) : isFileTransferMode && selectedFile ? (
@@ -3154,6 +3140,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             aiProgress={aiProgress}
             attachmentProgress={attachmentProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
+            fileSizeUpgradePlan={fileSizeUpgradePlan}
+            currentFileLimitBytes={fileLimitBytes}
             isGeneratingContent={isGeneratingContent && !usesHostedCloudAi}
             onStartFreeModelDownload={() => {
               void startFreeModelDownload();
@@ -3161,6 +3149,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onUseCloudAssist={handleUseCloudAssist}
             onWriteWithoutAi={() => setIsAiMode(false)}
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}
+            setFileSizeUpgradePlan={setFileSizeUpgradePlan}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}
           />

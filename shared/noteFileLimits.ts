@@ -1,4 +1,4 @@
-import { planFeaturesFor } from "./planCatalog";
+import { normalizeAccountType, planFeaturesFor, type AccountType } from "./planCatalog";
 
 export const NOTE_FILE_FREE_MAX_BYTES = 25 * 1024 * 1024;
 export const NOTE_FILE_STARTER_MAX_BYTES = 250 * 1024 * 1024;
@@ -68,4 +68,36 @@ export function formatNoteFileSize(bytes: number): string {
     return `${Number.isInteger(kb) ? kb.toFixed(0) : kb.toFixed(1)} KB`;
   }
   return `${bytes} B`;
+}
+
+/**
+ * Next paid plan that would accept this plaintext file size, or null when the
+ * file already fits the current plan or exceeds every plan.
+ */
+export function resolveFileSizeUpgradePlan(
+  accountTypeOrIsPremium: string | boolean | null | undefined,
+  fileSizeBytes: number,
+): Exclude<AccountType, "free"> | null {
+  if (!Number.isFinite(fileSizeBytes) || fileSizeBytes <= 0) return null;
+
+  const accountType: AccountType =
+    typeof accountTypeOrIsPremium === "boolean"
+      ? accountTypeOrIsPremium
+        ? "business_premium"
+        : "free"
+      : normalizeAccountType(accountTypeOrIsPremium);
+
+  const currentLimit = noteFileLimitBytesForAccount(accountType);
+  if (fileSizeBytes <= currentLimit) return null;
+  if (fileSizeBytes > NOTE_FILE_BUSINESS_MAX_BYTES) return null;
+
+  if (accountType === "free") {
+    return fileSizeBytes <= NOTE_FILE_STARTER_MAX_BYTES
+      ? "personal_premium"
+      : "business_premium";
+  }
+  if (accountType === "personal_premium") {
+    return "business_premium";
+  }
+  return null;
 }

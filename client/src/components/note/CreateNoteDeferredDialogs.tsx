@@ -17,6 +17,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
+import {
+  formatNoteFileSize,
+  noteFileLimitBytesForAccount,
+} from "@shared/noteFileLimits";
 import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel, isLocalAiReadyToGenerateProgress, localAiWorkingLabel } from "@/utils/localAiUxText";
 import type { ModelLoadProgress } from "@/utils/clientLLM";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
@@ -36,15 +41,20 @@ export type AttachmentUploadUiProgress = {
   detail?: string;
 };
 
+export type FileSizeUpgradePlan = "personal_premium" | "business_premium";
+
 type CreateNoteDeferredDialogsProps = {
   aiProgress: ModelLoadProgress | null;
   attachmentProgress: AttachmentUploadUiProgress | null;
   cellularPreloadConfirmOpen: boolean;
+  fileSizeUpgradePlan: FileSizeUpgradePlan | null;
+  currentFileLimitBytes: number;
   isGeneratingContent: boolean;
   onStartFreeModelDownload: () => void;
   onUseCloudAssist: () => void;
   onWriteWithoutAi: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
+  setFileSizeUpgradePlan: Dispatch<SetStateAction<FileSizeUpgradePlan | null>>;
   setShowTemplateOfferPrompt: Dispatch<SetStateAction<boolean>>;
   showTemplateOfferPrompt: boolean;
 };
@@ -53,25 +63,34 @@ export function CreateNoteDeferredDialogs({
   aiProgress,
   attachmentProgress,
   cellularPreloadConfirmOpen,
+  fileSizeUpgradePlan,
+  currentFileLimitBytes,
   isGeneratingContent,
   onStartFreeModelDownload,
   onUseCloudAssist,
   onWriteWithoutAi: _onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
+  setFileSizeUpgradePlan,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
 }: CreateNoteDeferredDialogsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const primaryLine = localAiDialogPrimaryLine(aiProgress);
+  const premiumUpgradeHref = localizedPath("/premium", language);
 
   const attachmentTitle =
     attachmentProgress?.phase === "prepare"
       ? t.attachmentProgressPreparing
-      : attachmentProgress?.phase === "upload"
-        ? t.attachmentProgressUploading
-        : attachmentProgress?.phase === "finalize"
-          ? t.attachmentProgressFinalizing
-          : t.attachmentProgressEncrypting;
+      : attachmentProgress?.phase === "finalize"
+        ? t.attachmentProgressFinalizing
+        : // Encrypt and upload are streamed together — keep one stable title.
+          t.attachmentProgressEncrypting;
+
+  const upgradeIsStarter = fileSizeUpgradePlan === "personal_premium";
+  const currentLimitLabel = formatNoteFileSize(currentFileLimitBytes);
+  const nextLimitLabel = formatNoteFileSize(
+    noteFileLimitBytesForAccount(fileSizeUpgradePlan ?? "personal_premium"),
+  );
 
   return (
     <>
@@ -121,19 +140,50 @@ export function CreateNoteDeferredDialogs({
         progress={
           attachmentProgress
             ? {
-                phase: attachmentProgress.phase,
+                phase: attachmentProgress.phase === "upload" ? "encrypt" : attachmentProgress.phase,
                 progress: attachmentProgress.progress,
                 title: attachmentTitle,
                 detail: attachmentProgress.detail,
                 footnote: t.attachmentProgressFootnote,
-                mode: "create",
-                encryptLabel: t.attachmentProgressEncrypting,
-                uploadLabel: t.attachmentProgressUploading,
-                finalizeLabel: t.attachmentProgressFinalizing,
               }
             : null
         }
       />
+
+      <Dialog
+        open={fileSizeUpgradePlan !== null}
+        onOpenChange={(open) => {
+          if (!open) setFileSizeUpgradePlan(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {upgradeIsStarter ? t.fileSizeUpgradeTitleStarter : t.fileSizeUpgradeTitleBusiness}
+            </DialogTitle>
+            <DialogDescription>
+              {(upgradeIsStarter
+                ? t.fileSizeUpgradeDescriptionStarter
+                : t.fileSizeUpgradeDescriptionBusiness
+              )
+                .replace("{currentLimit}", currentLimitLabel)
+                .replace("{nextLimit}", nextLimitLabel)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
+            {(upgradeIsStarter
+              ? t.fileSizeUpgradeHighlightStarter
+              : t.fileSizeUpgradeHighlightBusiness
+            ).replace("{nextLimit}", nextLimitLabel)}
+          </div>
+          <a
+            href={premiumUpgradeHref}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {t.fileSizeUpgradeCta}
+          </a>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={cellularPreloadConfirmOpen}

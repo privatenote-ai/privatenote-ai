@@ -10,6 +10,7 @@ import {
   formatNoteFileSize,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
+  resolveFileSizeUpgradePlan,
 } from "./noteFileLimits.ts";
 
 describe("noteFileLimits", () => {
@@ -41,5 +42,33 @@ describe("noteFileLimits", () => {
       NOTE_FILE_BUSINESS_TOTAL_STORAGE_BYTES,
     );
     assert.equal(formatNoteFileSize(NOTE_FILE_BUSINESS_TOTAL_STORAGE_BYTES), "50 GB");
+  });
+
+  it("resolves Free→Starter and Starter→Business upgrade targets for oversized files", () => {
+    assert.equal(resolveFileSizeUpgradePlan("free", NOTE_FILE_FREE_MAX_BYTES), null);
+    assert.equal(
+      resolveFileSizeUpgradePlan("free", NOTE_FILE_FREE_MAX_BYTES + 1),
+      "personal_premium",
+    );
+    assert.equal(
+      resolveFileSizeUpgradePlan("free", NOTE_FILE_STARTER_MAX_BYTES),
+      "personal_premium",
+    );
+    assert.equal(
+      resolveFileSizeUpgradePlan("free", NOTE_FILE_STARTER_MAX_BYTES + 1),
+      "business_premium",
+    );
+    assert.equal(
+      resolveFileSizeUpgradePlan("personal_premium", NOTE_FILE_STARTER_MAX_BYTES + 1),
+      "business_premium",
+    );
+    assert.equal(
+      resolveFileSizeUpgradePlan("personal_premium", NOTE_FILE_BUSINESS_MAX_BYTES + 1),
+      null,
+    );
+    assert.equal(
+      resolveFileSizeUpgradePlan("business_premium", NOTE_FILE_BUSINESS_MAX_BYTES + 1),
+      null,
+    );
   });
 });
