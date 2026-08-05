@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Bell,
@@ -21,15 +21,23 @@ import {
 import { billingCurrencyFromBrowser } from "@shared/billingRegion";
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
 
 const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
 const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
 
 type PaidPlanId = Exclude<AccountType, "free">;
+
+type BillingStatus = {
+  accountType: AccountType;
+  canChangeSubscription: boolean;
+  configuredAccountType: AccountType;
+  billingCurrency?: BillingCurrency;
+};
 
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
@@ -64,10 +72,50 @@ function formatFileWindowLabel(seconds: number): string {
   return `${minutes} minute`;
 }
 
-function planCta(planId: AccountType): string {
-  if (planId === "free") return "Start free";
-  if (planId === "personal_premium") return "Choose Starter";
+function planCta(
+  planId: AccountType,
+  options?: {
+    isCurrent?: boolean;
+    currentPlan?: AccountType | null;
+    signedIn?: boolean;
+  },
+): string {
+  if (options?.isCurrent) return "Current plan";
+  if (planId === "free") {
+    return options?.signedIn ? "Included" : "Start free";
+  }
+
+  const current = options?.currentPlan ?? null;
+  if (planId === "personal_premium") {
+    if (options?.signedIn && (!current || current === "free")) return "Upgrade to Starter";
+    if (current === "business_premium") return "Switch to Starter";
+    return "Choose Starter";
+  }
+
+  if (options?.signedIn && (current === "free" || current === "personal_premium" || !current)) {
+    return "Upgrade to Business";
+  }
   return "Choose Business";
+}
+
+function currentPlanAcknowledgement(plan: AccountType): string {
+  if (plan === "free") {
+    return "You're on Free. Starter and Business are available when you need higher limits.";
+  }
+  if (plan === "personal_premium") {
+    return "You're on Starter. Upgrade to Business for branding and larger files.";
+  }
+  return "You're on Business — thanks for supporting PrivateNote.";
+}
+
+function billingErrorCode(error: unknown): string | null {
+  if (!(error instanceof ApiRequestError)) return null;
+  try {
+    const parsed = JSON.parse(error.bodyText) as { error?: unknown };
+    return typeof parsed.error === "string" ? parsed.error : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Short outcome bullets for cards; capacity details live in the comparison table. */
@@ -267,6 +315,9 @@ function PlanCard({
   href,
   onCheckout,
   checkoutBusy,
+  isCurrent,
+  currentPlan,
+  signedIn,
 }: {
   planId: AccountType;
   interval: BillingInterval;
@@ -274,9 +325,12 @@ function PlanCard({
   href: string;
   onCheckout?: (plan: PaidPlanId) => void;
   checkoutBusy?: boolean;
+  isCurrent?: boolean;
+  currentPlan?: AccountType | null;
+  signedIn?: boolean;
 }) {
   const plan = PLAN_CATALOG[planId];
-  const highlighted = planId === HIGHLIGHTED_PLAN;
+  const highlighted = planId === HIGHLIGHTED_PLAN && !isCurrent;
   const annualSavings = annualPlanSavingsPercent(planId, currency);
   const isFree = planId === "free";
   const displayAmount = planAmountFor(planId, currency, interval);
@@ -285,24 +339,33 @@ function PlanCard({
     : interval === "month"
       ? "Billed monthly. Cancel anytime before renewal."
       : `Billed annually · about ${annualSavings}% less than monthly. Cancel anytime before renewal.`;
+  const ctaLabel = planCta(planId, { isCurrent, currentPlan, signedIn });
 
   const buttonClassName = [
     "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
-    highlighted
-      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-      : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
+    isCurrent
+      ? "border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
+      : highlighted
+        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+        : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
   ].join(" ");
 
   return (
     <article
       className={[
         "relative flex min-w-0 flex-col rounded-2xl border bg-white p-6 sm:p-7 dark:bg-gray-950",
-        highlighted
-          ? "border-primary/40 shadow-lg shadow-primary/10 ring-2 ring-primary/10"
-          : "border-gray-200 dark:border-gray-800",
+        isCurrent
+          ? "border-emerald-300 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/15 dark:border-emerald-800"
+          : highlighted
+            ? "border-primary/40 shadow-lg shadow-primary/10 ring-2 ring-primary/10"
+            : "border-gray-200 dark:border-gray-800",
       ].join(" ")}
     >
-      {highlighted ? (
+      {isCurrent ? (
+        <div className="absolute right-4 top-4 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+          Current plan
+        </div>
+      ) : highlighted ? (
         <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
           Most popular
         </div>
@@ -347,18 +410,22 @@ function PlanCard({
           administration are not included.
         </p>
       ) : null}
-      {onCheckout && planId !== "free" ? (
+      {isCurrent || (signedIn && planId === "free" && currentPlan && currentPlan !== "free") ? (
+        <button type="button" className={buttonClassName} disabled>
+          {ctaLabel}
+        </button>
+      ) : onCheckout && planId !== "free" ? (
         <button
           type="button"
           className={buttonClassName}
           disabled={checkoutBusy}
           onClick={() => onCheckout(planId)}
         >
-          {checkoutBusy ? "Opening checkout…" : planCta(planId)}
+          {checkoutBusy ? "Opening checkout…" : ctaLabel}
         </button>
       ) : (
         <Link href={href} className={buttonClassName}>
-          {planCta(planId)}
+          {ctaLabel}
         </Link>
       )}
       <p className="mt-7 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -385,51 +452,91 @@ function PlanCard({
 export default function Premium() {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const { entitlements } = useAccountEntitlements();
   const { toast } = useToast();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<PaidPlanId | null>(null);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
   const lp = (path: string) => localizedPath(path, language);
 
   const displayCurrency = useMemo(
-    () => billingCurrencyFromBrowser(language),
-    [language],
+    () =>
+      billingStatus?.billingCurrency === "usd" || billingStatus?.billingCurrency === "eur"
+        ? billingStatus.billingCurrency
+        : billingCurrencyFromBrowser(language),
+    [billingStatus?.billingCurrency, language],
   );
   const starterSavings = annualPlanSavingsPercent("personal_premium", displayCurrency);
   const faqs = useMemo(() => buildFaqs(displayCurrency), [displayCurrency]);
+  const currentPlan: AccountType | null = user
+    ? billingStatus?.accountType ?? entitlements.accountType
+    : null;
 
-  const startCheckout = async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
-    setCheckoutBusyPlan(plan);
-    try {
-      const checkout = await apiRequest<{ url: string }>(
-        "/api/auth/billing/checkout",
-        "POST",
-        { plan, interval },
-      );
-      window.location.assign(checkout.url);
-    } catch (error) {
-      const alreadySubscribed =
-        error instanceof Error &&
-        (/409/.test(error.message) || /subscription_already_exists/.test(String(error)));
-      if (alreadySubscribed) {
-        try {
-          const portal = await apiRequest<{ url: string }>(
-            "/api/auth/billing/portal",
-            "POST",
-          );
-          window.location.assign(portal.url);
-          return;
-        } catch {
-          // Fall through to toast.
-        }
+  useEffect(() => {
+    if (!user) {
+      setBillingStatus(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status = await apiRequest<BillingStatus>("/api/auth/billing/status", "GET");
+        if (!cancelled) setBillingStatus(status);
+      } catch {
+        // Fall back to entitlements snapshot when billing status is unavailable.
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, entitlements.refreshedAt]);
+
+  const openPortal = useCallback(async () => {
+    try {
+      const portal = await apiRequest<{ url: string }>("/api/auth/billing/portal", "POST", {
+        flow: "subscription_update",
+      });
+      window.location.assign(portal.url);
+    } catch {
       toast({
-        title: "Could not start checkout",
-        description: "Please try again, or open Account to manage an existing subscription.",
+        title: "Could not open billing",
+        description: "Open Account to manage your subscription.",
         variant: "destructive",
       });
       setCheckoutBusyPlan(null);
     }
-  };
+  }, [toast]);
+
+  const startCheckout = useCallback(
+    async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
+      if (currentPlan === plan) return;
+      setCheckoutBusyPlan(plan);
+      try {
+        const checkout = await apiRequest<{ url: string; mode?: string }>(
+          "/api/auth/billing/checkout",
+          "POST",
+          { plan, interval },
+        );
+        window.location.assign(checkout.url);
+      } catch (error) {
+        const code = billingErrorCode(error);
+        if (
+          code === "subscription_already_exists" ||
+          (error instanceof ApiRequestError && error.status === 409)
+        ) {
+          await openPortal();
+          return;
+        }
+        toast({
+          title: "Could not start checkout",
+          description: "Please try again, or open Account to manage an existing subscription.",
+          variant: "destructive",
+        });
+        setCheckoutBusyPlan(null);
+      }
+    },
+    [billingInterval, currentPlan, openPortal, toast],
+  );
 
   const planHref = useMemo(
     (): Record<AccountType, string> => {
@@ -462,7 +569,7 @@ export default function Premium() {
     const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
     window.history.replaceState({}, "", next);
     void startCheckout(plan, interval);
-  }, [user]);
+  }, [user, startCheckout]);
 
   const starterPrice = formatMoney(
     planPriceFor(
@@ -492,6 +599,11 @@ export default function Premium() {
           Free for sending secrets without an account. Starter when you need to know who opened
           it. Business when the reveal should carry your brand.
         </p>
+        {currentPlan ? (
+          <p className="mx-auto mt-4 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm font-medium text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+            {currentPlanAcknowledgement(currentPlan)}
+          </p>
+        ) : null}
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <button
             type="button"
@@ -538,13 +650,14 @@ export default function Premium() {
             currency={displayCurrency}
             href={planHref[planId]}
             onCheckout={
-              user && planId !== "free"
+              user && planId !== "free" && currentPlan !== planId
                 ? (plan) => void startCheckout(plan)
                 : undefined
             }
-            checkoutBusy={
-              planId !== "free" && checkoutBusyPlan === planId
-            }
+            checkoutBusy={planId !== "free" && checkoutBusyPlan === planId}
+            isCurrent={Boolean(user) && currentPlan === planId}
+            currentPlan={currentPlan}
+            signedIn={Boolean(user)}
           />
         ))}
       </section>
