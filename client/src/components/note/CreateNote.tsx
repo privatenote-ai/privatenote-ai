@@ -20,8 +20,10 @@ import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
   clampNoteExpiryPresetForAccount,
   noteExpiryPresetIdToSeconds,
+  noteExpirySecondsToPresetId,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
+import { planFeaturesFor } from "@shared/planCatalog";
 import {
   NOTE_READ_LIMIT_DEFAULT,
   clampNoteReadLimitForAccount,
@@ -30,6 +32,7 @@ import {
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   clampNoteFileAccessWindowForAccount,
+  isNoteFileAccessWindowSeconds,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
@@ -175,6 +178,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "15d") return t.expiry15d ?? "15 days";
   if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
 }
@@ -442,6 +446,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [restrictRecipientEmail, setRestrictRecipientEmail] = useState(false);
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [deliverRecipientEmail, setDeliverRecipientEmail] = useState("");
+  const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("free");
   const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
@@ -461,8 +467,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
+  const planCapabilities = planFeaturesFor(accountType);
+  const maxExpirySeconds = planCapabilities.maxExpirySeconds;
   const canAttachFiles = Boolean(user);
-  const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
+  const canNotifyOnOpen =
+    Boolean(user) &&
+    planCapabilities.openNotifications &&
+    accountEmailNotifications &&
+    accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
   const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
@@ -694,12 +706,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [prefillText]);
 
   const authDraftRestoredRef = useRef(false);
+  const authDraftAppliedRef = useRef(false);
   useEffect(() => {
     if (authDraftRestoredRef.current || prefillText) return;
     authDraftRestoredRef.current = true;
     const draft = readCreateNoteAuthDraft();
     if (!draft) return;
     clearCreateNoteAuthDraft();
+    authDraftAppliedRef.current = true;
 
     const { text } = truncateUtf8StringToMaxBytes(
       draft.noteContent,
@@ -729,6 +743,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [prefillText]);
 
   useEffect(() => {
+    if (planCapabilities.premiumTemplatePacks || !selectedTemplateId) return;
+    void loadPromptTemplatesModule().then((m) => {
+      if (m.isPremiumPromptTemplateId(selectedTemplateId)) {
+        setSelectedTemplateId("ask-anything");
+      }
+    });
+  }, [planCapabilities.premiumTemplatePacks, selectedTemplateId]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!user) {
       setAccountType("free");
@@ -755,9 +778,55 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           emailVerified?: boolean;
         }>("/api/auth/account/summary", "GET");
         if (cancelled) return;
-        setAccountType(normalizeAccountType(summary.accountType ?? summary.plan));
+        const nextAccountType = normalizeAccountType(summary.accountType ?? summary.plan);
+        setAccountType(nextAccountType);
         setAccountEmailNotifications(summary.emailNotifications === true);
         setAccountEmailVerified(summary.emailVerified === true);
+
+        if (
+          !authDraftAppliedRef.current &&
+          !prefillText &&
+          planFeaturesFor(nextAccountType).savedDefaults
+        ) {
+          try {
+            const defaultsResponse = await apiRequest<{
+              ok?: boolean;
+              defaults: {
+                expirySeconds: number | null;
+                maxReads: NoteReadLimit | null;
+                fileAccessWindowSeconds: number | null;
+                readerLanguage: SupportedLanguage | null;
+                notifyOnOpen: boolean;
+                requireRecipientVerification: boolean;
+              } | null;
+            }>("/api/auth/account/note-defaults", "GET");
+            if (cancelled || !defaultsResponse.defaults) return;
+            const defaults = defaultsResponse.defaults;
+            const expiryPreset =
+              typeof defaults.expirySeconds === "number"
+                ? noteExpirySecondsToPresetId(defaults.expirySeconds)
+                : null;
+            if (expiryPreset) setExpiryValue(expiryPreset);
+            if (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5) {
+              setReadCount(defaults.maxReads);
+            }
+            if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
+              setFileAccessWindowSeconds(defaults.fileAccessWindowSeconds);
+            }
+            if (
+              defaults.readerLanguage &&
+              SUPPORTED_LANGUAGES.includes(defaults.readerLanguage)
+            ) {
+              setReaderLanguage(defaults.readerLanguage);
+            } else {
+              setReaderLanguage("auto");
+            }
+            setNotifyOnOpen(defaults.notifyOnOpen === true);
+            setRequireRecipientVerification(defaults.requireRecipientVerification === true);
+          } catch {
+            /* defaults are optional */
+          }
+        }
       } catch {
         if (!cancelled) {
           setAccountType("free");
@@ -782,12 +851,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   useEffect(() => {
     if (premiumStatusLoading) return;
-    setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, isPremiumUser));
-    setReadCount((current) => clampNoteReadLimitForAccount(current, isPremiumUser));
-    setFileAccessWindowSeconds((current) =>
-      clampNoteFileAccessWindowForAccount(current, isPremiumUser),
+    setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, maxExpirySeconds));
+    setReadCount((current) =>
+      clampNoteReadLimitForAccount(current, planCapabilities.allowedReadCounts),
     );
-  }, [isPremiumUser, premiumStatusLoading]);
+    setFileAccessWindowSeconds((current) =>
+      clampNoteFileAccessWindowForAccount(current, accountType),
+    );
+  }, [
+    accountType,
+    maxExpirySeconds,
+    planCapabilities.allowedReadCounts,
+    premiumStatusLoading,
+  ]);
 
   useEffect(() => {
     if (!canAttachFiles && selectedFile) {
@@ -809,8 +885,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (restrictRecipientEmail) setRestrictRecipientEmail(false);
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
+    if (deliverRecipientEmail) setDeliverRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
   }, [
+    deliverRecipientEmail,
     isPremiumUser,
     recipientEmail,
     readerLanguage,
@@ -1216,6 +1294,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     const applyRestrictRecipientEmail = isPremiumUser && restrictRecipientEmail;
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
+    const trimmedDeliverRecipientEmail = deliverRecipientEmail.trim();
+    const shouldDeliverRecipientLink =
+      planCapabilities.recipientLinkDelivery && trimmedDeliverRecipientEmail.length > 0;
     if (applyRestrictRecipientEmail) {
       const trimmedRecipientEmail = recipientEmail.trim();
       if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
@@ -1226,6 +1307,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         });
         return;
       }
+    }
+    if (shouldDeliverRecipientLink && !isPlausibleEmailFormat(trimmedDeliverRecipientEmail)) {
+      toast({
+        title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
+        description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address, or leave it blank.",
+        variant: "destructive",
+      });
+      return;
     }
 
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
@@ -1672,6 +1761,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
+
+      let recipientLinkDelivery:
+        | { status: "sent" | "failed"; email: string }
+        | undefined;
+      if (shouldDeliverRecipientLink) {
+        const deliveryEmail = trimmedDeliverRecipientEmail.toLowerCase();
+        try {
+          await apiRequest(`/api/notes/${id}/deliver-link`, "POST", {
+            recipientEmail: deliveryEmail,
+            noteUrl: url,
+          });
+          recipientLinkDelivery = { status: "sent", email: deliveryEmail };
+        } catch {
+          recipientLinkDelivery = { status: "failed", email: deliveryEmail };
+        }
+      }
+
       setCreatedNote({
         url,
         meta: {
@@ -1682,6 +1788,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             typeof recipientVerificationCode === "string"
               ? recipientVerificationCode
               : undefined,
+          recipientLinkDelivery,
         },
       });
       resetAiTurnstileWidget();
@@ -1773,6 +1880,45 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     await copyToClipboard();
   };
 
+  const retryRecipientLinkDelivery = useCallback(async () => {
+    const meta = createdNote?.meta?.recipientLinkDelivery;
+    const url = createdNote?.url;
+    if (!meta || !url || meta.status !== "failed") return;
+    const noteIdMatch = url.match(/\/note\/([^/#]+)/);
+    const noteId = noteIdMatch?.[1];
+    if (!noteId) return;
+    setRecipientLinkDeliveryRetrying(true);
+    try {
+      await apiRequest(`/api/notes/${noteId}/deliver-link`, "POST", {
+        recipientEmail: meta.email,
+        noteUrl: url,
+      });
+      setCreatedNote((current) =>
+        current
+          ? {
+              ...current,
+              meta: current.meta
+                ? {
+                    ...current.meta,
+                    recipientLinkDelivery: { status: "sent", email: meta.email },
+                  }
+                : current.meta,
+            }
+          : current,
+      );
+    } catch {
+      toast({
+        title: t.recipientLinkDeliveryFailedTitle ?? "Could not email the link",
+        description: (t.recipientLinkDeliveryFailedBody ??
+          "We could not send the link to {email}. You can still copy it below."
+        ).replace("{email}", meta.email),
+        variant: "destructive",
+      });
+    } finally {
+      setRecipientLinkDeliveryRetrying(false);
+    }
+  }, [createdNote, t, toast]);
+
   const createNewNote = () => {
     clearCreateNoteAuthDraft();
     setShowSuccessQr(false);
@@ -1789,6 +1935,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setRestrictRecipientEmail(false);
     setRequireRecipientVerification(false);
     setRecipientEmail("");
+    setDeliverRecipientEmail("");
     setNoteLabel("");
     setShowPrompt(true);
     setAiDraftAccepted(false);
@@ -1825,6 +1972,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setSelectedTemplateId(template.id);
     });
   };
+
+  const handleSaveNoteDefaults = useCallback(async () => {
+    await apiRequest("/api/auth/account/note-defaults", "PUT", {
+      expirySeconds: noteExpiryPresetIdToSeconds(expiryValue),
+      maxReads: readCount,
+      fileAccessWindowSeconds,
+      readerLanguage: readerLanguage === "auto" ? null : readerLanguage,
+      notifyOnOpen,
+      requireRecipientVerification,
+    });
+    toast({
+      title: "Note defaults saved",
+      description: "These settings will be used on your signed-in devices.",
+    });
+  }, [
+    expiryValue,
+    fileAccessWindowSeconds,
+    notifyOnOpen,
+    readCount,
+    readerLanguage,
+    requireRecipientVerification,
+    toast,
+  ]);
 
   const handleSentenceLengthChange = useCallback(
     (id: AiSentenceLengthId) => {
@@ -2396,6 +2566,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         setSelectedDoDont={setSelectedDoDont}
         successLinkCopied={successLinkCopied}
         onCopyLink={copyToClipboard}
+        onRetryRecipientLinkDelivery={retryRecipientLinkDelivery}
+        recipientLinkDeliveryRetrying={recipientLinkDeliveryRetrying}
         onShareLink={shareLink}
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
@@ -2520,6 +2692,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
                 onPreferHostedCloudChange={handlePreferHostedCloudChange}
                 onWriteWithoutAi={() => setIsAiMode(false)}
+                canUsePremiumTemplates={planCapabilities.premiumTemplatePacks}
+                canUseCustomTemplates={planCapabilities.customPromptTemplates}
                 />
               </Suspense>
             </div>
@@ -2663,6 +2837,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
+                maxExpirySeconds={maxExpirySeconds}
+                allowedReadCounts={planCapabilities.allowedReadCounts}
+                maxFileAccessWindowSeconds={planCapabilities.maxFileAccessWindowSeconds}
+                isSignedIn={Boolean(user)}
                 premiumStatusLoading={premiumStatusLoading}
                 restrictRecipientEmail={restrictRecipientEmail}
                 setRestrictRecipientEmail={setRestrictRecipientEmail}
@@ -2670,12 +2848,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setRequireRecipientVerification={setRequireRecipientVerification}
                 recipientEmail={recipientEmail}
                 setRecipientEmail={setRecipientEmail}
+                deliverRecipientEmail={deliverRecipientEmail}
+                setDeliverRecipientEmail={setDeliverRecipientEmail}
+                canDeliverRecipientLink={planCapabilities.recipientLinkDelivery}
                 readCount={readCount}
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
                 readerLanguage={readerLanguage}
                 setReaderLanguage={setReaderLanguage}
+                onSaveDefaults={
+                  planCapabilities.savedDefaults ? handleSaveNoteDefaults : undefined
+                }
               />
             </Suspense>
           )}
@@ -2973,6 +3157,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               noteLabel,
               setNoteLabel,
               isPremiumUser,
+              maxExpirySeconds,
+              allowedReadCounts: planCapabilities.allowedReadCounts,
+              maxFileAccessWindowSeconds: planCapabilities.maxFileAccessWindowSeconds,
+              isSignedIn: Boolean(user),
               premiumStatusLoading,
               restrictRecipientEmail,
               setRestrictRecipientEmail,
@@ -2980,12 +3168,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setRequireRecipientVerification,
               recipientEmail,
               setRecipientEmail,
+              deliverRecipientEmail,
+              setDeliverRecipientEmail,
+              canDeliverRecipientLink: planCapabilities.recipientLinkDelivery,
               readCount,
               setReadCount,
               fileAccessWindowSeconds,
               setFileAccessWindowSeconds,
               readerLanguage,
               setReaderLanguage,
+              onSaveDefaults: planCapabilities.savedDefaults
+                ? handleSaveNoteDefaults
+                : undefined,
             }}
           />
         </Suspense>

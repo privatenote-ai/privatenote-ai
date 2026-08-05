@@ -116,6 +116,8 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return features.proofOfAccess ? "Included" : "No";
     case "recipientVerification":
       return features.recipientVerification ? "Included" : "No";
+    case "recipientLinkDelivery":
+      return features.recipientLinkDelivery ? "Included" : "No";
     case "sentNotesDashboard":
       return features.sentNotesDashboard ? "Included" : "No";
     case "revokeUnopened":
@@ -160,6 +162,7 @@ const comparisonSections: { title: string; rows: { key: string; label: string }[
       { key: "openNotifications", label: "Open and destroy notifications" },
       { key: "proofOfAccess", label: "Proof of access" },
       { key: "recipientVerification", label: "Recipient verification" },
+      { key: "recipientLinkDelivery", label: "Email link to recipient" },
       { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
       { key: "revokeUnopened", label: "Revoke unopened notes" },
       { key: "revealBranding", label: "Company branding on reveal" },
@@ -281,7 +284,7 @@ function PlanCard({
     ? "No payment required."
     : interval === "month"
       ? "Billed monthly. Cancel anytime before renewal."
-      : `Billed annually · save ${annualSavings}%. Cancel anytime before renewal.`;
+      : `Billed annually · about ${annualSavings}% less than monthly. Cancel anytime before renewal.`;
 
   const buttonClassName = [
     "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
@@ -491,23 +494,13 @@ export default function Premium() {
             type="button"
             onClick={() => setBillingInterval("year")}
             className={[
-              "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition",
+              "rounded-md px-4 py-2 text-sm font-semibold transition",
               billingInterval === "year"
                 ? "bg-primary text-primary-foreground"
                 : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
             ].join(" ")}
           >
             Pay yearly
-            <span
-              className={[
-                "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                billingInterval === "year"
-                  ? "bg-white/20 text-primary-foreground"
-                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-              ].join(" ")}
-            >
-              Save {starterSavings}%
-            </span>
           </button>
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
@@ -515,8 +508,8 @@ export default function Premium() {
           {intervalLabel} · Business {businessPrice}
           {intervalLabel}.
           {billingInterval === "year"
-            ? ` Two months free versus monthly.`
-            : " Switch to yearly for two months free."}{" "}
+            ? ` Save about ${starterSavings}% versus monthly.`
+            : ` Yearly saves about ${starterSavings}%.`}{" "}
           Prices shown in {displayCurrency.toUpperCase()}; checkout confirms the charge currency.
         </p>
       </section>

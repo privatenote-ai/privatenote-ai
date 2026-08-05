@@ -77,9 +77,13 @@ describe("planCatalog", () => {
     assert.equal(planDefinitionFor("free").features.proofOfAccess, false);
     assert.equal(planDefinitionFor("personal_premium").features.proofOfAccess, true);
     assert.equal(planFeaturesFor("personal_premium").revealBranding, false);
+    assert.equal(planFeaturesFor("personal_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("personal_premium").customPromptTemplates, false);
     assert.equal(planFeaturesFor("business_premium").revealBranding, true);
+    assert.equal(planFeaturesFor("business_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("business_premium").customPromptTemplates, true);
+    assert.equal(planFeaturesFor("free").premiumTemplatePacks, false);
+    assert.equal(planFeaturesFor("free").customPromptTemplates, false);
   });
 
   it("exposes note customization capabilities by plan", () => {
@@ -90,8 +94,8 @@ describe("planCatalog", () => {
     assert.equal(free.extendedFileAccess, false);
     assert.equal(free.recipientLinkDelivery, false);
     assert.equal(free.readerLanguage, false);
-    assert.equal(starter.maxExpirySeconds, 30 * 24 * 60 * 60);
-    assert.deepEqual(starter.allowedReadCounts, [1, 2, 3, 5]);
+    assert.equal(starter.maxExpirySeconds, 15 * 24 * 60 * 60);
+    assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
     assert.equal(starter.extendedFileAccess, true);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);

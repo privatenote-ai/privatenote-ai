@@ -10,8 +10,15 @@ type HostedAiQuota = {
   monthKey: string;
 };
 
-function currentMonthKey(): string {
-  const d = new Date();
+export type HostedAiQuotaSnapshot = {
+  used: number;
+  limit: number;
+  remaining: number;
+  resetAt: number;
+};
+
+function currentMonthKey(now = new Date()): string {
+  const d = now;
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
@@ -26,33 +33,49 @@ export function hostedAiQuotaKey(identifier: string, accountType: string | null 
   return `${HOSTED_AI_DRAFT.KEY_PREFIX}${plan}:${identifier}:${currentMonthKey()}`;
 }
 
-export async function readHostedAiQuota(
+export async function readHostedAiQuotaSnapshot(
   env: Env,
   identifier: string,
   accountType: string | null | undefined,
-): Promise<{ allowed: boolean; remaining: number; resetAt: number; nextCount: number; limit: number }> {
+): Promise<HostedAiQuotaSnapshot> {
   const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
   const monthKey = currentMonthKey();
   const limit = hostedAiMonthlyLimit(accountType);
   const resetAt = monthResetAt(monthKey);
 
   try {
-    const stored = (await kv.get(hostedAiQuotaKey(identifier, accountType), { type: "json" })) as HostedAiQuota | null;
-    const count = stored?.monthKey === monthKey ? stored.count : 0;
-    if (count >= limit) {
-      return { allowed: false, remaining: 0, resetAt, nextCount: count, limit };
-    }
+    const stored = (await kv.get(hostedAiQuotaKey(identifier, accountType), {
+      type: "json",
+    })) as HostedAiQuota | null;
+    const used =
+      stored?.monthKey === monthKey
+        ? Math.max(0, Math.min(limit, Number(stored.count) || 0))
+        : 0;
     return {
-      allowed: true,
-      remaining: limit - count,
-      resetAt,
-      nextCount: count + 1,
+      used,
       limit,
+      remaining: Math.max(0, limit - used),
+      resetAt,
     };
   } catch (error) {
-    console.error("[HOSTED_AI] Error reading quota:", error);
-    return { allowed: true, remaining: limit, resetAt, nextCount: 1, limit };
+    console.error("[HOSTED_AI] Error reading quota snapshot:", error);
+    return { used: 0, limit, remaining: limit, resetAt };
   }
+}
+
+export async function readHostedAiQuota(
+  env: Env,
+  identifier: string,
+  accountType: string | null | undefined,
+): Promise<{ allowed: boolean; remaining: number; resetAt: number; nextCount: number; limit: number }> {
+  const snapshot = await readHostedAiQuotaSnapshot(env, identifier, accountType);
+  return {
+    allowed: snapshot.used < snapshot.limit,
+    remaining: snapshot.remaining,
+    resetAt: snapshot.resetAt,
+    nextCount: snapshot.used + 1,
+    limit: snapshot.limit,
+  };
 }
 
 export async function commitHostedAiQuota(

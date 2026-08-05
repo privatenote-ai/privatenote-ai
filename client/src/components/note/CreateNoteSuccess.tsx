@@ -31,6 +31,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d ?? noteExpiryPresetDisplayLabel(expiryValue);
+  if (expiryValue === "15d") return t.expiry15d ?? noteExpiryPresetDisplayLabel(expiryValue);
   if (expiryValue === "30d") return t.expiry30d ?? noteExpiryPresetDisplayLabel(expiryValue);
   return noteExpiryPresetDisplayLabel(expiryValue);
 }
@@ -58,6 +59,10 @@ export type CreatedNoteMeta = {
   readCount: number;
   isPasswordProtected: boolean;
   recipientVerificationCode?: string;
+  recipientLinkDelivery?: {
+    status: "sent" | "failed";
+    email: string;
+  };
 };
 
 export type CreatedNoteState = {
@@ -78,6 +83,8 @@ export type CreateNoteSuccessProps = {
   setSelectedDoDont: (v: "do" | "dont" | null | ((prev: "do" | "dont" | null) => "do" | "dont" | null)) => void;
   successLinkCopied: boolean;
   onCopyLink: () => Promise<void>;
+  onRetryRecipientLinkDelivery?: () => Promise<void>;
+  recipientLinkDeliveryRetrying?: boolean;
   onShareLink: () => Promise<void>;
   onShareQrCode: () => Promise<void>;
   onDownloadQrCode: () => Promise<void>;
@@ -98,6 +105,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   setSelectedDoDont,
   successLinkCopied,
   onCopyLink,
+  onRetryRecipientLinkDelivery,
+  recipientLinkDeliveryRetrying = false,
   onShareLink,
   onShareQrCode,
   onDownloadQrCode,
@@ -125,6 +134,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     readCount: createdReadCount,
     isPasswordProtected: createdPasswordProtected,
     recipientVerificationCode,
+    recipientLinkDelivery,
   } = createdNoteMeta;
 
   const expiryLabel = translatedExpiryLabel(createdExpiryValue, t);
@@ -192,6 +202,44 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       {t.recipientVerificationCodeHint ??
                         "Share this code with the recipient separately. They must enter it before the note can be revealed."}
                     </p>
+                  </div>
+                ) : null}
+
+                {recipientLinkDelivery ? (
+                  <div
+                    className={`rounded-lg border px-4 py-3.5 text-sm ${
+                      recipientLinkDelivery.status === "sent"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-100"
+                        : "border-red-200 bg-red-50 text-red-950 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-100"
+                    }`}
+                    role="status"
+                  >
+                    <p className="m-0 font-medium">
+                      {recipientLinkDelivery.status === "sent"
+                        ? t.recipientLinkDeliverySentTitle ?? "Link emailed"
+                        : t.recipientLinkDeliveryFailedTitle ?? "Could not email the link"}
+                    </p>
+                    <p className="mt-2 m-0 text-xs leading-snug opacity-90">
+                      {(recipientLinkDelivery.status === "sent"
+                        ? t.recipientLinkDeliverySentBody ?? "Sent to {email}."
+                        : t.recipientLinkDeliveryFailedBody ??
+                          "We could not send the link to {email}. You can still copy it below."
+                      ).replace("{email}", recipientLinkDelivery.email)}
+                    </p>
+                    {recipientLinkDelivery.status === "failed" && onRetryRecipientLinkDelivery ? (
+                      <button
+                        type="button"
+                        disabled={recipientLinkDeliveryRetrying}
+                        onClick={() => {
+                          void onRetryRecipientLinkDelivery();
+                        }}
+                        className="mt-3 inline-flex items-center rounded-md border border-current/20 bg-white/50 px-3 py-1.5 text-xs font-medium hover:bg-white/80 disabled:opacity-60 dark:bg-black/20 dark:hover:bg-black/30"
+                      >
+                        {recipientLinkDeliveryRetrying
+                          ? t.recipientLinkDeliveryRetrying ?? "Sending…"
+                          : t.recipientLinkDeliveryRetry ?? "Try again"}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
 

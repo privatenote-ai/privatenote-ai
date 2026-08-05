@@ -17,6 +17,11 @@ import {
   SECURITY_HEADERS,
 } from "./httpSecurity";
 import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
+import {
+  cleanupBillingOperationalHistory,
+  reconcileStripeSubscriptions,
+} from "./stripeBilling";
+import { processBillingCommunications } from "./billingCommunications";
 
 // Export both for migration compatibility
 // SecureNoteStorage is deleted in v3 migration but needed for migration history
@@ -173,6 +178,24 @@ export default {
       console.log(
         `[CRON] Pending account deletions: finalized ${pendingDeleteResult.finalized}` +
           `${pendingDeleteResult.error ? `, error: ${pendingDeleteResult.error}` : ""}`,
+      );
+
+      const billingResult = await reconcileStripeSubscriptions(env);
+      console.log(
+        `[CRON] Stripe reconciliation: ${billingResult.status}, scanned ${billingResult.scanned}, repaired ${billingResult.repaired}, unchanged ${billingResult.unchanged}, failed ${billingResult.failed}`,
+      );
+
+      const billingCommunicationResult = await processBillingCommunications(env);
+      console.log(
+        `[CRON] Billing communications: queued ${billingCommunicationResult.queued}, sent ${billingCommunicationResult.sent}, failed ${billingCommunicationResult.failed}`,
+      );
+
+      const billingRetentionResult = await cleanupBillingOperationalHistory(env);
+      console.log(
+        `[CRON] Billing retention: deleted ${billingRetentionResult.webhookEvents} webhooks, ` +
+          `${billingRetentionResult.reconciliationRuns} runs, ` +
+          `${billingRetentionResult.reconciliationFailures} failures, ` +
+          `${billingRetentionResult.customerNotifications} notifications`,
       );
 
       console.log(`[CRON] Scheduled tasks completed successfully`);

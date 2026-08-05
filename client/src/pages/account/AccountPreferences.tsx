@@ -7,13 +7,45 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
-import { Sun, Moon, Monitor, Bell, Cloud, ShieldOff } from "lucide-react";
+import { Sun, Moon, Monitor, Bell, Cloud, ShieldOff, SlidersHorizontal, Crown } from "lucide-react";
 import {
   readLocalHostedAiAllowed,
   writeLocalHostedAiAllowed,
 } from "@/utils/hostedAiPreference";
 import { useLanguage } from "@/context/LanguageContext";
-import { normalizeLanguageCode, SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
+import {
+  LANGUAGE_OPTIONS,
+  normalizeLanguageCode,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "@/utils/translation";
+import { normalizeAccountType, planFeaturesFor, type AccountType } from "@shared/planCatalog";
+import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
+import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
+import {
+  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  NOTE_FILE_ACCESS_WINDOW_OPTIONS,
+  formatNoteFileAccessWindow,
+  type NoteFileAccessWindowSeconds,
+} from "@shared/noteFileAccess";
+
+type NoteDefaultsForm = {
+  expirySeconds: number;
+  maxReads: NoteReadLimit;
+  fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
+  readerLanguage: "auto" | SupportedLanguage;
+  notifyOnOpen: boolean;
+  requireRecipientVerification: boolean;
+};
+
+const INITIAL_NOTE_DEFAULTS: NoteDefaultsForm = {
+  expirySeconds: 24 * 60 * 60,
+  maxReads: 1,
+  fileAccessWindowSeconds: NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+  readerLanguage: "auto",
+  notifyOnOpen: false,
+  requireRecipientVerification: false,
+};
 
 function describeApiPreferenceError(error: unknown): string {
   if (!(error instanceof ApiRequestError)) return "Something went wrong.";
@@ -97,6 +129,14 @@ export default function AccountPreferences() {
   const [savedEmailIndicator, setSavedEmailIndicator] = useState(false);
   const [savedLanguageIndicator, setSavedLanguageIndicator] = useState(false);
   const [savedHostedAiIndicator, setSavedHostedAiIndicator] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType>("free");
+  const [noteDefaults, setNoteDefaults] = useState<NoteDefaultsForm>(INITIAL_NOTE_DEFAULTS);
+  const [noteDefaultsConfigured, setNoteDefaultsConfigured] = useState(false);
+  const [noteDefaultsLoading, setNoteDefaultsLoading] = useState(true);
+  const [savingNoteDefaults, setSavingNoteDefaults] = useState(false);
+  const [resettingNoteDefaults, setResettingNoteDefaults] = useState(false);
+  const [savedNoteDefaultsIndicator, setSavedNoteDefaultsIndicator] = useState(false);
+  const planCapabilities = planFeaturesFor(accountType);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -105,6 +145,8 @@ export default function AccountPreferences() {
         emailNotifications?: boolean;
         preferredLanguage?: SupportedLanguage | null;
         allowHostedAi?: boolean;
+        accountType?: unknown;
+        plan?: unknown;
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
@@ -121,9 +163,40 @@ export default function AccountPreferences() {
           setPreferredLanguage(fb);
         }
       }
+      const nextAccountType = normalizeAccountType(data.accountType ?? data.plan);
+      setAccountType(nextAccountType);
+      if (planFeaturesFor(nextAccountType).savedDefaults) {
+        const defaultsResponse = await apiRequest<{
+          ok: boolean;
+          defaults: {
+            expirySeconds: number | null;
+            maxReads: NoteReadLimit | null;
+            fileAccessWindowSeconds: NoteFileAccessWindowSeconds | null;
+            readerLanguage: SupportedLanguage | null;
+            notifyOnOpen: boolean;
+            requireRecipientVerification: boolean;
+          } | null;
+        }>("/api/auth/account/note-defaults", "GET");
+        if (defaultsResponse.defaults) {
+          setNoteDefaults({
+            expirySeconds:
+              defaultsResponse.defaults.expirySeconds ?? INITIAL_NOTE_DEFAULTS.expirySeconds,
+            maxReads: defaultsResponse.defaults.maxReads ?? INITIAL_NOTE_DEFAULTS.maxReads,
+            fileAccessWindowSeconds:
+              defaultsResponse.defaults.fileAccessWindowSeconds ??
+              INITIAL_NOTE_DEFAULTS.fileAccessWindowSeconds,
+            readerLanguage: defaultsResponse.defaults.readerLanguage ?? "auto",
+            notifyOnOpen: defaultsResponse.defaults.notifyOnOpen,
+            requireRecipientVerification:
+              defaultsResponse.defaults.requireRecipientVerification,
+          });
+          setNoteDefaultsConfigured(true);
+        }
+      }
     } catch {
       /* non-critical */
     } finally {
+      setNoteDefaultsLoading(false);
       setPrefsLoading(false);
     }
   }, []);
@@ -195,6 +268,49 @@ export default function AccountPreferences() {
       });
     } finally {
       setSavingLanguagePref(false);
+    }
+  };
+
+  const saveNoteDefaults = async () => {
+    setSavingNoteDefaults(true);
+    try {
+      await apiRequest("/api/auth/account/note-defaults", "PUT", noteDefaults);
+      setNoteDefaultsConfigured(true);
+      setSavedNoteDefaultsIndicator(true);
+      setTimeout(() => setSavedNoteDefaultsIndicator(false), 2000);
+      toast({
+        title: "Note defaults saved",
+        description: "These settings will be used on your signed-in devices.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not save note defaults",
+        description: describeApiPreferenceError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNoteDefaults(false);
+    }
+  };
+
+  const resetNoteDefaults = async () => {
+    setResettingNoteDefaults(true);
+    try {
+      await apiRequest("/api/auth/account/note-defaults", "DELETE");
+      setNoteDefaults(INITIAL_NOTE_DEFAULTS);
+      setNoteDefaultsConfigured(false);
+      toast({
+        title: "Note defaults reset",
+        description: "New notes will use the standard defaults.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not reset note defaults",
+        description: describeApiPreferenceError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setResettingNoteDefaults(false);
     }
   };
 
@@ -379,12 +495,235 @@ export default function AccountPreferences() {
           </div>
         </section>
 
+        {/* ── Saved note defaults ───────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <div className="flex items-start gap-3">
+              <SlidersHorizontal className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Saved note defaults
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      Synced to your account and applied when you create a new note while signed in.
+                    </p>
+                  </div>
+                  {savedNoteDefaultsIndicator ? (
+                    <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {t.authPrefsSaved || "Saved"}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {planCapabilities.savedDefaults ? (
+            <div className="space-y-5 px-5 py-5">
+              {noteDefaultsLoading ? (
+                <div className="h-24 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="default-expiry" className="mb-2 block text-sm">
+                        Note lifetime
+                      </Label>
+                      <select
+                        id="default-expiry"
+                        value={noteDefaults.expirySeconds}
+                        onChange={(event) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            expirySeconds: Number(event.target.value),
+                          }))
+                        }
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        {NOTE_EXPIRY_PRESETS.filter(
+                          (preset) => preset.seconds <= planCapabilities.maxExpirySeconds,
+                        ).map((preset) => (
+                          <option key={preset.id} value={preset.seconds}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="default-reads" className="mb-2 block text-sm">
+                        Open limit
+                      </Label>
+                      <select
+                        id="default-reads"
+                        value={noteDefaults.maxReads}
+                        onChange={(event) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            maxReads: Number(event.target.value) as NoteReadLimit,
+                          }))
+                        }
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        {NOTE_READ_LIMIT_OPTIONS.filter((reads) =>
+                          planCapabilities.allowedReadCounts.includes(reads),
+                        ).map((reads) => (
+                          <option key={reads} value={reads}>
+                            {reads === 1 ? "Once (read-once)" : `${reads} views`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="default-file-window" className="mb-2 block text-sm">
+                        File download window
+                      </Label>
+                      <select
+                        id="default-file-window"
+                        value={noteDefaults.fileAccessWindowSeconds}
+                        onChange={(event) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            fileAccessWindowSeconds: Number(
+                              event.target.value,
+                            ) as NoteFileAccessWindowSeconds,
+                          }))
+                        }
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        {NOTE_FILE_ACCESS_WINDOW_OPTIONS.filter(
+                          (seconds) => seconds <= planCapabilities.maxFileAccessWindowSeconds,
+                        ).map((seconds) => (
+                          <option key={seconds} value={seconds}>
+                            {formatNoteFileAccessWindow(seconds)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="default-reader-language" className="mb-2 block text-sm">
+                        Reader language
+                      </Label>
+                      <select
+                        id="default-reader-language"
+                        value={noteDefaults.readerLanguage}
+                        onChange={(event) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            readerLanguage: event.target.value as "auto" | SupportedLanguage,
+                          }))
+                        }
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <option value="auto">Auto — recipient browser language</option>
+                        {LANGUAGE_OPTIONS.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.nativeName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+                    <div className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          Alert me when opened
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Requires verified email and email notifications to remain enabled.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={noteDefaults.notifyOnOpen}
+                        disabled={!emailNotifications}
+                        onCheckedChange={(checked) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            notifyOnOpen: checked,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          Require recipient verification
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Generate a separate one-time code for each new note.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={noteDefaults.requireRecipientVerification}
+                        onCheckedChange={(checked) =>
+                          setNoteDefaults((current) => ({
+                            ...current,
+                            requireRecipientVerification: checked,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {noteDefaultsConfigured
+                        ? "Custom defaults are currently active."
+                        : "Standard defaults are currently active."}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={resettingNoteDefaults || !noteDefaultsConfigured}
+                        onClick={() => void resetNoteDefaults()}
+                      >
+                        {resettingNoteDefaults ? "Resetting…" : "Reset defaults"}
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={savingNoteDefaults}
+                        onClick={() => void saveNoteDefaults()}
+                      >
+                        {savingNoteDefaults ? "Saving…" : "Save defaults"}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="px-5 py-5">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
+                <Crown className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <div>
+                  <p className="text-sm font-semibold">Starter and Business feature</p>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Saved defaults are inactive on Free. Existing synchronized defaults are retained
+                    and become active again after upgrading.
+                  </p>
+                  <div className="mt-3">
+                    <Button asChild size="sm">
+                      <a href="/premium">Compare plans</a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* ── Coming later ────────────────────────────────────────────────── */}
         <section className="rounded-xl border border-dashed border-gray-200 dark:border-gray-800 px-5 py-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">{t.authPrefsComingLater || "Coming later"}</p>
           <ul className="space-y-2 text-sm text-gray-400 dark:text-gray-600">
             <li>{t.authPrefsComingDigest || "Notification digest frequency"}</li>
-            <li>{t.authPrefsComingNoteDefaults || "Note defaults (expiry, AI, etc.)"}</li>
           </ul>
         </section>
       </div>

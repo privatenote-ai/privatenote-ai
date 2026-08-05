@@ -6,6 +6,12 @@ import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
+  normalizeAccountType,
+  planFeaturesFor,
+  type AccountType,
+} from "@shared/planCatalog";
+import { commitHostedAiQuota, readHostedAiQuota } from "./planHostedAi";
+import {
   NOTE_FILE_MAX_CHUNK_INDEX,
   NOTE_FILE_MAX_CHUNKS,
   NOTE_FILE_SECRETSTREAM_ABYTES,
@@ -39,12 +45,15 @@ import {
   isPagesPreviewBrowserOrigin,
   isWebAuthnRpAllowedOrigin,
   normalizeOrigin,
+  ALLOWED_ORIGINS,
   PAGES_PRODUCTION_WEB_HOSTS,
+  STAGING_CUSTOM_APP_HOSTS,
   type SessionCookieKind,
   SESSION_COOKIE_PREVIEW_NAME,
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
+import { buildRecipientNoteLinkEmail, parseDeliverableNoteUrl } from "@shared/noteLinkDelivery";
 import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
@@ -65,6 +74,7 @@ import { withEuStoredDataEnv } from "./euD1Kv";
 import {
   getRecipientGateStatus,
   getSentNoteByNoteId,
+  getUserAccountType,
   insertSentNote,
   isRecipientVerified,
   noteRequiresRecipientVerification,
@@ -75,6 +85,7 @@ import {
   revokeSentNote,
   verifyRecipientAccess,
 } from "./sentNotesService";
+import { getAccountEntitlements } from "./accountEntitlements";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -87,6 +98,14 @@ const RATE_LIMIT_GLOBAL_POST = {
   MAX_REQUESTS: 72,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:post:global:",
+};
+
+// Stripe retries and short bursts are expected; this ceiling only absorbs
+// unauthenticated floods before signature verification performs HMAC work.
+const RATE_LIMIT_STRIPE_WEBHOOK = {
+  MAX_REQUESTS: 300,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:stripe-webhook:",
 };
 
 const RATE_LIMIT_RESERVE = {
@@ -113,6 +132,12 @@ const RATE_LIMIT_RECIPIENT_VERIFY = {
   KEY_PREFIX: "rl:recipient-verify:",
 };
 
+const RATE_LIMIT_DELIVER_NOTE_LINK = {
+  MAX_REQUESTS: 10,
+  WINDOW_SECONDS: 60 * 60,
+  KEY_PREFIX: "rl:deliver-note-link:",
+};
+
 const RATE_LIMIT_FILE_CHUNK_PUT = {
   MAX_REQUESTS: 120,
   WINDOW_SECONDS: 60,
@@ -128,9 +153,6 @@ const AI_VERIFICATION = {
 const HOSTED_AI_DRAFT = {
   MODEL: "@cf/google/gemma-4-26b-a4b-it",
   MODEL_LABEL: "Gemma 4 26B",
-  FREE_USES: 3,
-  WINDOW_SECONDS: 24 * 60 * 60,
-  KEY_PREFIX: "hosted_ai_draft:",
   MAX_PROMPT_CHARS: 2500,
   MAX_OUTPUT_TOKENS: 2048,
 };
@@ -859,20 +881,18 @@ function isPremiumAccountType(accountType: unknown, plan: unknown): boolean {
   );
 }
 
-async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+async function noteCreationAccountType(env: Env, request: Request): Promise<AccountType> {
   const session = await getSessionFromRequest(env, request, { rotate: false });
-  if (!session?.id || !env.AUTH_DB) return false;
+  if (!session?.id || !env.AUTH_DB) return "free";
   try {
-    const user = await env.AUTH_DB.prepare(
-      "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
-    )
-      .bind(session.id)
-      .first<{ account_type: string | null; plan: string | null }>();
-    if (!user) return false;
-    return isPremiumAccountType(user.account_type, user.plan);
+    return (await getAccountEntitlements(env, session.id)).accountType;
   } catch {
-    return false;
+    return "free";
   }
+}
+
+async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+  return (await noteCreationAccountType(env, request)) !== "free";
 }
 
 function noteReadNotificationDeviceLabel(request: Request): string {
@@ -6671,67 +6691,6 @@ async function recipientVerificationFailureDelay(usedAttempts: number): Promise<
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-type HostedAiQuota = {
-  count: number;
-  windowStart: number;
-};
-
-function getHostedAiQuotaKey(identifier: string): string {
-  return `${HOSTED_AI_DRAFT.KEY_PREFIX}${identifier}`;
-}
-
-async function readHostedAiQuota(
-  env: Env,
-  identifier: string,
-): Promise<{ allowed: boolean; remaining: number; resetAt: number; nextCount: number }> {
-  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
-  const now = Math.floor(Date.now() / 1000);
-  const windowStart = now - (now % HOSTED_AI_DRAFT.WINDOW_SECONDS);
-  const resetAt = windowStart + HOSTED_AI_DRAFT.WINDOW_SECONDS;
-
-  try {
-    const stored = (await kv.get(getHostedAiQuotaKey(identifier), { type: "json" })) as HostedAiQuota | null;
-    const count = stored?.windowStart === windowStart ? stored.count : 0;
-    if (count >= HOSTED_AI_DRAFT.FREE_USES) {
-      return { allowed: false, remaining: 0, resetAt, nextCount: count };
-    }
-    return {
-      allowed: true,
-      remaining: HOSTED_AI_DRAFT.FREE_USES - count,
-      resetAt,
-      nextCount: count + 1,
-    };
-  } catch (error) {
-    console.error("[HOSTED_AI] Error reading quota:", error);
-    return {
-      allowed: true,
-      remaining: HOSTED_AI_DRAFT.FREE_USES,
-      resetAt,
-      nextCount: 1,
-    };
-  }
-}
-
-async function commitHostedAiQuota(
-  env: Env,
-  identifier: string,
-  count: number,
-  resetAt: number,
-): Promise<void> {
-  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
-  const now = Math.floor(Date.now() / 1000);
-  const windowStart = resetAt - HOSTED_AI_DRAFT.WINDOW_SECONDS;
-  try {
-    await kv.put(
-      getHostedAiQuotaKey(identifier),
-      JSON.stringify({ count, windowStart }),
-      { expirationTtl: Math.max(60, resetAt - now + 10) },
-    );
-  } catch (error) {
-    console.error("[HOSTED_AI] Error committing quota:", error);
-  }
-}
-
 function hostedAiLanguageLabel(raw: unknown): string {
   const language = typeof raw === "string" ? raw.toLowerCase() : "en";
   if (language.startsWith("de")) return "German";
@@ -7059,14 +7018,15 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     );
   }
 
-  const clientId = getClientIdentifier(request);
-  const quota = await readHostedAiQuota(env, clientId);
+  const accountType = await getUserAccountType(env, session.id);
+  const quota = await readHostedAiQuota(env, session.id, accountType);
+  const hostedAiLimit = quota.limit;
   if (!quota.allowed) {
     return jsonResponse(
       {
         error: "hosted_ai_quota_exhausted",
-        message: "Free hosted drafts are used up for this device today.",
-        limit: HOSTED_AI_DRAFT.FREE_USES,
+        message: "Your hosted AI drafts for this billing month are used up.",
+        limit: hostedAiLimit,
         remaining: 0,
         resetAt: quota.resetAt,
       },
@@ -7115,14 +7075,14 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
       completionTokens: usage.completionTokens,
       costUsd,
     });
-    await commitHostedAiQuota(env, clientId, quota.nextCount, quota.resetAt);
+    await commitHostedAiQuota(env, session.id, accountType, quota.nextCount, quota.resetAt);
     return jsonResponse(
       {
         ok: true,
         text,
         model: HOSTED_AI_DRAFT.MODEL_LABEL,
-        limit: HOSTED_AI_DRAFT.FREE_USES,
-        remaining: Math.max(0, HOSTED_AI_DRAFT.FREE_USES - quota.nextCount),
+        limit: hostedAiLimit,
+        remaining: Math.max(0, hostedAiLimit - quota.nextCount),
         resetAt: quota.resetAt,
       },
       200,
@@ -7338,20 +7298,35 @@ async function ensureAccountFileStorageSchema(env: Env): Promise<boolean> {
 async function getAuthenticatedAccountForNoteFiles(
   env: Env,
   request: Request,
-): Promise<{ userId: string; isPremium: boolean } | null> {
+): Promise<{ userId: string; accountType: AccountType; isPremium: boolean } | null> {
   if (!env.AUTH_DB) return null;
   const session = await getSessionFromRequest(env, request, { rotate: false });
   if (!session?.id) return null;
-  const user = await env.AUTH_DB.prepare(
-    "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
-  )
-    .bind(session.id)
-    .first<{ account_type: string | null; plan: string | null }>();
-  if (!user) return null;
+  const entitlements = await getAccountEntitlements(env, session.id);
   return {
     userId: session.id,
-    isPremium: isPremiumAccountType(user.account_type, user.plan),
+    accountType: entitlements.accountType,
+    isPremium: entitlements.accountType !== "free",
   };
+}
+
+async function resolveUploadFileAccountType(
+  env: Env,
+  reservation: NoteReservationRecord,
+  fileStorageUserId: string,
+): Promise<AccountType> {
+  if (reservation.fileAccountType) {
+    return normalizeAccountType(reservation.fileAccountType);
+  }
+  if (env.AUTH_DB) {
+    try {
+      return (await getAccountEntitlements(env, fileStorageUserId)).accountType;
+    } catch {
+      /* fall through */
+    }
+  }
+  // Legacy reservations: premiumUserId meant paid, but not which tier — prefer Starter caps.
+  return reservation.premiumUserId ? "personal_premium" : "free";
 }
 
 export async function reserveAccountFileStorageBytes(
@@ -7752,7 +7727,7 @@ async function requireNoteFileAccess(env: Env, request: Request, noteId: string)
 async function reserveNoteId(
   env: Env,
   clientId: string,
-  fileAccount: { userId: string; isPremium: boolean } | null,
+  fileAccount: { userId: string; accountType: AccountType; isPremium: boolean } | null,
   attachmentBinding: NoteReserveAttachmentBinding | null,
   clientIp?: string,
 ): Promise<{ id: string; uploadToken: string; expiresIn: number }> {
@@ -7763,6 +7738,17 @@ async function reserveNoteId(
   const expiresIn = attachmentBinding
     ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
     : NOTE_RESERVATION.TTL_SECONDS;
+  if (attachmentBinding && fileAccount) {
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccount.accountType);
+    if (attachmentBinding.attachmentPlaintextSize > plaintextLimit) {
+      throw Object.assign(
+        new Error(
+          `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+        ),
+        { status: 413, code: "file_too_large" },
+      );
+    }
+  }
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
@@ -7773,6 +7759,7 @@ async function reserveNoteId(
       uploadTokenHash,
       fileStorageUserId: attachmentBinding ? fileAccount?.userId ?? null : null,
       premiumUserId: attachmentBinding && fileAccount?.isPremium ? fileAccount.userId : null,
+      fileAccountType: attachmentBinding ? fileAccount?.accountType ?? "free" : null,
       ...(attachmentBinding ?? {}),
     } satisfies NoteReservationRecord),
     { expirationTtl: expiresIn },
@@ -8091,8 +8078,28 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const csrfError = verifyCsrfOrigin(request);
   if (csrfError) return csrfError;
 
-  // Rate limits: calm global POST cap + tighter per-route budgets (no fingerprinting).
-  if (request.method === "POST") {
+  // Rate limits: calm global POST cap + discrete per-route budgets (no fingerprinting).
+  const isProviderWebhook =
+    pathname === "/api/auth/billing/stripe/webhook" && request.method === "POST";
+  if (isProviderWebhook) {
+    const clientId = getClientIdentifier(request);
+    const webhookLimit = await checkRateLimit(
+      env,
+      clientId,
+      RATE_LIMIT_STRIPE_WEBHOOK,
+    );
+    if (!webhookLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "webhook_rate_limit_exceeded",
+          message: "Too many webhook requests. Retry later.",
+          resetAt: webhookLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+  } else if (request.method === "POST") {
     const clientId = getClientIdentifier(request);
     console.log(`[ROUTES] Rate-limit client bucket: ${clientId}`);
 
@@ -8225,6 +8232,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     } catch (error) {
+      const status = (error as { status?: number })?.status;
+      const code = (error as { code?: string })?.code;
+      if (status === 413 && code === "file_too_large") {
+        return jsonResponse(
+          {
+            error: "file_too_large",
+            message: error instanceof Error ? error.message : "File exceeds the account limit.",
+          },
+          413,
+          request,
+        );
+      }
       console.error("[ROUTES] Failed to reserve note ID:", error);
       return jsonResponse({ error: "Failed to reserve note ID" }, 500, request);
     }
@@ -8340,7 +8359,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const premiumUserId = uploadAuth.premiumUserId;
-    const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
     const reservation = uploadAuth.record;
     if (
@@ -8355,7 +8373,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
 
-    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
     const plaintextSize = reservation.attachmentPlaintextSize;
     const encryptedTotalSize = reservation.attachmentEncryptedSize;
     if (plaintextSize > plaintextLimit) {
@@ -8382,7 +8401,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         fileStorageUserId,
         id,
         encryptedTotalSize,
-        noteFileTotalStorageBytesForAccount(isPremium),
+        noteFileTotalStorageBytesForAccount(fileAccountType),
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8489,7 +8508,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
 
       const premiumUserId = uploadAuth.premiumUserId;
-      const isPremium = premiumUserId !== null;
       const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
       const reservation = uploadAuth.record;
       if (
@@ -8505,7 +8523,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
 
-      const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+      const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+      const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
       const plaintextSize = reservation.attachmentPlaintextSize;
       const encryptedTotalSize = reservation.attachmentEncryptedSize;
       if (plaintextSize > plaintextLimit) {
@@ -8536,7 +8555,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           fileStorageUserId,
           id,
           encryptedTotalSize,
-          noteFileTotalStorageBytesForAccount(isPremium),
+          noteFileTotalStorageBytesForAccount(fileAccountType),
         );
         if (!quotaReservation.ok) {
           await discardRequestBody(request);
@@ -8666,7 +8685,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const premiumUserId = uploadAuth.premiumUserId;
-    const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
     const reservation = uploadAuth.record;
     if (
@@ -8680,7 +8698,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
     // Bearer + omitMetadata (encrypt.lu primary): sizes come from the reservation.
     const requestedPlaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
     const plaintextSize =
@@ -8736,7 +8755,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         fileStorageUserId,
         id,
         encryptedTotalSize,
-        noteFileTotalStorageBytesForAccount(isPremium),
+        noteFileTotalStorageBytesForAccount(fileAccountType),
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8867,7 +8886,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
     let noteForAnalytics: Note | null = null;
-    const noteCreationIsPremium = await noteCreationAllowsPremiumExpiry(env, request);
+    const noteCreationAccount = await noteCreationAccountType(env, request);
+    const noteCreationFeatures = planFeaturesFor(noteCreationAccount);
+    const noteCreationMaxExpirySeconds = noteCreationFeatures.maxExpirySeconds;
     try {
       requestBody = await request.clone().json();
 
@@ -8879,10 +8900,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ id: crypto.randomUUID() }, 200, request);
       }
       const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
-        isPremium: noteCreationIsPremium,
+        maxExpirySeconds: noteCreationMaxExpirySeconds,
       });
       const maxReadsParsed = parseMaxReadsFromBody(requestBody?.maxReads, {
-        isPremium: noteCreationIsPremium,
+        allowedReadCounts: noteCreationFeatures.allowedReadCounts,
       });
       if (requestBody?.content && requestBody?.iv && expiryParsed.ok && maxReadsParsed.ok) {
         noteForAnalytics = {
@@ -8978,14 +8999,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const expiryForCreate = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
-      isPremium: noteCreationIsPremium,
+      maxExpirySeconds: noteCreationMaxExpirySeconds,
     });
     if (!expiryForCreate.ok) {
       return jsonResponse({ error: expiryForCreate.message }, 400, request);
     }
 
     const maxReadsForCreate = parseMaxReadsFromBody(requestBody?.maxReads, {
-      isPremium: noteCreationIsPremium,
+      allowedReadCounts: noteCreationFeatures.allowedReadCounts,
     });
     if (!maxReadsForCreate.ok) {
       return jsonResponse({ error: maxReadsForCreate.message }, 400, request);
@@ -8993,7 +9014,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const fileAccessWindowForCreate = parseNoteFileAccessWindowFromBody(
       requestBody?.fileAccessWindowSeconds,
-      { isPremium: noteCreationIsPremium },
+      { accountType: noteCreationAccount },
     );
     if (!fileAccessWindowForCreate.ok) {
       return jsonResponse({ error: fileAccessWindowForCreate.message }, 400, request);
@@ -9186,6 +9207,127 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
 	    return applyCorsHeaders(doResponse as unknown as Response, request);
 	  }
+
+  const deliverLinkParams = parsePathParams(pathname, "/api/notes/:id/deliver-link");
+  if (deliverLinkParams && method === "POST") {
+    const { id } = deliverLinkParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+
+    const user = await env.AUTH_DB.prepare(
+      "SELECT email, email_verified, account_type, plan FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{
+        email: string | null;
+        email_verified: number | null;
+        account_type: string | null;
+        plan: string | null;
+      }>();
+    if (!user) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+    const capabilities = planFeaturesFor(user.account_type ?? user.plan);
+    if (!capabilities.recipientLinkDelivery) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    if (user.email_verified !== 1) {
+      return jsonResponse({ error: "sender_email_unverified" }, 403, request);
+    }
+
+    const deliverLimit = await checkRateLimit(
+      env,
+      session.id,
+      RATE_LIMIT_DELIVER_NOTE_LINK,
+    );
+    if (!deliverLimit.allowed) {
+      return jsonResponse({ error: "rate_limited" }, 429, request);
+    }
+
+    let body: { recipientEmail?: unknown; noteUrl?: unknown } = {};
+    try {
+      body = (await request.json()) as { recipientEmail?: unknown; noteUrl?: unknown };
+    } catch {
+      return jsonResponse({ error: "Invalid JSON" }, 400, request);
+    }
+
+    const recipientEmail =
+      typeof body.recipientEmail === "string" ? body.recipientEmail.trim().toLowerCase() : "";
+    if (!isPlausibleEmailFormat(recipientEmail)) {
+      return jsonResponse({ error: "invalid_recipient_email" }, 400, request);
+    }
+
+    const allowedHosts = new Set<string>([
+      ...PAGES_PRODUCTION_WEB_HOSTS,
+      ...STAGING_CUSTOM_APP_HOSTS,
+      "privatenote.ai",
+      "www.privatenote.ai",
+      "app.privatenote.ai",
+      "localhost",
+      "127.0.0.1",
+    ]);
+    for (const origin of ALLOWED_ORIGINS) {
+      try {
+        allowedHosts.add(new URL(origin).hostname.toLowerCase());
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const noteUrl = typeof body.noteUrl === "string" ? body.noteUrl : "";
+    const parsedUrl = parseDeliverableNoteUrl(noteUrl, id, { allowedHosts });
+    if (!parsedUrl.ok) {
+      return jsonResponse({ error: parsedUrl.error }, 400, request);
+    }
+
+    const mail = buildRecipientNoteLinkEmail({
+      noteUrl: parsedUrl.href,
+      senderEmail: user.email,
+    });
+    const emailResult = await sendEmail(env, {
+      to: recipientEmail,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+    if (!emailResult.ok) {
+      console.warn(
+        `[DELIVER_LINK] Failed to email recipient=${maskEmailForLog(recipientEmail)} noteId=${id}: ${emailResult.error}`,
+      );
+      return jsonResponse({ error: "email_send_failed" }, 502, request);
+    }
+
+    console.log(
+      `[DELIVER_LINK] Sent note link email recipient=${maskEmailForLog(recipientEmail)} noteId=${id}`,
+    );
+
+    // Ensure the note is tracked so Premium can revoke it from Notification Center.
+    try {
+      const existing = await getSentNoteByNoteId(env, id);
+      if (!existing) {
+        await insertSentNote(env, {
+          userId: session.id,
+          noteId: id,
+          notifyOnOpen: false,
+          notifyOnDestroyed: false,
+          requireRecipientVerification: false,
+          proofEnabled: true,
+        });
+      }
+    } catch (error) {
+      console.warn(`[DELIVER_LINK] Failed to register sent-note tracking for ${id}:`, error);
+    }
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
 
   const recipientGateParams = parsePathParams(pathname, "/api/notes/:id/recipient-gate");
   if (recipientGateParams && method === "GET") {
@@ -9429,6 +9571,58 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     return applyCorsHeaders(doResponse as unknown as Response, request);
+  }
+
+  const revokeNoteParams = parsePathParams(pathname, "/api/notes/:id/revoke");
+  if (revokeNoteParams && method === "POST") {
+    const { id } = revokeNoteParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+
+    const accountType = await noteCreationAccountType(env, request);
+    if (!planFeaturesFor(accountType).revokeUnopened) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+
+    const revoked = await revokeSentNote(env, session.id, id);
+    if (!revoked.ok) {
+      if (revoked.error === "already_opened") {
+        return jsonResponse({ error: "already_opened" }, 409, request);
+      }
+      if (revoked.error === "not_configured") {
+        return jsonResponse({ error: "Auth database not configured" }, 501, request);
+      }
+      return jsonResponse({ error: "not_found" }, 404, request);
+    }
+
+    try {
+      const stub = getSecureNoteStub(env, id, true);
+      const deleteRequest = new Request(new URL(`/api/notes/${id}`, request.url).toString(), {
+        method: "DELETE",
+      });
+      let doResponse = await stub.fetch(deleteRequest as any);
+      if (doResponse.status === 404) {
+        const legacyStub = getSecureNoteStub(env, id, false);
+        doResponse = await legacyStub.fetch(deleteRequest as any);
+      }
+      if (doResponse.ok || doResponse.status === 404) {
+        await cleanupNoteFileChunks(env, id, `note revoked (${doResponse.status})`);
+      } else {
+        console.warn(`[REVOKE] DO delete returned ${doResponse.status} for note ${id}`);
+      }
+    } catch (error) {
+      console.warn(`[REVOKE] Failed to purge note ciphertext for ${id}:`, error);
+    }
+
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   const noteSenderStatusParams = parsePathParams(pathname, "/api/notes/:id/sender-status");

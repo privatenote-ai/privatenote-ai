@@ -1,6 +1,7 @@
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
-import { hasPremiumFeatures, normalizeAccountType } from "@shared/planCatalog";
+import { normalizeAccountType, planFeaturesFor } from "@shared/planCatalog";
+import { getAccountEntitlements } from "./accountEntitlements";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import {
   formatNotificationNoteDisplayId,
@@ -166,19 +167,13 @@ function parseUserAgent(ua: string | null): { deviceClass: string; browser: stri
 }
 
 export async function getUserAccountType(env: Env, userId: string): Promise<string> {
-  if (!env.AUTH_DB) return "free";
-  const row = await env.AUTH_DB.prepare(
-    `SELECT account_type, plan FROM users WHERE id = ? LIMIT 1`,
-  )
-    .bind(userId)
-    .first<{ account_type?: string | null; plan?: string | null }>();
-  return normalizeAccountType(row?.account_type ?? row?.plan);
+  return (await getAccountEntitlements(env, userId)).accountType;
 }
 
 export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string; verificationCode?: string }> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const sender = await env.AUTH_DB.prepare(
-    `SELECT email, email_verified, email_notifications, account_type, plan
+    `SELECT email, email_verified, email_notifications
      FROM users WHERE id = ? LIMIT 1`,
   )
     .bind(input.userId)
@@ -186,22 +181,29 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       email: string | null;
       email_verified: number | null;
       email_notifications: number | null;
-      account_type: string | null;
-      plan: string | null;
     }>();
-  const accountType = normalizeAccountType(sender?.account_type ?? sender?.plan);
-  if (!hasPremiumFeatures(accountType)) {
+  const entitlements = await getAccountEntitlements(env, input.userId);
+  const capabilities = entitlements.capabilities;
+  const restrictRecipientEmail = input.restrictRecipientEmail === true;
+  const requireRecipientVerification = input.requireRecipientVerification === true;
+  const wantsOpenNotifications = input.notifyOnOpen === true || input.notifyOnDestroyed === true;
+  const wantsRecipientGate = restrictRecipientEmail || requireRecipientVerification;
+  const proofEnabled =
+    capabilities.proofOfAccess && input.proofEnabled !== false;
+
+  if (wantsRecipientGate && !capabilities.recipientVerification) {
+    throw new Error("premium_required");
+  }
+  if (wantsOpenNotifications && !capabilities.openNotifications) {
     throw new Error("premium_required");
   }
   if (!sender?.email || !isPlausibleEmailFormat(sender.email)) throw new Error("sender_email_required");
   if (sender.email_verified !== 1) throw new Error("sender_email_unverified");
-  if (sender.email_notifications !== 1 && (input.notifyOnOpen || input.notifyOnDestroyed)) {
+  if (sender.email_notifications !== 1 && wantsOpenNotifications) {
     throw new Error("email_notifications_disabled");
   }
 
   const id = crypto.randomUUID();
-  const restrictRecipientEmail = input.restrictRecipientEmail === true;
-  const requireRecipientVerification = input.requireRecipientVerification === true;
   const emailHint =
     input.recipientEmail && isPlausibleEmailFormat(input.recipientEmail)
       ? input.recipientEmail.trim().toLowerCase()
@@ -210,7 +212,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     throw new Error("recipient_email_required");
   }
 
-  const hasRecipientGate = restrictRecipientEmail || requireRecipientVerification;
+  const hasRecipientGate = wantsRecipientGate;
 
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
@@ -227,7 +229,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
       hasRecipientGate ? 1 : 0,
-      input.proofEnabled !== false ? 1 : 0,
+      proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
     )
     .run();
@@ -275,10 +277,22 @@ export type SentNoteNotificationItem = {
   displayNoteId: string;
   status: SentNoteNotificationStatus;
   eventAt: string;
+  label: string | null;
+  createdAt: string;
+  openedAt: string | null;
+  destroyedAt: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  proofEnabled: boolean;
+  openCountry: string | null;
+  openDeviceClass: string | null;
+  openBrowser: string | null;
+  attachmentDownloadedAt: string | null;
 };
 
 export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificationItem {
   const { status, eventAt } = resolveSentNoteNotificationEvent(row);
+  const proofEnabled = row.proof_enabled === 1;
   return {
     id: row.id,
     noteId: row.note_id,
@@ -286,6 +300,17 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     displayNoteId: formatNotificationNoteDisplayId(row.note_id),
     status,
     eventAt,
+    label: null,
+    createdAt: row.created_at,
+    openedAt: row.opened_at,
+    destroyedAt: row.destroyed_at,
+    revokedAt: row.revoked_at,
+    expiresAt: row.expires_at,
+    proofEnabled,
+    openCountry: proofEnabled ? row.open_country : null,
+    openDeviceClass: proofEnabled ? row.open_device_class : null,
+    openBrowser: proofEnabled ? row.open_browser : null,
+    attachmentDownloadedAt: row.attachment_downloaded_at,
   };
 }
 
@@ -364,19 +389,22 @@ export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<Sen
     .first<SentNoteRow>();
 }
 
-export async function revokeSentNote(env: Env, userId: string, noteId: string): Promise<boolean> {
-  if (!env.AUTH_DB) return false;
+export async function revokeSentNote(
+  env: Env,
+  userId: string,
+  noteId: string,
+): Promise<{ ok: true } | { ok: false; error: "not_found" | "already_opened" | "not_configured" }> {
+  if (!env.AUTH_DB) return { ok: false, error: "not_configured" };
   const row = await getSentNoteByNoteId(env, noteId);
-  if (!row || row.user_id !== userId || (row.status !== "created" && row.status !== "opened")) return false;
+  if (!row || row.user_id !== userId) return { ok: false, error: "not_found" };
+  if (row.status !== "created") return { ok: false, error: "already_opened" };
   await env.AUTH_DB.prepare(
-    `UPDATE sent_notes
-     SET status = 'revoked', revoked_at = COALESCE(revoked_at, datetime('now'))
-     WHERE note_id = ? AND user_id = ? AND status IN ('created', 'opened')`,
+    `UPDATE sent_notes SET status = 'revoked', revoked_at = datetime('now') WHERE note_id = ? AND user_id = ? AND status = 'created'`,
   )
     .bind(noteId, userId)
     .run();
   await kv(env).delete(gateKey(noteId));
-  return true;
+  return { ok: true };
 }
 
 export async function noteRequiresRecipientVerification(env: Env, noteId: string): Promise<boolean> {
@@ -467,9 +495,14 @@ export async function recordSentNoteOpened(
   const row = await getSentNoteByNoteId(env, noteId);
   if (!row || row.status === "revoked" || row.status === "destroyed" || row.status === "expired") return;
 
-  const country = request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null;
-  const ua = request.headers.get("User-Agent");
-  const { deviceClass, browser } = parseUserAgent(ua);
+  const proofEnabled = row.proof_enabled === 1;
+  const country = proofEnabled
+    ? request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null
+    : null;
+  const proofClient = proofEnabled
+    ? parseUserAgent(request.headers.get("User-Agent"))
+    : { deviceClass: null as string | null, browser: null as string | null };
+  const { deviceClass, browser } = proofClient;
   const eventAt = new Date().toISOString();
   const nextStatus: SentNoteStatus = destroyed ? "destroyed" : row.status === "created" ? "opened" : row.status;
 
@@ -489,8 +522,8 @@ export async function recordSentNoteOpened(
   if (destroyed && row.notify_on_open === 1 && row.notify_on_destroyed === 1 && !row.opened_notified_at && !row.destroyed_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "opened_destroyed", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
     return;
@@ -499,8 +532,8 @@ export async function recordSentNoteOpened(
   if (row.notify_on_open === 1 && !row.opened_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "opened", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
   }
@@ -508,8 +541,8 @@ export async function recordSentNoteOpened(
   if (destroyed && row.notify_on_destroyed === 1 && !row.destroyed_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "destroyed", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
   }
@@ -531,7 +564,7 @@ async function sendSentNoteLifecycleEmail(
   },
 ): Promise<void> {
   const senderRow = await env.AUTH_DB!.prepare(
-    `SELECT email, email_verified, email_notifications, account_type, plan
+    `SELECT email, email_verified, email_notifications
      FROM users WHERE id = ? LIMIT 1`,
   )
     .bind(row.user_id)
@@ -539,14 +572,11 @@ async function sendSentNoteLifecycleEmail(
       email: string | null;
       email_verified: number | null;
       email_notifications: number | null;
-      account_type: string | null;
-      plan: string | null;
     }>();
 
   const notifyEmail = senderRow?.email;
   if (!notifyEmail || !isPlausibleEmailFormat(notifyEmail)) return;
   if (senderRow.email_verified !== 1 || senderRow.email_notifications !== 1) return;
-  if (!hasPremiumFeatures(normalizeAccountType(senderRow.account_type ?? senderRow.plan))) return;
 
   const setClause =
     event === "opened"
@@ -680,6 +710,8 @@ export async function getUserNoteDefaults(env: Env, userId: string) {
       user_id: string;
       expiry_seconds: number | null;
       max_reads: number | null;
+      file_access_window_seconds: number | null;
+      reader_language: string | null;
       notify_on_open: number;
       require_recipient_verification: number;
     }>();
@@ -691,20 +723,24 @@ export async function upsertUserNoteDefaults(
   body: {
     expirySeconds?: number | null;
     maxReads?: number | null;
+    fileAccessWindowSeconds?: number | null;
+    readerLanguage?: string | null;
     notifyOnOpen?: boolean;
     requireRecipientVerification?: boolean;
   },
 ): Promise<void> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const accountType = await getUserAccountType(env, userId);
-  if (!hasPremiumFeatures(accountType)) throw new Error("premium_required");
+  if (!planFeaturesFor(accountType).savedDefaults) throw new Error("premium_required");
 
   await env.AUTH_DB.prepare(
-    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, notify_on_open, require_recipient_verification, updated_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, file_access_window_seconds, reader_language, notify_on_open, require_recipient_verification, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(user_id) DO UPDATE SET
        expiry_seconds = excluded.expiry_seconds,
        max_reads = excluded.max_reads,
+       file_access_window_seconds = excluded.file_access_window_seconds,
+       reader_language = excluded.reader_language,
        notify_on_open = excluded.notify_on_open,
        require_recipient_verification = excluded.require_recipient_verification,
        updated_at = datetime('now')`,
@@ -713,8 +749,20 @@ export async function upsertUserNoteDefaults(
       userId,
       body.expirySeconds ?? null,
       body.maxReads ?? null,
+      body.fileAccessWindowSeconds ?? null,
+      body.readerLanguage ?? null,
       body.notifyOnOpen ? 1 : 0,
       body.requireRecipientVerification ? 1 : 0,
     )
     .run();
+}
+
+export async function deleteUserNoteDefaults(env: Env, userId: string): Promise<boolean> {
+  if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
+  const result = await env.AUTH_DB.prepare(
+    "DELETE FROM user_note_defaults WHERE user_id = ?",
+  )
+    .bind(userId)
+    .run();
+  return ((result.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
 }

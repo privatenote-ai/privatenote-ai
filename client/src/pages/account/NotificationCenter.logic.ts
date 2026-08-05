@@ -9,6 +9,17 @@ export type NotificationItem = {
   displayNoteId: string;
   status: SentNoteNotificationStatus;
   eventAt: string;
+  label?: string | null;
+  createdAt?: string | null;
+  openedAt?: string | null;
+  destroyedAt?: string | null;
+  revokedAt?: string | null;
+  expiresAt?: string | null;
+  proofEnabled?: boolean;
+  openCountry?: string | null;
+  openDeviceClass?: string | null;
+  openBrowser?: string | null;
+  attachmentDownloadedAt?: string | null;
 };
 
 export type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
@@ -16,6 +27,11 @@ export type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
 export type NotificationGroup = {
   period: TimePeriod;
   items: NotificationItem[];
+};
+
+export type ProofTimelineEntry = {
+  key: "created" | "opened" | "attachment" | "destroyed" | "expired" | "revoked";
+  at: string;
 };
 
 export function groupNotifications(items: NotificationItem[]): NotificationGroup[] {
@@ -56,6 +72,54 @@ export function formatNotificationTimestamp(raw: string): string {
   return format(d, "MMM d, HH:mm");
 }
 
+export function formatProofTimestamp(raw: string): string {
+  try {
+    return format(parseActivityCreatedAt(raw), "MMM d, yyyy · HH:mm");
+  } catch {
+    return raw;
+  }
+}
+
+/** True when there is meaningful access / terminal proof to show beyond "created". */
+export function hasProofReport(item: NotificationItem): boolean {
+  if (item.openedAt) return true;
+  if (item.attachmentDownloadedAt) return true;
+  return (
+    item.status === "viewed" ||
+    item.status === "burned" ||
+    item.status === "expired" ||
+    item.status === "attachment_downloaded" ||
+    item.status === "revoked"
+  );
+}
+
+export function buildProofTimeline(item: NotificationItem): ProofTimelineEntry[] {
+  const entries: ProofTimelineEntry[] = [];
+  if (item.createdAt) entries.push({ key: "created", at: item.createdAt });
+  if (item.openedAt) entries.push({ key: "opened", at: item.openedAt });
+  if (item.attachmentDownloadedAt) {
+    entries.push({ key: "attachment", at: item.attachmentDownloadedAt });
+  }
+  if (item.status === "expired" && item.destroyedAt) {
+    entries.push({ key: "expired", at: item.destroyedAt });
+  } else if (item.status === "burned" && item.destroyedAt) {
+    entries.push({ key: "destroyed", at: item.destroyedAt });
+  }
+  if (item.status === "revoked" && item.revokedAt) {
+    entries.push({ key: "revoked", at: item.revokedAt });
+  }
+  entries.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  return entries;
+}
+
+export function formatDeviceClass(raw: string | null | undefined, t: Record<string, string>): string {
+  const value = (raw || "").toLowerCase();
+  if (value === "mobile") return t.proofDeviceMobile ?? "Mobile";
+  if (value === "desktop") return t.proofDeviceDesktop ?? "Desktop";
+  if (!value) return t.proofUnavailable ?? "Not available";
+  return raw!;
+}
+
 export function statusLabel(
   status: SentNoteNotificationStatus,
   t: Record<string, string>,
@@ -67,6 +131,8 @@ export function statusLabel(
       return t.notificationStatusViewed ?? "Viewed";
     case "burned":
       return t.notificationStatusBurned ?? "Burned";
+    case "revoked":
+      return t.notificationStatusRevoked ?? "Revoked";
     case "expired":
       return t.notificationStatusExpired ?? "Expired";
     case "attachment_downloaded":
@@ -84,6 +150,8 @@ export function statusTone(status: SentNoteNotificationStatus): string {
       return "text-indigo-600 dark:text-indigo-400";
     case "burned":
       return "text-amber-700 dark:text-amber-300";
+    case "revoked":
+      return "text-rose-700 dark:text-rose-300";
     case "expired":
       return "text-gray-600 dark:text-gray-400";
     default:

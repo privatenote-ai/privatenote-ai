@@ -17,6 +17,8 @@ export interface NoteReservationRecord {
   /** Signed-in account that owns attachment storage quota, free or premium. */
   fileStorageUserId?: string | null;
   premiumUserId?: string | null;
+  /** Account type at reserve time (free / personal_premium / business_premium). */
+  fileAccountType?: string | null;
   attachmentPlaintextSize?: number;
   attachmentEncryptedSize?: number;
   /** chunkIndex (string) → SHA-256 hex of uploaded ciphertext bytes */

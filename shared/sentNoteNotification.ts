@@ -3,6 +3,7 @@ export type SentNoteNotificationStatus =
   | "viewed"
   | "burned"
   | "expired"
+  | "revoked"
   | "attachment_downloaded";
 
 export type SentNoteNotificationRowInput = {
@@ -63,7 +64,7 @@ export function resolveSentNoteNotificationEvent(
     });
   } else if (row.status === "revoked") {
     events.push({
-      status: "burned",
+      status: "revoked",
       eventAt: row.revoked_at ?? row.created_at,
     });
   }
@@ -77,5 +78,6 @@ export const SENT_NOTE_NOTIFICATION_STATUS_LABELS: Record<SentNoteNotificationSt
   viewed: "Viewed",
   burned: "Burned",
   expired: "Expired",
+  revoked: "Revoked",
   attachment_downloaded: "Downloaded attachment",
 };

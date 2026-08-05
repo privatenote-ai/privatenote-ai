@@ -7,15 +7,16 @@ import {
   Shield,
   User,
   Languages,
+  Mail,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
   noteExpiryPresetsForAccount,
+  noteExpiryPresetDisplayLabel,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import {
   NOTE_READ_LIMIT_OPTIONS,
-  isPremiumNoteReadLimit,
   type NoteReadLimit,
 } from "@shared/noteReadLimits";
 import {
@@ -148,6 +149,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "15d") return t.expiry15d ?? noteExpiryPresetDisplayLabel(expiryValue);
   if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
 }
@@ -347,6 +349,10 @@ export type NoteSettingsPanelProps = {
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
+  maxExpirySeconds: number;
+  allowedReadCounts: readonly number[];
+  maxFileAccessWindowSeconds: number;
+  isSignedIn: boolean;
   premiumStatusLoading: boolean;
   restrictRecipientEmail: boolean;
   setRestrictRecipientEmail: (v: boolean) => void;
@@ -354,12 +360,18 @@ export type NoteSettingsPanelProps = {
   setRequireRecipientVerification: (v: boolean) => void;
   recipientEmail: string;
   setRecipientEmail: (v: string) => void;
+  /** Optional: email the secret link after create (Starter+). */
+  deliverRecipientEmail: string;
+  setDeliverRecipientEmail: (v: string) => void;
+  canDeliverRecipientLink: boolean;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
+  /** Starter+ — persist current settings as synced account defaults. */
+  onSaveDefaults?: () => Promise<void>;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
@@ -385,6 +397,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   noteLabel,
   setNoteLabel,
   isPremiumUser,
+  maxExpirySeconds,
+  allowedReadCounts,
+  maxFileAccessWindowSeconds,
+  isSignedIn,
   premiumStatusLoading,
   restrictRecipientEmail,
   setRestrictRecipientEmail,
@@ -392,12 +408,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setRequireRecipientVerification,
   recipientEmail,
   setRecipientEmail,
+  deliverRecipientEmail,
+  setDeliverRecipientEmail,
+  canDeliverRecipientLink,
   readCount,
   setReadCount,
   fileAccessWindowSeconds,
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
+  onSaveDefaults,
 }) => {
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
@@ -405,6 +425,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const preferencesHref = localizedPath("/account/preferences", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
+  const [savingDefaults, setSavingDefaults] = React.useState(false);
+  const [defaultsSaved, setDefaultsSaved] = React.useState(false);
 
   const brandedRevealFeature = React.useMemo<PremiumFeature>(
     () => ({
@@ -599,7 +621,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
                 style={SELECT_CHEVRON_STYLE}
               >
-                {noteExpiryPresetsForAccount(isPremiumUser).map((p) => (
+                {noteExpiryPresetsForAccount(maxExpirySeconds).map((p) => (
                   <option key={p.id} value={p.id}>
                     {translatedExpiryLabel(p.id, t)}
                   </option>
@@ -628,26 +650,29 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 disabled={premiumStatusLoading}
                 onChange={(e) => {
                   const next = Number(e.target.value);
-                  if (NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) {
-                    setReadCount(next as NoteReadLimit);
-                  }
+                  if (!NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) return;
+                  if (!allowedReadCounts.includes(next)) return;
+                  setReadCount(next as NoteReadLimit);
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
-                  const premiumOnly = isPremiumNoteReadLimit(limit);
-                  const locked = premiumOnly && !isPremiumUser;
+                  const locked = !allowedReadCounts.includes(limit);
                   return (
                     <option key={limit} value={limit} disabled={locked}>
                       {translatedReadLimitLabel(limit, t)}
-                      {locked ? ` (${t.premium ?? "Starter"})` : ""}
+                      {locked
+                        ? limit === 5
+                          ? " (Business)"
+                          : ` (${t.premium ?? "Starter"})`
+                        : ""}
                     </option>
                   );
                 })}
               </select>
               <SettingsFieldHelper>
-                {isPremiumUser
+                {allowedReadCounts.length > 1
                   ? (t.settingsOpenLimitHint ?? t.viewLimitPremiumHint)
                   : (t.viewLimitFreeDescription ?? "Free accounts use read-once.")}
               </SettingsFieldHelper>
@@ -671,19 +696,25 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 disabled={premiumStatusLoading}
                 onChange={(e) => {
                   const next = Number(e.target.value);
-                  if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
-                    setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
+                  if (!NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
+                    return;
                   }
+                  if (next > maxFileAccessWindowSeconds) return;
+                  setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
-                  const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
+                  const locked = seconds > maxFileAccessWindowSeconds;
                   return (
                     <option key={seconds} value={seconds} disabled={locked}>
                       {translatedFileAccessWindowLabel(seconds, t)}
-                      {locked ? ` (${t.premium ?? "Starter"})` : ""}
+                      {locked
+                        ? seconds === 60 * 60
+                          ? " (Business)"
+                          : ` (${t.premium ?? "Starter"})`
+                        : ""}
                     </option>
                   );
                 })}
@@ -705,8 +736,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <SectionHeading
                 id="note-email-alerts-heading"
                 title={t.settingsEmailAlerts ?? "Email alerts"}
-                showPremiumBadge={!canNotifyOnOpen && !isPremiumUser}
-                premiumLabel={t.premium ?? "Starter"}
+                showPremiumBadge={false}
               />
               <SettingsOptionList>
                 <SettingsToggleRow
@@ -757,10 +787,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (
                 <PremiumSectionFooter>
-                  {isPremiumUser ? (
+                  {isSignedIn ? (
                     <>
                       {t.settingsEmailAlertsPrefsHintPrefix ??
-                        "Turn on email notifications in"}{" "}
+                        "Verify your email and turn on email notifications in"}{" "}
                       <Link
                         href={preferencesHref}
                         className="font-medium text-primary hover:underline"
@@ -771,13 +801,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </>
                   ) : (
                     <>
-                      {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
-                      <a
-                        href={premiumUpgradeHref}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {t.settingsEmailAlertsUpgradeLink ?? "Upgrade to unlock email alerts"}
-                      </a>
+                      {t.settingsEmailAlertsSignInHint ??
+                        "Sign in with a verified email to get open and destroy alerts."}
                     </>
                   )}
                 </PremiumSectionFooter>
@@ -800,6 +825,66 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </p>
               ) : null}
               <SettingsOptionList>
+                <div className="grid grid-cols-1 gap-2 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <SettingsFieldLabel
+                      htmlFor="deliver-recipient-email"
+                      icon={<Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                      label={t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
+                      info={
+                        t.settingsDeliverRecipientEmailInfo ??
+                        "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity."
+                      }
+                    />
+                  </div>
+                  <input
+                    id="deliver-recipient-email"
+                    type="email"
+                    autoComplete="off"
+                    inputMode="email"
+                    value={deliverRecipientEmail}
+                    readOnly={!canDeliverRecipientLink}
+                    disabled={premiumStatusLoading}
+                    onChange={(event) => {
+                      if (canDeliverRecipientLink) {
+                        setDeliverRecipientEmail(event.target.value);
+                      }
+                    }}
+                    onClick={() => {
+                      if (!canDeliverRecipientLink) {
+                        setSelectedPremiumFeature({
+                          title: t.settingsDeliverRecipientEmail ?? "Email link to recipient",
+                          description:
+                            t.settingsDeliverRecipientEmailInfo ??
+                            "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
+                        });
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        !canDeliverRecipientLink &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        setSelectedPremiumFeature({
+                          title: t.settingsDeliverRecipientEmail ?? "Email link to recipient",
+                          description:
+                            t.settingsDeliverRecipientEmailInfo ??
+                            "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
+                        });
+                      }
+                    }}
+                    placeholder={
+                      t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                    }
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                  />
+                  <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.settingsDeliverRecipientEmailHint ??
+                      "Optional. Leave empty to copy the link yourself."}
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start">
                   <div className="min-w-0">
                     <SettingsFieldLabel
@@ -930,6 +1015,30 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </PremiumSectionFooter>
               ) : null}
             </section>
+            {isPremiumUser && onSaveDefaults ? (
+              <div className="flex items-center justify-end gap-3 px-1">
+                {defaultsSaved ? (
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {t.authPrefsSaved ?? "Saved"}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={savingDefaults}
+                  onClick={() => {
+                    setSavingDefaults(true);
+                    setDefaultsSaved(false);
+                    void onSaveDefaults()
+                      .then(() => setDefaultsSaved(true))
+                      .catch(() => setDefaultsSaved(false))
+                      .finally(() => setSavingDefaults(false));
+                  }}
+                  className="rounded-md border border-primary/40 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  {savingDefaults ? "Saving…" : "Save these as my defaults"}
+                </button>
+              </div>
+            ) : null}
           </div>
     </TooltipProvider>
   );

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS user_note_defaults (
   user_id TEXT PRIMARY KEY,
   expiry_seconds INTEGER,
   max_reads INTEGER,
+  file_access_window_seconds INTEGER,
+  reader_language TEXT,
   notify_on_open INTEGER NOT NULL DEFAULT 0,
   require_recipient_verification INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

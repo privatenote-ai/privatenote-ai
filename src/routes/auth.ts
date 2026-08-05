@@ -14,16 +14,28 @@ import {
   checkoutIdempotencyKey,
   createStripeCheckoutSession,
   createStripePortalSession,
+  processStripeWebhookEvent,
   StripeBillingError,
+  verifyStripeWebhookSignature,
   type BillingInterval,
   type PaidBillingPlan,
-} from "../stripeCheckout";
+  type StripeEvent,
+} from "../stripeBilling";
+import { getAccountEntitlements } from "../accountEntitlements";
 import {
   clearSentNoteNotifications,
   deleteSentNoteNotification,
+  deleteUserNoteDefaults,
+  getUserAccountType,
+  getUserNoteDefaults,
   listSentNoteNotificationsForUser,
+  upsertUserNoteDefaults,
 } from "../sentNotesService";
-import { hasPremiumFeatures } from "@shared/planCatalog";
+import { hostedAiMonthlyLimit, planFeaturesFor } from "@shared/planCatalog";
+import { readHostedAiQuotaSnapshot } from "../planHostedAi";
+import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { parseNoteFileAccessWindowFromBody } from "@shared/noteFileAccess";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -2739,7 +2751,6 @@ async function schedulePendingAccountDeletion(
 
 const FREE_TIER_USAGE_LIMITS = {
   notesPerDay: 10,
-  aiUsesPerDay: 2,
 } as const;
 
 const ACCOUNT_ACTIVITY_EVENT_TYPES = new Set([
@@ -2753,22 +2764,26 @@ type AccountType = "free" | "personal_premium" | "business_premium";
 
 function normalizeAccountType(raw: string | null | undefined): AccountType {
   const value = (raw || "free").toLowerCase();
-  if (value === "personal_premium" || value === "pro") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
+  if (value === "personal_premium" || value === "pro" || value === "premium" || value === "starter") {
+    return "personal_premium";
+  }
+  if (value === "business_premium" || value === "business" || value === "plus") {
+    return "business_premium";
+  }
   return "free";
 }
 
 function usageLimitsForPlan(plan: string | null | undefined): {
   notesPerDay: number | null;
   aiUsesPerDay: number | null;
+  aiUsesPerMonth: number;
 } {
   const accountType = normalizeAccountType(plan);
-  if (accountType === "personal_premium" || accountType === "business_premium") {
-    return { notesPerDay: null, aiUsesPerDay: null };
-  }
   return {
-    notesPerDay: FREE_TIER_USAGE_LIMITS.notesPerDay,
-    aiUsesPerDay: FREE_TIER_USAGE_LIMITS.aiUsesPerDay,
+    notesPerDay: accountType === "free" ? FREE_TIER_USAGE_LIMITS.notesPerDay : null,
+    // Hosted AI is billed monthly by plan (3 / 50 / 300). Keep aiUsesPerDay null for clients.
+    aiUsesPerDay: null,
+    aiUsesPerMonth: hostedAiMonthlyLimit(accountType),
   };
 }
 
@@ -3712,6 +3727,46 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
+  if (pathname === "/api/auth/billing/stripe/webhook" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const rawPayload = await request.text();
+    const signatureValid = await verifyStripeWebhookSignature(
+      rawPayload,
+      request.headers.get("Stripe-Signature"),
+      webhookSecret,
+    );
+    if (!signatureValid) {
+      return jsonResponse({ error: "invalid_signature" }, 400, request);
+    }
+    let event: StripeEvent;
+    try {
+      event = JSON.parse(rawPayload) as StripeEvent;
+    } catch {
+      return jsonResponse({ error: "invalid_event" }, 400, request);
+    }
+    try {
+      const result = await processStripeWebhookEvent(env, event);
+      return jsonResponse({ received: true, ...result }, 200, request);
+    } catch (error) {
+      console.error("[BILLING] Stripe webhook processing failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "webhook_processing_failed",
+          message: billingError?.message ?? "Webhook processing failed.",
+        },
+        billingError?.status ?? 500,
+        request,
+      );
+    }
+  }
+
   if (pathname === "/api/auth/billing/checkout" && method === "POST") {
     if (!env.AUTH_DB) {
       return jsonResponse({ error: "billing_not_configured" }, 503, request);
@@ -3883,6 +3938,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
+    const entitlements = await getAccountEntitlements(env, session.id);
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
@@ -3897,8 +3953,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         emailVerified: (user?.email_verified ?? 0) === 1,
         lastStepUpAt: session.lastStepUpAt,
         createdAt: user?.created_at ?? null,
-        plan: normalizeAccountType(user?.account_type ?? user?.plan),
-        accountType: normalizeAccountType(user?.account_type ?? user?.plan),
+        plan: entitlements.accountType,
+        accountType: entitlements.accountType,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
@@ -3933,8 +3989,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         allow_hosted_ai?: number | null;
       }>();
 
-    const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    const normalizedAccountType = entitlements.accountType;
     const limits = usageLimitsForPlan(normalizedAccountType);
+    const hostedAiUsage = await readHostedAiQuotaSnapshot(
+      env,
+      session.id,
+      normalizedAccountType,
+    );
     let notesToday = 0;
     let aiToday = 0;
     let notesMonth = 0;
@@ -3958,6 +4020,55 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       console.warn("[account/summary] usage query failed (migration missing?):", e);
     }
 
+    let billing: {
+      stripeCustomerLinked: boolean;
+      stripeSubscriptionLinked: boolean;
+      subscriptionStatus: string | null;
+      subscriptionCurrentPeriodEnd: string | null;
+      premiumGrantedAt: string | null;
+      premiumRevokedAt: string | null;
+    } = {
+      stripeCustomerLinked: false,
+      stripeSubscriptionLinked: false,
+      subscriptionStatus: null,
+      subscriptionCurrentPeriodEnd: null,
+      premiumGrantedAt: null,
+      premiumRevokedAt: null,
+    };
+    try {
+      const billingRow = await env.AUTH_DB.prepare(
+        `SELECT
+           stripe_customer_id,
+           stripe_subscription_id,
+           subscription_status,
+           subscription_current_period_end,
+           premium_granted_at,
+           premium_revoked_at
+         FROM users WHERE id = ? LIMIT 1`,
+      )
+        .bind(session.id)
+        .first<{
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          subscription_status: string | null;
+          subscription_current_period_end: string | null;
+          premium_granted_at: string | null;
+          premium_revoked_at: string | null;
+        }>();
+      if (billingRow) {
+        billing = {
+          stripeCustomerLinked: Boolean(billingRow.stripe_customer_id),
+          stripeSubscriptionLinked: Boolean(billingRow.stripe_subscription_id),
+          subscriptionStatus: billingRow.subscription_status,
+          subscriptionCurrentPeriodEnd: billingRow.subscription_current_period_end,
+          premiumGrantedAt: billingRow.premium_granted_at,
+          premiumRevokedAt: billingRow.premium_revoked_at,
+        };
+      }
+    } catch (e) {
+      console.warn("[account/summary] billing query failed (migration missing?):", e);
+    }
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
@@ -3976,6 +4087,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         limits: {
           notesPerDay: limits.notesPerDay,
           aiUsesPerDay: limits.aiUsesPerDay,
+          aiUsesPerMonth: limits.aiUsesPerMonth,
         },
         usage: {
           notesToday,
@@ -3983,7 +4095,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           notesMonth,
           aiMonth,
         },
+        hostedAiUsage,
         storageUsedBytes: null,
+        billing,
+        entitlements: {
+          state: entitlements.state,
+          configuredAccountType: entitlements.configuredAccountType,
+          paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+        },
       }),
       { status: 200, headers }
     );
@@ -3997,15 +4116,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    const userColumns = await getUsersTableColumns(env);
-    const userSelect = buildUserSelect(["id"], userColumns);
-    const user = await env.AUTH_DB.prepare(
-      `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`,
-    )
-      .bind(session.id)
-      .first<{ account_type?: string | null; plan?: string | null }>();
-    const accountType = normalizeAccountType(user?.account_type ?? user?.plan);
-    if (!hasPremiumFeatures(accountType)) {
+    const entitlements = await getAccountEntitlements(env, session.id);
+    const capabilities = entitlements.capabilities;
+    if (!capabilities.sentNotesDashboard) {
       return jsonResponse({ error: "premium_required" }, 403, request);
     }
     const limitRaw = Number(url.searchParams.get("limit") ?? "50");
@@ -4201,6 +4314,97 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       }),
       { status: 200, headers }
     );
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "GET") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const accountType = await getUserAccountType(env, session.id);
+    const capabilities = planFeaturesFor(accountType);
+    if (!capabilities.savedDefaults) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    const row = await getUserNoteDefaults(env, session.id);
+    return jsonResponse({
+      ok: true,
+      defaults: row
+        ? {
+            expirySeconds: row.expiry_seconds,
+            maxReads: row.max_reads,
+            fileAccessWindowSeconds: row.file_access_window_seconds,
+            readerLanguage: row.reader_language,
+            notifyOnOpen: row.notify_on_open === 1,
+            requireRecipientVerification: row.require_recipient_verification === 1,
+          }
+        : null,
+    }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "PUT") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const accountType = await getUserAccountType(env, session.id);
+    const capabilities = planFeaturesFor(accountType);
+    if (!capabilities.savedDefaults) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = (await readJsonBody(request)) as Record<string, unknown>;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const expiry = parseNoteExpirySecondsFromBody(body.expirySeconds, {
+      maxExpirySeconds: capabilities.maxExpirySeconds,
+    });
+    const reads = parseMaxReadsFromBody(body.maxReads, {
+      allowedReadCounts: capabilities.allowedReadCounts,
+    });
+    const fileWindow = parseNoteFileAccessWindowFromBody(body.fileAccessWindowSeconds, {
+      maxSeconds: capabilities.maxFileAccessWindowSeconds,
+    });
+    if (!expiry.ok) return jsonResponse({ message: expiry.message }, 400, request);
+    if (!reads.ok) return jsonResponse({ message: reads.message }, 400, request);
+    if (!fileWindow.ok) return jsonResponse({ message: fileWindow.message }, 400, request);
+    const readerLanguage =
+      body.readerLanguage == null || body.readerLanguage === "auto"
+        ? null
+        : body.readerLanguage;
+    if (
+      readerLanguage != null &&
+      (!capabilities.readerLanguage ||
+        typeof readerLanguage !== "string" ||
+        !isSupportedLanguage(readerLanguage))
+    ) {
+      return jsonResponse(
+        { error: capabilities.readerLanguage ? "invalid_reader_language" : "premium_required" },
+        capabilities.readerLanguage ? 400 : 403,
+        request,
+      );
+    }
+    const requireRecipientVerification = body.requireRecipientVerification === true;
+    if (requireRecipientVerification && !capabilities.recipientVerification) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    await upsertUserNoteDefaults(env, session.id, {
+      expirySeconds: expiry.seconds,
+      maxReads: reads.maxReads,
+      fileAccessWindowSeconds: fileWindow.seconds,
+      readerLanguage: typeof readerLanguage === "string" ? readerLanguage : null,
+      notifyOnOpen: body.notifyOnOpen === true,
+      requireRecipientVerification,
+    });
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "DELETE") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const deleted = await deleteUserNoteDefaults(env, session.id);
+    return jsonResponse({ ok: true, deleted }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/stepup/options" && method === "POST") {
