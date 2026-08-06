@@ -15,6 +15,21 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
 
+# SPA entry must revalidate after every deploy. Stale HTML + replaced hashed chunks → module 404s
+# and a missing composer (see deploy-pages-staging.yml concurrency note).
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+# Content-hashed Vite assets are safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # SharedArrayBuffer / WebLLM — isolation only where on-device AI runs (not create-note uploads).
 /llm-ui
   Cross-Origin-Opener-Policy: same-origin
