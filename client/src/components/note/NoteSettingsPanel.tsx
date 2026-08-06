@@ -108,16 +108,17 @@ function SettingsFieldLabel({
     <>
       <SettingsInfoTooltip text={info}>
         <span
-          className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
+          className={`mr-1.5 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
           aria-label={info}
         >
           {icon}
         </span>
       </SettingsInfoTooltip>
-      <span className="min-w-0">{label}</span>
+      <span className="min-w-0 leading-snug">{label}</span>
     </>
   );
-  const className = "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300";
+  const className =
+    "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
   if (htmlFor) {
     return (
       <label htmlFor={htmlFor} className={className}>
@@ -127,6 +128,10 @@ function SettingsFieldLabel({
   }
   return <div className={className}>{content}</div>;
 }
+
+/** Label + control row: compact label column, input takes remaining width (helps long locales). */
+const SETTINGS_FIELD_ROW =
+  "grid grid-cols-1 items-start gap-x-2 gap-y-1 px-1 py-1.5 transition-colors sm:grid-cols-[minmax(0,11.5rem)_minmax(0,1fr)]";
 
 function translatedFileAccessWindowLabel(
   seconds: NoteFileAccessWindowSeconds,
@@ -461,15 +466,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
-    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
             <section
-              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-access-controls-heading"
             >
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
-              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
-                <div className="sm:col-span-1">
+              <div className={`${SETTINGS_FIELD_ROW} pt-2`}>
+                <div>
             <SettingsFieldLabel
               htmlFor="note-password"
               icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
@@ -478,7 +483,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               info={t.settingsPasswordInfo}
             />
           </div>
-          <div className="min-w-0 sm:col-span-2">
+          <div className="min-w-0">
             <div className="relative min-w-0">
               <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
                 <div className="flex min-w-0 flex-1">
@@ -565,7 +570,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-2">
+              <div className="mt-1">
                 <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
               </div>
               {password.trim() && (
@@ -594,9 +599,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
           </div>
         </div>
 
-              <div className="flex flex-col space-y-2">
-                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                  <div className="sm:col-span-1">
+              <div className="flex flex-col space-y-1">
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
               <SettingsFieldLabel
                 htmlFor="expiry-value"
                 icon={
@@ -619,7 +624,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 info={t.settingsNoteLifetimeInfo}
               />
             </div>
-                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
+                  <div className="min-w-0 space-y-1">
               <select
                 id="expiry-value"
                 value={expiryValue}
@@ -642,8 +647,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                  <div className="sm:col-span-1">
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
                     <SettingsFieldLabel
                       htmlFor="note-read-limit"
                       icon={<Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
@@ -652,7 +657,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       info={t.settingsOpenLimitInfo}
                     />
             </div>
-            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+            <div className="min-w-0 space-y-1">
               <select
                 id="note-read-limit"
                 value={readCount}
@@ -688,8 +693,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-            <div className="sm:col-span-1">
+          <div className={SETTINGS_FIELD_ROW}>
+            <div>
               <SettingsFieldLabel
                 htmlFor="note-file-access-window"
                 icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
@@ -698,7 +703,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 info={t.settingsFileDownloadsInfo}
               />
             </div>
-            <div className="min-w-0 space-y-1.5 sm:col-span-2">
+            <div className="min-w-0 space-y-1">
               <select
                 id="note-file-access-window"
                 value={fileAccessWindowSeconds}
@@ -794,8 +799,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 )}
               </SettingsOptionList>
               {isPremiumUser ? (
-                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                  <div className="sm:col-span-1">
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
                     <SettingsFieldLabel
                       htmlFor="note-label"
                       icon={<Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
@@ -807,7 +812,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       }
                     />
                   </div>
-                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
+                  <div className="min-w-0 space-y-1">
                     <input
                       id="note-label"
                       type="text"
@@ -864,7 +869,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </p>
               ) : null}
               <SettingsOptionList>
-                <div className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start">
+                <div className={`${SETTINGS_FIELD_ROW} px-3`}>
                   <div className="min-w-0">
                     <SettingsFieldLabel
                       htmlFor="reader-language"
@@ -876,11 +881,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
                       }
                     />
-                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {t.settingsReaderLanguageDescription ??
-                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."}
-                    </p>
                   </div>
+                  <div className="min-w-0 space-y-1">
                   <select
                     id="reader-language"
                     value={readerLanguage}
@@ -906,6 +908,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.settingsReaderLanguageDescription ??
+                      "Choose the language used for the note reveal page. Auto uses the recipient's browser language."}
+                  </p>
+                  </div>
                 </div>
                 <SettingsToggleRow
                   id="restrict-recipient-email"
