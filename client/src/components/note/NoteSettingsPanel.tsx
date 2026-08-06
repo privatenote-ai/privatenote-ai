@@ -99,12 +99,14 @@ function SettingsFieldLabel({
   iconToneClassName,
   label,
   info,
+  singleLine = false,
 }: {
   htmlFor?: string;
   icon: React.ReactNode;
   iconToneClassName: string;
   label: string;
   info?: string;
+  singleLine?: boolean;
 }) {
   const content = (
     <>
@@ -116,11 +118,14 @@ function SettingsFieldLabel({
           {icon}
         </span>
       </SettingsInfoTooltip>
-      <span className="min-w-0 leading-snug">{label}</span>
+      <span className={`min-w-0 leading-snug${singleLine ? " whitespace-nowrap" : ""}`}>
+        {label}
+      </span>
     </>
   );
-  const className =
-    "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
+  const className = singleLine
+    ? "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+    : "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
   if (htmlFor) {
     return (
       <label htmlFor={htmlFor} className={className}>
@@ -475,17 +480,18 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
               <div className="flex flex-col space-y-1">
-                <div className={`${SETTINGS_FIELD_ROW} pt-2`}>
-                  <div>
+                <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                  <div className="min-w-0 flex-1">
                     <SettingsFieldLabel
                       htmlFor="require-recipient-verification"
                       icon={<MailCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
                       iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
                       label={recipientCodeTitle}
                       info={recipientCodeInfo}
+                      singleLine
                     />
                   </div>
-                  <div className="flex min-w-0 items-center justify-end gap-2">
+                  <div className="flex shrink-0 items-center">
                     {!isPremiumUser ? (
                       <button
                         type="button"
@@ -519,7 +525,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
                 {isPremiumUser && requireRecipientVerification ? (
-                  <div className="px-1 pb-1 sm:pl-[calc(11.5rem+0.5rem)]">
+                  <div className="px-1 pb-1">
                     <label
                       htmlFor="recipient-email"
                       className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
