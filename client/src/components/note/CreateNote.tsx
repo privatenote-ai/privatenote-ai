@@ -854,14 +854,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   useEffect(() => {
     if (notifyOnOpen || notifyOnDestroyed) return;
     setAlertNotifyAccountEmail(true);
-    if (alertCustomEmail) setAlertCustomEmail("");
-  }, [alertCustomEmail, notifyOnDestroyed, notifyOnOpen]);
+    setAlertCustomEmail("");
+  }, [notifyOnDestroyed, notifyOnOpen]);
 
   useEffect(() => {
     if (isPremiumUser) return;
     setAlertNotifyAccountEmail(true);
-    if (alertCustomEmail) setAlertCustomEmail("");
-  }, [alertCustomEmail, isPremiumUser]);
+    setAlertCustomEmail("");
+  }, [isPremiumUser]);
 
   useEffect(() => {
     if (isPremiumUser) return;

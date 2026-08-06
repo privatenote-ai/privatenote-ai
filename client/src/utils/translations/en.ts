@@ -499,7 +499,7 @@ export const en: Translations = {
   settingsEmailAlertCustomEmail: "Also send to another email",
   settingsEmailAlertCustomEmailPlaceholder: "alerts@example.com",
   settingsEmailAlertCustomEmailHint:
-    "Optional. Leave blank to use only your account email. Uncheck account email to send only here.",
+    "Optional. Your account email stays selected unless you uncheck it. Uncheck it only to send alerts here alone.",
   settingsEmailAlertDestinationRequired: "Choose where to send alerts",
   settingsEmailAlertDestinationRequiredHint:
     "Keep your account email checked, or enter another email address.",
@@ -515,7 +515,7 @@ export const en: Translations = {
   settingsPremiumFeatureLabel: "Starter and Business feature —",
   settingsEmailAlertsUpgradeLink: "Upgrade to unlock email alerts",
   settingsDeliveryVerification: "Delivery & verification",
-  settingsDeliveryVerifyEmail: "Require email verification",
+  settingsDeliveryVerifyEmail: "Require one-time code via email",
   settingsDeliveryVerifyEmailInfo:
     "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.",
   settingsRecipientVerificationEmail: "Recipient email",
@@ -1220,7 +1220,7 @@ export const en: Translations = {
   createAnotherTransfer: "Create Another Transfer",
   passwordProtectionEnabledTitle: "Password protection enabled.",
   passwordProtectionEnabledBody: "This note requires both the link and your password to decrypt.",
-  passwordProtectionSendSeparately: "For best security, send the password separately from the link.",
+  passwordProtectionSendSeparately: "Password must be sent separately from the link.",
   successNotePassword: "Note password",
   successSharePassword: "Share password",
   successSharePasswordTitle: "Note password",

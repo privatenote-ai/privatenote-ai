@@ -457,9 +457,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     }),
     [t],
   );
-  const recipientCodeTitle = isFileTransfer
-    ? "Require email verification"
-    : t.settingsDeliveryVerifyEmail ?? "Require email verification";
+  const recipientCodeTitle =
+    t.settingsDeliveryVerifyEmail ?? "Require one-time code via email";
   const recipientCodeInfo = isFileTransfer
     ? "Enter the recipient's email. When they open the link, we email them a one-time code before the file can be revealed."
     : t.settingsDeliveryVerifyEmailInfo ??
@@ -474,131 +473,67 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
-              <div className={`${SETTINGS_FIELD_ROW} pt-2`}>
-                <div>
-            <SettingsFieldLabel
-              htmlFor="note-password"
-              icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
-              iconToneClassName="bg-green-50 dark:bg-green-900/30"
-              label={t.password}
-              info={t.settingsPasswordInfo}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="relative min-w-0">
-              <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
-                <div className="flex min-w-0 flex-1">
-                <input
-                  id="note-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordSource("manual");
+              <SettingsOptionList>
+                <SettingsToggleRow
+                  id="require-recipient-verification"
+                  locked={!isPremiumUser}
+                  checked={requireRecipientVerification}
+                  onCheckedChange={(checked) => {
+                    setRequireRecipientVerification(checked);
+                    if (!checked) setRecipientEmail("");
                   }}
-                  placeholder={t.passwordPlaceholder}
-                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                  title={recipientCodeTitle}
+                  info={recipientCodeInfo}
+                  onLockedClick={
+                    isPremiumUser ? undefined : () =>
+                      setSelectedPremiumFeature({
+                        title: recipientCodeTitle,
+                        description: recipientCodeInfo,
+                      })
+                  }
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="px-2 py-1.5 bg-gray-100 dark:bg-gray-600 border-t border-b border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
-                  title={showPassword ? t.hidePassword : t.showPassword}
-                >
-                  {showPassword ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                  )}
-                </button>
-                </div>
-                <div className="grid grid-cols-2 min-[520px]:flex">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPassword(generateHumanFriendlyPassword());
-                      setPasswordSource("simple");
-                    }}
-                    className="flex min-w-0 items-center justify-center border border-gray-300 bg-green-50 px-2 py-1.5 text-xs text-green-700 hover:bg-green-100 dark:border-gray-600 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
-                    title={t.passwordGeneratorSimpleHint}
-                  >
-                    <User className="h-4 w-4 mr-1" />
-                    <span>{t.simple}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPassword(generateStrongPassword());
-                      setPasswordSource("strong");
-                    }}
-                    className="flex min-w-0 items-center justify-center rounded-r-md border-b border-r border-t border-gray-300 bg-blue-50 px-2 py-1.5 text-xs text-blue-700 hover:bg-blue-100 dark:border-gray-600 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
-                    title={t.passwordGeneratorStrongHint}
-                  >
-                    <Shield className="h-4 w-4 mr-1" />
-                    <span>{t.strong}</span>
-                  </button>
-                </div>
-              </div>
-              <div className="mt-1">
-                <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
-              </div>
-              {password.trim() && (
-                <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {passwordStrength && (
-                      <span className="whitespace-nowrap">
-                        {t.passwordStrengthLabel}{" "}
-                        <span className={`font-medium ${passwordStrength.color}`}>
-                          {translatedStrengthLabel(passwordStrength, t)}
-                        </span>
-                      </span>
-                    )}
-                    <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full"></span>
-                    <span className="whitespace-nowrap">
-                      {breachState === "checking" && t.passwordBreachChecking}
-                      {breachState === "safe" && t.passwordBreachNotFound}
-                      {breachState === "pwned" &&
-                        `${t.passwordBreachFound}${breachCount ? ` (${breachCount.toLocaleString()})` : ""}`}
-                      {breachState === "error" && t.passwordBreachUnavailable}
+                {isFileTransfer && requireRecipientVerification ? (
+                  <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
+                    <Shield className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <span className="min-w-0">
+                      A one-time code will be emailed to the recipient when they open the link.
                     </span>
                   </div>
+                ) : null}
+              </SettingsOptionList>
+              {isPremiumUser && requireRecipientVerification ? (
+                <div className="px-1 pt-1">
+                  <label
+                    htmlFor="recipient-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="recipient-email"
+                    type="email"
+                    autoComplete="email"
+                    value={recipientEmail}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
+                    placeholder={
+                      t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
+                    }
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsRecipientVerificationEmailHint ??
+                      "When they open the link, we email a one-time code to this address."}
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
+              ) : null}
+              {!isPremiumUser ? (
+                <PremiumSectionFooter>
+                  {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
+                  <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
+                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                  </a>
+                </PremiumSectionFooter>
+              ) : null}
 
               <div className="flex flex-col space-y-1">
                 <div className={SETTINGS_FIELD_ROW}>
@@ -741,6 +676,132 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
+<div className={SETTINGS_FIELD_ROW}>
+                <div>
+            <SettingsFieldLabel
+              htmlFor="note-password"
+              icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
+              iconToneClassName="bg-green-50 dark:bg-green-900/30"
+              label={t.password}
+              info={t.settingsPasswordInfo}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="relative min-w-0">
+              <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
+                <div className="flex min-w-0 flex-1">
+                <input
+                  id="note-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPasswordSource("manual");
+                  }}
+                  placeholder={t.passwordPlaceholder}
+                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="px-2 py-1.5 bg-gray-100 dark:bg-gray-600 border-t border-b border-gray-300 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
+                  title={showPassword ? t.hidePassword : t.showPassword}
+                >
+                  {showPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  )}
+                </button>
+                </div>
+                <div className="grid grid-cols-2 min-[520px]:flex">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPassword(generateHumanFriendlyPassword());
+                      setPasswordSource("simple");
+                    }}
+                    className="flex min-w-0 items-center justify-center border border-gray-300 bg-green-50 px-2 py-1.5 text-xs text-green-700 hover:bg-green-100 dark:border-gray-600 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
+                    title={t.passwordGeneratorSimpleHint}
+                  >
+                    <User className="h-4 w-4 mr-1" />
+                    <span>{t.simple}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPassword(generateStrongPassword());
+                      setPasswordSource("strong");
+                    }}
+                    className="flex min-w-0 items-center justify-center rounded-r-md border-b border-r border-t border-gray-300 bg-blue-50 px-2 py-1.5 text-xs text-blue-700 hover:bg-blue-100 dark:border-gray-600 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                    title={t.passwordGeneratorStrongHint}
+                  >
+                    <Shield className="h-4 w-4 mr-1" />
+                    <span>{t.strong}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="mt-1">
+                <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
+              </div>
+              {password.trim() && (
+                <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {passwordStrength && (
+                      <span className="whitespace-nowrap">
+                        {t.passwordStrengthLabel}{" "}
+                        <span className={`font-medium ${passwordStrength.color}`}>
+                          {translatedStrengthLabel(passwordStrength, t)}
+                        </span>
+                      </span>
+                    )}
+                    <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full"></span>
+                    <span className="whitespace-nowrap">
+                      {breachState === "checking" && t.passwordBreachChecking}
+                      {breachState === "safe" && t.passwordBreachNotFound}
+                      {breachState === "pwned" &&
+                        `${t.passwordBreachFound}${breachCount ? ` (${breachCount.toLocaleString()})` : ""}`}
+                      {breachState === "error" && t.passwordBreachUnavailable}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         </div>
             </section>
 
@@ -809,17 +870,19 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     {t.settingsEmailAlertDestinations ?? "Where to send alerts"}
                   </p>
-                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
                     <input
                       type="checkbox"
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
                       checked={alertNotifyAccountEmail}
                       onChange={(event) => setAlertNotifyAccountEmail(event.target.checked)}
                     />
-                    <span className="min-w-0 leading-snug">
-                      {t.settingsEmailAlertAccountEmail ?? "My account email"}
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2 leading-snug">
+                      <span className="shrink-0">
+                        {t.settingsEmailAlertAccountEmail ?? "My account email"}
+                      </span>
                       {accountEmail ? (
-                        <span className="mt-0.5 block truncate text-xs text-gray-500 dark:text-gray-400">
+                        <span className="truncate text-xs text-gray-500 dark:text-gray-400">
                           {accountEmail}
                         </span>
                       ) : null}
@@ -845,7 +908,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     />
                     <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
                       {t.settingsEmailAlertCustomEmailHint ??
-                        "Optional. Leave blank to use only your account email. Uncheck account email to send only here."}
+                        "Optional. Your account email stays selected unless you uncheck it. Uncheck it only to send alerts here alone."}
                     </p>
                   </div>
                 </div>
@@ -911,15 +974,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading
                 id="note-delivery-verification-heading"
-                title={isFileTransfer ? "Recipient verification" : t.settingsDeliveryVerification ?? "Delivery & verification"}
+                title={t.settingsDeliveryVerification ?? "Delivery & verification"}
                 showPremiumBadge={!isPremiumUser}
                 premiumLabel={t.premium ?? "Starter"}
               />
-              {isFileTransfer ? (
-                <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  Require the recipient to enter a one-time code emailed to them when they open the link.
-                </p>
-              ) : null}
               <div className={SETTINGS_FIELD_ROW}>
                 <div>
                   <SettingsFieldLabel
@@ -966,32 +1024,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
               </div>
               <SettingsOptionList>
-                <SettingsToggleRow
-                  id="require-recipient-verification"
-                  locked={!isPremiumUser}
-                  checked={requireRecipientVerification}
-                  onCheckedChange={(checked) => {
-                    setRequireRecipientVerification(checked);
-                    if (!checked) setRecipientEmail("");
-                  }}
-                  title={recipientCodeTitle}
-                  info={recipientCodeInfo}
-                  onLockedClick={
-                    isPremiumUser ? undefined : () =>
-                      setSelectedPremiumFeature({
-                        title: recipientCodeTitle,
-                        description: recipientCodeInfo,
-                      })
-                  }
-                />
-                {isFileTransfer && requireRecipientVerification ? (
-                  <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
-                    <Shield className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                    <span className="min-w-0">
-                      A one-time code will be emailed to the recipient when they open the link.
-                    </span>
-                  </div>
-                ) : null}
                 {canBrandRevealPage ? (
                   hasRevealBranding ? (
                     <SettingsToggleRow
@@ -1026,31 +1058,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   />
                 )}
               </SettingsOptionList>
-              {isPremiumUser && requireRecipientVerification ? (
-                <div className="px-1 pt-1">
-                  <label
-                    htmlFor="recipient-email"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
-                  </label>
-                  <input
-                    id="recipient-email"
-                    type="email"
-                    autoComplete="email"
-                    value={recipientEmail}
-                    onChange={(event) => setRecipientEmail(event.target.value)}
-                    placeholder={
-                      t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
-                    }
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsRecipientVerificationEmailHint ??
-                      "When they open the link, we email a one-time code to this address."}
-                  </p>
-                </div>
-              ) : null}
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
                   {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}

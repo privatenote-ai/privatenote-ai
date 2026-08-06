@@ -303,77 +303,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   </div>
                 </div>
 
-                {showPasswordShare ? (
-                  <div className="overflow-hidden rounded-lg border-2 border-amber-400 dark:border-amber-600">
-                    <div className="flex items-center justify-between gap-2 bg-amber-500 px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-white dark:bg-amber-700">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Key className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        {t.successNotePassword ?? "Note password"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowCreatedPassword((open) => !open)}
-                        className="inline-flex items-center gap-1 rounded-md bg-white/15 px-2 py-1 text-[11px] font-medium normal-case tracking-normal hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                        aria-pressed={showCreatedPassword}
-                        aria-label={showCreatedPassword ? t.hidePassword : t.showPassword}
-                      >
-                        {showCreatedPassword ? (
-                          <EyeOff className="h-3.5 w-3.5" aria-hidden />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" aria-hidden />
-                        )}
-                        {showCreatedPassword ? t.hidePassword : t.showPassword}
-                      </button>
-                    </div>
-                    <div className="space-y-3 bg-amber-50 p-3 dark:bg-amber-950/35">
-                      <input
-                        type={showCreatedPassword ? "text" : "password"}
-                        readOnly
-                        value={notePassword}
-                        className="w-full rounded-md border border-amber-200 bg-white px-3 py-2 font-mono text-sm text-gray-900 select-text focus:outline-none focus:ring-2 focus:ring-amber-400/50 dark:border-amber-800 dark:bg-gray-900 dark:text-gray-100"
-                        aria-label={t.successNotePassword ?? "Note password"}
-                        onFocus={(event) => event.currentTarget.select()}
-                      />
-                      <p className="m-0 text-xs leading-snug text-amber-900/90 dark:text-amber-100/90">
-                        {t.passwordProtectionSendSeparately}
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <button
-                          type="button"
-                          onClick={() => void shareCreatedPassword()}
-                          className="inline-flex flex-1 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-950 hover:bg-amber-100/80 focus:outline-none focus:ring-2 focus:ring-amber-400/40 dark:border-amber-700 dark:bg-gray-900 dark:text-amber-50 dark:hover:bg-amber-950/50"
-                          title={t.successSharePassword ?? "Share password"}
-                        >
-                          <Share2 className="mr-1.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                          {t.successSharePassword ?? "Share password"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void copyCreatedPassword()}
-                          className={`inline-flex flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                            passwordCopied
-                              ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
-                              : "bg-amber-600 text-white hover:bg-amber-700 focus-visible:ring-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
-                          }`}
-                          title={t.copyPassword}
-                        >
-                          {passwordCopied ? (
-                            <>
-                              <Check className="mr-1.5 h-4 w-4 shrink-0" />
-                              {t.copied}
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="mr-1.5 h-4 w-4 shrink-0" />
-                              {t.copyPassword}
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
                 <div className="mt-8 sm:mt-10 pt-2 pb-5">
                   <div className="flex flex-col items-stretch gap-3 sm:hidden">
                     <button
@@ -462,6 +391,77 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {showPasswordShare ? (
+                  <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between gap-2 bg-gray-100 px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden />
+                        {t.successNotePassword ?? "Note password"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatedPassword((open) => !open)}
+                        className="inline-flex items-center gap-1 rounded-md bg-gray-200/80 px-2 py-1 text-[11px] font-medium normal-case tracking-normal text-gray-700 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        aria-pressed={showCreatedPassword}
+                        aria-label={showCreatedPassword ? t.hidePassword : t.showPassword}
+                      >
+                        {showCreatedPassword ? (
+                          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" aria-hidden />
+                        )}
+                        {showCreatedPassword ? t.hidePassword : t.showPassword}
+                      </button>
+                    </div>
+                    <div className="space-y-3 bg-white p-3 dark:bg-gray-900">
+                      <input
+                        type={showCreatedPassword ? "text" : "password"}
+                        readOnly
+                        value={notePassword}
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-gray-600 dark:bg-gray-950 dark:text-gray-100"
+                        aria-label={t.successNotePassword ?? "Note password"}
+                        onFocus={(event) => event.currentTarget.select()}
+                      />
+                      <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {t.passwordProtectionSendSeparately}
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => void shareCreatedPassword()}
+                          className="inline-flex flex-1 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                          title={t.successSharePassword ?? "Share password"}
+                        >
+                          <Share2 className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                          {t.successSharePassword ?? "Share password"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyCreatedPassword()}
+                          className={`inline-flex flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                            passwordCopied
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                              : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                          }`}
+                          title={t.copyPassword}
+                        >
+                          {passwordCopied ? (
+                            <>
+                              <Check className="mr-1.5 h-4 w-4 shrink-0" />
+                              {t.copied}
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="mr-1.5 h-4 w-4 shrink-0" />
+                              {t.copyPassword}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 dark:border-gray-700 dark:bg-gray-900/40">
                   {deliverySent && recipientLinkDelivery ? (
