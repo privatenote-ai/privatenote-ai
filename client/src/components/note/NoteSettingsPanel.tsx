@@ -8,6 +8,7 @@ import {
   User,
   Languages,
   Palette,
+  Tag,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -793,26 +794,34 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 )}
               </SettingsOptionList>
               {isPremiumUser ? (
-                <div className="px-1 pt-2">
-                  <label
-                    htmlFor="note-label"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsNoteLabel ?? "Note label"}
-                  </label>
-                  <input
-                    id="note-label"
-                    type="text"
-                    maxLength={NOTE_LABEL_MAX_LENGTH}
-                    value={noteLabel}
-                    onChange={(event) => setNoteLabel(event.target.value)}
-                    placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsNoteLabelHint ??
-                      "Optional. Shown only in your Notification Center on this device — never sent with the note."}
-                  </p>
+                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
+                  <div className="sm:col-span-1">
+                    <SettingsFieldLabel
+                      htmlFor="note-label"
+                      icon={<Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                      iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                      label={t.settingsNoteLabel ?? "Note label"}
+                      info={
+                        t.settingsNoteLabelInfo ??
+                        "A private name for this note on this device only. Never uploaded or shared."
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
+                    <input
+                      id="note-label"
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={noteLabel}
+                      onChange={(event) => setNoteLabel(event.target.value)}
+                      placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
+                      className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
+                    />
+                    <SettingsFieldHelper>
+                      {t.settingsNoteLabelHint ??
+                        "Device-only labeling. Never sent with the note."}
+                    </SettingsFieldHelper>
+                  </div>
                 </div>
               ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (

@@ -495,7 +495,9 @@ export const en: Translations = {
     "One email when the one-time link is accessed and the note is destroyed. Message content is never included.",
   settingsNoteLabel: "Note label",
   settingsNoteLabelPlaceholder: "e.g. Client onboarding pack",
-  settingsNoteLabelHint: "Optional. Shown only in your Notification Center on this device — never sent with the note.",
+  settingsNoteLabelInfo:
+    "A private name for this note on this device only. Never uploaded or shared.",
+  settingsNoteLabelHint: "Device-only labeling. Never sent with the note.",
   settingsEmailAlertsPrefsHintPrefix: "Turn on email notifications in",
   settingsEmailAlertsPrefsLink: "Account → Preferences",
   settingsPremiumFeatureLabel: "Starter and Business feature —",
