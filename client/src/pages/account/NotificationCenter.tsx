@@ -320,24 +320,52 @@ export default function NotificationCenter() {
     setError(null);
     setLoading(true);
     try {
-      const summary = await apiRequest<{ ok: boolean; accountType?: string; plan?: string }>(
-        "/api/auth/account/summary",
-        "GET",
-      );
-      const accountType = normalizeAccountType(summary.accountType ?? summary.plan);
-      const capabilities = planFeaturesFor(accountType);
-      setCanUseNotificationCenter(capabilities.sentNotesDashboard);
-      setCanRevokeUnopened(capabilities.revokeUnopened);
-      if (!capabilities.sentNotesDashboard) {
+      const [summaryResult, notificationsResult] = await Promise.allSettled([
+        apiRequest<{ ok: boolean; accountType?: string; plan?: string }>(
+          "/api/auth/account/summary",
+          "GET",
+        ),
+        apiRequest<{ ok: boolean; notifications: NotificationItem[] }>(
+          "/api/auth/account/notifications?limit=50",
+          "GET",
+        ),
+      ]);
+
+      if (summaryResult.status === "fulfilled") {
+        const accountType = normalizeAccountType(
+          summaryResult.value.accountType ?? summaryResult.value.plan,
+        );
+        const capabilities = planFeaturesFor(accountType);
+        setCanUseNotificationCenter(capabilities.sentNotesDashboard);
+        setCanRevokeUnopened(capabilities.revokeUnopened);
+        if (!capabilities.sentNotesDashboard) {
+          setNotifications([]);
+          return;
+        }
+      }
+
+      if (notificationsResult.status === "fulfilled") {
+        const data = notificationsResult.value;
+        setNotifications(data.ok && Array.isArray(data.notifications) ? data.notifications : []);
+        setNoteLabels(readNoteLabels());
+        if (summaryResult.status !== "fulfilled") {
+          setCanUseNotificationCenter(true);
+        }
+        return;
+      }
+
+      const notifError = notificationsResult.reason;
+      if (notifError instanceof ApiRequestError && notifError.status === 403) {
+        setCanUseNotificationCenter(false);
+        setCanRevokeUnopened(false);
         setNotifications([]);
         return;
       }
-      const data = await apiRequest<{ ok: boolean; notifications: NotificationItem[] }>(
-        "/api/auth/account/notifications?limit=50",
-        "GET",
-      );
-      setNotifications(data.ok && Array.isArray(data.notifications) ? data.notifications : []);
-      setNoteLabels(readNoteLabels());
+
+      if (summaryResult.status === "rejected") {
+        throw summaryResult.reason;
+      }
+      throw notifError;
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 403) {
         setCanUseNotificationCenter(false);
@@ -348,7 +376,9 @@ export default function NotificationCenter() {
     } finally {
       setLoading(false);
     }
-  }, [tx]);
+    // tx reads from t; avoid depending on a fresh tx identity each render (re-fetch loop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;

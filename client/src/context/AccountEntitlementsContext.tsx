@@ -29,8 +29,6 @@ export type AccountEntitlementSnapshot = {
   emailVerified: boolean;
   allowHostedAi: boolean;
   businessDisplayName: string | null;
-  businessLogoUrl: string | null;
-  businessAccentColor: string | null;
   hostedAiUsage: {
     used: number;
     limit: number;
@@ -51,8 +49,6 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   emailVerified: false,
   allowHostedAi: false,
   businessDisplayName: null,
-  businessLogoUrl: null,
-  businessAccentColor: null,
   hostedAiUsage: {
     used: 0,
     limit: planFeaturesFor("free").hostedAiMonthly,
@@ -82,17 +78,20 @@ export function AccountEntitlementsProvider({
     useState<AccountEntitlementSnapshot>(FREE_SNAPSHOT);
   const [loading, setLoading] = useState(false);
   const inFlightRef = useRef<Promise<AccountEntitlementSnapshot> | null>(null);
+  const hasLoadedRef = useRef(false);
   const signedInRef = useRef(Boolean(user));
   signedInRef.current = Boolean(user);
 
   const refreshEntitlements = useCallback(async () => {
     if (!user) {
+      hasLoadedRef.current = false;
       setEntitlements(FREE_SNAPSHOT);
       setLoading(false);
       return FREE_SNAPSHOT;
     }
     if (inFlightRef.current) return inFlightRef.current;
-    setLoading(true);
+    const isInitialLoad = !hasLoadedRef.current;
+    if (isInitialLoad) setLoading(true);
     const request = apiRequest<{
       accountType?: string | null;
       plan?: string | null;
@@ -104,8 +103,6 @@ export function AccountEntitlementsProvider({
       emailVerified?: boolean;
       allowHostedAi?: boolean;
       businessDisplayName?: string | null;
-      businessLogoUrl?: string | null;
-      businessAccentColor?: string | null;
       hostedAiUsage?: {
         used?: number;
         limit?: number;
@@ -131,8 +128,6 @@ export function AccountEntitlementsProvider({
           emailVerified: summary.emailVerified === true,
           allowHostedAi: summary.allowHostedAi === true,
           businessDisplayName: summary.businessDisplayName ?? null,
-          businessLogoUrl: summary.businessLogoUrl ?? null,
-          businessAccentColor: summary.businessAccentColor ?? null,
           hostedAiUsage: {
             used: Math.max(0, Number(summary.hostedAiUsage?.used ?? 0)),
             limit: Math.max(
@@ -148,16 +143,17 @@ export function AccountEntitlementsProvider({
           capabilities: planFeaturesFor(accountType),
           refreshedAt: new Date().toISOString(),
         };
+        hasLoadedRef.current = true;
         setEntitlements(next);
         return next;
       })
       .catch(() => {
-        setEntitlements(FREE_SNAPSHOT);
+        if (!hasLoadedRef.current) setEntitlements(FREE_SNAPSHOT);
         return FREE_SNAPSHOT;
       })
       .finally(() => {
         inFlightRef.current = null;
-        setLoading(false);
+        if (isInitialLoad) setLoading(false);
       });
     inFlightRef.current = request;
     return request;

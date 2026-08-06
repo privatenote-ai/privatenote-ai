@@ -4254,22 +4254,20 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
-    const session = await getSessionFromRequest(env, request, { rotate: true });
+    const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    const entitlements = await getAccountEntitlements(env, session.id);
-    const capabilities = entitlements.capabilities;
-    if (!capabilities.sentNotesDashboard) {
-      return jsonResponse({ error: "premium_required" }, 403, request);
-    }
     const limitRaw = Number(url.searchParams.get("limit") ?? "50");
     const limit = Math.min(50, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50));
-    const notifications = await listSentNoteNotificationsForUser(env, session.id, limit);
-    const headers = new Headers(getCorsHeaders(request));
-    headers.set("Content-Type", "application/json");
-    applyRotatedSession(request, headers, session);
-    return new Response(JSON.stringify({ ok: true, notifications }), { status: 200, headers });
+    const [entitlements, notifications] = await Promise.all([
+      getAccountEntitlements(env, session.id),
+      listSentNoteNotificationsForUser(env, session.id, limit),
+    ]);
+    if (!entitlements.capabilities.sentNotesDashboard) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    return jsonResponse({ ok: true, notifications }, 200, request);
   }
 
   if (pathname === "/api/auth/account/notifications" && method === "DELETE") {
