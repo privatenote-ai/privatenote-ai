@@ -11,6 +11,8 @@ import {
   utf8ByteLength,
 } from "@shared/noteSizeLimits";
 import {
+  NOTE_FILE_BUSINESS_MAX_BYTES,
+  NOTE_FILE_STARTER_MAX_BYTES,
   formatNoteFileSize,
   noteFileLimitBytesForAccount,
   resolveFileSizeUpgradePlan,
@@ -23,6 +25,7 @@ import {
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import { planFeaturesFor } from "@shared/planCatalog";
+import { brandingIsEmpty, type BusinessBranding } from "@shared/businessBranding";
 import {
   NOTE_READ_LIMIT_DEFAULT,
   clampNoteReadLimitForAccount,
@@ -450,6 +453,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
+  const [hasRevealBranding, setHasRevealBranding] = useState(false);
+  const [applyBranding, setApplyBranding] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
     "personal_premium" | "business_premium" | null
@@ -473,6 +478,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
+    "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.")
+    .replace("{starterLimit}", formatNoteFileSize(NOTE_FILE_STARTER_MAX_BYTES))
+    .replace("{businessLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES))
+    .replace("{premiumLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES));
   const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
     "{limit}",
     fileLimitLabel,
@@ -802,6 +812,31 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       cancelled = true;
     };
   }, [user, accountType, premiumStatusLoading, prefillText]);
+
+  // Only the presence of branding is needed here: the values themselves are
+  // resolved server-side at creation, so the client never handles them.
+  useEffect(() => {
+    if (premiumStatusLoading) return;
+    if (!user || !planFeaturesFor(accountType).revealBranding) {
+      setHasRevealBranding(false);
+      setApplyBranding(false);
+      return;
+    }
+    let cancelled = false;
+    void apiRequest<{ branding?: BusinessBranding }>("/api/auth/account/branding", "GET")
+      .then((response) => {
+        if (cancelled) return;
+        const configured = !brandingIsEmpty(response.branding);
+        setHasRevealBranding(configured);
+        setApplyBranding(configured);
+      })
+      .catch(() => {
+        if (!cancelled) setHasRevealBranding(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, accountType, premiumStatusLoading]);
 
   useEffect(() => {
     if (premiumStatusLoading) return;
@@ -1274,6 +1309,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
+    const applyRevealBranding =
+      planCapabilities.revealBranding && hasRevealBranding && applyBranding;
     const tracksDelivery =
       (notifyOnOpen && canNotifyOnOpen) ||
       (notifyOnDestroyed && canNotifyOnOpen) ||
@@ -1685,6 +1722,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
+        ...(applyRevealBranding ? { applyBranding: true } : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -2812,6 +2850,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
                 readerLanguage={readerLanguage}
                 setReaderLanguage={setReaderLanguage}
+                canBrandRevealPage={planCapabilities.revealBranding}
+                hasRevealBranding={hasRevealBranding}
+                applyBranding={applyBranding}
+                setApplyBranding={setApplyBranding}
                 onSaveDefaults={
                   planCapabilities.savedDefaults ? handleSaveNoteDefaults : undefined
                 }
@@ -3126,6 +3168,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setFileAccessWindowSeconds,
               readerLanguage,
               setReaderLanguage,
+              canBrandRevealPage: planCapabilities.revealBranding,
+              hasRevealBranding,
+              applyBranding,
+              setApplyBranding,
               onSaveDefaults: planCapabilities.savedDefaults
                 ? handleSaveNoteDefaults
                 : undefined,
