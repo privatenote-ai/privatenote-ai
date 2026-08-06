@@ -9,6 +9,7 @@ import {
   Languages,
   Palette,
   Tag,
+  MailCheck,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -473,69 +474,86 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
-              <SettingsOptionList>
-                <SettingsToggleRow
-                  id="require-recipient-verification"
-                  locked={!isPremiumUser}
-                  checked={requireRecipientVerification}
-                  onCheckedChange={(checked) => {
-                    setRequireRecipientVerification(checked);
-                    if (!checked) setRecipientEmail("");
-                  }}
-                  title={recipientCodeTitle}
-                  info={recipientCodeInfo}
-                  onLockedClick={
-                    isPremiumUser ? undefined : () =>
-                      setSelectedPremiumFeature({
-                        title: recipientCodeTitle,
-                        description: recipientCodeInfo,
-                      })
-                  }
-                />
-                {isFileTransfer && requireRecipientVerification ? (
-                  <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
-                    <Shield className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                    <span className="min-w-0">
-                      A one-time code will be emailed to the recipient when they open the link.
-                    </span>
+              <div className="flex flex-col space-y-1">
+                <div className={`${SETTINGS_FIELD_ROW} pt-2`}>
+                  <div>
+                    <SettingsFieldLabel
+                      htmlFor="require-recipient-verification"
+                      icon={<MailCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                      label={recipientCodeTitle}
+                      info={recipientCodeInfo}
+                    />
+                  </div>
+                  <div className="flex min-w-0 items-center justify-end gap-2">
+                    {!isPremiumUser ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPremiumFeature({
+                            title: recipientCodeTitle,
+                            description: recipientCodeInfo,
+                          })
+                        }
+                        className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        aria-label={recipientCodeTitle}
+                      >
+                        <Switch
+                          id="require-recipient-verification"
+                          checked={false}
+                          disabled
+                          aria-hidden
+                          className="pointer-events-none opacity-50"
+                        />
+                      </button>
+                    ) : (
+                      <Switch
+                        id="require-recipient-verification"
+                        checked={requireRecipientVerification}
+                        onCheckedChange={(checked) => {
+                          setRequireRecipientVerification(checked);
+                          if (!checked) setRecipientEmail("");
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+                {isPremiumUser && requireRecipientVerification ? (
+                  <div className="px-1 pb-1 sm:pl-[calc(11.5rem+0.5rem)]">
+                    <label
+                      htmlFor="recipient-email"
+                      className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                    </label>
+                    <input
+                      id="recipient-email"
+                      type="email"
+                      autoComplete="email"
+                      value={recipientEmail}
+                      onChange={(event) => setRecipientEmail(event.target.value)}
+                      placeholder={
+                        t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
+                      }
+                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {isFileTransfer
+                        ? "A one-time code will be emailed to the recipient when they open the link."
+                        : (t.settingsRecipientVerificationEmailHint ??
+                          "When they open the link, we email a one-time code to this address.")}
+                    </p>
                   </div>
                 ) : null}
-              </SettingsOptionList>
-              {isPremiumUser && requireRecipientVerification ? (
-                <div className="px-1 pt-1">
-                  <label
-                    htmlFor="recipient-email"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
-                  </label>
-                  <input
-                    id="recipient-email"
-                    type="email"
-                    autoComplete="email"
-                    value={recipientEmail}
-                    onChange={(event) => setRecipientEmail(event.target.value)}
-                    placeholder={
-                      t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
-                    }
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsRecipientVerificationEmailHint ??
-                      "When they open the link, we email a one-time code to this address."}
-                  </p>
-                </div>
-              ) : null}
-              {!isPremiumUser ? (
-                <PremiumSectionFooter>
-                  {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
-                  <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
-                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
-                  </a>
-                </PremiumSectionFooter>
-              ) : null}
+                {!isPremiumUser ? (
+                  <PremiumSectionFooter>
+                    {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
+                    <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
+                      {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                    </a>
+                  </PremiumSectionFooter>
+                ) : null}
 
-              <div className="flex flex-col space-y-1">
                 <div className={SETTINGS_FIELD_ROW}>
                   <div>
               <SettingsFieldLabel
