@@ -506,16 +506,22 @@ export const en: Translations = {
   settingsDeliverRecipientEmailInfo:
     "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
   settingsDeliverRecipientEmailPlaceholder: "recipient@example.com",
-  settingsDeliverRecipientEmailHint: "Optional. Leave empty to copy the link yourself.",
+  settingsDeliverRecipientEmailHint:
+    "Optional. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
   toastInvalidRecipientEmailTitle: "Invalid recipient email",
-  toastInvalidRecipientEmailDesc: "Enter a valid email address, or leave it blank.",
+  toastInvalidRecipientEmailDesc: "Enter a valid email address.",
   recipientLinkDeliverySentTitle: "Link emailed",
   recipientLinkDeliverySentBody: "Sent to {email}.",
   recipientLinkDeliveryFailedTitle: "Could not email the link",
   recipientLinkDeliveryFailedBody:
-    "We could not send the link to {email}. You can still copy it below.",
+    "We could not send the link to {email}. You can still copy it above.",
   recipientLinkDeliveryRetry: "Try again",
   recipientLinkDeliveryRetrying: "Sending…",
+  recipientLinkDeliverySend: "Send",
+  recipientLinkDeliveryUpgradeHint: "Starter and Business can email the link —",
+  recipientLinkDeliveryVerifyEmailHint:
+    "Verify your account email before we can send the link for you.",
+  recipientLinkDeliverySignInHint: "Sign in with Starter or Business to email the link —",
   settingsDeliveryBrandedReveal: "Branded reveal page",
   settingsDeliveryBrandedRevealInfo: "Show your brand on the page where the recipient opens the note.",
   settingsReaderLanguage: "Reader Language",

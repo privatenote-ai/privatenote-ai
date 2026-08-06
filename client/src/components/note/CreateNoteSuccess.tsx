@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { RefObject } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,8 +17,11 @@ import {
   RefreshCw,
   FileText,
   X,
+  Mail,
 } from "lucide-react";
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
+
+export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verify_email";
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
@@ -83,7 +86,8 @@ export type CreateNoteSuccessProps = {
   setSelectedDoDont: (v: "do" | "dont" | null | ((prev: "do" | "dont" | null) => "do" | "dont" | null)) => void;
   successLinkCopied: boolean;
   onCopyLink: () => Promise<void>;
-  onRetryRecipientLinkDelivery?: () => Promise<void>;
+  onDeliverRecipientLink?: (email: string) => Promise<void>;
+  recipientLinkDeliveryGate?: RecipientLinkDeliveryGate;
   recipientLinkDeliveryRetrying?: boolean;
   onShareLink: () => Promise<void>;
   onShareQrCode: () => Promise<void>;
@@ -105,7 +109,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   setSelectedDoDont,
   successLinkCopied,
   onCopyLink,
-  onRetryRecipientLinkDelivery,
+  onDeliverRecipientLink,
+  recipientLinkDeliveryGate = "upgrade",
   recipientLinkDeliveryRetrying = false,
   onShareLink,
   onShareQrCode,
@@ -115,8 +120,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   variant = "note",
 }) => {
   const { language, t } = useLanguage();
+  const [deliverEmailInput, setDeliverEmailInput] = useState("");
   const isFileTransfer = variant === "file-transfer";
   const createdNoteMeta = createdNote.meta;
+
+  React.useEffect(() => {
+    const emailed = createdNote.meta?.recipientLinkDelivery?.email;
+    if (!emailed) return;
+    setDeliverEmailInput((current) => (current.trim() ? current : emailed));
+  }, [createdNote.meta?.recipientLinkDelivery?.email]);
+
   if (!createdNoteMeta) {
     return (
       <section
@@ -148,6 +161,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const qrViewMessage = isFileTransfer
     ? t.anyoneWithCodeCanViewTransfer
     : t.anyoneWithCodeCanViewNote;
+  const premiumUpgradeHref = localizedPath("/premium", language);
+  const signInHref = localizedPath("/auth/sign-in", language);
+  const deliverySent = recipientLinkDelivery?.status === "sent";
+  const deliveryFailed = recipientLinkDelivery?.status === "failed";
+  const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
+
+  const submitRecipientLinkDelivery = () => {
+    if (!onDeliverRecipientLink || !canSubmitDelivery || recipientLinkDeliveryRetrying) return;
+    void onDeliverRecipientLink(deliverEmailInput.trim());
+  };
 
   return (
     <section className="w-full max-w-4xl mx-auto py-4 sm:py-6">
@@ -202,44 +225,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       {t.recipientVerificationCodeHint ??
                         "Share this code with the recipient separately. They must enter it before the note can be revealed."}
                     </p>
-                  </div>
-                ) : null}
-
-                {recipientLinkDelivery ? (
-                  <div
-                    className={`rounded-lg border px-4 py-3.5 text-sm ${
-                      recipientLinkDelivery.status === "sent"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-100"
-                        : "border-red-200 bg-red-50 text-red-950 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-100"
-                    }`}
-                    role="status"
-                  >
-                    <p className="m-0 font-medium">
-                      {recipientLinkDelivery.status === "sent"
-                        ? t.recipientLinkDeliverySentTitle ?? "Link emailed"
-                        : t.recipientLinkDeliveryFailedTitle ?? "Could not email the link"}
-                    </p>
-                    <p className="mt-2 m-0 text-xs leading-snug opacity-90">
-                      {(recipientLinkDelivery.status === "sent"
-                        ? t.recipientLinkDeliverySentBody ?? "Sent to {email}."
-                        : t.recipientLinkDeliveryFailedBody ??
-                          "We could not send the link to {email}. You can still copy it below."
-                      ).replace("{email}", recipientLinkDelivery.email)}
-                    </p>
-                    {recipientLinkDelivery.status === "failed" && onRetryRecipientLinkDelivery ? (
-                      <button
-                        type="button"
-                        disabled={recipientLinkDeliveryRetrying}
-                        onClick={() => {
-                          void onRetryRecipientLinkDelivery();
-                        }}
-                        className="mt-3 inline-flex items-center rounded-md border border-current/20 bg-white/50 px-3 py-1.5 text-xs font-medium hover:bg-white/80 disabled:opacity-60 dark:bg-black/20 dark:hover:bg-black/30"
-                      >
-                        {recipientLinkDeliveryRetrying
-                          ? t.recipientLinkDeliveryRetrying ?? "Sending…"
-                          : t.recipientLinkDeliveryRetry ?? "Try again"}
-                      </button>
-                    ) : null}
                   </div>
                 ) : null}
 
@@ -361,6 +346,107 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       {createAnotherLabel}
                     </button>
                   </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 dark:border-gray-700 dark:bg-gray-900/40">
+                  {deliverySent && recipientLinkDelivery ? (
+                    <div
+                      className="text-sm text-emerald-900 dark:text-emerald-100"
+                      role="status"
+                    >
+                      <p className="m-0 inline-flex items-center gap-1.5 font-medium">
+                        <Mail className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                        {t.recipientLinkDeliverySentTitle ?? "Link emailed"}
+                      </p>
+                      <p className="mt-1.5 m-0 text-xs leading-snug opacity-90">
+                        {(t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
+                          "{email}",
+                          recipientLinkDelivery.email,
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <form
+                      className="space-y-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitRecipientLinkDelivery();
+                      }}
+                    >
+                      <label
+                        htmlFor="success-deliver-recipient-email"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+                      >
+                        <Mail className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+                        {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
+                      </label>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <input
+                          id="success-deliver-recipient-email"
+                          type="email"
+                          autoComplete="off"
+                          inputMode="email"
+                          value={deliverEmailInput}
+                          onChange={(event) => setDeliverEmailInput(event.target.value)}
+                          disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                          placeholder={
+                            t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                          }
+                          className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                        />
+                        <button
+                          type="submit"
+                          disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                          className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {recipientLinkDeliveryRetrying
+                            ? t.recipientLinkDeliveryRetrying ?? "Sending…"
+                            : deliveryFailed
+                              ? t.recipientLinkDeliveryRetry ?? "Try again"
+                              : t.recipientLinkDeliverySend ?? "Send"}
+                        </button>
+                      </div>
+                      <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {t.settingsDeliverRecipientEmailHint ??
+                          "Optional. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity."}
+                      </p>
+                      {deliveryFailed && recipientLinkDelivery ? (
+                        <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
+                          {(
+                            t.recipientLinkDeliveryFailedBody ??
+                            "We could not send the link to {email}. You can still copy it above."
+                          ).replace("{email}", recipientLinkDelivery.email)}
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "sign_in" ? (
+                        <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {t.recipientLinkDeliverySignInHint ??
+                            "Sign in with Starter or Business to email the link —"}{" "}
+                          <Link href={signInHref} className="font-medium text-primary hover:underline">
+                            {t.settingsEmailAlertsSignInLink ?? "Sign in"}
+                          </Link>
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "upgrade" ? (
+                        <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {t.recipientLinkDeliveryUpgradeHint ??
+                            "Starter and Business can email the link —"}{" "}
+                          <Link
+                            href={premiumUpgradeHref}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                          </Link>
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "verify_email" ? (
+                        <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
+                          {t.recipientLinkDeliveryVerifyEmailHint ??
+                            "Verify your account email before we can send the link for you."}
+                        </p>
+                      ) : null}
+                    </form>
+                  )}
                 </div>
 
                 <div className="pt-5 sm:pt-6 w-full flex flex-col items-center">

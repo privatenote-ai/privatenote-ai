@@ -7,7 +7,7 @@ import {
   Shield,
   User,
   Languages,
-  Mail,
+  Palette,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -360,16 +360,18 @@ export type NoteSettingsPanelProps = {
   setRequireRecipientVerification: (v: boolean) => void;
   recipientEmail: string;
   setRecipientEmail: (v: string) => void;
-  /** Optional: email the secret link after create (Starter+). */
-  deliverRecipientEmail: string;
-  setDeliverRecipientEmail: (v: string) => void;
-  canDeliverRecipientLink: boolean;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
+  /** Business — show the account's saved branding on the reveal page. */
+  canBrandRevealPage: boolean;
+  /** False when the plan allows branding but the account has not set any up. */
+  hasRevealBranding: boolean;
+  applyBranding: boolean;
+  setApplyBranding: (v: boolean) => void;
   /** Starter+ — persist current settings as synced account defaults. */
   onSaveDefaults?: () => Promise<void>;
 };
@@ -408,21 +410,23 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setRequireRecipientVerification,
   recipientEmail,
   setRecipientEmail,
-  deliverRecipientEmail,
-  setDeliverRecipientEmail,
-  canDeliverRecipientLink,
   readCount,
   setReadCount,
   fileAccessWindowSeconds,
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
+  canBrandRevealPage,
+  hasRevealBranding,
+  applyBranding,
+  setApplyBranding,
   onSaveDefaults,
 }) => {
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
   const preferencesHref = localizedPath("/account/preferences", language);
+  const brandingHref = localizedPath("/account/branding", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
   const [savingDefaults, setSavingDefaults] = React.useState(false);
@@ -825,66 +829,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </p>
               ) : null}
               <SettingsOptionList>
-                <div className="grid grid-cols-1 gap-2 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <SettingsFieldLabel
-                      htmlFor="deliver-recipient-email"
-                      icon={<Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
-                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
-                      label={t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
-                      info={
-                        t.settingsDeliverRecipientEmailInfo ??
-                        "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity."
-                      }
-                    />
-                  </div>
-                  <input
-                    id="deliver-recipient-email"
-                    type="email"
-                    autoComplete="off"
-                    inputMode="email"
-                    value={deliverRecipientEmail}
-                    readOnly={!canDeliverRecipientLink}
-                    disabled={premiumStatusLoading}
-                    onChange={(event) => {
-                      if (canDeliverRecipientLink) {
-                        setDeliverRecipientEmail(event.target.value);
-                      }
-                    }}
-                    onClick={() => {
-                      if (!canDeliverRecipientLink) {
-                        setSelectedPremiumFeature({
-                          title: t.settingsDeliverRecipientEmail ?? "Email link to recipient",
-                          description:
-                            t.settingsDeliverRecipientEmailInfo ??
-                            "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
-                        });
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        !canDeliverRecipientLink &&
-                        (event.key === "Enter" || event.key === " ")
-                      ) {
-                        event.preventDefault();
-                        setSelectedPremiumFeature({
-                          title: t.settingsDeliverRecipientEmail ?? "Email link to recipient",
-                          description:
-                            t.settingsDeliverRecipientEmailInfo ??
-                            "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
-                        });
-                      }
-                    }}
-                    placeholder={
-                      t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
-                    }
-                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
-                  />
-                  <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
-                    {t.settingsDeliverRecipientEmailHint ??
-                      "Optional. Leave empty to copy the link yourself."}
-                  </p>
-                </div>
                 <div className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start">
                   <div className="min-w-0">
                     <SettingsFieldLabel
@@ -974,12 +918,39 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </span>
                   </div>
                 ) : null}
-                <SettingsToggleRow
-                  locked
-                  title={brandedRevealFeature.title}
-                  info={brandedRevealFeature.description}
-                  onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
-                />
+                {canBrandRevealPage ? (
+                  hasRevealBranding ? (
+                    <SettingsToggleRow
+                      id="apply-branding"
+                      locked={false}
+                      checked={applyBranding}
+                      onCheckedChange={setApplyBranding}
+                      title={brandedRevealFeature.title}
+                      info={brandedRevealFeature.description}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <Palette className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                      <span className="min-w-0">
+                        <a
+                          href={brandingHref}
+                          className="underline underline-offset-2 hover:text-primary"
+                        >
+                          {t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding"}
+                        </a>{" "}
+                        {t.settingsDeliveryBrandedRevealSetUpHint ??
+                          "to show it on the reveal page."}
+                      </span>
+                    </div>
+                  )
+                ) : (
+                  <SettingsToggleRow
+                    locked
+                    title={brandedRevealFeature.title}
+                    info={brandedRevealFeature.description}
+                    onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
+                  />
+                )}
               </SettingsOptionList>
               {isPremiumUser && restrictRecipientEmail ? (
                 <div className="px-1 pt-1">

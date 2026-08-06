@@ -445,7 +445,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [restrictRecipientEmail, setRestrictRecipientEmail] = useState(false);
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [deliverRecipientEmail, setDeliverRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
@@ -846,10 +845,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (restrictRecipientEmail) setRestrictRecipientEmail(false);
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
-    if (deliverRecipientEmail) setDeliverRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
   }, [
-    deliverRecipientEmail,
     isPremiumUser,
     recipientEmail,
     readerLanguage,
@@ -1255,9 +1252,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     const applyRestrictRecipientEmail = isPremiumUser && restrictRecipientEmail;
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
-    const trimmedDeliverRecipientEmail = deliverRecipientEmail.trim();
-    const shouldDeliverRecipientLink =
-      planCapabilities.recipientLinkDelivery && trimmedDeliverRecipientEmail.length > 0;
     if (applyRestrictRecipientEmail) {
       const trimmedRecipientEmail = recipientEmail.trim();
       if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
@@ -1268,14 +1262,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         });
         return;
       }
-    }
-    if (shouldDeliverRecipientLink && !isPlausibleEmailFormat(trimmedDeliverRecipientEmail)) {
-      toast({
-        title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
-        description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address, or leave it blank.",
-        variant: "destructive",
-      });
-      return;
     }
 
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
@@ -1723,22 +1709,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
 
-      let recipientLinkDelivery:
-        | { status: "sent" | "failed"; email: string }
-        | undefined;
-      if (shouldDeliverRecipientLink) {
-        const deliveryEmail = trimmedDeliverRecipientEmail.toLowerCase();
-        try {
-          await apiRequest(`/api/notes/${id}/deliver-link`, "POST", {
-            recipientEmail: deliveryEmail,
-            noteUrl: url,
-          });
-          recipientLinkDelivery = { status: "sent", email: deliveryEmail };
-        } catch {
-          recipientLinkDelivery = { status: "failed", email: deliveryEmail };
-        }
-      }
-
       setCreatedNote({
         url,
         meta: {
@@ -1749,7 +1719,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             typeof recipientVerificationCode === "string"
               ? recipientVerificationCode
               : undefined,
-          recipientLinkDelivery,
         },
       });
       resetAiTurnstileWidget();
@@ -1841,44 +1810,105 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     await copyToClipboard();
   };
 
-  const retryRecipientLinkDelivery = useCallback(async () => {
-    const meta = createdNote?.meta?.recipientLinkDelivery;
-    const url = createdNote?.url;
-    if (!meta || !url || meta.status !== "failed") return;
-    const noteIdMatch = url.match(/\/note\/([^/#]+)/);
-    const noteId = noteIdMatch?.[1];
-    if (!noteId) return;
-    setRecipientLinkDeliveryRetrying(true);
-    try {
-      await apiRequest(`/api/notes/${noteId}/deliver-link`, "POST", {
-        recipientEmail: meta.email,
-        noteUrl: url,
-      });
-      setCreatedNote((current) =>
-        current
-          ? {
-              ...current,
-              meta: current.meta
-                ? {
-                    ...current.meta,
-                    recipientLinkDelivery: { status: "sent", email: meta.email },
-                  }
-                : current.meta,
+  const recipientLinkDeliveryGate =
+    !user
+      ? ("sign_in" as const)
+      : !planCapabilities.recipientLinkDelivery
+        ? ("upgrade" as const)
+        : !accountEmailVerified
+          ? ("verify_email" as const)
+          : ("ready" as const);
+
+  const deliverRecipientLink = useCallback(
+    async (rawEmail: string) => {
+      const url = createdNote?.url;
+      if (!url || recipientLinkDeliveryGate !== "ready") return;
+      const email = rawEmail.trim().toLowerCase();
+      if (!isPlausibleEmailFormat(email)) {
+        toast({
+          title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
+          description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const noteIdMatch = url.match(/\/note\/([^/#]+)/);
+      const noteId = noteIdMatch?.[1];
+      if (!noteId) return;
+      setRecipientLinkDeliveryRetrying(true);
+      try {
+        await apiRequest(`/api/notes/${noteId}/deliver-link`, "POST", {
+          recipientEmail: email,
+          noteUrl: url,
+        });
+        setCreatedNote((current) =>
+          current
+            ? {
+                ...current,
+                meta: current.meta
+                  ? {
+                      ...current.meta,
+                      recipientLinkDelivery: { status: "sent", email },
+                    }
+                  : current.meta,
+              }
+            : current,
+        );
+        toast({
+          title: t.recipientLinkDeliverySentTitle ?? "Link emailed",
+          description: (t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
+            "{email}",
+            email,
+          ),
+        });
+      } catch (error) {
+        setCreatedNote((current) =>
+          current
+            ? {
+                ...current,
+                meta: current.meta
+                  ? {
+                      ...current.meta,
+                      recipientLinkDelivery: { status: "failed", email },
+                    }
+                  : current.meta,
+              }
+            : current,
+        );
+        let description = (
+          t.recipientLinkDeliveryFailedBody ??
+          "We could not send the link to {email}. You can still copy it above."
+        ).replace("{email}", email);
+        if (error instanceof ApiRequestError) {
+          if (error.status === 401) {
+            description =
+              t.recipientLinkDeliverySignInHint ??
+              "Sign in with Starter or Business to email the link.";
+          } else if (error.status === 403) {
+            if (/sender_email_unverified/i.test(error.bodyText)) {
+              description =
+                t.recipientLinkDeliveryVerifyEmailHint ??
+                "Verify your account email before we can send the link for you.";
+            } else if (/premium_required/i.test(error.bodyText)) {
+              description =
+                t.recipientLinkDeliveryUpgradeHint ??
+                "Starter and Business can email the link.";
             }
-          : current,
-      );
-    } catch {
-      toast({
-        title: t.recipientLinkDeliveryFailedTitle ?? "Could not email the link",
-        description: (t.recipientLinkDeliveryFailedBody ??
-          "We could not send the link to {email}. You can still copy it below."
-        ).replace("{email}", meta.email),
-        variant: "destructive",
-      });
-    } finally {
-      setRecipientLinkDeliveryRetrying(false);
-    }
-  }, [createdNote, t, toast]);
+          } else if (error.status === 429) {
+            description = "Too many email attempts. Please wait and try again.";
+          }
+        }
+        toast({
+          title: t.recipientLinkDeliveryFailedTitle ?? "Could not email the link",
+          description,
+          variant: "destructive",
+        });
+      } finally {
+        setRecipientLinkDeliveryRetrying(false);
+      }
+    },
+    [accountEmailVerified, createdNote?.url, recipientLinkDeliveryGate, t, toast],
+  );
 
   const createNewNote = () => {
     clearCreateNoteAuthDraft();
@@ -1896,7 +1926,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setRestrictRecipientEmail(false);
     setRequireRecipientVerification(false);
     setRecipientEmail("");
-    setDeliverRecipientEmail("");
     setNoteLabel("");
     setShowPrompt(true);
     setAiDraftAccepted(false);
@@ -2478,11 +2507,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           <Shield className="h-3 w-3 mr-1 text-green-500" />
           {t.endToEndEncrypted}
         </span>
-        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-        <span className="flex items-center whitespace-nowrap">
-          <Lock className="h-3 w-3 mr-1 text-blue-500" />
-          AES-256 GCM
-        </span>
+        {!isPasswordProtected && (
+          <>
+            <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+            <span className="flex items-center whitespace-nowrap">
+              <Lock className="h-3 w-3 mr-1 text-blue-500" />
+              AES-256 GCM
+            </span>
+          </>
+        )}
         <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
         <span className="flex items-center whitespace-nowrap">
           <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
@@ -2528,7 +2561,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         setSelectedDoDont={setSelectedDoDont}
         successLinkCopied={successLinkCopied}
         onCopyLink={copyToClipboard}
-        onRetryRecipientLinkDelivery={retryRecipientLinkDelivery}
+        onDeliverRecipientLink={deliverRecipientLink}
+        recipientLinkDeliveryGate={recipientLinkDeliveryGate}
         recipientLinkDeliveryRetrying={recipientLinkDeliveryRetrying}
         onShareLink={shareLink}
         onShareQrCode={shareQrCode}
@@ -2810,9 +2844,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setRequireRecipientVerification={setRequireRecipientVerification}
                 recipientEmail={recipientEmail}
                 setRecipientEmail={setRecipientEmail}
-                deliverRecipientEmail={deliverRecipientEmail}
-                setDeliverRecipientEmail={setDeliverRecipientEmail}
-                canDeliverRecipientLink={planCapabilities.recipientLinkDelivery}
                 readCount={readCount}
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
@@ -3124,9 +3155,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setRequireRecipientVerification,
               recipientEmail,
               setRecipientEmail,
-              deliverRecipientEmail,
-              setDeliverRecipientEmail,
-              canDeliverRecipientLink: planCapabilities.recipientLinkDelivery,
               readCount,
               setReadCount,
               fileAccessWindowSeconds,
