@@ -10,6 +10,8 @@ import {
   Palette,
   Tag,
   MailCheck,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -842,57 +844,96 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 title={t.settingsNotificationCenter ?? t.notificationCenterTitle ?? "Notification Center"}
                 showPremiumBadge={false}
               />
-              <SettingsOptionList>
+              <div className="flex flex-col space-y-1">
                 {readCount === 1 ? (
-                  <SettingsToggleRow
-                    id="notify-on-opened-destroyed"
-                    locked={!canNotifyOnOpen}
-                    checked={notifyOnOpen || notifyOnDestroyed}
-                    onCheckedChange={(enabled) => {
-                      setNotifyOnOpen(enabled);
-                      setNotifyOnDestroyed(enabled);
-                    }}
-                    title={
-                      t.settingsEmailAlertOnOpenedDestroyed ??
-                      "Email alert when this note is opened and destroyed"
-                    }
-                    info={
-                      t.settingsEmailAlertOnOpenedDestroyedInfo ??
-                      "One email when the one-time link is accessed and the note is destroyed. Message content is never included."
-                    }
-                  />
+                  <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                    <div className="min-w-0 flex-1">
+                      <SettingsFieldLabel
+                        htmlFor="notify-on-opened-destroyed"
+                        icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                        iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                        label={
+                          t.settingsEmailAlertOnOpenedDestroyed ??
+                          "Email alert when this note is opened and destroyed"
+                        }
+                        info={
+                          t.settingsEmailAlertOnOpenedDestroyedInfo ??
+                          "One email when the one-time link is accessed and the note is destroyed. Message content is never included."
+                        }
+                        singleLine
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-center">
+                      <Switch
+                        id="notify-on-opened-destroyed"
+                        checked={notifyOnOpen || notifyOnDestroyed}
+                        disabled={!canNotifyOnOpen}
+                        onCheckedChange={(enabled) => {
+                          setNotifyOnOpen(enabled);
+                          setNotifyOnDestroyed(enabled);
+                        }}
+                        className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <>
-                    <SettingsToggleRow
-                      id="notify-on-open"
-                      locked={!canNotifyOnOpen}
-                      checked={notifyOnOpen}
-                      onCheckedChange={setNotifyOnOpen}
-                      title={
-                        t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
-                      }
-                      info={
-                        t.settingsEmailAlertOnOpenInfo ??
-                        "One email when the link is accessed. Message content is never included."
-                      }
-                    />
-                    <SettingsToggleRow
-                      id="notify-on-destroyed"
-                      locked={!canNotifyOnOpen}
-                      checked={notifyOnDestroyed}
-                      onCheckedChange={setNotifyOnDestroyed}
-                      title={
-                        t.settingsEmailAlertOnDestroyed ??
-                        "Email alert when this note is destroyed"
-                      }
-                      info={
-                        t.settingsEmailAlertOnDestroyedInfo ??
-                        "One email when the note can no longer be opened."
-                      }
-                    />
+                    <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                      <div className="min-w-0 flex-1">
+                        <SettingsFieldLabel
+                          htmlFor="notify-on-open"
+                          icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                          iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                          label={
+                            t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
+                          }
+                          info={
+                            t.settingsEmailAlertOnOpenInfo ??
+                            "One email when the link is accessed. Message content is never included."
+                          }
+                          singleLine
+                        />
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <Switch
+                          id="notify-on-open"
+                          checked={notifyOnOpen}
+                          disabled={!canNotifyOnOpen}
+                          onCheckedChange={setNotifyOnOpen}
+                          className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-1 pb-1.5">
+                      <div className="min-w-0 flex-1">
+                        <SettingsFieldLabel
+                          htmlFor="notify-on-destroyed"
+                          icon={<BellOff className="h-4 w-4 text-rose-600 dark:text-rose-400" />}
+                          iconToneClassName="bg-rose-50 dark:bg-rose-900/30"
+                          label={
+                            t.settingsEmailAlertOnDestroyed ??
+                            "Email alert when this note is destroyed"
+                          }
+                          info={
+                            t.settingsEmailAlertOnDestroyedInfo ??
+                            "One email when the note can no longer be opened."
+                          }
+                          singleLine
+                        />
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <Switch
+                          id="notify-on-destroyed"
+                          checked={notifyOnDestroyed}
+                          disabled={!canNotifyOnOpen}
+                          onCheckedChange={setNotifyOnDestroyed}
+                          className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
-              </SettingsOptionList>
+              </div>
               {isPremiumUser && (notifyOnOpen || notifyOnDestroyed) ? (
                 <div className="space-y-2 rounded-md border border-gray-200/80 bg-white/50 px-3 py-2.5 dark:border-gray-700/80 dark:bg-gray-950/20">
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
