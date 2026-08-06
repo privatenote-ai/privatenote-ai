@@ -494,6 +494,9 @@ export const en: Translations = {
   settingsEmailAlertOnOpenedDestroyed: "Email alert when this note is opened and destroyed",
   settingsEmailAlertOnOpenedDestroyedInfo:
     "One email when the one-time link is accessed and the note is destroyed. Message content is never included.",
+  settingsEmailAlertOnAttachmentDownload: "Email alert when an attachment is downloaded",
+  settingsEmailAlertOnAttachmentDownloadInfo:
+    "One email when the encrypted attachment is requested for download. File contents are never included.",
   settingsEmailAlertDestinations: "Where to send alerts",
   settingsEmailAlertAccountEmail: "My account email",
   settingsEmailAlertCustomEmail: "Also send to another email",
@@ -531,6 +534,8 @@ export const en: Translations = {
   settingsDeliverRecipientEmailPlaceholder: "recipient@example.com",
   settingsDeliverRecipientEmailHint:
     "Optional. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
+  settingsEmailLinkToRecipientHint:
+    "We'll email the secret link when the note is created. Email is not end-to-end encrypted.",
   toastInvalidRecipientEmailTitle: "Invalid recipient email",
   toastInvalidRecipientEmailDesc: "Enter a valid email address.",
   recipientLinkDeliverySentTitle: "Link emailed",

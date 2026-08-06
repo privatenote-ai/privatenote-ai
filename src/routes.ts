@@ -919,6 +919,7 @@ async function registerPremiumSentNote(
   input: {
     notifyOnOpen?: boolean;
     notifyOnDestroyed?: boolean;
+    notifyOnAttachmentDownload?: boolean;
     requireRecipientVerification?: boolean;
     recipientEmail?: string | null;
     alertNotifyAccountEmail?: boolean;
@@ -929,8 +930,9 @@ async function registerPremiumSentNote(
 ): Promise<void> {
   const notifyOnOpen = input.notifyOnOpen === true;
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
+  const notifyOnAttachmentDownload = input.notifyOnAttachmentDownload === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
-  if (!notifyOnOpen && !notifyOnDestroyed && !requireRecipientVerification) {
+  if (!notifyOnOpen && !notifyOnDestroyed && !notifyOnAttachmentDownload && !requireRecipientVerification) {
     return;
   }
   if (!env.AUTH_DB) return;
@@ -945,6 +947,7 @@ async function registerPremiumSentNote(
       recipientEmail: input.recipientEmail,
       notifyOnOpen,
       notifyOnDestroyed,
+      notifyOnAttachmentDownload,
       alertNotifyAccountEmail: input.alertNotifyAccountEmail,
       alertCustomEmail: input.alertCustomEmail,
       requireRecipientVerification,
@@ -9168,6 +9171,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+        notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
         recipientEmail:
           typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
@@ -9346,12 +9350,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
 
-    const result = await sendRecipientVerificationCode(env, id, async (to, subject, text, html) => {
-      const emailResult = await sendEmail(env, { to, subject, text, html });
-      if (!emailResult.ok) {
-        throw new Error(emailResult.error || "send_failed");
-      }
-    });
+    const result = await sendRecipientVerificationCode(
+      env,
+      id,
+      async (to, subject, text, html) => {
+        const emailResult = await sendEmail(env, { to, subject, text, html });
+        if (!emailResult.ok) {
+          throw new Error(emailResult.error || "send_failed");
+        }
+      },
+      { webOrigin: getMagicLinkOrigin(env, request) },
+    );
     if (!result.ok) {
       if (result.error === "cooldown") {
         return jsonResponse(

@@ -3,6 +3,7 @@ import type { Env } from "./types";
 import { normalizeAccountType, planFeaturesFor } from "@shared/planCatalog";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { buildRecipientVerificationEmailContent } from "@shared/magicLinkEmail";
 import {
   formatNotificationNoteDisplayId,
   resolveSentNoteNotificationEvent,
@@ -20,6 +21,7 @@ export type SentNoteRow = {
   recipient_email_hint: string | null;
   notify_on_open: number;
   notify_on_destroyed: number;
+  notify_on_attachment_download: number;
   require_recipient_verification: number;
   proof_enabled: number;
   expires_at: string | null;
@@ -46,9 +48,10 @@ export type CreateSentNoteInput = {
   recipientEmail?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
-  /** When open/destroy alerts are on, whether to email the sender account address (default true). */
+  notifyOnAttachmentDownload?: boolean;
+  /** When open/destroy/download alerts are on, whether to email the sender account address (default true). */
   alertNotifyAccountEmail?: boolean;
-  /** Optional extra inbox for open/destroy alerts (premium). */
+  /** Optional extra inbox for open/destroy/download alerts (premium). */
   alertCustomEmail?: string | null;
   requireRecipientVerification?: boolean;
   proofEnabled?: boolean;
@@ -158,7 +161,10 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   const entitlements = await getAccountEntitlements(env, input.userId);
   const capabilities = entitlements.capabilities;
   const requireRecipientVerification = input.requireRecipientVerification === true;
-  const wantsOpenNotifications = input.notifyOnOpen === true || input.notifyOnDestroyed === true;
+  const wantsOpenNotifications =
+    input.notifyOnOpen === true ||
+    input.notifyOnDestroyed === true ||
+    input.notifyOnAttachmentDownload === true;
   const wantsRecipientGate = requireRecipientVerification;
   const proofEnabled =
     capabilities.proofOfAccess && input.proofEnabled !== false;
@@ -202,9 +208,9 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
-      notify_on_open, notify_on_destroyed, require_recipient_verification, proof_enabled, expires_at,
+      notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification, proof_enabled, expires_at,
       alert_notify_account_email, alert_custom_email
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -214,6 +220,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       maskEmailHint(recipientEmail),
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
+      input.notifyOnAttachmentDownload ? 1 : 0,
       hasRecipientGate ? 1 : 0,
       proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
@@ -350,6 +357,7 @@ export async function recordSentNoteAttachmentDownloaded(
     .run();
   const rowsChanged = (update?.meta as { changes?: number } | undefined)?.changes ?? 0;
   if (rowsChanged < 1 || !sendEmailFn || row.attachment_downloaded_notified_at) return;
+  if (row.notify_on_attachment_download !== 1) return;
 
   const country = request?.headers.get("CF-IPCountry") || request?.headers.get("cf-ipcountry") || null;
   const { deviceClass, browser } = parseUserAgent(request?.headers.get("User-Agent") ?? null);
@@ -437,6 +445,7 @@ export async function sendRecipientVerificationCode(
   env: Env,
   noteId: string,
   sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+  options?: { webOrigin?: string | null },
 ): Promise<
   | { ok: true; emailHint: string | null }
   | { ok: false; error: string; retryAfterSeconds?: number }
@@ -481,21 +490,17 @@ export async function sendRecipientVerificationCode(
     expirationTtl: 7 * 24 * 3600,
   });
 
-  const subject = "Your PrivateNote verification code";
-  const text = [
-    "Someone is trying to open a private note addressed to you.",
-    "",
-    `Your verification code is: ${verificationCode}`,
-    "",
-    "If you were not expecting this, you can ignore this email.",
-    "The code expires when the note link expires.",
-  ].join("\n");
-  const html = `<p>Someone is trying to open a private note addressed to you.</p>
-<p style="font-size:24px;letter-spacing:0.2em;font-family:monospace;font-weight:700">${escapeHtml(verificationCode)}</p>
-<p>If you were not expecting this, you can ignore this email.</p>`;
+  const webOrigin =
+    (typeof options?.webOrigin === "string" && options.webOrigin.trim()) ||
+    (typeof env.PUBLIC_WEB_APP_ORIGIN === "string" && env.PUBLIC_WEB_APP_ORIGIN.trim()) ||
+    "https://privatenote.ai";
+  const email = buildRecipientVerificationEmailContent({
+    verificationCode,
+    webOrigin,
+  });
 
   try {
-    await sendEmailFn(stored.recipientEmail, subject, text, html);
+    await sendEmailFn(stored.recipientEmail, email.subject, email.text, email.html);
   } catch (error) {
     console.warn("[RECIPIENT_CODE] Failed to email verification code:", error);
     return { ok: false, error: "send_failed" };

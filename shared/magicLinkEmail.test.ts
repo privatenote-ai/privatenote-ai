@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildMagicLinkEmailContent,
+  buildRecipientVerificationEmailContent,
   detectAuthEmailLocale,
   normalizeMagicLinkEmailPurpose,
 } from "./magicLinkEmail.ts";
@@ -59,6 +60,23 @@ describe("magicLinkEmail", () => {
     assert.equal(subject, "Je PrivateNote-inlogcode");
     assert.match(html, /Of log in met één tik/);
     assert.match(html, />Inloggen</);
+  });
+
+  it("builds branded recipient verification emails like signup", () => {
+    const { subject, html, text } = buildRecipientVerificationEmailContent({
+      verificationCode: SAMPLE_CODE,
+      webOrigin: "https://premium.privatenote.ai",
+    });
+    assert.equal(subject, "Your PrivateNote verification code");
+    assert.match(html, /Your PrivateNote verification code/);
+    assert.match(html, />238242</);
+    assert.match(html, /premium\.privatenote\.ai\/brand\/privateNote-logo-mark\.png/);
+    assert.match(html, />privateNote</);
+    assert.match(html, /#0000ff/);
+    assert.match(html, /font-family:-apple-system/);
+    assert.match(html, /Copyright &copy; PrivateNote\.ai/);
+    assert.match(text, /238242/);
+    assert.match(text, /Enter this code on the note page/);
   });
 
   it("detects Dutch from Accept-Language", () => {

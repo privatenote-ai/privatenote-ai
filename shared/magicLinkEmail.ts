@@ -278,6 +278,116 @@ function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string, signInCode: s
   ].join("\n");
 }
 
+type BrandedCodeEmailCopy = {
+  subject: string;
+  preheader: string;
+  title: string;
+  lead: string;
+  codeExpiry: string;
+  ignore: string;
+  footer: string;
+};
+
+const RECIPIENT_VERIFICATION_COPY: BrandedCodeEmailCopy = {
+  subject: "Your PrivateNote verification code",
+  preheader: "Enter this code to open the private note addressed to you.",
+  title: "Your PrivateNote verification code",
+  lead: "Someone is trying to open a private note addressed to you. Enter this code on the note page to continue:",
+  codeExpiry: "This code expires when the note link expires, or if a new code is requested.",
+  ignore: "If you were not expecting this, you can safely ignore this email.",
+  footer: "End-to-end encrypted private notes — only you and your recipients can read them.",
+};
+
+function buildBrandedCodeEmailHtml(
+  copy: BrandedCodeEmailCopy,
+  code: string,
+  webOrigin: string,
+): string {
+  const safeTitle = escapeHtml(copy.title);
+  const safeLead = escapeHtml(copy.lead);
+  const safeCode = escapeHtml(code);
+  const safeCodeExpiry = escapeHtml(copy.codeExpiry);
+  const safeIgnore = escapeHtml(copy.ignore);
+  const safeFooter = escapeHtml(copy.footer);
+  const logoHtml = buildNavbarLogoEmailHtml(webOrigin);
+
+  return [
+    "<!doctype html>",
+    "<html>",
+    '<body style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;text-size-adjust:100%;">',
+    '<div style="margin:0;padding:0;min-width:100%;background:#f3f4f6;">',
+    `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
+    '  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="#f3f4f6" style="border-collapse:collapse;width:100%;min-width:100%;background:#f3f4f6;margin:0;padding:0;">',
+    "    <tr>",
+    '      <td align="center" bgcolor="#f3f4f6" style="background:#f3f4f6;padding:24px 16px 0;">',
+    '        <table role="presentation" cellpadding="0" cellspacing="0" width="640" style="border-collapse:collapse;width:100%;max-width:640px;background:#ffffff;">',
+    '          <tr><td style="height:10px;background:#0000ff;font-size:0;line-height:0;">&nbsp;</td></tr>',
+    "          <tr>",
+    `            <td style="padding:42px 40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#050816;text-align:left;">`,
+    `              ${logoHtml}`,
+    `              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
+    `              <p style="margin:0 0 28px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeLead}</p>`,
+    `              <p style="margin:0 0 28px;font-size:34px;line-height:1.15;letter-spacing:0.08em;font-weight:500;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
+    `              <p style="margin:0 0 30px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeCodeExpiry}</p>`,
+    `              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.45;">${safeIgnore}</p>`,
+    "            </td>",
+    "          </tr>",
+    "        </table>",
+    "      </td>",
+    "    </tr>",
+    "    <tr>",
+    `      <td align="center" bgcolor="#f3f4f6" style="background:#f3f4f6;padding:28px 16px 34px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#8a8f98;text-align:center;">`,
+    '        <p style="margin:0 0 4px;font-size:13px;line-height:1.35;font-weight:600;color:#8a8f98;">Copyright &copy; PrivateNote.ai</p>',
+    `        <p style="margin:0 0 16px;font-size:12px;line-height:1.35;color:#8a8f98;">${safeFooter}</p>`,
+    '        <p style="margin:0;font-size:13px;line-height:1.35;color:#8a8f98;">',
+    '          <a href="https://www.privatenote.ai" style="color:#8a8f98;text-decoration:none;">www.privatenote.ai</a>',
+    '          <span style="padding:0 10px;color:#8a8f98;">|</span>',
+    '          <a href="https://www.linkedin.com/company/privatenote" style="color:#8a8f98;text-decoration:none;">LinkedIn</a>',
+    "        </p>",
+    "      </td>",
+    "    </tr>",
+    "  </table>",
+    "</div>",
+    "</body>",
+    "</html>",
+  ].join("\n");
+}
+
+function buildBrandedCodeEmailText(copy: BrandedCodeEmailCopy, code: string): string {
+  return [
+    copy.title,
+    "",
+    copy.lead,
+    "",
+    code,
+    "",
+    copy.codeExpiry,
+    "",
+    copy.ignore,
+    "",
+    "—",
+    "PrivateNote.ai",
+    copy.footer,
+    "www.privatenote.ai",
+    "LinkedIn: https://www.linkedin.com/company/privatenote",
+  ].join("\n");
+}
+
+/** Recipient reveal gate: same brand chrome as the signup / magic-link code email. */
+export function buildRecipientVerificationEmailContent(options: {
+  verificationCode: string;
+  webOrigin?: string;
+}): { subject: string; preheader: string; text: string; html: string } {
+  const copy = RECIPIENT_VERIFICATION_COPY;
+  const webOrigin = (options.webOrigin || "https://privatenote.ai").replace(/\/$/, "");
+  return {
+    subject: copy.subject,
+    preheader: copy.preheader,
+    text: buildBrandedCodeEmailText(copy, options.verificationCode),
+    html: buildBrandedCodeEmailHtml(copy, options.verificationCode, webOrigin),
+  };
+}
+
 export function buildMagicLinkEmailContent(options: {
   magicUrl: string;
   signInCode: string;

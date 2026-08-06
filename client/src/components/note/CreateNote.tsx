@@ -442,6 +442,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
+  const [notifyOnAttachmentDownload, setNotifyOnAttachmentDownload] = useState(false);
+  const [emailLinkToRecipient, setEmailLinkToRecipient] = useState(false);
+  const [linkDeliveryEmail, setLinkDeliveryEmail] = useState("");
   const [alertNotifyAccountEmail, setAlertNotifyAccountEmail] = useState(true);
   const [alertCustomEmail, setAlertCustomEmail] = useState("");
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
@@ -473,6 +476,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     planCapabilities.openNotifications &&
     accountEmailVerified &&
     (accountEmailNotifications || isPremiumUser);
+  const canEmailLinkToRecipient =
+    Boolean(user) && planCapabilities.recipientLinkDelivery && accountEmailVerified;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
   const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
@@ -748,6 +753,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!user) {
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
+      setNotifyOnAttachmentDownload(false);
+      setEmailLinkToRecipient(false);
+      setLinkDeliveryEmail("");
       setAlertNotifyAccountEmail(true);
       setAlertCustomEmail("");
       setRequireRecipientVerification(false);
@@ -840,7 +848,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!canNotifyOnOpen && notifyOnDestroyed) {
       setNotifyOnDestroyed(false);
     }
-  }, [canNotifyOnOpen, notifyOnDestroyed, notifyOnOpen]);
+    if (!canNotifyOnOpen && notifyOnAttachmentDownload) {
+      setNotifyOnAttachmentDownload(false);
+    }
+  }, [canNotifyOnOpen, notifyOnAttachmentDownload, notifyOnDestroyed, notifyOnOpen]);
+
+  useEffect(() => {
+    if (canEmailLinkToRecipient) return;
+    if (!emailLinkToRecipient && !linkDeliveryEmail) return;
+    setEmailLinkToRecipient(false);
+    setLinkDeliveryEmail("");
+  }, [canEmailLinkToRecipient, emailLinkToRecipient, linkDeliveryEmail]);
+
+  useEffect(() => {
+    if (selectedFile) return;
+    if (!notifyOnAttachmentDownload) return;
+    setNotifyOnAttachmentDownload(false);
+  }, [notifyOnAttachmentDownload, selectedFile]);
 
   // One-time notes open and destroy together — keep both notify flags aligned.
   useEffect(() => {
@@ -852,10 +876,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [notifyOnDestroyed, notifyOnOpen, readCount]);
 
   useEffect(() => {
-    if (notifyOnOpen || notifyOnDestroyed) return;
+    if (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload) return;
     setAlertNotifyAccountEmail(true);
     setAlertCustomEmail("");
-  }, [notifyOnDestroyed, notifyOnOpen]);
+  }, [notifyOnAttachmentDownload, notifyOnDestroyed, notifyOnOpen]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1267,7 +1291,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
-    const alertsEnabled = canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed);
+    const alertsEnabled =
+      canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload);
     const applyAlertNotifyAccountEmail = !isPremiumUser || alertNotifyAccountEmail;
     const trimmedAlertCustomEmail = isPremiumUser ? alertCustomEmail.trim() : "";
     if (alertsEnabled) {
@@ -1321,11 +1346,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       }
     }
 
+    const applyEmailLinkToRecipient = canEmailLinkToRecipient && emailLinkToRecipient;
+    const trimmedLinkDeliveryEmail = linkDeliveryEmail.trim();
+    if (applyEmailLinkToRecipient && !isPlausibleEmailFormat(trimmedLinkDeliveryEmail)) {
+      toast({
+        title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
+        description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
-      (canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed)) ||
+      (canNotifyOnOpen &&
+        (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload)) ||
       applyRequireRecipientVerification;
 
     if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
@@ -1725,6 +1762,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         notifyOnDestroyed:
           canNotifyOnOpen &&
           (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
+        notifyOnAttachmentDownload:
+          Boolean(selectedFile) && canNotifyOnOpen && notifyOnAttachmentDownload,
         ...(alertsEnabled
           ? {
               alertNotifyAccountEmail: applyAlertNotifyAccountEmail,
@@ -1772,6 +1811,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
 
+      const deliveryEmailForCreate = applyEmailLinkToRecipient
+        ? trimmedLinkDeliveryEmail.toLowerCase()
+        : "";
+
       setCreatedNote({
         url,
         meta: {
@@ -1780,6 +1823,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           isPasswordProtected,
         },
       });
+
+      if (deliveryEmailForCreate) {
+        void deliverRecipientLink(deliveryEmailForCreate, url);
+      }
+
       resetAiTurnstileWidget();
       try {
         const d = await apiRequest<{ required: boolean }>("/api/notes/turnstile-challenge", "GET");
@@ -1879,8 +1927,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           : ("ready" as const);
 
   const deliverRecipientLink = useCallback(
-    async (rawEmail: string) => {
-      const url = createdNote?.url;
+    async (rawEmail: string, noteUrl?: string) => {
+      const url = noteUrl ?? createdNote?.url;
       if (!url || recipientLinkDeliveryGate !== "ready") return;
       const email = rawEmail.trim().toLowerCase();
       if (!isPlausibleEmailFormat(email)) {
@@ -1966,7 +2014,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         setRecipientLinkDeliveryRetrying(false);
       }
     },
-    [accountEmailVerified, createdNote?.url, recipientLinkDeliveryGate, t, toast],
+    [
+      createdNote?.url,
+      recipientLinkDeliveryGate,
+      t,
+      toast,
+    ],
   );
 
   const createNewNote = () => {
@@ -1982,6 +2035,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowAdvancedOptions(false);
     setNotifyOnOpen(false);
     setNotifyOnDestroyed(false);
+    setNotifyOnAttachmentDownload(false);
+    setEmailLinkToRecipient(false);
+    setLinkDeliveryEmail("");
     setAlertNotifyAccountEmail(true);
     setAlertCustomEmail("");
     setRequireRecipientVerification(false);
@@ -2892,7 +2948,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setNotifyOnOpen={setNotifyOnOpen}
                 notifyOnDestroyed={notifyOnDestroyed}
                 setNotifyOnDestroyed={setNotifyOnDestroyed}
+                notifyOnAttachmentDownload={notifyOnAttachmentDownload}
+                setNotifyOnAttachmentDownload={setNotifyOnAttachmentDownload}
+                hasAttachment={Boolean(selectedFile)}
                 canNotifyOnOpen={canNotifyOnOpen}
+                emailLinkToRecipient={emailLinkToRecipient}
+                setEmailLinkToRecipient={setEmailLinkToRecipient}
+                linkDeliveryEmail={linkDeliveryEmail}
+                setLinkDeliveryEmail={setLinkDeliveryEmail}
+                canEmailLinkToRecipient={canEmailLinkToRecipient}
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
@@ -3206,7 +3270,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setNotifyOnOpen,
               notifyOnDestroyed,
               setNotifyOnDestroyed,
+              notifyOnAttachmentDownload,
+              setNotifyOnAttachmentDownload,
+              hasAttachment: Boolean(selectedFile),
               canNotifyOnOpen,
+              emailLinkToRecipient,
+              setEmailLinkToRecipient,
+              linkDeliveryEmail,
+              setLinkDeliveryEmail,
+              canEmailLinkToRecipient,
               noteLabel,
               setNoteLabel,
               isPremiumUser,

@@ -12,6 +12,8 @@ import {
   MailCheck,
   Bell,
   BellOff,
+  Download,
+  Mail,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -364,7 +366,17 @@ export type NoteSettingsPanelProps = {
   setNotifyOnOpen: (v: boolean) => void;
   notifyOnDestroyed: boolean;
   setNotifyOnDestroyed: (v: boolean) => void;
+  notifyOnAttachmentDownload: boolean;
+  setNotifyOnAttachmentDownload: (v: boolean) => void;
+  /** Show the attachment-download alert when the note includes a file. */
+  hasAttachment: boolean;
   canNotifyOnOpen: boolean;
+  emailLinkToRecipient: boolean;
+  setEmailLinkToRecipient: (v: boolean) => void;
+  linkDeliveryEmail: string;
+  setLinkDeliveryEmail: (v: string) => void;
+  /** Starter+ with verified account email — can send the note link on create. */
+  canEmailLinkToRecipient: boolean;
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
@@ -417,7 +429,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setNotifyOnOpen,
   notifyOnDestroyed,
   setNotifyOnDestroyed,
+  notifyOnAttachmentDownload,
+  setNotifyOnAttachmentDownload,
+  hasAttachment,
   canNotifyOnOpen,
+  emailLinkToRecipient,
+  setEmailLinkToRecipient,
+  linkDeliveryEmail,
+  setLinkDeliveryEmail,
+  canEmailLinkToRecipient,
   noteLabel,
   setNoteLabel,
   isPremiumUser,
@@ -472,6 +492,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     ? "Enter the recipient's email. When they open the link, we email them a one-time code before the file can be revealed."
     : t.settingsDeliveryVerifyEmailInfo ??
       "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.";
+  const emailLinkTitle = t.settingsDeliverRecipientEmail ?? "Email link to recipient";
+  const emailLinkInfo =
+    t.settingsDeliverRecipientEmailInfo ??
+    "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.";
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
@@ -933,8 +957,118 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </div>
                   </>
                 )}
+                {hasAttachment ? (
+                  <div className="flex items-center gap-2 px-1 pb-1.5">
+                    <div className="min-w-0 flex-1">
+                      <SettingsFieldLabel
+                        htmlFor="notify-on-attachment-download"
+                        icon={<Download className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                        iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                        label={
+                          t.settingsEmailAlertOnAttachmentDownload ??
+                          "Email alert when an attachment is downloaded"
+                        }
+                        info={
+                          t.settingsEmailAlertOnAttachmentDownloadInfo ??
+                          "One email when the encrypted attachment is requested for download. File contents are never included."
+                        }
+                        singleLine
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-center">
+                      <Switch
+                        id="notify-on-attachment-download"
+                        checked={notifyOnAttachmentDownload}
+                        disabled={!canNotifyOnOpen}
+                        onCheckedChange={setNotifyOnAttachmentDownload}
+                        className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-2 px-1 pb-1.5">
+                  <div className="min-w-0 flex-1">
+                    <SettingsFieldLabel
+                      htmlFor="email-link-to-recipient"
+                      icon={<Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                      label={emailLinkTitle}
+                      info={emailLinkInfo}
+                      singleLine
+                    />
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    {!isPremiumUser ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPremiumFeature({
+                            title: emailLinkTitle,
+                            description: emailLinkInfo,
+                          })
+                        }
+                        className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        aria-label={emailLinkTitle}
+                      >
+                        <Switch
+                          id="email-link-to-recipient"
+                          checked={false}
+                          disabled
+                          aria-hidden
+                          className="pointer-events-none opacity-50"
+                        />
+                      </button>
+                    ) : (
+                      <Switch
+                        id="email-link-to-recipient"
+                        checked={emailLinkToRecipient}
+                        disabled={!canEmailLinkToRecipient}
+                        onCheckedChange={(checked) => {
+                          setEmailLinkToRecipient(checked);
+                          if (!checked) setLinkDeliveryEmail("");
+                          else if (!linkDeliveryEmail.trim() && recipientEmail.trim()) {
+                            setLinkDeliveryEmail(recipientEmail);
+                          }
+                        }}
+                        className={!canEmailLinkToRecipient ? "opacity-50" : undefined}
+                      />
+                    )}
+                  </div>
+                </div>
+                {isPremiumUser && emailLinkToRecipient ? (
+                  <div className="px-1 pb-1">
+                    <label
+                      htmlFor="link-delivery-email"
+                      className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                    </label>
+                    <input
+                      id="link-delivery-email"
+                      type="email"
+                      autoComplete="email"
+                      value={linkDeliveryEmail}
+                      onChange={(event) => setLinkDeliveryEmail(event.target.value)}
+                      placeholder={
+                        t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                      }
+                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.settingsEmailLinkToRecipientHint ??
+                        "We'll email the secret link when the note is created. Email is not end-to-end encrypted."}
+                    </p>
+                  </div>
+                ) : null}
+                {isPremiumUser && !canEmailLinkToRecipient ? (
+                  <p className="px-1 pb-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.recipientLinkDeliveryVerifyEmailHint ??
+                      "Verify your account email before we can send the link for you."}
+                  </p>
+                ) : null}
               </div>
-              {isPremiumUser && (notifyOnOpen || notifyOnDestroyed) ? (
+              {isPremiumUser &&
+              (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload) ? (
                 <div className="space-y-2 rounded-md border border-gray-200/80 bg-white/50 px-3 py-2.5 dark:border-gray-700/80 dark:bg-gray-950/20">
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     {t.settingsEmailAlertDestinations ?? "Where to send alerts"}

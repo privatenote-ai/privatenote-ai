@@ -65,6 +65,7 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     recipient_email_hint: "al***e@e***e.com",
     notify_on_open: 1,
     notify_on_destroyed: 0,
+    notify_on_attachment_download: 0,
     require_recipient_verification: 0,
     proof_enabled: 1,
     expires_at: null,
@@ -133,10 +134,10 @@ describe("sent note notification service", () => {
     assert.deepEqual(db.runs[0]?.bindings, ["user-1"]);
   });
 
-  it("records an attachment download and sends one premium receipt email", async () => {
+  it("records an attachment download and sends one premium receipt email when enabled", async () => {
     const db = new FakeD1Database();
     db.firstRows = [
-      sentNote({ label: "Quarterly report" }),
+      sentNote({ label: "Quarterly report", notify_on_attachment_download: 1 }),
       {
         email: "sender@example.com",
         email_verified: 1,
@@ -168,6 +169,25 @@ describe("sent note notification service", () => {
     assert.match(emails[0]?.text ?? "", /encrypted attachment was requested for download/);
     assert.match(db.runs[0]?.sql ?? "", /attachment_downloaded_at = COALESCE/);
     assert.match(db.runs[1]?.sql ?? "", /attachment_downloaded_notified_at = \?/);
+  });
+
+  it("records an attachment download without emailing when the alert is off", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [sentNote({ notify_on_attachment_download: 0 })];
+    let emailCount = 0;
+
+    await recordSentNoteAttachmentDownloaded(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      undefined,
+      async () => {
+        emailCount += 1;
+      },
+    );
+
+    assert.equal(emailCount, 0);
+    assert.equal(db.runs.length, 1);
+    assert.match(db.runs[0]?.sql ?? "", /attachment_downloaded_at = COALESCE/);
   });
 
   it("does not resend an attachment download receipt after it was claimed", async () => {

@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS sent_notes (
   recipient_email_hint TEXT,
   notify_on_open INTEGER NOT NULL DEFAULT 0,
   notify_on_destroyed INTEGER NOT NULL DEFAULT 0,
+  notify_on_attachment_download INTEGER NOT NULL DEFAULT 0,
   require_recipient_verification INTEGER NOT NULL DEFAULT 0,
   proof_enabled INTEGER NOT NULL DEFAULT 0,
   expires_at TEXT,
