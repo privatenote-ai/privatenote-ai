@@ -41,7 +41,7 @@ export type CreateSentNoteInput = {
   userId: string;
   noteId: string;
   label?: string | null;
-  recipientCode?: string | null;
+  recipientEmail?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
   requireRecipientVerification?: boolean;
@@ -50,12 +50,16 @@ export type CreateSentNoteInput = {
 };
 
 type RecipientGatePayload = {
+  /** Recipient address that receives the one-time code on reveal. */
+  recipientEmail: string;
   codeHash?: string;
   salt?: string;
+  codeSentAt?: number;
 };
 
 const RECIPIENT_GATE_PREFIX = "note_rcv_gate:";
 const RECIPIENT_OK_PREFIX = "note_rcv_ok:";
+const RECIPIENT_CODE_SEND_COOLDOWN_MS = 60_000;
 
 function gateKey(noteId: string): string {
   return `${RECIPIENT_GATE_PREFIX}${noteId}`;
@@ -80,6 +84,25 @@ function randomSixDigitCode(): string {
     n = crypto.getRandomValues(new Uint32Array(1))[0]!;
   }
   return String(n % 1_000_000).padStart(6, "0");
+}
+
+function maskEmailHint(email: string | null): string | null {
+  if (!email) return null;
+  const at = email.indexOf("@");
+  if (at <= 0 || at === email.length - 1) return null;
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
+  const localHint =
+    local.length <= 2
+      ? `${local[0] ?? ""}*`
+      : `${local.slice(0, 2)}***${local.slice(-1)}`;
+  const domainHint =
+    domainName.length <= 2
+      ? `${domainName[0] ?? ""}*`
+      : `${domainName[0]}***${domainName.slice(-1)}`;
+  return `${localHint}@${domainHint}${tld}`;
 }
 
 function escapeHtml(input: string): string {
@@ -114,7 +137,7 @@ export async function getUserAccountType(env: Env, userId: string): Promise<stri
   return (await getAccountEntitlements(env, userId)).accountType;
 }
 
-export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string; verificationCode?: string }> {
+export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string }> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const sender = await env.AUTH_DB.prepare(
     `SELECT email, email_verified, email_notifications
@@ -147,6 +170,14 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   }
 
   const id = crypto.randomUUID();
+  const recipientEmail =
+    input.recipientEmail && isPlausibleEmailFormat(input.recipientEmail)
+      ? input.recipientEmail.trim().toLowerCase()
+      : null;
+  if (requireRecipientVerification && !recipientEmail) {
+    throw new Error("recipient_email_required");
+  }
+
   const hasRecipientGate = wantsRecipientGate;
 
   await env.AUTH_DB.prepare(
@@ -160,7 +191,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.userId,
       input.noteId,
       input.label?.trim().slice(0, 120) || null,
-      null,
+      maskEmailHint(recipientEmail),
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
       hasRecipientGate ? 1 : 0,
@@ -169,14 +200,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     )
     .run();
 
-  let verificationCode: string | undefined;
-  if (hasRecipientGate) {
-    const gate: RecipientGatePayload = {};
-    if (requireRecipientVerification) {
-      verificationCode = input.recipientCode?.trim() || randomSixDigitCode();
-      gate.salt = crypto.randomUUID();
-      gate.codeHash = await sha256Hex(`${gate.salt}:${verificationCode}`);
-    }
+  if (hasRecipientGate && recipientEmail) {
+    const gate: RecipientGatePayload = { recipientEmail };
     const ttlSeconds = input.expiresAt
       ? Math.max(3600, Math.floor((Date.parse(input.expiresAt) - Date.now()) / 1000))
       : 7 * 24 * 3600;
@@ -185,7 +210,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     });
   }
 
-  return { id, verificationCode };
+  return { id };
 }
 
 export async function listSentNotesForUser(env: Env, userId: string, limit = 50): Promise<SentNoteRow[]> {
@@ -347,14 +372,21 @@ export async function noteRequiresRecipientVerification(env: Env, noteId: string
 export async function getRecipientGateStatus(
   env: Env,
   noteId: string,
-): Promise<{ required: boolean; codeRequired: boolean }> {
+): Promise<{
+  required: boolean;
+  codeRequired: boolean;
+  emailHint: string | null;
+  codeSent: boolean;
+}> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || !stored.codeHash) {
-    return { required: false, codeRequired: false };
+  if (!stored?.recipientEmail) {
+    return { required: false, codeRequired: false, emailHint: null, codeSent: false };
   }
   return {
     required: true,
     codeRequired: true,
+    emailHint: maskEmailHint(stored.recipientEmail),
+    codeSent: Boolean(stored.codeHash),
   };
 }
 
@@ -379,13 +411,85 @@ function parseCookieHeader(header: string | null): Record<string, string> {
   return out;
 }
 
+export async function sendRecipientVerificationCode(
+  env: Env,
+  noteId: string,
+  sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+): Promise<
+  | { ok: true; emailHint: string | null }
+  | { ok: false; error: string; retryAfterSeconds?: number }
+> {
+  const raw = await kv(env).get(gateKey(noteId));
+  if (!raw) return { ok: false, error: "no_gate" };
+  let stored: RecipientGatePayload;
+  try {
+    stored = JSON.parse(raw) as RecipientGatePayload;
+  } catch {
+    return { ok: false, error: "no_gate" };
+  }
+  if (!stored.recipientEmail || !isPlausibleEmailFormat(stored.recipientEmail)) {
+    return { ok: false, error: "no_gate" };
+  }
+
+  const now = Date.now();
+  if (
+    typeof stored.codeSentAt === "number" &&
+    now - stored.codeSentAt < RECIPIENT_CODE_SEND_COOLDOWN_MS
+  ) {
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(
+        (RECIPIENT_CODE_SEND_COOLDOWN_MS - (now - stored.codeSentAt)) / 1000,
+      ),
+    };
+  }
+
+  const verificationCode = randomSixDigitCode();
+  const salt = crypto.randomUUID();
+  const nextGate: RecipientGatePayload = {
+    recipientEmail: stored.recipientEmail,
+    salt,
+    codeHash: await sha256Hex(`${salt}:${verificationCode}`),
+    codeSentAt: now,
+  };
+
+  // Preserve remaining TTL best-effort by rewriting with a fresh week if unknown.
+  await kv(env).put(gateKey(noteId), JSON.stringify(nextGate), {
+    expirationTtl: 7 * 24 * 3600,
+  });
+
+  const subject = "Your PrivateNote verification code";
+  const text = [
+    "Someone is trying to open a private note addressed to you.",
+    "",
+    `Your verification code is: ${verificationCode}`,
+    "",
+    "If you were not expecting this, you can ignore this email.",
+    "The code expires when the note link expires.",
+  ].join("\n");
+  const html = `<p>Someone is trying to open a private note addressed to you.</p>
+<p style="font-size:24px;letter-spacing:0.2em;font-family:monospace;font-weight:700">${escapeHtml(verificationCode)}</p>
+<p>If you were not expecting this, you can ignore this email.</p>`;
+
+  try {
+    await sendEmailFn(stored.recipientEmail, subject, text, html);
+  } catch (error) {
+    console.warn("[RECIPIENT_CODE] Failed to email verification code:", error);
+    return { ok: false, error: "send_failed" };
+  }
+
+  return { ok: true, emailHint: maskEmailHint(stored.recipientEmail) };
+}
+
 export async function verifyRecipientAccess(
   env: Env,
   noteId: string,
   body: { code?: string },
 ): Promise<{ ok: true; setCookie: string } | { ok: false; error: string }> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || !stored.codeHash) return { ok: false, error: "no_gate" };
+  if (!stored?.recipientEmail) return { ok: false, error: "no_gate" };
+  if (!stored.codeHash || !stored.salt) return { ok: false, error: "code_not_sent" };
 
   const code = typeof body.code === "string" ? body.code.trim() : "";
   if (!code) return { ok: false, error: "code_required" };

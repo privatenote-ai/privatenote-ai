@@ -505,7 +505,15 @@ export const en: Translations = {
   settingsEmailAlertsUpgradeLink: "Upgrade to unlock email alerts",
   settingsDeliveryVerification: "Delivery & verification",
   settingsDeliveryVerifyEmail: "Require email verification",
-  settingsDeliveryVerifyEmailInfo: "Verify the recipient before the note is shown.",
+  settingsDeliveryVerifyEmailInfo:
+    "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.",
+  settingsRecipientVerificationEmail: "Recipient email",
+  settingsRecipientVerificationEmailPlaceholder: "recipient@example.com",
+  settingsRecipientVerificationEmailHint:
+    "When they open the link, we email a one-time code to this address.",
+  settingsRecipientVerificationEmailInvalid: "Recipient email required",
+  settingsRecipientVerificationEmailInvalidHint:
+    "Enter a valid recipient email to send the verification code.",
   settingsDeliverRecipientEmail: "Email link to recipient",
   settingsDeliverRecipientEmailInfo:
     "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.",
@@ -1123,6 +1131,19 @@ export const en: Translations = {
   toastPreviewFailedDesc: "The file could not be decrypted for preview.",
   recipientGateVerifiedTitle: "Verified",
   recipientGateVerifiedDescription: "You can now reveal the note.",
+  recipientGateTitle: "Verify before opening",
+  recipientGateDescription:
+    "Enter the verification code emailed to the recipient address to continue.",
+  recipientGateDescriptionEmail: "We emailed a one-time code to {email}. Enter it below to continue.",
+  recipientGateCode: "Verification code",
+  recipientGateSubmit: "Continue",
+  recipientGateSubmitting: "Verifying…",
+  recipientGateSendingCode: "Sending a verification code…",
+  recipientGateSendCode: "Send code",
+  recipientGateResendCode: "Resend code",
+  recipientGateSendCodeFailed: "Could not send the verification code. Please try again.",
+  recipientGateSendCodeCooldown: "Please wait {seconds}s before requesting another code.",
+  recipientGateVerifyFailed: "Verification failed. Check the details and try again.",
   copied: "Copied!",
   passwordSelectOneCharSet: "Please select at least one character set",
   passwordGenerateFailed: "Failed to generate password",

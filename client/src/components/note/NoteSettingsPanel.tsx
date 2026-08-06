@@ -366,6 +366,8 @@ export type NoteSettingsPanelProps = {
   premiumStatusLoading: boolean;
   requireRecipientVerification: boolean;
   setRequireRecipientVerification: (v: boolean) => void;
+  recipientEmail: string;
+  setRecipientEmail: (v: string) => void;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
@@ -412,6 +414,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   premiumStatusLoading,
   requireRecipientVerification,
   setRequireRecipientVerification,
+  recipientEmail,
+  setRecipientEmail,
   readCount,
   setReadCount,
   fileAccessWindowSeconds,
@@ -444,11 +448,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     [t],
   );
   const recipientCodeTitle = isFileTransfer
-    ? "Require recipient code"
+    ? "Require email verification"
     : t.settingsDeliveryVerifyEmail ?? "Require email verification";
   const recipientCodeInfo = isFileTransfer
-    ? "Generate a one-time code for the sender to share separately. The recipient must enter it before the file opens."
-    : t.settingsDeliveryVerifyEmailInfo ?? "Verify the recipient before the note is shown.";
+    ? "Enter the recipient's email. When they open the link, we email them a one-time code before the file can be revealed."
+    : t.settingsDeliveryVerifyEmailInfo ??
+      "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.";
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
@@ -856,7 +861,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               />
               {isFileTransfer ? (
                 <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  Make the transfer link less generic: add a sender-held code the recipient must enter before the file opens.
+                  Require the recipient to enter a one-time code emailed to them when they open the link.
                 </p>
               ) : null}
               <div className={SETTINGS_FIELD_ROW}>
@@ -909,7 +914,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   id="require-recipient-verification"
                   locked={!isPremiumUser}
                   checked={requireRecipientVerification}
-                  onCheckedChange={setRequireRecipientVerification}
+                  onCheckedChange={(checked) => {
+                    setRequireRecipientVerification(checked);
+                    if (!checked) setRecipientEmail("");
+                  }}
                   title={recipientCodeTitle}
                   info={recipientCodeInfo}
                   onLockedClick={
@@ -920,16 +928,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       })
                   }
                 />
-                {isFileTransfer ? (
+                {isFileTransfer && requireRecipientVerification ? (
                   <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
-                    <Shield
-                      className={`h-4 w-4 shrink-0 ${requireRecipientVerification ? "text-primary" : "text-gray-400 dark:text-gray-500"}`}
-                      aria-hidden
-                    />
+                    <Shield className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                     <span className="min-w-0">
-                      {requireRecipientVerification
-                        ? "Verification code will be shown to sender after upload"
-                        : "Enable recipient code to show the sender a verification code after upload"}
+                      A one-time code will be emailed to the recipient when they open the link.
                     </span>
                   </div>
                 ) : null}
@@ -967,6 +970,31 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   />
                 )}
               </SettingsOptionList>
+              {isPremiumUser && requireRecipientVerification ? (
+                <div className="px-1 pt-1">
+                  <label
+                    htmlFor="recipient-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="recipient-email"
+                    type="email"
+                    autoComplete="email"
+                    value={recipientEmail}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
+                    placeholder={
+                      t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
+                    }
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsRecipientVerificationEmailHint ??
+                      "When they open the link, we email a one-time code to this address."}
+                  </p>
+                </div>
+              ) : null}
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
                   {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}

@@ -478,6 +478,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [recipientCodeInput, setRecipientCodeInput] = useState("");
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
+  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(null);
+  const [recipientCodeSending, setRecipientCodeSending] = useState(false);
+  const [recipientCodeSent, setRecipientCodeSent] = useState(false);
+  const recipientCodeAutoSendRef = useRef(false);
   const { toast } = useToast();
   const readerLanguageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
@@ -683,11 +687,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         const status = await apiRequest<{
           required?: boolean;
           codeRequired?: boolean;
+          emailHint?: string | null;
+          codeSent?: boolean;
           verified?: boolean;
         }>(`/api/notes/${id}/recipient-gate`, "GET");
         if (cancelled) return;
         setRecipientGateRequired(status.required === true);
         setRecipientGateCodeRequired(status.codeRequired === true);
+        setRecipientGateEmailHint(
+          typeof status.emailHint === "string" && status.emailHint.trim()
+            ? status.emailHint.trim()
+            : null,
+        );
+        setRecipientCodeSent(status.codeSent === true);
         setRecipientGateVerified(status.required !== true || status.verified === true);
       } catch {
         if (!cancelled) {
@@ -703,6 +715,72 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       cancelled = true;
     };
   }, [id]);
+
+  const sendRecipientVerificationCode = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!id) return;
+      setRecipientCodeSending(true);
+      if (!options?.silent) setRecipientGateError(null);
+      try {
+        const result = await apiRequest<{ ok?: boolean; emailHint?: string | null }>(
+          `/api/notes/${id}/recipient-send-code`,
+          "POST",
+          {},
+        );
+        setRecipientCodeSent(true);
+        if (typeof result.emailHint === "string" && result.emailHint.trim()) {
+          setRecipientGateEmailHint(result.emailHint.trim());
+        }
+      } catch (error) {
+        let message =
+          t.recipientGateSendCodeFailed ??
+          "Could not send the verification code. Please try again.";
+        if (error instanceof ApiRequestError) {
+          try {
+            const body = JSON.parse(error.bodyText) as {
+              message?: string;
+              error?: string;
+              retryAfterSeconds?: number;
+            };
+            if (body.error === "cooldown" && body.retryAfterSeconds) {
+              message = (
+                t.recipientGateSendCodeCooldown ??
+                "Please wait {seconds}s before requesting another code."
+              ).replace("{seconds}", String(body.retryAfterSeconds));
+            } else if (body.message) {
+              message = body.message;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setRecipientGateError(message);
+      } finally {
+        setRecipientCodeSending(false);
+      }
+    },
+    [id, t],
+  );
+
+  useEffect(() => {
+    if (
+      !id ||
+      recipientGateLoading ||
+      !recipientGateRequired ||
+      recipientGateVerified ||
+      recipientCodeAutoSendRef.current
+    ) {
+      return;
+    }
+    recipientCodeAutoSendRef.current = true;
+    void sendRecipientVerificationCode({ silent: true });
+  }, [
+    id,
+    recipientGateLoading,
+    recipientGateRequired,
+    recipientGateVerified,
+    sendRecipientVerificationCode,
+  ]);
 
   const handleRecipientGateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1173,8 +1251,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 {t.recipientGateTitle ?? "Verify before opening"}
               </h1>
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                {t.recipientGateDescription ??
-                  "The sender restricted who can open this note. Confirm your details to continue."}
+                {recipientCodeSending && !recipientCodeSent
+                  ? (t.recipientGateSendingCode ?? "Sending a verification code…")
+                  : recipientGateEmailHint
+                    ? (t.recipientGateDescriptionEmail ??
+                        "We emailed a one-time code to {email}. Enter it below to continue.")
+                        .replace("{email}", recipientGateEmailHint)
+                    : (t.recipientGateDescription ??
+                        "Enter the verification code emailed to the recipient address to continue.")}
               </p>
               <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
                 {recipientGateCodeRequired ? (
@@ -1201,12 +1285,24 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 ) : null}
                 <button
                   type="submit"
-                  disabled={recipientGateSubmitting}
+                  disabled={recipientGateSubmitting || recipientCodeSending}
                   className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {recipientGateSubmitting
                     ? (t.recipientGateSubmitting ?? "Verifying…")
                     : (t.recipientGateSubmit ?? "Continue")}
+                </button>
+                <button
+                  type="button"
+                  disabled={recipientCodeSending || recipientGateSubmitting}
+                  onClick={() => void sendRecipientVerificationCode()}
+                  className="flex w-full items-center justify-center rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  {recipientCodeSending
+                    ? (t.recipientGateSendingCode ?? "Sending a verification code…")
+                    : recipientCodeSent
+                      ? (t.recipientGateResendCode ?? "Resend code")
+                      : (t.recipientGateSendCode ?? "Send code")}
                 </button>
               </form>
             </div>

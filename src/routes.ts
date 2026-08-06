@@ -83,6 +83,7 @@ import {
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
   revokeSentNote,
+  sendRecipientVerificationCode,
   verifyRecipientAccess,
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
@@ -130,6 +131,12 @@ const RATE_LIMIT_RECIPIENT_VERIFY = {
   MAX_REQUESTS: 5,
   WINDOW_SECONDS: 15 * 60,
   KEY_PREFIX: "rl:recipient-verify:",
+};
+
+const RATE_LIMIT_RECIPIENT_SEND_CODE = {
+  MAX_REQUESTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:recipient-send-code:",
 };
 
 const RATE_LIMIT_DELIVER_NOTE_LINK = {
@@ -913,37 +920,35 @@ async function registerPremiumSentNote(
     notifyOnOpen?: boolean;
     notifyOnDestroyed?: boolean;
     requireRecipientVerification?: boolean;
+    recipientEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
   },
-): Promise<{ recipientVerificationCode?: string } | undefined> {
+): Promise<void> {
   const notifyOnOpen = input.notifyOnOpen === true;
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
   if (!notifyOnOpen && !notifyOnDestroyed && !requireRecipientVerification) {
-    return undefined;
+    return;
   }
-  if (!env.AUTH_DB) return undefined;
+  if (!env.AUTH_DB) return;
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session?.id) return undefined;
-    const result = await insertSentNote(env, {
+    if (!session?.id) return;
+    await insertSentNote(env, {
       userId: session.id,
       noteId,
       label: input.label,
+      recipientEmail: input.recipientEmail,
       notifyOnOpen,
       notifyOnDestroyed,
       requireRecipientVerification,
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
-    return result.verificationCode
-      ? { recipientVerificationCode: result.verificationCode }
-      : undefined;
   } catch (error) {
     console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
-    return undefined;
   }
 }
 
@@ -9155,12 +9160,13 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
     }
 
-    let premiumSentNoteExtras: { recipientVerificationCode?: string } | undefined;
     if (doResponse.ok) {
-      premiumSentNoteExtras = await registerPremiumSentNote(env, request, id, {
+      await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        recipientEmail:
+          typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
@@ -9173,22 +9179,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	    if (!doResponse.ok && requestBody?.attachment != null) {
 	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
 	    }
-
-      if (doResponse.ok && premiumSentNoteExtras?.recipientVerificationCode) {
-        try {
-          const created = (await doResponse.clone().json()) as Record<string, unknown>;
-          return jsonResponse(
-            {
-              ...created,
-              recipientVerificationCode: premiumSentNoteExtras.recipientVerificationCode,
-            },
-            doResponse.status,
-            request,
-          );
-        } catch {
-          // fall through to raw DO response
-        }
-      }
 
 	    return applyCorsHeaders(doResponse as unknown as Response, request);
 	  }
@@ -9325,6 +9315,70 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     return jsonResponse({ ...status, verified }, 200, request);
   }
 
+  const recipientSendCodeParams = parsePathParams(pathname, "/api/notes/:id/recipient-send-code");
+  if (recipientSendCodeParams && method === "POST") {
+    const { id } = recipientSendCodeParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const sendLimit = await checkRateLimit(
+      env,
+      `${id}:${clientId}`,
+      RATE_LIMIT_RECIPIENT_SEND_CODE,
+    );
+    if (!sendLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "recipient_send_code_rate_limited",
+          message: `Too many code requests. Please try again in ${sendLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: sendLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    const result = await sendRecipientVerificationCode(env, id, async (to, subject, text, html) => {
+      const emailResult = await sendEmail(env, { to, subject, text, html });
+      if (!emailResult.ok) {
+        throw new Error(emailResult.error || "send_failed");
+      }
+    });
+    if (!result.ok) {
+      if (result.error === "cooldown") {
+        return jsonResponse(
+          {
+            error: "cooldown",
+            message: `Please wait ${result.retryAfterSeconds ?? 60} seconds before requesting another code.`,
+            retryAfterSeconds: result.retryAfterSeconds ?? 60,
+          },
+          429,
+          request,
+        );
+      }
+      if (result.error === "send_failed") {
+        return jsonResponse(
+          {
+            error: "send_failed",
+            message: "Could not send the verification code. Please try again.",
+          },
+          502,
+          request,
+        );
+      }
+      return jsonResponse(
+        {
+          error: result.error,
+          message: "Recipient verification is not available for this note.",
+        },
+        400,
+        request,
+      );
+    }
+    return jsonResponse({ ok: true, emailHint: result.emailHint }, 200, request);
+  }
+
   const recipientVerifyParams = parsePathParams(pathname, "/api/notes/:id/recipient-verify");
   if (recipientVerifyParams && method === "POST") {
     const { id } = recipientVerifyParams;
@@ -9389,7 +9443,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           ? "Invalid verification code."
           : result.error === "code_required"
             ? "Verification code is required."
-            : "Recipient verification is not available for this note.";
+            : result.error === "code_not_sent"
+              ? "Request a verification code first."
+              : "Recipient verification is not available for this note.";
       return jsonResponse({ error: result.error, message }, 400, request);
     }
     await logAuditEvent(env, {

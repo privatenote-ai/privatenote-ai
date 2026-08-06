@@ -443,6 +443,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
@@ -746,6 +747,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
       setRequireRecipientVerification(false);
+      setRecipientEmail("");
       setNoteLabel("");
       return;
     }
@@ -848,8 +850,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   useEffect(() => {
     if (isPremiumUser) return;
     if (requireRecipientVerification) setRequireRecipientVerification(false);
+    if (recipientEmail) setRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
-  }, [isPremiumUser, readerLanguage, requireRecipientVerification]);
+  }, [isPremiumUser, readerLanguage, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1248,6 +1251,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
+    if (applyRequireRecipientVerification) {
+      const trimmedRecipientEmail = recipientEmail.trim();
+      if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
+        toast({
+          title: t.settingsRecipientVerificationEmailInvalid ?? "Recipient email required",
+          description:
+            t.settingsRecipientVerificationEmailInvalidHint ??
+            "Enter a valid recipient email to send the verification code.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
@@ -1638,9 +1655,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         }
       }
 
-      const { id, recipientVerificationCode } = await apiRequest<{
+      const { id } = await apiRequest<{
         id: string;
-        recipientVerificationCode?: string;
       }>("/api/notes", "POST", {
         id: reservedId,
         content: encryptedBase64,
@@ -1654,7 +1670,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           canNotifyOnOpen &&
           (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
         ...(applyRequireRecipientVerification
-          ? { requireRecipientVerification: true }
+          ? {
+              requireRecipientVerification: true,
+              recipientEmail: recipientEmail.trim().toLowerCase(),
+            }
           : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
@@ -1695,10 +1714,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           expiryValue,
           readCount,
           isPasswordProtected,
-          recipientVerificationCode:
-            typeof recipientVerificationCode === "string"
-              ? recipientVerificationCode
-              : undefined,
         },
       });
       resetAiTurnstileWidget();
@@ -1904,6 +1919,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setNotifyOnOpen(false);
     setNotifyOnDestroyed(false);
     setRequireRecipientVerification(false);
+    setRecipientEmail("");
     setNoteLabel("");
     setShowPrompt(true);
     setAiDraftAccepted(false);
@@ -2821,6 +2837,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 premiumStatusLoading={premiumStatusLoading}
                 requireRecipientVerification={requireRecipientVerification}
                 setRequireRecipientVerification={setRequireRecipientVerification}
+                recipientEmail={recipientEmail}
+                setRecipientEmail={setRecipientEmail}
                 readCount={readCount}
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
@@ -3128,6 +3146,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               premiumStatusLoading,
               requireRecipientVerification,
               setRequireRecipientVerification,
+              recipientEmail,
+              setRecipientEmail,
               readCount,
               setReadCount,
               fileAccessWindowSeconds,
