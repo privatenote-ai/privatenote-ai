@@ -840,6 +840,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
   }, [canNotifyOnOpen, notifyOnDestroyed, notifyOnOpen]);
 
+  // One-time notes open and destroy together — keep both notify flags aligned.
+  useEffect(() => {
+    if (readCount !== 1) return;
+    if (notifyOnOpen === notifyOnDestroyed) return;
+    const enabled = notifyOnOpen || notifyOnDestroyed;
+    setNotifyOnOpen(enabled);
+    setNotifyOnDestroyed(enabled);
+  }, [notifyOnDestroyed, notifyOnOpen, readCount]);
+
   useEffect(() => {
     if (isPremiumUser) return;
     if (restrictRecipientEmail) setRestrictRecipientEmail(false);
@@ -1268,8 +1277,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
-      (notifyOnOpen && canNotifyOnOpen) ||
-      (notifyOnDestroyed && canNotifyOnOpen) ||
+      (canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed)) ||
       applyRestrictRecipientEmail ||
       applyRequireRecipientVerification;
 
@@ -1665,8 +1673,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         iv: ivBase64,
         expirySeconds,
         maxReads: readCount,
-        notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
-        notifyOnDestroyed: notifyOnDestroyed && canNotifyOnOpen,
+        notifyOnOpen:
+          canNotifyOnOpen &&
+          (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnOpen),
+        notifyOnDestroyed:
+          canNotifyOnOpen &&
+          (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
         ...(applyRestrictRecipientEmail
           ? {
               restrictRecipientEmail: true,

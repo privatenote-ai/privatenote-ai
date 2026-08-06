@@ -490,6 +490,9 @@ export const en: Translations = {
   settingsEmailAlertOnOpenInfo: "One email when the link is accessed. Message content is never included.",
   settingsEmailAlertOnDestroyed: "When this note is destroyed",
   settingsEmailAlertOnDestroyedInfo: "One email when the note can no longer be opened.",
+  settingsEmailAlertOnOpenedDestroyed: "When this note is opened and destroyed",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "One email when the one-time link is accessed and the note is destroyed. Message content is never included.",
   settingsNoteLabel: "Note label",
   settingsNoteLabelPlaceholder: "e.g. Client onboarding pack",
   settingsNoteLabelHint: "Optional. Shown only in your Notification Center on this device — never sent with the note.",
