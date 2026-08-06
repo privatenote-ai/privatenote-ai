@@ -364,12 +364,8 @@ export type NoteSettingsPanelProps = {
   maxFileAccessWindowSeconds: number;
   isSignedIn: boolean;
   premiumStatusLoading: boolean;
-  restrictRecipientEmail: boolean;
-  setRestrictRecipientEmail: (v: boolean) => void;
   requireRecipientVerification: boolean;
   setRequireRecipientVerification: (v: boolean) => void;
-  recipientEmail: string;
-  setRecipientEmail: (v: string) => void;
   readCount: NoteReadLimit;
   setReadCount: (value: NoteReadLimit) => void;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
@@ -377,11 +373,11 @@ export type NoteSettingsPanelProps = {
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
   /** Business — show the account's saved branding on the reveal page. */
-  canBrandRevealPage: boolean;
+  canBrandRevealPage?: boolean;
   /** False when the plan allows branding but the account has not set any up. */
-  hasRevealBranding: boolean;
-  applyBranding: boolean;
-  setApplyBranding: (v: boolean) => void;
+  hasRevealBranding?: boolean;
+  applyBranding?: boolean;
+  setApplyBranding?: (v: boolean) => void;
   /** Starter+ — persist current settings as synced account defaults. */
   onSaveDefaults?: () => Promise<void>;
 };
@@ -414,21 +410,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   maxFileAccessWindowSeconds,
   isSignedIn,
   premiumStatusLoading,
-  restrictRecipientEmail,
-  setRestrictRecipientEmail,
   requireRecipientVerification,
   setRequireRecipientVerification,
-  recipientEmail,
-  setRecipientEmail,
   readCount,
   setReadCount,
   fileAccessWindowSeconds,
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
-  canBrandRevealPage,
-  hasRevealBranding,
-  applyBranding,
+  canBrandRevealPage = false,
+  hasRevealBranding = false,
+  applyBranding = false,
   setApplyBranding,
   onSaveDefaults,
 }) => {
@@ -451,12 +443,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     }),
     [t],
   );
-  const recipientLockTitle = isFileTransfer
-    ? "Only this email can open"
-    : t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email";
-  const recipientLockInfo = isFileTransfer
-    ? "Lock this transfer to one recipient email before the encrypted file can be opened."
-    : t.settingsDeliveryRestrictEmailInfo ?? "Only the intended recipient can reveal the note.";
   const recipientCodeTitle = isFileTransfer
     ? "Require recipient code"
     : t.settingsDeliveryVerifyEmail ?? "Require email verification";
@@ -870,7 +856,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               />
               {isFileTransfer ? (
                 <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  Make the transfer link less generic: bind it to a recipient email, add a sender-held code, or use both.
+                  Make the transfer link less generic: add a sender-held code the recipient must enter before the file opens.
                 </p>
               ) : null}
               <div className={SETTINGS_FIELD_ROW}>
@@ -920,24 +906,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </div>
               <SettingsOptionList>
                 <SettingsToggleRow
-                  id="restrict-recipient-email"
-                  locked={!isPremiumUser}
-                  checked={restrictRecipientEmail}
-                  onCheckedChange={(checked) => {
-                    setRestrictRecipientEmail(checked);
-                    if (!checked) setRecipientEmail("");
-                  }}
-                  title={recipientLockTitle}
-                  info={recipientLockInfo}
-                  onLockedClick={
-                    isPremiumUser ? undefined : () =>
-                      setSelectedPremiumFeature({
-                        title: recipientLockTitle,
-                        description: recipientLockInfo,
-                      })
-                  }
-                />
-                <SettingsToggleRow
                   id="require-recipient-verification"
                   locked={!isPremiumUser}
                   checked={requireRecipientVerification}
@@ -971,7 +939,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       id="apply-branding"
                       locked={false}
                       checked={applyBranding}
-                      onCheckedChange={setApplyBranding}
+                      onCheckedChange={(checked) => setApplyBranding?.(checked)}
                       title={brandedRevealFeature.title}
                       info={brandedRevealFeature.description}
                     />
@@ -999,31 +967,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   />
                 )}
               </SettingsOptionList>
-              {isPremiumUser && restrictRecipientEmail ? (
-                <div className="px-1 pt-1">
-                  <label
-                    htmlFor="recipient-email"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsRecipientEmail ?? "Recipient email"}
-                  </label>
-                  <input
-                    id="recipient-email"
-                    type="email"
-                    autoComplete="email"
-                    value={recipientEmail}
-                    onChange={(event) => setRecipientEmail(event.target.value)}
-                    placeholder={t.settingsRecipientEmailPlaceholder ?? "recipient@example.com"}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {isFileTransfer
-                      ? "The recipient must enter this exact email before the encrypted file can be opened."
-                      : t.settingsRecipientEmailHint ??
-                        "The recipient must enter this email before the note can be revealed."}
-                  </p>
-                </div>
-              ) : null}
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
                   {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}

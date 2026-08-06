@@ -41,11 +41,9 @@ export type CreateSentNoteInput = {
   userId: string;
   noteId: string;
   label?: string | null;
-  recipientEmail?: string | null;
   recipientCode?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
-  restrictRecipientEmail?: boolean;
   requireRecipientVerification?: boolean;
   proofEnabled?: boolean;
   expiresAt?: string | null;
@@ -54,8 +52,6 @@ export type CreateSentNoteInput = {
 type RecipientGatePayload = {
   codeHash?: string;
   salt?: string;
-  emailMac?: string | null;
-  emailHash?: string | null;
 };
 
 const RECIPIENT_GATE_PREFIX = "note_rcv_gate:";
@@ -75,58 +71,6 @@ async function sha256Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-async function hmacSha256Hex(secret: string, message: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function requireAuthSecretKey(env: Env): string {
-  if (!env.AUTH_SECRET_KEY) {
-    throw new Error("auth_secret_key_required");
-  }
-  return env.AUTH_SECRET_KEY;
-}
-
-function recipientEmailMacPayload(email: string): string {
-  return `recipient-email:v1:${email}`;
-}
-
-async function recipientEmailMac(env: Env, email: string): Promise<string> {
-  return `hmac-sha256:v1:${await hmacSha256Hex(
-    requireAuthSecretKey(env),
-    recipientEmailMacPayload(email),
-  )}`;
-}
-
-function maskEmailHint(email: string | null): string | null {
-  if (!email) return null;
-  const at = email.indexOf("@");
-  if (at <= 0 || at === email.length - 1) return null;
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  const [domainName = "", ...domainRest] = domain.split(".");
-  const tld = domainRest.length ? `.${domainRest[domainRest.length - 1]}` : "";
-  const localHint =
-    local.length <= 2
-      ? `${local[0] ?? ""}*`
-      : `${local.slice(0, 2)}***${local.slice(-1)}`;
-  const domainHint =
-    domainName.length <= 2
-      ? `${domainName[0] ?? ""}*`
-      : `${domainName[0]}***${domainName.slice(-1)}`;
-  return `${localHint}@${domainHint}${tld}`;
 }
 
 function randomSixDigitCode(): string {
@@ -184,10 +128,9 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     }>();
   const entitlements = await getAccountEntitlements(env, input.userId);
   const capabilities = entitlements.capabilities;
-  const restrictRecipientEmail = input.restrictRecipientEmail === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
   const wantsOpenNotifications = input.notifyOnOpen === true || input.notifyOnDestroyed === true;
-  const wantsRecipientGate = restrictRecipientEmail || requireRecipientVerification;
+  const wantsRecipientGate = requireRecipientVerification;
   const proofEnabled =
     capabilities.proofOfAccess && input.proofEnabled !== false;
 
@@ -204,14 +147,6 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   }
 
   const id = crypto.randomUUID();
-  const emailHint =
-    input.recipientEmail && isPlausibleEmailFormat(input.recipientEmail)
-      ? input.recipientEmail.trim().toLowerCase()
-      : null;
-  if (restrictRecipientEmail && !emailHint) {
-    throw new Error("recipient_email_required");
-  }
-
   const hasRecipientGate = wantsRecipientGate;
 
   await env.AUTH_DB.prepare(
@@ -225,7 +160,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.userId,
       input.noteId,
       input.label?.trim().slice(0, 120) || null,
-      maskEmailHint(emailHint),
+      null,
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
       hasRecipientGate ? 1 : 0,
@@ -237,9 +172,6 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   let verificationCode: string | undefined;
   if (hasRecipientGate) {
     const gate: RecipientGatePayload = {};
-    if (emailHint) {
-      gate.emailMac = await recipientEmailMac(env, emailHint);
-    }
     if (requireRecipientVerification) {
       verificationCode = input.recipientCode?.trim() || randomSixDigitCode();
       gate.salt = crypto.randomUUID();
@@ -415,15 +347,14 @@ export async function noteRequiresRecipientVerification(env: Env, noteId: string
 export async function getRecipientGateStatus(
   env: Env,
   noteId: string,
-): Promise<{ required: boolean; emailRequired: boolean; codeRequired: boolean }> {
+): Promise<{ required: boolean; codeRequired: boolean }> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) {
-    return { required: false, emailRequired: false, codeRequired: false };
+  if (!stored || !stored.codeHash) {
+    return { required: false, codeRequired: false };
   }
   return {
     required: true,
-    emailRequired: Boolean(stored.emailMac || stored.emailHash),
-    codeRequired: Boolean(stored.codeHash),
+    codeRequired: true,
   };
 }
 
@@ -451,29 +382,15 @@ function parseCookieHeader(header: string | null): Record<string, string> {
 export async function verifyRecipientAccess(
   env: Env,
   noteId: string,
-  body: { code?: string; email?: string },
+  body: { code?: string },
 ): Promise<{ ok: true; setCookie: string } | { ok: false; error: string }> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) return { ok: false, error: "no_gate" };
+  if (!stored || !stored.codeHash) return { ok: false, error: "no_gate" };
 
-  if (stored.codeHash) {
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    if (!code) return { ok: false, error: "code_required" };
-    const codeHash = await sha256Hex(`${stored.salt}:${code}`);
-    if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
-  }
-
-  if (stored.emailMac || stored.emailHash) {
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!email || !isPlausibleEmailFormat(email)) return { ok: false, error: "email_required" };
-    if (stored.emailMac) {
-      const emailMac = await recipientEmailMac(env, email);
-      if (emailMac !== stored.emailMac) return { ok: false, error: "invalid_email" };
-    } else if (stored.emailHash) {
-      const emailHash = await sha256Hex(email);
-      if (emailHash !== stored.emailHash) return { ok: false, error: "invalid_email" };
-    }
-  }
+  const code = typeof body.code === "string" ? body.code.trim() : "";
+  if (!code) return { ok: false, error: "code_required" };
+  const codeHash = await sha256Hex(`${stored.salt}:${code}`);
+  if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
 
   const token = crypto.randomUUID();
   await kv(env).put(okKey(noteId, token), "1", { expirationTtl: 3600 });

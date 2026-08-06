@@ -912,23 +912,15 @@ async function registerPremiumSentNote(
   input: {
     notifyOnOpen?: boolean;
     notifyOnDestroyed?: boolean;
-    restrictRecipientEmail?: boolean;
     requireRecipientVerification?: boolean;
-    recipientEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
   },
 ): Promise<{ recipientVerificationCode?: string } | undefined> {
   const notifyOnOpen = input.notifyOnOpen === true;
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
-  const restrictRecipientEmail = input.restrictRecipientEmail === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
-  if (
-    !notifyOnOpen &&
-    !notifyOnDestroyed &&
-    !restrictRecipientEmail &&
-    !requireRecipientVerification
-  ) {
+  if (!notifyOnOpen && !notifyOnDestroyed && !requireRecipientVerification) {
     return undefined;
   }
   if (!env.AUTH_DB) return undefined;
@@ -936,16 +928,12 @@ async function registerPremiumSentNote(
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session?.id) return undefined;
-    const recipientEmail =
-      typeof input.recipientEmail === "string" ? input.recipientEmail.trim() : null;
     const result = await insertSentNote(env, {
       userId: session.id,
       noteId,
       label: input.label,
-      recipientEmail,
       notifyOnOpen,
       notifyOnDestroyed,
-      restrictRecipientEmail,
       requireRecipientVerification,
       expiresAt: input.expiresAt,
       proofEnabled: true,
@@ -9172,10 +9160,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       premiumSentNoteExtras = await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
-        restrictRecipientEmail: requestBody?.restrictRecipientEmail === true,
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
-        recipientEmail:
-          typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
@@ -9346,9 +9331,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (!isValidNoteId(id)) {
       return jsonResponse({ error: "Invalid note ID" }, 400, request);
     }
-    let body: { code?: unknown; email?: unknown } = {};
+    let body: { code?: unknown } = {};
     try {
-      body = (await request.json()) as { code?: unknown; email?: unknown };
+      body = (await request.json()) as { code?: unknown };
     } catch {
       return jsonResponse({ error: "Invalid JSON" }, 400, request);
     }
@@ -9383,7 +9368,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const result = await verifyRecipientAccess(env, id, {
       code: typeof body.code === "string" ? body.code : undefined,
-      email: typeof body.email === "string" ? body.email : undefined,
     });
     if (!result.ok) {
       const usedAttempts = RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS - verifyLimit.remaining;
@@ -9403,13 +9387,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const message =
         result.error === "invalid_code"
           ? "Invalid verification code."
-          : result.error === "invalid_email"
-            ? "This email does not match the intended recipient."
-            : result.error === "email_required"
-              ? "Recipient email is required."
-              : result.error === "code_required"
-                ? "Verification code is required."
-                : "Recipient verification is not available for this note.";
+          : result.error === "code_required"
+            ? "Verification code is required."
+            : "Recipient verification is not available for this note.";
       return jsonResponse({ error: result.error, message }, 400, request);
     }
     await logAuditEvent(env, {

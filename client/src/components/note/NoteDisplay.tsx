@@ -473,10 +473,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const [recipientGateLoading, setRecipientGateLoading] = useState(true);
   const [recipientGateRequired, setRecipientGateRequired] = useState(false);
-  const [recipientGateEmailRequired, setRecipientGateEmailRequired] = useState(false);
   const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
   const [recipientGateVerified, setRecipientGateVerified] = useState(false);
-  const [recipientEmailInput, setRecipientEmailInput] = useState("");
   const [recipientCodeInput, setRecipientCodeInput] = useState("");
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
@@ -684,13 +682,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       try {
         const status = await apiRequest<{
           required?: boolean;
-          emailRequired?: boolean;
           codeRequired?: boolean;
           verified?: boolean;
         }>(`/api/notes/${id}/recipient-gate`, "GET");
         if (cancelled) return;
         setRecipientGateRequired(status.required === true);
-        setRecipientGateEmailRequired(status.emailRequired === true);
         setRecipientGateCodeRequired(status.codeRequired === true);
         setRecipientGateVerified(status.required !== true || status.verified === true);
       } catch {
@@ -715,7 +711,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setRecipientGateError(null);
     try {
       await apiRequest(`/api/notes/${id}/recipient-verify`, "POST", {
-        ...(recipientGateEmailRequired ? { email: recipientEmailInput.trim() } : {}),
         ...(recipientGateCodeRequired ? { code: recipientCodeInput.trim() } : {}),
       });
       setRecipientGateVerified(true);
@@ -1182,22 +1177,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   "The sender restricted who can open this note. Confirm your details to continue."}
               </p>
               <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
-                {recipientGateEmailRequired ? (
-                  <div>
-                    <label htmlFor="recipient-gate-email" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {t.recipientGateEmail ?? "Your email"}
-                    </label>
-                    <input
-                      id="recipient-gate-email"
-                      type="email"
-                      autoComplete="email"
-                      value={recipientEmailInput}
-                      onChange={(event) => setRecipientEmailInput(event.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                      required
-                    />
-                  </div>
-                ) : null}
                 {recipientGateCodeRequired ? (
                   <div>
                     <label htmlFor="recipient-gate-code" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">

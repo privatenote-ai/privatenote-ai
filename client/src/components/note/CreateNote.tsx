@@ -442,9 +442,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
-  const [restrictRecipientEmail, setRestrictRecipientEmail] = useState(false);
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
@@ -747,9 +745,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!user) {
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
-      setRestrictRecipientEmail(false);
       setRequireRecipientVerification(false);
-      setRecipientEmail("");
       setNoteLabel("");
       return;
     }
@@ -851,17 +847,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   useEffect(() => {
     if (isPremiumUser) return;
-    if (restrictRecipientEmail) setRestrictRecipientEmail(false);
     if (requireRecipientVerification) setRequireRecipientVerification(false);
-    if (recipientEmail) setRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
-  }, [
-    isPremiumUser,
-    recipientEmail,
-    readerLanguage,
-    requireRecipientVerification,
-    restrictRecipientEmail,
-  ]);
+  }, [isPremiumUser, readerLanguage, requireRecipientVerification]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1259,26 +1247,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    const applyRestrictRecipientEmail = isPremiumUser && restrictRecipientEmail;
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
-    if (applyRestrictRecipientEmail) {
-      const trimmedRecipientEmail = recipientEmail.trim();
-      if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
-        toast({
-          title: t.settingsRecipientEmailInvalid,
-          description: t.settingsRecipientEmailInvalidHint,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
       (canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed)) ||
-      applyRestrictRecipientEmail ||
       applyRequireRecipientVerification;
 
     if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
@@ -1679,12 +1653,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         notifyOnDestroyed:
           canNotifyOnOpen &&
           (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
-        ...(applyRestrictRecipientEmail
-          ? {
-              restrictRecipientEmail: true,
-              recipientEmail: recipientEmail.trim().toLowerCase(),
-            }
-          : {}),
         ...(applyRequireRecipientVerification
           ? { requireRecipientVerification: true }
           : {}),
@@ -1935,9 +1903,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowAdvancedOptions(false);
     setNotifyOnOpen(false);
     setNotifyOnDestroyed(false);
-    setRestrictRecipientEmail(false);
     setRequireRecipientVerification(false);
-    setRecipientEmail("");
     setNoteLabel("");
     setShowPrompt(true);
     setAiDraftAccepted(false);
@@ -2853,12 +2819,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 maxFileAccessWindowSeconds={planCapabilities.maxFileAccessWindowSeconds}
                 isSignedIn={Boolean(user)}
                 premiumStatusLoading={premiumStatusLoading}
-                restrictRecipientEmail={restrictRecipientEmail}
-                setRestrictRecipientEmail={setRestrictRecipientEmail}
                 requireRecipientVerification={requireRecipientVerification}
                 setRequireRecipientVerification={setRequireRecipientVerification}
-                recipientEmail={recipientEmail}
-                setRecipientEmail={setRecipientEmail}
                 readCount={readCount}
                 setReadCount={setReadCount}
                 fileAccessWindowSeconds={fileAccessWindowSeconds}
@@ -3164,12 +3126,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               maxFileAccessWindowSeconds: planCapabilities.maxFileAccessWindowSeconds,
               isSignedIn: Boolean(user),
               premiumStatusLoading,
-              restrictRecipientEmail,
-              setRestrictRecipientEmail,
               requireRecipientVerification,
               setRequireRecipientVerification,
-              recipientEmail,
-              setRecipientEmail,
               readCount,
               setReadCount,
               fileAccessWindowSeconds,
