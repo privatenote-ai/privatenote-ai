@@ -1702,7 +1702,7 @@ export const sr: Translations = {
   revealPrivateNoteId: "Privatna poruka #{id}",
   revealLanguageLine: "Jezik: {language}",
   revealPrivacyDescription: "Radi vaše privatnosti, ova se poruka briše nakon otvaranja.",
-  revealReadyWarning: "Otvorite samo kada ste spremni — ovo se ne može poništiti.",
+  revealReadyWarning: "Otvorite samo kada ste spremni — poruka će se samouništiti nakon čitanja.",
   revealNote: "Otvori Privatnu poruku",
   revealing: "Otvaranje...",
   revealTrustEncrypted: "Šifrovanje od kraja do kraja",
