@@ -745,59 +745,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
 
             <section
               className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
-              aria-labelledby="note-email-alerts-heading"
+              aria-labelledby="note-notification-center-heading"
             >
               <SectionHeading
-                id="note-email-alerts-heading"
-                title={t.settingsEmailAlerts ?? "Email alerts"}
+                id="note-notification-center-heading"
+                title={t.settingsNotificationCenter ?? t.notificationCenterTitle ?? "Notification Center"}
                 showPremiumBadge={false}
               />
-              <SettingsOptionList>
-                {readCount === 1 ? (
-                  <SettingsToggleRow
-                    id="notify-on-opened-destroyed"
-                    locked={!canNotifyOnOpen}
-                    checked={notifyOnOpen || notifyOnDestroyed}
-                    onCheckedChange={(enabled) => {
-                      setNotifyOnOpen(enabled);
-                      setNotifyOnDestroyed(enabled);
-                    }}
-                    title={
-                      t.settingsEmailAlertOnOpenedDestroyed ??
-                      "When this note is opened and destroyed"
-                    }
-                    info={
-                      t.settingsEmailAlertOnOpenedDestroyedInfo ??
-                      "One email when the one-time link is accessed and the note is destroyed. Message content is never included."
-                    }
-                  />
-                ) : (
-                  <>
-                    <SettingsToggleRow
-                      id="notify-on-open"
-                      locked={!canNotifyOnOpen}
-                      checked={notifyOnOpen}
-                      onCheckedChange={setNotifyOnOpen}
-                      title={t.settingsEmailAlertOnOpen ?? "When this note is opened"}
-                      info={
-                        t.settingsEmailAlertOnOpenInfo ??
-                        "One email when the link is accessed. Message content is never included."
-                      }
-                    />
-                    <SettingsToggleRow
-                      id="notify-on-destroyed"
-                      locked={!canNotifyOnOpen}
-                      checked={notifyOnDestroyed}
-                      onCheckedChange={setNotifyOnDestroyed}
-                      title={t.settingsEmailAlertOnDestroyed ?? "When this note is destroyed"}
-                      info={
-                        t.settingsEmailAlertOnDestroyedInfo ??
-                        "One email when the note can no longer be opened."
-                      }
-                    />
-                  </>
-                )}
-              </SettingsOptionList>
               {isPremiumUser ? (
                 <div className={SETTINGS_FIELD_ROW}>
                   <div>
@@ -829,6 +783,57 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
               ) : null}
+              <SettingsOptionList>
+                {readCount === 1 ? (
+                  <SettingsToggleRow
+                    id="notify-on-opened-destroyed"
+                    locked={!canNotifyOnOpen}
+                    checked={notifyOnOpen || notifyOnDestroyed}
+                    onCheckedChange={(enabled) => {
+                      setNotifyOnOpen(enabled);
+                      setNotifyOnDestroyed(enabled);
+                    }}
+                    title={
+                      t.settingsEmailAlertOnOpenedDestroyed ??
+                      "Email alert when this note is opened and destroyed"
+                    }
+                    info={
+                      t.settingsEmailAlertOnOpenedDestroyedInfo ??
+                      "One email when the one-time link is accessed and the note is destroyed. Message content is never included."
+                    }
+                  />
+                ) : (
+                  <>
+                    <SettingsToggleRow
+                      id="notify-on-open"
+                      locked={!canNotifyOnOpen}
+                      checked={notifyOnOpen}
+                      onCheckedChange={setNotifyOnOpen}
+                      title={
+                        t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
+                      }
+                      info={
+                        t.settingsEmailAlertOnOpenInfo ??
+                        "One email when the link is accessed. Message content is never included."
+                      }
+                    />
+                    <SettingsToggleRow
+                      id="notify-on-destroyed"
+                      locked={!canNotifyOnOpen}
+                      checked={notifyOnDestroyed}
+                      onCheckedChange={setNotifyOnDestroyed}
+                      title={
+                        t.settingsEmailAlertOnDestroyed ??
+                        "Email alert when this note is destroyed"
+                      }
+                      info={
+                        t.settingsEmailAlertOnDestroyedInfo ??
+                        "One email when the note can no longer be opened."
+                      }
+                    />
+                  </>
+                )}
+              </SettingsOptionList>
               {!canNotifyOnOpen && !premiumStatusLoading ? (
                 <PremiumSectionFooter>
                   {isSignedIn ? (
