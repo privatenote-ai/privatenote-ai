@@ -77,7 +77,13 @@ function SettingsInfoTooltip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
+      <TooltipContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        collisionPadding={16}
+        className="z-[100] max-w-[260px] text-xs leading-snug"
+      >
         {text}
       </TooltipContent>
     </Tooltip>
@@ -102,7 +108,6 @@ function SettingsFieldLabel({
       <SettingsInfoTooltip text={info}>
         <span
           className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
-          tabIndex={info ? 0 : undefined}
           aria-label={info}
         >
           {icon}
@@ -275,7 +280,6 @@ function SettingsToggleRow({
     <SettingsInfoTooltip text={info}>
       <span
         className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
-        tabIndex={0}
         aria-label={info}
       >
         <span className="truncate">{title}</span>
