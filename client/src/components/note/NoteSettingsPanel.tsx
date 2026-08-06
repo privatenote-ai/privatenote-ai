@@ -35,6 +35,7 @@ import {
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
 import { Link } from "wouter";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { LANGUAGE_OPTIONS, type SupportedLanguage } from "@/utils/translation";
@@ -288,7 +289,7 @@ function SettingsToggleRow({
         className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
         aria-label={info}
       >
-        <span className="truncate">{title}</span>
+        <span className="min-w-0 text-left leading-snug">{title}</span>
       </span>
     </SettingsInfoTooltip>
   );
@@ -301,6 +302,7 @@ function SettingsToggleRow({
         <button type="button" onClick={onLockedClick} className={className}>
           <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
           {titleContent}
+          <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
         </button>
       );
     }
@@ -308,24 +310,22 @@ function SettingsToggleRow({
       <div className={className} aria-disabled="true">
         <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
         {titleContent}
+        <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
       </div>
     );
   }
 
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40"
-    >
-      <input
-        id={id}
-        type="checkbox"
-        className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
-        checked={checked}
-        onChange={(event) => onCheckedChange?.(event.target.checked)}
-      />
+    <div className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40">
       {titleContent}
-    </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className="ml-auto"
+        aria-label={title}
+      />
+    </div>
   );
 }
 
@@ -752,37 +752,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 title={t.settingsNotificationCenter ?? t.notificationCenterTitle ?? "Notification Center"}
                 showPremiumBadge={false}
               />
-              {isPremiumUser ? (
-                <div className={SETTINGS_FIELD_ROW}>
-                  <div>
-                    <SettingsFieldLabel
-                      htmlFor="note-label"
-                      icon={<Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
-                      iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
-                      label={t.settingsNoteLabel ?? "Note label"}
-                      info={
-                        t.settingsNoteLabelInfo ??
-                        "A private name for this note on this device only. Never uploaded or shared."
-                      }
-                    />
-                  </div>
-                  <div className="min-w-0 space-y-1">
-                    <input
-                      id="note-label"
-                      type="text"
-                      maxLength={NOTE_LABEL_MAX_LENGTH}
-                      value={noteLabel}
-                      onChange={(event) => setNoteLabel(event.target.value)}
-                      placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
-                      className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
-                    />
-                    <SettingsFieldHelper>
-                      {t.settingsNoteLabelHint ??
-                        "Device-only labeling. Never sent with the note."}
-                    </SettingsFieldHelper>
-                  </div>
-                </div>
-              ) : null}
               <SettingsOptionList>
                 {readCount === 1 ? (
                   <SettingsToggleRow
@@ -834,6 +803,37 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </>
                 )}
               </SettingsOptionList>
+              {isPremiumUser ? (
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
+                    <SettingsFieldLabel
+                      htmlFor="note-label"
+                      icon={<Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                      iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                      label={t.settingsNoteLabel ?? "Note label"}
+                      info={
+                        t.settingsNoteLabelInfo ??
+                        "A private name for this note on this device only. Never uploaded or shared."
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <input
+                      id="note-label"
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={noteLabel}
+                      onChange={(event) => setNoteLabel(event.target.value)}
+                      placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
+                      className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
+                    />
+                    <SettingsFieldHelper>
+                      {t.settingsNoteLabelHint ??
+                        "Device-only labeling. Never sent with the note."}
+                    </SettingsFieldHelper>
+                  </div>
+                </div>
+              ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (
                 <PremiumSectionFooter>
                   {isSignedIn ? (
