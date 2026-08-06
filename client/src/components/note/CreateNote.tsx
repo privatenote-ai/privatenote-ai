@@ -2580,6 +2580,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
+        createdPassword={
+          createdNote.meta?.isPasswordProtected ? password.trim() || undefined : undefined
+        }
         successQrSectionRef={successQrSectionRef}
         variant={isFileTransferMode ? "file-transfer" : "note"}
       />
