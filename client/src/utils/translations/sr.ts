@@ -1703,7 +1703,7 @@ export const sr: Translations = {
   revealLanguageLine: "Jezik: {language}",
   revealPrivacyDescription: "Radi vaše privatnosti, ova se poruka briše nakon otvaranja.",
   revealReadyWarning: "Otvorite samo kada ste spremni — ovo se ne može poništiti.",
-  revealNote: "Otvori poruku",
+  revealNote: "Otvori Privatnu poruku",
   revealing: "Otvaranje...",
   revealTrustEncrypted: "Šifrovanje od kraja do kraja",
   revealTrustSelfDestructs: "Uništava se nakon otvaranja",
