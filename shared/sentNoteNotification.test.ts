@@ -42,5 +42,16 @@ describe("sentNoteNotification", () => {
       attachment_downloaded_at: "2026-06-01T12:30:00.000Z",
     });
     assert.equal(downloaded.status, "attachment_downloaded");
+
+    const receipt = resolveSentNoteNotificationEvent({
+      status: "destroyed",
+      created_at: "2026-06-01T10:00:00.000Z",
+      opened_at: "2026-06-01T12:00:00.000Z",
+      destroyed_at: "2026-06-01T12:05:00.000Z",
+      revoked_at: null,
+      receipt_acknowledged_at: "2026-06-01T12:10:00.000Z",
+    });
+    assert.equal(receipt.status, "receipt_confirmed");
+    assert.equal(receipt.eventAt, "2026-06-01T12:10:00.000Z");
   });
 });

@@ -91,14 +91,16 @@ describe("planCatalog", () => {
     const starter = planFeaturesFor("personal_premium");
     assert.equal(free.maxExpirySeconds, 3 * 24 * 60 * 60);
     assert.deepEqual(free.allowedReadCounts, [1]);
-    assert.equal(free.extendedFileAccess, false);
     assert.equal(free.recipientLinkDelivery, false);
     assert.equal(free.readerLanguage, false);
+    assert.equal(free.delayedReveal, false);
     assert.equal(starter.maxExpirySeconds, 15 * 24 * 60 * 60);
     assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
-    assert.equal(starter.extendedFileAccess, true);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);
+    assert.equal(starter.delayedReveal, true);
+    assert.equal(free.receiptAcknowledgment, false);
+    assert.equal(starter.receiptAcknowledgment, true);
   });
 
   it("allows open/destroyed email alerts on free and paid tiers", () => {

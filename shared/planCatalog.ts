@@ -22,13 +22,19 @@ export type PlanFeatureFlags = {
   maxExpirySeconds: number;
   /** Exact note-open counts the plan may submit. */
   allowedReadCounts: readonly number[];
-  extendedFileAccess: boolean;
   recipientLinkDelivery: boolean;
   readerLanguage: boolean;
   /** Business: company profile / logo / accent on reveal. */
   revealBranding: boolean;
   proofOfAccess: boolean;
   recipientVerification: boolean;
+  /** Starter+: note cannot be opened before a scheduled UTC time. */
+  delayedReveal: boolean;
+  /**
+   * Starter+: recipient can confirm receipt after successful decrypt
+   * (password unwrap when protected). Ack is stored on sent_notes.
+   */
+  receiptAcknowledgment: boolean;
   sentNotesDashboard: boolean;
   revokeUnopened: boolean;
   openNotifications: boolean;
@@ -69,12 +75,13 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 15 * 60,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
-      extendedFileAccess: false,
       recipientLinkDelivery: false,
       readerLanguage: false,
       revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
+      delayedReveal: false,
+      receiptAcknowledgment: false,
       sentNotesDashboard: false,
       revokeUnopened: false,
       openNotifications: true,
@@ -98,12 +105,13 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 30 * 60,
       maxExpirySeconds: 15 * DAY,
       allowedReadCounts: [1, 2, 3],
-      extendedFileAccess: true,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
+      delayedReveal: true,
+      receiptAcknowledgment: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,
@@ -127,12 +135,13 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 60 * 60,
       maxExpirySeconds: 30 * DAY,
       allowedReadCounts: [1, 2, 3, 5],
-      extendedFileAccess: true,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,
+      delayedReveal: true,
+      receiptAcknowledgment: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,

@@ -558,6 +558,32 @@ export const en: Translations = {
   settingsReaderLanguageHint: "Auto uses the recipient's browser language.",
   settingsReaderLanguageAuto: "Auto",
   settingsDeliveryUpgradeLink: "Upgrade to unlock delivery controls",
+  settingsDelayedReveal: "Delayed reveal",
+  settingsDelayedRevealInfo:
+    "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.",
+  settingsDelayedRevealBefore: "Do not allow opening before",
+  settingsDelayedRevealHint:
+    "Recipients can open the link only after this time. Must be before the note lifetime ends.",
+  settingsDelayedRevealUtcLabel: "UTC",
+  settingsDelayedRevealInvalid: "Choose a future open time",
+  settingsDelayedRevealInvalidHint:
+    "Pick a time after now and before the note expires.",
+  settingsRequireReceiptAck: "Require receipt confirmation",
+  settingsRequireReceiptAckInfo:
+    "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.",
+  revealNotYetAvailableTitle: "Not available yet",
+  revealNotYetAvailableDescription:
+    "This note is scheduled to open later. Come back after the time below.",
+  revealNotYetAvailableOpensAt: "Opens at {time}",
+  revealReceiptRequestedTitle: "Receipt confirmation requested",
+  revealReceiptRequestedHint:
+    "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.",
+  revealReceiptConfirmButton: "Confirm receipt",
+  revealReceiptConfirming: "Confirming…",
+  revealReceiptConfirmed: "Receipt confirmed",
+  revealReceiptAlreadyConfirmed: "Already confirmed",
+  revealReceiptConfirmedHint:
+    "The sender can see that you successfully decrypted this note.",
   settingsUpgradeToPremium: "Compare plans",
   settingsPremiumFeatureDialogTitle: "Available with Starter and Business",
   settingsPremiumFeatureDialogFallback: "Choose Starter or Business to unlock delivery and verification controls.",
@@ -1612,6 +1638,14 @@ export const en: Translations = {
   blogHowToSharePhotosSecurelyMetaTitle: "How to share photos securely",
   blogHowToSharePhotosSecurelyMetaDescription:
     "Share sensitive photos with fewer persistent copies. Remove common metadata locally, encrypt before upload, protect the full link, and limit access time.",
+  blogDelayedRevealTitle: "Delayed Reveal for One-Time Secret Links",
+  blogDelayedRevealSubtitle:
+    "Schedule when a private note can first be opened — without giving up burn-after-read.",
+  blogDelayedRevealExcerpt:
+    "Schedule when a private note can first be opened — for credential handovers, HR packs, and embargoed documents.",
+  blogDelayedRevealMetaTitle: "Delayed reveal for one-time secret links",
+  blogDelayedRevealMetaDescription:
+    "Set Do not allow opening before a UTC time on PrivateNote. Share encrypted links early for handovers, HR, and embargoes.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:
@@ -2290,6 +2324,8 @@ export const en: Translations = {
   notificationStatusBurned: "Burned",
   notificationStatusExpired: "Expired",
   notificationStatusAttachmentDownloaded: "Downloaded attachment",
+  notificationStatusReceiptConfirmed: "Receipt confirmed",
+  notificationStatusRevoked: "Revoked",
 
   prefillPartnerBodyPrefix: "This note was pre-filled by",
   prefillPartnerBodySuffix: "PrivateNote has not created or shared anything yet.",

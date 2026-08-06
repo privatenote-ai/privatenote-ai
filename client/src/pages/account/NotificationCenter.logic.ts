@@ -20,6 +20,8 @@ export type NotificationItem = {
   openDeviceClass?: string | null;
   openBrowser?: string | null;
   attachmentDownloadedAt?: string | null;
+  receiptAcknowledgedAt?: string | null;
+  requireReceiptAck?: boolean;
 };
 
 export type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
@@ -30,7 +32,7 @@ export type NotificationGroup = {
 };
 
 export type ProofTimelineEntry = {
-  key: "created" | "opened" | "attachment" | "destroyed" | "expired" | "revoked";
+  key: "created" | "opened" | "receipt" | "attachment" | "destroyed" | "expired" | "revoked";
   at: string;
 };
 
@@ -84,11 +86,13 @@ export function formatProofTimestamp(raw: string): string {
 export function hasProofReport(item: NotificationItem): boolean {
   if (item.openedAt) return true;
   if (item.attachmentDownloadedAt) return true;
+  if (item.receiptAcknowledgedAt) return true;
   return (
     item.status === "viewed" ||
     item.status === "burned" ||
     item.status === "expired" ||
     item.status === "attachment_downloaded" ||
+    item.status === "receipt_confirmed" ||
     item.status === "revoked"
   );
 }
@@ -97,6 +101,9 @@ export function buildProofTimeline(item: NotificationItem): ProofTimelineEntry[]
   const entries: ProofTimelineEntry[] = [];
   if (item.createdAt) entries.push({ key: "created", at: item.createdAt });
   if (item.openedAt) entries.push({ key: "opened", at: item.openedAt });
+  if (item.receiptAcknowledgedAt) {
+    entries.push({ key: "receipt", at: item.receiptAcknowledgedAt });
+  }
   if (item.attachmentDownloadedAt) {
     entries.push({ key: "attachment", at: item.attachmentDownloadedAt });
   }
@@ -137,6 +144,8 @@ export function statusLabel(
       return t.notificationStatusExpired ?? "Expired";
     case "attachment_downloaded":
       return t.notificationStatusAttachmentDownloaded ?? "Downloaded attachment";
+    case "receipt_confirmed":
+      return t.notificationStatusReceiptConfirmed ?? "Receipt confirmed";
     default:
       return status;
   }
@@ -148,6 +157,8 @@ export function statusTone(status: SentNoteNotificationStatus): string {
       return "text-primary";
     case "attachment_downloaded":
       return "text-indigo-600 dark:text-indigo-400";
+    case "receipt_confirmed":
+      return "text-teal-700 dark:text-teal-300";
     case "burned":
       return "text-amber-700 dark:text-amber-300";
     case "revoked":

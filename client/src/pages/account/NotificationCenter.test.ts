@@ -70,8 +70,12 @@ describe("NotificationCenter helpers", () => {
     assert.equal(statusLabel("attachment_downloaded", {
       notificationStatusAttachmentDownloaded: "Attachment opened",
     }), "Attachment opened");
+    assert.equal(statusLabel("receipt_confirmed", {
+      notificationStatusReceiptConfirmed: "Got it",
+    }), "Got it");
     assert.equal(statusLabel("viewed", {}), "Viewed");
     assert.match(statusTone("attachment_downloaded"), /indigo/);
+    assert.match(statusTone("receipt_confirmed"), /teal/);
     assert.match(statusTone("burned"), /amber/);
   });
 

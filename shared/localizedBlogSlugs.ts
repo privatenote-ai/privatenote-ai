@@ -30,6 +30,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "common-secret-handling-mistakes",
   "mythos-ai-cryptanalysis-hawk",
   "how-to-share-photos-securely",
+  "delayed-reveal-scheduled-secret-links",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -371,6 +372,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-compartilhar-fotos-com-seguranca",
     sr: "kako-bezbedno-deliti-fotografije",
     hr: "kako-sigurno-dijeliti-fotografije",
+  },
+  "delayed-reveal-scheduled-secret-links": {
+    en: "delayed-reveal-scheduled-secret-links",
+    de: "verzoegerte-freigabe-geplante-geheimlinks",
+    fr: "revelation-differee-liens-secrets-planifies",
+    es: "revelacion-diferida-enlaces-secretos-programados",
+    it: "rivelazione-differita-link-segreti-programmati",
+    nl: "vertraagde-vrijgave-geplande-geheime-links",
+    pt: "revelacao-adiada-links-secretos-agendados",
+    sr: "odlozeno-otkrivanje-zakazani-tajni-linkovi",
+    hr: "odgodeno-otkrivanje-zakazani-tajni-linkovi",
   },
 };
 

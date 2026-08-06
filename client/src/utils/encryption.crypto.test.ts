@@ -6,8 +6,10 @@ import {
   decryptNote,
   deriveAesKeyFromPassword,
   deriveNoteRootKeys,
+  deriveReceiptAckTokenHex,
   encryptNote,
   generateRootKeyBytes,
+  hashReceiptAckTokenHex,
   unwrapRootKeyWithPassword,
   wrapRootKeyWithPassword,
 } from "./encryption.ts";
@@ -132,5 +134,17 @@ describe("root-key note cryptography", () => {
         ),
       /operation failed|decrypt/i,
     );
+  });
+
+  it("derives a stable receipt-ack token from the root key (pn-ack-v1)", async () => {
+    const { rootKeyBytes } = generateRootKeyBytes();
+    const tokenA = await deriveReceiptAckTokenHex(rootKeyBytes);
+    const tokenB = await deriveReceiptAckTokenHex(rootKeyBytes);
+    assert.equal(tokenA, tokenB);
+    assert.match(tokenA, /^[0-9a-f]{64}$/);
+    const hash = await hashReceiptAckTokenHex(tokenA);
+    assert.match(hash, /^[0-9a-f]{64}$/);
+    assert.notEqual(hash, tokenA);
+    rootKeyBytes.fill(0);
   });
 });

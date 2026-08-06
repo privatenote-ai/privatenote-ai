@@ -166,6 +166,10 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return features.recipientVerification ? "Included" : "No";
     case "recipientLinkDelivery":
       return features.recipientLinkDelivery ? "Included" : "No";
+    case "delayedReveal":
+      return features.delayedReveal ? "Included" : "No";
+    case "receiptAcknowledgment":
+      return features.receiptAcknowledgment ? "Included" : "No";
     case "sentNotesDashboard":
       return features.sentNotesDashboard ? "Included" : "No";
     case "revokeUnopened":
@@ -211,6 +215,8 @@ const comparisonSections: { title: string; rows: { key: string; label: string }[
       { key: "proofOfAccess", label: "Proof of access" },
       { key: "recipientVerification", label: "Recipient verification" },
       { key: "recipientLinkDelivery", label: "Email link to recipient" },
+      { key: "delayedReveal", label: "Delayed reveal" },
+      { key: "receiptAcknowledgment", label: "Receipt confirmation" },
       { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
       { key: "revokeUnopened", label: "Revoke unopened notes" },
       { key: "revealBranding", label: "Company branding on reveal" },

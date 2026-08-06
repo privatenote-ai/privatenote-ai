@@ -9,6 +9,11 @@ import {
   resolveSentNoteNotificationEvent,
   type SentNoteNotificationStatus,
 } from "@shared/sentNoteNotification";
+import {
+  hashReceiptAckTokenHex,
+  isValidReceiptAckTokenHex,
+  timingSafeEqualHex,
+} from "@shared/noteReceiptAck";
 
 export type SentNoteStatus = "created" | "opened" | "expired" | "destroyed" | "revoked";
 
@@ -23,6 +28,10 @@ export type SentNoteRow = {
   notify_on_destroyed: number;
   notify_on_attachment_download: number;
   require_recipient_verification: number;
+  require_receipt_ack: number;
+  receipt_ack_token_hash: string | null;
+  receipt_acknowledged_at: string | null;
+  receipt_ack_notified_at: string | null;
   proof_enabled: number;
   expires_at: string | null;
   created_at: string;
@@ -54,6 +63,10 @@ export type CreateSentNoteInput = {
   /** Optional extra inbox for open/destroy/download alerts (premium). */
   alertCustomEmail?: string | null;
   requireRecipientVerification?: boolean;
+  /** Starter+: store HKDF-derived ack token hash; recipient confirms after decrypt. */
+  requireReceiptAck?: boolean;
+  /** SHA-256 hex of the 32-byte receipt ack token (required when requireReceiptAck). */
+  receiptAckTokenHash?: string | null;
   proofEnabled?: boolean;
   expiresAt?: string | null;
 };
@@ -161,6 +174,9 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   const entitlements = await getAccountEntitlements(env, input.userId);
   const capabilities = entitlements.capabilities;
   const requireRecipientVerification = input.requireRecipientVerification === true;
+  const requireReceiptAck = input.requireReceiptAck === true;
+  const receiptAckTokenHash =
+    typeof input.receiptAckTokenHash === "string" ? input.receiptAckTokenHash.trim().toLowerCase() : "";
   const wantsOpenNotifications =
     input.notifyOnOpen === true ||
     input.notifyOnDestroyed === true ||
@@ -176,6 +192,12 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
 
   if (wantsRecipientGate && !capabilities.recipientVerification) {
     throw new Error("premium_required");
+  }
+  if (requireReceiptAck && !capabilities.receiptAcknowledgment) {
+    throw new Error("premium_required");
+  }
+  if (requireReceiptAck && !/^[0-9a-f]{64}$/.test(receiptAckTokenHash)) {
+    throw new Error("receipt_ack_token_hash_required");
   }
   if (wantsOpenNotifications && !capabilities.openNotifications) {
     throw new Error("premium_required");
@@ -208,9 +230,10 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
-      notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification, proof_enabled, expires_at,
+      notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification,
+      require_receipt_ack, receipt_ack_token_hash, proof_enabled, expires_at,
       alert_notify_account_email, alert_custom_email
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -222,6 +245,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       input.notifyOnDestroyed ? 1 : 0,
       input.notifyOnAttachmentDownload ? 1 : 0,
       hasRecipientGate ? 1 : 0,
+      requireReceiptAck ? 1 : 0,
+      requireReceiptAck ? receiptAckTokenHash : null,
       proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
       wantsOpenNotifications && alertNotifyAccountEmail ? 1 : 0,
@@ -274,6 +299,8 @@ export type SentNoteNotificationItem = {
   openDeviceClass: string | null;
   openBrowser: string | null;
   attachmentDownloadedAt: string | null;
+  receiptAcknowledgedAt: string | null;
+  requireReceiptAck: boolean;
 };
 
 export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificationItem {
@@ -297,6 +324,8 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     openDeviceClass: proofEnabled ? row.open_device_class : null,
     openBrowser: proofEnabled ? row.open_browser : null,
     attachmentDownloadedAt: row.attachment_downloaded_at,
+    receiptAcknowledgedAt: row.receipt_acknowledged_at,
+    requireReceiptAck: row.require_receipt_ack === 1,
   };
 }
 
@@ -367,6 +396,79 @@ export async function recordSentNoteAttachmentDownloaded(
     browser,
     sendEmailFn,
   });
+}
+
+export async function acknowledgeSentNoteReceipt(
+  env: Env,
+  noteId: string,
+  ackTokenHex: string,
+  request?: Request,
+  sendEmailFn?: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+): Promise<
+  | { ok: true; alreadyConfirmed: boolean; acknowledgedAt: string }
+  | { ok: false; error: "not_found" | "not_required" | "invalid_token" | "not_configured" }
+> {
+  if (!env.AUTH_DB) return { ok: false, error: "not_configured" };
+  if (!isValidReceiptAckTokenHex(ackTokenHex)) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  const row = await getSentNoteByNoteId(env, noteId);
+  if (!row) return { ok: false, error: "not_found" };
+  if (row.require_receipt_ack !== 1 || !row.receipt_ack_token_hash) {
+    return { ok: false, error: "not_required" };
+  }
+
+  const providedHash = await hashReceiptAckTokenHex(ackTokenHex.toLowerCase());
+  if (!timingSafeEqualHex(providedHash, row.receipt_ack_token_hash.toLowerCase())) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  if (row.receipt_acknowledged_at) {
+    return {
+      ok: true,
+      alreadyConfirmed: true,
+      acknowledgedAt: row.receipt_acknowledged_at,
+    };
+  }
+
+  const eventAt = new Date().toISOString();
+  const update = await env.AUTH_DB.prepare(
+    `UPDATE sent_notes
+     SET receipt_acknowledged_at = ?
+     WHERE note_id = ? AND require_receipt_ack = 1 AND receipt_acknowledged_at IS NULL`,
+  )
+    .bind(eventAt, noteId)
+    .run();
+  const rowsChanged = (update?.meta as { changes?: number } | undefined)?.changes ?? 0;
+  if (rowsChanged < 1) {
+    const refreshed = await getSentNoteByNoteId(env, noteId);
+    if (refreshed?.receipt_acknowledged_at) {
+      return {
+        ok: true,
+        alreadyConfirmed: true,
+        acknowledgedAt: refreshed.receipt_acknowledged_at,
+      };
+    }
+    return { ok: false, error: "not_found" };
+  }
+
+  if (sendEmailFn) {
+    const country = request?.headers.get("CF-IPCountry") || request?.headers.get("cf-ipcountry") || null;
+    const { deviceClass, browser } = parseUserAgent(request?.headers.get("User-Agent") ?? null);
+    try {
+      await sendSentNoteLifecycleEmail(env, row, noteId, "receipt_acknowledged", eventAt, {
+        country,
+        deviceClass,
+        browser,
+        sendEmailFn,
+      });
+    } catch (error) {
+      console.warn("[SENT_NOTES] Failed to email receipt acknowledgment:", error);
+    }
+  }
+
+  return { ok: true, alreadyConfirmed: false, acknowledgedAt: eventAt };
 }
 
 export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<SentNoteRow | null> {
@@ -596,7 +698,13 @@ export async function recordSentNoteOpened(
   }
 }
 
-type SentNoteLifecycleEvent = "opened" | "destroyed" | "opened_destroyed" | "expired" | "attachment_downloaded";
+type SentNoteLifecycleEvent =
+  | "opened"
+  | "destroyed"
+  | "opened_destroyed"
+  | "expired"
+  | "attachment_downloaded"
+  | "receipt_acknowledged";
 
 async function sendSentNoteLifecycleEmail(
   env: Env,
@@ -636,6 +744,17 @@ async function sendSentNoteLifecycleEmail(
   if (row.alert_custom_email && isPlausibleEmailFormat(row.alert_custom_email)) {
     recipients.add(row.alert_custom_email.trim().toLowerCase());
   }
+  // Receipt confirmation always notifies the verified account when no alert destinations were set.
+  if (
+    event === "receipt_acknowledged" &&
+    recipients.size === 0 &&
+    senderRow?.email &&
+    isPlausibleEmailFormat(senderRow.email) &&
+    senderRow.email_verified === 1 &&
+    senderRow.email_notifications === 1
+  ) {
+    recipients.add(senderRow.email.trim().toLowerCase());
+  }
   if (recipients.size === 0) return;
 
   const setClause =
@@ -645,6 +764,8 @@ async function sendSentNoteLifecycleEmail(
         ? "opened_notified_at = ?, destroyed_notified_at = ?"
         : event === "attachment_downloaded"
           ? "attachment_downloaded_notified_at = ?"
+          : event === "receipt_acknowledged"
+            ? "receipt_ack_notified_at = ?"
         : "destroyed_notified_at = ?";
   const whereClause =
     event === "opened"
@@ -653,6 +774,8 @@ async function sendSentNoteLifecycleEmail(
         ? "opened_notified_at IS NULL AND destroyed_notified_at IS NULL"
         : event === "attachment_downloaded"
           ? "attachment_downloaded_notified_at IS NULL"
+          : event === "receipt_acknowledged"
+            ? "receipt_ack_notified_at IS NULL"
         : "destroyed_notified_at IS NULL";
   const bindValues =
     event === "opened_destroyed" ? [eventAt, eventAt, noteId] : [eventAt, noteId];
@@ -675,18 +798,24 @@ async function sendSentNoteLifecycleEmail(
       ? "opened and destroyed"
       : event === "attachment_downloaded"
         ? "attachment downloaded"
+      : event === "receipt_acknowledged"
+        ? "receipt confirmed"
       : event === "expired"
         ? "expired"
         : event;
   const subject =
     event === "attachment_downloaded"
       ? `PrivateNote: your file "${label}" was downloaded`
+      : event === "receipt_acknowledged"
+        ? `PrivateNote: receipt confirmed for "${label}"`
       : `PrivateNote: your note "${label}" was ${eventLabel}`;
   const explanatoryLine =
     event === "opened"
       ? "This is proof the link was accessed, not that the recipient read or understood the content."
       : event === "attachment_downloaded"
         ? "This confirms the encrypted attachment was requested for download. PrivateNote cannot see the decrypted file contents."
+      : event === "receipt_acknowledged"
+        ? "The recipient confirmed they successfully decrypted the note. This is stronger than an open receipt."
       : event === "expired"
         ? "This means the note can no longer be opened because its expiry time passed."
         : event === "opened_destroyed"
@@ -695,6 +824,8 @@ async function sendSentNoteLifecycleEmail(
   const textIntro =
     event === "attachment_downloaded"
       ? `Your encrypted file "${label}" was downloaded.`
+      : event === "receipt_acknowledged"
+        ? `Receipt was confirmed for your secure note "${label}".`
       : `Your secure note "${label}" was ${eventLabel}.`;
   const text = [
     textIntro,
@@ -720,6 +851,8 @@ async function sendSentNoteLifecycleEmail(
           ? "opened_notified_at = NULL, destroyed_notified_at = NULL"
           : event === "attachment_downloaded"
             ? "attachment_downloaded_notified_at = NULL"
+            : event === "receipt_acknowledged"
+              ? "receipt_ack_notified_at = NULL"
           : "destroyed_notified_at = NULL";
     await env.AUTH_DB!.prepare(`UPDATE sent_notes SET ${resetClause} WHERE note_id = ?`)
       .bind(noteId)

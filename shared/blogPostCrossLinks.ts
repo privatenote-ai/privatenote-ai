@@ -320,6 +320,17 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
     ],
     trust: "/how-it-works",
   },
+  "delayed-reveal-scheduled-secret-links": {
+    related: [
+      "one-time-secret-links",
+      "how-to-make-a-private-note",
+      "send-sensitive-documents-securely",
+      "why-email-is-worst-for-secrets",
+      "how-to-share-a-password-securely",
+      "common-secret-handling-mistakes",
+    ],
+    trust: "/how-it-works",
+  },
 };
 
 export function getBlogPostCrossLinks(slug: BlogCanonicalSlug): BlogPostCrossLinks {

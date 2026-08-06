@@ -50,6 +50,8 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
       return t.proofTimelineCreated ?? "Created";
     case "opened":
       return t.proofTimelineOpened ?? "Link opened";
+    case "receipt":
+      return t.proofTimelineReceipt ?? "Receipt confirmed";
     case "attachment":
       return t.proofTimelineAttachment ?? "Attachment downloaded";
     case "destroyed":

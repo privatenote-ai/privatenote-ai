@@ -67,6 +67,10 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     notify_on_destroyed: 0,
     notify_on_attachment_download: 0,
     require_recipient_verification: 0,
+    require_receipt_ack: 0,
+    receipt_ack_token_hash: null,
+    receipt_acknowledged_at: null,
+    receipt_ack_notified_at: null,
     proof_enabled: 1,
     expires_at: null,
     created_at: "2026-06-14T09:00:00.000Z",
@@ -211,5 +215,69 @@ describe("sent note notification service", () => {
 
     assert.equal(emailCount, 0);
     assert.equal(db.runs.length, 1);
+  });
+
+  it("acknowledges receipt once and is idempotent on repeat", async () => {
+    const { hashReceiptAckTokenHex } = await import("@shared/noteReceiptAck");
+    const { acknowledgeSentNoteReceipt } = await import("./sentNotesService.ts");
+    const ackToken = "ab".repeat(32);
+    const tokenHash = await hashReceiptAckTokenHex(ackToken);
+    const db = new FakeD1Database();
+    db.firstRows = [
+      sentNote({
+        require_receipt_ack: 1,
+        receipt_ack_token_hash: tokenHash,
+        status: "destroyed",
+        opened_at: "2026-06-14T10:00:00.000Z",
+        destroyed_at: "2026-06-14T10:00:00.000Z",
+      }),
+      {
+        email: "sender@example.com",
+        email_verified: 1,
+        email_notifications: 1,
+      },
+    ];
+    let emailCount = 0;
+
+    const first = await acknowledgeSentNoteReceipt(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      ackToken,
+      undefined,
+      async () => {
+        emailCount += 1;
+      },
+    );
+    assert.equal(first.ok, true);
+    if (first.ok) {
+      assert.equal(first.alreadyConfirmed, false);
+    }
+    assert.equal(emailCount, 1);
+    assert.match(db.runs[0]?.sql ?? "", /receipt_acknowledged_at/);
+
+    db.firstRows = [
+      sentNote({
+        require_receipt_ack: 1,
+        receipt_ack_token_hash: tokenHash,
+        receipt_acknowledged_at: "2026-06-14T10:01:00.000Z",
+        receipt_ack_notified_at: "2026-06-14T10:01:00.000Z",
+        status: "destroyed",
+      }),
+    ];
+    const second = await acknowledgeSentNoteReceipt(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      ackToken,
+      undefined,
+      async () => {
+        emailCount += 1;
+      },
+    );
+    assert.equal(second.ok, true);
+    if (second.ok) {
+      assert.equal(second.alreadyConfirmed, true);
+      assert.equal(second.acknowledgedAt, "2026-06-14T10:01:00.000Z");
+    }
+    assert.equal(emailCount, 1);
   });
 });

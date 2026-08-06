@@ -4,7 +4,8 @@ export type SentNoteNotificationStatus =
   | "burned"
   | "expired"
   | "revoked"
-  | "attachment_downloaded";
+  | "attachment_downloaded"
+  | "receipt_confirmed";
 
 export type SentNoteNotificationRowInput = {
   status: "created" | "opened" | "expired" | "destroyed" | "revoked";
@@ -13,6 +14,7 @@ export type SentNoteNotificationRowInput = {
   destroyed_at: string | null;
   revoked_at: string | null;
   attachment_downloaded_at?: string | null;
+  receipt_acknowledged_at?: string | null;
 };
 
 export type SentNoteNotificationEvent = {
@@ -52,6 +54,12 @@ export function resolveSentNoteNotificationEvent(
       eventAt: row.attachment_downloaded_at,
     });
   }
+  if (row.receipt_acknowledged_at) {
+    events.push({
+      status: "receipt_confirmed",
+      eventAt: row.receipt_acknowledged_at,
+    });
+  }
   if (row.status === "expired") {
     events.push({
       status: "expired",
@@ -80,4 +88,5 @@ export const SENT_NOTE_NOTIFICATION_STATUS_LABELS: Record<SentNoteNotificationSt
   expired: "Expired",
   revoked: "Revoked",
   attachment_downloaded: "Downloaded attachment",
+  receipt_confirmed: "Receipt confirmed",
 };

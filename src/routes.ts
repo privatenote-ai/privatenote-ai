@@ -3,6 +3,8 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
+import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
@@ -82,6 +84,7 @@ import {
   recipientVerifiedCookieHeader,
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
+  acknowledgeSentNoteReceipt,
   revokeSentNote,
   sendRecipientVerificationCode,
   verifyRecipientAccess,
@@ -137,6 +140,12 @@ const RATE_LIMIT_RECIPIENT_SEND_CODE = {
   MAX_REQUESTS: 5,
   WINDOW_SECONDS: 15 * 60,
   KEY_PREFIX: "rl:recipient-send-code:",
+};
+
+const RATE_LIMIT_RECEIPT_ACK = {
+  MAX_REQUESTS: 10,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:receipt-ack:",
 };
 
 const RATE_LIMIT_DELIVER_NOTE_LINK = {
@@ -921,6 +930,8 @@ async function registerPremiumSentNote(
     notifyOnDestroyed?: boolean;
     notifyOnAttachmentDownload?: boolean;
     requireRecipientVerification?: boolean;
+    requireReceiptAck?: boolean;
+    receiptAckTokenHash?: string | null;
     recipientEmail?: string | null;
     alertNotifyAccountEmail?: boolean;
     alertCustomEmail?: string | null;
@@ -932,7 +943,14 @@ async function registerPremiumSentNote(
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
   const notifyOnAttachmentDownload = input.notifyOnAttachmentDownload === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
-  if (!notifyOnOpen && !notifyOnDestroyed && !notifyOnAttachmentDownload && !requireRecipientVerification) {
+  const requireReceiptAck = input.requireReceiptAck === true;
+  if (
+    !notifyOnOpen &&
+    !notifyOnDestroyed &&
+    !notifyOnAttachmentDownload &&
+    !requireRecipientVerification &&
+    !requireReceiptAck
+  ) {
     return;
   }
   if (!env.AUTH_DB) return;
@@ -951,6 +969,8 @@ async function registerPremiumSentNote(
       alertNotifyAccountEmail: input.alertNotifyAccountEmail,
       alertCustomEmail: input.alertCustomEmail,
       requireRecipientVerification,
+      requireReceiptAck,
+      receiptAckTokenHash: input.receiptAckTokenHash,
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
@@ -9020,6 +9040,53 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: fileAccessWindowForCreate.message }, 400, request);
     }
 
+    const hasOpensAt =
+      requestBody?.opensAt != null &&
+      !(typeof requestBody.opensAt === "string" && requestBody.opensAt.trim() === "");
+    if (hasOpensAt) {
+      if (!noteCreationFeatures.delayedReveal) {
+        return jsonResponse(
+          {
+            error: "premium_required",
+            message: "Delayed reveal requires Starter or Business.",
+          },
+          403,
+          request,
+        );
+      }
+      const opensAtParsed = parseNoteOpensAtFromBody(requestBody.opensAt, {
+        expiresAt: new Date(Date.now() + expiryForCreate.seconds * 1000),
+      });
+      if (!opensAtParsed.ok) {
+        return jsonResponse({ error: opensAtParsed.message }, 400, request);
+      }
+    }
+
+    const requireReceiptAck = requestBody?.requireReceiptAck === true;
+    const receiptAckTokenHashRaw =
+      typeof requestBody?.receiptAckTokenHash === "string"
+        ? requestBody.receiptAckTokenHash.trim().toLowerCase()
+        : "";
+    if (requireReceiptAck) {
+      if (!noteCreationFeatures.receiptAcknowledgment) {
+        return jsonResponse(
+          {
+            error: "premium_required",
+            message: "Receipt confirmation requires Starter or Business.",
+          },
+          403,
+          request,
+        );
+      }
+      if (!isValidReceiptAckTokenHash(receiptAckTokenHashRaw)) {
+        return jsonResponse(
+          { error: "receipt_ack_token_hash_required", message: "Invalid receipt acknowledgment token hash." },
+          400,
+          request,
+        );
+      }
+    }
+
     const id = requestedId || crypto.randomUUID();
 
     if (requestBody?.attachment != null) {
@@ -9173,6 +9240,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
         notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        requireReceiptAck: requestBody?.requireReceiptAck === true,
+        receiptAckTokenHash:
+          typeof requestBody?.receiptAckTokenHash === "string"
+            ? requestBody.receiptAckTokenHash.trim().toLowerCase()
+            : null,
         recipientEmail:
           typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
         alertNotifyAccountEmail: requestBody?.alertNotifyAccountEmail !== false,
@@ -9480,6 +9552,66 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     return response;
   }
 
+  const receiptAckParams = parsePathParams(pathname, "/api/notes/:id/acknowledge-receipt");
+  if (receiptAckParams && method === "POST") {
+    const { id } = receiptAckParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const ackLimit = await checkRateLimit(env, `${clientId}:receipt-ack:${id}`, RATE_LIMIT_RECEIPT_ACK);
+    if (!ackLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "Rate limit exceeded",
+          message: `Too many receipt confirmation attempts. Please try again in ${ackLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: ackLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    let body: { ackToken?: unknown } = {};
+    try {
+      body = (await request.json()) as { ackToken?: unknown };
+    } catch {
+      return jsonResponse({ error: "invalid_json" }, 400, request);
+    }
+    const ackToken = typeof body.ackToken === "string" ? body.ackToken.trim().toLowerCase() : "";
+    const result = await acknowledgeSentNoteReceipt(
+      env,
+      id,
+      ackToken,
+      request,
+      async (to, subject, text, html) => {
+        const emailResult = await sendEmail(env, { to, subject, text, html });
+        if (!emailResult.ok) throw new Error(emailResult.error ?? "Email send failed");
+        return emailResult;
+      },
+    );
+    if (!result.ok) {
+      const status =
+        result.error === "not_found"
+          ? 404
+          : result.error === "not_configured"
+            ? 501
+            : result.error === "not_required"
+              ? 400
+              : 403;
+      return jsonResponse({ error: result.error }, status, request);
+    }
+    return jsonResponse(
+      {
+        ok: true,
+        alreadyConfirmed: result.alreadyConfirmed,
+        acknowledgedAt: result.acknowledgedAt,
+      },
+      200,
+      request,
+    );
+  }
+
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
   if (noteRevealParams && method === "POST") {
     const { id } = noteRevealParams;
@@ -9616,6 +9748,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } catch (error) {
         console.warn("[ROUTES] Failed to issue file access token:", error);
       }
+      try {
+        const sent = await getSentNoteByNoteId(env, id);
+        if (sent?.require_receipt_ack === 1) {
+          const data = (await doResponse.clone().json()) as Record<string, unknown>;
+          doResponse = jsonResponse(
+            {
+              ...data,
+              receiptAck: {
+                required: true,
+                acknowledged: Boolean(sent.receipt_acknowledged_at),
+                acknowledgedAt: sent.receipt_acknowledged_at,
+              },
+            },
+            doResponse.status,
+            request,
+          ) as unknown as typeof doResponse;
+        }
+      } catch (error) {
+        console.warn("[ROUTES] Failed to attach receipt-ack metadata:", error);
+      }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed
       await cleanupNoteFileChunks(env, id, "reveal returned 404");
@@ -9703,6 +9855,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           createdAt: row.created_at,
           openedAt: row.opened_at,
           attachmentDownloadedAt: row.attachment_downloaded_at,
+          receiptAcknowledgedAt: row.receipt_acknowledged_at,
+          requireReceiptAck: row.require_receipt_ack === 1,
           expiresAt: row.expires_at,
           destroyedAt: row.destroyed_at,
           revokedAt: row.revoked_at,

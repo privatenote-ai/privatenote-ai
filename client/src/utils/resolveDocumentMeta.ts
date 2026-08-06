@@ -137,6 +137,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogHowToSharePhotosSecurelyMetaTitle),
         description: t.blogHowToSharePhotosSecurelyMetaDescription,
       };
+    case "delayed-reveal-scheduled-secret-links":
+      return {
+        title: buildDocumentTitle(t.blogDelayedRevealMetaTitle),
+        description: t.blogDelayedRevealMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

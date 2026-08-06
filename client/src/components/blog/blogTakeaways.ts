@@ -180,6 +180,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "A read-once note can still allow attachment downloads during its configured post-open window.",
     "Treat the complete link as a bearer secret and send any passphrase separately.",
   ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

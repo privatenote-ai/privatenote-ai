@@ -14,6 +14,8 @@ import {
   BellOff,
   Download,
   Mail,
+  Clock,
+  BadgeCheck,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -377,6 +379,14 @@ export type NoteSettingsPanelProps = {
   setLinkDeliveryEmail: (v: string) => void;
   /** Starter+ with verified account email — can send the note link on create. */
   canEmailLinkToRecipient: boolean;
+  delayedReveal: boolean;
+  setDelayedReveal: (v: boolean) => void;
+  /** Local `datetime-local` value (no timezone); empty when delayed reveal is off. */
+  opensAtLocal: string;
+  setOpensAtLocal: (v: string) => void;
+  /** Starter+: recipient confirms receipt after successful decrypt. */
+  requireReceiptAck: boolean;
+  setRequireReceiptAck: (v: boolean) => void;
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
@@ -438,6 +448,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   linkDeliveryEmail,
   setLinkDeliveryEmail,
   canEmailLinkToRecipient,
+  delayedReveal,
+  setDelayedReveal,
+  opensAtLocal,
+  setOpensAtLocal,
+  requireReceiptAck,
+  setRequireReceiptAck,
   noteLabel,
   setNoteLabel,
   isPremiumUser,
@@ -496,6 +512,21 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const emailLinkInfo =
     t.settingsDeliverRecipientEmailInfo ??
     "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.";
+  const delayedRevealTitle = t.settingsDelayedReveal ?? "Delayed reveal";
+  const delayedRevealInfo =
+    t.settingsDelayedRevealInfo ??
+    "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.";
+  const receiptAckTitle = t.settingsRequireReceiptAck ?? "Require receipt confirmation";
+  const receiptAckInfo =
+    t.settingsRequireReceiptAckInfo ??
+    "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.";
+
+  const defaultOpensAtLocal = (): string => {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    d.setSeconds(0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
@@ -1181,6 +1212,116 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 showPremiumBadge={!isPremiumUser}
                 premiumLabel={t.premium ?? "Starter"}
               />
+              <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
+                    htmlFor="delayed-reveal"
+                    icon={<Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                    iconToneClassName="bg-emerald-50 dark:bg-emerald-900/30"
+                    label={delayedRevealTitle}
+                    info={delayedRevealInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: delayedRevealTitle,
+                          description: delayedRevealInfo,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={delayedRevealTitle}
+                    >
+                      <Switch
+                        id="delayed-reveal"
+                        checked={false}
+                        disabled
+                        aria-hidden
+                        className="pointer-events-none opacity-50"
+                      />
+                    </button>
+                  ) : (
+                    <Switch
+                      id="delayed-reveal"
+                      checked={delayedReveal}
+                      onCheckedChange={(checked) => {
+                        setDelayedReveal(checked);
+                        if (!checked) setOpensAtLocal("");
+                        else if (!opensAtLocal.trim()) setOpensAtLocal(defaultOpensAtLocal());
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              {isPremiumUser && delayedReveal ? (
+                <div className="px-1 pb-2">
+                  <label
+                    htmlFor="opens-at-local"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsDelayedRevealBefore ?? "Do not allow opening before"}
+                  </label>
+                  <input
+                    id="opens-at-local"
+                    type="datetime-local"
+                    value={opensAtLocal}
+                    onChange={(event) => setOpensAtLocal(event.target.value)}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.settingsDelayedRevealHint ??
+                      "Recipients can open the link only after this time. Must be before the note lifetime ends."}
+                    {opensAtLocal
+                      ? ` (${t.settingsDelayedRevealUtcLabel ?? "UTC"}: ${new Date(opensAtLocal).toISOString().replace(/\.\d{3}Z$/, " UTC")})`
+                      : ""}
+                  </p>
+                </div>
+              ) : null}
+              <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
+                    htmlFor="require-receipt-ack"
+                    icon={<BadgeCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                    iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
+                    label={receiptAckTitle}
+                    info={receiptAckInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: receiptAckTitle,
+                          description: receiptAckInfo,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={receiptAckTitle}
+                    >
+                      <Switch
+                        id="require-receipt-ack"
+                        checked={false}
+                        disabled
+                        aria-hidden
+                        className="pointer-events-none opacity-50"
+                      />
+                    </button>
+                  ) : (
+                    <Switch
+                      id="require-receipt-ack"
+                      checked={requireReceiptAck}
+                      onCheckedChange={setRequireReceiptAck}
+                    />
+                  )}
+                </div>
+              </div>
               <div className={SETTINGS_FIELD_ROW}>
                 <div>
                   <SettingsFieldLabel

@@ -445,6 +445,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [notifyOnAttachmentDownload, setNotifyOnAttachmentDownload] = useState(false);
   const [emailLinkToRecipient, setEmailLinkToRecipient] = useState(false);
   const [linkDeliveryEmail, setLinkDeliveryEmail] = useState("");
+  const [delayedReveal, setDelayedReveal] = useState(false);
+  const [opensAtLocal, setOpensAtLocal] = useState("");
+  const [requireReceiptAck, setRequireReceiptAck] = useState(false);
   const [alertNotifyAccountEmail, setAlertNotifyAccountEmail] = useState(true);
   const [alertCustomEmail, setAlertCustomEmail] = useState("");
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
@@ -478,6 +481,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     (accountEmailNotifications || isPremiumUser);
   const canEmailLinkToRecipient =
     Boolean(user) && planCapabilities.recipientLinkDelivery && accountEmailVerified;
+  const canDelayedReveal = isPremiumUser && planCapabilities.delayedReveal;
+  const canRequireReceiptAck = isPremiumUser && planCapabilities.receiptAcknowledgment;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
   const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
@@ -756,6 +761,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setNotifyOnAttachmentDownload(false);
       setEmailLinkToRecipient(false);
       setLinkDeliveryEmail("");
+      setDelayedReveal(false);
+      setOpensAtLocal("");
       setAlertNotifyAccountEmail(true);
       setAlertCustomEmail("");
       setRequireRecipientVerification(false);
@@ -859,6 +866,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setEmailLinkToRecipient(false);
     setLinkDeliveryEmail("");
   }, [canEmailLinkToRecipient, emailLinkToRecipient, linkDeliveryEmail]);
+
+  useEffect(() => {
+    if (canDelayedReveal) return;
+    if (!delayedReveal && !opensAtLocal) return;
+    setDelayedReveal(false);
+    setOpensAtLocal("");
+  }, [canDelayedReveal, delayedReveal, opensAtLocal]);
+
+  useEffect(() => {
+    if (canRequireReceiptAck) return;
+    if (!requireReceiptAck) return;
+    setRequireReceiptAck(false);
+  }, [canRequireReceiptAck, requireReceiptAck]);
 
   useEffect(() => {
     if (selectedFile) return;
@@ -1357,13 +1377,49 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
+    const applyDelayedReveal = canDelayedReveal && delayedReveal;
+    const applyRequireReceiptAck = canRequireReceiptAck && requireReceiptAck;
+    let opensAtIso: string | undefined;
+    if (applyDelayedReveal) {
+      if (!opensAtLocal.trim()) {
+        toast({
+          title: t.settingsDelayedRevealInvalid ?? "Choose a future open time",
+          description:
+            t.settingsDelayedRevealInvalidHint ??
+            "Pick a time after now and before the note expires.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const opensAtDate = new Date(opensAtLocal);
+      const expiresAtDate = new Date(
+        Date.now() + noteExpiryPresetIdToSeconds(expiryValue) * 1000,
+      );
+      if (
+        !Number.isFinite(opensAtDate.getTime()) ||
+        opensAtDate.getTime() <= Date.now() + 30_000 ||
+        opensAtDate.getTime() >= expiresAtDate.getTime()
+      ) {
+        toast({
+          title: t.settingsDelayedRevealInvalid ?? "Choose a future open time",
+          description:
+            t.settingsDelayedRevealInvalidHint ??
+            "Pick a time after now and before the note expires.",
+          variant: "destructive",
+        });
+        return;
+      }
+      opensAtIso = opensAtDate.toISOString();
+    }
+
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
       (canNotifyOnOpen &&
         (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload)) ||
-      applyRequireRecipientVerification;
+      applyRequireRecipientVerification ||
+      applyRequireReceiptAck;
 
     if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
       toast({
@@ -1426,6 +1482,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         encryptNote,
         generateRootKeyBytes,
         deriveNoteRootKeys,
+        deriveReceiptAckTokenHex,
+        hashReceiptAckTokenHex,
         arrayBufferToBase64,
         currentKdfParamsV2,
         deriveAesKeyFromPassword,
@@ -1549,6 +1607,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         aad = wirePayload.aad;
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
+      }
+      let receiptAckTokenHash: string | undefined;
+      if (applyRequireReceiptAck) {
+        receiptAckTokenHash = await hashReceiptAckTokenHex(
+          await deriveReceiptAckTokenHex(rootKeyBytes),
+        );
       }
       rootKeyBytes.fill(0);
 
@@ -1778,8 +1842,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               recipientEmail: recipientEmail.trim().toLowerCase(),
             }
           : {}),
+        ...(applyRequireReceiptAck && receiptAckTokenHash
+          ? {
+              requireReceiptAck: true,
+              receiptAckTokenHash,
+            }
+          : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
+        ...(opensAtIso ? { opensAt: opensAtIso } : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -2038,6 +2109,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setNotifyOnAttachmentDownload(false);
     setEmailLinkToRecipient(false);
     setLinkDeliveryEmail("");
+    setDelayedReveal(false);
+    setOpensAtLocal("");
     setAlertNotifyAccountEmail(true);
     setAlertCustomEmail("");
     setRequireRecipientVerification(false);
@@ -2957,6 +3030,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 linkDeliveryEmail={linkDeliveryEmail}
                 setLinkDeliveryEmail={setLinkDeliveryEmail}
                 canEmailLinkToRecipient={canEmailLinkToRecipient}
+                delayedReveal={delayedReveal}
+                setDelayedReveal={setDelayedReveal}
+                opensAtLocal={opensAtLocal}
+                setOpensAtLocal={setOpensAtLocal}
+                requireReceiptAck={requireReceiptAck}
+                setRequireReceiptAck={setRequireReceiptAck}
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
@@ -3279,6 +3358,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               linkDeliveryEmail,
               setLinkDeliveryEmail,
               canEmailLinkToRecipient,
+              delayedReveal,
+              setDelayedReveal,
+              opensAtLocal,
+              setOpensAtLocal,
+              requireReceiptAck,
+              setRequireReceiptAck,
               noteLabel,
               setNoteLabel,
               isPremiumUser,
