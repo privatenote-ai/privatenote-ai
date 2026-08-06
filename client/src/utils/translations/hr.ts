@@ -1702,7 +1702,7 @@ export const hr: Translations = {
   revealPrivateNoteId: "Privatna bilješka #{id}",
   revealLanguageLine: "Jezik: {language}",
   revealPrivacyDescription: "Radi vaše privatnosti, ova se bilješka briše nakon otvaranja.",
-  revealReadyWarning: "Otvorite samo kad ste spremni — ovo se ne može poništiti.",
+  revealReadyWarning: "Otvorite samo kad ste spremni — bilješka će se samouništiti nakon čitanja.",
   revealNote: "Otvori bilješku",
   revealing: "Otvaranje...",
   revealTrustEncrypted: "Šifriranje od kraja do kraja",
