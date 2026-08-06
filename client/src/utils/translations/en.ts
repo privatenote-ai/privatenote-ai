@@ -533,6 +533,7 @@ export const en: Translations = {
   settingsReaderLanguage: "Reader Language",
   settingsReaderLanguageInfo: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
   settingsReaderLanguageDescription: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
+  settingsReaderLanguageHint: "Auto uses the recipient's browser language.",
   settingsReaderLanguageAuto: "Auto",
   settingsRecipientEmail: "Recipient email",
   settingsRecipientEmailPlaceholder: "recipient@example.com",

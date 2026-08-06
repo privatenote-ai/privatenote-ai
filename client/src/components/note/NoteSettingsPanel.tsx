@@ -873,21 +873,20 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   Make the transfer link less generic: bind it to a recipient email, add a sender-held code, or use both.
                 </p>
               ) : null}
-              <SettingsOptionList>
-                <div className={`${SETTINGS_FIELD_ROW} px-3`}>
-                  <div className="min-w-0">
-                    <SettingsFieldLabel
-                      htmlFor="reader-language"
-                      icon={<Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
-                      iconToneClassName="bg-sky-50 dark:bg-sky-900/30"
-                      label={t.settingsReaderLanguage ?? "Reader Language"}
-                      info={
-                        t.settingsReaderLanguageInfo ??
-                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
-                      }
-                    />
-                  </div>
-                  <div className="min-w-0 space-y-1">
+              <div className={SETTINGS_FIELD_ROW}>
+                <div>
+                  <SettingsFieldLabel
+                    htmlFor="reader-language"
+                    icon={<Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
+                    iconToneClassName="bg-sky-50 dark:bg-sky-900/30"
+                    label={t.settingsReaderLanguage ?? "Reader Language"}
+                    info={
+                      t.settingsReaderLanguageInfo ??
+                      "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
+                    }
+                  />
+                </div>
+                <div className="min-w-0 space-y-1">
                   <select
                     id="reader-language"
                     value={readerLanguage}
@@ -903,7 +902,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         });
                       }
                     }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm appearance-none cursor-pointer focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                     style={SELECT_CHEVRON_STYLE}
                   >
                     <option value="auto">{t.settingsReaderLanguageAuto ?? "Auto"}</option>
@@ -913,12 +912,13 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
-                    {t.settingsReaderLanguageDescription ??
-                      "Choose the language used for the note reveal page. Auto uses the recipient's browser language."}
-                  </p>
-                  </div>
+                  <SettingsFieldHelper>
+                    {t.settingsReaderLanguageHint ??
+                      "Auto uses the recipient's browser language."}
+                  </SettingsFieldHelper>
                 </div>
+              </div>
+              <SettingsOptionList>
                 <SettingsToggleRow
                   id="restrict-recipient-email"
                   locked={!isPremiumUser}
