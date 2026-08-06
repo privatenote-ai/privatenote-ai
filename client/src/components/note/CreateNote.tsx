@@ -442,6 +442,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
+  const [alertNotifyAccountEmail, setAlertNotifyAccountEmail] = useState(true);
+  const [alertCustomEmail, setAlertCustomEmail] = useState("");
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
@@ -469,8 +471,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const canNotifyOnOpen =
     Boolean(user) &&
     planCapabilities.openNotifications &&
-    accountEmailNotifications &&
-    accountEmailVerified;
+    accountEmailVerified &&
+    (accountEmailNotifications || isPremiumUser);
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
   const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
@@ -746,6 +748,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!user) {
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
+      setAlertNotifyAccountEmail(true);
+      setAlertCustomEmail("");
       setRequireRecipientVerification(false);
       setRecipientEmail("");
       setNoteLabel("");
@@ -846,6 +850,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setNotifyOnOpen(enabled);
     setNotifyOnDestroyed(enabled);
   }, [notifyOnDestroyed, notifyOnOpen, readCount]);
+
+  useEffect(() => {
+    if (notifyOnOpen || notifyOnDestroyed) return;
+    setAlertNotifyAccountEmail(true);
+    if (alertCustomEmail) setAlertCustomEmail("");
+  }, [alertCustomEmail, notifyOnDestroyed, notifyOnOpen]);
+
+  useEffect(() => {
+    if (isPremiumUser) return;
+    setAlertNotifyAccountEmail(true);
+    if (alertCustomEmail) setAlertCustomEmail("");
+  }, [alertCustomEmail, isPremiumUser]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1251,6 +1267,46 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
+    const alertsEnabled = canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed);
+    const applyAlertNotifyAccountEmail = !isPremiumUser || alertNotifyAccountEmail;
+    const trimmedAlertCustomEmail = isPremiumUser ? alertCustomEmail.trim() : "";
+    if (alertsEnabled) {
+      if (isPremiumUser && trimmedAlertCustomEmail && !isPlausibleEmailFormat(trimmedAlertCustomEmail)) {
+        toast({
+          title: t.settingsEmailAlertCustomEmailInvalid ?? "Invalid alert email",
+          description:
+            t.settingsEmailAlertCustomEmailInvalidHint ??
+            "Enter a valid email address for alerts.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (
+        isPremiumUser &&
+        !applyAlertNotifyAccountEmail &&
+        !isPlausibleEmailFormat(trimmedAlertCustomEmail)
+      ) {
+        toast({
+          title: t.settingsEmailAlertDestinationRequired ?? "Choose where to send alerts",
+          description:
+            t.settingsEmailAlertDestinationRequiredHint ??
+            "Keep your account email checked, or enter another email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (applyAlertNotifyAccountEmail && !accountEmailNotifications) {
+        toast({
+          title: t.settingsEmailAlerts ?? "Email alerts",
+          description:
+            t.settingsEmailAlertsPrefsHintPrefix ??
+            "Turn on email notifications in Account → Preferences to use your account email.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (applyRequireRecipientVerification) {
       const trimmedRecipientEmail = recipientEmail.trim();
       if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
@@ -1669,6 +1725,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         notifyOnDestroyed:
           canNotifyOnOpen &&
           (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
+        ...(alertsEnabled
+          ? {
+              alertNotifyAccountEmail: applyAlertNotifyAccountEmail,
+              ...(isPlausibleEmailFormat(trimmedAlertCustomEmail)
+                ? { alertCustomEmail: trimmedAlertCustomEmail.toLowerCase() }
+                : {}),
+            }
+          : {}),
         ...(applyRequireRecipientVerification
           ? {
               requireRecipientVerification: true,
@@ -1918,6 +1982,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowAdvancedOptions(false);
     setNotifyOnOpen(false);
     setNotifyOnDestroyed(false);
+    setAlertNotifyAccountEmail(true);
+    setAlertCustomEmail("");
     setRequireRecipientVerification(false);
     setRecipientEmail("");
     setNoteLabel("");
@@ -2830,6 +2896,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
+                accountEmail={user?.email ?? null}
+                alertNotifyAccountEmail={alertNotifyAccountEmail}
+                setAlertNotifyAccountEmail={setAlertNotifyAccountEmail}
+                alertCustomEmail={alertCustomEmail}
+                setAlertCustomEmail={setAlertCustomEmail}
                 maxExpirySeconds={maxExpirySeconds}
                 allowedReadCounts={planCapabilities.allowedReadCounts}
                 maxFileAccessWindowSeconds={planCapabilities.maxFileAccessWindowSeconds}
@@ -3139,6 +3210,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               noteLabel,
               setNoteLabel,
               isPremiumUser,
+              accountEmail: user?.email ?? null,
+              alertNotifyAccountEmail,
+              setAlertNotifyAccountEmail,
+              alertCustomEmail,
+              setAlertCustomEmail,
               maxExpirySeconds,
               allowedReadCounts: planCapabilities.allowedReadCounts,
               maxFileAccessWindowSeconds: planCapabilities.maxFileAccessWindowSeconds,

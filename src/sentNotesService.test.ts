@@ -80,6 +80,8 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     attachment_downloaded_at: null,
     attachment_downloaded_notified_at: null,
     notification_deleted_at: null,
+    alert_notify_account_email: 1,
+    alert_custom_email: null,
     ...overrides,
   };
 }

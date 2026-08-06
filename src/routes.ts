@@ -921,6 +921,8 @@ async function registerPremiumSentNote(
     notifyOnDestroyed?: boolean;
     requireRecipientVerification?: boolean;
     recipientEmail?: string | null;
+    alertNotifyAccountEmail?: boolean;
+    alertCustomEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
   },
@@ -943,6 +945,8 @@ async function registerPremiumSentNote(
       recipientEmail: input.recipientEmail,
       notifyOnOpen,
       notifyOnDestroyed,
+      alertNotifyAccountEmail: input.alertNotifyAccountEmail,
+      alertCustomEmail: input.alertCustomEmail,
       requireRecipientVerification,
       expiresAt: input.expiresAt,
       proofEnabled: true,
@@ -9167,6 +9171,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
         recipientEmail:
           typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
+        alertNotifyAccountEmail: requestBody?.alertNotifyAccountEmail !== false,
+        alertCustomEmail:
+          typeof requestBody?.alertCustomEmail === "string" ? requestBody.alertCustomEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });

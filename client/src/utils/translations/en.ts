@@ -494,6 +494,17 @@ export const en: Translations = {
   settingsEmailAlertOnOpenedDestroyed: "Email alert when this note is opened and destroyed",
   settingsEmailAlertOnOpenedDestroyedInfo:
     "One email when the one-time link is accessed and the note is destroyed. Message content is never included.",
+  settingsEmailAlertDestinations: "Where to send alerts",
+  settingsEmailAlertAccountEmail: "My account email",
+  settingsEmailAlertCustomEmail: "Also send to another email",
+  settingsEmailAlertCustomEmailPlaceholder: "alerts@example.com",
+  settingsEmailAlertCustomEmailHint:
+    "Optional. Leave blank to use only your account email. Uncheck account email to send only here.",
+  settingsEmailAlertDestinationRequired: "Choose where to send alerts",
+  settingsEmailAlertDestinationRequiredHint:
+    "Keep your account email checked, or enter another email address.",
+  settingsEmailAlertCustomEmailInvalid: "Invalid alert email",
+  settingsEmailAlertCustomEmailInvalidHint: "Enter a valid email address for alerts.",
   settingsNoteLabel: "Note label",
   settingsNoteLabelPlaceholder: "e.g. Client onboarding pack",
   settingsNoteLabelInfo:

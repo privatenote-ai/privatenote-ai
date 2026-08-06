@@ -35,6 +35,8 @@ export type SentNoteRow = {
   attachment_downloaded_at: string | null;
   attachment_downloaded_notified_at: string | null;
   notification_deleted_at: string | null;
+  alert_notify_account_email: number | null;
+  alert_custom_email: string | null;
 };
 
 export type CreateSentNoteInput = {
@@ -44,6 +46,10 @@ export type CreateSentNoteInput = {
   recipientEmail?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
+  /** When open/destroy alerts are on, whether to email the sender account address (default true). */
+  alertNotifyAccountEmail?: boolean;
+  /** Optional extra inbox for open/destroy alerts (premium). */
+  alertCustomEmail?: string | null;
   requireRecipientVerification?: boolean;
   proofEnabled?: boolean;
   expiresAt?: string | null;
@@ -156,6 +162,11 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   const wantsRecipientGate = requireRecipientVerification;
   const proofEnabled =
     capabilities.proofOfAccess && input.proofEnabled !== false;
+  const alertNotifyAccountEmail = input.alertNotifyAccountEmail !== false;
+  const alertCustomEmail =
+    input.alertCustomEmail && isPlausibleEmailFormat(input.alertCustomEmail)
+      ? input.alertCustomEmail.trim().toLowerCase()
+      : null;
 
   if (wantsRecipientGate && !capabilities.recipientVerification) {
     throw new Error("premium_required");
@@ -165,8 +176,16 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   }
   if (!sender?.email || !isPlausibleEmailFormat(sender.email)) throw new Error("sender_email_required");
   if (sender.email_verified !== 1) throw new Error("sender_email_unverified");
-  if (sender.email_notifications !== 1 && wantsOpenNotifications) {
-    throw new Error("email_notifications_disabled");
+  if (wantsOpenNotifications) {
+    if (!alertNotifyAccountEmail && !alertCustomEmail) {
+      throw new Error("alert_destination_required");
+    }
+    if (alertNotifyAccountEmail && sender.email_notifications !== 1) {
+      throw new Error("email_notifications_disabled");
+    }
+    if (alertCustomEmail && !capabilities.openNotifications) {
+      throw new Error("premium_required");
+    }
   }
 
   const id = crypto.randomUUID();
@@ -183,8 +202,9 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
-      notify_on_open, notify_on_destroyed, require_recipient_verification, proof_enabled, expires_at
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)`,
+      notify_on_open, notify_on_destroyed, require_recipient_verification, proof_enabled, expires_at,
+      alert_notify_account_email, alert_custom_email
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -197,6 +217,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       hasRecipientGate ? 1 : 0,
       proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
+      wantsOpenNotifications && alertNotifyAccountEmail ? 1 : 0,
+      wantsOpenNotifications ? alertCustomEmail : null,
     )
     .run();
 
@@ -595,9 +617,21 @@ async function sendSentNoteLifecycleEmail(
       email_notifications: number | null;
     }>();
 
-  const notifyEmail = senderRow?.email;
-  if (!notifyEmail || !isPlausibleEmailFormat(notifyEmail)) return;
-  if (senderRow.email_verified !== 1 || senderRow.email_notifications !== 1) return;
+  const recipients = new Set<string>();
+  const notifyAccount = row.alert_notify_account_email !== 0;
+  if (
+    notifyAccount &&
+    senderRow?.email &&
+    isPlausibleEmailFormat(senderRow.email) &&
+    senderRow.email_verified === 1 &&
+    senderRow.email_notifications === 1
+  ) {
+    recipients.add(senderRow.email.trim().toLowerCase());
+  }
+  if (row.alert_custom_email && isPlausibleEmailFormat(row.alert_custom_email)) {
+    recipients.add(row.alert_custom_email.trim().toLowerCase());
+  }
+  if (recipients.size === 0) return;
 
   const setClause =
     event === "opened"
@@ -667,9 +701,12 @@ async function sendSentNoteLifecycleEmail(
     "",
     "PrivateNote cannot see the decrypted message content.",
   ].filter(Boolean).join("\n");
+  const html = `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
 
   try {
-    await context.sendEmailFn(notifyEmail, subject, text, `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`);
+    for (const notifyEmail of recipients) {
+      await context.sendEmailFn(notifyEmail, subject, text, html);
+    }
   } catch (error) {
     const resetClause =
       event === "opened"

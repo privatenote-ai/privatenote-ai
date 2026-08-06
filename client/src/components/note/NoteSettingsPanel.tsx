@@ -359,6 +359,11 @@ export type NoteSettingsPanelProps = {
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
+  accountEmail: string | null;
+  alertNotifyAccountEmail: boolean;
+  setAlertNotifyAccountEmail: (v: boolean) => void;
+  alertCustomEmail: string;
+  setAlertCustomEmail: (v: string) => void;
   maxExpirySeconds: number;
   allowedReadCounts: readonly number[];
   maxFileAccessWindowSeconds: number;
@@ -407,6 +412,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   noteLabel,
   setNoteLabel,
   isPremiumUser,
+  accountEmail,
+  alertNotifyAccountEmail,
+  setAlertNotifyAccountEmail,
+  alertCustomEmail,
+  setAlertCustomEmail,
   maxExpirySeconds,
   allowedReadCounts,
   maxFileAccessWindowSeconds,
@@ -794,6 +804,52 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </>
                 )}
               </SettingsOptionList>
+              {isPremiumUser && (notifyOnOpen || notifyOnDestroyed) ? (
+                <div className="space-y-2 rounded-md border border-gray-200/80 bg-white/50 px-3 py-2.5 dark:border-gray-700/80 dark:bg-gray-950/20">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {t.settingsEmailAlertDestinations ?? "Where to send alerts"}
+                  </p>
+                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={alertNotifyAccountEmail}
+                      onChange={(event) => setAlertNotifyAccountEmail(event.target.checked)}
+                    />
+                    <span className="min-w-0 leading-snug">
+                      {t.settingsEmailAlertAccountEmail ?? "My account email"}
+                      {accountEmail ? (
+                        <span className="mt-0.5 block truncate text-xs text-gray-500 dark:text-gray-400">
+                          {accountEmail}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                  <div className="space-y-1 pt-1">
+                    <label
+                      htmlFor="alert-custom-email"
+                      className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {t.settingsEmailAlertCustomEmail ?? "Also send to another email"}
+                    </label>
+                    <input
+                      id="alert-custom-email"
+                      type="email"
+                      autoComplete="email"
+                      value={alertCustomEmail}
+                      onChange={(event) => setAlertCustomEmail(event.target.value)}
+                      placeholder={
+                        t.settingsEmailAlertCustomEmailPlaceholder ?? "alerts@example.com"
+                      }
+                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    />
+                    <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.settingsEmailAlertCustomEmailHint ??
+                        "Optional. Leave blank to use only your account email. Uncheck account email to send only here."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
               {isPremiumUser ? (
                 <div className={SETTINGS_FIELD_ROW}>
                   <div>
