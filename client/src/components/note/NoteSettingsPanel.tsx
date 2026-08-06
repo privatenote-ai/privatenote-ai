@@ -48,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PasswordsLuPartnerFooter } from "@/components/PasswordsLuPartnerLinks";
 import {
   Tooltip,
   TooltipContent,
@@ -821,6 +822,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </span>
                   </div>
                 </div>
+              )}
+              {(passwordSource === "simple" || passwordSource === "strong") && (
+                <PasswordsLuPartnerFooter t={t} align="left" className="mt-1 !text-xs" />
               )}
             </div>
           </div>
