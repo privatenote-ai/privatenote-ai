@@ -803,7 +803,17 @@ export async function recordSentNoteOpened(
   const row = await getSentNoteByNoteId(env, noteId);
   if (!row || row.status === "revoked" || row.status === "destroyed" || row.status === "expired") return;
 
-  const proofEnabled = row.proof_enabled === 1;
+  // Prefer the row flag; for older rows created before proof shipped, fall back to
+  // the sender's current plan so Starter/Business opens still capture device/country.
+  let proofEnabled = row.proof_enabled === 1;
+  if (!proofEnabled) {
+    try {
+      const accountType = await getUserAccountType(env, row.user_id);
+      proofEnabled = planFeaturesFor(accountType).proofOfAccess;
+    } catch {
+      proofEnabled = false;
+    }
+  }
   const country = proofEnabled
     ? request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null
     : null;
@@ -819,12 +829,23 @@ export async function recordSentNoteOpened(
      SET status = ?,
        opened_at = COALESCE(opened_at, ?),
        destroyed_at = CASE WHEN ? = 1 THEN COALESCE(destroyed_at, ?) ELSE destroyed_at END,
+       proof_enabled = CASE WHEN ? = 1 THEN 1 ELSE proof_enabled END,
        open_country = COALESCE(open_country, ?),
        open_device_class = COALESCE(open_device_class, ?),
        open_browser = COALESCE(open_browser, ?)
      WHERE note_id = ? AND status IN ('created', 'opened')`,
   )
-    .bind(nextStatus, eventAt, destroyed ? 1 : 0, eventAt, country, deviceClass, browser, noteId)
+    .bind(
+      nextStatus,
+      eventAt,
+      destroyed ? 1 : 0,
+      eventAt,
+      proofEnabled ? 1 : 0,
+      country,
+      deviceClass,
+      browser,
+      noteId,
+    )
     .run();
 
   if (destroyed && row.notify_on_open === 1 && row.notify_on_destroyed === 1 && !row.opened_notified_at && !row.destroyed_notified_at) {

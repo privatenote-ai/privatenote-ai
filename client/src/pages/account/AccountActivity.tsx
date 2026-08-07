@@ -152,6 +152,51 @@ function EventIcon({ type }: { type: string }) {
   }
 }
 
+function statusMeaning(
+  status: NotificationItem["status"],
+  t: Record<string, string>,
+): string {
+  switch (status) {
+    case "created":
+      return (
+        t.notificationStatusCreatedHint ??
+        "Waiting for the recipient to open the link."
+      );
+    case "viewed":
+      return (
+        t.notificationStatusViewedHint ??
+        "The recipient opened the link. The note may still be available if multiple reads were allowed."
+      );
+    case "burned":
+      return (
+        t.notificationStatusBurnedHint ??
+        "The note was destroyed after the read limit. On one-time notes this usually happens at the same time as open."
+      );
+    case "expired":
+      return (
+        t.notificationStatusExpiredHint ??
+        "The note reached its expiry time and was destroyed without being opened, or after expiry."
+      );
+    case "revoked":
+      return (
+        t.notificationStatusRevokedHint ??
+        "You revoked the link before it could be opened."
+      );
+    case "attachment_downloaded":
+      return (
+        t.notificationStatusAttachmentDownloadedHint ??
+        "An attachment was downloaded from the note."
+      );
+    case "receipt_confirmed":
+      return (
+        t.notificationStatusReceiptConfirmedHint ??
+        "The recipient confirmed receipt."
+      );
+    default:
+      return "";
+  }
+}
+
 function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): string {
   switch (entry.key) {
     case "created":
@@ -252,6 +297,7 @@ function DeliveryDetail({
           </span>
           <span className="font-mono text-xs text-muted-foreground">{delivery.displayNoteId}</span>
         </div>
+        <p className="text-sm text-muted-foreground">{statusMeaning(delivery.status, t)}</p>
         <p className="text-sm text-muted-foreground">{recipient}</p>
       </div>
 
@@ -304,7 +350,7 @@ function DeliveryDetail({
           ) : !proofEnabled ? (
             <p className="text-sm text-muted-foreground">
               {t.authActivityProofNotRecorded ??
-                "This note was opened, but approximate location and device were not recorded for it."}
+                "This note was opened, but approximate country and device were not captured for it. New notes on Starter/Business record that when the link is opened."}
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
