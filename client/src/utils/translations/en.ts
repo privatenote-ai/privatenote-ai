@@ -2532,4 +2532,10 @@ export const en: Translations = {
   authSecToastDisableFailedTitle: "Disable failed",
   authSecToastCouldNotRemovePasskeysTitle: "Couldn't remove passkeys",
   authSecDeletePasskeyConfirmSuffix: "You may need to verify with a passkey first.",
+
+  chromeExtensionOnboardingTitle: "Create notes from Chrome",
+  chromeExtensionOnboardingBody:
+    "Install the PrivateNote Chrome extension to encrypt and share secrets without leaving your browser.",
+  chromeExtensionOnboardingInstall: "Add to Chrome",
+  chromeExtensionOnboardingDismiss: "Not now",
 };
