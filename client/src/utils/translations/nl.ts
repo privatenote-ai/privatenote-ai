@@ -783,6 +783,12 @@ export const nl: Translations = {
   revealCouldNotUnlockDescription: "De sleutel in je link past niet bij deze notitie. Hij kan fout, onvolledig of van een andere link zijn. Kopieer de volledige URL, inclusief alles na het #-teken.",
   revealUnavailableTitle: "Notitie niet meer beschikbaar",
   revealUnavailableDescription: "Hij is mogelijk al geopend, verlopen of de link is onvolledig.",
+  revealNotYetAvailableTitle: "Nog niet beschikbaar",
+  revealNotYetAvailableDescription:
+    "De afzender heeft deze notitie ingesteld om later te ontgrendelen. Eerder kan hij niet worden geopend.",
+  revealNotYetAvailableUnlocksLabel: "Ontgrendelt om",
+  revealNotYetAvailableVerificationHint:
+    "Deze notitie vereist ook een verificatiecode. We mailen die naar de ontvanger zodra de notitie ontgrendelt.",
   revealTryOriginalPrefix: "Probeer de",
   revealOriginalLink: "originele link",
   revealTryOriginalSuffix: "opnieuw te openen.",

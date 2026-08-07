@@ -15,6 +15,7 @@ import {
   FileText,
   Image as ImageIcon,
   BadgeCheck,
+  Clock,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
@@ -292,8 +293,16 @@ const NoteAccessProblem: React.FC<{
   keyMismatch?: boolean;
   /** ISO UTC open time when variant is `not_yet_available`. */
   opensAt?: string | null;
+  /** Recipient still owes a verification code once the note unlocks. */
+  verificationPending?: boolean;
   t: Translations;
-}> = ({ variant, keyMismatch = false, opensAt = null, t }) => {
+}> = ({
+  variant,
+  keyMismatch = false,
+  opensAt = null,
+  verificationPending = false,
+  t,
+}) => {
   const isIncomplete = variant === 'link_incomplete';
   const isKeyTruncated = variant === 'key_truncated';
   const isNotYetAvailable = variant === 'not_yet_available';
@@ -324,19 +333,30 @@ const NoteAccessProblem: React.FC<{
             </>
           ) : isNotYetAvailable ? (
             <>
+              <div className="mb-4 flex justify-center text-primary">
+                <Clock className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
+              </div>
               <h1 className="page-title text-gray-900 dark:text-white">
                 {t.revealNotYetAvailableTitle ?? "Not available yet"}
               </h1>
               <p className={NOTE_VIEW_HERO_SUBTITLE}>
                 {t.revealNotYetAvailableDescription ??
-                  "This note is scheduled to open later. Come back after the time below."}
+                  "The sender scheduled this note to unlock later. It cannot be opened before then."}
               </p>
               {opensAtLabel ? (
-                <p className="mt-4 text-base font-medium text-gray-800 dark:text-gray-200">
-                  {(t.revealNotYetAvailableOpensAt ?? "Opens at {time}").replace(
-                    "{time}",
-                    opensAtLabel,
-                  )}
+                <div className="mx-auto mt-6 max-w-md rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-800/60">
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {t.revealNotYetAvailableUnlocksLabel ?? "Unlocks at"}
+                  </p>
+                  <p className="mt-1 m-0 text-lg font-semibold text-gray-900 dark:text-white">
+                    {opensAtLabel}
+                  </p>
+                </div>
+              ) : null}
+              {verificationPending ? (
+                <p className="mx-auto mt-5 max-w-md text-sm text-gray-600 dark:text-gray-400">
+                  {t.revealNotYetAvailableVerificationHint ??
+                    "This note also requires a verification code. We'll email it to the recipient once the note unlocks."}
                 </p>
               ) : null}
             </>
@@ -482,6 +502,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [keyMismatchError, setKeyMismatchError] = useState(false);
   const [delayedRevealOpensAt, setDelayedRevealOpensAt] = useState<string | null>(null);
+  /** False until the note meta request settles, so the delayed-reveal check runs before any gate. */
+  const [delayedRevealChecked, setDelayedRevealChecked] = useState(false);
   const [receiptAckRequired, setReceiptAckRequired] = useState(false);
   const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(false);
   const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(null);
@@ -538,9 +560,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   useEffect(() => {
     if (!id) {
       setSenderSelectedLanguage(null);
+      setDelayedRevealOpensAt(null);
+      setDelayedRevealChecked(true);
       return;
     }
     let cancelled = false;
+    setDelayedRevealChecked(false);
     void apiRequest<{ readerLanguage?: string }>(`/api/notes/${id}`, "GET")
       .then((meta) => {
         if (cancelled) return;
@@ -566,11 +591,31 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         }
         setDelayedRevealOpensAt(null);
         setSenderSelectedLanguage(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDelayedRevealChecked(true);
       });
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  // Drop the wait screen the moment the scheduled time passes, so the recipient
+  // moves straight on to verification (or reveal) without reloading the page.
+  useEffect(() => {
+    if (!delayedRevealOpensAt) return;
+    const opensAtMs = new Date(delayedRevealOpensAt).getTime();
+    if (!Number.isFinite(opensAtMs)) return;
+    const msUntilOpen = opensAtMs - Date.now();
+    if (msUntilOpen <= 0) {
+      setDelayedRevealOpensAt(null);
+      return;
+    }
+    // setTimeout delays overflow past the 32-bit limit and would fire immediately.
+    if (msUntilOpen > 2_147_000_000) return;
+    const timer = window.setTimeout(() => setDelayedRevealOpensAt(null), msUntilOpen + 250);
+    return () => window.clearTimeout(timer);
+  }, [delayedRevealOpensAt]);
 
   const attachmentPreviewKind = useMemo(
     () => getAttachmentPreviewKind(attachmentMetadata?.type, attachmentMetadata?.name),
@@ -818,8 +863,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   );
 
   useEffect(() => {
+    // Delayed reveal is checked first: emailing a code while the note is still
+    // time-locked would burn the code's usefulness before it can be entered.
     if (
       !id ||
+      !delayedRevealChecked ||
+      delayedRevealOpensAt ||
       recipientGateLoading ||
       !recipientGateRequired ||
       recipientGateVerified ||
@@ -831,6 +880,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     void sendRecipientVerificationCode({ silent: true });
   }, [
     id,
+    delayedRevealChecked,
+    delayedRevealOpensAt,
     recipientGateLoading,
     recipientGateRequired,
     recipientGateVerified,
@@ -1365,7 +1416,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     window.location.href = '/';
   };
 
-  if (isLoading || recipientGateLoading) {
+  if (isLoading || recipientGateLoading || !delayedRevealChecked) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -1373,22 +1424,27 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     );
   }
 
+  const verificationPending = recipientGateRequired && !recipientGateVerified;
+
   if (delayedRevealOpensAt && !hasRevealed) {
     return (
       <NoteAccessProblem
         variant="not_yet_available"
         opensAt={delayedRevealOpensAt}
+        verificationPending={verificationPending}
         t={t}
       />
     );
   }
 
   if (error) {
+    const isNotYetAvailable = error === "note_not_yet_available";
     return (
       <NoteAccessProblem
-        variant={error === "note_not_yet_available" ? "not_yet_available" : "note_gone"}
+        variant={isNotYetAvailable ? "not_yet_available" : "note_gone"}
         keyMismatch={keyMismatchError}
         opensAt={delayedRevealOpensAt}
+        verificationPending={isNotYetAvailable && verificationPending}
         t={t}
       />
     );

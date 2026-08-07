@@ -783,6 +783,12 @@ export const es: Translations = {
   revealCouldNotUnlockDescription: "La clave del enlace no coincide con esta nota. Puede ser incorrecta, estar incompleta o pertenecer a otro enlace. Copia la URL completa, incluido todo lo que va después del símbolo #.",
   revealUnavailableTitle: "La nota ya no está disponible",
   revealUnavailableDescription: "Puede que ya se haya abierto, haya caducado o que el enlace esté incompleto.",
+  revealNotYetAvailableTitle: "Aún no disponible",
+  revealNotYetAvailableDescription:
+    "El remitente programó esta nota para desbloquearse más tarde. No se puede abrir antes de esa hora.",
+  revealNotYetAvailableUnlocksLabel: "Se desbloquea el",
+  revealNotYetAvailableVerificationHint:
+    "Esta nota también requiere un código de verificación. Se lo enviaremos por correo al destinatario en cuanto la nota se desbloquee.",
   revealTryOriginalPrefix: "Intenta abrir de nuevo el",
   revealOriginalLink: "enlace original",
   revealTryOriginalSuffix: ".",

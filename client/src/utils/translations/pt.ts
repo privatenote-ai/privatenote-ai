@@ -1714,6 +1714,12 @@ export const pt: Translations = {
     "A chave no seu link não corresponde a esta nota. Pode estar errada, incompleta ou ser de outro link. Copie a URL completa, incluindo tudo após o símbolo #.",
   revealUnavailableTitle: "Nota não está mais disponível",
   revealUnavailableDescription: "Ela pode já ter sido aberta, expirado ou o link está incompleto.",
+  revealNotYetAvailableTitle: "Ainda não disponível",
+  revealNotYetAvailableDescription:
+    "O remetente programou esta nota para ser desbloqueada mais tarde. Ela não pode ser aberta antes disso.",
+  revealNotYetAvailableUnlocksLabel: "Desbloqueia em",
+  revealNotYetAvailableVerificationHint:
+    "Esta nota também exige um código de verificação. Vamos enviá-lo por e-mail ao destinatário assim que a nota for desbloqueada.",
   revealTryOriginalPrefix: "Tente abrir novamente o",
   revealOriginalLink: "link original",
   revealTryOriginalSuffix: ".",

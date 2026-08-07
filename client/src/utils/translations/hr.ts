@@ -1714,6 +1714,12 @@ export const hr: Translations = {
     "Ključ u vašoj vezi ne odgovara ovoj bilješci. Može biti pogrešan, nepotpun ili s druge veze. Kopirajte cijeli URL, uključujući sve nakon znaka #.",
   revealUnavailableTitle: "Bilješka više nije dostupna",
   revealUnavailableDescription: "Možda je već otvorena, istekla ili je veza nepotpuna.",
+  revealNotYetAvailableTitle: "Još nije dostupna",
+  revealNotYetAvailableDescription:
+    "Pošiljatelj je zakazao otključavanje ove bilješke za kasnije. Prije toga se ne može otvoriti.",
+  revealNotYetAvailableUnlocksLabel: "Otključava se",
+  revealNotYetAvailableVerificationHint:
+    "Ova bilješka zahtijeva i verifikacijski kod. Poslat ćemo ga primatelju e-poštom čim se bilješka otključa.",
   revealTryOriginalPrefix: "Pokušajte ponovno otvoriti",
   revealOriginalLink: "izvornu vezu",
   revealTryOriginalSuffix: ".",

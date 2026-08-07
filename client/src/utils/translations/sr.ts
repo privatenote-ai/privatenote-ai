@@ -1714,6 +1714,12 @@ export const sr: Translations = {
     "Ključ u vašem linku ne odgovara ovoj poruci. Može biti pogrešan, nepotpun ili sa drugog linka. Kopirajte ceo URL, uključujući sve posle znaka #.",
   revealUnavailableTitle: "Poruka više nije dostupna",
   revealUnavailableDescription: "Možda je već otvorena, istekla ili je link nepotpun.",
+  revealNotYetAvailableTitle: "Još nije dostupna",
+  revealNotYetAvailableDescription:
+    "Pošiljalac je zakazao otključavanje ove poruke za kasnije. Pre toga se ne može otvoriti.",
+  revealNotYetAvailableUnlocksLabel: "Otključava se",
+  revealNotYetAvailableVerificationHint:
+    "Ova poruka zahteva i verifikacioni kod. Poslaćemo ga primaocu e-poštom čim se poruka otključa.",
   revealTryOriginalPrefix: "Pokušajte ponovo da otvorite",
   revealOriginalLink: "originalni link",
   revealTryOriginalSuffix: ".",

@@ -573,8 +573,10 @@ export const en: Translations = {
     "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.",
   revealNotYetAvailableTitle: "Not available yet",
   revealNotYetAvailableDescription:
-    "This note is scheduled to open later. Come back after the time below.",
-  revealNotYetAvailableOpensAt: "Opens at {time}",
+    "The sender scheduled this note to unlock later. It cannot be opened before then.",
+  revealNotYetAvailableUnlocksLabel: "Unlocks at",
+  revealNotYetAvailableVerificationHint:
+    "This note also requires a verification code. We'll email it to the recipient once the note unlocks.",
   revealReceiptRequestedTitle: "Receipt confirmation requested",
   revealReceiptRequestedHint:
     "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.",

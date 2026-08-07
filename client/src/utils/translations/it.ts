@@ -768,6 +768,12 @@ export const it: Translations = {
   revealCouldNotUnlockDescription: "La chiave nel link non corrisponde a questa nota. Potrebbe essere errata, incompleta o di un altro link. Copia l'URL completo, incluso tutto ciò che segue il simbolo #.",
   revealUnavailableTitle: "Nota non più disponibile",
   revealUnavailableDescription: "Potrebbe essere già stata aperta, scaduta oppure il link è incompleto.",
+  revealNotYetAvailableTitle: "Non ancora disponibile",
+  revealNotYetAvailableDescription:
+    "Il mittente ha programmato lo sblocco di questa nota per un momento successivo. Non può essere aperta prima.",
+  revealNotYetAvailableUnlocksLabel: "Si sblocca il",
+  revealNotYetAvailableVerificationHint:
+    "Questa nota richiede anche un codice di verifica. Lo invieremo via e-mail al destinatario non appena la nota si sblocca.",
   revealTryOriginalPrefix: "Prova ad aprire di nuovo il",
   revealOriginalLink: "link originale",
   revealTryOriginalSuffix: ".",

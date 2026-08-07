@@ -768,6 +768,12 @@ export const fr: Translations = {
   revealCouldNotUnlockDescription: "La clé de votre lien ne correspond pas à cette note. Elle peut être incorrecte, incomplète ou provenir d'un autre lien. Copiez l'URL complète, y compris tout ce qui suit le symbole #.",
   revealUnavailableTitle: "Note indisponible",
   revealUnavailableDescription: "Elle a peut-être déjà été ouverte, a expiré ou le lien est incomplet.",
+  revealNotYetAvailableTitle: "Pas encore disponible",
+  revealNotYetAvailableDescription:
+    "L'expéditeur a programmé le déverrouillage de cette note pour plus tard. Elle ne peut pas être ouverte avant.",
+  revealNotYetAvailableUnlocksLabel: "Déverrouillage le",
+  revealNotYetAvailableVerificationHint:
+    "Cette note nécessite également un code de vérification. Nous l'enverrons par e-mail au destinataire dès que la note sera déverrouillée.",
   revealTryOriginalPrefix: "Essayez d'ouvrir à nouveau le",
   revealOriginalLink: "lien original",
   revealTryOriginalSuffix: ".",

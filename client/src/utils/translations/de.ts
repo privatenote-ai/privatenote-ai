@@ -783,6 +783,12 @@ export const de: Translations = {
   revealCouldNotUnlockDescription: "Der Schlüssel in Ihrem Link passt nicht zu dieser Notiz. Er kann falsch, unvollständig oder von einem anderen Link sein. Kopieren Sie die vollständige URL, einschließlich allem nach dem #-Symbol.",
   revealUnavailableTitle: "Notiz nicht mehr verfügbar",
   revealUnavailableDescription: "Sie wurde möglicherweise bereits geöffnet, ist abgelaufen oder der Link ist unvollständig.",
+  revealNotYetAvailableTitle: "Noch nicht verfügbar",
+  revealNotYetAvailableDescription:
+    "Der Absender hat diese Notiz für einen späteren Zeitpunkt freigegeben. Vorher kann sie nicht geöffnet werden.",
+  revealNotYetAvailableUnlocksLabel: "Freigabe am",
+  revealNotYetAvailableVerificationHint:
+    "Diese Notiz erfordert außerdem einen Bestätigungscode. Wir senden ihn per E-Mail an den Empfänger, sobald die Notiz freigegeben ist.",
   revealTryOriginalPrefix: "Versuchen Sie, den",
   revealOriginalLink: "ursprünglichen Link",
   revealTryOriginalSuffix: "erneut zu öffnen.",
