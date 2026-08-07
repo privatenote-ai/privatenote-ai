@@ -9,6 +9,7 @@ import {
   recordSentNoteAttachmentDownloaded,
   revokeSentNote,
   sendRecipientVerificationCode,
+  verifyRecipientAccess,
   type SentNoteRow,
 } from "./sentNotesService.ts";
 import type { Env } from "./types.ts";
@@ -407,5 +408,123 @@ describe("recipient verification gate", () => {
 
     assert.deepEqual(kv.deletes, [GATE_KEY]);
     assert.equal(kv.store.has(GATE_KEY), false);
+  });
+
+  it("rolls back a failed send so Resend is not locked behind cooldown", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    const failed = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {
+        throw new Error("smtp_down");
+      },
+    );
+    assert.equal(failed.ok, false);
+    if (!failed.ok) assert.equal(failed.error, "send_failed");
+
+    const gateAfterFailure = JSON.parse(kv.store.get(GATE_KEY)?.value ?? "{}") as {
+      codeHash?: string;
+      codeSentAt?: number;
+      sendClaimId?: string;
+    };
+    assert.equal(gateAfterFailure.codeHash, undefined);
+    assert.equal(gateAfterFailure.codeSentAt, undefined);
+    assert.equal(gateAfterFailure.sendClaimId, undefined);
+
+    let emailedCode = "";
+    const retried = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async (_to, _subject, text) => {
+        const match = text.match(/\b(\d{6})\b/);
+        emailedCode = match?.[1] ?? "";
+      },
+    );
+    assert.equal(retried.ok, true);
+    assert.match(emailedCode, /^\d{6}$/);
+
+    const verified = await verifyRecipientAccess(envWithDb(db, kv), GATE_NOTE_ID, {
+      code: emailedCode,
+    });
+    assert.equal(verified.ok, true);
+  });
+
+  it("restores the previous working code when a resend email fails", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    let firstCode = "";
+    const first = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async (_to, _subject, text) => {
+        firstCode = text.match(/\b(\d{6})\b/)?.[1] ?? "";
+      },
+    );
+    assert.equal(first.ok, true);
+
+    // Simulate cooldown expiry so a resend is allowed.
+    const afterFirst = JSON.parse(kv.store.get(GATE_KEY)?.value ?? "{}") as Record<string, unknown>;
+    afterFirst.codeSentAt = Date.now() - 61_000;
+    await kv.put(GATE_KEY, JSON.stringify(afterFirst));
+
+    const failedResend = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {
+        throw new Error("smtp_down");
+      },
+    );
+    assert.equal(failedResend.ok, false);
+
+    const verified = await verifyRecipientAccess(envWithDb(db, kv), GATE_NOTE_ID, {
+      code: firstCode,
+    });
+    assert.equal(verified.ok, true);
+  });
+
+  it("rejects a concurrent send while another claim is in flight", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    let releaseFirstEmail: (() => void) | undefined;
+    const firstEmailHeld = new Promise<void>((resolve) => {
+      releaseFirstEmail = resolve;
+    });
+    let firstEnteredSend = false;
+
+    const firstPromise = sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {
+        firstEnteredSend = true;
+        await firstEmailHeld;
+      },
+    );
+
+    // Wait until the first request has claimed and entered sendEmailFn.
+    for (let i = 0; i < 50 && !firstEnteredSend; i += 1) {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    assert.equal(firstEnteredSend, true);
+
+    const second = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {
+        throw new Error("should_not_send");
+      },
+    );
+    assert.equal(second.ok, false);
+    if (!second.ok) assert.equal(second.error, "cooldown");
+
+    releaseFirstEmail?.();
+    const first = await firstPromise;
+    assert.equal(first.ok, true);
   });
 });

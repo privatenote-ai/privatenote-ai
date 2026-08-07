@@ -78,7 +78,11 @@ type RecipientGatePayload = {
   expiresAt?: string | null;
   codeHash?: string;
   salt?: string;
+  /** Set only after the verification email is successfully sent. */
   codeSentAt?: number;
+  /** In-flight send claim; blocks concurrent sends and is cleared on success or rollback. */
+  sendClaimId?: string;
+  sendClaimAt?: number;
 };
 
 const RECIPIENT_GATE_PREFIX = "note_rcv_gate:";
@@ -595,7 +599,8 @@ export async function sendRecipientVerificationCode(
   | { ok: true; emailHint: string | null }
   | { ok: false; error: string; retryAfterSeconds?: number }
 > {
-  const raw = await kv(env).get(gateKey(noteId));
+  const key = gateKey(noteId);
+  const raw = await kv(env).get(key);
   if (!raw) return { ok: false, error: "no_gate" };
   let stored: RecipientGatePayload;
   try {
@@ -608,35 +613,61 @@ export async function sendRecipientVerificationCode(
   }
 
   const now = Date.now();
-  if (
-    typeof stored.codeSentAt === "number" &&
-    now - stored.codeSentAt < RECIPIENT_CODE_SEND_COOLDOWN_MS
-  ) {
+  const cooldownStartedAt = Math.max(
+    typeof stored.codeSentAt === "number" ? stored.codeSentAt : 0,
+    typeof stored.sendClaimAt === "number" ? stored.sendClaimAt : 0,
+  );
+  if (cooldownStartedAt > 0 && now - cooldownStartedAt < RECIPIENT_CODE_SEND_COOLDOWN_MS) {
     return {
       ok: false,
       error: "cooldown",
       retryAfterSeconds: Math.ceil(
-        (RECIPIENT_CODE_SEND_COOLDOWN_MS - (now - stored.codeSentAt)) / 1000,
+        (RECIPIENT_CODE_SEND_COOLDOWN_MS - (now - cooldownStartedAt)) / 1000,
       ),
     };
   }
 
   // Gates written before expiresAt was stored fall back to the sent_notes row.
   const expiresAt = stored.expiresAt ?? (await lookupSentNoteExpiry(env, noteId));
+  const ttl = gateTtlSeconds(expiresAt);
+  const previousCode = {
+    codeHash: stored.codeHash,
+    salt: stored.salt,
+    codeSentAt: stored.codeSentAt,
+  };
 
   const verificationCode = randomSixDigitCode();
   const salt = crypto.randomUUID();
-  const nextGate: RecipientGatePayload = {
+  const sendClaimId = crypto.randomUUID();
+  const claimedGate: RecipientGatePayload = {
     recipientEmail: stored.recipientEmail,
     expiresAt,
     salt,
     codeHash: await sha256Hex(`${salt}:${verificationCode}`),
-    codeSentAt: now,
+    // Keep the prior successful send timestamp for cooldown math, but do not
+    // advance it until this email actually goes out.
+    ...(typeof previousCode.codeSentAt === "number" ? { codeSentAt: previousCode.codeSentAt } : {}),
+    sendClaimId,
+    sendClaimAt: now,
   };
 
-  await kv(env).put(gateKey(noteId), JSON.stringify(nextGate), {
-    expirationTtl: gateTtlSeconds(expiresAt),
-  });
+  await kv(env).put(key, JSON.stringify(claimedGate), { expirationTtl: ttl });
+
+  // Optimistic claim: if another writer won the race, abort before sending a code.
+  const claimedRaw = await kv(env).get(key);
+  let claimed: RecipientGatePayload | null = null;
+  try {
+    claimed = claimedRaw ? (JSON.parse(claimedRaw) as RecipientGatePayload) : null;
+  } catch {
+    claimed = null;
+  }
+  if (!claimed || claimed.sendClaimId !== sendClaimId) {
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(RECIPIENT_CODE_SEND_COOLDOWN_MS / 1000),
+    };
+  }
 
   const webOrigin =
     (typeof options?.webOrigin === "string" && options.webOrigin.trim()) ||
@@ -651,8 +682,57 @@ export async function sendRecipientVerificationCode(
     await sendEmailFn(stored.recipientEmail, email.subject, email.text, email.html);
   } catch (error) {
     console.warn("[RECIPIENT_CODE] Failed to email verification code:", error);
+    // Roll back only if we still own the claim, so we do not wipe a concurrent winner.
+    const failedRaw = await kv(env).get(key);
+    let failed: RecipientGatePayload | null = null;
+    try {
+      failed = failedRaw ? (JSON.parse(failedRaw) as RecipientGatePayload) : null;
+    } catch {
+      failed = null;
+    }
+    if (failed?.sendClaimId === sendClaimId) {
+      const rolledBack: RecipientGatePayload = {
+        recipientEmail: stored.recipientEmail,
+        expiresAt,
+        ...(previousCode.codeHash && previousCode.salt
+          ? {
+              codeHash: previousCode.codeHash,
+              salt: previousCode.salt,
+              ...(typeof previousCode.codeSentAt === "number"
+                ? { codeSentAt: previousCode.codeSentAt }
+                : {}),
+            }
+          : {}),
+      };
+      await kv(env).put(key, JSON.stringify(rolledBack), { expirationTtl: ttl });
+    }
     return { ok: false, error: "send_failed" };
   }
+
+  const successRaw = await kv(env).get(key);
+  let success: RecipientGatePayload | null = null;
+  try {
+    success = successRaw ? (JSON.parse(successRaw) as RecipientGatePayload) : null;
+  } catch {
+    success = null;
+  }
+  if (success?.sendClaimId !== sendClaimId) {
+    // Another send claimed the gate while our email was in flight; our code is stale.
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(RECIPIENT_CODE_SEND_COOLDOWN_MS / 1000),
+    };
+  }
+
+  const finalized: RecipientGatePayload = {
+    recipientEmail: stored.recipientEmail,
+    expiresAt,
+    salt: claimedGate.salt,
+    codeHash: claimedGate.codeHash,
+    codeSentAt: Date.now(),
+  };
+  await kv(env).put(key, JSON.stringify(finalized), { expirationTtl: ttl });
 
   return { ok: true, emailHint: maskEmailHint(stored.recipientEmail) };
 }
