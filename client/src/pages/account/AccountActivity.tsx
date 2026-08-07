@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import {
   Activity,
   Ban,
-  ChevronDown,
+  ChevronRight,
   Clock,
   Eye,
   FilePlus2,
@@ -23,6 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -38,10 +45,8 @@ import { AccountSettingsShell } from "./AccountSettingsShell";
 import {
   buildProofTimeline,
   formatDeviceClass,
-  formatNotificationTimestamp,
   formatProofTimestamp,
   statusLabel,
-  statusTone,
   type NotificationItem,
   type ProofTimelineEntry,
 } from "./NotificationCenter.logic";
@@ -103,15 +108,32 @@ function groupEvents(events: ActivityEvent[]): EventGroup[] {
 function eventAccent(type: string): string {
   switch (type) {
     case "note_created":
-      return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400";
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
     case "ai_note_created":
-      return "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400";
+      return "bg-violet-500/10 text-violet-600 dark:text-violet-400";
     case "note_opened":
-      return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+      return "bg-sky-500/10 text-sky-600 dark:text-sky-400";
     case "note_expired":
-      return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+      return "bg-gray-500/10 text-gray-500 dark:text-gray-400";
     default:
-      return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+      return "bg-gray-500/10 text-gray-500 dark:text-gray-400";
+  }
+}
+
+function statusPillClass(status: NotificationItem["status"]): string {
+  switch (status) {
+    case "viewed":
+    case "receipt_confirmed":
+    case "attachment_downloaded":
+      return "bg-sky-500/10 text-sky-700 dark:text-sky-300";
+    case "burned":
+      return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
+    case "revoked":
+      return "bg-rose-500/10 text-rose-700 dark:text-rose-300";
+    case "expired":
+      return "bg-gray-500/10 text-gray-600 dark:text-gray-400";
+    default:
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   }
 }
 
@@ -149,7 +171,7 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
   }
 }
 
-function DeliveryPanel({
+function DeliveryDetail({
   event,
   noteLabel,
   canTrackDelivery,
@@ -168,7 +190,7 @@ function DeliveryPanel({
 }) {
   if (event.type === "note_opened") {
     return (
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-sm leading-relaxed text-muted-foreground">
         {t.authActivityOpenedIsYouHint ??
           "This means you opened a note while signed in — not that a recipient opened a note you sent."}
       </p>
@@ -177,12 +199,12 @@ function DeliveryPanel({
 
   if (!canTrackDelivery) {
     return (
-      <div className="space-y-2">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="space-y-4">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {t.authActivityDeliveryUpsell ??
             "Delivery status, proof of access, and revoke are available on Starter and Business."}
         </p>
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm">
           <Link href="/premium">{t.comparePlans ?? "Compare plans"}</Link>
         </Button>
       </div>
@@ -192,7 +214,7 @@ function DeliveryPanel({
   const delivery = event.delivery;
   if (!delivery) {
     return (
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-sm leading-relaxed text-muted-foreground">
         {t.authActivityNoDeliveryTracking ??
           "No delivery tracking for this note. Tracking starts when you send with recipient alerts enabled."}
       </p>
@@ -212,48 +234,44 @@ function DeliveryPanel({
   const browser = delivery.openBrowser?.trim() || unavailable;
 
   return (
-    <div className="space-y-4 text-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-0.5">
-          {noteLabel?.trim() ? (
-            <p className="truncate font-medium text-gray-900 dark:text-white">
-              {noteLabel.trim()}
-            </p>
-          ) : null}
-          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{recipient}</p>
-          <p className="font-mono text-xs text-gray-400 dark:text-gray-500">
-            {delivery.displayNoteId}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {formatNotificationTimestamp(delivery.eventAt)}
-          </p>
+    <div className="space-y-8">
+      <div className="space-y-3">
+        {noteLabel?.trim() ? (
+          <p className="text-base font-medium text-foreground">{noteLabel.trim()}</p>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusPillClass(delivery.status)}`}
+          >
+            {statusLabel(delivery.status, t)}
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">{delivery.displayNoteId}</span>
         </div>
-        <p className={`shrink-0 text-sm font-semibold ${statusTone(delivery.status)}`}>
-          {statusLabel(delivery.status, t)}
-        </p>
+        <p className="text-sm text-muted-foreground">{recipient}</p>
       </div>
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <section className="space-y-4">
+        <h3 className="text-sm font-medium text-foreground">
           {t.proofTimelineHeading ?? "Timeline"}
         </h3>
         {timeline.length === 0 ? (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             {t.proofNoEventsYet ?? "No delivery events recorded yet."}
           </p>
         ) : (
-          <ol className="space-y-1.5">
-            {timeline.map((entry) => (
-              <li
-                key={`${entry.key}-${entry.at}`}
-                className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40"
-              >
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  {timelineLabel(entry, t)}
-                </span>
-                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+          <ol className="relative space-y-0 border-l border-border/80 pl-5">
+            {timeline.map((entry, index) => (
+              <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
+                <span
+                  className={`absolute -left-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${
+                    index === timeline.length - 1 ? "bg-primary" : "bg-muted-foreground/40"
+                  }`}
+                  aria-hidden
+                />
+                <p className="text-sm font-medium text-foreground">{timelineLabel(entry, t)}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {formatProofTimestamp(entry.at)}
-                </span>
+                </p>
               </li>
             ))}
           </ol>
@@ -261,44 +279,39 @@ function DeliveryPanel({
       </section>
 
       {showAccessDetails ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        <section className="space-y-4">
+          <h3 className="text-sm font-medium text-foreground">
             {t.proofAccessHeading ?? "Access details"}
           </h3>
           {!accessed ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               {t.proofNotOpenedYet ??
                 "No open receipt yet. Details appear after the link is accessed."}
             </p>
           ) : (
-            <ul className="space-y-1.5">
-              <li className="flex items-center gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40">
-                <Globe2 className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-muted/50 px-4 py-3">
+                <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                  <Globe2 className="h-4 w-4" aria-hidden />
+                  <span className="text-xs font-medium">
                     {t.proofCountryLabel ?? "Approximate country"}
-                  </p>
-                  <p className="font-medium text-gray-900 dark:text-white">{country}</p>
+                  </span>
                 </div>
-              </li>
-              <li className="flex items-center gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40">
-                <MonitorSmartphone
-                  className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
-                  aria-hidden
-                />
-                <div className="min-w-0">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t.proofDeviceLabel ?? "Device"}
-                  </p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {device}
-                    {browser !== unavailable ? ` · ${browser}` : ""}
-                  </p>
+                <p className="text-sm font-medium text-foreground">{country}</p>
+              </div>
+              <div className="rounded-2xl bg-muted/50 px-4 py-3">
+                <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                  <MonitorSmartphone className="h-4 w-4" aria-hidden />
+                  <span className="text-xs font-medium">{t.proofDeviceLabel ?? "Device"}</span>
                 </div>
-              </li>
-            </ul>
+                <p className="text-sm font-medium text-foreground">
+                  {device}
+                  {browser !== unavailable ? ` · ${browser}` : ""}
+                </p>
+              </div>
+            </div>
           )}
-          <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {t.proofDisclaimer ??
               "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
           </p>
@@ -306,8 +319,8 @@ function DeliveryPanel({
       ) : null}
 
       {canRevoke ? (
-        <div className="space-y-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+        <div className="space-y-3 border-t border-border/70 pt-6">
+          <p className="text-sm text-muted-foreground">
             {t.notificationRevokeHint ??
               "Still unopened — you can revoke the link so it can no longer be opened."}
           </p>
@@ -344,7 +357,7 @@ export default function AccountActivity() {
     revokeUnopened: false,
   });
   const [noteLabels, setNoteLabels] = useState<Record<string, string>>(() => readNoteLabels());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -352,6 +365,8 @@ export default function AccountActivity() {
   const [clearing, setClearing] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<NotificationItem | null>(null);
   const [revokingNoteId, setRevokingNoteId] = useState<string | null>(null);
+
+  const selectedEvent = events.find((entry) => entry.id === selectedId) ?? null;
 
   const load = useCallback(async () => {
     setError(null);
@@ -427,14 +442,15 @@ export default function AccountActivity() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const item = events.find((entry) => entry.id === id);
     setDeletingId(id);
     setError(null);
     try {
       await apiRequest(`/api/auth/account/activity/${encodeURIComponent(id)}`, "DELETE");
       setEvents((prev) => prev.filter((entry) => entry.id !== id));
-      if (expandedId === id) setExpandedId(null);
+      if (selectedId === id) setSelectedId(null);
       if (item?.noteId) {
         deleteNoteLabel(item.noteId);
         setNoteLabels(readNoteLabels());
@@ -454,7 +470,7 @@ export default function AccountActivity() {
       deleteNoteLabels(events.map((item) => item.noteId).filter(Boolean) as string[]);
       setNoteLabels(readNoteLabels());
       setEvents([]);
-      setExpandedId(null);
+      setSelectedId(null);
       setClearDialogOpen(false);
     } catch {
       setError(tx("authActivityClearError", "Could not clear activity history."));
@@ -515,9 +531,10 @@ export default function AccountActivity() {
     return (
       <AccountSettingsShell>
         <div className="animate-pulse space-y-4">
-          <div className="h-6 w-32 rounded bg-gray-200 dark:bg-gray-800" />
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-14 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
+          <div className="h-7 w-36 rounded-lg bg-muted" />
+          <div className="h-4 w-72 rounded bg-muted/70" />
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 rounded-2xl bg-muted/60" />
           ))}
         </div>
       </AccountSettingsShell>
@@ -527,8 +544,8 @@ export default function AccountActivity() {
   if (!user) {
     return (
       <AccountSettingsShell>
-        <div className="rounded-xl border border-gray-200 p-8 text-center dark:border-gray-800">
-          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+        <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">
             {t.authActivitySignInPrompt || "Sign in to see recent note activity."}
           </p>
           <Button asChild size="sm">
@@ -543,23 +560,23 @@ export default function AccountActivity() {
 
   return (
     <AccountSettingsShell>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+      <div className="space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {t.authActivityPageTitle || "Activity"}
             </h1>
-            <p className="mt-1 max-w-xl text-sm text-gray-500 dark:text-gray-400">
+            <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
               {t.authActivityPageSubtitle ||
-                "Your note timeline — expand a created note for delivery status. Contents are never recorded here."}
+                "Your note timeline. Open any item for delivery status and access details — contents are never recorded here."}
             </p>
           </div>
           {events.length > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="shrink-0"
+              className="shrink-0 text-muted-foreground"
               onClick={() => setClearDialogOpen(true)}
             >
               {tx("authActivityClearHistory", "Clear history")}
@@ -567,35 +584,37 @@ export default function AccountActivity() {
           ) : null}
         </div>
 
-        {error && (
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
-            <p className="text-sm text-amber-700 dark:text-amber-300" role="alert">
+        {error ? (
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <p className="text-sm text-amber-800 dark:text-amber-200" role="alert">
               {error}
             </p>
             <Button variant="outline" size="sm" onClick={() => void load()}>
               {t.authRetry || "Retry"}
             </Button>
           </div>
-        )}
+        ) : null}
 
         {events.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 px-6 py-12 text-center dark:border-gray-800">
-            <Activity className="mx-auto mb-3 h-8 w-8 text-gray-300 dark:text-gray-600" />
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+              <Activity className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
               {t.authActivityNoActivityTitle || "No activity yet"}
             </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               {t.authActivityCreateHint || "Create a note while signed in to see it here."}
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {groups.map((group) => (
-              <div key={group.period}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+              <section key={group.period} className="space-y-3">
+                <p className="px-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                   {periodLabel(group.period)}
                 </p>
-                <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800/80 dark:border-gray-800">
+                <ul className="space-y-2">
                   {group.events.map((ev) => {
                     let relative = "";
                     let absolute = "";
@@ -610,107 +629,122 @@ export default function AccountActivity() {
                       relative = ev.createdAt;
                     }
                     const desc = eventDescription(ev.type);
-                    const expanded = expandedId === ev.id;
-                    const deliveryStatus =
-                      capabilities.sentNotesDashboard && ev.delivery
-                        ? statusLabel(ev.delivery.status, t)
-                        : null;
-                    const noteLabel = ev.noteId ? noteLabels[ev.noteId] ?? null : null;
+                    const delivery = capabilities.sentNotesDashboard ? ev.delivery : null;
+                    const selected = selectedId === ev.id;
 
                     return (
-                      <li
-                        key={ev.id}
-                        className="bg-white transition-colors dark:bg-gray-950/20"
-                      >
-                        <div className="flex items-start gap-3 px-4 py-3.5">
-                          <span
-                            className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${eventAccent(ev.type)}`}
-                            aria-hidden
-                          >
-                            <EventIcon type={ev.type} />
-                          </span>
-
+                      <li key={ev.id}>
+                        <div
+                          className={`group relative flex items-stretch gap-3 rounded-2xl border bg-background transition-all ${
+                            selected
+                              ? "border-primary/30 shadow-sm ring-1 ring-primary/15"
+                              : "border-border/70 hover:border-border hover:bg-muted/30"
+                          }`}
+                        >
                           <button
                             type="button"
-                            className="min-w-0 flex-1 text-left"
-                            aria-expanded={expanded}
-                            onClick={() =>
-                              setExpandedId((current) => (current === ev.id ? null : ev.id))
-                            }
+                            className="flex min-w-0 flex-1 items-start gap-3 px-4 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
+                            onClick={() => setSelectedId(ev.id)}
+                            aria-pressed={selected}
                           >
-                            <div className="flex items-start gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium leading-snug text-gray-900 dark:text-white">
+                            <span
+                              className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${eventAccent(ev.type)}`}
+                              aria-hidden
+                            >
+                              <EventIcon type={ev.type} />
+                            </span>
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-medium text-foreground">
                                   {eventLabel(ev.type)}
                                 </p>
-                                {desc ? (
-                                  <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                    {desc}
-                                  </p>
-                                ) : null}
-                                {deliveryStatus ? (
-                                  <p
-                                    className={`mt-1 text-xs font-semibold ${statusTone(ev.delivery!.status)}`}
+                                {delivery ? (
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(delivery.status)}`}
                                   >
-                                    {deliveryStatus}
-                                  </p>
+                                    {statusLabel(delivery.status, t)}
+                                  </span>
                                 ) : null}
                               </div>
-                              <ChevronDown
-                                className={`mt-0.5 h-4 w-4 shrink-0 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-                                aria-hidden
-                              />
+                              {desc ? (
+                                <p className="line-clamp-1 text-xs text-muted-foreground">{desc}</p>
+                              ) : null}
+                              <p className="text-xs text-muted-foreground" title={absolute}>
+                                {relative}
+                              </p>
                             </div>
+                            <ChevronRight
+                              className="mt-2 h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+                              aria-hidden
+                            />
                           </button>
-
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            <p
-                              className="text-xs text-gray-400 dark:text-gray-500"
-                              title={absolute}
-                            >
-                              {relative}
-                            </p>
+                          <div className="flex items-start border-l border-border/50 py-3 pr-2">
                             <button
                               type="button"
-                              onClick={() => void handleDelete(ev.id)}
+                              onClick={(e) => void handleDelete(ev.id, e)}
                               disabled={deletingId === ev.id || Boolean(revokingNoteId)}
-                              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 dark:hover:bg-gray-900 dark:hover:text-red-400"
+                              className="rounded-xl p-2 text-muted-foreground/50 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 group-hover:opacity-100 disabled:opacity-40 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                               aria-label={tx("authActivityDeleteAria", "Delete activity item")}
                             >
                               <Trash2 className="h-4 w-4" aria-hidden />
                             </button>
                           </div>
                         </div>
-
-                        {expanded ? (
-                          <div className="border-t border-gray-100 bg-gray-50/70 px-4 py-3 pl-[3.75rem] dark:border-gray-800/80 dark:bg-gray-900/30">
-                            <DeliveryPanel
-                              event={ev}
-                              noteLabel={noteLabel}
-                              canTrackDelivery={capabilities.sentNotesDashboard}
-                              canRevokeUnopened={capabilities.revokeUnopened}
-                              revoking={revokingNoteId === ev.delivery?.noteId}
-                              onRevoke={setRevokeTarget}
-                              t={t}
-                            />
-                          </div>
-                        ) : null}
                       </li>
                     );
                   })}
                 </ul>
-              </div>
+              </section>
             ))}
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+        <p className="text-center text-xs text-muted-foreground">
           {tx(
             "authActivityPrivacyFootnote",
             "This history is for your convenience. Delete items anytime — PrivateNote does not keep a permanent audit log here.",
           )}
         </p>
       </div>
+
+      <Sheet
+        open={selectedEvent !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-md"
+        >
+          {selectedEvent ? (
+            <>
+              <SheetHeader className="space-y-1 border-b border-border/70 px-6 pb-5 pt-6 text-left">
+                <SheetTitle className="pr-8 text-lg tracking-tight">
+                  {eventLabel(selectedEvent.type)}
+                </SheetTitle>
+                <SheetDescription className="text-sm leading-relaxed">
+                  {eventDescription(selectedEvent.type) ||
+                    (t.authActivityInspectHint ?? "Delivery and access details for this note.")}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 px-6 py-6">
+                <DeliveryDetail
+                  event={selectedEvent}
+                  noteLabel={
+                    selectedEvent.noteId ? noteLabels[selectedEvent.noteId] ?? null : null
+                  }
+                  canTrackDelivery={capabilities.sentNotesDashboard}
+                  canRevokeUnopened={capabilities.revokeUnopened}
+                  revoking={revokingNoteId === selectedEvent.delivery?.noteId}
+                  onRevoke={setRevokeTarget}
+                  t={t}
+                />
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
