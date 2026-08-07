@@ -150,6 +150,7 @@ describe("sent note notification service", () => {
     assert.equal(map.size, 1);
     assert.equal(map.get(noteId)?.status, "viewed");
     assert.match(db.alls[0]?.sql ?? "", /note_id IN \(\?\)/);
+    assert.doesNotMatch(db.alls[0]?.sql ?? "", /notification_deleted_at/);
     assert.deepEqual(db.alls[0]?.bindings, ["user-1", noteId]);
   });
 

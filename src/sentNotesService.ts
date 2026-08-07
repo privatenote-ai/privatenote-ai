@@ -356,7 +356,7 @@ export async function listSentNoteNotificationsForUser(
   return rows.map(toSentNoteNotificationItem);
 }
 
-/** Map note_id → delivery item for Activity expand (skips soft-deleted inbox rows). */
+/** Map note_id → delivery item for Activity inspect (includes soft-deleted inbox rows). */
 export async function getSentNoteNotificationsByNoteIds(
   env: Env,
   userId: string,
@@ -368,6 +368,8 @@ export async function getSentNoteNotificationsByNoteIds(
   if (unique.length === 0) return out;
 
   // D1 has no array bind; chunk IN clauses.
+  // Include soft-deleted inbox rows: Activity needs operational delivery/proof,
+  // even after the user dismissed items from the old notifications list.
   const chunkSize = 40;
   for (let i = 0; i < unique.length; i += chunkSize) {
     const chunk = unique.slice(i, i + chunkSize);
@@ -375,7 +377,6 @@ export async function getSentNoteNotificationsByNoteIds(
     const res = await env.AUTH_DB.prepare(
       `SELECT * FROM sent_notes
         WHERE user_id = ?
-          AND notification_deleted_at IS NULL
           AND note_id IN (${placeholders})`,
     )
       .bind(userId, ...chunk)

@@ -24,12 +24,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -214,10 +214,15 @@ function DeliveryDetail({
   const delivery = event.delivery;
   if (!delivery) {
     return (
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {t.authActivityNoDeliveryTracking ??
-          "No delivery tracking for this note. Tracking starts when you send with recipient alerts enabled."}
-      </p>
+      <div className="space-y-2 rounded-2xl bg-muted/40 px-4 py-4">
+        <p className="text-sm font-medium text-foreground">
+          {t.authActivityNoDeliveryTitle ?? "No delivery tracking"}
+        </p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {t.authActivityNoDeliveryTracking ??
+            "No delivery tracking for this note. Tracking and proof of access start when you send with recipient alerts enabled on a Starter or Business plan."}
+        </p>
+      </div>
     );
   }
 
@@ -227,14 +232,14 @@ function DeliveryDetail({
   const canRevoke = canRevokeUnopened && delivery.status === "created";
   const timeline = buildProofTimeline(delivery);
   const accessed = Boolean(delivery.openedAt);
-  const showAccessDetails = Boolean(delivery.proofEnabled);
+  const proofEnabled = Boolean(delivery.proofEnabled);
   const unavailable = t.proofUnavailable ?? "Not available";
   const country = delivery.openCountry?.trim() || unavailable;
   const device = formatDeviceClass(delivery.openDeviceClass, t);
   const browser = delivery.openBrowser?.trim() || unavailable;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <div className="space-y-3">
         {noteLabel?.trim() ? (
           <p className="text-base font-medium text-foreground">{noteLabel.trim()}</p>
@@ -252,41 +257,54 @@ function DeliveryDetail({
 
       <section className="space-y-4">
         <h3 className="text-sm font-medium text-foreground">
-          {t.proofTimelineHeading ?? "Timeline"}
+          {t.proofReportTitle ?? "Proof of access"}
         </h3>
-        {timeline.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t.proofNoEventsYet ?? "No delivery events recorded yet."}
-          </p>
-        ) : (
-          <ol className="relative space-y-0 border-l border-border/80 pl-5">
-            {timeline.map((entry, index) => (
-              <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
-                <span
-                  className={`absolute -left-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${
-                    index === timeline.length - 1 ? "bg-primary" : "bg-muted-foreground/40"
-                  }`}
-                  aria-hidden
-                />
-                <p className="text-sm font-medium text-foreground">{timelineLabel(entry, t)}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {formatProofTimestamp(entry.at)}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {t.proofReportSubtitle ??
+            "Coarse receipt that the link was accessed — not that the message was read or understood. Message content is never included."}
+        </p>
 
-      {showAccessDetails ? (
-        <section className="space-y-4">
-          <h3 className="text-sm font-medium text-foreground">
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {t.proofTimelineHeading ?? "Timeline"}
+          </h4>
+          {timeline.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t.proofNoEventsYet ?? "No delivery events recorded yet."}
+            </p>
+          ) : (
+            <ol className="relative space-y-0 border-l border-border/80 pl-5">
+              {timeline.map((entry, index) => (
+                <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
+                  <span
+                    className={`absolute -left-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${
+                      index === timeline.length - 1 ? "bg-primary" : "bg-muted-foreground/40"
+                    }`}
+                    aria-hidden
+                  />
+                  <p className="text-sm font-medium text-foreground">{timelineLabel(entry, t)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatProofTimestamp(entry.at)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {t.proofAccessHeading ?? "Access details"}
-          </h3>
+          </h4>
           {!accessed ? (
             <p className="text-sm text-muted-foreground">
               {t.proofNotOpenedYet ??
                 "No open receipt yet. Details appear after the link is accessed."}
+            </p>
+          ) : !proofEnabled ? (
+            <p className="text-sm text-muted-foreground">
+              {t.authActivityProofNotRecorded ??
+                "This note was opened, but approximate location and device were not recorded for it."}
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -315,8 +333,8 @@ function DeliveryDetail({
             {t.proofDisclaimer ??
               "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
           </p>
-        </section>
-      ) : null}
+        </div>
+      </section>
 
       {canRevoke ? (
         <div className="space-y-3 border-t border-border/70 pt-6">
@@ -707,28 +725,25 @@ export default function AccountActivity() {
         </p>
       </div>
 
-      <Sheet
+      <Dialog
         open={selectedEvent !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedId(null);
         }}
       >
-        <SheetContent
-          side="right"
-          className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-md"
-        >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           {selectedEvent ? (
             <>
-              <SheetHeader className="space-y-1 border-b border-border/70 px-6 pb-5 pt-6 text-left">
-                <SheetTitle className="pr-8 text-lg tracking-tight">
+              <DialogHeader className="text-left">
+                <DialogTitle className="pr-6 text-lg tracking-tight">
                   {eventLabel(selectedEvent.type)}
-                </SheetTitle>
-                <SheetDescription className="text-sm leading-relaxed">
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-relaxed">
                   {eventDescription(selectedEvent.type) ||
                     (t.authActivityInspectHint ?? "Delivery and access details for this note.")}
-                </SheetDescription>
-              </SheetHeader>
-              <div className="flex-1 px-6 py-6">
+                </DialogDescription>
+              </DialogHeader>
+              <div className="pt-2">
                 <DeliveryDetail
                   event={selectedEvent}
                   noteLabel={
@@ -743,8 +758,8 @@ export default function AccountActivity() {
               </div>
             </>
           ) : null}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
         <AlertDialogContent>
