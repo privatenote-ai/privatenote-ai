@@ -181,7 +181,7 @@ function buildNavbarLogoEmailHtml(webOrigin: string): string {
     "  <tr>",
     '    <td valign="middle" style="padding:0;">',
     `      <a href="${origin}" style="text-decoration:none;">`,
-    `        <img src="${markUrl}" alt="" width="30" height="30" border="0" style="display:block;width:30px;height:30px;border:0;outline:none;" />`,
+    `        <img src="${markUrl}" alt="PrivateNote" width="30" height="30" border="0" style="display:block;width:30px;height:30px;border:0;outline:none;" />`,
     "      </a>",
     "    </td>",
     `    <td valign="middle" style="padding:0 0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">`,
@@ -283,18 +283,22 @@ type BrandedCodeEmailCopy = {
   preheader: string;
   title: string;
   lead: string;
+  codeLabel: string;
+  instructions: string;
   codeExpiry: string;
   ignore: string;
   footer: string;
 };
 
 const RECIPIENT_VERIFICATION_COPY: BrandedCodeEmailCopy = {
-  subject: "Your PrivateNote verification code",
-  preheader: "Enter this code to open the private note addressed to you.",
-  title: "Your PrivateNote verification code",
-  lead: "Someone is trying to open a private note addressed to you. Enter this code on the note page to continue:",
-  codeExpiry: "This code expires when the note link expires, or if a new code is requested.",
-  ignore: "If you were not expecting this, you can safely ignore this email.",
+  subject: "PrivateNote verification code",
+  preheader: "Your PrivateNote code to unlock a private note addressed to you.",
+  title: "Unlock your private note",
+  lead: "Someone shared an end-to-end encrypted PrivateNote with you. Use the code below on the note page to continue.",
+  codeLabel: "Verification code",
+  instructions: "Return to the note link in your browser and enter this code when asked.",
+  codeExpiry: "This code stops working if a new one is requested, or when the note link expires.",
+  ignore: "If you were not expecting this, you can safely ignore this email. The note stays locked without the code.",
   footer: "End-to-end encrypted private notes — only you and your recipients can read them.",
 };
 
@@ -306,6 +310,8 @@ function buildBrandedCodeEmailHtml(
   const safeTitle = escapeHtml(copy.title);
   const safeLead = escapeHtml(copy.lead);
   const safeCode = escapeHtml(code);
+  const safeCodeLabel = escapeHtml(copy.codeLabel);
+  const safeInstructions = escapeHtml(copy.instructions);
   const safeCodeExpiry = escapeHtml(copy.codeExpiry);
   const safeIgnore = escapeHtml(copy.ignore);
   const safeFooter = escapeHtml(copy.footer);
@@ -314,6 +320,7 @@ function buildBrandedCodeEmailHtml(
   return [
     "<!doctype html>",
     "<html>",
+    '<head><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"></head>',
     '<body style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;text-size-adjust:100%;">',
     '<div style="margin:0;padding:0;min-width:100%;background:#f3f4f6;">',
     `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(copy.preheader)}</div>`,
@@ -325,10 +332,18 @@ function buildBrandedCodeEmailHtml(
     "          <tr>",
     `            <td style="padding:42px 40px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#050816;text-align:left;">`,
     `              ${logoHtml}`,
-    `              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
-    `              <p style="margin:0 0 28px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeLead}</p>`,
-    `              <p style="margin:0 0 28px;font-size:34px;line-height:1.15;letter-spacing:0.08em;font-weight:500;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
-    `              <p style="margin:0 0 30px;font-size:15px;line-height:1.45;font-weight:400;color:#111827;">${safeCodeExpiry}</p>`,
+    `              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:800;color:#050816;">${safeTitle}</h1>`,
+    `              <p style="margin:0 0 24px;font-size:15px;line-height:1.5;font-weight:400;color:#374151;">${safeLead}</p>`,
+    '              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 24px;">',
+    "                <tr>",
+    '                  <td style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;padding:20px 22px;text-align:center;">',
+    `                    <p style="margin:0 0 8px;font-size:12px;line-height:1.3;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0000ff;">${safeCodeLabel}</p>`,
+    `                    <p style="margin:0;font-size:36px;line-height:1.15;letter-spacing:0.18em;font-weight:700;color:#050816;font-variant-numeric:tabular-nums;">${safeCode}</p>`,
+    "                  </td>",
+    "                </tr>",
+    "              </table>",
+    `              <p style="margin:0 0 12px;font-size:15px;line-height:1.5;font-weight:400;color:#111827;">${safeInstructions}</p>`,
+    `              <p style="margin:0 0 28px;font-size:14px;line-height:1.45;font-weight:400;color:#6b7280;">${safeCodeExpiry}</p>`,
     `              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.45;">${safeIgnore}</p>`,
     "            </td>",
     "          </tr>",
@@ -337,6 +352,7 @@ function buildBrandedCodeEmailHtml(
     "    </tr>",
     "    <tr>",
     `      <td align="center" bgcolor="#f3f4f6" style="background:#f3f4f6;padding:28px 16px 34px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#8a8f98;text-align:center;">`,
+    '        <p style="margin:0 0 4px;font-size:13px;line-height:1.35;font-weight:700;color:#0000ff;">PrivateNote.ai</p>',
     '        <p style="margin:0 0 4px;font-size:13px;line-height:1.35;font-weight:600;color:#8a8f98;">Copyright &copy; PrivateNote.ai</p>',
     `        <p style="margin:0 0 16px;font-size:12px;line-height:1.35;color:#8a8f98;">${safeFooter}</p>`,
     '        <p style="margin:0;font-size:13px;line-height:1.35;color:#8a8f98;">',
@@ -355,11 +371,16 @@ function buildBrandedCodeEmailHtml(
 
 function buildBrandedCodeEmailText(copy: BrandedCodeEmailCopy, code: string): string {
   return [
+    "PrivateNote.ai",
+    "",
     copy.title,
     "",
     copy.lead,
     "",
+    `${copy.codeLabel}:`,
     code,
+    "",
+    copy.instructions,
     "",
     copy.codeExpiry,
     "",
