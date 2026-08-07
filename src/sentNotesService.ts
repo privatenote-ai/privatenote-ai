@@ -74,6 +74,8 @@ export type CreateSentNoteInput = {
 type RecipientGatePayload = {
   /** Recipient address that receives the one-time code on reveal. */
   recipientEmail: string;
+  /** Note expiry, so rewrites of this entry can keep the gate alive as long as the note. */
+  expiresAt?: string | null;
   codeHash?: string;
   salt?: string;
   codeSentAt?: number;
@@ -89,6 +91,18 @@ function gateKey(noteId: string): string {
 
 function okKey(noteId: string, token: string): string {
   return `${RECIPIENT_OK_PREFIX}${noteId}:${token}`;
+}
+
+/**
+ * TTL for the recipient gate entry. The gate must outlive the note: if it expires
+ * first, the note stays readable while the verification requirement silently drops.
+ */
+function gateTtlSeconds(expiresAt: string | null | undefined): number {
+  const maxTtl = 30 * 24 * 3600;
+  if (!expiresAt) return 7 * 24 * 3600;
+  const remaining = Math.floor((Date.parse(expiresAt) - Date.now()) / 1000);
+  if (!Number.isFinite(remaining)) return 7 * 24 * 3600;
+  return Math.min(Math.max(3600, remaining), maxTtl);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -255,12 +269,12 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     .run();
 
   if (hasRecipientGate && recipientEmail) {
-    const gate: RecipientGatePayload = { recipientEmail };
-    const ttlSeconds = input.expiresAt
-      ? Math.max(3600, Math.floor((Date.parse(input.expiresAt) - Date.now()) / 1000))
-      : 7 * 24 * 3600;
+    const gate: RecipientGatePayload = {
+      recipientEmail,
+      expiresAt: input.expiresAt ?? null,
+    };
     await kv(env).put(gateKey(input.noteId), JSON.stringify(gate), {
-      expirationTtl: Math.min(ttlSeconds, 30 * 24 * 3600),
+      expirationTtl: gateTtlSeconds(input.expiresAt),
     });
   }
 
@@ -492,13 +506,42 @@ export async function revokeSentNote(
   )
     .bind(noteId, userId)
     .run();
-  await kv(env).delete(gateKey(noteId));
+  // The gate is deliberately left in place here. It is cleared by the caller only
+  // after the ciphertext is deleted, so a failed purge cannot leave a readable note
+  // with its verification gate already gone.
   return { ok: true };
 }
 
+async function lookupSentNoteExpiry(env: Env, noteId: string): Promise<string | null> {
+  if (!env.AUTH_DB) return null;
+  const row = await env.AUTH_DB.prepare(
+    `SELECT expires_at FROM sent_notes WHERE note_id = ? LIMIT 1`,
+  )
+    .bind(noteId)
+    .first<{ expires_at: string | null }>();
+  return row?.expires_at ?? null;
+}
+
+/**
+ * D1 is authoritative. The KV gate only carries the code material, and it can expire
+ * or be cleared during revoke — treating its absence as "no verification needed" would
+ * turn a storage lifetime detail into a silent bypass of the recipient gate.
+ */
 export async function noteRequiresRecipientVerification(env: Env, noteId: string): Promise<boolean> {
-  const gate = await kv(env).get(gateKey(noteId));
-  return Boolean(gate);
+  if (env.AUTH_DB) {
+    const row = await env.AUTH_DB.prepare(
+      `SELECT require_recipient_verification FROM sent_notes WHERE note_id = ? LIMIT 1`,
+    )
+      .bind(noteId)
+      .first<{ require_recipient_verification: number }>();
+    if (row) return row.require_recipient_verification === 1;
+  }
+  return Boolean(await kv(env).get(gateKey(noteId)));
+}
+
+/** Clear the gate only once the ciphertext is gone; see the revoke handler. */
+export async function clearRecipientGate(env: Env, noteId: string): Promise<void> {
+  await kv(env).delete(gateKey(noteId));
 }
 
 export async function getRecipientGateStatus(
@@ -578,18 +621,21 @@ export async function sendRecipientVerificationCode(
     };
   }
 
+  // Gates written before expiresAt was stored fall back to the sent_notes row.
+  const expiresAt = stored.expiresAt ?? (await lookupSentNoteExpiry(env, noteId));
+
   const verificationCode = randomSixDigitCode();
   const salt = crypto.randomUUID();
   const nextGate: RecipientGatePayload = {
     recipientEmail: stored.recipientEmail,
+    expiresAt,
     salt,
     codeHash: await sha256Hex(`${salt}:${verificationCode}`),
     codeSentAt: now,
   };
 
-  // Preserve remaining TTL best-effort by rewriting with a fresh week if unknown.
   await kv(env).put(gateKey(noteId), JSON.stringify(nextGate), {
-    expirationTtl: 7 * 24 * 3600,
+    expirationTtl: gateTtlSeconds(expiresAt),
   });
 
   const webOrigin =

@@ -85,6 +85,7 @@ import {
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
   acknowledgeSentNoteReceipt,
+  clearRecipientGate,
   revokeSentNote,
   sendRecipientVerificationCode,
   verifyRecipientAccess,
@@ -9819,6 +9820,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
       if (doResponse.ok || doResponse.status === 404) {
         await cleanupNoteFileChunks(env, id, `note revoked (${doResponse.status})`);
+        await clearRecipientGate(env, id);
       } else {
         console.warn(`[REVOKE] DO delete returned ${doResponse.status} for note ${id}`);
       }

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  clearRecipientGate,
   clearSentNoteNotifications,
   deleteSentNoteNotification,
   listSentNoteNotificationsForUser,
+  noteRequiresRecipientVerification,
   recordSentNoteAttachmentDownloaded,
+  revokeSentNote,
+  sendRecipientVerificationCode,
   type SentNoteRow,
 } from "./sentNotesService.ts";
 import type { Env } from "./types.ts";
@@ -51,9 +55,34 @@ class FakeD1Database {
   }
 }
 
-function envWithDb(db: FakeD1Database): Env {
-  return { AUTH_DB: db } as unknown as Env;
+type StoredKvValue = { value: string; expirationTtl?: number };
+
+class FakeKvNamespace {
+  public store = new Map<string, StoredKvValue>();
+  public deletes: string[] = [];
+
+  async get(key: string, options?: { type?: "json" }): Promise<unknown> {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    return options?.type === "json" ? JSON.parse(entry.value) : entry.value;
+  }
+
+  async put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> {
+    this.store.set(key, { value, expirationTtl: options?.expirationTtl });
+  }
+
+  async delete(key: string): Promise<void> {
+    this.deletes.push(key);
+    this.store.delete(key);
+  }
 }
+
+function envWithDb(db: FakeD1Database, kv?: FakeKvNamespace): Env {
+  return { AUTH_DB: db, RATE_LIMIT_KV: kv ?? new FakeKvNamespace() } as unknown as Env;
+}
+
+const GATE_NOTE_ID = "550e8400-e29b-41d4-a716-446655440000";
+const GATE_KEY = `note_rcv_gate:${GATE_NOTE_ID}`;
 
 function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
   return {
@@ -279,5 +308,104 @@ describe("sent note notification service", () => {
       assert.equal(second.acknowledgedAt, "2026-06-14T10:01:00.000Z");
     }
     assert.equal(emailCount, 1);
+  });
+});
+
+describe("recipient verification gate", () => {
+  it("still requires verification when the KV gate is gone but D1 says it is required", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [{ require_recipient_verification: 1 }];
+    const kv = new FakeKvNamespace();
+
+    const required = await noteRequiresRecipientVerification(envWithDb(db, kv), GATE_NOTE_ID);
+
+    assert.equal(required, true);
+    assert.equal(kv.store.has(GATE_KEY), false);
+  });
+
+  it("does not require verification when D1 says it was never enabled", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [{ require_recipient_verification: 0 }];
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    const required = await noteRequiresRecipientVerification(envWithDb(db, kv), GATE_NOTE_ID);
+
+    assert.equal(required, false);
+  });
+
+  it("falls back to gate presence for notes with no sent_notes row", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    const required = await noteRequiresRecipientVerification(envWithDb(db, kv), GATE_NOTE_ID);
+
+    assert.equal(required, true);
+  });
+
+  it("keeps the gate alive for the whole note lifetime when sending a code", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    const twentyDays = 20 * 24 * 3600;
+    const expiresAt = new Date(Date.now() + twentyDays * 1000).toISOString();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com", expiresAt }));
+
+    const result = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {},
+    );
+
+    assert.equal(result.ok, true);
+    const ttl = kv.store.get(GATE_KEY)?.expirationTtl ?? 0;
+    // A flat 7-day rewrite would expire the gate while the note is still readable.
+    assert.ok(
+      ttl > 7 * 24 * 3600,
+      `expected gate TTL to outlive a 7-day window, got ${ttl}`,
+    );
+    assert.ok(ttl <= twentyDays, `expected gate TTL within note lifetime, got ${ttl}`);
+  });
+
+  it("recovers the note lifetime from D1 for gates written before expiresAt was stored", async () => {
+    const db = new FakeD1Database();
+    const twentyDays = 20 * 24 * 3600;
+    db.firstRows = [{ expires_at: new Date(Date.now() + twentyDays * 1000).toISOString() }];
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    const result = await sendRecipientVerificationCode(
+      envWithDb(db, kv),
+      GATE_NOTE_ID,
+      async () => {},
+    );
+
+    assert.equal(result.ok, true);
+    const ttl = kv.store.get(GATE_KEY)?.expirationTtl ?? 0;
+    assert.ok(ttl > 7 * 24 * 3600, `expected gate TTL from D1 expiry, got ${ttl}`);
+  });
+
+  it("leaves the gate in place on revoke so a failed purge cannot drop verification", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [sentNote({ require_recipient_verification: 1 })];
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    const revoked = await revokeSentNote(envWithDb(db, kv), "user-1", GATE_NOTE_ID);
+
+    assert.equal(revoked.ok, true);
+    assert.equal(kv.deletes.length, 0);
+    assert.equal(kv.store.has(GATE_KEY), true);
+  });
+
+  it("clears the gate only when the caller confirms the ciphertext is gone", async () => {
+    const db = new FakeD1Database();
+    const kv = new FakeKvNamespace();
+    await kv.put(GATE_KEY, JSON.stringify({ recipientEmail: "alice@example.com" }));
+
+    await clearRecipientGate(envWithDb(db, kv), GATE_NOTE_ID);
+
+    assert.deepEqual(kv.deletes, [GATE_KEY]);
+    assert.equal(kv.store.has(GATE_KEY), false);
   });
 });
