@@ -7,7 +7,6 @@ import {
   Clock,
   Eye,
   FilePlus2,
-  FileSearch,
   Globe2,
   MonitorSmartphone,
   Sparkles,
@@ -24,13 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +40,6 @@ import {
   formatDeviceClass,
   formatNotificationTimestamp,
   formatProofTimestamp,
-  hasProofReport,
   statusLabel,
   statusTone,
   type NotificationItem,
@@ -158,132 +149,6 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
   }
 }
 
-function ProofReportDialog({
-  item,
-  noteLabel,
-  open,
-  onOpenChange,
-  t,
-}: {
-  item: NotificationItem | null;
-  noteLabel: string | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  t: Record<string, string>;
-}) {
-  if (!item) return null;
-
-  const headline =
-    noteLabel?.trim() ||
-    item.label?.trim() ||
-    item.recipientEmail?.trim() ||
-    item.displayNoteId;
-  const timeline = buildProofTimeline(item);
-  const country = item.openCountry?.trim() || (t.proofUnavailable ?? "Not available");
-  const device = formatDeviceClass(item.openDeviceClass, t);
-  const browser = item.openBrowser?.trim() || (t.proofUnavailable ?? "Not available");
-  const accessed = Boolean(item.openedAt);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t.proofReportTitle ?? "Proof of access"}</DialogTitle>
-          <DialogDescription>
-            {t.proofReportSubtitle ??
-              "Coarse receipt that the link was accessed — not that the message was read or understood. Message content is never included."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5 text-sm">
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/40">
-            <p className="font-semibold text-gray-900 dark:text-white">{headline}</p>
-            <p className="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
-              {item.displayNoteId}
-            </p>
-            <p className={`mt-2 text-sm font-semibold ${statusTone(item.status)}`}>
-              {statusLabel(item.status, t)}
-            </p>
-          </div>
-
-          <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {t.proofTimelineHeading ?? "Timeline"}
-            </h3>
-            {timeline.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400">
-                {t.proofNoEventsYet ?? "No delivery events recorded yet."}
-              </p>
-            ) : (
-              <ol className="space-y-2">
-                {timeline.map((entry) => (
-                  <li
-                    key={`${entry.key}-${entry.at}`}
-                    className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 px-3 py-2 dark:border-gray-800"
-                  >
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {timelineLabel(entry, t)}
-                    </span>
-                    <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-                      {formatProofTimestamp(entry.at)}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-
-          <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              {t.proofAccessHeading ?? "Access details"}
-            </h3>
-            {!accessed ? (
-              <p className="text-gray-500 dark:text-gray-400">
-                {t.proofNotOpenedYet ??
-                  "No open receipt yet. Details appear after the link is accessed."}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                <li className="flex items-center gap-3 rounded-md border border-gray-200/80 px-3 py-2 dark:border-gray-800">
-                  <Globe2 className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t.proofCountryLabel ?? "Approximate country"}
-                    </p>
-                    <p className="font-medium text-gray-900 dark:text-white">{country}</p>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 rounded-md border border-gray-200/80 px-3 py-2 dark:border-gray-800">
-                  <MonitorSmartphone
-                    className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
-                    aria-hidden
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t.proofDeviceLabel ?? "Device"}
-                    </p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {device}
-                      {browser !== (t.proofUnavailable ?? "Not available")
-                        ? ` · ${browser}`
-                        : ""}
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            )}
-          </section>
-
-          <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            {t.proofDisclaimer ??
-              "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
-          </p>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function DeliveryPanel({
   event,
   noteLabel,
@@ -291,7 +156,6 @@ function DeliveryPanel({
   canRevokeUnopened,
   revoking,
   onRevoke,
-  onViewProof,
   t,
 }: {
   event: ActivityEvent;
@@ -300,7 +164,6 @@ function DeliveryPanel({
   canRevokeUnopened: boolean;
   revoking: boolean;
   onRevoke: (item: NotificationItem) => void;
-  onViewProof: (item: NotificationItem) => void;
   t: Record<string, string>;
 }) {
   if (event.type === "note_opened") {
@@ -340,19 +203,20 @@ function DeliveryPanel({
     delivery.recipientEmail?.trim() ||
     (t.notificationRecipientUnknown ?? "Recipient not recorded");
   const canRevoke = canRevokeUnopened && delivery.status === "created";
-  const canViewProof = Boolean(delivery.proofEnabled) && hasProofReport(delivery);
-  const proofSummaryParts: string[] = [];
-  if (delivery.openCountry?.trim()) proofSummaryParts.push(delivery.openCountry.trim());
-  if (delivery.openDeviceClass?.trim()) {
-    proofSummaryParts.push(formatDeviceClass(delivery.openDeviceClass, t));
-  }
+  const timeline = buildProofTimeline(delivery);
+  const accessed = Boolean(delivery.openedAt);
+  const showAccessDetails = Boolean(delivery.proofEnabled);
+  const unavailable = t.proofUnavailable ?? "Not available";
+  const country = delivery.openCountry?.trim() || unavailable;
+  const device = formatDeviceClass(delivery.openDeviceClass, t);
+  const browser = delivery.openBrowser?.trim() || unavailable;
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="min-w-0">
+    <div className="space-y-4 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 space-y-0.5">
           {noteLabel?.trim() ? (
-            <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
+            <p className="truncate font-medium text-gray-900 dark:text-white">
               {noteLabel.trim()}
             </p>
           ) : null}
@@ -360,36 +224,93 @@ function DeliveryPanel({
           <p className="font-mono text-xs text-gray-400 dark:text-gray-500">
             {delivery.displayNoteId}
           </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {formatNotificationTimestamp(delivery.eventAt)}
+          </p>
         </div>
-        <p className={`text-sm font-semibold ${statusTone(delivery.status)}`}>
+        <p className={`shrink-0 text-sm font-semibold ${statusTone(delivery.status)}`}>
           {statusLabel(delivery.status, t)}
         </p>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        {formatNotificationTimestamp(delivery.eventAt)}
-      </p>
-      {proofSummaryParts.length > 0 ? (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {(t.proofCardSummary ?? "Access: {details}").replace(
-            "{details}",
-            proofSummaryParts.join(" · "),
+
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          {t.proofTimelineHeading ?? "Timeline"}
+        </h3>
+        {timeline.length === 0 ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t.proofNoEventsYet ?? "No delivery events recorded yet."}
+          </p>
+        ) : (
+          <ol className="space-y-1.5">
+            {timeline.map((entry) => (
+              <li
+                key={`${entry.key}-${entry.at}`}
+                className="flex items-start justify-between gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40"
+              >
+                <span className="font-medium text-gray-800 dark:text-gray-200">
+                  {timelineLabel(entry, t)}
+                </span>
+                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                  {formatProofTimestamp(entry.at)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      {showAccessDetails ? (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            {t.proofAccessHeading ?? "Access details"}
+          </h3>
+          {!accessed ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t.proofNotOpenedYet ??
+                "No open receipt yet. Details appear after the link is accessed."}
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              <li className="flex items-center gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40">
+                <Globe2 className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t.proofCountryLabel ?? "Approximate country"}
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">{country}</p>
+                </div>
+              </li>
+              <li className="flex items-center gap-3 rounded-md border border-gray-200/80 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-950/40">
+                <MonitorSmartphone
+                  className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t.proofDeviceLabel ?? "Device"}
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {device}
+                    {browser !== unavailable ? ` · ${browser}` : ""}
+                  </p>
+                </div>
+              </li>
+            </ul>
           )}
-        </p>
+          <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            {t.proofDisclaimer ??
+              "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
+          </p>
+        </section>
       ) : null}
-      <div className="flex flex-wrap gap-2 pt-1">
-        {canViewProof ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={revoking}
-            onClick={() => onViewProof(delivery)}
-          >
-            <FileSearch className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            {t.proofViewLink ?? "View proof of access"}
-          </Button>
-        ) : null}
-        {canRevoke ? (
+
+      {canRevoke ? (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t.notificationRevokeHint ??
+              "Still unopened — you can revoke the link so it can no longer be opened."}
+          </p>
           <Button
             type="button"
             size="sm"
@@ -403,13 +324,7 @@ function DeliveryPanel({
               ? (t.notificationRevoking ?? "Revoking...")
               : (t.notificationRevokeConfirm ?? "Revoke link")}
           </Button>
-        ) : null}
-      </div>
-      {canRevoke ? (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t.notificationRevokeHint ??
-            "Still unopened — you can revoke the link so it can no longer be opened."}
-        </p>
+        </div>
       ) : null}
     </div>
   );
@@ -437,7 +352,6 @@ export default function AccountActivity() {
   const [clearing, setClearing] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<NotificationItem | null>(null);
   const [revokingNoteId, setRevokingNoteId] = useState<string | null>(null);
-  const [proofTarget, setProofTarget] = useState<NotificationItem | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -777,7 +691,6 @@ export default function AccountActivity() {
                               canRevokeUnopened={capabilities.revokeUnopened}
                               revoking={revokingNoteId === ev.delivery?.noteId}
                               onRevoke={setRevokeTarget}
-                              onViewProof={setProofTarget}
                               t={t}
                             />
                           </div>
@@ -829,16 +742,6 @@ export default function AccountActivity() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ProofReportDialog
-        item={proofTarget}
-        noteLabel={proofTarget ? noteLabels[proofTarget.noteId] ?? null : null}
-        open={proofTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setProofTarget(null);
-        }}
-        t={t}
-      />
 
       <AlertDialog
         open={revokeTarget !== null}
