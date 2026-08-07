@@ -4,6 +4,7 @@ import {
   clearRecipientGate,
   clearSentNoteNotifications,
   deleteSentNoteNotification,
+  getSentNoteNotificationsByNoteIds,
   listSentNoteNotificationsForUser,
   noteRequiresRecipientVerification,
   recordSentNoteAttachmentDownloaded,
@@ -137,6 +138,19 @@ describe("sent note notification service", () => {
     assert.equal(notifications[0]?.status, "viewed");
     assert.match(db.alls[0]?.sql ?? "", /notification_deleted_at IS NULL/);
     assert.deepEqual(db.alls[0]?.bindings, ["user-1", 25]);
+  });
+
+  it("maps delivery items by note id for activity expand", async () => {
+    const db = new FakeD1Database();
+    const noteId = "550e8400-e29b-41d4-a716-446655440000";
+    db.rows = [sentNote({ note_id: noteId, status: "opened", opened_at: "2026-06-14T10:00:00.000Z" })];
+
+    const map = await getSentNoteNotificationsByNoteIds(envWithDb(db), "user-1", [noteId, noteId, ""]);
+
+    assert.equal(map.size, 1);
+    assert.equal(map.get(noteId)?.status, "viewed");
+    assert.match(db.alls[0]?.sql ?? "", /note_id IN \(\?\)/);
+    assert.deepEqual(db.alls[0]?.bindings, ["user-1", noteId]);
   });
 
   it("soft-deletes one notification without deleting the sent_notes row", async () => {

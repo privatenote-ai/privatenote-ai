@@ -28,10 +28,12 @@ import {
   clearSentNoteNotifications,
   deleteSentNoteNotification,
   deleteUserNoteDefaults,
+  getSentNoteNotificationsByNoteIds,
   getUserAccountType,
   getUserNoteDefaults,
   listSentNoteNotificationsForUser,
   upsertUserNoteDefaults,
+  type SentNoteNotificationItem,
 } from "../sentNotesService";
 import { hostedAiMonthlyLimit, planFeaturesFor } from "@shared/planCatalog";
 import { readHostedAiQuotaSnapshot } from "../planHostedAi";
@@ -2838,6 +2840,28 @@ export async function recordAccountActivity(
   }
 }
 
+export async function deleteAccountActivityEvent(
+  env: Env,
+  userId: string,
+  activityId: string,
+): Promise<boolean> {
+  if (!env.AUTH_DB || !activityId) return false;
+  const result = await env.AUTH_DB.prepare(
+    `DELETE FROM account_activity WHERE id = ? AND user_id = ?`,
+  )
+    .bind(activityId, userId)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
+export async function clearAccountActivityEvents(env: Env, userId: string): Promise<number> {
+  if (!env.AUTH_DB) return 0;
+  const result = await env.AUTH_DB.prepare(`DELETE FROM account_activity WHERE user_id = ?`)
+    .bind(userId)
+    .run();
+  return result.meta?.changes ?? 0;
+}
+
 const RATE_LIMIT_ACCOUNT_ACTIVITY_POST = {
   MAX_REQUESTS: 48,
   WINDOW_SECONDS: 60,
@@ -4316,7 +4340,17 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const limitRaw = Number(url.searchParams.get("limit") ?? "30");
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 30));
 
-    let events: Array<{ id: string; type: string; noteId: string | null; createdAt: string }> = [];
+    const entitlements = await getAccountEntitlements(env, session.id);
+    const canTrackDelivery = entitlements.capabilities.sentNotesDashboard;
+    const canRevokeUnopened = entitlements.capabilities.revokeUnopened;
+
+    let events: Array<{
+      id: string;
+      type: string;
+      noteId: string | null;
+      createdAt: string;
+      delivery?: SentNoteNotificationItem | null;
+    }> = [];
     try {
       const res = await env.AUTH_DB.prepare(
         `SELECT id, event_type, note_id, created_at FROM account_activity
@@ -4330,6 +4364,17 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         noteId: r.note_id,
         createdAt: coerceAccountActivityCreatedAtUtcToIso(r.created_at),
       }));
+
+      if (canTrackDelivery) {
+        const noteIds = events
+          .map((e) => e.noteId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0);
+        const deliveryByNote = await getSentNoteNotificationsByNoteIds(env, session.id, noteIds);
+        events = events.map((event) => {
+          if (!event.noteId) return { ...event, delivery: null };
+          return { ...event, delivery: deliveryByNote.get(event.noteId) ?? null };
+        });
+      }
     } catch (e) {
       console.warn("[account/activity] list failed:", e);
     }
@@ -4337,7 +4382,51 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
-    return new Response(JSON.stringify({ ok: true, events }), { status: 200, headers });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        events,
+        capabilities: {
+          sentNotesDashboard: canTrackDelivery,
+          revokeUnopened: canRevokeUnopened,
+        },
+      }),
+      { status: 200, headers },
+    );
+  }
+
+  if (pathname === "/api/auth/account/activity" && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const cleared = await clearAccountActivityEvents(env, session.id);
+    return jsonResponse({ ok: true, cleared }, 200, request);
+  }
+
+  {
+    const deleteOneMatch = pathname.match(/^\/api\/auth\/account\/activity\/([^/]+)$/);
+    if (deleteOneMatch && method === "DELETE") {
+      if (!env.AUTH_DB) {
+        return jsonResponse({ message: "Auth database not configured" }, 501, request);
+      }
+      const session = await getSessionFromRequest(env, request, { rotate: false });
+      if (!session) {
+        return jsonResponse({ message: "Unauthorized" }, 401, request);
+      }
+      const activityId = decodeURIComponent(deleteOneMatch[1] ?? "");
+      if (!activityId) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      const deleted = await deleteAccountActivityEvent(env, session.id, activityId);
+      if (!deleted) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      return jsonResponse({ ok: true }, 200, request);
+    }
   }
 
   if (pathname === "/api/auth/account/activity" && method === "POST") {
