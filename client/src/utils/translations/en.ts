@@ -74,6 +74,7 @@ export const en: Translations = {
   sftPremiumUpsell: "Compare Starter and Business file limits.",
   attachFile: "Attach File",
   attachFileChangeHint: "Click to choose a different file",
+  attachFolder: "Attach folder",
   recordMessage: "Record message",
   recordMessageTitle: "Record a message",
   recordMessageDescription:

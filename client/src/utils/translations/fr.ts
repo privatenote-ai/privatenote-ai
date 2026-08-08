@@ -57,6 +57,7 @@ export const fr: Translations = {
   sftPremiumUpsell: "Premium inclut 1 Go de transferts de fichiers chiffrés et 20 Go de stockage chiffré total.",
   attachFile: "Joindre un fichier",
   attachFileChangeHint: "Cliquez pour choisir un autre fichier",
+  attachFolder: "Joindre un dossier",
   recordMessage: "Enregistrer un message",
   recordMessageTitle: "Enregistrer un message",
   recordMessageDescription:

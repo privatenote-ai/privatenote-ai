@@ -57,6 +57,7 @@ export const it: Translations = {
   sftPremiumUpsell: "Premium include trasferimenti crittografati da 1 GB e 20 GB di archiviazione crittografata totale.",
   attachFile: "Allega file",
   attachFileChangeHint: "Clicca per scegliere un altro file",
+  attachFolder: "Allega cartella",
   recordMessage: "Registra messaggio",
   recordMessageTitle: "Registra un messaggio",
   recordMessageDescription:

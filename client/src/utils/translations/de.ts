@@ -72,6 +72,7 @@ export const de: Translations = {
   sftPremiumUpsell: "Premium umfasst 1 GB verschlüsselte Dateiübertragungen und 20 GB verschlüsselten Gesamtspeicher.",
   attachFile: "Datei anhängen",
   attachFileChangeHint: "Klicken, um eine andere Datei zu wählen",
+  attachFolder: "Ordner anhängen",
   recordMessage: "Nachricht aufnehmen",
   recordMessageTitle: "Nachricht aufnehmen",
   recordMessageDescription:

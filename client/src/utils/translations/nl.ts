@@ -72,6 +72,7 @@ export const nl: Translations = {
   sftPremiumUpsell: "Premium omvat 1 GB versleutelde bestandsoverdrachten en 20 GB totale versleutelde opslag.",
   attachFile: "Bestand bijvoegen",
   attachFileChangeHint: "Klik om een ander bestand te kiezen",
+  attachFolder: "Map bijvoegen",
   recordMessage: "Bericht opnemen",
   recordMessageTitle: "Een bericht opnemen",
   recordMessageDescription:

@@ -3104,6 +3104,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}
           {!isAiMode || (noteContent && isAiMode && !showPrompt && aiDraftAccepted) ? (
             <div className="space-y-3 mt-1">
+              {folderInputMounted ? (
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  className="sr-only"
+                  tabIndex={-1}
+                  multiple
+                  onChange={handleAttachFolderSelected}
+                  {...({
+                    webkitdirectory: "",
+                    directory: "",
+                  } as React.InputHTMLAttributes<HTMLInputElement> & {
+                    webkitdirectory: string;
+                    directory: string;
+                  })}
+                />
+              ) : null}
               {isFileTransferMode && !selectedFile ? (
                 <>
                   <input
@@ -3114,23 +3131,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     tabIndex={-1}
                     onChange={handleAttachFileSelected}
                   />
-                  {folderInputMounted ? (
-                    <input
-                      ref={folderInputRef}
-                      type="file"
-                      className="sr-only"
-                      tabIndex={-1}
-                      multiple
-                      onChange={handleAttachFolderSelected}
-                      {...({
-                        webkitdirectory: "",
-                        directory: "",
-                      } as React.InputHTMLAttributes<HTMLInputElement> & {
-                        webkitdirectory: string;
-                        directory: string;
-                      })}
-                    />
-                  ) : null}
                   <GravityDropZone
                     isDragOver={isFileDragOver}
                     onDragOver={handleDropZoneDragOver}
@@ -3266,7 +3266,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     className={
                       selectedFile
                         ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
-                        : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
+                        : "flex min-w-0 flex-1 flex-wrap items-center gap-1 sm:flex-none"
                     }
                   >
                     {selectedFile ? (
@@ -3277,7 +3277,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                             title={selectedFile.name}
                             className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`}
                           >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            {selectedFile.type === "application/zip" ||
+                            selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            ) : (
+                              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            )}
                             <span className="truncate">{attachFileButtonLabel}</span>
                           </label>
                         ) : (
@@ -3291,6 +3296,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           >
                             {selectedFileIsVoice ? (
                               <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            ) : selectedFile.type === "application/zip" ||
+                              selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                             ) : (
                               <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                             )}
@@ -3330,8 +3338,26 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         )}
                         <button
                           type="button"
+                          onClick={handleAttachFolderClick}
+                          disabled={isPreparingFolder}
+                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                          {isPreparingFolder ? (
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                          ) : (
+                            <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          )}
+                          <span className="whitespace-nowrap">
+                            {isPreparingFolder
+                              ? (t.sftZippingFolder ?? "Zipping…")
+                              : (t.attachFolder ?? t.sftSelectFolder ?? "Attach folder")}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={handleRecordMessageClick}
-                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                          disabled={isPreparingFolder}
+                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
                         >
                           <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                           <span className="whitespace-nowrap">{recordMessageButtonLabel}</span>

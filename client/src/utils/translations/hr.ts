@@ -57,6 +57,7 @@ export const hr: Translations = {
   sftPremiumUpsell: "Premium uključuje 1 GB šifriranih prijenosa datoteka i 20 GB ukupne šifrirane pohrane.",
   attachFile: "Priloži datoteku",
   attachFileChangeHint: "Kliknite za odabir druge datoteke",
+  attachFolder: "Priloži mapu",
   recordMessage: "Snimi poruku",
   recordMessageTitle: "Snimi poruku",
   recordMessageDescription:
