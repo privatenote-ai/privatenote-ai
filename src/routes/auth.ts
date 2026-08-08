@@ -28,12 +28,10 @@ import {
   clearSentNoteNotifications,
   deleteSentNoteNotification,
   deleteUserNoteDefaults,
-  getSentNoteNotificationsByNoteIds,
   getUserAccountType,
   getUserNoteDefaults,
   listSentNoteNotificationsForUser,
   upsertUserNoteDefaults,
-  type SentNoteNotificationItem,
 } from "../sentNotesService";
 import { hostedAiMonthlyLimit, planFeaturesFor } from "@shared/planCatalog";
 import { readHostedAiQuotaSnapshot } from "../planHostedAi";
@@ -4339,42 +4337,48 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const url = new URL(request.url);
     const limitRaw = Number(url.searchParams.get("limit") ?? "30");
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 30));
-
     const entitlements = await getAccountEntitlements(env, session.id);
-    const canTrackDelivery = entitlements.capabilities.sentNotesDashboard;
-    const canRevokeUnopened = entitlements.capabilities.revokeUnopened;
+    const canRevokeUnopened = entitlements.capabilities.revokeUnopened === true;
 
     let events: Array<{
       id: string;
       type: string;
       noteId: string | null;
       createdAt: string;
-      delivery?: SentNoteNotificationItem | null;
+      canRevoke: boolean;
     }> = [];
     try {
       const res = await env.AUTH_DB.prepare(
-        `SELECT id, event_type, note_id, created_at FROM account_activity
-         WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`
+        `SELECT a.id, a.event_type, a.note_id, a.created_at, s.status AS sent_status
+         FROM account_activity a
+         LEFT JOIN sent_notes s
+           ON s.note_id = a.note_id AND s.user_id = a.user_id
+         WHERE a.user_id = ?
+         ORDER BY datetime(a.created_at) DESC
+         LIMIT ?`,
       )
         .bind(session.id, limit)
-        .all<{ id: string; event_type: string; note_id: string | null; created_at: string }>();
-      events = (res.results || []).map((r) => ({
-        id: r.id,
-        type: r.event_type,
-        noteId: r.note_id,
-        createdAt: coerceAccountActivityCreatedAtUtcToIso(r.created_at),
-      }));
-
-      if (canTrackDelivery) {
-        const noteIds = events
-          .map((e) => e.noteId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0);
-        const deliveryByNote = await getSentNoteNotificationsByNoteIds(env, session.id, noteIds);
-        events = events.map((event) => {
-          if (!event.noteId) return { ...event, delivery: null };
-          return { ...event, delivery: deliveryByNote.get(event.noteId) ?? null };
-        });
-      }
+        .all<{
+          id: string;
+          event_type: string;
+          note_id: string | null;
+          created_at: string;
+          sent_status: string | null;
+        }>();
+      events = (res.results || []).map((r) => {
+        const isCreateEvent = r.event_type === "note_created" || r.event_type === "ai_note_created";
+        return {
+          id: r.id,
+          type: r.event_type,
+          noteId: r.note_id,
+          createdAt: coerceAccountActivityCreatedAtUtcToIso(r.created_at),
+          canRevoke:
+            canRevokeUnopened &&
+            isCreateEvent &&
+            Boolean(r.note_id) &&
+            r.sent_status === "created",
+        };
+      });
     } catch (e) {
       console.warn("[account/activity] list failed:", e);
     }
@@ -4382,17 +4386,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        events,
-        capabilities: {
-          sentNotesDashboard: canTrackDelivery,
-          revokeUnopened: canRevokeUnopened,
-        },
-      }),
-      { status: 200, headers },
-    );
+    return new Response(JSON.stringify({ ok: true, events }), { status: 200, headers });
   }
 
   if (pathname === "/api/auth/account/activity" && method === "DELETE") {
