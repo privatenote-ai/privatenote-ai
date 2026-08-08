@@ -542,7 +542,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
   const attachActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-sky-300/80 bg-sky-50 px-4 py-2.5 text-sm font-medium text-sky-800 transition-all duration-150 hover:bg-sky-100/90 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-sky-500/40 dark:bg-sky-950/40 dark:text-sky-100 dark:hover:bg-sky-900/50 sm:px-5";
+    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25 sm:px-5";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -3238,9 +3238,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                 {selectedFile ? (
-                  <div className="flex w-full min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 w-full items-center gap-2 sm:flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -3268,13 +3268,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       <label
                         htmlFor={noteFileInputId}
                         title={selectedFile.name}
-                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 cursor-pointer gap-1.5 px-3 sm:px-5`}
+                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 cursor-pointer gap-1.5 px-3 sm:max-w-[14rem] sm:px-5`}
                       >
                         {selectedFile.type === "application/zip" ||
                         selectedFile.name.toLowerCase().endsWith(".zip") ? (
-                          <FolderArchive className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         ) : (
-                          <Paperclip className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                          <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         )}
                         <span className="truncate">{attachFileButtonLabel}</span>
                       </label>
@@ -3285,15 +3285,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           selectedFileIsVoice ? handleRecordMessageClick : handleAttachFileClick
                         }
                         title={selectedFile.name}
-                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:px-5`}
+                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:max-w-[14rem] sm:px-5`}
                       >
                         {selectedFileIsVoice ? (
-                          <Mic className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                          <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         ) : selectedFile.type === "application/zip" ||
                           selectedFile.name.toLowerCase().endsWith(".zip") ? (
-                          <FolderArchive className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         ) : (
-                          <Paperclip className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                          <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         )}
                         <span className="truncate">
                           {selectedFileIsVoice ? recordMessageButtonLabel : attachFileButtonLabel}
@@ -3310,7 +3310,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                  <div className="grid min-w-0 w-full grid-cols-2 gap-2 sm:flex sm:flex-1 sm:flex-wrap sm:items-center">
                     <button
                       type="button"
                       onClick={() => {
@@ -3339,7 +3339,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         htmlFor={noteFileInputId}
                         className={`${attachActionButtonClass} min-h-11 w-full cursor-pointer gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
                       >
-                        <Paperclip className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         <span className="truncate">{attachFileButtonLabel}</span>
                       </label>
                     ) : (
@@ -3348,7 +3348,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         onClick={handleAttachFileClick}
                         className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
                       >
-                        <Paperclip className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         <span className="truncate">{attachFileButtonLabel}</span>
                       </button>
                     )}
@@ -3359,9 +3359,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       {isPreparingFolder ? (
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-sky-700 dark:text-sky-300" aria-hidden />
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
                       ) : (
-                        <FolderArchive className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                        <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       )}
                       <span className="truncate">
                         {isPreparingFolder
@@ -3375,7 +3375,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       disabled={isPreparingFolder}
                       className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
                     >
-                      <Mic className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" aria-hidden />
+                      <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <span className="truncate">{recordMessageButtonLabel}</span>
                     </button>
                   </div>
@@ -3384,7 +3384,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-auto sm:w-auto sm:min-w-[180px]"
+                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>
