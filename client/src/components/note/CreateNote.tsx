@@ -3236,141 +3236,153 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customizeSheetExperiment) {
-                        setCustomizeSheetOpen(true);
-                      } else {
-                        setShowAdvancedOptions(!showAdvancedOptions);
-                      }
-                    }}
-                    className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 sm:flex-none sm:px-5`}
-                  >
-                    {customizeSheetExperiment || !showAdvancedOptions ? (
-                      <>
-                        <Settings className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.customize}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.hideOptions}</span>
-                      </>
-                    )}
-                  </button>
-
-                  <div
-                    className={
-                      selectedFile
-                        ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
-                        : "flex min-w-0 flex-1 flex-wrap items-center gap-1 sm:flex-none"
-                    }
-                  >
-                    {selectedFile ? (
-                      <>
-                        {canAttachFiles && !selectedFileIsVoice ? (
-                          <label
-                            htmlFor={noteFileInputId}
-                            title={selectedFile.name}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`}
-                          >
-                            {selectedFile.type === "application/zip" ||
-                            selectedFile.name.toLowerCase().endsWith(".zip") ? (
-                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            ) : (
-                              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            )}
-                            <span className="truncate">{attachFileButtonLabel}</span>
-                          </label>
+              <div className="flex flex-col gap-3">
+                {selectedFile ? (
+                  <div className="flex w-full min-w-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 shrink-0 gap-1.5 px-3 sm:px-5`}
+                    >
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
+                    </button>
+                    {canAttachFiles && !selectedFileIsVoice ? (
+                      <label
+                        htmlFor={noteFileInputId}
+                        title={selectedFile.name}
+                        className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 cursor-pointer gap-1.5 px-3 sm:px-5`}
+                      >
+                        {selectedFile.type === "application/zip" ||
+                        selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         ) : (
-                          <button
-                            type="button"
-                            onClick={
-                              selectedFileIsVoice ? handleRecordMessageClick : handleAttachFileClick
-                            }
-                            title={selectedFile.name}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
-                          >
-                            {selectedFileIsVoice ? (
-                              <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            ) : selectedFile.type === "application/zip" ||
-                              selectedFile.name.toLowerCase().endsWith(".zip") ? (
-                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            ) : (
-                              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            )}
-                            <span className="truncate">
-                              {selectedFileIsVoice ? recordMessageButtonLabel : attachFileButtonLabel}
-                            </span>
-                          </button>
+                          <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedFile(null)}
-                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                          aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                        >
-                          <X className="h-4 w-4" aria-hidden />
-                        </button>
-                      </>
+                        <span className="truncate">{attachFileButtonLabel}</span>
+                      </label>
                     ) : (
-                      <>
-                        {canAttachFiles ? (
-                          <label
-                            htmlFor={noteFileInputId}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
-                          >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
-                          </label>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleAttachFileClick}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
-                          >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleAttachFolderClick}
-                          disabled={isPreparingFolder}
-                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
-                        >
-                          {isPreparingFolder ? (
-                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
-                          ) : (
-                            <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                          )}
-                          <span className="whitespace-nowrap">
-                            {isPreparingFolder
-                              ? (t.sftZippingFolder ?? "Zipping…")
-                              : (t.attachFolder ?? t.sftSelectFolder ?? "Attach folder")}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRecordMessageClick}
-                          disabled={isPreparingFolder}
-                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
-                        >
+                      <button
+                        type="button"
+                        onClick={
+                          selectedFileIsVoice ? handleRecordMessageClick : handleAttachFileClick
+                        }
+                        title={selectedFile.name}
+                        className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:px-5`}
+                      >
+                        {selectedFileIsVoice ? (
                           <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                          <span className="whitespace-nowrap">{recordMessageButtonLabel}</span>
-                        </button>
-                      </>
+                        ) : selectedFile.type === "application/zip" ||
+                          selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                          <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        ) : (
+                          <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        )}
+                        <span className="truncate">
+                          {selectedFileIsVoice ? recordMessageButtonLabel : attachFileButtonLabel}
+                        </span>
+                      </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
+                    >
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
+                    </button>
+                    {canAttachFiles ? (
+                      <label
+                        htmlFor={noteFileInputId}
+                        className={`${secondaryActionButtonClass} min-h-11 w-full cursor-pointer gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className="truncate">{attachFileButtonLabel}</span>
+                      </label>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAttachFileClick}
+                        className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
+                      >
+                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className="truncate">{attachFileButtonLabel}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAttachFolderClick}
+                      disabled={isPreparingFolder}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {isPreparingFolder ? (
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                      ) : (
+                        <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      )}
+                      <span className="truncate">
+                        {isPreparingFolder
+                          ? (t.sftZippingFolder ?? "Zipping…")
+                          : (t.attachFolder ?? t.sftSelectFolder ?? "Attach folder")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRecordMessageClick}
+                      disabled={isPreparingFolder}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">{recordMessageButtonLabel}</span>
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-auto sm:w-auto sm:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>
