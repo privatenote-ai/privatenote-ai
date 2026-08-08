@@ -1893,6 +1893,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               receiptAckTokenHash,
             }
           : {}),
+        ...(applyNoteLabel ? { label: applyNoteLabel } : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
         ...(opensAtIso ? { opensAt: opensAtIso } : {}),
@@ -1902,7 +1903,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         aad,
         ...(attachment
-          ? { attachment, attachmentContentHash: attachment.encryptedContentSha256 }
+          ? {
+              attachment,
+              attachmentContentHash: attachment.encryptedContentSha256,
+              ...(selectedFileIsVoice ? { hasVoiceMessage: true } : {}),
+            }
           : {}),
         _hp: honeypotValue,
         creationSource: "web",
@@ -1937,6 +1942,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           expiryValue,
           readCount,
           isPasswordProtected,
+          noteId: id,
+          tracksDelivery,
         },
       });
 
@@ -2805,6 +2812,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         createdPassword={
           createdNote.meta?.isPasswordProtected ? password.trim() || undefined : undefined
         }
+        noteLabel={noteLabel}
+        onNoteLabelChange={
+          createdNote.meta?.tracksDelivery && createdNote.meta.noteId
+            ? (value) => {
+                setNoteLabel(value);
+                saveNoteLabel(createdNote.meta!.noteId!, value);
+              }
+            : undefined
+        }
         successQrSectionRef={successQrSectionRef}
         variant={isFileTransferMode ? "file-transfer" : "note"}
       />
@@ -3069,6 +3085,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 notifyOnAttachmentDownload={notifyOnAttachmentDownload}
                 setNotifyOnAttachmentDownload={setNotifyOnAttachmentDownload}
                 hasAttachment={Boolean(selectedFile)}
+                hasVoiceMessage={selectedFileIsVoice}
                 canNotifyOnOpen={canNotifyOnOpen}
                 emailLinkToRecipient={emailLinkToRecipient}
                 setEmailLinkToRecipient={setEmailLinkToRecipient}
@@ -3492,6 +3509,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               notifyOnAttachmentDownload,
               setNotifyOnAttachmentDownload,
               hasAttachment: Boolean(selectedFile),
+              hasVoiceMessage: selectedFileIsVoice,
               canNotifyOnOpen,
               emailLinkToRecipient,
               setEmailLinkToRecipient,

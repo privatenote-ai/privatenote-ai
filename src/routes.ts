@@ -9269,6 +9269,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           aiEnhanced: aiMode,
           aiMode: activityAiMode,
           hasAttachment: requestBody?.attachment != null,
+          hasVoiceMessage: requestBody?.hasVoiceMessage === true && requestBody?.attachment != null,
           passwordProtected: requestBody?.isPasswordProtected === true,
           maxReads: maxReadsForCreate.maxReads,
           expirySeconds: expiryForCreate.seconds,

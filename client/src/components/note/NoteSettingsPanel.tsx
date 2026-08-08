@@ -13,6 +13,7 @@ import {
   Bell,
   BellOff,
   Download,
+  Mic,
   Mail,
   Clock,
   BadgeCheck,
@@ -375,6 +376,8 @@ export type NoteSettingsPanelProps = {
   setNotifyOnAttachmentDownload: (v: boolean) => void;
   /** Show the attachment-download alert when the note includes a file. */
   hasAttachment: boolean;
+  /** True when the attachment is a voice recording. */
+  hasVoiceMessage?: boolean;
   canNotifyOnOpen: boolean;
   emailLinkToRecipient: boolean;
   setEmailLinkToRecipient: (v: boolean) => void;
@@ -445,6 +448,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   notifyOnAttachmentDownload,
   setNotifyOnAttachmentDownload,
   hasAttachment,
+  hasVoiceMessage = false,
   canNotifyOnOpen,
   emailLinkToRecipient,
   setEmailLinkToRecipient,
@@ -996,15 +1000,27 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     <div className="min-w-0 flex-1">
                       <SettingsFieldLabel
                         htmlFor="notify-on-attachment-download"
-                        icon={<Download className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                        icon={
+                          hasVoiceMessage ? (
+                            <Mic className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          ) : (
+                            <Download className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          )
+                        }
                         iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
                         label={
-                          t.settingsEmailAlertOnAttachmentDownload ??
-                          "Email alert when an attachment is downloaded"
+                          hasVoiceMessage
+                            ? (t.settingsEmailAlertOnRecordingDownload ??
+                              "Email alert when a recording is downloaded")
+                            : (t.settingsEmailAlertOnAttachmentDownload ??
+                              "Email alert when an attachment is downloaded")
                         }
                         info={
-                          t.settingsEmailAlertOnAttachmentDownloadInfo ??
-                          "One email when the encrypted attachment is requested for download. File contents are never included."
+                          hasVoiceMessage
+                            ? (t.settingsEmailAlertOnRecordingDownloadInfo ??
+                              "One email when the encrypted voice recording is requested for download. Audio contents are never included.")
+                            : (t.settingsEmailAlertOnAttachmentDownloadInfo ??
+                              "One email when the encrypted attachment is requested for download. File contents are never included.")
                         }
                         singleLine
                       />

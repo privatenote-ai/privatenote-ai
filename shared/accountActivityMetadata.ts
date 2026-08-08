@@ -4,6 +4,8 @@
  */
 export type AccountActivityCreateMetadata = {
   hasAttachment?: boolean;
+  /** True when the attachment is a voice recording (not a generic file). */
+  hasVoiceMessage?: boolean;
   passwordProtected?: boolean;
   maxReads?: number;
   expirySeconds?: number;
@@ -21,7 +23,10 @@ export function serializeAccountActivityMetadata(
 ): string | null {
   if (!metadata || typeof metadata !== "object") return null;
   const compact: AccountActivityCreateMetadata = {};
-  if (metadata.hasAttachment === true) compact.hasAttachment = true;
+  if (metadata.hasAttachment === true || metadata.hasVoiceMessage === true) {
+    compact.hasAttachment = true;
+  }
+  if (metadata.hasVoiceMessage === true) compact.hasVoiceMessage = true;
   if (metadata.passwordProtected === true) compact.passwordProtected = true;
   if (typeof metadata.maxReads === "number" && Number.isFinite(metadata.maxReads) && metadata.maxReads > 0) {
     compact.maxReads = Math.floor(metadata.maxReads);
@@ -62,6 +67,7 @@ export function parseAccountActivityMetadata(
   const input = value as Record<string, unknown>;
   const serialized = serializeAccountActivityMetadata({
     hasAttachment: input.hasAttachment === true,
+    hasVoiceMessage: input.hasVoiceMessage === true,
     passwordProtected: input.passwordProtected === true,
     maxReads: typeof input.maxReads === "number" ? input.maxReads : undefined,
     expirySeconds: typeof input.expirySeconds === "number" ? input.expirySeconds : undefined,

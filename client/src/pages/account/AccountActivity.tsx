@@ -15,6 +15,7 @@ import {
   KeyRound,
   Lock,
   Mail,
+  Mic,
   MonitorSmartphone,
   Paperclip,
   ShieldCheck,
@@ -169,7 +170,13 @@ function createOptionChips(
 ): OptionChip[] {
   if (!metadata) return [];
   const chips: OptionChip[] = [];
-  if (metadata.hasAttachment) {
+  if (metadata.hasVoiceMessage) {
+    chips.push({
+      key: "voice",
+      label: t.authActivityChipVoiceMessage ?? "Voice recording",
+      Icon: Mic,
+    });
+  } else if (metadata.hasAttachment) {
     chips.push({
       key: "attachment",
       label: t.authActivityChipAttachment ?? "Encrypted file",
@@ -290,15 +297,21 @@ function statusHeroClass(status: NotificationItem["status"]): string {
 function StatusHeroIcon({
   status,
   className = "h-6 w-6",
+  hasVoiceMessage = false,
 }: {
   status: NotificationItem["status"];
   className?: string;
+  hasVoiceMessage?: boolean;
 }) {
   switch (status) {
     case "receipt_confirmed":
       return <BadgeCheck className={className} aria-hidden />;
     case "attachment_downloaded":
-      return <Download className={className} aria-hidden />;
+      return hasVoiceMessage ? (
+        <Mic className={className} aria-hidden />
+      ) : (
+        <Download className={className} aria-hidden />
+      );
     case "viewed":
       return <Eye className={className} aria-hidden />;
     case "burned":
@@ -323,6 +336,9 @@ function EventIcon({
     if (metadata?.aiEnhanced || type === "ai_note_created") {
       return <Sparkles className="h-4 w-4" />;
     }
+    if (metadata?.hasVoiceMessage) {
+      return <Mic className="h-4 w-4" />;
+    }
     if (metadata?.hasAttachment) {
       return <Paperclip className="h-4 w-4" />;
     }
@@ -338,7 +354,11 @@ function EventIcon({
   }
 }
 
-function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): string {
+function timelineLabel(
+  entry: ProofTimelineEntry,
+  t: Record<string, string>,
+  hasVoiceMessage = false,
+): string {
   switch (entry.key) {
     case "created":
       return t.proofTimelineCreated ?? "Created";
@@ -347,7 +367,9 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
     case "receipt":
       return t.proofTimelineReceipt ?? "Receipt confirmed";
     case "attachment":
-      return t.proofTimelineAttachment ?? "Attachment downloaded";
+      return hasVoiceMessage
+        ? (t.proofTimelineRecording ?? "Recording downloaded")
+        : (t.proofTimelineAttachment ?? "Attachment downloaded");
     case "destroyed":
       return t.proofTimelineDestroyed ?? "Destroyed after read limit";
     case "expired":
@@ -357,7 +379,7 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
   }
 }
 
-function timelineIcon(entry: ProofTimelineEntry): LucideIcon {
+function timelineIcon(entry: ProofTimelineEntry, hasVoiceMessage = false): LucideIcon {
   switch (entry.key) {
     case "created":
       return FilePlus2;
@@ -366,7 +388,7 @@ function timelineIcon(entry: ProofTimelineEntry): LucideIcon {
     case "receipt":
       return BadgeCheck;
     case "attachment":
-      return Download;
+      return hasVoiceMessage ? Mic : Download;
     case "destroyed":
       return Lock;
     case "expired":
@@ -376,22 +398,22 @@ function timelineIcon(entry: ProofTimelineEntry): LucideIcon {
   }
 }
 
-function timelineAccent(entry: ProofTimelineEntry): string {
+function timelineIconTone(entry: ProofTimelineEntry): string {
   switch (entry.key) {
     case "created":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-500/20";
+      return "text-emerald-600 dark:text-emerald-400";
     case "opened":
-      return "bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-sky-500/20";
+      return "text-sky-600 dark:text-sky-400";
     case "receipt":
-      return "bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-teal-500/25";
+      return "text-teal-600 dark:text-teal-400";
     case "attachment":
-      return "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-500/20";
+      return "text-indigo-600 dark:text-indigo-400";
     case "destroyed":
-      return "bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-amber-500/20";
+      return "text-amber-700 dark:text-amber-400";
     case "expired":
-      return "bg-gray-500/15 text-gray-700 dark:text-gray-300 ring-gray-500/20";
+      return "text-gray-500 dark:text-gray-400";
     case "revoked":
-      return "bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-rose-500/20";
+      return "text-rose-600 dark:text-rose-400";
   }
 }
 
@@ -512,6 +534,7 @@ function DeliveryDetail({
   const hasRecipientEmail = Boolean(delivery.recipientEmail?.trim());
   const canRevoke = canRevokeUnopened && delivery.status === "created";
   const timeline = buildProofTimeline(delivery);
+  const hasVoiceMessage = Boolean(event.metadata?.hasVoiceMessage);
   const accessed = Boolean(delivery.openedAt);
   const proofEnabled = Boolean(delivery.proofEnabled);
   const unavailable = t.proofUnavailable ?? "Not available";
@@ -524,11 +547,13 @@ function DeliveryDetail({
       <div
         className={`relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br px-4 py-4 ${statusHeroClass(delivery.status)}`}
       >
-        <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-current opacity-[0.06]" />
-        <div className="pointer-events-none absolute -bottom-10 right-8 h-24 w-24 rounded-full bg-current opacity-[0.04]" />
         <div className="relative flex items-start gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-background/80 shadow-sm ring-1 ring-black/5 dark:bg-background/60 dark:ring-white/10">
-            <StatusHeroIcon status={delivery.status} className="h-6 w-6" />
+            <StatusHeroIcon
+              status={delivery.status}
+              className="h-6 w-6"
+              hasVoiceMessage={hasVoiceMessage}
+            />
           </span>
           <div className="min-w-0 flex-1 space-y-2.5">
             {noteLabel?.trim() ? (
@@ -540,8 +565,12 @@ function DeliveryDetail({
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(delivery.status)}`}
               >
-                <StatusHeroIcon status={delivery.status} className="h-3.5 w-3.5" />
-                {statusLabel(delivery.status, t)}
+                <StatusHeroIcon
+                  status={delivery.status}
+                  className="h-3.5 w-3.5"
+                  hasVoiceMessage={hasVoiceMessage}
+                />
+                {statusLabel(delivery.status, t, { hasVoiceMessage })}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
                 <Hash className="h-3 w-3" aria-hidden />
@@ -587,26 +616,32 @@ function DeliveryDetail({
               {t.proofNoEventsYet ?? "No delivery events recorded yet."}
             </p>
           ) : (
-            <ol className="relative space-y-0 border-l border-border/80 ml-4 pl-5">
+            <ol className="space-y-0">
               {timeline.map((entry, index) => {
-                const Icon = timelineIcon(entry);
-                const isLatest = index === timeline.length - 1;
+                const Icon = timelineIcon(entry, hasVoiceMessage);
+                const isLast = index === timeline.length - 1;
                 return (
-                  <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
-                    <span
-                      className={`absolute -left-[1.95rem] top-0 flex h-8 w-8 items-center justify-center rounded-full ring-4 ring-background ${timelineAccent(entry)} ${
-                        isLatest ? "shadow-sm" : ""
-                      }`}
-                      aria-hidden
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <p className="pt-1 text-sm font-medium text-foreground">
-                      {timelineLabel(entry, t)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatProofTimestamp(entry.at)}
-                    </p>
+                  <li key={`${entry.key}-${entry.at}`} className="relative flex gap-3">
+                    <div className="flex w-4 shrink-0 flex-col items-center" aria-hidden>
+                      <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/50 dark:bg-muted-foreground/65" />
+                      {!isLast ? (
+                        <span className="mt-1 w-px flex-1 bg-border/80" />
+                      ) : null}
+                    </div>
+                    <div className={`flex min-w-0 flex-1 items-start gap-2.5 ${isLast ? "" : "pb-5"}`}>
+                      <Icon
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${timelineIconTone(entry)}`}
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {timelineLabel(entry, t, hasVoiceMessage)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatProofTimestamp(entry.at)}
+                        </p>
+                      </div>
+                    </div>
                   </li>
                 );
               })}
@@ -715,6 +750,10 @@ export default function AccountActivity() {
   const [revokingNoteId, setRevokingNoteId] = useState<string | null>(null);
 
   const selectedEvent = events.find((entry) => entry.id === selectedId) ?? null;
+  const selectedNamedLabel =
+    (selectedEvent?.noteId ? noteLabels[selectedEvent.noteId]?.trim() : "") ||
+    selectedEvent?.delivery?.label?.trim() ||
+    "";
   const canTrackDelivery =
     capabilities.sentNotesDashboard || entitlements.capabilities.sentNotesDashboard === true;
   const canRevokeUnopened =
@@ -768,10 +807,16 @@ export default function AccountActivity() {
     const meta = event.metadata;
     if (event.type === "note_created" || event.type === "ai_note_created") {
       const ai = meta?.aiEnhanced || event.type === "ai_note_created";
+      if (ai && meta?.hasVoiceMessage) {
+        return t.authActivityAiNoteWithRecordingCreated || "AI note with recording created";
+      }
       if (ai && meta?.hasAttachment) {
         return t.authActivityAiNoteWithFileCreated || "AI note with file created";
       }
       if (ai) return t.authActivityAiNoteCreated || "AI-assisted note created";
+      if (meta?.hasVoiceMessage) {
+        return t.authActivitySecureNoteWithRecordingCreated || "Secure note with recording created";
+      }
       if (meta?.hasAttachment) {
         return t.authActivitySecureNoteWithFileCreated || "Secure note with file created";
       }
@@ -789,6 +834,12 @@ export default function AccountActivity() {
 
   const eventDescription = (event: ActivityEvent): string => {
     if (event.type === "note_created" || event.type === "ai_note_created") {
+      if (event.metadata?.hasVoiceMessage) {
+        return (
+          t.authActivitySecureNoteWithRecordingCreatedDesc ||
+          "A secure note with an encrypted voice recording was sent from your account."
+        );
+      }
       if (event.metadata?.hasAttachment) {
         return (
           t.authActivitySecureNoteWithFileCreatedDesc ||
@@ -1000,6 +1051,10 @@ export default function AccountActivity() {
                     const delivery = canTrackDelivery ? ev.delivery : null;
                     const chips = createOptionChips(ev.metadata, t).slice(0, 4);
                     const selected = selectedId === ev.id;
+                    const namedLabel =
+                      (ev.noteId ? noteLabels[ev.noteId]?.trim() : "") ||
+                      delivery?.label?.trim() ||
+                      "";
 
                     return (
                       <li key={ev.id}>
@@ -1023,16 +1078,33 @@ export default function AccountActivity() {
                               <EventIcon type={ev.type} metadata={ev.metadata} />
                             </span>
                             <div className="min-w-0 flex-1 space-y-1.5">
+                              {namedLabel ? (
+                                <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                                  {namedLabel}
+                                </p>
+                              ) : null}
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-medium text-foreground">
+                                <p
+                                  className={`text-sm ${
+                                    namedLabel
+                                      ? "font-medium text-muted-foreground"
+                                      : "font-medium text-foreground"
+                                  }`}
+                                >
                                   {eventLabel(ev)}
                                 </p>
                                 {delivery ? (
                                   <span
                                     className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(delivery.status)}`}
                                   >
-                                    <StatusHeroIcon status={delivery.status} className="h-3 w-3" />
-                                    {statusLabel(delivery.status, t)}
+                                    <StatusHeroIcon
+                                      status={delivery.status}
+                                      className="h-3 w-3"
+                                      hasVoiceMessage={Boolean(ev.metadata?.hasVoiceMessage)}
+                                    />
+                                    {statusLabel(delivery.status, t, {
+                                      hasVoiceMessage: Boolean(ev.metadata?.hasVoiceMessage),
+                                    })}
                                   </span>
                                 ) : null}
                               </div>
@@ -1106,7 +1178,16 @@ export default function AccountActivity() {
                   >
                     <EventIcon type={selectedEvent.type} metadata={selectedEvent.metadata} />
                   </span>
-                  {eventLabel(selectedEvent)}
+                  {selectedNamedLabel ? (
+                    <span className="min-w-0">
+                      <span className="block truncate">{selectedNamedLabel}</span>
+                      <span className="mt-0.5 block text-sm font-medium text-muted-foreground">
+                        {eventLabel(selectedEvent)}
+                      </span>
+                    </span>
+                  ) : (
+                    eventLabel(selectedEvent)
+                  )}
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-relaxed">
                   {eventDescription(selectedEvent) ||

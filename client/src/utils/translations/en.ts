@@ -296,8 +296,10 @@ export const en: Translations = {
   authCopyFailedDesc: "Failed to copy account ID to clipboard.",
   authActivitySecureNoteCreated: "Secure note created",
   authActivitySecureNoteWithFileCreated: "Secure note with file created",
+  authActivitySecureNoteWithRecordingCreated: "Secure note with recording created",
   authActivityAiNoteCreated: "AI-assisted note created",
   authActivityAiNoteWithFileCreated: "AI note with file created",
+  authActivityAiNoteWithRecordingCreated: "AI note with recording created",
   authActivityNoteOpened: "Note opened",
   authActivityNoteExpired: "Note expired",
   authActivityPageTitle: "Activity",
@@ -315,6 +317,8 @@ export const en: Translations = {
   authActivitySecureNoteCreatedDesc: "A new secure note was sent from your account.",
   authActivitySecureNoteWithFileCreatedDesc:
     "A secure note with an encrypted attachment was sent from your account.",
+  authActivitySecureNoteWithRecordingCreatedDesc:
+    "A secure note with an encrypted voice recording was sent from your account.",
   authActivityAiNoteCreatedDesc: "An AI-composed note was sent from your account.",
   authActivityNoteOpenedDesc: "A note was opened while you were signed in.",
   authActivityNoteExpiredDesc: "A note reached its expiry and was destroyed.",
@@ -322,6 +326,7 @@ export const en: Translations = {
   authActivityCreateOptionsSubtitle:
     "Settings chosen when this note was created. Message content is never stored here.",
   authActivityChipAttachment: "Encrypted file",
+  authActivityChipVoiceMessage: "Voice recording",
   authActivityChipPassword: "Password",
   authActivityChipOneRead: "1 read",
   authActivityChipReads: "{n} reads",
@@ -568,6 +573,9 @@ export const en: Translations = {
   settingsEmailAlertOnAttachmentDownload: "Email alert when an attachment is downloaded",
   settingsEmailAlertOnAttachmentDownloadInfo:
     "One email when the encrypted attachment is requested for download. File contents are never included.",
+  settingsEmailAlertOnRecordingDownload: "Email alert when a recording is downloaded",
+  settingsEmailAlertOnRecordingDownloadInfo:
+    "One email when the encrypted voice recording is requested for download. Audio contents are never included.",
   settingsEmailAlertDestinations: "Where to send alerts",
   settingsEmailAlertAccountEmail: "My account email",
   settingsEmailAlertCustomEmail: "Also send to another email",
@@ -585,6 +593,10 @@ export const en: Translations = {
     "A private name for this note on this device. Never included in the note ciphertext. Business can download or send labels between devices.",
   settingsNoteLabelHint:
     "Saved on this device for Notification Center. Business: download, load, or send as a PrivateNote.",
+  successNoteLabelTitle: "Name this note",
+  successNoteLabelPlaceholder: "e.g. Client onboarding pack",
+  successNoteLabelHint:
+    "Shown in Activity on this device so you can recognize tracked notes. Never sent with the link.",
   noteLabelsPortabilityTitle: "Move note labels between devices",
   noteLabelsPortabilityBody:
     "Labels stay on your devices. Download a pack, load it elsewhere, or send it as a one-time PrivateNote. Note content is never included.",
@@ -2429,6 +2441,7 @@ export const en: Translations = {
   notificationStatusBurned: "Burned",
   notificationStatusExpired: "Expired",
   notificationStatusAttachmentDownloaded: "Downloaded attachment",
+  notificationStatusRecordingDownloaded: "Downloaded recording",
   notificationStatusReceiptConfirmed: "Receipt confirmed",
   notificationStatusRevoked: "Revoked",
 

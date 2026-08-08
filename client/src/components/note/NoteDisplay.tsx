@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Copy,
   RefreshCw,
-  Lock,
   Unlock,
   Eye,
   EyeOff,
@@ -16,7 +15,6 @@ import {
   Image as ImageIcon,
   Mic,
   BadgeCheck,
-  Clock,
   Tags,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
@@ -237,9 +235,13 @@ interface RevealHeroProps {
   t: Translations;
 }
 
-/** Shared hero subtitle: matches Reveal / Create success rhythm. */
+/** Shared hero subtitle: matches Secure File Transfer / Password Generator rhythm. */
 const NOTE_VIEW_HERO_SUBTITLE =
-  'm-0 mt-6 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-7 md:text-xl md:max-w-3xl leading-relaxed';
+  "m-0 mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-gray-500 dark:text-gray-400 sm:text-xl";
+
+/** Shared outer shell for note-view heroes (password gate, reveal, access problems). */
+const NOTE_VIEW_SHELL = "w-full max-w-5xl mx-auto";
+const NOTE_VIEW_HERO_SECTION = "relative isolate px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8";
 
 /** Reveal succeeded but client decrypt/import failed — not the same as a missing or consumed note. */
 function isDecryptKeyFailureMessage(message: string): boolean {
@@ -335,8 +337,8 @@ const NoteAccessProblem: React.FC<{
     : null;
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={NOTE_VIEW_SHELL}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         <div className="text-center">
           {isIncomplete ? (
             <>
@@ -352,9 +354,6 @@ const NoteAccessProblem: React.FC<{
             </>
           ) : isNotYetAvailable ? (
             <>
-              <div className="mb-4 flex justify-center text-primary">
-                <Clock className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
-              </div>
               <h1 className="page-title text-gray-900 dark:text-white">
                 {t.revealNotYetAvailableTitle ?? "Not available yet"}
               </h1>
@@ -438,11 +437,11 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   const buttonStyle = branding?.accentColor ? { backgroundColor: branding.accentColor } : undefined;
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={NOTE_VIEW_SHELL}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         <div className="text-center">
           {hasBranding && (
-            <div className="mb-4 flex flex-col items-center gap-2">
+            <div className="mb-5 flex flex-col items-center gap-2">
               {branding?.logoUrl && (
                 <img
                   src={branding.logoUrl}
@@ -1497,16 +1496,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   if (!hasRevealed) {
     if (recipientGateRequired && !recipientGateVerified) {
       return (
-        <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-          <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
-            <div className="mx-auto max-w-md text-center">
-              <div className="mb-4 flex justify-center text-primary">
-                <ShieldCheck className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
-              </div>
+        <section className={NOTE_VIEW_SHELL}>
+          <section className={NOTE_VIEW_HERO_SECTION}>
               <h1 className="page-title text-gray-900 dark:text-white">
                 {t.recipientGateTitle ?? "Verify before opening"}
               </h1>
-              <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              <p className={NOTE_VIEW_HERO_SUBTITLE}>
                 {recipientCodeSending && !recipientCodeSent
                   ? (t.recipientGateSendingCode ?? "Sending a verification code…")
                   : recipientGateEmailHint
@@ -1516,7 +1511,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     : (t.recipientGateDescription ??
                         "Enter the verification code emailed to the recipient address to continue.")}
               </p>
-              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
+              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mx-auto mt-8 max-w-md space-y-4 text-left sm:mt-10">
                 {recipientGateCodeRequired ? (
                   <div>
                     <label htmlFor="recipient-gate-code" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -1561,7 +1556,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                       : (t.recipientGateSendCode ?? "Send code")}
                 </button>
               </form>
-            </div>
           </section>
         </section>
       );
@@ -1583,18 +1577,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   // If password protected and not yet decrypted, show password input
   if (isPasswordProtected && !noteContent) {
     return (
-      <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-        <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+      <section className={NOTE_VIEW_SHELL}>
+        <section className={NOTE_VIEW_HERO_SECTION}>
           <div className="text-center">
-            <div className="text-primary mb-4 flex justify-center">
-              <Lock className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
-            </div>
             <h1 className="page-title text-gray-900 dark:text-white">{t.passwordProtectedNote}</h1>
             <p className={NOTE_VIEW_HERO_SUBTITLE}>
               {t.passwordProtectedDescription}
             </p>
 
-            <div className="max-w-sm mx-auto mt-8 sm:mt-10 text-left">
+            <div className="mx-auto mt-8 max-w-sm text-left sm:mt-10">
               <div className="mb-4 relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -1668,10 +1659,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
-    <section className="w-full max-w-3xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         {hasBranding && (
-          <div className="mb-4 flex flex-col items-center gap-2 text-center">
+          <div className="mb-5 flex flex-col items-center gap-2 text-center">
             {revealBranding?.logoUrl && (
               <img
                 src={revealBranding.logoUrl}
@@ -1687,9 +1678,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </div>
         )}
 
-        <div className="mb-5 text-center sm:mb-6">
+        <div className="mb-8 text-center sm:mb-10">
           <h1 className="page-title text-primary">{t.privateNote}</h1>
-          <p className="m-0 mt-3 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
             <span aria-hidden>⚠️</span>
             {t.noteDeletedWarning}
           </p>

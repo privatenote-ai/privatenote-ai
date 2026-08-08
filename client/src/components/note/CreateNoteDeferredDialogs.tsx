@@ -89,8 +89,9 @@ export function CreateNoteDeferredDialogs({
       ? t.attachmentProgressPreparing
       : attachmentProgress?.phase === "finalize"
         ? t.attachmentProgressFinalizing
-        : // Encrypt and upload are streamed together — keep one stable title.
-          t.attachmentProgressEncrypting;
+        : attachmentProgress?.phase === "upload"
+          ? t.attachmentProgressUploading
+          : t.attachmentProgressEncrypting;
 
   const upgradeIsStarter = fileSizeUpgradePlan === "personal_premium";
   const currentLimitLabel = formatNoteFileSize(currentFileLimitBytes);
@@ -188,11 +189,15 @@ export function CreateNoteDeferredDialogs({
         progress={
           attachmentProgress
             ? {
-                phase: attachmentProgress.phase === "upload" ? "encrypt" : attachmentProgress.phase,
+                phase: attachmentProgress.phase,
                 progress: attachmentProgress.progress,
                 title: attachmentTitle,
                 detail: attachmentProgress.detail,
                 footnote: t.attachmentProgressFootnote,
+                mode: "create",
+                encryptLabel: t.attachmentProgressEncrypting,
+                uploadLabel: t.attachmentProgressUploading,
+                finalizeLabel: t.attachmentProgressFinalizing,
               }
             : null
         }

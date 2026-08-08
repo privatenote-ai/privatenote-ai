@@ -21,9 +21,11 @@ import {
   Key,
   Eye,
   EyeOff,
+  Tag,
 } from "lucide-react";
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
 import { useToast } from "@/hooks/use-toast";
+import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
 
 export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verify_email";
 
@@ -65,6 +67,10 @@ export type CreatedNoteMeta = {
   expiryValue: NoteExpiryPresetId;
   readCount: number;
   isPasswordProtected: boolean;
+  /** Note id for device-local naming when delivery tracking is on. */
+  noteId?: string;
+  /** True when open/destroy/download alerts or recipient gates were enabled. */
+  tracksDelivery?: boolean;
   recipientVerificationCode?: string;
   recipientLinkDelivery?: {
     status: "sent" | "failed";
@@ -99,6 +105,9 @@ export type CreateNoteSuccessProps = {
   onCreateNewNote: () => void;
   /** Plaintext note password for OOB share/copy on the success page only. Never sent to the server. */
   createdPassword?: string;
+  /** Device-local name for Activity when tracking is enabled. */
+  noteLabel?: string;
+  onNoteLabelChange?: (value: string) => void;
   successQrSectionRef: RefObject<HTMLDivElement>;
   variant?: "note" | "file-transfer";
 };
@@ -123,6 +132,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   onDownloadQrCode,
   onCreateNewNote,
   createdPassword,
+  noteLabel = "",
+  onNoteLabelChange,
   successQrSectionRef,
   variant = "note",
 }) => {
@@ -184,6 +195,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
   const notePassword = createdPassword?.trim() ?? "";
   const showPasswordShare = createdPasswordProtected && notePassword.length > 0;
+  const showNoteLabel =
+    Boolean(createdNoteMeta.tracksDelivery) &&
+    Boolean(createdNoteMeta.noteId) &&
+    typeof onNoteLabelChange === "function";
 
   const copyCreatedPassword = async () => {
     try {
@@ -460,6 +475,35 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                         </button>
                       </div>
                     </div>
+                  </div>
+                ) : null}
+
+                {showNoteLabel ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 dark:border-gray-700 dark:bg-gray-900/40">
+                    <label
+                      htmlFor="success-note-label"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+                    >
+                      <Tag className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                      {t.successNoteLabelTitle ?? t.settingsNoteLabel ?? "Name this note"}
+                    </label>
+                    <input
+                      id="success-note-label"
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={noteLabel}
+                      onChange={(event) => onNoteLabelChange?.(event.target.value)}
+                      placeholder={
+                        t.successNoteLabelPlaceholder ??
+                        t.settingsNoteLabelPlaceholder ??
+                        "e.g. Client onboarding pack"
+                      }
+                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    />
+                    <p className="m-0 mt-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.successNoteLabelHint ??
+                        "Shown in Activity on this device so you can recognize tracked notes. Never sent with the link."}
+                    </p>
                   </div>
                 ) : null}
 

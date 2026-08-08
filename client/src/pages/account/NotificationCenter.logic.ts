@@ -130,6 +130,7 @@ export function formatDeviceClass(raw: string | null | undefined, t: Record<stri
 export function statusLabel(
   status: SentNoteNotificationStatus,
   t: Record<string, string>,
+  options?: { hasVoiceMessage?: boolean },
 ): string {
   switch (status) {
     case "created":
@@ -143,7 +144,9 @@ export function statusLabel(
     case "expired":
       return t.notificationStatusExpired ?? "Expired";
     case "attachment_downloaded":
-      return t.notificationStatusAttachmentDownloaded ?? "Downloaded attachment";
+      return options?.hasVoiceMessage
+        ? (t.notificationStatusRecordingDownloaded ?? "Downloaded recording")
+        : (t.notificationStatusAttachmentDownloaded ?? "Downloaded attachment");
     case "receipt_confirmed":
       return t.notificationStatusReceiptConfirmed ?? "Receipt confirmed";
     default:

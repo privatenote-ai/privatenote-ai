@@ -14,6 +14,7 @@ import {
   isValidReceiptAckTokenHex,
   timingSafeEqualHex,
 } from "@shared/noteReceiptAck";
+import { buildSentNoteLifecycleEmailContent } from "@shared/sentNoteLifecycleEmail";
 
 export type SentNoteStatus = "created" | "opened" | "expired" | "destroyed" | "revoked";
 
@@ -143,15 +144,6 @@ function maskEmailHint(email: string | null): string | null {
       ? `${domainName[0] ?? ""}*`
       : `${domainName[0]}***${domainName.slice(-1)}`;
   return `${localHint}@${domainHint}${tld}`;
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function kv(env: Env): KVNamespace {
@@ -331,7 +323,7 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     displayNoteId: formatNotificationNoteDisplayId(row.note_id),
     status,
     eventAt,
-    label: null,
+    label: row.label,
     createdAt: row.created_at,
     openedAt: row.opened_at,
     destroyedAt: row.destroyed_at,
@@ -967,56 +959,18 @@ async function sendSentNoteLifecycleEmail(
   if (rowsChanged < 1) return;
 
   const label = row.label || `${noteId.slice(0, 8)}...`;
-  const countryLine = context.country ? `Approximate country: ${context.country}` : "";
-  const deviceLine =
-    context.deviceClass || context.browser
-      ? `Device: ${context.deviceClass ?? "unknown"}, browser: ${context.browser ?? "unknown"}`
-      : "";
-  const eventLabel =
-    event === "opened_destroyed"
-      ? "opened and destroyed"
-      : event === "attachment_downloaded"
-        ? "attachment downloaded"
-      : event === "receipt_acknowledged"
-        ? "receipt confirmed"
-      : event === "expired"
-        ? "expired"
-        : event;
-  const subject =
-    event === "attachment_downloaded"
-      ? `PrivateNote: your file "${label}" was downloaded`
-      : event === "receipt_acknowledged"
-        ? `PrivateNote: receipt confirmed for "${label}"`
-      : `PrivateNote: your note "${label}" was ${eventLabel}`;
-  const explanatoryLine =
-    event === "opened"
-      ? "This is proof the link was accessed, not that the recipient read or understood the content."
-      : event === "attachment_downloaded"
-        ? "This confirms the encrypted attachment was requested for download. PrivateNote cannot see the decrypted file contents."
-      : event === "receipt_acknowledged"
-        ? "The recipient confirmed they successfully decrypted the note. This is stronger than an open receipt."
-      : event === "expired"
-        ? "This means the note can no longer be opened because its expiry time passed."
-        : event === "opened_destroyed"
-          ? "This means the link was accessed and the note can no longer be opened."
-          : "This means the note can no longer be opened because its read limit was reached.";
-  const textIntro =
-    event === "attachment_downloaded"
-      ? `Your encrypted file "${label}" was downloaded.`
-      : event === "receipt_acknowledged"
-        ? `Receipt was confirmed for your secure note "${label}".`
-      : `Your secure note "${label}" was ${eventLabel}.`;
-  const text = [
-    textIntro,
-    `Time: ${eventAt}`,
-    countryLine,
-    deviceLine,
-    "",
-    explanatoryLine,
-    "",
-    "PrivateNote cannot see the decrypted message content.",
-  ].filter(Boolean).join("\n");
-  const html = `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
+  const webOrigin =
+    (typeof env.PUBLIC_WEB_APP_ORIGIN === "string" && env.PUBLIC_WEB_APP_ORIGIN.trim()) ||
+    "https://privatenote.ai";
+  const { subject, text, html } = buildSentNoteLifecycleEmailContent({
+    event,
+    label,
+    eventAt,
+    country: context.country,
+    deviceClass: context.deviceClass,
+    browser: context.browser,
+    webOrigin,
+  });
 
   try {
     for (const notifyEmail of recipients) {

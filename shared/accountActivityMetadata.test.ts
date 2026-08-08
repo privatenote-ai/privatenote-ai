@@ -29,6 +29,23 @@ describe("accountActivityMetadata", () => {
     );
   });
 
+  it("marks voice recordings distinctly and implies attachment", () => {
+    const json = serializeAccountActivityMetadata({
+      hasVoiceMessage: true,
+    });
+    assert.equal(
+      json,
+      JSON.stringify({
+        hasAttachment: true,
+        hasVoiceMessage: true,
+      }),
+    );
+    assert.deepEqual(parseAccountActivityMetadata(json), {
+      hasAttachment: true,
+      hasVoiceMessage: true,
+    });
+  });
+
   it("parses stored JSON and rejects junk", () => {
     const parsed = parseAccountActivityMetadata(
       '{"hasAttachment":true,"maxReads":1,"bogus":true}',
