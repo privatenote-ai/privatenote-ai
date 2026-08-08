@@ -71,6 +71,9 @@ describe("planCatalog", () => {
     assert.equal(free.maxFileAccessWindowSeconds, 15 * 60);
     assert.equal(starter.maxFileAccessWindowSeconds, 30 * 60);
     assert.equal(business.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(free.maxVoiceMessageSeconds, 5 * 60);
+    assert.equal(starter.maxVoiceMessageSeconds, 15 * 60);
+    assert.equal(business.maxVoiceMessageSeconds, 30 * 60);
   });
 
   it("enables workflow on Starter and branding on Business", () => {

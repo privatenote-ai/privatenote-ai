@@ -22,6 +22,8 @@ export type PlanFeatureFlags = {
   maxExpirySeconds: number;
   /** Exact note-open counts the plan may submit. */
   allowedReadCounts: readonly number[];
+  /** Max voice-message recording length (MediaRecorder). */
+  maxVoiceMessageSeconds: number;
   recipientLinkDelivery: boolean;
   readerLanguage: boolean;
   /** Business: company profile / logo / accent on reveal. */
@@ -75,6 +77,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 15 * 60,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
+      maxVoiceMessageSeconds: 5 * 60,
       recipientLinkDelivery: false,
       readerLanguage: false,
       revealBranding: false,
@@ -105,6 +108,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 30 * 60,
       maxExpirySeconds: 15 * DAY,
       allowedReadCounts: [1, 2, 3],
+      maxVoiceMessageSeconds: 15 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: false,
@@ -135,6 +139,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 60 * 60,
       maxExpirySeconds: 30 * DAY,
       allowedReadCounts: [1, 2, 3, 5],
+      maxVoiceMessageSeconds: 30 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: true,

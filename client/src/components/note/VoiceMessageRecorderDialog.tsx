@@ -26,6 +26,8 @@ type VoiceMessageRecorderDialogProps = {
   onOpenChange: (open: boolean) => void;
   onRecorded: (file: File) => void;
   maxBytes: number;
+  /** Plan-based recording cap; defaults to Free (5 minutes). */
+  maxDurationSeconds?: number;
 };
 
 function stopMediaStream(stream: MediaStream | null): void {
@@ -40,6 +42,7 @@ export function VoiceMessageRecorderDialog({
   onOpenChange,
   onRecorded,
   maxBytes,
+  maxDurationSeconds = VOICE_MESSAGE_MAX_DURATION_SECONDS,
 }: VoiceMessageRecorderDialogProps) {
   const { t } = useLanguage();
   const [phase, setPhase] = useState<RecorderPhase>("idle");
@@ -47,6 +50,7 @@ export function VoiceMessageRecorderDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const durationCapSeconds = Math.max(1, Math.floor(maxDurationSeconds));
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -186,7 +190,7 @@ export function VoiceMessageRecorderDialog({
       timerRef.current = window.setInterval(() => {
         const next = Math.floor((Date.now() - startedAtRef.current) / 1000);
         setElapsedSeconds(next);
-        if (next >= VOICE_MESSAGE_MAX_DURATION_SECONDS) {
+        if (next >= durationCapSeconds) {
           finishRecording();
         }
       }, 250);
@@ -243,7 +247,7 @@ export function VoiceMessageRecorderDialog({
           <p className="font-mono text-2xl tabular-nums text-gray-900 dark:text-gray-100">
             {formatRecordingDuration(elapsedSeconds)}
             <span className="ml-1 text-sm font-sans text-gray-400">
-              / {formatRecordingDuration(VOICE_MESSAGE_MAX_DURATION_SECONDS)}
+              / {formatRecordingDuration(durationCapSeconds)}
             </span>
           </p>
 

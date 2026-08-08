@@ -3492,6 +3492,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onOpenChange={setVoiceRecorderOpen}
             onRecorded={handleVoiceMessageRecorded}
             maxBytes={fileLimitBytes}
+            maxDurationSeconds={planCapabilities.maxVoiceMessageSeconds}
           />
         </Suspense>
       ) : null}
