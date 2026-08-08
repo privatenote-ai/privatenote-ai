@@ -32,7 +32,10 @@ import {
 } from '@/utils/encryption';
 import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { formatAttachmentDisplayName } from '@/utils/formatAttachmentDisplayName';
-import { isVoiceMessageAttachment } from '@/utils/voiceMessageRecording';
+import {
+  canBrowserPlayVoiceAttachment,
+  isVoiceMessageAttachment,
+} from '@/utils/voiceMessageRecording';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -539,6 +542,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
+  const [audioPlaybackUnsupported, setAudioPlaybackUnsupported] = useState(false);
   const thumbnailLoadAttemptedRef = useRef(false);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const [recipientGateLoading, setRecipientGateLoading] = useState(true);
@@ -721,6 +725,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setPreviewMimeType(null);
     setShowInlinePreview(false);
     setIsLoadingThumbnail(false);
+    setAudioPlaybackUnsupported(false);
   }, [id]);
 
   useEffect(() => {
@@ -739,6 +744,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         setPreviewMimeType(result.mimeType);
         if (attachmentPreviewKind === "audio") {
           setShowInlinePreview(true);
+          setAudioPlaybackUnsupported(
+            !canBrowserPlayVoiceAttachment(result.mimeType, attachmentMetadata?.name),
+          );
         }
       })
       .catch((error) => {
@@ -1827,17 +1835,36 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 (isLoadingThumbnail || showInlinePreview) &&
                 !isViewingFile ? (
                   <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-600 dark:bg-gray-900/60">
-                    {previewObjectUrl ? (
+                    {previewObjectUrl && !audioPlaybackUnsupported ? (
                       <audio
                         controls
                         controlsList="nodownload"
                         src={previewObjectUrl}
                         className="w-full"
                         preload="metadata"
+                        onError={() => setAudioPlaybackUnsupported(true)}
                       >
                         {t.recordMessagePreviewUnsupported ??
                           "Your browser cannot play this voice message."}
                       </audio>
+                    ) : previewObjectUrl && audioPlaybackUnsupported ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-700 dark:text-gray-300" role="status">
+                          {t.voiceMessagePlaybackUnsupported ??
+                            "This browser can’t play this voice message inline. Download it to listen."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void handleDownloadAttachment()}
+                          disabled={isDownloadingFile || !contentKey || fileAccessExpired}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          <Download className="h-3.5 w-3.5" aria-hidden />
+                          {isDownloadingFile
+                            ? "Decrypting…"
+                            : (t.voiceMessageDownloadToPlay ?? "Download to play")}
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />

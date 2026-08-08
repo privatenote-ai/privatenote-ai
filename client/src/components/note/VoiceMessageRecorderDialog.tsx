@@ -13,10 +13,17 @@ import { useLanguage } from "@/context/LanguageContext";
 import { formatNoteFileSize } from "@shared/noteFileLimits";
 import {
   VOICE_MESSAGE_MAX_DURATION_SECONDS,
+  VOICE_MESSAGE_WAV_SAMPLE_RATE,
+  concatFloat32,
+  createAudioContext,
   createVoiceMessageFile,
+  downsampleToRate,
+  encodeWavMonoFloat32,
   formatRecordingDuration,
   isVoiceRecordingSupported,
-  pickVoiceRecordingMime,
+  pickVoiceRecordingStrategy,
+  type VoiceRecordingFormatPreference,
+  type VoiceRecordingStrategy,
 } from "@/utils/voiceMessageRecording";
 
 type RecorderPhase = "idle" | "recording" | "preview";
@@ -28,6 +35,8 @@ type VoiceMessageRecorderDialogProps = {
   maxBytes: number;
   /** Plan-based recording cap; defaults to Free (5 minutes). */
   maxDurationSeconds?: number;
+  /** Premium preference: auto / wav / m4a. Free always uses auto. */
+  formatPreference?: VoiceRecordingFormatPreference;
 };
 
 function stopMediaStream(stream: MediaStream | null): void {
@@ -43,6 +52,7 @@ export function VoiceMessageRecorderDialog({
   onRecorded,
   maxBytes,
   maxDurationSeconds = VOICE_MESSAGE_MAX_DURATION_SECONDS,
+  formatPreference = "auto",
 }: VoiceMessageRecorderDialogProps) {
   const { t } = useLanguage();
   const [phase, setPhase] = useState<RecorderPhase>("idle");
@@ -53,9 +63,16 @@ export function VoiceMessageRecorderDialog({
   const durationCapSeconds = Math.max(1, Math.floor(maxDurationSeconds));
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const pcmChunksRef = useRef<Float32Array[]>([]);
+  const inputSampleRateRef = useRef(VOICE_MESSAGE_WAV_SAMPLE_RATE);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const mimeRef = useRef(pickVoiceRecordingMime());
+  const strategyRef = useRef<VoiceRecordingStrategy>(
+    pickVoiceRecordingStrategy(formatPreference),
+  );
   const recordedBlobRef = useRef<Blob | null>(null);
   const timerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number>(0);
@@ -66,6 +83,60 @@ export function VoiceMessageRecorderDialog({
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
+  };
+
+  const stopWavGraph = async () => {
+    try {
+      scriptProcessorRef.current?.disconnect();
+    } catch {
+      // ignore
+    }
+    try {
+      sourceNodeRef.current?.disconnect();
+    } catch {
+      // ignore
+    }
+    scriptProcessorRef.current = null;
+    sourceNodeRef.current = null;
+    const ctx = audioContextRef.current;
+    audioContextRef.current = null;
+    if (ctx) {
+      try {
+        await ctx.close();
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const finalizeRecordingBlob = (blob: Blob) => {
+    const shouldDiscard = discardOnStopRef.current;
+    discardOnStopRef.current = false;
+    if (shouldDiscard) return;
+
+    if (blob.size <= 0) {
+      setErrorMessage(t.recordMessageEmpty ?? "No audio was captured. Try recording again.");
+      setPhase("idle");
+      return;
+    }
+    if (blob.size > maxBytes) {
+      setErrorMessage(
+        (t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account.").replace(
+          "{limit}",
+          formatNoteFileSize(maxBytes),
+        ),
+      );
+      setPhase("idle");
+      return;
+    }
+
+    recordedBlobRef.current = blob;
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    setPhase("preview");
   };
 
   const resetRecorderState = (options?: { discardActiveRecording?: boolean }) => {
@@ -81,9 +152,11 @@ export function VoiceMessageRecorderDialog({
       }
     }
     mediaRecorderRef.current = null;
+    void stopWavGraph();
     stopMediaStream(streamRef.current);
     streamRef.current = null;
     chunksRef.current = [];
+    pcmChunksRef.current = [];
     recordedBlobRef.current = null;
     setPhase("idle");
     setElapsedSeconds(0);
@@ -110,9 +183,33 @@ export function VoiceMessageRecorderDialog({
   }, []);
 
   const finishRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
-    recorder.stop();
+    const strategy = strategyRef.current;
+    if (strategy.kind === "media-recorder") {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") return;
+      recorder.stop();
+      return;
+    }
+
+    clearTimer();
+    const shouldDiscard = discardOnStopRef.current;
+    const pcm = concatFloat32(pcmChunksRef.current);
+    pcmChunksRef.current = [];
+    const downsampled = downsampleToRate(
+      pcm,
+      inputSampleRateRef.current,
+      VOICE_MESSAGE_WAV_SAMPLE_RATE,
+    );
+    void stopWavGraph().then(() => {
+      stopMediaStream(streamRef.current);
+      streamRef.current = null;
+      if (shouldDiscard) {
+        discardOnStopRef.current = false;
+        return;
+      }
+      const blob = encodeWavMonoFloat32(downsampled, VOICE_MESSAGE_WAV_SAMPLE_RATE);
+      finalizeRecordingBlob(blob);
+    });
   };
 
   const startRecording = async () => {
@@ -124,65 +221,71 @@ export function VoiceMessageRecorderDialog({
 
     setIsStarting(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      });
       streamRef.current = stream;
-      mimeRef.current = pickVoiceRecordingMime();
+      strategyRef.current = pickVoiceRecordingStrategy(formatPreference);
       chunksRef.current = [];
+      pcmChunksRef.current = [];
+      discardOnStopRef.current = false;
 
-      const recorder = mimeRef.current.mimeType
-        ? new MediaRecorder(stream, { mimeType: mimeRef.current.mimeType })
-        : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
+      if (strategyRef.current.kind === "media-recorder") {
+        const mimeType = strategyRef.current.mimeType;
+        const recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
-      };
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) chunksRef.current.push(event.data);
+        };
 
-      recorder.onstop = () => {
-        clearTimer();
-        stopMediaStream(streamRef.current);
-        streamRef.current = null;
-        mediaRecorderRef.current = null;
+        recorder.onstop = () => {
+          clearTimer();
+          stopMediaStream(streamRef.current);
+          streamRef.current = null;
+          mediaRecorderRef.current = null;
+          const type = recorder.mimeType || mimeType || "audio/mp4";
+          const blob = new Blob(chunksRef.current, { type });
+          chunksRef.current = [];
+          finalizeRecordingBlob(blob);
+        };
 
-        const shouldDiscard = discardOnStopRef.current;
-        discardOnStopRef.current = false;
-        const mimeType =
-          recorder.mimeType || mimeRef.current.mimeType || "audio/webm";
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        chunksRef.current = [];
-        if (shouldDiscard) return;
+        recorder.onerror = () => {
+          setErrorMessage(t.recordMessageFailed ?? "Recording failed. Please try again.");
+          resetRecorderState();
+        };
 
-        if (blob.size <= 0) {
-          setErrorMessage(t.recordMessageEmpty ?? "No audio was captured. Try recording again.");
-          setPhase("idle");
-          return;
+        recorder.start(250);
+      } else {
+        const audioContext = createAudioContext();
+        audioContextRef.current = audioContext;
+        if (audioContext.state === "suspended") {
+          await audioContext.resume();
         }
-        if (blob.size > maxBytes) {
-          setErrorMessage(
-            (t.fileTooLargeDescription ?? "Maximum file size is {limit} for your account.").replace(
-              "{limit}",
-              formatNoteFileSize(maxBytes),
-            ),
-          );
-          setPhase("idle");
-          return;
-        }
+        inputSampleRateRef.current = audioContext.sampleRate;
+        const source = audioContext.createMediaStreamSource(stream);
+        sourceNodeRef.current = source;
+        // ScriptProcessor is deprecated but remains the most portable mono capture path.
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        scriptProcessorRef.current = processor;
+        processor.onaudioprocess = (event) => {
+          const input = event.inputBuffer.getChannelData(0);
+          pcmChunksRef.current.push(new Float32Array(input));
+        };
+        // Keep the processor graph alive without monitoring the mic through speakers.
+        const silentGain = audioContext.createGain();
+        silentGain.gain.value = 0;
+        source.connect(processor);
+        processor.connect(silentGain);
+        silentGain.connect(audioContext.destination);
+      }
 
-        recordedBlobRef.current = blob;
-        const url = URL.createObjectURL(blob);
-        setPreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return url;
-        });
-        setPhase("preview");
-      };
-
-      recorder.onerror = () => {
-        setErrorMessage(t.recordMessageFailed ?? "Recording failed. Please try again.");
-        resetRecorderState();
-      };
-
-      recorder.start(250);
       startedAtRef.current = Date.now();
       setElapsedSeconds(0);
       setPhase("recording");
@@ -208,8 +311,9 @@ export function VoiceMessageRecorderDialog({
   const handleUseRecording = () => {
     const blob = recordedBlobRef.current;
     if (!blob) return;
-    const mimeType = blob.type || mimeRef.current.mimeType || "audio/webm";
-    const file = createVoiceMessageFile(blob, mimeType, mimeRef.current.extension);
+    const strategy = strategyRef.current;
+    const mimeType = blob.type || strategy.mimeType;
+    const file = createVoiceMessageFile(blob, mimeType, strategy.extension);
     onRecorded(file);
     onOpenChange(false);
   };

@@ -74,6 +74,7 @@ import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile, isVoiceRecordingSupported } from "@/utils/voiceMessageRecording";
+import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
@@ -3493,6 +3494,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onRecorded={handleVoiceMessageRecorded}
             maxBytes={fileLimitBytes}
             maxDurationSeconds={planCapabilities.maxVoiceMessageSeconds}
+            formatPreference={
+              isPremiumUser ? readVoiceRecordingFormatPreference() : "auto"
+            }
           />
         </Suspense>
       ) : null}

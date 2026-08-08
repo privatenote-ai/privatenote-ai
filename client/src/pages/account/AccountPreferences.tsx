@@ -7,11 +7,17 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
-import { Sun, Moon, Monitor, Bell, Cloud, ShieldOff, SlidersHorizontal, Crown } from "lucide-react";
+import { Sun, Moon, Monitor, Bell, Cloud, ShieldOff, SlidersHorizontal, Crown, Mic } from "lucide-react";
 import {
   readLocalHostedAiAllowed,
   writeLocalHostedAiAllowed,
 } from "@/utils/hostedAiPreference";
+import {
+  readVoiceRecordingFormatPreference,
+  writeVoiceRecordingFormatPreference,
+  type VoiceRecordingFormatPreference,
+} from "@/utils/voiceRecordingFormatPreference";
+import { isVoiceRecordingMp4Supported } from "@/utils/voiceMessageRecording";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   LANGUAGE_OPTIONS,
@@ -19,7 +25,12 @@ import {
   SUPPORTED_LANGUAGES,
   type SupportedLanguage,
 } from "@/utils/translation";
-import { normalizeAccountType, planFeaturesFor, type AccountType } from "@shared/planCatalog";
+import {
+  hasPremiumFeatures,
+  normalizeAccountType,
+  planFeaturesFor,
+  type AccountType,
+} from "@shared/planCatalog";
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
 import {
@@ -136,7 +147,34 @@ export default function AccountPreferences() {
   const [savingNoteDefaults, setSavingNoteDefaults] = useState(false);
   const [resettingNoteDefaults, setResettingNoteDefaults] = useState(false);
   const [savedNoteDefaultsIndicator, setSavedNoteDefaultsIndicator] = useState(false);
+  const [voiceFormatPreference, setVoiceFormatPreference] = useState<VoiceRecordingFormatPreference>(
+    () => readVoiceRecordingFormatPreference(),
+  );
+  const [savedVoiceFormatIndicator, setSavedVoiceFormatIndicator] = useState(false);
+  const [mp4RecordingSupported, setMp4RecordingSupported] = useState(false);
   const planCapabilities = planFeaturesFor(accountType);
+  const canChooseVoiceFormat = hasPremiumFeatures(accountType);
+
+  useEffect(() => {
+    setMp4RecordingSupported(isVoiceRecordingMp4Supported());
+  }, []);
+
+  const onVoiceFormatChange = (next: VoiceRecordingFormatPreference) => {
+    if (next === "m4a" && !isVoiceRecordingMp4Supported()) {
+      toast({
+        title: t.voiceFormatM4aUnsupportedTitle ?? "M4A not available here",
+        description:
+          t.voiceFormatM4aUnsupportedDesc ??
+          "This browser can’t record M4A. Choose WAV or Auto instead.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setVoiceFormatPreference(next);
+    writeVoiceRecordingFormatPreference(next);
+    setSavedVoiceFormatIndicator(true);
+    window.setTimeout(() => setSavedVoiceFormatIndicator(false), 1500);
+  };
 
   const loadSummary = useCallback(async () => {
     try {
@@ -711,6 +749,88 @@ export default function AccountPreferences() {
                   <div className="mt-3">
                     <Button asChild size="sm">
                       <a href="/premium">Compare plans</a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Voice recording format ─────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
+            <div className="flex items-start gap-3">
+              <Mic className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {t.voiceFormatPrefsTitle ?? "Voice recording format"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      {t.voiceFormatPrefsDescription ??
+                        "Choose how voice messages are captured in this browser. Saved on this device."}
+                    </p>
+                  </div>
+                  {savedVoiceFormatIndicator ? (
+                    <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {t.authPrefsSaved || "Saved"}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {canChooseVoiceFormat ? (
+            <div className="space-y-4 px-5 py-5">
+              <div>
+                <Label htmlFor="voice-recording-format" className="mb-2 block text-sm">
+                  {t.voiceFormatPrefsLabel ?? "Preferred format"}
+                </Label>
+                <select
+                  id="voice-recording-format"
+                  value={voiceFormatPreference}
+                  onChange={(event) =>
+                    onVoiceFormatChange(event.target.value as VoiceRecordingFormatPreference)
+                  }
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <option value="auto">
+                    {t.voiceFormatOptionAuto ?? "Auto — best available for this browser"}
+                  </option>
+                  <option value="wav">
+                    {t.voiceFormatOptionWav ?? "WAV — maximum compatibility (larger files)"}
+                  </option>
+                  <option value="m4a" disabled={!mp4RecordingSupported}>
+                    {mp4RecordingSupported
+                      ? (t.voiceFormatOptionM4a ?? "M4A — smaller files (Safari-friendly)")
+                      : (t.voiceFormatOptionM4aUnavailable ??
+                        "M4A — not supported in this browser")}
+                  </option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t.voiceFormatPrefsHint ??
+                  "Auto uses M4A when this browser can record it; otherwise WAV so recipients can play messages in Chrome and Safari."}
+              </p>
+            </div>
+          ) : (
+            <div className="px-5 py-5">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
+                <Crown className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <div>
+                  <p className="text-sm font-semibold">
+                    {t.voiceFormatPrefsPremiumTitle ?? "Starter and Business feature"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    {t.voiceFormatPrefsPremiumDesc ??
+                      "Free accounts always use Auto. Upgrade to choose WAV or M4A for voice messages."}
+                  </p>
+                  <div className="mt-3">
+                    <Button asChild size="sm">
+                      <a href="/premium">{t.comparePlans ?? "Compare plans"}</a>
                     </Button>
                   </div>
                 </div>

@@ -92,6 +92,26 @@ export const en: Translations = {
   recordMessagePreviewUnsupported: "Your browser cannot preview this recording.",
   voiceMessageAttachment: "Voice message",
   voiceMessageDecrypting: "Decrypting voice message…",
+  voiceMessagePlaybackUnsupported:
+    "This browser can’t play this voice message inline. Download it to listen.",
+  voiceMessageDownloadToPlay: "Download to play",
+  voiceFormatPrefsTitle: "Voice recording format",
+  voiceFormatPrefsDescription:
+    "Choose how voice messages are captured in this browser. Saved on this device.",
+  voiceFormatPrefsLabel: "Preferred format",
+  voiceFormatOptionAuto: "Auto — best available for this browser",
+  voiceFormatOptionWav: "WAV — maximum compatibility (larger files)",
+  voiceFormatOptionM4a: "M4A — smaller files (Safari-friendly)",
+  voiceFormatOptionM4aUnavailable: "M4A — not supported in this browser",
+  voiceFormatPrefsHint:
+    "Auto uses M4A when this browser can record it; otherwise WAV so recipients can play messages in Chrome and Safari.",
+  voiceFormatPrefsPremiumTitle: "Starter and Business feature",
+  voiceFormatPrefsPremiumDesc:
+    "Free accounts always use Auto. Upgrade to choose WAV or M4A for voice messages.",
+  voiceFormatM4aUnsupportedTitle: "M4A not available here",
+  voiceFormatM4aUnsupportedDesc:
+    "This browser can’t record M4A. Choose WAV or Auto instead.",
+  comparePlans: "Compare plans",
   removeSelectedFile: "Remove selected file",
   fileTooLarge: "File too large",
   fileTooLargeDescription: "This file is {size}. Your plan allows up to {limit} per file.",

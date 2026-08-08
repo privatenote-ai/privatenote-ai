@@ -90,6 +90,9 @@ export const nl: Translations = {
   recordMessagePreviewUnsupported: "Deze browser kan de opname niet afspelen.",
   voiceMessageAttachment: "Spraakbericht",
   voiceMessageDecrypting: "Spraakbericht ontcijferen…",
+  voiceMessagePlaybackUnsupported:
+    "Deze browser kan dit spraakbericht niet hier afspelen. Download het om te beluisteren.",
+  voiceMessageDownloadToPlay: "Downloaden om af te spelen",
   removeSelectedFile: "Geselecteerd bestand verwijderen",
   fileTooLarge: "Bestand te groot",
   fileTooLargeDescription: "Dit bestand is {size}. Je abonnement staat tot {limit} per bestand toe.",

@@ -75,6 +75,9 @@ export const sr: Translations = {
   recordMessagePreviewUnsupported: "Pregledač ne može da reprodukuje ovaj snimak.",
   voiceMessageAttachment: "Govorna poruka",
   voiceMessageDecrypting: "Dešifrovanje govorne poruke…",
+  voiceMessagePlaybackUnsupported:
+    "Ovaj pregledač ne može da reprodukuje ovu govornu poruku ovde. Preuzmite je da biste je odslušali.",
+  voiceMessageDownloadToPlay: "Preuzmite za reprodukciju",
   removeSelectedFile: "Uklonite izabranu datoteku",
   fileTooLarge: "Fajl je prevelik",
   fileTooLargeDescription: "Ovaj fajl ima {size}. Vaš plan dozvoljava do {limit} po fajlu.",

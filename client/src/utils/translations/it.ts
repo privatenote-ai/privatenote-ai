@@ -75,6 +75,9 @@ export const it: Translations = {
   recordMessagePreviewUnsupported: "Il browser non può riprodurre questa registrazione.",
   voiceMessageAttachment: "Messaggio vocale",
   voiceMessageDecrypting: "Decifrazione del messaggio vocale…",
+  voiceMessagePlaybackUnsupported:
+    "Questo browser non può riprodurre il messaggio vocale qui. Scaricalo per ascoltarlo.",
+  voiceMessageDownloadToPlay: "Scarica per riprodurre",
   removeSelectedFile: "Rimuovi file selezionato",
   fileTooLarge: "File troppo grande",
   fileTooLargeDescription: "Questo file è di {size}. Il tuo piano consente fino a {limit} per file.",

@@ -90,6 +90,9 @@ export const es: Translations = {
   recordMessagePreviewUnsupported: "Tu navegador no puede previsualizar esta grabación.",
   voiceMessageAttachment: "Mensaje de voz",
   voiceMessageDecrypting: "Descifrando mensaje de voz…",
+  voiceMessagePlaybackUnsupported:
+    "Este navegador no puede reproducir este mensaje de voz aquí. Descárgalo para escucharlo.",
+  voiceMessageDownloadToPlay: "Descargar para reproducir",
   removeSelectedFile: "Quitar archivo seleccionado",
   fileTooLarge: "Archivo demasiado grande",
   fileTooLargeDescription: "Este archivo pesa {size}. Tu plan permite hasta {limit} por archivo.",
