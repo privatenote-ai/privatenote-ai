@@ -2,17 +2,28 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   Activity,
+  BadgeCheck,
   Ban,
+  Bell,
   ChevronRight,
   Clock,
+  Download,
   Eye,
   FilePlus2,
   Globe2,
+  Hash,
+  KeyRound,
+  Lock,
+  Mail,
   MonitorSmartphone,
   Paperclip,
+  ShieldCheck,
   Sparkles,
+  Timer,
   Trash2,
+  UserRound,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -75,6 +86,12 @@ type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
 type EventGroup = {
   period: TimePeriod;
   events: ActivityEvent[];
+};
+
+type OptionChip = {
+  key: string;
+  label: string;
+  Icon: LucideIcon;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,45 +166,89 @@ function formatExpiryLabel(seconds: number, t: Record<string, string>): string {
 function createOptionChips(
   metadata: AccountActivityCreateMetadata | null | undefined,
   t: Record<string, string>,
-): string[] {
+): OptionChip[] {
   if (!metadata) return [];
-  const chips: string[] = [];
-  if (metadata.hasAttachment) chips.push(t.authActivityChipAttachment ?? "Encrypted file");
-  if (metadata.passwordProtected) chips.push(t.authActivityChipPassword ?? "Password");
+  const chips: OptionChip[] = [];
+  if (metadata.hasAttachment) {
+    chips.push({
+      key: "attachment",
+      label: t.authActivityChipAttachment ?? "Encrypted file",
+      Icon: Paperclip,
+    });
+  }
+  if (metadata.passwordProtected) {
+    chips.push({
+      key: "password",
+      label: t.authActivityChipPassword ?? "Password",
+      Icon: KeyRound,
+    });
+  }
   if (typeof metadata.maxReads === "number") {
-    chips.push(
-      metadata.maxReads === 1
-        ? (t.authActivityChipOneRead ?? "1 read")
-        : (t.authActivityChipReads ?? "{n} reads").replace("{n}", String(metadata.maxReads)),
-    );
+    chips.push({
+      key: "reads",
+      label:
+        metadata.maxReads === 1
+          ? (t.authActivityChipOneRead ?? "1 read")
+          : (t.authActivityChipReads ?? "{n} reads").replace("{n}", String(metadata.maxReads)),
+      Icon: Eye,
+    });
   }
   if (typeof metadata.expirySeconds === "number") {
-    chips.push(
-      (t.authActivityChipExpiry ?? "Expires in {v}").replace(
+    chips.push({
+      key: "expiry",
+      label: (t.authActivityChipExpiry ?? "Expires in {v}").replace(
         "{v}",
         formatExpiryLabel(metadata.expirySeconds, t),
       ),
-    );
+      Icon: Timer,
+    });
   }
   if (metadata.aiEnhanced) {
-    chips.push(
-      metadata.aiMode === "local"
-        ? (t.authActivityChipAiLocal ?? "Private AI")
-        : metadata.aiMode === "cloud"
-          ? (t.authActivityChipAiCloud ?? "Hosted AI")
-          : (t.authActivityChipAi ?? "AI assisted"),
-    );
+    chips.push({
+      key: "ai",
+      label:
+        metadata.aiMode === "local"
+          ? (t.authActivityChipAiLocal ?? "Private AI")
+          : metadata.aiMode === "cloud"
+            ? (t.authActivityChipAiCloud ?? "Hosted AI")
+            : (t.authActivityChipAi ?? "AI assisted"),
+      Icon: Sparkles,
+    });
   }
-  if (metadata.notifyOnOpen) chips.push(t.authActivityChipAlertOpen ?? "Open alerts");
-  if (metadata.notifyOnDestroyed) chips.push(t.authActivityChipAlertDestroy ?? "Destroy alerts");
+  if (metadata.notifyOnOpen) {
+    chips.push({
+      key: "alert-open",
+      label: t.authActivityChipAlertOpen ?? "Open alerts",
+      Icon: Bell,
+    });
+  }
+  if (metadata.notifyOnDestroyed) {
+    chips.push({
+      key: "alert-destroy",
+      label: t.authActivityChipAlertDestroy ?? "Destroy alerts",
+      Icon: Bell,
+    });
+  }
   if (metadata.notifyOnAttachmentDownload) {
-    chips.push(t.authActivityChipAlertDownload ?? "Download alerts");
+    chips.push({
+      key: "alert-download",
+      label: t.authActivityChipAlertDownload ?? "Download alerts",
+      Icon: Download,
+    });
   }
   if (metadata.requireRecipientVerification) {
-    chips.push(t.authActivityChipVerification ?? "Recipient verification");
+    chips.push({
+      key: "verification",
+      label: t.authActivityChipVerification ?? "Recipient verification",
+      Icon: ShieldCheck,
+    });
   }
   if (metadata.requireReceiptAck) {
-    chips.push(t.authActivityChipReceipt ?? "Receipt confirmation");
+    chips.push({
+      key: "receipt",
+      label: t.authActivityChipReceipt ?? "Receipt confirmation",
+      Icon: BadgeCheck,
+    });
   }
   return chips;
 }
@@ -197,15 +258,57 @@ function statusPillClass(status: NotificationItem["status"]): string {
     case "viewed":
     case "receipt_confirmed":
     case "attachment_downloaded":
-      return "bg-sky-500/10 text-sky-700 dark:text-sky-300";
+      return "bg-teal-500/15 text-teal-800 dark:text-teal-200";
     case "burned":
-      return "bg-amber-500/10 text-amber-800 dark:text-amber-300";
+      return "bg-amber-500/15 text-amber-900 dark:text-amber-200";
     case "revoked":
-      return "bg-rose-500/10 text-rose-700 dark:text-rose-300";
+      return "bg-rose-500/15 text-rose-800 dark:text-rose-200";
     case "expired":
-      return "bg-gray-500/10 text-gray-600 dark:text-gray-400";
+      return "bg-gray-500/15 text-gray-700 dark:text-gray-300";
     default:
-      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+      return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200";
+  }
+}
+
+function statusHeroClass(status: NotificationItem["status"]): string {
+  switch (status) {
+    case "viewed":
+    case "receipt_confirmed":
+    case "attachment_downloaded":
+      return "from-teal-500/15 via-teal-500/5 to-transparent text-teal-700 dark:text-teal-300";
+    case "burned":
+      return "from-amber-500/15 via-amber-500/5 to-transparent text-amber-700 dark:text-amber-300";
+    case "revoked":
+      return "from-rose-500/15 via-rose-500/5 to-transparent text-rose-700 dark:text-rose-300";
+    case "expired":
+      return "from-gray-500/15 via-gray-500/5 to-transparent text-gray-600 dark:text-gray-300";
+    default:
+      return "from-emerald-500/15 via-emerald-500/5 to-transparent text-emerald-700 dark:text-emerald-300";
+  }
+}
+
+function StatusHeroIcon({
+  status,
+  className = "h-6 w-6",
+}: {
+  status: NotificationItem["status"];
+  className?: string;
+}) {
+  switch (status) {
+    case "receipt_confirmed":
+      return <BadgeCheck className={className} aria-hidden />;
+    case "attachment_downloaded":
+      return <Download className={className} aria-hidden />;
+    case "viewed":
+      return <Eye className={className} aria-hidden />;
+    case "burned":
+      return <Lock className={className} aria-hidden />;
+    case "revoked":
+      return <Ban className={className} aria-hidden />;
+    case "expired":
+      return <Clock className={className} aria-hidden />;
+    default:
+      return <ShieldCheck className={className} aria-hidden />;
   }
 }
 
@@ -254,6 +357,44 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
   }
 }
 
+function timelineIcon(entry: ProofTimelineEntry): LucideIcon {
+  switch (entry.key) {
+    case "created":
+      return FilePlus2;
+    case "opened":
+      return Eye;
+    case "receipt":
+      return BadgeCheck;
+    case "attachment":
+      return Download;
+    case "destroyed":
+      return Lock;
+    case "expired":
+      return Clock;
+    case "revoked":
+      return Ban;
+  }
+}
+
+function timelineAccent(entry: ProofTimelineEntry): string {
+  switch (entry.key) {
+    case "created":
+      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-500/20";
+    case "opened":
+      return "bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-sky-500/20";
+    case "receipt":
+      return "bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-teal-500/25";
+    case "attachment":
+      return "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-500/20";
+    case "destroyed":
+      return "bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-amber-500/20";
+    case "expired":
+      return "bg-gray-500/15 text-gray-700 dark:text-gray-300 ring-gray-500/20";
+    case "revoked":
+      return "bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-rose-500/20";
+  }
+}
+
 function CreateOptionsSection({
   metadata,
   t,
@@ -264,21 +405,29 @@ function CreateOptionsSection({
   const chips = createOptionChips(metadata, t);
   if (chips.length === 0) return null;
   return (
-    <section className="space-y-3">
-      <h3 className="text-sm font-medium text-foreground">
-        {t.authActivityCreateOptionsTitle ?? "Selected options"}
-      </h3>
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {t.authActivityCreateOptionsSubtitle ??
-          "Settings chosen when this note was created. Message content is never stored here."}
-      </p>
+    <section className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Lock className="h-4 w-4" aria-hidden />
+        </span>
+        <div className="min-w-0 space-y-1">
+          <h3 className="text-sm font-medium text-foreground">
+            {t.authActivityCreateOptionsTitle ?? "Selected options"}
+          </h3>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {t.authActivityCreateOptionsSubtitle ??
+              "Settings chosen when this note was created. Message content is never stored here."}
+          </p>
+        </div>
+      </div>
       <div className="flex flex-wrap gap-1.5">
-        {chips.map((chip) => (
+        {chips.map(({ key, label, Icon }) => (
           <span
-            key={chip}
-            className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground/80"
+            key={key}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] font-medium text-foreground/85 shadow-sm"
           >
-            {chip}
+            <Icon className="h-3 w-3 text-primary/80" aria-hidden />
+            {label}
           </span>
         ))}
       </div>
@@ -318,11 +467,16 @@ function DeliveryDetail({
     return (
       <div className="space-y-6">
         {createOptions}
-        <div className="space-y-4">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t.authActivityDeliveryUpsell ??
-              "Delivery status, proof of access, and revoke are available on Starter and Business."}
-          </p>
+        <div className="space-y-4 rounded-2xl border border-dashed border-border px-4 py-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <ShieldCheck className="h-4 w-4" aria-hidden />
+            </span>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t.authActivityDeliveryUpsell ??
+                "Delivery status, proof of access, and revoke are available on Starter and Business."}
+            </p>
+          </div>
           <Button asChild size="sm">
             <Link href="/premium">{t.comparePlans ?? "Compare plans"}</Link>
           </Button>
@@ -336,10 +490,13 @@ function DeliveryDetail({
     return (
       <div className="space-y-6">
         {createOptions}
-        <div className="space-y-2 rounded-2xl bg-muted/40 px-4 py-4">
-          <p className="text-sm font-medium text-foreground">
-            {t.authActivityNoDeliveryTitle ?? "No delivery tracking"}
-          </p>
+        <div className="space-y-2 rounded-2xl border border-border/70 bg-muted/40 px-4 py-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <p className="text-sm font-medium text-foreground">
+              {t.authActivityNoDeliveryTitle ?? "No delivery tracking"}
+            </p>
+          </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {t.authActivityNoDeliveryTracking ??
               "No delivery tracking for this note. Tracking and proof of access start when you send with recipient alerts enabled on a Starter or Business plan."}
@@ -352,6 +509,7 @@ function DeliveryDetail({
   const recipient =
     delivery.recipientEmail?.trim() ||
     (t.notificationRecipientUnknown ?? "Recipient not recorded");
+  const hasRecipientEmail = Boolean(delivery.recipientEmail?.trim());
   const canRevoke = canRevokeUnopened && delivery.status === "created";
   const timeline = buildProofTimeline(delivery);
   const accessed = Boolean(delivery.openedAt);
@@ -362,35 +520,66 @@ function DeliveryDetail({
   const browser = delivery.openBrowser?.trim() || unavailable;
 
   return (
-    <div className="space-y-7">
-      <div className="space-y-3">
-        {noteLabel?.trim() ? (
-          <p className="text-base font-medium text-foreground">{noteLabel.trim()}</p>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusPillClass(delivery.status)}`}
-          >
-            {statusLabel(delivery.status, t)}
+    <div className="space-y-6">
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br px-4 py-4 ${statusHeroClass(delivery.status)}`}
+      >
+        <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-current opacity-[0.06]" />
+        <div className="pointer-events-none absolute -bottom-10 right-8 h-24 w-24 rounded-full bg-current opacity-[0.04]" />
+        <div className="relative flex items-start gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-background/80 shadow-sm ring-1 ring-black/5 dark:bg-background/60 dark:ring-white/10">
+            <StatusHeroIcon status={delivery.status} className="h-6 w-6" />
           </span>
-          <span className="font-mono text-xs text-muted-foreground">{delivery.displayNoteId}</span>
+          <div className="min-w-0 flex-1 space-y-2.5">
+            {noteLabel?.trim() ? (
+              <p className="text-base font-semibold tracking-tight text-foreground">
+                {noteLabel.trim()}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusPillClass(delivery.status)}`}
+              >
+                <StatusHeroIcon status={delivery.status} className="h-3.5 w-3.5" />
+                {statusLabel(delivery.status, t)}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
+                <Hash className="h-3 w-3" aria-hidden />
+                {delivery.displayNoteId.replace(/^#/, "")}
+              </span>
+            </div>
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              {hasRecipientEmail ? (
+                <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              ) : (
+                <UserRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              )}
+              <span className="truncate">{recipient}</span>
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">{recipient}</p>
       </div>
 
       {createOptions}
 
-      <section className="space-y-4">
-        <h3 className="text-sm font-medium text-foreground">
-          {t.proofReportTitle ?? "Proof of access"}
-        </h3>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {t.proofReportSubtitle ??
-            "Coarse receipt that the link was accessed — not that the message was read or understood. Message content is never included."}
-        </p>
+      <section className="space-y-4 rounded-2xl border border-border/70 bg-background px-4 py-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-700 dark:text-teal-300">
+            <ShieldCheck className="h-4 w-4" aria-hidden />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t.proofReportTitle ?? "Proof of access"}
+            </h3>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t.proofReportSubtitle ??
+                "Coarse receipt that the link was accessed — not that the message was read or understood. Message content is never included."}
+            </p>
+          </div>
+        </div>
 
         <div className="space-y-3">
-          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {t.proofTimelineHeading ?? "Timeline"}
           </h4>
           {timeline.length === 0 ? (
@@ -398,27 +587,35 @@ function DeliveryDetail({
               {t.proofNoEventsYet ?? "No delivery events recorded yet."}
             </p>
           ) : (
-            <ol className="relative space-y-0 border-l border-border/80 pl-5">
-              {timeline.map((entry, index) => (
-                <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
-                  <span
-                    className={`absolute -left-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${
-                      index === timeline.length - 1 ? "bg-primary" : "bg-muted-foreground/40"
-                    }`}
-                    aria-hidden
-                  />
-                  <p className="text-sm font-medium text-foreground">{timelineLabel(entry, t)}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatProofTimestamp(entry.at)}
-                  </p>
-                </li>
-              ))}
+            <ol className="relative space-y-0 border-l border-border/80 ml-4 pl-5">
+              {timeline.map((entry, index) => {
+                const Icon = timelineIcon(entry);
+                const isLatest = index === timeline.length - 1;
+                return (
+                  <li key={`${entry.key}-${entry.at}`} className="relative pb-5 last:pb-0">
+                    <span
+                      className={`absolute -left-[1.95rem] top-0 flex h-8 w-8 items-center justify-center rounded-full ring-4 ring-background ${timelineAccent(entry)} ${
+                        isLatest ? "shadow-sm" : ""
+                      }`}
+                      aria-hidden
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <p className="pt-1 text-sm font-medium text-foreground">
+                      {timelineLabel(entry, t)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {formatProofTimestamp(entry.at)}
+                    </p>
+                  </li>
+                );
+              })}
             </ol>
           )}
         </div>
 
-        <div className="space-y-3">
-          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="space-y-3 border-t border-border/60 pt-4">
+          <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {t.proofAccessHeading ?? "Access details"}
           </h4>
           {!accessed ? (
@@ -433,36 +630,43 @@ function DeliveryDetail({
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-muted/50 px-4 py-3">
+              <div className="rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
                 <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-                  <Globe2 className="h-4 w-4" aria-hidden />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300">
+                    <Globe2 className="h-3.5 w-3.5" aria-hidden />
+                  </span>
                   <span className="text-xs font-medium">
                     {t.proofCountryLabel ?? "Approximate country"}
                   </span>
                 </div>
-                <p className="text-sm font-medium text-foreground">{country}</p>
+                <p className="text-sm font-semibold tracking-wide text-foreground">{country}</p>
               </div>
-              <div className="rounded-2xl bg-muted/50 px-4 py-3">
+              <div className="rounded-2xl border border-border/60 bg-muted/35 px-4 py-3">
                 <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-                  <MonitorSmartphone className="h-4 w-4" aria-hidden />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-300">
+                    <MonitorSmartphone className="h-3.5 w-3.5" aria-hidden />
+                  </span>
                   <span className="text-xs font-medium">{t.proofDeviceLabel ?? "Device"}</span>
                 </div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-semibold text-foreground">
                   {device}
                   {browser !== unavailable ? ` · ${browser}` : ""}
                 </p>
               </div>
             </div>
           )}
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {t.proofDisclaimer ??
-              "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
+          <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
+            <span>
+              {t.proofDisclaimer ??
+                "PrivateNote cannot see decrypted note content. Country is approximate (network edge) and may be missing or inaccurate on some networks."}
+            </span>
           </p>
         </div>
       </section>
 
       {canRevoke ? (
-        <div className="space-y-3 border-t border-border/70 pt-6">
+        <div className="space-y-3 rounded-2xl border border-rose-200/80 bg-rose-50/50 px-4 py-4 dark:border-rose-900/50 dark:bg-rose-950/20">
           <p className="text-sm text-muted-foreground">
             {t.notificationRevokeHint ??
               "Still unopened — you can revoke the link so it can no longer be opened."}
@@ -825,20 +1029,22 @@ export default function AccountActivity() {
                                 </p>
                                 {delivery ? (
                                   <span
-                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(delivery.status)}`}
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(delivery.status)}`}
                                   >
+                                    <StatusHeroIcon status={delivery.status} className="h-3 w-3" />
                                     {statusLabel(delivery.status, t)}
                                   </span>
                                 ) : null}
                               </div>
                               {chips.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
-                                  {chips.map((chip) => (
+                                  {chips.map(({ key, label, Icon }) => (
                                     <span
-                                      key={chip}
-                                      className="inline-flex items-center rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                      key={key}
+                                      className="inline-flex items-center gap-1 rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
                                     >
-                                      {chip}
+                                      <Icon className="h-3 w-3" aria-hidden />
+                                      {label}
                                     </span>
                                   ))}
                                 </div>
@@ -893,7 +1099,13 @@ export default function AccountActivity() {
           {selectedEvent ? (
             <>
               <DialogHeader className="text-left">
-                <DialogTitle className="pr-6 text-lg tracking-tight">
+                <DialogTitle className="flex items-center gap-2.5 pr-6 text-lg tracking-tight">
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${eventAccent(selectedEvent.type, selectedEvent.metadata)}`}
+                    aria-hidden
+                  >
+                    <EventIcon type={selectedEvent.type} metadata={selectedEvent.metadata} />
+                  </span>
                   {eventLabel(selectedEvent)}
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-relaxed">
