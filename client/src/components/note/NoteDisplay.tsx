@@ -14,6 +14,7 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
+  Mic,
   BadgeCheck,
   Clock,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ import {
 } from '@/utils/encryption';
 import { formatNoteFileSize } from '@shared/noteFileLimits';
 import { formatAttachmentDisplayName } from '@/utils/formatAttachmentDisplayName';
+import { isVoiceMessageAttachment } from '@/utils/voiceMessageRecording';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -121,7 +123,7 @@ type AttachmentDisplayMetadata = {
   size: number;
 };
 
-type AttachmentPreviewKind = "image" | "pdf";
+type AttachmentPreviewKind = "image" | "pdf" | "audio";
 
 const IMAGE_FILE_EXTENSIONS = new Set([
   "jpg",
@@ -149,6 +151,7 @@ function getAttachmentPreviewKind(
   const normalizedMime = mimeType?.trim().toLowerCase();
   if (normalizedMime?.startsWith("image/")) return "image";
   if (normalizedMime === "application/pdf" || normalizedMime === "application/x-pdf") return "pdf";
+  if (isVoiceMessageAttachment(mimeType, fileName)) return "audio";
 
   const ext = getFileExtension(fileName);
   if (ext && IMAGE_FILE_EXTENSIONS.has(ext)) return "image";
@@ -171,6 +174,14 @@ function getAttachmentBlobMimeType(
   if (previewKind === "pdf") return "application/pdf";
 
   const ext = getFileExtension(fileName);
+  if (previewKind === "audio") {
+    if (ext === "m4a" || ext === "mp4") return "audio/mp4";
+    if (ext === "ogg" || ext === "oga") return "audio/ogg";
+    if (ext === "mp3") return "audio/mpeg";
+    if (ext === "wav") return "audio/wav";
+    if (ext === "aac") return "audio/aac";
+    return "audio/webm";
+  }
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "png") return "image/png";
   if (ext === "gif") return "image/gif";
@@ -713,7 +724,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }, [id]);
 
   useEffect(() => {
-    if (attachmentPreviewKind !== "image") return;
+    if (attachmentPreviewKind !== "image" && attachmentPreviewKind !== "audio") return;
     if (!contentKey || !noteData?.attachment) return;
     if (previewObjectUrl || thumbnailLoadAttemptedRef.current) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) return;
@@ -726,6 +737,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         if (cancelled || !result) return;
         setPreviewObjectUrl(result.url);
         setPreviewMimeType(result.mimeType);
+        if (attachmentPreviewKind === "audio") {
+          setShowInlinePreview(true);
+        }
       })
       .catch((error) => {
         if (import.meta.env.DEV) {
@@ -1719,10 +1733,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                       </button>
                     ) : (
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/8 text-primary dark:border-primary/25 dark:bg-primary/15">
-                        {isLoadingThumbnail && attachmentPreviewKind === "image" ? (
+                        {isLoadingThumbnail &&
+                        (attachmentPreviewKind === "image" || attachmentPreviewKind === "audio") ? (
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
                         ) : attachmentPreviewKind === "pdf" ? (
                           <FileText className="h-5 w-5" aria-hidden />
+                        ) : attachmentPreviewKind === "audio" ? (
+                          <Mic className="h-5 w-5" aria-hidden />
                         ) : attachmentPreviewKind === "image" ? (
                           <ImageIcon className="h-5 w-5" aria-hidden />
                         ) : (
@@ -1732,7 +1749,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {attachmentMetadata?.name || "Encrypted attachment"}
+                        {attachmentMetadata?.name ||
+                          (attachmentPreviewKind === "audio"
+                            ? (t.voiceMessageAttachment ?? "Voice message")
+                            : "Encrypted attachment")}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {attachmentMetadata?.size != null
@@ -1746,7 +1766,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:shrink-0">
-                    {attachmentPreviewKind && (
+                    {attachmentPreviewKind && attachmentPreviewKind !== "audio" && (
                       <button
                         type="button"
                         onClick={() => void handlePreviewAttachment()}
@@ -1796,12 +1816,41 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                       {attachmentPreviewKind === "pdf"
                         ? "Decrypting PDF… larger files may take a moment."
-                        : "Decrypting file…"}
+                        : attachmentPreviewKind === "audio"
+                          ? (t.voiceMessageDecrypting ?? "Decrypting voice message…")
+                          : "Decrypting file…"}
                     </p>
                   </div>
                 ) : null}
 
-                {showInlinePreview && previewObjectUrl && !isViewingFile ? (
+                {attachmentPreviewKind === "audio" &&
+                (isLoadingThumbnail || showInlinePreview) &&
+                !isViewingFile ? (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-600 dark:bg-gray-900/60">
+                    {previewObjectUrl ? (
+                      <audio
+                        controls
+                        controlsList="nodownload"
+                        src={previewObjectUrl}
+                        className="w-full"
+                        preload="metadata"
+                      >
+                        {t.recordMessagePreviewUnsupported ??
+                          "Your browser cannot play this voice message."}
+                      </audio>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
+                        {t.voiceMessageDecrypting ?? "Decrypting voice message…"}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {showInlinePreview &&
+                previewObjectUrl &&
+                !isViewingFile &&
+                attachmentPreviewKind !== "audio" ? (
                   <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900/60">
                     <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-2 dark:border-gray-600">
                       <p className="min-w-0 truncate text-xs font-medium text-gray-600 dark:text-gray-300">

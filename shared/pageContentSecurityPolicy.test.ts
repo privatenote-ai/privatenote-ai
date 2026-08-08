@@ -25,6 +25,7 @@ describe("page content security policy", () => {
   it("allows blob URLs for decrypted attachment previews", () => {
     const csp = buildPageContentSecurityPolicy("abc123");
     assert.match(csp, /img-src[^;]*blob:/);
+    assert.match(csp, /media-src[^;]*blob:/);
     assert.match(csp, /frame-src[^;]*blob:/);
     assert.match(csp, /frame-src[^;]*data:/);
   });

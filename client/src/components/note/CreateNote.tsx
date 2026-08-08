@@ -64,6 +64,7 @@ import {
   Loader2,
   Paperclip,
   FolderArchive,
+  Mic,
   X,
 } from "lucide-react";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
@@ -72,6 +73,7 @@ import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
+import { isVoiceMessageFile, isVoiceRecordingSupported } from "@/utils/voiceMessageRecording";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
@@ -82,6 +84,9 @@ const AiComposer = lazy(() =>
 );
 const CreateNoteDeferredDialogs = lazy(() =>
   import("./CreateNoteDeferredDialogs").then((m) => ({ default: m.CreateNoteDeferredDialogs })),
+);
+const VoiceMessageRecorderDialog = lazy(() =>
+  import("./VoiceMessageRecorderDialog").then((m) => ({ default: m.VoiceMessageRecorderDialog })),
 );
 const NoteSettingsPanel = lazy(() =>
   import("./NoteSettingsPanel").then((m) => ({ default: m.NoteSettingsPanel })),
@@ -465,6 +470,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
   const fileTransferFileInputId = useId();
   const noteFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -525,6 +531,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       variant: "destructive",
     });
     return true;
+  };
+
+  const handleVoiceMessageRecorded = (file: File) => {
+    if (rejectOversizedAttachment(file)) return;
+    setSelectedFile(file);
   };
 
   const secondaryActionButtonClass =
@@ -603,6 +614,25 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     fileInputRef.current?.click();
   };
 
+  const handleRecordMessageClick = () => {
+    if (!canAttachFiles) {
+      saveAuthRedirectDraft();
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    if (!isVoiceRecordingSupported()) {
+      toast({
+        title: t.recordMessageUnsupportedTitle ?? "Recording unavailable",
+        description:
+          t.recordMessageUnsupported ??
+          "Voice recording is not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setVoiceRecorderOpen(true);
+  };
+
   const handleAttachFolderClick = () => {
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
@@ -672,11 +702,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setSelectedFile(file);
   };
 
+  const selectedFileIsVoice = isVoiceMessageFile(selectedFile);
   const attachFileButtonLabel = selectedFile
     ? formatAttachmentDisplayName(selectedFile.name)
     : isFileTransferMode
       ? t.sftAttachFile
       : t.attachFile;
+  const recordMessageButtonLabel = selectedFileIsVoice
+    ? formatAttachmentDisplayName(selectedFile!.name)
+    : (t.recordMessage ?? "Record message");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -3234,41 +3268,75 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
                     }
                   >
-                    {canAttachFiles ? (
-                      <label
-                        htmlFor={noteFileInputId}
-                        title={selectedFile ? selectedFile.name : undefined}
-                        className={
-                          selectedFile
-                            ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`
-                            : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:w-auto sm:flex-none sm:px-5`
-                        }
-                      >
-                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                        <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
-                          {attachFileButtonLabel}
-                        </span>
-                      </label>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleAttachFileClick}
-                        className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
-                      >
-                        <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                        <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
-                      </button>
-                    )}
                     {selectedFile ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFile(null)}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                        aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                      >
-                        <X className="h-4 w-4" aria-hidden />
-                      </button>
-                    ) : null}
+                      <>
+                        {canAttachFiles && !selectedFileIsVoice ? (
+                          <label
+                            htmlFor={noteFileInputId}
+                            title={selectedFile.name}
+                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`}
+                          >
+                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            <span className="truncate">{attachFileButtonLabel}</span>
+                          </label>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={
+                              selectedFileIsVoice ? handleRecordMessageClick : handleAttachFileClick
+                            }
+                            title={selectedFile.name}
+                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
+                          >
+                            {selectedFileIsVoice ? (
+                              <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            ) : (
+                              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            )}
+                            <span className="truncate">
+                              {selectedFileIsVoice ? recordMessageButtonLabel : attachFileButtonLabel}
+                            </span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFile(null)}
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                          aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                        >
+                          <X className="h-4 w-4" aria-hidden />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {canAttachFiles ? (
+                          <label
+                            htmlFor={noteFileInputId}
+                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                          >
+                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
+                          </label>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleAttachFileClick}
+                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                          >
+                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleRecordMessageClick}
+                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                        >
+                          <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="whitespace-nowrap">{recordMessageButtonLabel}</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -3413,6 +3481,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             setFileSizeUpgradePlan={setFileSizeUpgradePlan}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}
+          />
+        </Suspense>
+      ) : null}
+
+      {voiceRecorderOpen ? (
+        <Suspense fallback={null}>
+          <VoiceMessageRecorderDialog
+            open={voiceRecorderOpen}
+            onOpenChange={setVoiceRecorderOpen}
+            onRecorded={handleVoiceMessageRecorded}
+            maxBytes={fileLimitBytes}
           />
         </Suspense>
       ) : null}
