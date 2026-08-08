@@ -1,11 +1,19 @@
 import { Link, useLocation } from "wouter";
-import { User, Shield, History, SlidersHorizontal, Bell } from "lucide-react";
+import { User, Shield, History, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 
 function navItemActive(href: string, location: string): boolean {
   if (href === "/account") return location === "/account";
+  if (href === "/account/activity") {
+    return (
+      location === "/account/activity" ||
+      location.startsWith("/account/activity/") ||
+      location === "/account/notifications" ||
+      location.startsWith("/account/notifications/")
+    );
+  }
   return location === href || location.startsWith(`${href}/`);
 }
 
@@ -18,11 +26,6 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
     { href: "/account", label: tx("account", "Account"), icon: User },
     { href: "/account/security", label: tx("security", "Security"), icon: Shield },
     { href: "/account/activity", label: tx("authNavActivity", "Activity"), icon: History },
-    {
-      href: "/account/notifications",
-      label: tx("authNavNotifications", "Notifications"),
-      icon: Bell,
-    },
     { href: "/account/preferences", label: tx("authNavPreferences", "Preferences"), icon: SlidersHorizontal },
   ];
 

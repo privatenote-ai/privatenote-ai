@@ -91,6 +91,7 @@ import {
   verifyRecipientAccess,
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
+import { recordNoteCreatedActivity } from "./noteCreationActivity";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -9254,6 +9255,30 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
+
+      const activitySession = await getSessionFromRequest(env, request, { rotate: false });
+      if (activitySession?.id) {
+        const rawAiMode = requestBody?.aiMode;
+        const activityAiMode: "local" | "cloud" | null =
+          rawAiMode === "local"
+            ? "local"
+            : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
+              ? "cloud"
+              : null;
+        await recordNoteCreatedActivity(env, activitySession.id, id, {
+          aiEnhanced: aiMode,
+          aiMode: activityAiMode,
+          hasAttachment: requestBody?.attachment != null,
+          passwordProtected: requestBody?.isPasswordProtected === true,
+          maxReads: maxReadsForCreate.maxReads,
+          expirySeconds: expiryForCreate.seconds,
+          notifyOnOpen: requestBody?.notifyOnOpen === true,
+          notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+          notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
+          requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+          requireReceiptAck: requireReceiptAck,
+        });
+      }
     }
 
 	    if (doResponse.ok && requestedId) {

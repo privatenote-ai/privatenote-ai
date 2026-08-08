@@ -91,6 +91,9 @@ export const en: Translations = {
   recordMessageFailed: "Recording failed. Please try again.",
   recordMessageEmpty: "No audio was captured. Try recording again.",
   recordMessagePreviewUnsupported: "Your browser cannot preview this recording.",
+  recordMessageReadyStatus: "Ready",
+  recordMessageRecordingStatus: "Recording",
+  recordMessagePreviewStatus: "Preview",
   voiceMessageAttachment: "Voice message",
   voiceMessageDecrypting: "Decrypting voice message…",
   voiceMessagePlaybackUnsupported:
@@ -579,8 +582,40 @@ export const en: Translations = {
   settingsNoteLabel: "Note label",
   settingsNoteLabelPlaceholder: "e.g. Client onboarding pack",
   settingsNoteLabelInfo:
-    "A private name for this note on this device only. Never uploaded or shared.",
-  settingsNoteLabelHint: "Device-only labeling. Never sent with the note.",
+    "A private name for this note on this device. Never included in the note ciphertext. Business can download or send labels between devices.",
+  settingsNoteLabelHint:
+    "Saved on this device for Notification Center. Business: download, load, or send as a PrivateNote.",
+  noteLabelsPortabilityTitle: "Move note labels between devices",
+  noteLabelsPortabilityBody:
+    "Labels stay on your devices. Download a pack, load it elsewhere, or send it as a one-time PrivateNote. Note content is never included.",
+  noteLabelsPortabilityCount: "{count} labels on this device",
+  noteLabelsDownload: "Download",
+  noteLabelsLoad: "Load",
+  noteLabelsSendAsNote: "Send as PrivateNote",
+  noteLabelsExportEmptyTitle: "No labels to download",
+  noteLabelsExportEmptyBody:
+    "Add a note label in Customize when you create a tracked note.",
+  noteLabelsExportDownloadedTitle: "Labels downloaded",
+  noteLabelsExportDownloadedBody:
+    "Load this file on another device, or send it as a PrivateNote.",
+  noteLabelsExportTooLargeTitle: "Labels pack is large",
+  noteLabelsExportTooLargeBody:
+    "Downloaded as a file instead — attach or open it on your other device.",
+  noteLabelsExportPrefillFailedTitle: "Could not open composer",
+  noteLabelsExportPrefillFailedBody: "Downloaded the labels file instead.",
+  noteLabelsImportInvalidTitle: "Invalid labels file",
+  noteLabelsImportInvalidBody: "Use a PrivateNote labels export (.json).",
+  noteLabelsImportSuccessTitle: "Labels loaded",
+  noteLabelsImportSuccessBody:
+    "Added {added}, updated {updated}. Existing labels were kept.",
+  noteLabelsImportFailedTitle: "Could not load labels",
+  noteLabelsImportFailedBody: "Check the file and try again.",
+  noteLabelsRevealImportTitle: "Note labels pack",
+  noteLabelsRevealImportHint:
+    "Load these labels onto this device so Notification Center can name your tracked notes.",
+  noteLabelsRevealImportDone:
+    "Labels were saved on this device for Notification Center.",
+  noteLabelsRevealImportButton: "Load labels on this device",
   settingsEmailAlertsPrefsHintPrefix: "Turn on email notifications in",
   settingsEmailAlertsPrefsLink: "Account → Preferences",
   settingsPremiumFeatureLabel: "Starter and Business feature —",

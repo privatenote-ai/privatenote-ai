@@ -439,10 +439,10 @@ function metaForAccountSegments(segments: string[], t: Translations): { title: s
     case "activity":
     case "notifications":
       return {
-        title: buildDocumentTitle(t.documentMetaNotificationCenterTitle ?? "Notifications"),
+        title: buildDocumentTitle(t.documentMetaAccountActivityTitle ?? "Activity"),
         description:
-          t.documentMetaNotificationCenterDescription ??
-          "Delivery status for your sent notes — no content or previews.",
+          t.documentMetaAccountActivityDescription ??
+          "Your note timeline with create options and delivery details — no content or previews.",
       };
     case "preferences":
       return {

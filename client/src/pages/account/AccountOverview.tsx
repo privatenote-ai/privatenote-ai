@@ -490,11 +490,11 @@ export default function AccountOverview() {
               )}
             </div>
             <Link
-              href="/account/notifications"
+              href="/account/activity"
               className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/40"
             >
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {tx("authNavNotifications", "Notifications")}
+                {tx("authNavActivity", "Activity")}
               </span>
               <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                 {tx("authOpen", "Open")} <ChevronRight className="h-3.5 w-3.5" />

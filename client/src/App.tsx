@@ -59,7 +59,6 @@ const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
-const NotificationCenter = lazy(() => import("@/pages/account/NotificationCenter"));
 const Premium = lazy(() => import("@/pages/Premium"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -342,7 +341,9 @@ function Router() {
           </Route>
           <Route path="/account/security" component={() => <LazyRoute component={SecuritySettings} />} />
           <Route path="/account/activity" component={() => <LazyRoute component={AccountActivity} />} />
-          <Route path="/account/notifications" component={() => <LazyRoute component={NotificationCenter} />} />
+          <Route path="/account/notifications">
+            <Redirect to="/account/activity" />
+          </Route>
           <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
           <Route path="/account" component={() => <LazyRoute component={AccountOverview} />} />
           <Route component={() => <LazyRoute component={NotFound} />} />
