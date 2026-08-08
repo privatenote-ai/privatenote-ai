@@ -2766,7 +2766,6 @@ const FREE_TIER_USAGE_LIMITS = {
 const ACCOUNT_ACTIVITY_EVENT_TYPES = new Set([
   "note_created",
   "ai_note_created",
-  "note_opened",
   "note_expired",
 ]);
 
@@ -2860,11 +2859,6 @@ export async function clearAccountActivityEvents(env: Env, userId: string): Prom
   return result.meta?.changes ?? 0;
 }
 
-const RATE_LIMIT_ACCOUNT_ACTIVITY_POST = {
-  MAX_REQUESTS: 48,
-  WINDOW_SECONDS: 60,
-  KEY_PREFIX: "rl:post:acct_act:",
-};
 
 export async function getSessionFromRequest(
   env: Env,
@@ -4354,6 +4348,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
          LEFT JOIN sent_notes s
            ON s.note_id = a.note_id AND s.user_id = a.user_id
          WHERE a.user_id = ?
+           AND a.event_type != 'note_opened'
          ORDER BY datetime(a.created_at) DESC
          LIMIT ?`,
       )
@@ -4424,6 +4419,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
   }
 
   if (pathname === "/api/auth/account/activity" && method === "POST") {
+    // Self-open events were removed from Activity; keep the route as a no-op so
+    // older clients that still POST note_opened do not error.
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -4431,29 +4428,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    const rl = await checkRateLimit(env, session.id, RATE_LIMIT_ACCOUNT_ACTIVITY_POST);
-    if (!rl.allowed) {
-      return jsonResponse({ message: "Too many requests" }, 429, request);
-    }
-
-    let body: { event?: string; noteId?: string };
-    try {
-      body = (await request.json()) as { event?: string; noteId?: string };
-    } catch {
-      return jsonResponse({ message: "Invalid JSON" }, 400, request);
-    }
-    if (body.event !== "note_opened") {
-      return jsonResponse({ message: "Unsupported event" }, 400, request);
-    }
-    const noteId = typeof body.noteId === "string" ? body.noteId : "";
-    if (!isValidNoteId(noteId)) {
-      return jsonResponse({ message: "Invalid note id" }, 400, request);
-    }
-
-    await recordAccountActivity(env, session.id, "note_opened", noteId);
-    const headers = new Headers(getCorsHeaders(request));
-    headers.set("Content-Type", "application/json");
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    return jsonResponse({ ok: true, ignored: true }, 200, request);
   }
 
   if (pathname === "/api/auth/account/preferences" && method === "PATCH") {

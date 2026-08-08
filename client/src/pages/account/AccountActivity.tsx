@@ -17,7 +17,7 @@ import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
-import { FilePlus2, Eye, Clock, Sparkles, Activity, Trash2, Ban } from "lucide-react";
+import { FilePlus2, Clock, Sparkles, Activity, Trash2, Ban } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +72,6 @@ function eventAccent(type: string): string {
   switch (type) {
     case "note_created": return "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400";
     case "ai_note_created": return "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400";
-    case "note_opened": return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
     case "note_expired": return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
     default: return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
   }
@@ -82,7 +81,6 @@ function EventIcon({ type }: { type: string }) {
   switch (type) {
     case "note_created": return <FilePlus2 className="h-4 w-4" />;
     case "ai_note_created": return <Sparkles className="h-4 w-4" />;
-    case "note_opened": return <Eye className="h-4 w-4" />;
     case "note_expired": return <Clock className="h-4 w-4" />;
     default: return <Activity className="h-4 w-4" />;
   }
@@ -138,7 +136,6 @@ export default function AccountActivity() {
     switch (type) {
       case "note_created": return t.authActivitySecureNoteCreated || "Secure note created";
       case "ai_note_created": return t.authActivityAiNoteCreated || "AI-assisted note created";
-      case "note_opened": return t.authActivityNoteOpened || "Note opened";
       case "note_expired": return t.authActivityNoteExpired || "Note expired";
       default: return type.replace(/_/g, " ");
     }
@@ -148,7 +145,6 @@ export default function AccountActivity() {
     switch (type) {
       case "note_created": return t.authActivitySecureNoteCreatedDesc || "A new secure note was sent from your account.";
       case "ai_note_created": return t.authActivityAiNoteCreatedDesc || "An AI-composed note was sent from your account.";
-      case "note_opened": return t.authActivityNoteOpenedDesc || "A note was opened while you were signed in.";
       case "note_expired": return t.authActivityNoteExpiredDesc || "A note reached its expiry and was destroyed.";
       default: return "";
     }

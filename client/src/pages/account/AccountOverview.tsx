@@ -14,7 +14,6 @@ import {
   XCircle,
   ChevronRight,
   FilePlus2,
-  Eye,
   Clock,
   Sparkles,
   Shield,
@@ -84,7 +83,6 @@ function eventLabel(type: string): string {
   switch (type) {
     case "note_created": return "authActivitySecureNoteCreated";
     case "ai_note_created": return "authActivityAiNoteCreated";
-    case "note_opened": return "authActivityNoteOpened";
     case "note_expired": return "authActivityNoteExpired";
     default: return type.replace(/_/g, " ");
   }
@@ -95,7 +93,6 @@ function EventIcon({ type }: { type: string }) {
   switch (type) {
     case "note_created": return <FilePlus2 className={cls} />;
     case "ai_note_created": return <Sparkles className={cls} />;
-    case "note_opened": return <Eye className={cls} />;
     case "note_expired": return <Clock className={cls} />;
     default: return <FilePlus2 className={cls} />;
   }
@@ -105,7 +102,6 @@ function eventAccent(type: string): string {
   switch (type) {
     case "note_created": return "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30";
     case "ai_note_created": return "text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30";
-    case "note_opened": return "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30";
     case "note_expired": return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
     default: return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
   }

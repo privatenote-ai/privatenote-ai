@@ -18,7 +18,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
-import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
 import {
   decryptNote,
   deriveNoteRootKeysFromUrlFragment,
@@ -981,7 +980,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         payloadBytes.aadBytes,
       );
       setNoteContent(decryptedContent);
-      reportNoteOpenedIfSignedIn(id);
       if (
         options?.deriveReceiptAck &&
         data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
@@ -1200,7 +1198,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       } else {
         setAttachmentMetadata(null);
       }
-      reportNoteOpenedIfSignedIn(id);
       if (
         receiptAckRequired &&
         !receiptAckAcknowledged &&
