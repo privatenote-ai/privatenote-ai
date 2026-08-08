@@ -1,6 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "wouter";
-import { Ban, Bell, FileSearch, Globe2, MonitorSmartphone, Trash2 } from "lucide-react";
+import {
+  Ban,
+  Bell,
+  Download,
+  FileSearch,
+  Globe2,
+  MonitorSmartphone,
+  Share2,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -26,10 +36,17 @@ import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { normalizeAccountType, planFeaturesFor } from "@shared/planCatalog";
 import {
+  NOTE_LABELS_PREFILL_MAX_CHARS,
+  countNoteLabels,
   deleteNoteLabel,
   deleteNoteLabels,
+  downloadNoteLabelsExport,
+  mergeNoteLabelsIntoLocal,
+  parseNoteLabelsExport,
   readNoteLabels,
+  serializeNoteLabelsExport,
 } from "@/utils/noteLabelsStorage";
+import { localizedPath } from "@/utils/localizedPath";
 import {
   buildProofTimeline,
   formatDeviceClass,
@@ -43,6 +60,9 @@ import {
   type ProofTimelineEntry,
   type TimePeriod,
 } from "./NotificationCenter.logic";
+
+/** Must match `PREFILL_SS_KEY` in `usePrefillFromFragment.ts`. */
+const PREFILL_SS_KEY = "__pn_prefill_v1";
 
 function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): string {
   switch (entry.key) {
@@ -302,13 +322,15 @@ function NotificationCard({
 
 export default function NotificationCenter() {
   const { user, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const tx = (key: string, fallback: string) => t[key] || fallback;
+  const labelsFileInputRef = useRef<HTMLInputElement>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [noteLabels, setNoteLabels] = useState<Record<string, string>>(() => readNoteLabels());
   const [canUseNotificationCenter, setCanUseNotificationCenter] = useState<boolean | null>(null);
   const [canRevokeUnopened, setCanRevokeUnopened] = useState(false);
+  const [canPortNoteLabels, setCanPortNoteLabels] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -317,6 +339,7 @@ export default function NotificationCenter() {
   const [proofTarget, setProofTarget] = useState<NotificationItem | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const labelCount = countNoteLabels(noteLabels);
 
   const load = useCallback(async () => {
     setError(null);
@@ -340,6 +363,7 @@ export default function NotificationCenter() {
         const capabilities = planFeaturesFor(accountType);
         setCanUseNotificationCenter(capabilities.sentNotesDashboard);
         setCanRevokeUnopened(capabilities.revokeUnopened);
+        setCanPortNoteLabels(capabilities.noteLabelPortability);
         if (!capabilities.sentNotesDashboard) {
           setNotifications([]);
           return;
@@ -360,6 +384,7 @@ export default function NotificationCenter() {
       if (notifError instanceof ApiRequestError && notifError.status === 403) {
         setCanUseNotificationCenter(false);
         setCanRevokeUnopened(false);
+        setCanPortNoteLabels(false);
         setNotifications([]);
         return;
       }
@@ -484,6 +509,115 @@ export default function NotificationCenter() {
     }
   };
 
+  const handleDownloadLabels = () => {
+    if (!canPortNoteLabels) return;
+    if (labelCount === 0) {
+      toast({
+        title: tx("noteLabelsExportEmptyTitle", "No labels to download"),
+        description: tx(
+          "noteLabelsExportEmptyBody",
+          "Add a note label in Customize when you create a tracked note.",
+        ),
+      });
+      return;
+    }
+    downloadNoteLabelsExport(noteLabels);
+    toast({
+      title: tx("noteLabelsExportDownloadedTitle", "Labels downloaded"),
+      description: tx(
+        "noteLabelsExportDownloadedBody",
+        "Load this file on another device, or send it as a PrivateNote.",
+      ),
+    });
+  };
+
+  const handleLoadLabelsFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file || !canPortNoteLabels) return;
+    try {
+      const text = await file.text();
+      const parsed = parseNoteLabelsExport(text);
+      if (!parsed) {
+        toast({
+          title: tx("noteLabelsImportInvalidTitle", "Invalid labels file"),
+          description: tx(
+            "noteLabelsImportInvalidBody",
+            "Use a PrivateNote labels export (.json).",
+          ),
+          variant: "destructive",
+        });
+        return;
+      }
+      const result = mergeNoteLabelsIntoLocal(parsed.labels);
+      setNoteLabels(result.merged);
+      toast({
+        title: tx("noteLabelsImportSuccessTitle", "Labels loaded"),
+        description: (
+          tx(
+            "noteLabelsImportSuccessBody",
+            "Added {added}, updated {updated}. Existing labels were kept.",
+          )
+            .replace("{added}", String(result.added))
+            .replace("{updated}", String(result.updated))
+        ),
+      });
+    } catch {
+      toast({
+        title: tx("noteLabelsImportFailedTitle", "Could not load labels"),
+        description: tx(
+          "noteLabelsImportFailedBody",
+          "Check the file and try again.",
+        ),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendLabelsAsPrivateNote = () => {
+    if (!canPortNoteLabels) return;
+    if (labelCount === 0) {
+      toast({
+        title: tx("noteLabelsExportEmptyTitle", "No labels to download"),
+        description: tx(
+          "noteLabelsExportEmptyBody",
+          "Add a note label in Customize when you create a tracked note.",
+        ),
+      });
+      return;
+    }
+    const body = serializeNoteLabelsExport(noteLabels).trimEnd();
+    if (body.length > NOTE_LABELS_PREFILL_MAX_CHARS) {
+      downloadNoteLabelsExport(noteLabels);
+      toast({
+        title: tx("noteLabelsExportTooLargeTitle", "Labels pack is large"),
+        description: tx(
+          "noteLabelsExportTooLargeBody",
+          "Downloaded as a file instead — attach or open it on your other device.",
+        ),
+      });
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        PREFILL_SS_KEY,
+        `#text=${encodeURIComponent(body)}&from=note-labels`,
+      );
+    } catch {
+      downloadNoteLabelsExport(noteLabels);
+      toast({
+        title: tx("noteLabelsExportPrefillFailedTitle", "Could not open composer"),
+        description: tx(
+          "noteLabelsExportPrefillFailedBody",
+          "Downloaded the labels file instead.",
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.assign(localizedPath("/", language));
+  };
+
   if (authLoading || loading || canUseNotificationCenter === null) {
     return (
       <AccountSettingsShell>
@@ -571,6 +705,69 @@ export default function NotificationCenter() {
             </Button>
           ) : null}
         </div>
+
+        {canPortNoteLabels ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4 dark:border-gray-800 dark:bg-gray-950/30">
+            <input
+              ref={labelsFileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              tabIndex={-1}
+              onChange={(event) => void handleLoadLabelsFile(event)}
+            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {tx("noteLabelsPortabilityTitle", "Move note labels between devices")}
+                </p>
+                <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {tx(
+                    "noteLabelsPortabilityBody",
+                    "Labels stay on your devices. Download a pack, load it elsewhere, or send it as a one-time PrivateNote. Note content is never included.",
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  {tx("noteLabelsPortabilityCount", "{count} labels on this device").replace(
+                    "{count}",
+                    String(labelCount),
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadLabels}
+                  disabled={labelCount === 0}
+                >
+                  <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  {tx("noteLabelsDownload", "Download")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => labelsFileInputRef.current?.click()}
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  {tx("noteLabelsLoad", "Load")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendLabelsAsPrivateNote}
+                  disabled={labelCount === 0}
+                >
+                  <Share2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  {tx("noteLabelsSendAsNote", "Send as PrivateNote")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">

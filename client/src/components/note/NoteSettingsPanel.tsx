@@ -145,7 +145,10 @@ function SettingsFieldLabel({
 
 /** Label + control row: compact label column, input takes remaining width (helps long locales). */
 const SETTINGS_FIELD_ROW =
-  "grid grid-cols-1 items-start gap-x-2 gap-y-1 px-1 py-1.5 transition-colors sm:grid-cols-[minmax(0,11.5rem)_minmax(0,1fr)]";
+  "grid grid-cols-1 items-start gap-x-2 gap-y-1 px-1 py-2 transition-colors sm:grid-cols-[minmax(0,11.5rem)_minmax(0,1fr)]";
+
+/** Label + switch row: match dropdown field vertical rhythm (toggles are shorter without a select). */
+const SETTINGS_TOGGLE_ROW = "flex items-center gap-2 px-1 py-2.5 transition-colors";
 
 function translatedFileAccessWindowLabel(
   seconds: NoteFileAccessWindowSeconds,
@@ -537,8 +540,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
-              <div className="flex flex-col space-y-1">
-                <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+              <div className="flex flex-col space-y-2">
+                <div className={SETTINGS_TOGGLE_ROW}>
                   <div className="min-w-0 flex-1">
                     <SettingsFieldLabel
                       htmlFor="require-recipient-verification"
@@ -899,9 +902,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 title={t.settingsNotificationCenter ?? t.notificationCenterTitle ?? "Notification Center"}
                 showPremiumBadge={false}
               />
-              <div className="flex flex-col space-y-1">
+              <div className="flex flex-col space-y-2">
                 {readCount === 1 ? (
-                  <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                  <div className={SETTINGS_TOGGLE_ROW}>
                     <div className="min-w-0 flex-1">
                       <SettingsFieldLabel
                         htmlFor="notify-on-opened-destroyed"
@@ -933,7 +936,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+                    <div className={SETTINGS_TOGGLE_ROW}>
                       <div className="min-w-0 flex-1">
                         <SettingsFieldLabel
                           htmlFor="notify-on-open"
@@ -959,7 +962,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 px-1 pb-1.5">
+                    <div className={SETTINGS_TOGGLE_ROW}>
                       <div className="min-w-0 flex-1">
                         <SettingsFieldLabel
                           htmlFor="notify-on-destroyed"
@@ -989,7 +992,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </>
                 )}
                 {hasAttachment ? (
-                  <div className="flex items-center gap-2 px-1 pb-1.5">
+                  <div className={SETTINGS_TOGGLE_ROW}>
                     <div className="min-w-0 flex-1">
                       <SettingsFieldLabel
                         htmlFor="notify-on-attachment-download"
@@ -1132,7 +1135,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 showPremiumBadge={!isPremiumUser}
                 premiumLabel={t.premium ?? "Starter"}
               />
-              <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+              <div className={SETTINGS_TOGGLE_ROW}>
                 <div className="min-w-0 flex-1">
                   <SettingsFieldLabel
                     htmlFor="email-link-to-recipient"
@@ -1212,7 +1215,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     "Verify your account email before we can send the link for you."}
                 </p>
               ) : null}
-              <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+              <div className={SETTINGS_TOGGLE_ROW}>
                 <div className="min-w-0 flex-1">
                   <SettingsFieldLabel
                     htmlFor="delayed-reveal"
@@ -1281,7 +1284,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </p>
                 </div>
               ) : null}
-              <div className="flex items-center gap-2 px-1 pt-2 pb-1.5">
+              <div className={SETTINGS_TOGGLE_ROW}>
                 <div className="min-w-0 flex-1">
                   <SettingsFieldLabel
                     htmlFor="require-receipt-ack"

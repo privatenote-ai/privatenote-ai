@@ -17,8 +17,14 @@ import {
   Mic,
   BadgeCheck,
   Clock,
+  Tags,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
+import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
+import {
+  mergeNoteLabelsIntoLocal,
+  parseNoteLabelsExport,
+} from '@/utils/noteLabelsStorage';
 import {
   decryptNote,
   deriveNoteRootKeysFromUrlFragment,
@@ -557,6 +563,17 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [recipientCodeSent, setRecipientCodeSent] = useState(false);
   const recipientCodeAutoSendRef = useRef(false);
   const { toast } = useToast();
+  const { entitlements } = useAccountEntitlements();
+  const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
+  const importedLabelsPack = useMemo(
+    () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
+    [noteContent],
+  );
+  const [labelsImported, setLabelsImported] = useState(false);
+
+  useEffect(() => {
+    setLabelsImported(false);
+  }, [noteContent]);
   const readerLanguageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
 
@@ -1678,32 +1695,40 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </p>
         </div>
 
-        {receiptAckRequired && noteContent ? (
-          <div className="mb-5 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30">
+        {canImportNoteLabels && importedLabelsPack && noteContent ? (
+          <div className="mb-5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-left dark:border-amber-800/50 dark:bg-amber-950/30">
             <div className="flex items-start gap-3">
-              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+              <Tags className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="m-0 text-sm font-medium text-teal-950 dark:text-teal-50">
-                  {t.revealReceiptRequestedTitle ?? "Receipt confirmation requested"}
+                <p className="m-0 text-sm font-medium text-amber-950 dark:text-amber-50">
+                  {t.noteLabelsRevealImportTitle ?? "Note labels pack"}
                 </p>
-                <p className="m-0 mt-1 text-xs leading-snug text-teal-900/80 dark:text-teal-100/80">
-                  {receiptAckAcknowledged
-                    ? (receiptAckMessage ??
-                      t.revealReceiptAlreadyConfirmed ??
-                      "Already confirmed")
-                    : (t.revealReceiptRequestedHint ??
-                      "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.")}
+                <p className="m-0 mt-1 text-xs leading-snug text-amber-900/80 dark:text-amber-100/80">
+                  {labelsImported
+                    ? (t.noteLabelsRevealImportDone ??
+                      "Labels were saved on this device for Notification Center.")
+                    : (t.noteLabelsRevealImportHint ??
+                      "Load these labels onto this device so Notification Center can name your tracked notes.")}
                 </p>
-                {!receiptAckAcknowledged ? (
+                {!labelsImported ? (
                   <button
                     type="button"
-                    onClick={(ev) => void handleConfirmReceipt(ev)}
-                    disabled={receiptAckSubmitting || !receiptAckTokenHex}
-                    className="mt-3 inline-flex items-center justify-center rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-600 dark:hover:bg-teal-500"
+                    onClick={() => {
+                      const result = mergeNoteLabelsIntoLocal(importedLabelsPack.labels);
+                      setLabelsImported(true);
+                      toast({
+                        title: t.noteLabelsImportSuccessTitle ?? "Labels loaded",
+                        description: (
+                          t.noteLabelsImportSuccessBody ??
+                          "Added {added}, updated {updated}. Existing labels were kept."
+                        )
+                          .replace("{added}", String(result.added))
+                          .replace("{updated}", String(result.updated)),
+                      });
+                    }}
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:bg-amber-600 dark:hover:bg-amber-500"
                   >
-                    {receiptAckSubmitting
-                      ? (t.revealReceiptConfirming ?? "Confirming…")
-                      : (t.revealReceiptConfirmButton ?? "Confirm receipt")}
+                    {t.noteLabelsRevealImportButton ?? "Load labels on this device"}
                   </button>
                 ) : null}
               </div>
@@ -1951,6 +1976,39 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             {t.saveNoteSecurely}
           </p>
         </div>
+
+        {receiptAckRequired && noteContent ? (
+          <div className="mt-6 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30 sm:mt-7">
+            <div className="flex items-start gap-3">
+              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="m-0 text-sm font-medium text-teal-950 dark:text-teal-50">
+                  {t.revealReceiptRequestedTitle ?? "Receipt confirmation requested"}
+                </p>
+                <p className="m-0 mt-1 text-xs leading-snug text-teal-900/80 dark:text-teal-100/80">
+                  {receiptAckAcknowledged
+                    ? (receiptAckMessage ??
+                      t.revealReceiptAlreadyConfirmed ??
+                      "Already confirmed")
+                    : (t.revealReceiptRequestedHint ??
+                      "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.")}
+                </p>
+                {!receiptAckAcknowledged ? (
+                  <button
+                    type="button"
+                    onClick={(ev) => void handleConfirmReceipt(ev)}
+                    disabled={receiptAckSubmitting || !receiptAckTokenHex}
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-600 dark:hover:bg-teal-500"
+                  >
+                    {receiptAckSubmitting
+                      ? (t.revealReceiptConfirming ?? "Confirming…")
+                      : (t.revealReceiptConfirmButton ?? "Confirm receipt")}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
       <AttachmentProgressDialog progress={attachmentDecryptProgress} />
     </section>

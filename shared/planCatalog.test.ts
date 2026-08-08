@@ -85,8 +85,11 @@ describe("planCatalog", () => {
     assert.equal(planFeaturesFor("business_premium").revealBranding, true);
     assert.equal(planFeaturesFor("business_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("business_premium").customPromptTemplates, true);
+    assert.equal(planFeaturesFor("personal_premium").noteLabelPortability, false);
+    assert.equal(planFeaturesFor("business_premium").noteLabelPortability, true);
     assert.equal(planFeaturesFor("free").premiumTemplatePacks, false);
     assert.equal(planFeaturesFor("free").customPromptTemplates, false);
+    assert.equal(planFeaturesFor("free").noteLabelPortability, false);
   });
 
   it("exposes note customization capabilities by plan", () => {

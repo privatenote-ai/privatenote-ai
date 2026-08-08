@@ -44,6 +44,11 @@ export type PlanFeatureFlags = {
   /** Browser-saved custom AI prompt templates. */
   customPromptTemplates: boolean;
   premiumTemplatePacks: boolean;
+  /**
+   * Business: download / load / share device note labels (Notification Center)
+   * as a portable file or PrivateNote — still never note content.
+   */
+  noteLabelPortability: boolean;
 };
 
 export type PlanDefinition = {
@@ -91,6 +96,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       savedDefaults: false,
       customPromptTemplates: false,
       premiumTemplatePacks: false,
+      noteLabelPortability: false,
     },
   },
   personal_premium: {
@@ -122,6 +128,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       savedDefaults: true,
       customPromptTemplates: false,
       premiumTemplatePacks: true,
+      noteLabelPortability: false,
     },
   },
   business_premium: {
@@ -153,6 +160,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       savedDefaults: true,
       customPromptTemplates: true,
       premiumTemplatePacks: true,
+      noteLabelPortability: true,
     },
   },
 };
