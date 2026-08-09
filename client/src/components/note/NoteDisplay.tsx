@@ -329,11 +329,23 @@ const NoteAccessProblem: React.FC<{
   const isNotYetAvailable = variant === 'not_yet_available';
   const showKeyMismatch = variant === 'note_gone' && keyMismatch;
   const opensAtLabel = opensAt
-    ? new Date(opensAt).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-        timeZoneName: "short",
-      })
+    ? (() => {
+        const date = new Date(opensAt);
+        if (Number.isNaN(date.getTime())) return opensAt;
+        // Safari throws if dateStyle/timeStyle are mixed with other options (e.g. timeZoneName).
+        try {
+          return date.toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZoneName: "short",
+          });
+        } catch {
+          return date.toLocaleString();
+        }
+      })()
     : null;
 
   return (
