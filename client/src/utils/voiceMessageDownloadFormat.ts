@@ -111,7 +111,7 @@ async function encodeAudioBufferAsM4a(buffer: AudioBuffer): Promise<{ blob: Blob
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
-      recorder.onerror = () => reject(recorder.error ?? new Error("Voice re-encode failed"));
+      recorder.onerror = () => reject(new Error("Voice re-encode failed"));
       recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
     });
 

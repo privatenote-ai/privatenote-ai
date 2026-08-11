@@ -1,3 +1,5 @@
+import { applyCspNonceToScript } from "@/lib/cspNonce";
+
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
 
 let loadPromise: Promise<void> | null = null;
@@ -23,6 +25,7 @@ export function ensureTurnstileScript(): Promise<void> {
     script.async = true;
     script.defer = true;
     script.crossOrigin = "anonymous";
+    applyCspNonceToScript(script);
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("Turnstile script failed"));
     document.head.appendChild(script);

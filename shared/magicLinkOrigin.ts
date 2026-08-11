@@ -1,4 +1,4 @@
-import { isPagesStagingBranchHost } from "./pagesAppHosts";
+import { isStagingAppHost } from "./pagesAppHosts";
 
 /**
  * Ephemeral Pages deployment URLs (e.g. `958aa19e.privatenote-ai.pages.dev`) break when that
@@ -20,7 +20,7 @@ export function canonicalizeMagicLinkOrigin(
 
   try {
     const host = new URL(normalized).hostname;
-    if (isPagesStagingBranchHost(host)) {
+    if (isStagingAppHost(host)) {
       return normalized;
     }
   } catch {

@@ -6,6 +6,14 @@ import { useLanguage } from "@/context/LanguageContext";
 
 function navItemActive(href: string, location: string): boolean {
   if (href === "/account") return location === "/account";
+  if (href === "/account/activity") {
+    return (
+      location === "/account/activity" ||
+      location.startsWith("/account/activity/") ||
+      location === "/account/notifications" ||
+      location.startsWith("/account/notifications/")
+    );
+  }
   return location === href || location.startsWith(`${href}/`);
 }
 

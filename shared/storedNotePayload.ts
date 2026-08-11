@@ -12,6 +12,10 @@ import {
   isNoteFileAccessWindowSeconds,
 } from "./noteFileAccess.ts";
 import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
+import {
+  parseStoredRevealBranding,
+  type RevealBranding,
+} from "./businessBranding.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
@@ -65,6 +69,8 @@ export interface ParsedStoredNoteCiphertext {
   attachment?: StoredNoteAttachment;
   fileAccessWindowSeconds?: number;
   readerLanguage?: SupportedLanguage;
+  /** Optional Business branded reveal chrome snapshotted at create time. */
+  revealBranding?: RevealBranding;
 }
 
 function decodeJsonAad(value: string): Record<string, unknown> | null {
@@ -334,6 +340,11 @@ export function parseStoredNoteCiphertextForReveal(
     ciphertext.fileAccessWindowSeconds = o.fileAccessWindowSeconds;
   } else if (attachment) {
     ciphertext.fileAccessWindowSeconds = NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+  }
+  // Malformed branding is dropped rather than failing the parse: it is decoration.
+  const revealBranding = parseStoredRevealBranding(o.revealBranding);
+  if (revealBranding) {
+    ciphertext.revealBranding = revealBranding;
   }
   return ciphertext;
 }

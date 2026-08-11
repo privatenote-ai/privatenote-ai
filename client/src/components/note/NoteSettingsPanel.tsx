@@ -7,15 +7,25 @@ import {
   Shield,
   User,
   Languages,
+  Palette,
+  Tag,
+  MailCheck,
+  Bell,
+  BellOff,
+  Download,
+  Mic,
+  Mail,
+  Clock,
+  BadgeCheck,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
   noteExpiryPresetsForAccount,
+  noteExpiryPresetDisplayLabel,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import {
   NOTE_READ_LIMIT_OPTIONS,
-  isPremiumNoteReadLimit,
   type NoteReadLimit,
 } from "@shared/noteReadLimits";
 import {
@@ -33,6 +43,7 @@ import {
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
 import { Link } from "wouter";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { LANGUAGE_OPTIONS, type SupportedLanguage } from "@/utils/translation";
@@ -44,6 +55,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PasswordsLuPartnerFooter } from "@/components/PasswordsLuPartnerLinks";
 import {
   Tooltip,
   TooltipContent,
@@ -76,7 +88,13 @@ function SettingsInfoTooltip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[260px] text-xs leading-snug">
+      <TooltipContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        collisionPadding={16}
+        className="z-[100] max-w-[260px] text-xs leading-snug"
+      >
         {text}
       </TooltipContent>
     </Tooltip>
@@ -89,28 +107,33 @@ function SettingsFieldLabel({
   iconToneClassName,
   label,
   info,
+  singleLine = false,
 }: {
   htmlFor?: string;
   icon: React.ReactNode;
   iconToneClassName: string;
   label: string;
   info?: string;
+  singleLine?: boolean;
 }) {
   const content = (
     <>
       <SettingsInfoTooltip text={info}>
         <span
-          className={`mr-2 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
-          tabIndex={info ? 0 : undefined}
+          className={`mr-1.5 shrink-0 rounded p-1 ${iconToneClassName}${info ? " cursor-help" : ""}`}
           aria-label={info}
         >
           {icon}
         </span>
       </SettingsInfoTooltip>
-      <span className="min-w-0">{label}</span>
+      <span className={`min-w-0 leading-snug${singleLine ? " whitespace-nowrap" : ""}`}>
+        {label}
+      </span>
     </>
   );
-  const className = "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300";
+  const className = singleLine
+    ? "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+    : "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
   if (htmlFor) {
     return (
       <label htmlFor={htmlFor} className={className}>
@@ -120,6 +143,13 @@ function SettingsFieldLabel({
   }
   return <div className={className}>{content}</div>;
 }
+
+/** Label + control row: compact label column, input takes remaining width (helps long locales). */
+const SETTINGS_FIELD_ROW =
+  "grid grid-cols-1 items-start gap-x-2 gap-y-1 px-1 py-2 transition-colors sm:grid-cols-[minmax(0,11.5rem)_minmax(0,1fr)]";
+
+/** Label + switch row: match dropdown field vertical rhythm (toggles are shorter without a select). */
+const SETTINGS_TOGGLE_ROW = "flex items-center gap-2 px-1 py-2.5 transition-colors";
 
 function translatedFileAccessWindowLabel(
   seconds: NoteFileAccessWindowSeconds,
@@ -148,6 +178,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "15d") return t.expiry15d ?? noteExpiryPresetDisplayLabel(expiryValue);
   if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
 }
@@ -273,10 +304,9 @@ function SettingsToggleRow({
     <SettingsInfoTooltip text={info}>
       <span
         className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
-        tabIndex={0}
         aria-label={info}
       >
-        <span className="truncate">{title}</span>
+        <span className="min-w-0 text-left leading-snug">{title}</span>
       </span>
     </SettingsInfoTooltip>
   );
@@ -289,6 +319,7 @@ function SettingsToggleRow({
         <button type="button" onClick={onLockedClick} className={className}>
           <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
           {titleContent}
+          <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
         </button>
       );
     }
@@ -296,24 +327,22 @@ function SettingsToggleRow({
       <div className={className} aria-disabled="true">
         <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
         {titleContent}
+        <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
       </div>
     );
   }
 
   return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40"
-    >
-      <input
-        id={id}
-        type="checkbox"
-        className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
-        checked={checked}
-        onChange={(event) => onCheckedChange?.(event.target.checked)}
-      />
+    <div className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40">
       {titleContent}
-    </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className="ml-auto"
+        aria-label={title}
+      />
+    </div>
   );
 }
 
@@ -326,6 +355,7 @@ function PremiumSectionFooter({ children }: { children: React.ReactNode }) {
 export type NoteSettingsPanelProps = {
   /** inline = accordion on create page; overlay = inside sheet/modal experiment */
   presentation?: "inline" | "overlay";
+  variant?: "note" | "file-transfer";
   showAdvancedOptions: boolean;
   password: string;
   setPassword: (p: string) => void;
@@ -342,13 +372,40 @@ export type NoteSettingsPanelProps = {
   setNotifyOnOpen: (v: boolean) => void;
   notifyOnDestroyed: boolean;
   setNotifyOnDestroyed: (v: boolean) => void;
+  notifyOnAttachmentDownload: boolean;
+  setNotifyOnAttachmentDownload: (v: boolean) => void;
+  /** Show the attachment-download alert when the note includes a file. */
+  hasAttachment: boolean;
+  /** True when the attachment is a voice recording. */
+  hasVoiceMessage?: boolean;
   canNotifyOnOpen: boolean;
+  emailLinkToRecipient: boolean;
+  setEmailLinkToRecipient: (v: boolean) => void;
+  linkDeliveryEmail: string;
+  setLinkDeliveryEmail: (v: string) => void;
+  /** Starter+ with verified account email — can send the note link on create. */
+  canEmailLinkToRecipient: boolean;
+  delayedReveal: boolean;
+  setDelayedReveal: (v: boolean) => void;
+  /** Local `datetime-local` value (no timezone); empty when delayed reveal is off. */
+  opensAtLocal: string;
+  setOpensAtLocal: (v: string) => void;
+  /** Starter+: recipient confirms receipt after successful decrypt. */
+  requireReceiptAck: boolean;
+  setRequireReceiptAck: (v: boolean) => void;
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
+  accountEmail: string | null;
+  alertNotifyAccountEmail: boolean;
+  setAlertNotifyAccountEmail: (v: boolean) => void;
+  alertCustomEmail: string;
+  setAlertCustomEmail: (v: string) => void;
+  maxExpirySeconds: number;
+  allowedReadCounts: readonly number[];
+  maxFileAccessWindowSeconds: number;
+  isSignedIn: boolean;
   premiumStatusLoading: boolean;
-  restrictRecipientEmail: boolean;
-  setRestrictRecipientEmail: (v: boolean) => void;
   requireRecipientVerification: boolean;
   setRequireRecipientVerification: (v: boolean) => void;
   recipientEmail: string;
@@ -359,10 +416,19 @@ export type NoteSettingsPanelProps = {
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
+  /** Business — show the account's saved branding on the reveal page. */
+  canBrandRevealPage?: boolean;
+  /** False when the plan allows branding but the account has not set any up. */
+  hasRevealBranding?: boolean;
+  applyBranding?: boolean;
+  setApplyBranding?: (v: boolean) => void;
+  /** Starter+ — persist current settings as synced account defaults. */
+  onSaveDefaults?: () => Promise<void>;
 };
 
 export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   presentation = "inline",
+  variant = "note",
   showAdvancedOptions,
   password,
   setPassword,
@@ -379,13 +445,35 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setNotifyOnOpen,
   notifyOnDestroyed,
   setNotifyOnDestroyed,
+  notifyOnAttachmentDownload,
+  setNotifyOnAttachmentDownload,
+  hasAttachment,
+  hasVoiceMessage = false,
   canNotifyOnOpen,
+  emailLinkToRecipient,
+  setEmailLinkToRecipient,
+  linkDeliveryEmail,
+  setLinkDeliveryEmail,
+  canEmailLinkToRecipient,
+  delayedReveal,
+  setDelayedReveal,
+  opensAtLocal,
+  setOpensAtLocal,
+  requireReceiptAck,
+  setRequireReceiptAck,
   noteLabel,
   setNoteLabel,
   isPremiumUser,
+  accountEmail,
+  alertNotifyAccountEmail,
+  setAlertNotifyAccountEmail,
+  alertCustomEmail,
+  setAlertCustomEmail,
+  maxExpirySeconds,
+  allowedReadCounts,
+  maxFileAccessWindowSeconds,
+  isSignedIn,
   premiumStatusLoading,
-  restrictRecipientEmail,
-  setRestrictRecipientEmail,
   requireRecipientVerification,
   setRequireRecipientVerification,
   recipientEmail,
@@ -396,12 +484,21 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
+  canBrandRevealPage = false,
+  hasRevealBranding = false,
+  applyBranding = false,
+  setApplyBranding,
+  onSaveDefaults,
 }) => {
   const { t, language } = useLanguage();
+  const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
   const preferencesHref = localizedPath("/account/preferences", language);
+  const brandingHref = localizedPath("/account/branding", language);
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
+  const [savingDefaults, setSavingDefaults] = React.useState(false);
+  const [defaultsSaved, setDefaultsSaved] = React.useState(false);
 
   const brandedRevealFeature = React.useMemo<PremiumFeature>(
     () => ({
@@ -412,18 +509,264 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     }),
     [t],
   );
+  const recipientCodeTitle =
+    t.settingsDeliveryVerifyEmail ?? "Require one-time code via email";
+  const recipientCodeInfo = isFileTransfer
+    ? "Enter the recipient's email. When they open the link, we email them a one-time code before the file can be revealed."
+    : t.settingsDeliveryVerifyEmailInfo ??
+      "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.";
+  const emailLinkTitle = t.settingsDeliverRecipientEmail ?? "Email link to recipient";
+  const emailLinkInfo =
+    t.settingsDeliverRecipientEmailInfo ??
+    "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.";
+  const delayedRevealTitle = t.settingsDelayedReveal ?? "Delayed reveal";
+  const delayedRevealInfo =
+    t.settingsDelayedRevealInfo ??
+    "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.";
+  const receiptAckTitle = t.settingsRequireReceiptAck ?? "Require receipt confirmation";
+  const receiptAckInfo =
+    t.settingsRequireReceiptAckInfo ??
+    "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.";
+
+  const defaultOpensAtLocal = (): string => {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    d.setSeconds(0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const settingsBody = (
     <TooltipProvider delayDuration={200}>
-    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-2xl space-y-4">
             <section
-              className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
+              className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
               aria-labelledby="note-access-controls-heading"
             >
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
-              <div className="grid grid-cols-1 gap-2 items-start px-1 pb-2 pt-4 transition-colors sm:grid-cols-3">
-                <div className="sm:col-span-1">
+              <div className="flex flex-col space-y-2">
+                <div className={SETTINGS_TOGGLE_ROW}>
+                  <div className="min-w-0 flex-1">
+                    <SettingsFieldLabel
+                      htmlFor="require-recipient-verification"
+                      icon={<MailCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                      label={recipientCodeTitle}
+                      info={recipientCodeInfo}
+                      singleLine
+                    />
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    {!isPremiumUser ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPremiumFeature({
+                            title: recipientCodeTitle,
+                            description: recipientCodeInfo,
+                          })
+                        }
+                        className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        aria-label={recipientCodeTitle}
+                      >
+                        <Switch
+                          id="require-recipient-verification"
+                          checked={false}
+                          disabled
+                          aria-hidden
+                          className="pointer-events-none opacity-50"
+                        />
+                      </button>
+                    ) : (
+                      <Switch
+                        id="require-recipient-verification"
+                        checked={requireRecipientVerification}
+                        onCheckedChange={(checked) => {
+                          setRequireRecipientVerification(checked);
+                          if (!checked) setRecipientEmail("");
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+                {isPremiumUser && requireRecipientVerification ? (
+                  <div className="px-1 pb-1">
+                    <label
+                      htmlFor="recipient-email"
+                      className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                    </label>
+                    <input
+                      id="recipient-email"
+                      type="email"
+                      autoComplete="email"
+                      value={recipientEmail}
+                      onChange={(event) => setRecipientEmail(event.target.value)}
+                      placeholder={
+                        t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
+                      }
+                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                    />
+                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {isFileTransfer
+                        ? "A one-time code will be emailed to the recipient when they open the link."
+                        : (t.settingsRecipientVerificationEmailHint ??
+                          "When they open the link, we email a one-time code to this address.")}
+                    </p>
+                  </div>
+                ) : null}
+                {!isPremiumUser ? (
+                  <PremiumSectionFooter>
+                    {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
+                    <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
+                      {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                    </a>
+                  </PremiumSectionFooter>
+                ) : null}
+
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
+              <SettingsFieldLabel
+                htmlFor="expiry-value"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-blue-500 dark:text-blue-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+                iconToneClassName="bg-blue-50 dark:bg-blue-900/30"
+                label={t.settingsNoteLifetime ?? t.expiration}
+                info={t.settingsNoteLifetimeInfo}
+              />
+            </div>
+                  <div className="min-w-0 space-y-1">
+              <select
+                id="expiry-value"
+                value={expiryValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (isNoteExpiryPresetId(v)) setExpiryValue(v);
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                {noteExpiryPresetsForAccount(maxExpirySeconds).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {translatedExpiryLabel(p.id, t)}
+                  </option>
+                ))}
+              </select>
+              <SettingsFieldHelper>
+                {t.settingsNoteLifetimeHint ?? "When the link stops working if never opened."}
+              </SettingsFieldHelper>
+                  </div>
+                </div>
+
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
+                    <SettingsFieldLabel
+                      htmlFor="note-read-limit"
+                      icon={<Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                      iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
+                      label={t.settingsOpenLimit ?? t.viewLimit}
+                      info={t.settingsOpenLimitInfo}
+                    />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <select
+                id="note-read-limit"
+                value={readCount}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (!NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) return;
+                  if (!allowedReadCounts.includes(next)) return;
+                  setReadCount(next as NoteReadLimit);
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
+                  const locked = !allowedReadCounts.includes(limit);
+                  return (
+                    <option key={limit} value={limit} disabled={locked}>
+                      {translatedReadLimitLabel(limit, t)}
+                      {locked
+                        ? limit === 5
+                          ? " (Business)"
+                          : ` (${t.premium ?? "Starter"})`
+                        : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <SettingsFieldHelper>
+                {allowedReadCounts.length > 1
+                  ? (t.settingsOpenLimitHint ?? t.viewLimitPremiumHint)
+                  : (t.viewLimitFreeDescription ?? "Free accounts use read-once.")}
+              </SettingsFieldHelper>
+            </div>
+          </div>
+
+          <div className={SETTINGS_FIELD_ROW}>
+            <div>
+              <SettingsFieldLabel
+                htmlFor="note-file-access-window"
+                icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                label={t.settingsFileDownloads ?? "File downloads"}
+                info={t.settingsFileDownloadsInfo}
+              />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <select
+                id="note-file-access-window"
+                value={fileAccessWindowSeconds}
+                disabled={premiumStatusLoading}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (!NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
+                    return;
+                  }
+                  if (next > maxFileAccessWindowSeconds) return;
+                  setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
+                }}
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                style={SELECT_CHEVRON_STYLE}
+              >
+                {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                  const locked = seconds > maxFileAccessWindowSeconds;
+                  return (
+                    <option key={seconds} value={seconds} disabled={locked}>
+                      {translatedFileAccessWindowLabel(seconds, t)}
+                      {locked
+                        ? seconds === 60 * 60
+                          ? " (Business)"
+                          : ` (${t.premium ?? "Starter"})`
+                        : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <SettingsFieldHelper>
+                {t.settingsFileDownloadsHint ??
+                  "How long attachments stay downloadable after the note is opened."}
+              </SettingsFieldHelper>
+            </div>
+          </div>
+
+<div className={SETTINGS_FIELD_ROW}>
+                <div>
             <SettingsFieldLabel
               htmlFor="note-password"
               icon={<Lock className="h-4 w-4 text-green-500 dark:text-green-400" />}
@@ -432,7 +775,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               info={t.settingsPasswordInfo}
             />
           </div>
-          <div className="min-w-0 sm:col-span-2">
+          <div className="min-w-0">
             <div className="relative min-w-0">
               <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
                 <div className="flex min-w-0 flex-1">
@@ -519,7 +862,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="mt-2">
+              <div className="mt-1">
                 <SettingsFieldHelper>{t.passwordRecipientsNeedToDecrypt}</SettingsFieldHelper>
               </div>
               {password.trim() && (
@@ -544,208 +887,242 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </div>
                 </div>
               )}
+              {(passwordSource === "simple" || passwordSource === "strong") && (
+                <PasswordsLuPartnerFooter t={t} align="left" className="mt-1 !text-xs" />
+              )}
             </div>
           </div>
         </div>
-
-              <div className="flex flex-col space-y-2">
-                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                  <div className="sm:col-span-1">
-              <SettingsFieldLabel
-                htmlFor="expiry-value"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-blue-500 dark:text-blue-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                }
-                iconToneClassName="bg-blue-50 dark:bg-blue-900/30"
-                label={t.settingsNoteLifetime ?? t.expiration}
-                info={t.settingsNoteLifetimeInfo}
-              />
-            </div>
-                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
-              <select
-                id="expiry-value"
-                value={expiryValue}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (isNoteExpiryPresetId(v)) setExpiryValue(v);
-                }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
-                style={SELECT_CHEVRON_STYLE}
-              >
-                {noteExpiryPresetsForAccount(isPremiumUser).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {translatedExpiryLabel(p.id, t)}
-                  </option>
-                ))}
-              </select>
-              <SettingsFieldHelper>
-                {t.settingsNoteLifetimeHint ?? "When the link stops working if never opened."}
-              </SettingsFieldHelper>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-                  <div className="sm:col-span-1">
-                    <SettingsFieldLabel
-                      htmlFor="note-read-limit"
-                      icon={<Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
-                      iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
-                      label={t.settingsOpenLimit ?? t.viewLimit}
-                      info={t.settingsOpenLimitInfo}
-                    />
-            </div>
-            <div className="min-w-0 space-y-1.5 sm:col-span-2">
-              <select
-                id="note-read-limit"
-                value={readCount}
-                disabled={premiumStatusLoading}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) {
-                    setReadCount(next as NoteReadLimit);
-                  }
-                }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                style={SELECT_CHEVRON_STYLE}
-              >
-                {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
-                  const premiumOnly = isPremiumNoteReadLimit(limit);
-                  const locked = premiumOnly && !isPremiumUser;
-                  return (
-                    <option key={limit} value={limit} disabled={locked}>
-                      {translatedReadLimitLabel(limit, t)}
-                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-              <SettingsFieldHelper>
-                {isPremiumUser
-                  ? (t.settingsOpenLimitHint ?? t.viewLimitPremiumHint)
-                  : (t.viewLimitFreeDescription ?? "Free accounts use read-once.")}
-              </SettingsFieldHelper>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 items-start px-1 py-2 transition-colors sm:grid-cols-3">
-            <div className="sm:col-span-1">
-              <SettingsFieldLabel
-                htmlFor="note-file-access-window"
-                icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
-                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
-                label={t.settingsFileDownloads ?? "File downloads"}
-                info={t.settingsFileDownloadsInfo}
-              />
-            </div>
-            <div className="min-w-0 space-y-1.5 sm:col-span-2">
-              <select
-                id="note-file-access-window"
-                value={fileAccessWindowSeconds}
-                disabled={premiumStatusLoading}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
-                    setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
-                  }
-                }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
-                style={SELECT_CHEVRON_STYLE}
-              >
-                {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
-                  const locked = seconds !== NOTE_FILE_ACCESS_WINDOW_OPTIONS[0] && !isPremiumUser;
-                  return (
-                    <option key={seconds} value={seconds} disabled={locked}>
-                      {translatedFileAccessWindowLabel(seconds, t)}
-                      {locked ? ` (${t.premium ?? "Premium"})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-              <SettingsFieldHelper>
-                {t.settingsFileDownloadsHint ??
-                  "How long attachments stay downloadable after the note is opened."}
-              </SettingsFieldHelper>
-            </div>
-          </div>
 
         </div>
             </section>
 
             <section
               className="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3 pb-3 pt-2 dark:border-gray-800 dark:bg-gray-900/35"
-              aria-labelledby="note-email-alerts-heading"
+              aria-labelledby="note-notification-center-heading"
             >
               <SectionHeading
-                id="note-email-alerts-heading"
-                title={t.settingsEmailAlerts ?? "Email alerts"}
-                showPremiumBadge={!canNotifyOnOpen && !isPremiumUser}
-                premiumLabel={t.premium ?? "Premium"}
+                id="note-notification-center-heading"
+                title={t.settingsNotificationCenter ?? t.notificationCenterTitle ?? "Notification Center"}
+                showPremiumBadge={false}
               />
-              <SettingsOptionList>
-                <SettingsToggleRow
-                  id="notify-on-open"
-                  locked={!canNotifyOnOpen}
-                  checked={notifyOnOpen}
-                  onCheckedChange={setNotifyOnOpen}
-                  title={t.settingsEmailAlertOnOpen ?? "When this note is opened"}
-                  info={
-                    t.settingsEmailAlertOnOpenInfo ??
-                    "One email when the link is accessed. Message content is never included."
-                  }
-                />
-                <SettingsToggleRow
-                  id="notify-on-destroyed"
-                  locked={!canNotifyOnOpen}
-                  checked={notifyOnDestroyed}
-                  onCheckedChange={setNotifyOnDestroyed}
-                  title={t.settingsEmailAlertOnDestroyed ?? "When this note is destroyed"}
-                  info={
-                    t.settingsEmailAlertOnDestroyedInfo ??
-                    "One email when the note can no longer be opened."
-                  }
-                />
-              </SettingsOptionList>
-              {isPremiumUser ? (
-                <div className="px-1 pt-2">
-                  <label
-                    htmlFor="note-label"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsNoteLabel ?? "Note label"}
-                  </label>
-                  <input
-                    id="note-label"
-                    type="text"
-                    maxLength={NOTE_LABEL_MAX_LENGTH}
-                    value={noteLabel}
-                    onChange={(event) => setNoteLabel(event.target.value)}
-                    placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsNoteLabelHint ??
-                      "Optional. Shown only in your Notification Center on this device — never sent with the note."}
+              <div className="flex flex-col space-y-2">
+                {readCount === 1 ? (
+                  <div className={SETTINGS_TOGGLE_ROW}>
+                    <div className="min-w-0 flex-1">
+                      <SettingsFieldLabel
+                        htmlFor="notify-on-opened-destroyed"
+                        icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                        iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                        label={
+                          t.settingsEmailAlertOnOpenedDestroyed ??
+                          "Email alert when this note is opened and destroyed"
+                        }
+                        info={
+                          t.settingsEmailAlertOnOpenedDestroyedInfo ??
+                          "One email when the one-time link is accessed and the note is destroyed. Message content is never included."
+                        }
+                        singleLine
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-center">
+                      <Switch
+                        id="notify-on-opened-destroyed"
+                        checked={notifyOnOpen || notifyOnDestroyed}
+                        disabled={!canNotifyOnOpen}
+                        onCheckedChange={(enabled) => {
+                          setNotifyOnOpen(enabled);
+                          setNotifyOnDestroyed(enabled);
+                        }}
+                        className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className={SETTINGS_TOGGLE_ROW}>
+                      <div className="min-w-0 flex-1">
+                        <SettingsFieldLabel
+                          htmlFor="notify-on-open"
+                          icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                          iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                          label={
+                            t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
+                          }
+                          info={
+                            t.settingsEmailAlertOnOpenInfo ??
+                            "One email when the link is accessed. Message content is never included."
+                          }
+                          singleLine
+                        />
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <Switch
+                          id="notify-on-open"
+                          checked={notifyOnOpen}
+                          disabled={!canNotifyOnOpen}
+                          onCheckedChange={setNotifyOnOpen}
+                          className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                        />
+                      </div>
+                    </div>
+                    <div className={SETTINGS_TOGGLE_ROW}>
+                      <div className="min-w-0 flex-1">
+                        <SettingsFieldLabel
+                          htmlFor="notify-on-destroyed"
+                          icon={<BellOff className="h-4 w-4 text-rose-600 dark:text-rose-400" />}
+                          iconToneClassName="bg-rose-50 dark:bg-rose-900/30"
+                          label={
+                            t.settingsEmailAlertOnDestroyed ??
+                            "Email alert when this note is destroyed"
+                          }
+                          info={
+                            t.settingsEmailAlertOnDestroyedInfo ??
+                            "One email when the note can no longer be opened."
+                          }
+                          singleLine
+                        />
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <Switch
+                          id="notify-on-destroyed"
+                          checked={notifyOnDestroyed}
+                          disabled={!canNotifyOnOpen}
+                          onCheckedChange={setNotifyOnDestroyed}
+                          className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {hasAttachment ? (
+                  <div className={SETTINGS_TOGGLE_ROW}>
+                    <div className="min-w-0 flex-1">
+                      <SettingsFieldLabel
+                        htmlFor="notify-on-attachment-download"
+                        icon={
+                          hasVoiceMessage ? (
+                            <Mic className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          ) : (
+                            <Download className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          )
+                        }
+                        iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                        label={
+                          hasVoiceMessage
+                            ? (t.settingsEmailAlertOnRecordingDownload ??
+                              "Email alert when a recording is downloaded")
+                            : (t.settingsEmailAlertOnAttachmentDownload ??
+                              "Email alert when an attachment is downloaded")
+                        }
+                        info={
+                          hasVoiceMessage
+                            ? (t.settingsEmailAlertOnRecordingDownloadInfo ??
+                              "One email when the encrypted voice recording is requested for download. Audio contents are never included.")
+                            : (t.settingsEmailAlertOnAttachmentDownloadInfo ??
+                              "One email when the encrypted attachment is requested for download. File contents are never included.")
+                        }
+                        singleLine
+                      />
+                    </div>
+                    <div className="flex shrink-0 items-center">
+                      <Switch
+                        id="notify-on-attachment-download"
+                        checked={notifyOnAttachmentDownload}
+                        disabled={!canNotifyOnOpen}
+                        onCheckedChange={setNotifyOnAttachmentDownload}
+                        className={!canNotifyOnOpen ? "opacity-50" : undefined}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              {isPremiumUser &&
+              (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload) ? (
+                <div className="space-y-2 rounded-md border border-gray-200/80 bg-white/50 px-3 py-2.5 dark:border-gray-700/80 dark:bg-gray-950/20">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {t.settingsEmailAlertDestinations ?? "Where to send alerts"}
                   </p>
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={alertNotifyAccountEmail}
+                      onChange={(event) => setAlertNotifyAccountEmail(event.target.checked)}
+                    />
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2 leading-snug">
+                      <span className="shrink-0">
+                        {t.settingsEmailAlertAccountEmail ?? "My account email"}
+                      </span>
+                      {accountEmail ? (
+                        <span className="truncate text-xs text-gray-500 dark:text-gray-400">
+                          {accountEmail}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                  <div className="space-y-1 pt-1">
+                    <label
+                      htmlFor="alert-custom-email"
+                      className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {t.settingsEmailAlertCustomEmail ?? "Also send to another email"}
+                    </label>
+                    <input
+                      id="alert-custom-email"
+                      type="email"
+                      autoComplete="email"
+                      value={alertCustomEmail}
+                      onChange={(event) => setAlertCustomEmail(event.target.value)}
+                      placeholder={
+                        t.settingsEmailAlertCustomEmailPlaceholder ?? "alerts@example.com"
+                      }
+                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    />
+                    <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.settingsEmailAlertCustomEmailHint ??
+                        "Optional. Your account email stays selected unless you uncheck it. Uncheck it only to send alerts here alone."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              {isPremiumUser ? (
+                <div className={SETTINGS_FIELD_ROW}>
+                  <div>
+                    <SettingsFieldLabel
+                      htmlFor="note-label"
+                      icon={<Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                      iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                      label={t.settingsNoteLabel ?? "Note label"}
+                      info={
+                        t.settingsNoteLabelInfo ??
+                        "A private name for this note on this device only. Never uploaded or shared."
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <input
+                      id="note-label"
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={noteLabel}
+                      onChange={(event) => setNoteLabel(event.target.value)}
+                      placeholder={t.settingsNoteLabelPlaceholder ?? "e.g. Client onboarding pack"}
+                      className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm"
+                    />
+                    <SettingsFieldHelper>
+                      {t.settingsNoteLabelHint ??
+                        "Device-only labeling. Never sent with the note."}
+                    </SettingsFieldHelper>
+                  </div>
                 </div>
               ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (
                 <PremiumSectionFooter>
-                  {isPremiumUser ? (
+                  {isSignedIn ? (
                     <>
                       {t.settingsEmailAlertsPrefsHintPrefix ??
-                        "Turn on email notifications in"}{" "}
+                        "Verify your email and turn on email notifications in"}{" "}
                       <Link
                         href={preferencesHref}
                         className="font-medium text-primary hover:underline"
@@ -756,13 +1133,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     </>
                   ) : (
                     <>
-                      {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
-                      <a
-                        href={premiumUpgradeHref}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {t.settingsEmailAlertsUpgradeLink ?? "Upgrade to unlock email alerts"}
-                      </a>
+                      {t.settingsEmailAlertsSignInHint ??
+                        "Sign in with a verified email to get open and destroy alerts."}
                     </>
                   )}
                 </PremiumSectionFooter>
@@ -777,26 +1149,212 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 id="note-delivery-verification-heading"
                 title={t.settingsDeliveryVerification ?? "Delivery & verification"}
                 showPremiumBadge={!isPremiumUser}
-                premiumLabel={t.premium ?? "Premium"}
+                premiumLabel={t.premium ?? "Starter"}
               />
-              <SettingsOptionList>
-                <div className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start">
-                  <div className="min-w-0">
-                    <SettingsFieldLabel
-                      htmlFor="reader-language"
-                      icon={<Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
-                      iconToneClassName="bg-sky-50 dark:bg-sky-900/30"
-                      label={t.settingsReaderLanguage ?? "Reader Language"}
-                      info={
-                        t.settingsReaderLanguageInfo ??
-                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
+              <div className={SETTINGS_TOGGLE_ROW}>
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
+                    htmlFor="email-link-to-recipient"
+                    icon={<Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                    iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                    label={emailLinkTitle}
+                    info={emailLinkInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: emailLinkTitle,
+                          description: emailLinkInfo,
+                        })
                       }
+                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={emailLinkTitle}
+                    >
+                      <Switch
+                        id="email-link-to-recipient"
+                        checked={false}
+                        disabled
+                        aria-hidden
+                        className="pointer-events-none opacity-50"
+                      />
+                    </button>
+                  ) : (
+                    <Switch
+                      id="email-link-to-recipient"
+                      checked={emailLinkToRecipient}
+                      disabled={!canEmailLinkToRecipient}
+                      onCheckedChange={(checked) => {
+                        setEmailLinkToRecipient(checked);
+                        if (!checked) setLinkDeliveryEmail("");
+                        else if (!linkDeliveryEmail.trim() && recipientEmail.trim()) {
+                          setLinkDeliveryEmail(recipientEmail);
+                        }
+                      }}
+                      className={!canEmailLinkToRecipient ? "opacity-50" : undefined}
                     />
-                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {t.settingsReaderLanguageDescription ??
-                        "Choose the language used for the note reveal page. Auto uses the recipient's browser language."}
-                    </p>
-                  </div>
+                  )}
+                </div>
+              </div>
+              {isPremiumUser && emailLinkToRecipient ? (
+                <div className="px-1 pb-1">
+                  <label
+                    htmlFor="link-delivery-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="link-delivery-email"
+                    type="email"
+                    autoComplete="email"
+                    value={linkDeliveryEmail}
+                    onChange={(event) => setLinkDeliveryEmail(event.target.value)}
+                    placeholder={
+                      t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                    }
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.settingsEmailLinkToRecipientHint ??
+                      "We'll email the secret link when the note is created. Email is not end-to-end encrypted."}
+                  </p>
+                </div>
+              ) : null}
+              {isPremiumUser && !canEmailLinkToRecipient ? (
+                <p className="px-1 pb-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {t.recipientLinkDeliveryVerifyEmailHint ??
+                    "Verify your account email before we can send the link for you."}
+                </p>
+              ) : null}
+              <div className={SETTINGS_TOGGLE_ROW}>
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
+                    htmlFor="delayed-reveal"
+                    icon={<Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                    iconToneClassName="bg-emerald-50 dark:bg-emerald-900/30"
+                    label={delayedRevealTitle}
+                    info={delayedRevealInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: delayedRevealTitle,
+                          description: delayedRevealInfo,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={delayedRevealTitle}
+                    >
+                      <Switch
+                        id="delayed-reveal"
+                        checked={false}
+                        disabled
+                        aria-hidden
+                        className="pointer-events-none opacity-50"
+                      />
+                    </button>
+                  ) : (
+                    <Switch
+                      id="delayed-reveal"
+                      checked={delayedReveal}
+                      onCheckedChange={(checked) => {
+                        setDelayedReveal(checked);
+                        if (!checked) setOpensAtLocal("");
+                        else if (!opensAtLocal.trim()) setOpensAtLocal(defaultOpensAtLocal());
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              {isPremiumUser && delayedReveal ? (
+                <div className="px-1 pb-2">
+                  <label
+                    htmlFor="opens-at-local"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsDelayedRevealBefore ?? "Do not allow opening before"}
+                  </label>
+                  <input
+                    id="opens-at-local"
+                    type="datetime-local"
+                    value={opensAtLocal}
+                    onChange={(event) => setOpensAtLocal(event.target.value)}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {t.settingsDelayedRevealHint ??
+                      "Recipients can open the link only after this time. Must be before the note lifetime ends."}
+                    {opensAtLocal
+                      ? ` (${t.settingsDelayedRevealUtcLabel ?? "UTC"}: ${new Date(opensAtLocal).toISOString().replace(/\.\d{3}Z$/, " UTC")})`
+                      : ""}
+                  </p>
+                </div>
+              ) : null}
+              <div className={SETTINGS_TOGGLE_ROW}>
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
+                    htmlFor="require-receipt-ack"
+                    icon={<BadgeCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                    iconToneClassName="bg-teal-50 dark:bg-teal-900/30"
+                    label={receiptAckTitle}
+                    info={receiptAckInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: receiptAckTitle,
+                          description: receiptAckInfo,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={receiptAckTitle}
+                    >
+                      <Switch
+                        id="require-receipt-ack"
+                        checked={false}
+                        disabled
+                        aria-hidden
+                        className="pointer-events-none opacity-50"
+                      />
+                    </button>
+                  ) : (
+                    <Switch
+                      id="require-receipt-ack"
+                      checked={requireReceiptAck}
+                      onCheckedChange={setRequireReceiptAck}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className={SETTINGS_FIELD_ROW}>
+                <div>
+                  <SettingsFieldLabel
+                    htmlFor="reader-language"
+                    icon={<Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />}
+                    iconToneClassName="bg-sky-50 dark:bg-sky-900/30"
+                    label={t.settingsReaderLanguage ?? "Reader Language"}
+                    info={
+                      t.settingsReaderLanguageInfo ??
+                      "Choose the language used for the note reveal page. Auto uses the recipient's browser language."
+                    }
+                  />
+                </div>
+                <div className="min-w-0 space-y-1">
                   <select
                     id="reader-language"
                     value={readerLanguage}
@@ -812,7 +1370,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         });
                       }
                     }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm appearance-none cursor-pointer focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                     style={SELECT_CHEVRON_STYLE}
                   >
                     <option value="auto">{t.settingsReaderLanguageAuto ?? "Auto"}</option>
@@ -822,89 +1380,80 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       </option>
                     ))}
                   </select>
+                  <SettingsFieldHelper>
+                    {t.settingsReaderLanguageHint ??
+                      "Auto uses the recipient's browser language."}
+                  </SettingsFieldHelper>
                 </div>
-                <SettingsToggleRow
-                  id="restrict-recipient-email"
-                  locked={!isPremiumUser}
-                  checked={restrictRecipientEmail}
-                  onCheckedChange={(checked) => {
-                    setRestrictRecipientEmail(checked);
-                    if (!checked) setRecipientEmail("");
-                  }}
-                  title={t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email"}
-                  info={
-                    t.settingsDeliveryRestrictEmailInfo ??
-                    "Only the intended recipient can reveal the note."
-                  }
-                  onLockedClick={
-                    isPremiumUser ? undefined : () =>
-                      setSelectedPremiumFeature({
-                        title: t.settingsDeliveryRestrictEmail ?? "Restrict to recipient email",
-                        description:
-                          t.settingsDeliveryRestrictEmailInfo ??
-                          "Only the intended recipient can reveal the note.",
-                      })
-                  }
-                />
-                <SettingsToggleRow
-                  id="require-recipient-verification"
-                  locked={!isPremiumUser}
-                  checked={requireRecipientVerification}
-                  onCheckedChange={setRequireRecipientVerification}
-                  title={t.settingsDeliveryVerifyEmail ?? "Require email verification"}
-                  info={
-                    t.settingsDeliveryVerifyEmailInfo ??
-                    "Verify the recipient before the note is shown."
-                  }
-                  onLockedClick={
-                    isPremiumUser ? undefined : () =>
-                      setSelectedPremiumFeature({
-                        title: t.settingsDeliveryVerifyEmail ?? "Require email verification",
-                        description:
-                          t.settingsDeliveryVerifyEmailInfo ??
-                          "Verify the recipient before the note is shown.",
-                      })
-                  }
-                />
-                <SettingsToggleRow
-                  locked
-                  title={brandedRevealFeature.title}
-                  info={brandedRevealFeature.description}
-                  onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
-                />
-              </SettingsOptionList>
-              {isPremiumUser && restrictRecipientEmail ? (
-                <div className="px-1 pt-1">
-                  <label
-                    htmlFor="recipient-email"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {t.settingsRecipientEmail ?? "Recipient email"}
-                  </label>
-                  <input
-                    id="recipient-email"
-                    type="email"
-                    autoComplete="email"
-                    value={recipientEmail}
-                    onChange={(event) => setRecipientEmail(event.target.value)}
-                    placeholder={t.settingsRecipientEmailPlaceholder ?? "recipient@example.com"}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              </div>
+              <SettingsOptionList>
+                {canBrandRevealPage ? (
+                  hasRevealBranding ? (
+                    <SettingsToggleRow
+                      id="apply-branding"
+                      locked={false}
+                      checked={applyBranding}
+                      onCheckedChange={(checked) => setApplyBranding?.(checked)}
+                      title={brandedRevealFeature.title}
+                      info={brandedRevealFeature.description}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
+                      <Palette className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                      <span className="min-w-0">
+                        <a
+                          href={brandingHref}
+                          className="underline underline-offset-2 hover:text-primary"
+                        >
+                          {t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding"}
+                        </a>{" "}
+                        {t.settingsDeliveryBrandedRevealSetUpHint ??
+                          "to show it on the reveal page."}
+                      </span>
+                    </div>
+                  )
+                ) : (
+                  <SettingsToggleRow
+                    locked
+                    title={brandedRevealFeature.title}
+                    info={brandedRevealFeature.description}
+                    onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
                   />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsRecipientEmailHint ??
-                      "The recipient must enter this email before the note can be revealed."}
-                  </p>
-                </div>
-              ) : null}
+                )}
+              </SettingsOptionList>
               {!isPremiumUser ? (
                 <PremiumSectionFooter>
-                  {t.settingsPremiumFeatureLabel ?? "Premium feature —"}{" "}
+                  {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
                   <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
                     {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
                   </a>
                 </PremiumSectionFooter>
               ) : null}
             </section>
+            {isPremiumUser && onSaveDefaults ? (
+              <div className="flex items-center justify-end gap-3 px-1">
+                {defaultsSaved ? (
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {t.authPrefsSaved ?? "Saved"}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={savingDefaults}
+                  onClick={() => {
+                    setSavingDefaults(true);
+                    setDefaultsSaved(false);
+                    void onSaveDefaults()
+                      .then(() => setDefaultsSaved(true))
+                      .catch(() => setDefaultsSaved(false))
+                      .finally(() => setSavingDefaults(false));
+                  }}
+                  className="rounded-md border border-primary/40 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  {savingDefaults ? "Saving…" : "Save these as my defaults"}
+                </button>
+              </div>
+            ) : null}
           </div>
     </TooltipProvider>
   );
@@ -933,20 +1482,29 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Premium Feature</DialogTitle>
+            <DialogTitle>
+              {t.settingsPremiumFeatureDialogTitle ?? "Available with Starter and Business"}
+            </DialogTitle>
             <DialogDescription>
               {selectedPremiumFeature?.description ??
-                "Upgrade to Premium to unlock delivery and verification controls."}
+                t.settingsPremiumFeatureDialogFallback ??
+                "Choose Starter or Business to unlock delivery and verification controls."}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
-            {selectedPremiumFeature?.title ?? "Delivery & Verification"} is part of Premium.
+            {(
+              t.settingsPremiumFeaturePartOfPremium ??
+              "{feature} is included with Starter and Business."
+            ).replace(
+              "{feature}",
+              selectedPremiumFeature?.title ?? "Delivery & Verification",
+            )}
           </div>
           <a
             href={premiumUpgradeHref}
             className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            {t.settingsUpgradeToPremium ?? "Upgrade to Premium"}
+            {t.settingsUpgradeToPremium ?? "Compare plans"}
           </a>
         </DialogContent>
       </Dialog>

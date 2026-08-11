@@ -22,13 +22,21 @@ export type PlanFeatureFlags = {
   maxExpirySeconds: number;
   /** Exact note-open counts the plan may submit. */
   allowedReadCounts: readonly number[];
-  extendedFileAccess: boolean;
+  /** Max voice-message recording length (MediaRecorder). */
+  maxVoiceMessageSeconds: number;
   recipientLinkDelivery: boolean;
   readerLanguage: boolean;
   /** Business: company profile / logo / accent on reveal. */
   revealBranding: boolean;
   proofOfAccess: boolean;
   recipientVerification: boolean;
+  /** Starter+: note cannot be opened before a scheduled UTC time. */
+  delayedReveal: boolean;
+  /**
+   * Starter+: recipient can confirm receipt after successful decrypt
+   * (password unwrap when protected). Ack is stored on sent_notes.
+   */
+  receiptAcknowledgment: boolean;
   sentNotesDashboard: boolean;
   revokeUnopened: boolean;
   openNotifications: boolean;
@@ -36,6 +44,11 @@ export type PlanFeatureFlags = {
   /** Browser-saved custom AI prompt templates. */
   customPromptTemplates: boolean;
   premiumTemplatePacks: boolean;
+  /**
+   * Business: download / load / share device note labels (Notification Center)
+   * as a portable file or PrivateNote — still never note content.
+   */
+  noteLabelPortability: boolean;
 };
 
 export type PlanDefinition = {
@@ -57,7 +70,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
   free: {
     id: "free",
     label: "Free",
-    tagline: "Encrypted one-time notes. No account required to open.",
+    tagline: "Send secrets without an account — open without signing up.",
     priceMonthlyUsd: 0,
     priceYearlyUsd: 0,
     priceMonthlyEur: 0,
@@ -69,24 +82,27 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 15 * 60,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
-      extendedFileAccess: false,
+      maxVoiceMessageSeconds: 5 * 60,
       recipientLinkDelivery: false,
       readerLanguage: false,
       revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
+      delayedReveal: false,
+      receiptAcknowledgment: false,
       sentNotesDashboard: false,
       revokeUnopened: false,
       openNotifications: true,
       savedDefaults: false,
       customPromptTemplates: false,
       premiumTemplatePacks: false,
+      noteLabelPortability: false,
     },
   },
   personal_premium: {
     id: "personal_premium",
     label: "Starter",
-    tagline: "Proof of access, recipient verification, and everything needed for secure sharing.",
+    tagline: "Know who opened it — proof, verification, and revoke when needed.",
     priceMonthlyUsd: 4,
     priceYearlyUsd: 40,
     priceMonthlyEur: 4,
@@ -96,26 +112,29 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       attachmentMaxBytes: 250 * MB,
       activePayloadBufferBytes: 5 * GB,
       maxFileAccessWindowSeconds: 30 * 60,
-      maxExpirySeconds: 30 * DAY,
-      allowedReadCounts: [1, 2, 3, 5],
-      extendedFileAccess: true,
+      maxExpirySeconds: 15 * DAY,
+      allowedReadCounts: [1, 2, 3],
+      maxVoiceMessageSeconds: 15 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
+      delayedReveal: true,
+      receiptAcknowledgment: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,
       savedDefaults: true,
       customPromptTemplates: false,
       premiumTemplatePacks: true,
+      noteLabelPortability: false,
     },
   },
   business_premium: {
     id: "business_premium",
     label: "Business",
-    tagline: "Branded secure delivery for professionals, on one account.",
+    tagline: "Brand the reveal for clients — on one professional account.",
     priceMonthlyUsd: 12,
     priceYearlyUsd: 120,
     priceMonthlyEur: 12,
@@ -127,18 +146,21 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxFileAccessWindowSeconds: 60 * 60,
       maxExpirySeconds: 30 * DAY,
       allowedReadCounts: [1, 2, 3, 5],
-      extendedFileAccess: true,
+      maxVoiceMessageSeconds: 30 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,
+      delayedReveal: true,
+      receiptAcknowledgment: true,
       sentNotesDashboard: true,
       revokeUnopened: true,
       openNotifications: true,
       savedDefaults: true,
       customPromptTemplates: true,
       premiumTemplatePacks: true,
+      noteLabelPortability: true,
     },
   },
 };

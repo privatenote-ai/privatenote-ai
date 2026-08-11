@@ -1,3 +1,5 @@
+import { planFeaturesFor } from "./planCatalog";
+
 export const NOTE_FILE_ACCESS_DEFAULT_SECONDS = 15 * 60;
 
 export const NOTE_FILE_ACCESS_WINDOW_OPTIONS = [
@@ -16,28 +18,62 @@ export function isNoteFileAccessWindowSeconds(value: unknown): value is NoteFile
   );
 }
 
+export function maxNoteFileAccessWindowForAccount(
+  accountType: string | null | undefined,
+): NoteFileAccessWindowSeconds {
+  const max = planFeaturesFor(accountType).maxFileAccessWindowSeconds;
+  if (isNoteFileAccessWindowSeconds(max)) return max;
+  return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+}
+
 export function clampNoteFileAccessWindowForAccount(
   value: unknown,
-  isPremium: boolean,
+  accountTypeOrIsPremium: string | boolean | null | undefined,
 ): NoteFileAccessWindowSeconds {
-  if (!isPremium) return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
-  return isNoteFileAccessWindowSeconds(value) ? value : NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+  const maxSeconds =
+    typeof accountTypeOrIsPremium === "boolean"
+      ? accountTypeOrIsPremium
+        ? 60 * 60
+        : NOTE_FILE_ACCESS_DEFAULT_SECONDS
+      : maxNoteFileAccessWindowForAccount(accountTypeOrIsPremium);
+  if (!isNoteFileAccessWindowSeconds(value) || value > maxSeconds) {
+    return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+  }
+  return value;
 }
 
 export function parseNoteFileAccessWindowFromBody(
   value: unknown,
-  { isPremium }: { isPremium: boolean },
+  options:
+    | { isPremium: boolean; accountType?: never; maxSeconds?: never }
+    | { accountType: string | null | undefined; isPremium?: never; maxSeconds?: never }
+    | { maxSeconds: number; isPremium?: never; accountType?: never },
 ):
   | { ok: true; seconds: NoteFileAccessWindowSeconds }
   | { ok: false; message: string } {
+  const maxSeconds =
+    "maxSeconds" in options && typeof options.maxSeconds === "number"
+      ? options.maxSeconds
+      : "accountType" in options
+        ? maxNoteFileAccessWindowForAccount(options.accountType)
+        : options.isPremium
+          ? 60 * 60
+          : NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+
   if (value == null) {
     return { ok: true, seconds: NOTE_FILE_ACCESS_DEFAULT_SECONDS };
   }
   if (!isNoteFileAccessWindowSeconds(value)) {
     return { ok: false, message: "Invalid attachment access window" };
   }
-  if (value !== NOTE_FILE_ACCESS_DEFAULT_SECONDS && !isPremium) {
-    return { ok: false, message: "Longer attachment access windows require Premium" };
+  if (value > maxSeconds) {
+    return {
+      ok: false,
+      message:
+        maxSeconds <= NOTE_FILE_ACCESS_DEFAULT_SECONDS
+          ? "Longer attachment access windows require Starter or Business"
+          : "That attachment access window requires a higher plan",
+    };
   }
   return { ok: true, seconds: value };
 }

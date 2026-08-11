@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { RefObject } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,8 +17,17 @@ import {
   RefreshCw,
   FileText,
   X,
+  Mail,
+  Key,
+  Eye,
+  EyeOff,
+  Tag,
 } from "lucide-react";
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
+import { useToast } from "@/hooks/use-toast";
+import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
+
+export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verify_email";
 
 function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string, string>): string {
   if (expiryValue === "5m") return t.expiry5m;
@@ -31,6 +40,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d ?? noteExpiryPresetDisplayLabel(expiryValue);
+  if (expiryValue === "15d") return t.expiry15d ?? noteExpiryPresetDisplayLabel(expiryValue);
   if (expiryValue === "30d") return t.expiry30d ?? noteExpiryPresetDisplayLabel(expiryValue);
   return noteExpiryPresetDisplayLabel(expiryValue);
 }
@@ -57,7 +67,15 @@ export type CreatedNoteMeta = {
   expiryValue: NoteExpiryPresetId;
   readCount: number;
   isPasswordProtected: boolean;
+  /** Note id for device-local naming when delivery tracking is on. */
+  noteId?: string;
+  /** True when open/destroy/download alerts or recipient gates were enabled. */
+  tracksDelivery?: boolean;
   recipientVerificationCode?: string;
+  recipientLinkDelivery?: {
+    status: "sent" | "failed";
+    email: string;
+  };
 };
 
 export type CreatedNoteState = {
@@ -78,10 +96,18 @@ export type CreateNoteSuccessProps = {
   setSelectedDoDont: (v: "do" | "dont" | null | ((prev: "do" | "dont" | null) => "do" | "dont" | null)) => void;
   successLinkCopied: boolean;
   onCopyLink: () => Promise<void>;
+  onDeliverRecipientLink?: (email: string) => Promise<void>;
+  recipientLinkDeliveryGate?: RecipientLinkDeliveryGate;
+  recipientLinkDeliveryRetrying?: boolean;
   onShareLink: () => Promise<void>;
   onShareQrCode: () => Promise<void>;
   onDownloadQrCode: () => Promise<void>;
   onCreateNewNote: () => void;
+  /** Plaintext note password for OOB share/copy on the success page only. Never sent to the server. */
+  createdPassword?: string;
+  /** Device-local name for Activity when tracking is enabled. */
+  noteLabel?: string;
+  onNoteLabelChange?: (value: string) => void;
   successQrSectionRef: RefObject<HTMLDivElement>;
   variant?: "note" | "file-transfer";
 };
@@ -98,16 +124,33 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   setSelectedDoDont,
   successLinkCopied,
   onCopyLink,
+  onDeliverRecipientLink,
+  recipientLinkDeliveryGate = "upgrade",
+  recipientLinkDeliveryRetrying = false,
   onShareLink,
   onShareQrCode,
   onDownloadQrCode,
   onCreateNewNote,
+  createdPassword,
+  noteLabel = "",
+  onNoteLabelChange,
   successQrSectionRef,
   variant = "note",
 }) => {
   const { language, t } = useLanguage();
+  const { toast } = useToast();
+  const [deliverEmailInput, setDeliverEmailInput] = useState("");
+  const [showCreatedPassword, setShowCreatedPassword] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const isFileTransfer = variant === "file-transfer";
   const createdNoteMeta = createdNote.meta;
+
+  React.useEffect(() => {
+    const emailed = createdNote.meta?.recipientLinkDelivery?.email;
+    if (!emailed) return;
+    setDeliverEmailInput((current) => (current.trim() ? current : emailed));
+  }, [createdNote.meta?.recipientLinkDelivery?.email]);
+
   if (!createdNoteMeta) {
     return (
       <section
@@ -125,6 +168,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     readCount: createdReadCount,
     isPasswordProtected: createdPasswordProtected,
     recipientVerificationCode,
+    recipientLinkDelivery,
   } = createdNoteMeta;
 
   const expiryLabel = translatedExpiryLabel(createdExpiryValue, t);
@@ -138,6 +182,54 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const qrViewMessage = isFileTransfer
     ? t.anyoneWithCodeCanViewTransfer
     : t.anyoneWithCodeCanViewNote;
+  const premiumUpgradeHref = localizedPath("/premium", language);
+  const signInHref = localizedPath("/auth/sign-in", language);
+  const deliverySent = recipientLinkDelivery?.status === "sent";
+  const deliveryFailed = recipientLinkDelivery?.status === "failed";
+  const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
+
+  const submitRecipientLinkDelivery = () => {
+    if (!onDeliverRecipientLink || !canSubmitDelivery || recipientLinkDeliveryRetrying) return;
+    void onDeliverRecipientLink(deliverEmailInput.trim());
+  };
+
+  const notePassword = createdPassword?.trim() ?? "";
+  const showPasswordShare = createdPasswordProtected && notePassword.length > 0;
+  const showNoteLabel =
+    Boolean(createdNoteMeta.tracksDelivery) &&
+    Boolean(createdNoteMeta.noteId) &&
+    typeof onNoteLabelChange === "function";
+
+  const copyCreatedPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(notePassword);
+      setPasswordCopied(true);
+      toast({ title: t.copied, description: t.passwordCopied });
+      window.setTimeout(() => setPasswordCopied(false), 2000);
+    } catch {
+      toast({
+        title: t.toastCouldNotCopyLinkTitle ?? "Could not copy",
+        description: t.toastCouldNotCopyLinkDesc ?? "Copy the password manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const shareCreatedPassword = async () => {
+    if (typeof navigator.share === "function") {
+      try {
+        // Share password alone — never bundle it with the note link.
+        await navigator.share({
+          text: notePassword,
+          title: t.successSharePasswordTitle ?? t.password ?? "Note password",
+        });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+    await copyCreatedPassword();
+  };
 
   return (
     <section className="w-full max-w-4xl mx-auto py-4 sm:py-6">
@@ -315,6 +407,207 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   </div>
                 </div>
 
+                {showPasswordShare ? (
+                  <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between gap-2 bg-gray-100 px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden />
+                        {t.successNotePassword ?? "Note password"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatedPassword((open) => !open)}
+                        className="inline-flex items-center gap-1 rounded-md bg-gray-200/80 px-2 py-1 text-[11px] font-medium normal-case tracking-normal text-gray-700 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        aria-pressed={showCreatedPassword}
+                        aria-label={showCreatedPassword ? t.hidePassword : t.showPassword}
+                      >
+                        {showCreatedPassword ? (
+                          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" aria-hidden />
+                        )}
+                        {showCreatedPassword ? t.hidePassword : t.showPassword}
+                      </button>
+                    </div>
+                    <div className="space-y-3 bg-white p-3 dark:bg-gray-900">
+                      <input
+                        type={showCreatedPassword ? "text" : "password"}
+                        readOnly
+                        value={notePassword}
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 select-text focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-gray-600 dark:bg-gray-950 dark:text-gray-100"
+                        aria-label={t.successNotePassword ?? "Note password"}
+                        onFocus={(event) => event.currentTarget.select()}
+                      />
+                      <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {t.passwordProtectionSendSeparately}
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => void shareCreatedPassword()}
+                          className="inline-flex flex-1 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                          title={t.successSharePassword ?? "Share password"}
+                        >
+                          <Share2 className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+                          {t.successSharePassword ?? "Share password"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyCreatedPassword()}
+                          className={`inline-flex flex-1 items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                            passwordCopied
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                              : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                          }`}
+                          title={t.copyPassword}
+                        >
+                          {passwordCopied ? (
+                            <>
+                              <Check className="mr-1.5 h-4 w-4 shrink-0" />
+                              {t.copied}
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="mr-1.5 h-4 w-4 shrink-0" />
+                              {t.copyPassword}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {showNoteLabel ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 dark:border-gray-700 dark:bg-gray-900/40">
+                    <label
+                      htmlFor="success-note-label"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+                    >
+                      <Tag className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                      {t.successNoteLabelTitle ?? t.settingsNoteLabel ?? "Name this note"}
+                    </label>
+                    <input
+                      id="success-note-label"
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={noteLabel}
+                      onChange={(event) => onNoteLabelChange?.(event.target.value)}
+                      placeholder={
+                        t.successNoteLabelPlaceholder ??
+                        t.settingsNoteLabelPlaceholder ??
+                        "e.g. Client onboarding pack"
+                      }
+                      className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    />
+                    <p className="m-0 mt-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.successNoteLabelHint ??
+                        "Shown in Activity on this device so you can recognize tracked notes. Never sent with the link."}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 dark:border-gray-700 dark:bg-gray-900/40">
+                  {deliverySent && recipientLinkDelivery ? (
+                    <div
+                      className="text-sm text-emerald-900 dark:text-emerald-100"
+                      role="status"
+                    >
+                      <p className="m-0 inline-flex items-center gap-1.5 font-medium">
+                        <Mail className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                        {t.recipientLinkDeliverySentTitle ?? "Link emailed"}
+                      </p>
+                      <p className="mt-1.5 m-0 text-xs leading-snug opacity-90">
+                        {(t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
+                          "{email}",
+                          recipientLinkDelivery.email,
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <form
+                      className="space-y-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitRecipientLinkDelivery();
+                      }}
+                    >
+                      <label
+                        htmlFor="success-deliver-recipient-email"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+                      >
+                        <Mail className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+                        {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
+                      </label>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <input
+                          id="success-deliver-recipient-email"
+                          type="email"
+                          autoComplete="off"
+                          inputMode="email"
+                          value={deliverEmailInput}
+                          onChange={(event) => setDeliverEmailInput(event.target.value)}
+                          disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                          placeholder={
+                            t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                          }
+                          className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                        />
+                        <button
+                          type="submit"
+                          disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                          className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {recipientLinkDeliveryRetrying
+                            ? t.recipientLinkDeliveryRetrying ?? "Sending…"
+                            : deliveryFailed
+                              ? t.recipientLinkDeliveryRetry ?? "Try again"
+                              : t.recipientLinkDeliverySend ?? "Send"}
+                        </button>
+                      </div>
+                      <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {t.settingsDeliverRecipientEmailHint ??
+                          "Optional. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity."}
+                      </p>
+                      {deliveryFailed && recipientLinkDelivery ? (
+                        <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
+                          {(
+                            t.recipientLinkDeliveryFailedBody ??
+                            "We could not send the link to {email}. You can still copy it above."
+                          ).replace("{email}", recipientLinkDelivery.email)}
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "sign_in" ? (
+                        <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {t.recipientLinkDeliverySignInHint ??
+                            "Sign in with Starter or Business to email the link —"}{" "}
+                          <Link href={signInHref} className="font-medium text-primary hover:underline">
+                            {t.settingsEmailAlertsSignInLink ?? "Sign in"}
+                          </Link>
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "upgrade" ? (
+                        <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                          {t.recipientLinkDeliveryUpgradeHint ??
+                            "Starter and Business can email the link —"}{" "}
+                          <Link
+                            href={premiumUpgradeHref}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                          </Link>
+                        </p>
+                      ) : null}
+                      {recipientLinkDeliveryGate === "verify_email" ? (
+                        <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
+                          {t.recipientLinkDeliveryVerifyEmailHint ??
+                            "Verify your account email before we can send the link for you."}
+                        </p>
+                      ) : null}
+                    </form>
+                  )}
+                </div>
+
                 <div className="pt-5 sm:pt-6 w-full flex flex-col items-center">
                   {showSuccessQr && (
                     <div
@@ -384,14 +677,14 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         </div>
 
-        {createdPasswordProtected && (
+        {createdPasswordProtected && !showPasswordShare ? (
           <div className="my-8 sm:my-10 mx-4 sm:mx-0 rounded-lg p-4 text-sm border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
             <p>
               <strong>{t.passwordProtectionEnabledTitle}</strong> {t.passwordProtectionEnabledBody}
             </p>
             <p className="mt-1">{t.passwordProtectionSendSeparately}</p>
           </div>
-        )}
+        ) : null}
 
         <section className="relative mt-24 sm:mt-28 mb-6 sm:mb-8 w-full px-4 sm:px-6 lg:px-8">
           <div className="grid gap-5 md:grid-cols-2 md:gap-5 xl:gap-6">

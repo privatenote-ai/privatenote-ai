@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Copy,
   RefreshCw,
-  Lock,
   Unlock,
   Eye,
   EyeOff,
@@ -15,15 +14,21 @@ import {
   FileText,
   Image as ImageIcon,
   Mic,
+  BadgeCheck,
+  Tags,
   ChevronDown,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
-import { reportNoteOpenedIfSignedIn } from '@/lib/accountActivityClient';
-import { useAuth } from '@/context/AuthContext';
-import { hasPremiumFeatures, normalizeAccountType, type AccountType } from '@shared/planCatalog';
+import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
+import { hasPremiumFeatures } from '@shared/planCatalog';
+import {
+  mergeNoteLabelsIntoLocal,
+  parseNoteLabelsExport,
+} from '@/utils/noteLabelsStorage';
 import {
   decryptNote,
   deriveNoteRootKeysFromUrlFragment,
+  deriveReceiptAckTokenHexFromUrlFragment,
   importAesGcmKeyFromUrlFragment,
   base64ToArrayBuffer,
   deserializeEncryptedPayload,
@@ -64,7 +69,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated';
+type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated' | 'not_yet_available';
 
 interface NoteDisplayProps {
   id: string;
@@ -243,9 +248,13 @@ interface RevealHeroProps {
   t: Translations;
 }
 
-/** Shared hero subtitle: matches Reveal / Create success rhythm. */
+/** Shared hero subtitle: matches Secure File Transfer / Password Generator rhythm. */
 const NOTE_VIEW_HERO_SUBTITLE =
-  'm-0 mt-6 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-7 md:text-xl md:max-w-3xl leading-relaxed';
+  "m-0 mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-gray-500 dark:text-gray-400 sm:text-xl";
+
+/** Shared outer shell for note-view heroes (password gate, reveal, access problems). */
+const NOTE_VIEW_SHELL = "w-full max-w-5xl mx-auto";
+const NOTE_VIEW_HERO_SECTION = "relative isolate px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8";
 
 /** Reveal succeeded but client decrypt/import failed — not the same as a missing or consumed note. */
 function isDecryptKeyFailureMessage(message: string): boolean {
@@ -316,15 +325,45 @@ const NoteAccessProblem: React.FC<{
   variant: NoteAccessProblemVariant;
   /** True when the note was fetched but the URL key could not decrypt (wrong/truncated key, etc.). */
   keyMismatch?: boolean;
+  /** ISO UTC open time when variant is `not_yet_available`. */
+  opensAt?: string | null;
+  /** Recipient still owes a verification code once the note unlocks. */
+  verificationPending?: boolean;
   t: Translations;
-}> = ({ variant, keyMismatch = false, t }) => {
+}> = ({
+  variant,
+  keyMismatch = false,
+  opensAt = null,
+  verificationPending = false,
+  t,
+}) => {
   const isIncomplete = variant === 'link_incomplete';
   const isKeyTruncated = variant === 'key_truncated';
+  const isNotYetAvailable = variant === 'not_yet_available';
   const showKeyMismatch = variant === 'note_gone' && keyMismatch;
+  const opensAtLabel = opensAt
+    ? (() => {
+        const date = new Date(opensAt);
+        if (Number.isNaN(date.getTime())) return opensAt;
+        // Safari throws if dateStyle/timeStyle are mixed with other options (e.g. timeZoneName).
+        try {
+          return date.toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZoneName: "short",
+          });
+        } catch {
+          return date.toLocaleString();
+        }
+      })()
+    : null;
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={NOTE_VIEW_SHELL}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         <div className="text-center">
           {isIncomplete ? (
             <>
@@ -337,6 +376,32 @@ const NoteAccessProblem: React.FC<{
               <p className={NOTE_VIEW_HERO_SUBTITLE}>
                 {t.revealKeyTooShortDescription ?? "The secret after the # is shorter than a real note key. It may have been cut off when the link was copied or shared."}
               </p>
+            </>
+          ) : isNotYetAvailable ? (
+            <>
+              <h1 className="page-title text-gray-900 dark:text-white">
+                {t.revealNotYetAvailableTitle ?? "Not available yet"}
+              </h1>
+              <p className={NOTE_VIEW_HERO_SUBTITLE}>
+                {t.revealNotYetAvailableDescription ??
+                  "The sender scheduled this note to unlock later. It cannot be opened before then."}
+              </p>
+              {opensAtLabel ? (
+                <div className="mx-auto mt-6 max-w-md rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 dark:border-gray-700 dark:bg-gray-800/60">
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {t.revealNotYetAvailableUnlocksLabel ?? "Unlocks at"}
+                  </p>
+                  <p className="mt-1 m-0 text-lg font-semibold text-gray-900 dark:text-white">
+                    {opensAtLabel}
+                  </p>
+                </div>
+              ) : null}
+              {verificationPending ? (
+                <p className="mx-auto mt-5 max-w-md text-sm text-gray-600 dark:text-gray-400">
+                  {t.revealNotYetAvailableVerificationHint ??
+                    "This note also requires a verification code. We'll email it to the recipient once the note unlocks."}
+                </p>
+              ) : null}
             </>
           ) : showKeyMismatch ? (
             <>
@@ -356,6 +421,7 @@ const NoteAccessProblem: React.FC<{
         </div>
       </section>
 
+      {!isNotYetAvailable ? (
       <div className="px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12 md:mt-14">
         <div
           className="max-w-xl mx-auto rounded-2xl border-2 border-blue-200/90 dark:border-blue-800/65 bg-blue-50/60 dark:bg-blue-950/25 px-6 py-7 sm:px-8 sm:py-8 shadow-sm"
@@ -377,6 +443,7 @@ const NoteAccessProblem: React.FC<{
           </div>
         </div>
       </div>
+      ) : null}
     </section>
   );
 };
@@ -395,11 +462,11 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   const buttonStyle = branding?.accentColor ? { backgroundColor: branding.accentColor } : undefined;
 
   return (
-    <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={NOTE_VIEW_SHELL}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         <div className="text-center">
           {hasBranding && (
-            <div className="mb-4 flex flex-col items-center gap-2">
+            <div className="mb-5 flex flex-col items-center gap-2">
               {branding?.logoUrl && (
                 <img
                   src={branding.logoUrl}
@@ -466,10 +533,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyMissing = false,
   linkKeyTruncated = false,
 }) => {
-  const { user } = useAuth();
   const { language } = useLanguage();
-  const [accountType, setAccountType] = useState<AccountType>("free");
-  const canChooseVoiceDownloadFormat = hasPremiumFeatures(accountType);
   const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
   const readerLanguage = senderSelectedLanguage ?? language ?? "en";
   const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
@@ -480,6 +544,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyMismatchError, setKeyMismatchError] = useState(false);
+  const [delayedRevealOpensAt, setDelayedRevealOpensAt] = useState<string | null>(null);
+  /** False until the note meta request settles, so the delayed-reveal check runs before any gate. */
+  const [delayedRevealChecked, setDelayedRevealChecked] = useState(false);
+  const [receiptAckRequired, setReceiptAckRequired] = useState(false);
+  const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(false);
+  const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(null);
+  const [receiptAckSubmitting, setReceiptAckSubmitting] = useState(false);
+  const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(null);
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -505,14 +577,28 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
   const [recipientGateLoading, setRecipientGateLoading] = useState(true);
   const [recipientGateRequired, setRecipientGateRequired] = useState(false);
-  const [recipientGateEmailRequired, setRecipientGateEmailRequired] = useState(false);
   const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
   const [recipientGateVerified, setRecipientGateVerified] = useState(false);
-  const [recipientEmailInput, setRecipientEmailInput] = useState("");
   const [recipientCodeInput, setRecipientCodeInput] = useState("");
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
+  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(null);
+  const [recipientCodeSending, setRecipientCodeSending] = useState(false);
+  const [recipientCodeSent, setRecipientCodeSent] = useState(false);
+  const recipientCodeAutoSendRef = useRef(false);
   const { toast } = useToast();
+  const { entitlements } = useAccountEntitlements();
+  const canChooseVoiceDownloadFormat = hasPremiumFeatures(entitlements.accountType);
+  const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
+  const importedLabelsPack = useMemo(
+    () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
+    [noteContent],
+  );
+  const [labelsImported, setLabelsImported] = useState(false);
+
+  useEffect(() => {
+    setLabelsImported(false);
+  }, [noteContent]);
   const readerLanguageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
 
@@ -528,47 +614,64 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }, [readerLanguage]);
 
   useEffect(() => {
-    if (!user) {
-      setAccountType("free");
-      return;
-    }
-    let cancelled = false;
-    void apiRequest<{ accountType?: unknown; plan?: unknown }>("/api/auth/account/summary", "GET")
-      .then((summary) => {
-        if (!cancelled) {
-          setAccountType(normalizeAccountType(summary.accountType ?? summary.plan));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setAccountType("free");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
-
-  useEffect(() => {
     if (!id) {
       setSenderSelectedLanguage(null);
+      setDelayedRevealOpensAt(null);
+      setDelayedRevealChecked(true);
       return;
     }
     let cancelled = false;
+    setDelayedRevealChecked(false);
     void apiRequest<{ readerLanguage?: string }>(`/api/notes/${id}`, "GET")
       .then((meta) => {
         if (cancelled) return;
+        setDelayedRevealOpensAt(null);
         setSenderSelectedLanguage(
           typeof meta.readerLanguage === "string"
             ? normalizeLanguageCode(meta.readerLanguage)
             : null,
         );
       })
-      .catch(() => {
-        if (!cancelled) setSenderSelectedLanguage(null);
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && err.status === 403) {
+          try {
+            const body = JSON.parse(err.bodyText) as { error?: string; opensAt?: string };
+            if (body.error === "note_not_yet_available" && typeof body.opensAt === "string") {
+              setDelayedRevealOpensAt(body.opensAt);
+              return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        setDelayedRevealOpensAt(null);
+        setSenderSelectedLanguage(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDelayedRevealChecked(true);
       });
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  // Drop the wait screen the moment the scheduled time passes, so the recipient
+  // moves straight on to verification (or reveal) without reloading the page.
+  useEffect(() => {
+    if (!delayedRevealOpensAt) return;
+    const opensAtMs = new Date(delayedRevealOpensAt).getTime();
+    if (!Number.isFinite(opensAtMs)) return;
+    const msUntilOpen = opensAtMs - Date.now();
+    if (msUntilOpen <= 0) {
+      setDelayedRevealOpensAt(null);
+      return;
+    }
+    // setTimeout delays overflow past the 32-bit limit and would fire immediately.
+    if (msUntilOpen > 2_147_000_000) return;
+    const timer = window.setTimeout(() => setDelayedRevealOpensAt(null), msUntilOpen + 250);
+    return () => window.clearTimeout(timer);
+  }, [delayedRevealOpensAt]);
 
   const attachmentPreviewKind = useMemo(
     () => getAttachmentPreviewKind(attachmentMetadata?.type, attachmentMetadata?.name),
@@ -592,7 +695,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         // Never jump backwards while decrypt frames paint.
         progress: Math.max(prev?.phase === "decrypt" ? prev.progress : 0, next),
         title: t.attachmentDecryptProgressTitle,
-        // Single-blob (and 1-part) downloads: filename only — never "N of M chunks".
         detail:
           totalChunks <= 1
             ? name
@@ -704,7 +806,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [attachmentMetadata?.name, attachmentPreviewKind, contentKey, decryptAttachmentPreview, noteData, previewObjectUrl]);
+  }, [attachmentPreviewKind, contentKey, decryptAttachmentPreview, noteData, previewObjectUrl]);
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
     if (e.nativeEvent.isTrusted) return true;
@@ -728,6 +830,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     if (message.includes("recipient_verification_required")) {
       return "Recipient verification is required before this note can be revealed.";
     }
+    if (message.includes("note_not_yet_available")) {
+      return t.revealNotYetAvailableDescription ?? "This note is scheduled to open later.";
+    }
     return message;
   };
 
@@ -746,14 +851,20 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       try {
         const status = await apiRequest<{
           required?: boolean;
-          emailRequired?: boolean;
           codeRequired?: boolean;
+          emailHint?: string | null;
+          codeSent?: boolean;
           verified?: boolean;
         }>(`/api/notes/${id}/recipient-gate`, "GET");
         if (cancelled) return;
         setRecipientGateRequired(status.required === true);
-        setRecipientGateEmailRequired(status.emailRequired === true);
         setRecipientGateCodeRequired(status.codeRequired === true);
+        setRecipientGateEmailHint(
+          typeof status.emailHint === "string" && status.emailHint.trim()
+            ? status.emailHint.trim()
+            : null,
+        );
+        setRecipientCodeSent(status.codeSent === true);
         setRecipientGateVerified(status.required !== true || status.verified === true);
       } catch {
         if (!cancelled) {
@@ -770,6 +881,78 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     };
   }, [id]);
 
+  const sendRecipientVerificationCode = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!id) return;
+      setRecipientCodeSending(true);
+      if (!options?.silent) setRecipientGateError(null);
+      try {
+        const result = await apiRequest<{ ok?: boolean; emailHint?: string | null }>(
+          `/api/notes/${id}/recipient-send-code`,
+          "POST",
+          {},
+        );
+        setRecipientCodeSent(true);
+        if (typeof result.emailHint === "string" && result.emailHint.trim()) {
+          setRecipientGateEmailHint(result.emailHint.trim());
+        }
+      } catch (error) {
+        let message =
+          t.recipientGateSendCodeFailed ??
+          "Could not send the verification code. Please try again.";
+        if (error instanceof ApiRequestError) {
+          try {
+            const body = JSON.parse(error.bodyText) as {
+              message?: string;
+              error?: string;
+              retryAfterSeconds?: number;
+            };
+            if (body.error === "cooldown" && body.retryAfterSeconds) {
+              message = (
+                t.recipientGateSendCodeCooldown ??
+                "Please wait {seconds}s before requesting another code."
+              ).replace("{seconds}", String(body.retryAfterSeconds));
+            } else if (body.message) {
+              message = body.message;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setRecipientGateError(message);
+      } finally {
+        setRecipientCodeSending(false);
+      }
+    },
+    [id, t],
+  );
+
+  useEffect(() => {
+    // Delayed reveal is checked first: emailing a code while the note is still
+    // time-locked would burn the code's usefulness before it can be entered.
+    if (
+      !id ||
+      !delayedRevealChecked ||
+      delayedRevealOpensAt ||
+      recipientGateLoading ||
+      !recipientGateRequired ||
+      recipientGateVerified ||
+      recipientCodeAutoSendRef.current
+    ) {
+      return;
+    }
+    recipientCodeAutoSendRef.current = true;
+    void sendRecipientVerificationCode({ silent: true });
+  }, [
+    id,
+    delayedRevealChecked,
+    delayedRevealOpensAt,
+    recipientGateLoading,
+    recipientGateRequired,
+    recipientGateVerified,
+    sendRecipientVerificationCode,
+  ]);
+
   const handleRecipientGateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -777,7 +960,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setRecipientGateError(null);
     try {
       await apiRequest(`/api/notes/${id}/recipient-verify`, "POST", {
-        ...(recipientGateEmailRequired ? { email: recipientEmailInput.trim() } : {}),
         ...(recipientGateCodeRequired ? { code: recipientCodeInput.trim() } : {}),
       });
       setRecipientGateVerified(true);
@@ -824,7 +1006,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     };
   }, [previewObjectUrl]);
 
-  const decryptWithKey = async (data: NoteData, key: string) => {
+  const decryptWithKey = async (
+    data: NoteData,
+    key: string,
+    options?: { deriveReceiptAck?: boolean },
+  ) => {
     try {
       if (!data.aad) {
         throw new Error("Missing note authentication data");
@@ -860,7 +1046,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         payloadBytes.aadBytes,
       );
       setNoteContent(decryptedContent);
-      reportNoteOpenedIfSignedIn(id);
+      if (
+        options?.deriveReceiptAck &&
+        data.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
+      ) {
+        try {
+          setReceiptAckTokenHex(await deriveReceiptAckTokenHexFromUrlFragment(key));
+        } catch {
+          setReceiptAckTokenHex(null);
+        }
+      }
     } catch (cryptoError) {
       if (import.meta.env.DEV) {
         console.error("Crypto error:", cryptoError);
@@ -892,6 +1087,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       if (typeof data.readerLanguage === "string") {
         setSenderSelectedLanguage(normalizeLanguageCode(data.readerLanguage));
       }
+      const receiptAck = data.receiptAck as
+        | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null }
+        | undefined;
+      const ackRequired = receiptAck?.required === true;
+      const ackAlready = receiptAck?.acknowledged === true;
+      setReceiptAckRequired(ackRequired);
+      setReceiptAckAcknowledged(ackAlready);
+      setReceiptAckMessage(
+        ackAlready
+          ? (t.revealReceiptAlreadyConfirmed ?? "Already confirmed")
+          : null,
+      );
+      setReceiptAckTokenHex(null);
       setNoteData(withFileAccessDeadline(data));
       setHasRevealed(true);
 
@@ -904,9 +1112,25 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         throw new Error("Missing encryption key in URL. The note cannot be decrypted.");
       }
 
-      await decryptWithKey(data, encryptionKey);
+      await decryptWithKey(data, encryptionKey, {
+        deriveReceiptAck: ackRequired && !ackAlready,
+      });
     } catch (error) {
       console.error('Error revealing note:', error);
+      if (error instanceof ApiRequestError && error.status === 403) {
+        try {
+          const body = JSON.parse(error.bodyText) as { error?: string; opensAt?: string };
+          if (body.error === "note_not_yet_available") {
+            if (typeof body.opensAt === "string") setDelayedRevealOpensAt(body.opensAt);
+            setError("note_not_yet_available");
+            setIsLoading(false);
+            setHasRevealed(false);
+            return;
+          }
+        } catch {
+          // fall through
+        }
+      }
       if (error instanceof Error) {
         const friendlyMessage = getUserFriendlyError(error.message);
         setKeyMismatchError(isDecryptKeyFailureMessage(error.message));
@@ -975,7 +1199,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       const encryptedKeyIv = base64ToArrayBuffer(noteData.encryptedKeyIv!);
       const salt = base64ToArrayBuffer(noteData.salt!);
 
-      const { noteTextKey, fileWrapKey, metadataKey } =
+      const { noteTextKey, fileWrapKey, metadataKey, receiptAckTokenHex: unwrappedAckToken } =
         noteData.keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
           ? await unwrapRootKeyWithPassword(
               encryptedKey,
@@ -1022,6 +1246,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 noteData.kdfIterations,
                 noteData.kdfPolicyTag,
               ),
+              receiptAckTokenHex: undefined as string | undefined,
             };
 
       const decryptedContent = await decryptNote(
@@ -1039,7 +1264,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       } else {
         setAttachmentMetadata(null);
       }
-      reportNoteOpenedIfSignedIn(id);
+      if (
+        receiptAckRequired &&
+        !receiptAckAcknowledged &&
+        typeof unwrappedAckToken === "string"
+      ) {
+        setReceiptAckTokenHex(unwrappedAckToken);
+      }
 
       // Hide password input after successful decryption
       setIsPasswordProtected(false);
@@ -1072,6 +1303,47 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     });
   };
 
+  const handleConfirmReceipt = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    if (!requireTrustedUserEvent(e)) return;
+    if (!receiptAckTokenHex || receiptAckSubmitting) return;
+    setReceiptAckSubmitting(true);
+    try {
+      const result = await apiRequest<{
+        ok?: boolean;
+        alreadyConfirmed?: boolean;
+        acknowledgedAt?: string;
+      }>(`/api/notes/${id}/acknowledge-receipt`, "POST", {
+        ackToken: receiptAckTokenHex,
+      });
+      setReceiptAckAcknowledged(true);
+      setReceiptAckMessage(
+        result.alreadyConfirmed
+          ? (t.revealReceiptAlreadyConfirmed ?? "Already confirmed")
+          : (t.revealReceiptConfirmed ?? "Receipt confirmed"),
+      );
+      toast({
+        title: result.alreadyConfirmed
+          ? (t.revealReceiptAlreadyConfirmed ?? "Already confirmed")
+          : (t.revealReceiptConfirmed ?? "Receipt confirmed"),
+        description:
+          t.revealReceiptConfirmedHint ??
+          "The sender can see that you successfully decrypted this note.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not confirm receipt.";
+      toast({
+        title: t.error,
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setReceiptAckSubmitting(false);
+    }
+  };
+
   const handleDownloadAttachment = async (downloadFormat: VoiceDownloadFormat = "original") => {
     if (!noteData?.attachment || !contentKey) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
@@ -1092,6 +1364,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setIsDownloadingFile(true);
     setAttachmentDecryptProgress({
       phase: "decrypt",
+      mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
@@ -1163,10 +1436,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       }
       toast({
         title: t.toastFileDownloadFailed,
-        description: wantsConversion
-          ? (t.voiceMessageDecodeFailedDesc ??
-            "The voice message could not be decoded into that format. Try Original or WAV.")
-          : t.toastFileDownloadFailedDesc,
+        description:
+          wantsConversion
+            ? (t.voiceMessageDecodeFailedDesc ??
+              "The voice message could not be decoded into that format. Try Original or WAV.")
+            : t.toastFileDownloadFailedDesc,
         variant: "destructive",
       });
     } finally {
@@ -1198,6 +1472,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setIsViewingFile(true);
     setAttachmentDecryptProgress({
       phase: "decrypt",
+      mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
       detail: attachmentMetadata?.name
@@ -1238,7 +1513,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     window.location.href = '/';
   };
 
-  if (isLoading || recipientGateLoading) {
+  if (isLoading || recipientGateLoading || !delayedRevealChecked) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -1246,8 +1521,30 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     );
   }
 
+  const verificationPending = recipientGateRequired && !recipientGateVerified;
+
+  if (delayedRevealOpensAt && !hasRevealed) {
+    return (
+      <NoteAccessProblem
+        variant="not_yet_available"
+        opensAt={delayedRevealOpensAt}
+        verificationPending={verificationPending}
+        t={t}
+      />
+    );
+  }
+
   if (error) {
-    return <NoteAccessProblem variant="note_gone" keyMismatch={keyMismatchError} t={t} />;
+    const isNotYetAvailable = error === "note_not_yet_available";
+    return (
+      <NoteAccessProblem
+        variant={isNotYetAvailable ? "not_yet_available" : "note_gone"}
+        keyMismatch={keyMismatchError}
+        opensAt={delayedRevealOpensAt}
+        verificationPending={isNotYetAvailable && verificationPending}
+        t={t}
+      />
+    );
   }
 
   if (linkKeyMissing && !hasRevealed) {
@@ -1261,36 +1558,22 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   if (!hasRevealed) {
     if (recipientGateRequired && !recipientGateVerified) {
       return (
-        <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-          <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
-            <div className="mx-auto max-w-md text-center">
-              <div className="mb-4 flex justify-center text-primary">
-                <ShieldCheck className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
-              </div>
+        <section className={NOTE_VIEW_SHELL}>
+          <section className={NOTE_VIEW_HERO_SECTION}>
               <h1 className="page-title text-gray-900 dark:text-white">
                 {t.recipientGateTitle ?? "Verify before opening"}
               </h1>
-              <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                {t.recipientGateDescription ??
-                  "The sender restricted who can open this note. Confirm your details to continue."}
+              <p className={NOTE_VIEW_HERO_SUBTITLE}>
+                {recipientCodeSending && !recipientCodeSent
+                  ? (t.recipientGateSendingCode ?? "Sending a verification code…")
+                  : recipientGateEmailHint
+                    ? (t.recipientGateDescriptionEmail ??
+                        "We emailed a one-time code to {email}. Enter it below to continue.")
+                        .replace("{email}", recipientGateEmailHint)
+                    : (t.recipientGateDescription ??
+                        "Enter the verification code emailed to the recipient address to continue.")}
               </p>
-              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mt-8 space-y-4 text-left">
-                {recipientGateEmailRequired ? (
-                  <div>
-                    <label htmlFor="recipient-gate-email" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {t.recipientGateEmail ?? "Your email"}
-                    </label>
-                    <input
-                      id="recipient-gate-email"
-                      type="email"
-                      autoComplete="email"
-                      value={recipientEmailInput}
-                      onChange={(event) => setRecipientEmailInput(event.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                      required
-                    />
-                  </div>
-                ) : null}
+              <form onSubmit={(event) => void handleRecipientGateSubmit(event)} className="mx-auto mt-8 max-w-md space-y-4 text-left sm:mt-10">
                 {recipientGateCodeRequired ? (
                   <div>
                     <label htmlFor="recipient-gate-code" className="mb-1 block text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -1315,15 +1598,26 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 ) : null}
                 <button
                   type="submit"
-                  disabled={recipientGateSubmitting}
+                  disabled={recipientGateSubmitting || recipientCodeSending}
                   className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {recipientGateSubmitting
                     ? (t.recipientGateSubmitting ?? "Verifying…")
                     : (t.recipientGateSubmit ?? "Continue")}
                 </button>
+                <button
+                  type="button"
+                  disabled={recipientCodeSending || recipientGateSubmitting}
+                  onClick={() => void sendRecipientVerificationCode()}
+                  className="flex w-full items-center justify-center rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  {recipientCodeSending
+                    ? (t.recipientGateSendingCode ?? "Sending a verification code…")
+                    : recipientCodeSent
+                      ? (t.recipientGateResendCode ?? "Resend code")
+                      : (t.recipientGateSendCode ?? "Send code")}
+                </button>
               </form>
-            </div>
           </section>
         </section>
       );
@@ -1345,18 +1639,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   // If password protected and not yet decrypted, show password input
   if (isPasswordProtected && !noteContent) {
     return (
-      <section className="w-full max-w-5xl mx-auto py-4 sm:py-6">
-        <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+      <section className={NOTE_VIEW_SHELL}>
+        <section className={NOTE_VIEW_HERO_SECTION}>
           <div className="text-center">
-            <div className="text-primary mb-4 flex justify-center">
-              <Lock className="h-10 w-10 sm:h-11 sm:w-11" aria-hidden />
-            </div>
             <h1 className="page-title text-gray-900 dark:text-white">{t.passwordProtectedNote}</h1>
             <p className={NOTE_VIEW_HERO_SUBTITLE}>
               {t.passwordProtectedDescription}
             </p>
 
-            <div className="max-w-sm mx-auto mt-8 sm:mt-10 text-left">
+            <div className="mx-auto mt-8 max-w-sm text-left sm:mt-10">
               <div className="mb-4 relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -1430,10 +1721,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
-    <section className="w-full max-w-3xl mx-auto py-4 sm:py-6">
-      <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
+    <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
+      <section className={NOTE_VIEW_HERO_SECTION}>
         {hasBranding && (
-          <div className="mb-4 flex flex-col items-center gap-2 text-center">
+          <div className="mb-5 flex flex-col items-center gap-2 text-center">
             {revealBranding?.logoUrl && (
               <img
                 src={revealBranding.logoUrl}
@@ -1449,13 +1740,54 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </div>
         )}
 
-        <div className="mb-5 text-center sm:mb-6">
+        <div className="mb-8 text-center sm:mb-10">
           <h1 className="page-title text-primary">{t.privateNote}</h1>
-          <p className="m-0 mt-3 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
             <span aria-hidden>⚠️</span>
             {t.noteDeletedWarning}
           </p>
         </div>
+
+        {canImportNoteLabels && importedLabelsPack && noteContent ? (
+          <div className="mb-5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-left dark:border-amber-800/50 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <Tags className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="m-0 text-sm font-medium text-amber-950 dark:text-amber-50">
+                  {t.noteLabelsRevealImportTitle ?? "Note labels pack"}
+                </p>
+                <p className="m-0 mt-1 text-xs leading-snug text-amber-900/80 dark:text-amber-100/80">
+                  {labelsImported
+                    ? (t.noteLabelsRevealImportDone ??
+                      "Labels were saved on this device for Notification Center.")
+                    : (t.noteLabelsRevealImportHint ??
+                      "Load these labels onto this device so Notification Center can name your tracked notes.")}
+                </p>
+                {!labelsImported ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const result = mergeNoteLabelsIntoLocal(importedLabelsPack.labels);
+                      setLabelsImported(true);
+                      toast({
+                        title: t.noteLabelsImportSuccessTitle ?? "Labels loaded",
+                        description: (
+                          t.noteLabelsImportSuccessBody ??
+                          "Added {added}, updated {updated}. Existing labels were kept."
+                        )
+                          .replace("{added}", String(result.added))
+                          .replace("{updated}", String(result.updated)),
+                      });
+                    }}
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:bg-amber-600 dark:hover:bg-amber-500"
+                  >
+                    {t.noteLabelsRevealImportButton ?? "Load labels on this device"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <article
           className="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-md dark:border-gray-700 dark:bg-gray-900"
@@ -1746,6 +2078,39 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             {t.saveNoteSecurely}
           </p>
         </div>
+
+        {receiptAckRequired && noteContent ? (
+          <div className="mt-6 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30 sm:mt-7">
+            <div className="flex items-start gap-3">
+              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="m-0 text-sm font-medium text-teal-950 dark:text-teal-50">
+                  {t.revealReceiptRequestedTitle ?? "Receipt confirmation requested"}
+                </p>
+                <p className="m-0 mt-1 text-xs leading-snug text-teal-900/80 dark:text-teal-100/80">
+                  {receiptAckAcknowledged
+                    ? (receiptAckMessage ??
+                      t.revealReceiptAlreadyConfirmed ??
+                      "Already confirmed")
+                    : (t.revealReceiptRequestedHint ??
+                      "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.")}
+                </p>
+                {!receiptAckAcknowledged ? (
+                  <button
+                    type="button"
+                    onClick={(ev) => void handleConfirmReceipt(ev)}
+                    disabled={receiptAckSubmitting || !receiptAckTokenHex}
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-600 dark:hover:bg-teal-500"
+                  >
+                    {receiptAckSubmitting
+                      ? (t.revealReceiptConfirming ?? "Confirming…")
+                      : (t.revealReceiptConfirmButton ?? "Confirm receipt")}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
       <AttachmentProgressDialog progress={attachmentDecryptProgress} />
     </section>

@@ -1,12 +1,20 @@
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
-import { hasPremiumFeatures, normalizeAccountType } from "@shared/planCatalog";
+import { normalizeAccountType, planFeaturesFor } from "@shared/planCatalog";
+import { getAccountEntitlements } from "./accountEntitlements";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
+import { buildRecipientVerificationEmailContent } from "@shared/magicLinkEmail";
 import {
   formatNotificationNoteDisplayId,
   resolveSentNoteNotificationEvent,
   type SentNoteNotificationStatus,
 } from "@shared/sentNoteNotification";
+import {
+  hashReceiptAckTokenHex,
+  isValidReceiptAckTokenHex,
+  timingSafeEqualHex,
+} from "@shared/noteReceiptAck";
+import { buildSentNoteLifecycleEmailContent } from "@shared/sentNoteLifecycleEmail";
 
 export type SentNoteStatus = "created" | "opened" | "expired" | "destroyed" | "revoked";
 
@@ -19,7 +27,12 @@ export type SentNoteRow = {
   recipient_email_hint: string | null;
   notify_on_open: number;
   notify_on_destroyed: number;
+  notify_on_attachment_download: number;
   require_recipient_verification: number;
+  require_receipt_ack: number;
+  receipt_ack_token_hash: string | null;
+  receipt_acknowledged_at: string | null;
+  receipt_ack_notified_at: string | null;
   proof_enabled: number;
   expires_at: string | null;
   created_at: string;
@@ -32,7 +45,10 @@ export type SentNoteRow = {
   open_device_class: string | null;
   open_browser: string | null;
   attachment_downloaded_at: string | null;
+  attachment_downloaded_notified_at: string | null;
   notification_deleted_at: string | null;
+  alert_notify_account_email: number | null;
+  alert_custom_email: string | null;
 };
 
 export type CreateSentNoteInput = {
@@ -40,24 +56,39 @@ export type CreateSentNoteInput = {
   noteId: string;
   label?: string | null;
   recipientEmail?: string | null;
-  recipientCode?: string | null;
   notifyOnOpen?: boolean;
   notifyOnDestroyed?: boolean;
-  restrictRecipientEmail?: boolean;
+  notifyOnAttachmentDownload?: boolean;
+  /** When open/destroy/download alerts are on, whether to email the sender account address (default true). */
+  alertNotifyAccountEmail?: boolean;
+  /** Optional extra inbox for open/destroy/download alerts (premium). */
+  alertCustomEmail?: string | null;
   requireRecipientVerification?: boolean;
+  /** Starter+: store HKDF-derived ack token hash; recipient confirms after decrypt. */
+  requireReceiptAck?: boolean;
+  /** SHA-256 hex of the 32-byte receipt ack token (required when requireReceiptAck). */
+  receiptAckTokenHash?: string | null;
   proofEnabled?: boolean;
   expiresAt?: string | null;
 };
 
 type RecipientGatePayload = {
+  /** Recipient address that receives the one-time code on reveal. */
+  recipientEmail: string;
+  /** Note expiry, so rewrites of this entry can keep the gate alive as long as the note. */
+  expiresAt?: string | null;
   codeHash?: string;
   salt?: string;
-  emailMac?: string | null;
-  emailHash?: string | null;
+  /** Set only after the verification email is successfully sent. */
+  codeSentAt?: number;
+  /** In-flight send claim; blocks concurrent sends and is cleared on success or rollback. */
+  sendClaimId?: string;
+  sendClaimAt?: number;
 };
 
 const RECIPIENT_GATE_PREFIX = "note_rcv_gate:";
 const RECIPIENT_OK_PREFIX = "note_rcv_ok:";
+const RECIPIENT_CODE_SEND_COOLDOWN_MS = 60_000;
 
 function gateKey(noteId: string): string {
   return `${RECIPIENT_GATE_PREFIX}${noteId}`;
@@ -65,6 +96,18 @@ function gateKey(noteId: string): string {
 
 function okKey(noteId: string, token: string): string {
   return `${RECIPIENT_OK_PREFIX}${noteId}:${token}`;
+}
+
+/**
+ * TTL for the recipient gate entry. The gate must outlive the note: if it expires
+ * first, the note stays readable while the verification requirement silently drops.
+ */
+function gateTtlSeconds(expiresAt: string | null | undefined): number {
+  const maxTtl = 30 * 24 * 3600;
+  if (!expiresAt) return 7 * 24 * 3600;
+  const remaining = Math.floor((Date.parse(expiresAt) - Date.now()) / 1000);
+  if (!Number.isFinite(remaining)) return 7 * 24 * 3600;
+  return Math.min(Math.max(3600, remaining), maxTtl);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -75,37 +118,13 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-async function hmacSha256Hex(secret: string, message: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function requireAuthSecretKey(env: Env): string {
-  if (!env.AUTH_SECRET_KEY) {
-    throw new Error("auth_secret_key_required");
+function randomSixDigitCode(): string {
+  const max = 0x1_0000_0000 - (0x1_0000_0000 % 1_000_000);
+  let n = crypto.getRandomValues(new Uint32Array(1))[0]!;
+  while (n >= max) {
+    n = crypto.getRandomValues(new Uint32Array(1))[0]!;
   }
-  return env.AUTH_SECRET_KEY;
-}
-
-function recipientEmailMacPayload(email: string): string {
-  return `recipient-email:v1:${email}`;
-}
-
-async function recipientEmailMac(env: Env, email: string): Promise<string> {
-  return `hmac-sha256:v1:${await hmacSha256Hex(
-    requireAuthSecretKey(env),
-    recipientEmailMacPayload(email),
-  )}`;
+  return String(n % 1_000_000).padStart(6, "0");
 }
 
 function maskEmailHint(email: string | null): string | null {
@@ -125,24 +144,6 @@ function maskEmailHint(email: string | null): string | null {
       ? `${domainName[0] ?? ""}*`
       : `${domainName[0]}***${domainName.slice(-1)}`;
   return `${localHint}@${domainHint}${tld}`;
-}
-
-function randomSixDigitCode(): string {
-  const max = 0x1_0000_0000 - (0x1_0000_0000 % 1_000_000);
-  let n = crypto.getRandomValues(new Uint32Array(1))[0]!;
-  while (n >= max) {
-    n = crypto.getRandomValues(new Uint32Array(1))[0]!;
-  }
-  return String(n % 1_000_000).padStart(6, "0");
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function kv(env: Env): KVNamespace {
@@ -165,19 +166,13 @@ function parseUserAgent(ua: string | null): { deviceClass: string; browser: stri
 }
 
 export async function getUserAccountType(env: Env, userId: string): Promise<string> {
-  if (!env.AUTH_DB) return "free";
-  const row = await env.AUTH_DB.prepare(
-    `SELECT account_type, plan FROM users WHERE id = ? LIMIT 1`,
-  )
-    .bind(userId)
-    .first<{ account_type?: string | null; plan?: string | null }>();
-  return normalizeAccountType(row?.account_type ?? row?.plan);
+  return (await getAccountEntitlements(env, userId)).accountType;
 }
 
-export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string; verificationCode?: string }> {
+export async function insertSentNote(env: Env, input: CreateSentNoteInput): Promise<{ id: string }> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const sender = await env.AUTH_DB.prepare(
-    `SELECT email, email_verified, email_notifications, account_type, plan
+    `SELECT email, email_verified, email_notifications
      FROM users WHERE id = ? LIMIT 1`,
   )
     .bind(input.userId)
@@ -185,72 +180,101 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       email: string | null;
       email_verified: number | null;
       email_notifications: number | null;
-      account_type: string | null;
-      plan: string | null;
     }>();
-  const accountType = normalizeAccountType(sender?.account_type ?? sender?.plan);
-  if (!hasPremiumFeatures(accountType)) {
+  const entitlements = await getAccountEntitlements(env, input.userId);
+  const capabilities = entitlements.capabilities;
+  const requireRecipientVerification = input.requireRecipientVerification === true;
+  const requireReceiptAck = input.requireReceiptAck === true;
+  const receiptAckTokenHash =
+    typeof input.receiptAckTokenHash === "string" ? input.receiptAckTokenHash.trim().toLowerCase() : "";
+  const wantsOpenNotifications =
+    input.notifyOnOpen === true ||
+    input.notifyOnDestroyed === true ||
+    input.notifyOnAttachmentDownload === true;
+  const wantsRecipientGate = requireRecipientVerification;
+  const proofEnabled =
+    capabilities.proofOfAccess && input.proofEnabled !== false;
+  const alertNotifyAccountEmail = input.alertNotifyAccountEmail !== false;
+  const alertCustomEmail =
+    input.alertCustomEmail && isPlausibleEmailFormat(input.alertCustomEmail)
+      ? input.alertCustomEmail.trim().toLowerCase()
+      : null;
+
+  if (wantsRecipientGate && !capabilities.recipientVerification) {
+    throw new Error("premium_required");
+  }
+  if (requireReceiptAck && !capabilities.receiptAcknowledgment) {
+    throw new Error("premium_required");
+  }
+  if (requireReceiptAck && !/^[0-9a-f]{64}$/.test(receiptAckTokenHash)) {
+    throw new Error("receipt_ack_token_hash_required");
+  }
+  if (wantsOpenNotifications && !capabilities.openNotifications) {
     throw new Error("premium_required");
   }
   if (!sender?.email || !isPlausibleEmailFormat(sender.email)) throw new Error("sender_email_required");
   if (sender.email_verified !== 1) throw new Error("sender_email_unverified");
-  if (sender.email_notifications !== 1 && (input.notifyOnOpen || input.notifyOnDestroyed)) {
-    throw new Error("email_notifications_disabled");
+  if (wantsOpenNotifications) {
+    if (!alertNotifyAccountEmail && !alertCustomEmail) {
+      throw new Error("alert_destination_required");
+    }
+    if (alertNotifyAccountEmail && sender.email_notifications !== 1) {
+      throw new Error("email_notifications_disabled");
+    }
+    if (alertCustomEmail && !capabilities.openNotifications) {
+      throw new Error("premium_required");
+    }
   }
 
   const id = crypto.randomUUID();
-  const restrictRecipientEmail = input.restrictRecipientEmail === true;
-  const requireRecipientVerification = input.requireRecipientVerification === true;
-  const emailHint =
+  const recipientEmail =
     input.recipientEmail && isPlausibleEmailFormat(input.recipientEmail)
       ? input.recipientEmail.trim().toLowerCase()
       : null;
-  if (restrictRecipientEmail && !emailHint) {
+  if (requireRecipientVerification && !recipientEmail) {
     throw new Error("recipient_email_required");
   }
 
-  const hasRecipientGate = restrictRecipientEmail || requireRecipientVerification;
+  const hasRecipientGate = wantsRecipientGate;
 
   await env.AUTH_DB.prepare(
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
-      notify_on_open, notify_on_destroyed, require_recipient_verification, proof_enabled, expires_at
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)`,
+      notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification,
+      require_receipt_ack, receipt_ack_token_hash, proof_enabled, expires_at,
+      alert_notify_account_email, alert_custom_email
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
       input.userId,
       input.noteId,
       input.label?.trim().slice(0, 120) || null,
-      maskEmailHint(emailHint),
+      maskEmailHint(recipientEmail),
       input.notifyOnOpen ? 1 : 0,
       input.notifyOnDestroyed ? 1 : 0,
+      input.notifyOnAttachmentDownload ? 1 : 0,
       hasRecipientGate ? 1 : 0,
-      input.proofEnabled !== false ? 1 : 0,
+      requireReceiptAck ? 1 : 0,
+      requireReceiptAck ? receiptAckTokenHash : null,
+      proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
+      wantsOpenNotifications && alertNotifyAccountEmail ? 1 : 0,
+      wantsOpenNotifications ? alertCustomEmail : null,
     )
     .run();
 
-  let verificationCode: string | undefined;
-  if (hasRecipientGate) {
-    const gate: RecipientGatePayload = {};
-    if (emailHint) {
-      gate.emailMac = await recipientEmailMac(env, emailHint);
-    }
-    if (requireRecipientVerification) {
-      verificationCode = input.recipientCode?.trim() || randomSixDigitCode();
-      gate.salt = crypto.randomUUID();
-      gate.codeHash = await sha256Hex(`${gate.salt}:${verificationCode}`);
-    }
-    const ttlSeconds = input.expiresAt
-      ? Math.max(3600, Math.floor((Date.parse(input.expiresAt) - Date.now()) / 1000))
-      : 7 * 24 * 3600;
+  if (hasRecipientGate && recipientEmail) {
+    const gate: RecipientGatePayload = {
+      recipientEmail,
+      expiresAt: input.expiresAt ?? null,
+    };
     await kv(env).put(gateKey(input.noteId), JSON.stringify(gate), {
-      expirationTtl: Math.min(ttlSeconds, 30 * 24 * 3600),
+      expirationTtl: gateTtlSeconds(input.expiresAt),
     });
   }
 
-  return { id, verificationCode };
+  return { id };
 }
 
 export async function listSentNotesForUser(env: Env, userId: string, limit = 50): Promise<SentNoteRow[]> {
@@ -274,10 +298,24 @@ export type SentNoteNotificationItem = {
   displayNoteId: string;
   status: SentNoteNotificationStatus;
   eventAt: string;
+  label: string | null;
+  createdAt: string;
+  openedAt: string | null;
+  destroyedAt: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  proofEnabled: boolean;
+  openCountry: string | null;
+  openDeviceClass: string | null;
+  openBrowser: string | null;
+  attachmentDownloadedAt: string | null;
+  receiptAcknowledgedAt: string | null;
+  requireReceiptAck: boolean;
 };
 
 export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificationItem {
   const { status, eventAt } = resolveSentNoteNotificationEvent(row);
+  const proofEnabled = row.proof_enabled === 1;
   return {
     id: row.id,
     noteId: row.note_id,
@@ -285,6 +323,19 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     displayNoteId: formatNotificationNoteDisplayId(row.note_id),
     status,
     eventAt,
+    label: row.label,
+    createdAt: row.created_at,
+    openedAt: row.opened_at,
+    destroyedAt: row.destroyed_at,
+    revokedAt: row.revoked_at,
+    expiresAt: row.expires_at,
+    proofEnabled,
+    openCountry: proofEnabled ? row.open_country : null,
+    openDeviceClass: proofEnabled ? row.open_device_class : null,
+    openBrowser: proofEnabled ? row.open_browser : null,
+    attachmentDownloadedAt: row.attachment_downloaded_at,
+    receiptAcknowledgedAt: row.receipt_acknowledged_at,
+    requireReceiptAck: row.require_receipt_ack === 1,
   };
 }
 
@@ -295,6 +346,38 @@ export async function listSentNoteNotificationsForUser(
 ): Promise<SentNoteNotificationItem[]> {
   const rows = await listSentNotesForUser(env, userId, limit);
   return rows.map(toSentNoteNotificationItem);
+}
+
+/** Map note_id → delivery item for Activity inspect (includes soft-deleted inbox rows). */
+export async function getSentNoteNotificationsByNoteIds(
+  env: Env,
+  userId: string,
+  noteIds: string[],
+): Promise<Map<string, SentNoteNotificationItem>> {
+  const out = new Map<string, SentNoteNotificationItem>();
+  if (!env.AUTH_DB || noteIds.length === 0) return out;
+  const unique = [...new Set(noteIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (unique.length === 0) return out;
+
+  // D1 has no array bind; chunk IN clauses.
+  // Include soft-deleted inbox rows: Activity needs operational delivery/proof,
+  // even after the user dismissed items from the old notifications list.
+  const chunkSize = 40;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const placeholders = chunk.map(() => "?").join(", ");
+    const res = await env.AUTH_DB.prepare(
+      `SELECT * FROM sent_notes
+        WHERE user_id = ?
+          AND note_id IN (${placeholders})`,
+    )
+      .bind(userId, ...chunk)
+      .all<SentNoteRow>();
+    for (const row of res.results ?? []) {
+      out.set(row.note_id, toSentNoteNotificationItem(row));
+    }
+  }
+  return out;
 }
 
 export async function deleteSentNoteNotification(
@@ -325,16 +408,109 @@ export async function clearSentNoteNotifications(env: Env, userId: string): Prom
   return (result?.meta as { changes?: number } | undefined)?.changes ?? 0;
 }
 
-export async function recordSentNoteAttachmentDownloaded(env: Env, noteId: string): Promise<void> {
+export async function recordSentNoteAttachmentDownloaded(
+  env: Env,
+  noteId: string,
+  request?: Request,
+  sendEmailFn?: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+): Promise<void> {
   if (!env.AUTH_DB) return;
-  const eventAt = new Date().toISOString();
-  await env.AUTH_DB.prepare(
+  const row = await getSentNoteByNoteId(env, noteId);
+  if (!row || row.status === "revoked") return;
+
+  const eventAt = row.attachment_downloaded_at ?? new Date().toISOString();
+  const update = await env.AUTH_DB.prepare(
     `UPDATE sent_notes
      SET attachment_downloaded_at = COALESCE(attachment_downloaded_at, ?)
      WHERE note_id = ? AND status IN ('created', 'opened', 'destroyed', 'expired')`,
   )
     .bind(eventAt, noteId)
     .run();
+  const rowsChanged = (update?.meta as { changes?: number } | undefined)?.changes ?? 0;
+  if (rowsChanged < 1 || !sendEmailFn || row.attachment_downloaded_notified_at) return;
+  if (row.notify_on_attachment_download !== 1) return;
+
+  const country = request?.headers.get("CF-IPCountry") || request?.headers.get("cf-ipcountry") || null;
+  const { deviceClass, browser } = parseUserAgent(request?.headers.get("User-Agent") ?? null);
+  await sendSentNoteLifecycleEmail(env, row, noteId, "attachment_downloaded", eventAt, {
+    country,
+    deviceClass,
+    browser,
+    sendEmailFn,
+  });
+}
+
+export async function acknowledgeSentNoteReceipt(
+  env: Env,
+  noteId: string,
+  ackTokenHex: string,
+  request?: Request,
+  sendEmailFn?: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+): Promise<
+  | { ok: true; alreadyConfirmed: boolean; acknowledgedAt: string }
+  | { ok: false; error: "not_found" | "not_required" | "invalid_token" | "not_configured" }
+> {
+  if (!env.AUTH_DB) return { ok: false, error: "not_configured" };
+  if (!isValidReceiptAckTokenHex(ackTokenHex)) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  const row = await getSentNoteByNoteId(env, noteId);
+  if (!row) return { ok: false, error: "not_found" };
+  if (row.require_receipt_ack !== 1 || !row.receipt_ack_token_hash) {
+    return { ok: false, error: "not_required" };
+  }
+
+  const providedHash = await hashReceiptAckTokenHex(ackTokenHex.toLowerCase());
+  if (!timingSafeEqualHex(providedHash, row.receipt_ack_token_hash.toLowerCase())) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  if (row.receipt_acknowledged_at) {
+    return {
+      ok: true,
+      alreadyConfirmed: true,
+      acknowledgedAt: row.receipt_acknowledged_at,
+    };
+  }
+
+  const eventAt = new Date().toISOString();
+  const update = await env.AUTH_DB.prepare(
+    `UPDATE sent_notes
+     SET receipt_acknowledged_at = ?
+     WHERE note_id = ? AND require_receipt_ack = 1 AND receipt_acknowledged_at IS NULL`,
+  )
+    .bind(eventAt, noteId)
+    .run();
+  const rowsChanged = (update?.meta as { changes?: number } | undefined)?.changes ?? 0;
+  if (rowsChanged < 1) {
+    const refreshed = await getSentNoteByNoteId(env, noteId);
+    if (refreshed?.receipt_acknowledged_at) {
+      return {
+        ok: true,
+        alreadyConfirmed: true,
+        acknowledgedAt: refreshed.receipt_acknowledged_at,
+      };
+    }
+    return { ok: false, error: "not_found" };
+  }
+
+  if (sendEmailFn) {
+    const country = request?.headers.get("CF-IPCountry") || request?.headers.get("cf-ipcountry") || null;
+    const { deviceClass, browser } = parseUserAgent(request?.headers.get("User-Agent") ?? null);
+    try {
+      await sendSentNoteLifecycleEmail(env, row, noteId, "receipt_acknowledged", eventAt, {
+        country,
+        deviceClass,
+        browser,
+        sendEmailFn,
+      });
+    } catch (error) {
+      console.warn("[SENT_NOTES] Failed to email receipt acknowledgment:", error);
+    }
+  }
+
+  return { ok: true, alreadyConfirmed: false, acknowledgedAt: eventAt };
 }
 
 export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<SentNoteRow | null> {
@@ -344,36 +520,76 @@ export async function getSentNoteByNoteId(env: Env, noteId: string): Promise<Sen
     .first<SentNoteRow>();
 }
 
-export async function revokeSentNote(env: Env, userId: string, noteId: string): Promise<boolean> {
-  if (!env.AUTH_DB) return false;
+export async function revokeSentNote(
+  env: Env,
+  userId: string,
+  noteId: string,
+): Promise<{ ok: true } | { ok: false; error: "not_found" | "already_opened" | "not_configured" }> {
+  if (!env.AUTH_DB) return { ok: false, error: "not_configured" };
   const row = await getSentNoteByNoteId(env, noteId);
-  if (!row || row.user_id !== userId || row.status !== "created") return false;
+  if (!row || row.user_id !== userId) return { ok: false, error: "not_found" };
+  if (row.status !== "created") return { ok: false, error: "already_opened" };
   await env.AUTH_DB.prepare(
-    `UPDATE sent_notes SET status = 'revoked', revoked_at = datetime('now') WHERE note_id = ? AND user_id = ?`,
+    `UPDATE sent_notes SET status = 'revoked', revoked_at = datetime('now') WHERE note_id = ? AND user_id = ? AND status = 'created'`,
   )
     .bind(noteId, userId)
     .run();
-  await kv(env).delete(gateKey(noteId));
-  return true;
+  // The gate is deliberately left in place here. It is cleared by the caller only
+  // after the ciphertext is deleted, so a failed purge cannot leave a readable note
+  // with its verification gate already gone.
+  return { ok: true };
 }
 
+async function lookupSentNoteExpiry(env: Env, noteId: string): Promise<string | null> {
+  if (!env.AUTH_DB) return null;
+  const row = await env.AUTH_DB.prepare(
+    `SELECT expires_at FROM sent_notes WHERE note_id = ? LIMIT 1`,
+  )
+    .bind(noteId)
+    .first<{ expires_at: string | null }>();
+  return row?.expires_at ?? null;
+}
+
+/**
+ * D1 is authoritative. The KV gate only carries the code material, and it can expire
+ * or be cleared during revoke — treating its absence as "no verification needed" would
+ * turn a storage lifetime detail into a silent bypass of the recipient gate.
+ */
 export async function noteRequiresRecipientVerification(env: Env, noteId: string): Promise<boolean> {
-  const gate = await kv(env).get(gateKey(noteId));
-  return Boolean(gate);
+  if (env.AUTH_DB) {
+    const row = await env.AUTH_DB.prepare(
+      `SELECT require_recipient_verification FROM sent_notes WHERE note_id = ? LIMIT 1`,
+    )
+      .bind(noteId)
+      .first<{ require_recipient_verification: number }>();
+    if (row) return row.require_recipient_verification === 1;
+  }
+  return Boolean(await kv(env).get(gateKey(noteId)));
+}
+
+/** Clear the gate only once the ciphertext is gone; see the revoke handler. */
+export async function clearRecipientGate(env: Env, noteId: string): Promise<void> {
+  await kv(env).delete(gateKey(noteId));
 }
 
 export async function getRecipientGateStatus(
   env: Env,
   noteId: string,
-): Promise<{ required: boolean; emailRequired: boolean; codeRequired: boolean }> {
+): Promise<{
+  required: boolean;
+  codeRequired: boolean;
+  emailHint: string | null;
+  codeSent: boolean;
+}> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) {
-    return { required: false, emailRequired: false, codeRequired: false };
+  if (!stored?.recipientEmail) {
+    return { required: false, codeRequired: false, emailHint: null, codeSent: false };
   }
   return {
     required: true,
-    emailRequired: Boolean(stored.emailMac || stored.emailHash),
-    codeRequired: Boolean(stored.codeHash),
+    codeRequired: true,
+    emailHint: maskEmailHint(stored.recipientEmail),
+    codeSent: Boolean(stored.codeHash),
   };
 }
 
@@ -398,32 +614,166 @@ function parseCookieHeader(header: string | null): Record<string, string> {
   return out;
 }
 
+export async function sendRecipientVerificationCode(
+  env: Env,
+  noteId: string,
+  sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+  options?: { webOrigin?: string | null },
+): Promise<
+  | { ok: true; emailHint: string | null }
+  | { ok: false; error: string; retryAfterSeconds?: number }
+> {
+  const key = gateKey(noteId);
+  const raw = await kv(env).get(key);
+  if (!raw) return { ok: false, error: "no_gate" };
+  let stored: RecipientGatePayload;
+  try {
+    stored = JSON.parse(raw) as RecipientGatePayload;
+  } catch {
+    return { ok: false, error: "no_gate" };
+  }
+  if (!stored.recipientEmail || !isPlausibleEmailFormat(stored.recipientEmail)) {
+    return { ok: false, error: "no_gate" };
+  }
+
+  const now = Date.now();
+  const cooldownStartedAt = Math.max(
+    typeof stored.codeSentAt === "number" ? stored.codeSentAt : 0,
+    typeof stored.sendClaimAt === "number" ? stored.sendClaimAt : 0,
+  );
+  if (cooldownStartedAt > 0 && now - cooldownStartedAt < RECIPIENT_CODE_SEND_COOLDOWN_MS) {
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(
+        (RECIPIENT_CODE_SEND_COOLDOWN_MS - (now - cooldownStartedAt)) / 1000,
+      ),
+    };
+  }
+
+  // Gates written before expiresAt was stored fall back to the sent_notes row.
+  const expiresAt = stored.expiresAt ?? (await lookupSentNoteExpiry(env, noteId));
+  const ttl = gateTtlSeconds(expiresAt);
+  const previousCode = {
+    codeHash: stored.codeHash,
+    salt: stored.salt,
+    codeSentAt: stored.codeSentAt,
+  };
+
+  const verificationCode = randomSixDigitCode();
+  const salt = crypto.randomUUID();
+  const sendClaimId = crypto.randomUUID();
+  const claimedGate: RecipientGatePayload = {
+    recipientEmail: stored.recipientEmail,
+    expiresAt,
+    salt,
+    codeHash: await sha256Hex(`${salt}:${verificationCode}`),
+    // Keep the prior successful send timestamp for cooldown math, but do not
+    // advance it until this email actually goes out.
+    ...(typeof previousCode.codeSentAt === "number" ? { codeSentAt: previousCode.codeSentAt } : {}),
+    sendClaimId,
+    sendClaimAt: now,
+  };
+
+  await kv(env).put(key, JSON.stringify(claimedGate), { expirationTtl: ttl });
+
+  // Optimistic claim: if another writer won the race, abort before sending a code.
+  const claimedRaw = await kv(env).get(key);
+  let claimed: RecipientGatePayload | null = null;
+  try {
+    claimed = claimedRaw ? (JSON.parse(claimedRaw) as RecipientGatePayload) : null;
+  } catch {
+    claimed = null;
+  }
+  if (!claimed || claimed.sendClaimId !== sendClaimId) {
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(RECIPIENT_CODE_SEND_COOLDOWN_MS / 1000),
+    };
+  }
+
+  const webOrigin =
+    (typeof options?.webOrigin === "string" && options.webOrigin.trim()) ||
+    (typeof env.PUBLIC_WEB_APP_ORIGIN === "string" && env.PUBLIC_WEB_APP_ORIGIN.trim()) ||
+    "https://privatenote.ai";
+  const email = buildRecipientVerificationEmailContent({
+    verificationCode,
+    webOrigin,
+  });
+
+  try {
+    await sendEmailFn(stored.recipientEmail, email.subject, email.text, email.html);
+  } catch (error) {
+    console.warn("[RECIPIENT_CODE] Failed to email verification code:", error);
+    // Roll back only if we still own the claim, so we do not wipe a concurrent winner.
+    const failedRaw = await kv(env).get(key);
+    let failed: RecipientGatePayload | null = null;
+    try {
+      failed = failedRaw ? (JSON.parse(failedRaw) as RecipientGatePayload) : null;
+    } catch {
+      failed = null;
+    }
+    if (failed?.sendClaimId === sendClaimId) {
+      const rolledBack: RecipientGatePayload = {
+        recipientEmail: stored.recipientEmail,
+        expiresAt,
+        ...(previousCode.codeHash && previousCode.salt
+          ? {
+              codeHash: previousCode.codeHash,
+              salt: previousCode.salt,
+              ...(typeof previousCode.codeSentAt === "number"
+                ? { codeSentAt: previousCode.codeSentAt }
+                : {}),
+            }
+          : {}),
+      };
+      await kv(env).put(key, JSON.stringify(rolledBack), { expirationTtl: ttl });
+    }
+    return { ok: false, error: "send_failed" };
+  }
+
+  const successRaw = await kv(env).get(key);
+  let success: RecipientGatePayload | null = null;
+  try {
+    success = successRaw ? (JSON.parse(successRaw) as RecipientGatePayload) : null;
+  } catch {
+    success = null;
+  }
+  if (success?.sendClaimId !== sendClaimId) {
+    // Another send claimed the gate while our email was in flight; our code is stale.
+    return {
+      ok: false,
+      error: "cooldown",
+      retryAfterSeconds: Math.ceil(RECIPIENT_CODE_SEND_COOLDOWN_MS / 1000),
+    };
+  }
+
+  const finalized: RecipientGatePayload = {
+    recipientEmail: stored.recipientEmail,
+    expiresAt,
+    salt: claimedGate.salt,
+    codeHash: claimedGate.codeHash,
+    codeSentAt: Date.now(),
+  };
+  await kv(env).put(key, JSON.stringify(finalized), { expirationTtl: ttl });
+
+  return { ok: true, emailHint: maskEmailHint(stored.recipientEmail) };
+}
+
 export async function verifyRecipientAccess(
   env: Env,
   noteId: string,
-  body: { code?: string; email?: string },
+  body: { code?: string },
 ): Promise<{ ok: true; setCookie: string } | { ok: false; error: string }> {
   const stored = (await kv(env).get(gateKey(noteId), { type: "json" })) as RecipientGatePayload | null;
-  if (!stored || (!stored.codeHash && !stored.emailMac && !stored.emailHash)) return { ok: false, error: "no_gate" };
+  if (!stored?.recipientEmail) return { ok: false, error: "no_gate" };
+  if (!stored.codeHash || !stored.salt) return { ok: false, error: "code_not_sent" };
 
-  if (stored.codeHash) {
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    if (!code) return { ok: false, error: "code_required" };
-    const codeHash = await sha256Hex(`${stored.salt}:${code}`);
-    if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
-  }
-
-  if (stored.emailMac || stored.emailHash) {
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!email || !isPlausibleEmailFormat(email)) return { ok: false, error: "email_required" };
-    if (stored.emailMac) {
-      const emailMac = await recipientEmailMac(env, email);
-      if (emailMac !== stored.emailMac) return { ok: false, error: "invalid_email" };
-    } else if (stored.emailHash) {
-      const emailHash = await sha256Hex(email);
-      if (emailHash !== stored.emailHash) return { ok: false, error: "invalid_email" };
-    }
-  }
+  const code = typeof body.code === "string" ? body.code.trim() : "";
+  if (!code) return { ok: false, error: "code_required" };
+  const codeHash = await sha256Hex(`${stored.salt}:${code}`);
+  if (codeHash !== stored.codeHash) return { ok: false, error: "invalid_code" };
 
   const token = crypto.randomUUID();
   await kv(env).put(okKey(noteId, token), "1", { expirationTtl: 3600 });
@@ -445,9 +795,24 @@ export async function recordSentNoteOpened(
   const row = await getSentNoteByNoteId(env, noteId);
   if (!row || row.status === "revoked" || row.status === "destroyed" || row.status === "expired") return;
 
-  const country = request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null;
-  const ua = request.headers.get("User-Agent");
-  const { deviceClass, browser } = parseUserAgent(ua);
+  // Prefer the row flag; for older rows created before proof shipped, fall back to
+  // the sender's current plan so Starter/Business opens still capture device/country.
+  let proofEnabled = row.proof_enabled === 1;
+  if (!proofEnabled) {
+    try {
+      const accountType = await getUserAccountType(env, row.user_id);
+      proofEnabled = planFeaturesFor(accountType).proofOfAccess;
+    } catch {
+      proofEnabled = false;
+    }
+  }
+  const country = proofEnabled
+    ? request.headers.get("CF-IPCountry") || request.headers.get("cf-ipcountry") || null
+    : null;
+  const proofClient = proofEnabled
+    ? parseUserAgent(request.headers.get("User-Agent"))
+    : { deviceClass: null as string | null, browser: null as string | null };
+  const { deviceClass, browser } = proofClient;
   const eventAt = new Date().toISOString();
   const nextStatus: SentNoteStatus = destroyed ? "destroyed" : row.status === "created" ? "opened" : row.status;
 
@@ -456,19 +821,30 @@ export async function recordSentNoteOpened(
      SET status = ?,
        opened_at = COALESCE(opened_at, ?),
        destroyed_at = CASE WHEN ? = 1 THEN COALESCE(destroyed_at, ?) ELSE destroyed_at END,
+       proof_enabled = CASE WHEN ? = 1 THEN 1 ELSE proof_enabled END,
        open_country = COALESCE(open_country, ?),
        open_device_class = COALESCE(open_device_class, ?),
        open_browser = COALESCE(open_browser, ?)
      WHERE note_id = ? AND status IN ('created', 'opened')`,
   )
-    .bind(nextStatus, eventAt, destroyed ? 1 : 0, eventAt, country, deviceClass, browser, noteId)
+    .bind(
+      nextStatus,
+      eventAt,
+      destroyed ? 1 : 0,
+      eventAt,
+      proofEnabled ? 1 : 0,
+      country,
+      deviceClass,
+      browser,
+      noteId,
+    )
     .run();
 
   if (destroyed && row.notify_on_open === 1 && row.notify_on_destroyed === 1 && !row.opened_notified_at && !row.destroyed_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "opened_destroyed", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
     return;
@@ -477,8 +853,8 @@ export async function recordSentNoteOpened(
   if (row.notify_on_open === 1 && !row.opened_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "opened", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
   }
@@ -486,14 +862,20 @@ export async function recordSentNoteOpened(
   if (destroyed && row.notify_on_destroyed === 1 && !row.destroyed_notified_at) {
     await sendSentNoteLifecycleEmail(env, row, noteId, "destroyed", eventAt, {
       country,
-      deviceClass,
-      browser,
+      deviceClass: deviceClass ?? undefined,
+      browser: browser ?? undefined,
       sendEmailFn,
     });
   }
 }
 
-type SentNoteLifecycleEvent = "opened" | "destroyed" | "opened_destroyed" | "expired";
+type SentNoteLifecycleEvent =
+  | "opened"
+  | "destroyed"
+  | "opened_destroyed"
+  | "expired"
+  | "attachment_downloaded"
+  | "receipt_acknowledged";
 
 async function sendSentNoteLifecycleEmail(
   env: Env,
@@ -509,7 +891,7 @@ async function sendSentNoteLifecycleEmail(
   },
 ): Promise<void> {
   const senderRow = await env.AUTH_DB!.prepare(
-    `SELECT email, email_verified, email_notifications, account_type, plan
+    `SELECT email, email_verified, email_notifications
      FROM users WHERE id = ? LIMIT 1`,
   )
     .bind(row.user_id)
@@ -517,26 +899,54 @@ async function sendSentNoteLifecycleEmail(
       email: string | null;
       email_verified: number | null;
       email_notifications: number | null;
-      account_type: string | null;
-      plan: string | null;
     }>();
 
-  const notifyEmail = senderRow?.email;
-  if (!notifyEmail || !isPlausibleEmailFormat(notifyEmail)) return;
-  if (senderRow.email_verified !== 1 || senderRow.email_notifications !== 1) return;
-  if (!hasPremiumFeatures(normalizeAccountType(senderRow.account_type ?? senderRow.plan))) return;
+  const recipients = new Set<string>();
+  const notifyAccount = row.alert_notify_account_email !== 0;
+  if (
+    notifyAccount &&
+    senderRow?.email &&
+    isPlausibleEmailFormat(senderRow.email) &&
+    senderRow.email_verified === 1 &&
+    senderRow.email_notifications === 1
+  ) {
+    recipients.add(senderRow.email.trim().toLowerCase());
+  }
+  if (row.alert_custom_email && isPlausibleEmailFormat(row.alert_custom_email)) {
+    recipients.add(row.alert_custom_email.trim().toLowerCase());
+  }
+  // Receipt confirmation always notifies the verified account when no alert destinations were set.
+  if (
+    event === "receipt_acknowledged" &&
+    recipients.size === 0 &&
+    senderRow?.email &&
+    isPlausibleEmailFormat(senderRow.email) &&
+    senderRow.email_verified === 1 &&
+    senderRow.email_notifications === 1
+  ) {
+    recipients.add(senderRow.email.trim().toLowerCase());
+  }
+  if (recipients.size === 0) return;
 
   const setClause =
     event === "opened"
       ? "opened_notified_at = ?"
       : event === "opened_destroyed"
         ? "opened_notified_at = ?, destroyed_notified_at = ?"
+        : event === "attachment_downloaded"
+          ? "attachment_downloaded_notified_at = ?"
+          : event === "receipt_acknowledged"
+            ? "receipt_ack_notified_at = ?"
         : "destroyed_notified_at = ?";
   const whereClause =
     event === "opened"
       ? "opened_notified_at IS NULL"
       : event === "opened_destroyed"
         ? "opened_notified_at IS NULL AND destroyed_notified_at IS NULL"
+        : event === "attachment_downloaded"
+          ? "attachment_downloaded_notified_at IS NULL"
+          : event === "receipt_acknowledged"
+            ? "receipt_ack_notified_at IS NULL"
         : "destroyed_notified_at IS NULL";
   const bindValues =
     event === "opened_destroyed" ? [eventAt, eventAt, noteId] : [eventAt, noteId];
@@ -549,45 +959,33 @@ async function sendSentNoteLifecycleEmail(
   if (rowsChanged < 1) return;
 
   const label = row.label || `${noteId.slice(0, 8)}...`;
-  const countryLine = context.country ? `Approximate country: ${context.country}` : "";
-  const deviceLine =
-    context.deviceClass || context.browser
-      ? `Device: ${context.deviceClass ?? "unknown"}, browser: ${context.browser ?? "unknown"}`
-      : "";
-  const eventLabel =
-    event === "opened_destroyed"
-      ? "opened and destroyed"
-      : event === "expired"
-        ? "expired"
-        : event;
-  const subject = `PrivateNote: your note "${label}" was ${eventLabel}`;
-  const explanatoryLine =
-    event === "opened"
-      ? "This is proof the link was accessed, not that the recipient read or understood the content."
-      : event === "expired"
-        ? "This means the note can no longer be opened because its expiry time passed."
-        : event === "opened_destroyed"
-          ? "This means the link was accessed and the note can no longer be opened."
-          : "This means the note can no longer be opened because its read limit was reached.";
-  const text = [
-    `Your secure note "${label}" was ${eventLabel}.`,
-    `Time: ${eventAt}`,
-    countryLine,
-    deviceLine,
-    "",
-    explanatoryLine,
-    "",
-    "PrivateNote cannot see the decrypted message content.",
-  ].filter(Boolean).join("\n");
+  const webOrigin =
+    (typeof env.PUBLIC_WEB_APP_ORIGIN === "string" && env.PUBLIC_WEB_APP_ORIGIN.trim()) ||
+    "https://privatenote.ai";
+  const { subject, text, html } = buildSentNoteLifecycleEmailContent({
+    event,
+    label,
+    eventAt,
+    country: context.country,
+    deviceClass: context.deviceClass,
+    browser: context.browser,
+    webOrigin,
+  });
 
   try {
-    await context.sendEmailFn(notifyEmail, subject, text, `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`);
+    for (const notifyEmail of recipients) {
+      await context.sendEmailFn(notifyEmail, subject, text, html);
+    }
   } catch (error) {
     const resetClause =
       event === "opened"
         ? "opened_notified_at = NULL"
         : event === "opened_destroyed"
           ? "opened_notified_at = NULL, destroyed_notified_at = NULL"
+          : event === "attachment_downloaded"
+            ? "attachment_downloaded_notified_at = NULL"
+            : event === "receipt_acknowledged"
+              ? "receipt_ack_notified_at = NULL"
           : "destroyed_notified_at = NULL";
     await env.AUTH_DB!.prepare(`UPDATE sent_notes SET ${resetClause} WHERE note_id = ?`)
       .bind(noteId)
@@ -641,6 +1039,8 @@ export async function getUserNoteDefaults(env: Env, userId: string) {
       user_id: string;
       expiry_seconds: number | null;
       max_reads: number | null;
+      file_access_window_seconds: number | null;
+      reader_language: string | null;
       notify_on_open: number;
       require_recipient_verification: number;
     }>();
@@ -652,20 +1052,24 @@ export async function upsertUserNoteDefaults(
   body: {
     expirySeconds?: number | null;
     maxReads?: number | null;
+    fileAccessWindowSeconds?: number | null;
+    readerLanguage?: string | null;
     notifyOnOpen?: boolean;
     requireRecipientVerification?: boolean;
   },
 ): Promise<void> {
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const accountType = await getUserAccountType(env, userId);
-  if (!hasPremiumFeatures(accountType)) throw new Error("premium_required");
+  if (!planFeaturesFor(accountType).savedDefaults) throw new Error("premium_required");
 
   await env.AUTH_DB.prepare(
-    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, notify_on_open, require_recipient_verification, updated_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, file_access_window_seconds, reader_language, notify_on_open, require_recipient_verification, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(user_id) DO UPDATE SET
        expiry_seconds = excluded.expiry_seconds,
        max_reads = excluded.max_reads,
+       file_access_window_seconds = excluded.file_access_window_seconds,
+       reader_language = excluded.reader_language,
        notify_on_open = excluded.notify_on_open,
        require_recipient_verification = excluded.require_recipient_verification,
        updated_at = datetime('now')`,
@@ -674,8 +1078,20 @@ export async function upsertUserNoteDefaults(
       userId,
       body.expirySeconds ?? null,
       body.maxReads ?? null,
+      body.fileAccessWindowSeconds ?? null,
+      body.readerLanguage ?? null,
       body.notifyOnOpen ? 1 : 0,
       body.requireRecipientVerification ? 1 : 0,
     )
     .run();
+}
+
+export async function deleteUserNoteDefaults(env: Env, userId: string): Promise<boolean> {
+  if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
+  const result = await env.AUTH_DB.prepare(
+    "DELETE FROM user_note_defaults WHERE user_id = ?",
+  )
+    .bind(userId)
+    .run();
+  return ((result.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
 }

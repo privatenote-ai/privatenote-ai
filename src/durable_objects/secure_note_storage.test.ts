@@ -22,16 +22,18 @@ const SQL = {
     "expires_at TEXT NOT NULL," +
     "max_reads INTEGER NOT NULL," +
     "current_reads INTEGER NOT NULL," +
-    "consumed INTEGER NOT NULL" +
+    "consumed INTEGER NOT NULL," +
+    "opens_at TEXT" +
     ")",
   createCipher: "CREATE TABLE IF NOT EXISTS notes_cipher (" + "note_id TEXT PRIMARY KEY," + "payload TEXT NOT NULL" + ")",
+  alterOpensAt: "ALTER TABLE notes_meta ADD COLUMN opens_at TEXT",
   deleteConsumedTombstones: "DELETE FROM notes_meta WHERE consumed = 1",
   selectMeta:
-    "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?",
+    "SELECT note_id, expires_at, max_reads, current_reads, consumed, opens_at FROM notes_meta WHERE note_id = ?",
   selectPayload: "SELECT payload FROM notes_cipher WHERE note_id = ?",
   insertCipher: "INSERT INTO notes_cipher (note_id, payload) VALUES (?, ?)",
   insertMeta:
-    "INSERT INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed, opens_at) VALUES (?, ?, ?, ?, ?, ?)",
   updateReads: "UPDATE notes_meta SET current_reads = ?, consumed = 0 WHERE note_id = ?",
   deleteCipher: "DELETE FROM notes_cipher WHERE note_id = ?",
   deleteMeta: "DELETE FROM notes_meta WHERE note_id = ?",
@@ -43,6 +45,7 @@ type MetaRow = {
   max_reads: number;
   current_reads: number;
   consumed: number;
+  opens_at: string | null;
 };
 
 /** Minimal in-memory stub for DO SQL used by {@link SecureNoteStorageSql}. */
@@ -65,7 +68,7 @@ function createMockStorage() {
     sql: {
       exec(sql: string, ...args: unknown[]) {
         const q = sql.trim();
-        if (q === SQL.createMeta || q === SQL.createCipher) {
+        if (q === SQL.createMeta || q === SQL.createCipher || q === SQL.alterOpensAt) {
           return { toArray: () => [] };
         }
         if (q === SQL.deleteConsumedTombstones) {
@@ -95,15 +98,23 @@ function createMockStorage() {
           return { toArray: () => [] };
         }
         if (q === SQL.insertMeta) {
-          const [noteId, expires_at, max_reads, current_reads, consumed] = args as [
+          const [noteId, expires_at, max_reads, current_reads, consumed, opens_at] = args as [
             string,
             string,
             number,
             number,
             number,
+            string | null,
           ];
           throwIfDuplicate(meta, noteId);
-          meta.set(noteId, { note_id: noteId, expires_at, max_reads, current_reads, consumed });
+          meta.set(noteId, {
+            note_id: noteId,
+            expires_at,
+            max_reads,
+            current_reads,
+            consumed,
+            opens_at: opens_at ?? null,
+          });
           return { toArray: () => [] };
         }
         if (q === SQL.updateReads) {

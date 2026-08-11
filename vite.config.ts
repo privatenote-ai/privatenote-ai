@@ -6,6 +6,7 @@ import path, { dirname } from "path";
 import fs from "node:fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
+import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -102,23 +103,8 @@ function devHttpsHintsPlugin(): Plugin {
 
 const devHost = devServerHost();
 
-/**
- * Production CSP — must match `Content-Security-Policy` in `client/public/_headers` (/* block).
- * No 'unsafe-inline' in script-src: production build has no inline scripts.
- */
-const pageContentSecurityPolicy =
-  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com blob: data:; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none';";
-
-/**
- * Dev-only CSP — same as production but adds 'unsafe-inline' to script-src so that
- * @vitejs/plugin-react can inject its HMR preamble (an inline script that enables
- * React Fast Refresh). Without this, the dev server blocks the preamble and throws
- * "@vitejs/plugin-react can't detect preamble. Something is wrong."
- */
-const devContentSecurityPolicy = pageContentSecurityPolicy.replace(
-  "script-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-);
+/** Dev CSP — production HTML CSP is nonce-based via Pages middleware (`shared/pageContentSecurityPolicy.ts`). */
+const devContentSecurityPolicy = buildDevPageContentSecurityPolicy();
 
 export default defineConfig({
   plugins: [

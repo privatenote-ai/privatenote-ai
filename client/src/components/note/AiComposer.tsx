@@ -136,7 +136,26 @@ export type AiComposerProps = {
   onPreferHostedCloudChange?: (prefer: boolean) => void;
   /** Exit AI mode entirely and return to plain note writing. */
   onWriteWithoutAi: () => void;
+  /** Starter+ unlocks Document Summary / Privacy Check pack templates. */
+  canUsePremiumTemplates: boolean;
+  /** Business unlocks browser-saved custom prompt templates. */
+  canUseCustomTemplates: boolean;
 };
+
+const CUSTOM_TEMPLATES_STORAGE_KEY = "privatenote:custom-templates:v1";
+const CUSTOM_TEMPLATES_MAX = 12;
+
+function readStoredCustomTemplates(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CUSTOM_TEMPLATES_STORAGE_KEY) ?? "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string").slice(0, CUSTOM_TEMPLATES_MAX)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 export const AiComposer: React.FC<AiComposerProps> = ({
   language,
@@ -172,12 +191,15 @@ export const AiComposer: React.FC<AiComposerProps> = ({
   preferHostedCloudAfterLocalFailure = false,
   onPreferHostedCloudChange,
   onWriteWithoutAi,
+  canUsePremiumTemplates,
+  canUseCustomTemplates,
 }) => {
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [heroTypingGlow, setHeroTypingGlow] = useState(false);
   const [cloudAssistSwitchConfirmOpen, setCloudAssistSwitchConfirmOpen] = useState(false);
   const [recommendedModelLabel, setRecommendedModelLabel] = useState<string | null>(null);
   const [localPrivateAiReady, setLocalPrivateAiReady] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<string[]>(() => readStoredCustomTemplates());
 
   const skipPromptGlowRef = useRef(true);
   const { t } = useLanguage();
@@ -226,7 +248,9 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     ? aiGenerationStatusText?.trim() || t.aiComposerGenerating
     : "";
   const generationGlyph = isGeneratingContent ? getLocalAiGenerationGlyph(generationHeadline) : "brain";
-  const displayedTemplates = promptTemplates;
+  const displayedTemplates = promptTemplates.filter(
+    (template) => template.access !== "premium" || canUsePremiumTemplates,
+  );
   const noteHasPlaceholderBrackets = useMemo(
     () => noteHasUnresolvedGuidedPlaceholders(noteContent, language),
     [noteContent, language],
@@ -343,6 +367,58 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                     )}
                   </button>
                 </div>
+                {canUseCustomTemplates ? (
+                  <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
+                    <div className="flex flex-wrap gap-2">
+                      {customTemplates.map((template, index) => (
+                        <button
+                          key={`${template}-${index}`}
+                          type="button"
+                          onClick={() => {
+                            const base = getPromptTemplateById("ask-anything", language);
+                            if (base) onSelectTemplate(base);
+                            setAiPrompt(template);
+                          }}
+                          className={templateChipClass(false)}
+                        >
+                          {template.slice(0, 36)}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!aiPrompt.trim()}
+                      onClick={() => {
+                        const next = [aiPrompt.trim(), ...customTemplates]
+                          .filter((value, index, all) => all.indexOf(value) === index)
+                          .slice(0, CUSTOM_TEMPLATES_MAX);
+                        setCustomTemplates(next);
+                        localStorage.setItem(CUSTOM_TEMPLATES_STORAGE_KEY, JSON.stringify(next));
+                      }}
+                      className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                    >
+                      {tx("aiComposerSaveCustomTemplate", "Save current prompt as custom template")}
+                    </button>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {tx(
+                        "aiComposerCustomTemplatesLocalOnly",
+                        "Stored only in this browser. Custom templates are not synchronized to your account.",
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-center text-xs text-gray-500">
+                    {canUsePremiumTemplates
+                      ? tx(
+                          "aiComposerCustomTemplatesBusinessUpsell",
+                          "Business unlocks browser-saved custom AI prompt templates.",
+                        )
+                      : tx(
+                          "aiComposerTemplatePacksUpsell",
+                          "Starter unlocks additional prompt templates; Business adds browser-saved custom templates.",
+                        )}
+                  </p>
+                )}
               </div>
             </div>
 

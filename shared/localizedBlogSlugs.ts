@@ -35,6 +35,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "click-to-reveal-private-notes",
   "know-when-secret-link-opened",
   "revoke-unopened-note-proof-of-access",
+  "delayed-reveal-scheduled-secret-links",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -431,6 +432,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "revogar-nota-nao-aberta-prova-de-acesso",
     sr: "opozovi-neotvorenu-belesku-dokaz-pristupa",
     hr: "opozovi-neotvorenu-biljesku-dokaz-pristupa",
+  },
+  "delayed-reveal-scheduled-secret-links": {
+    en: "delayed-reveal-scheduled-secret-links",
+    de: "verzoegerte-freigabe-geplante-geheimlinks",
+    fr: "revelation-differee-liens-secrets-planifies",
+    es: "revelacion-diferida-enlaces-secretos-programados",
+    it: "rivelazione-differita-link-segreti-programmati",
+    nl: "vertraagde-vrijgave-geplande-geheime-links",
+    pt: "revelacao-adiada-links-secretos-agendados",
+    sr: "odlozeno-otkrivanje-zakazani-tajni-linkovi",
+    hr: "odgodeno-otkrivanje-zakazani-tajni-linkovi",
   },
 
 };

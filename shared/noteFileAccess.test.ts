@@ -8,28 +8,47 @@ import {
 } from "./noteFileAccess.ts";
 
 describe("note file access window policy", () => {
-  it("defaults to 15 minutes", () => {
-    assert.equal(parseNoteFileAccessWindowFromBody(undefined, { isPremium: false }).ok, true);
-    const parsed = parseNoteFileAccessWindowFromBody(undefined, { isPremium: false });
+  it("defaults to fifteen minutes", () => {
+    const parsed = parseNoteFileAccessWindowFromBody(undefined, { accountType: "free" });
     assert.deepEqual(parsed, { ok: true, seconds: NOTE_FILE_ACCESS_DEFAULT_SECONDS });
   });
 
-  it("blocks longer windows for free users", () => {
-    assert.deepEqual(parseNoteFileAccessWindowFromBody(30 * 60, { isPremium: false }), {
+  it("rejects longer windows on Free", () => {
+    assert.deepEqual(parseNoteFileAccessWindowFromBody(30 * 60, { accountType: "free" }), {
       ok: false,
-      message: "Longer attachment access windows require Premium",
+      message: "Longer attachment access windows require Starter or Business",
     });
   });
 
-  it("allows premium windows", () => {
-    assert.deepEqual(parseNoteFileAccessWindowFromBody(60 * 60, { isPremium: true }), {
-      ok: true,
-      seconds: 60 * 60,
-    });
+  it("allows thirty minutes on Starter but not sixty", () => {
+    assert.deepEqual(
+      parseNoteFileAccessWindowFromBody(30 * 60, { accountType: "personal_premium" }),
+      { ok: true, seconds: 30 * 60 },
+    );
+    assert.equal(
+      parseNoteFileAccessWindowFromBody(60 * 60, { accountType: "personal_premium" }).ok,
+      false,
+    );
   });
 
-  it("clamps non-premium accounts to the default", () => {
-    assert.equal(clampNoteFileAccessWindowForAccount(60 * 60, false), NOTE_FILE_ACCESS_DEFAULT_SECONDS);
+  it("allows sixty minutes on Business", () => {
+    assert.deepEqual(
+      parseNoteFileAccessWindowFromBody(60 * 60, { accountType: "business_premium" }),
+      { ok: true, seconds: 60 * 60 },
+    );
+  });
+
+  it("clamps to the plan maximum", () => {
+    assert.equal(
+      clampNoteFileAccessWindowForAccount(60 * 60, "free"),
+      NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+    );
+    assert.equal(
+      clampNoteFileAccessWindowForAccount(60 * 60, "personal_premium"),
+      NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+    );
+    assert.equal(clampNoteFileAccessWindowForAccount(30 * 60, "personal_premium"), 30 * 60);
+    assert.equal(clampNoteFileAccessWindowForAccount(60 * 60, "business_premium"), 60 * 60);
   });
 
   it("formats labels for the picker", () => {

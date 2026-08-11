@@ -27,6 +27,10 @@ import {
   uploadRetryDelayMs,
   usesSingleBlobAttachmentUpload,
 } from "@/lib/safariSafeChunkUpload";
+import {
+  isEntitlementRejectionResponse,
+  notifyAccountEntitlementsInvalidated,
+} from "@/utils/accountEntitlementEvents";
 
 type BinaryUploadRoute = "direct-worker" | "same-origin";
 
@@ -277,6 +281,10 @@ export async function apiRequest<T = any>(
       headers: res.headers
     });
 
+    if (isEntitlementRejectionResponse(res.status, responseText)) {
+      notifyAccountEntitlementsInvalidated();
+    }
+
     await throwIfResNotOk(responseClone);
     
     // Parse JSON from the text we already read
@@ -312,6 +320,9 @@ export async function apiUploadRequest<T = any>(
     statusText: response.statusText,
     headers: response.headers,
   });
+  if (isEntitlementRejectionResponse(response.status, responseText)) {
+    notifyAccountEntitlementsInvalidated();
+  }
   await throwIfResNotOk(responseClone);
   return JSON.parse(responseText) as T;
 }

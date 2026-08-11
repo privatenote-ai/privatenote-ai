@@ -14,6 +14,13 @@ import {
   type KdfParamsV2,
 } from "@shared/kdfParamsV2";
 import { argon2idAsync } from "@noble/hashes/argon2.js";
+import {
+  NOTE_RECEIPT_ACK_HKDF_INFO,
+  NOTE_ROOT_KEY_HKDF_SALT,
+  NOTE_RECEIPT_ACK_TOKEN_BYTE_LENGTH,
+  bytesToHex,
+  hashReceiptAckTokenHex,
+} from "@shared/noteReceiptAck";
 
 export type { NoteAadBinding };
 import { normalizeUrlFragmentKey, tryDecodeRawAesKeyUrlFragment } from "@shared/urlFragmentKey";
@@ -53,10 +60,11 @@ export interface EncryptedPayloadWire {
 
 export const NOTE_KEY_DERIVATION_HKDF_ROOT_V2 = "hkdf-root-v2" as const;
 
-const NOTE_ROOT_HKDF_SALT = new TextEncoder().encode("privatenote/v2/root-key-separation");
+const NOTE_ROOT_HKDF_SALT = new TextEncoder().encode(NOTE_ROOT_KEY_HKDF_SALT);
 const NOTE_TEXT_KEY_INFO = new TextEncoder().encode("privatenote/v2/text");
 const NOTE_FILE_WRAP_KEY_INFO = new TextEncoder().encode("privatenote/v2/file-wrap");
 const NOTE_METADATA_KEY_INFO = new TextEncoder().encode("privatenote/v2/metadata");
+const NOTE_RECEIPT_ACK_KEY_INFO = new TextEncoder().encode(NOTE_RECEIPT_ACK_HKDF_INFO);
 
 export interface DerivedNoteRootKeys {
   noteTextKey: CryptoKey;
@@ -232,6 +240,48 @@ export async function deriveNoteRootKeysFromUrlFragment(
   }
   return await deriveNoteRootKeys(new Uint8Array(decoded));
 }
+
+/**
+ * Derive the recipient receipt-ack token from the note root key (HKDF info `pn-ack-v1`).
+ * Returns lowercase hex of 32 raw bytes — hash this for create; POST the hex on confirm.
+ */
+export async function deriveReceiptAckTokenHex(
+  rootKeyBytes: Uint8Array | ArrayBuffer,
+): Promise<string> {
+  if (rootKeyBytes.byteLength !== 32) {
+    throw new Error("Invalid root key length");
+  }
+  const rootKey = await window.crypto.subtle.importKey(
+    "raw",
+    asBufferSource(rootKeyBytes),
+    "HKDF",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await window.crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: asBufferSource(NOTE_ROOT_HKDF_SALT),
+      info: asBufferSource(NOTE_RECEIPT_ACK_KEY_INFO),
+    },
+    rootKey,
+    NOTE_RECEIPT_ACK_TOKEN_BYTE_LENGTH * 8,
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+export async function deriveReceiptAckTokenHexFromUrlFragment(
+  keyString: string,
+): Promise<string> {
+  const decoded = tryDecodeRawAesKeyUrlFragment(keyString);
+  if (!decoded) {
+    throw new Error("Invalid root key");
+  }
+  return await deriveReceiptAckTokenHex(new Uint8Array(decoded));
+}
+
+export { hashReceiptAckTokenHex };
 
 export async function importAesGcmKeyFromUrlFragment(
   keyString: string,
@@ -556,7 +606,7 @@ export async function unwrapRootKeyWithPassword(
   kdfVersion?: unknown,
   kdfIterations?: unknown,
   kdfPolicyTag?: unknown,
-): Promise<DerivedNoteRootKeys> {
+): Promise<DerivedNoteRootKeys & { receiptAckTokenHex: string }> {
   const { timeCost, paramTag } = resolveKdfParamsForDecrypt(
     kdfParams,
     kdfVersion,
@@ -576,7 +626,11 @@ export async function unwrapRootKeyWithPassword(
   );
   const rootKeyBytes = new Uint8Array(rootKeyBuffer);
   try {
-    return await deriveNoteRootKeys(rootKeyBytes);
+    const [keys, receiptAckTokenHex] = await Promise.all([
+      deriveNoteRootKeys(rootKeyBytes),
+      deriveReceiptAckTokenHex(rootKeyBytes),
+    ]);
+    return { ...keys, receiptAckTokenHex };
   } finally {
     rootKeyBytes.fill(0);
   }

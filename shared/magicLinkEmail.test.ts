@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildMagicLinkEmailContent,
+  buildRecipientVerificationEmailContent,
   detectAuthEmailLocale,
   normalizeMagicLinkEmailPurpose,
 } from "./magicLinkEmail.ts";
@@ -23,6 +24,8 @@ describe("magicLinkEmail", () => {
     assert.match(html, />238242</);
     assert.match(html, /Or sign in with one tap/);
     assert.match(html, /Finish signing in to premium\.privatenote-ai\.pages\.dev below/);
+    assert.match(html, /brand\/privateNote-logo-mark\.png/);
+    assert.match(html, />privateNote</);
     assert.match(html, />Log in</);
     assert.match(html, /10 minutes or if you request a new code/);
     assert.match(text, /238242/);
@@ -57,6 +60,29 @@ describe("magicLinkEmail", () => {
     assert.equal(subject, "Je PrivateNote-inlogcode");
     assert.match(html, /Of log in met één tik/);
     assert.match(html, />Inloggen</);
+  });
+
+  it("builds branded recipient verification emails like signup", () => {
+    const { subject, html, text } = buildRecipientVerificationEmailContent({
+      verificationCode: SAMPLE_CODE,
+      webOrigin: "https://premium.privatenote.ai",
+    });
+    assert.equal(subject, "PrivateNote verification code");
+    assert.match(html, /Unlock your private note/);
+    assert.match(html, /Verification code/);
+    assert.match(html, />238242</);
+    assert.match(html, /premium\.privatenote\.ai\/brand\/privateNote-logo-mark\.png/);
+    assert.match(html, /alt="PrivateNote"/);
+    assert.match(html, />privateNote</);
+    assert.match(html, /#0000ff/);
+    assert.match(html, /border-radius:12px/);
+    assert.match(html, /font-family:-apple-system/);
+    assert.match(html, /PrivateNote\.ai/);
+    assert.match(html, /end-to-end encrypted PrivateNote/i);
+    assert.match(text, /^PrivateNote\.ai/m);
+    assert.match(text, /Verification code:/);
+    assert.match(text, /238242/);
+    assert.match(text, /Return to the note link/);
   });
 
   it("detects Dutch from Accept-Language", () => {

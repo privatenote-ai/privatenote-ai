@@ -33,10 +33,10 @@ export type {
 
 export { LOCAL_FALLBACK_TEMPLATE_IDS, type LocalFallbackTemplateId };
 
-const GUIDED_BY_LANG: Record<
+const GUIDED_BY_LANG: Partial<Record<
   SupportedLanguage,
   GuidedWritingTemplateRecord
-> = {
+>> = {
   en: GUIDED_WRITING_TEMPLATES_EN,
   de: GUIDED_WRITING_TEMPLATES_DE,
   fr: GUIDED_WRITING_TEMPLATES_FR,
@@ -89,10 +89,10 @@ export const GUIDED_WRITING_PLACEHOLDER_LABELS = {
   hopeOrGoal: "Hope or goal",
 } as const;
 
-const PLACEHOLDER_LABELS_BY_LANG: Record<
+const PLACEHOLDER_LABELS_BY_LANG: Partial<Record<
   SupportedLanguage,
   Record<GuidedWritingPlaceholder, string>
-> = {
+>> = {
   en: GUIDED_WRITING_PLACEHOLDER_LABELS,
   it: {
     recipientName: "Nome del destinatario",
@@ -317,14 +317,14 @@ export const GUIDED_WRITING_TEMPLATES = GUIDED_WRITING_TEMPLATES_EN;
 export function getGuidedWritingTemplatesForLanguage(
   language: SupportedLanguage,
 ): GuidedWritingTemplateRecord {
-  return GUIDED_BY_LANG[language] ?? GUIDED_BY_LANG.en;
+  return GUIDED_BY_LANG[language] ?? GUIDED_WRITING_TEMPLATES_EN;
 }
 
 function renderPlaceholderToken(
   token: GuidedWritingPlaceholder,
   language: SupportedLanguage,
 ): string {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   return `[${labels[token]}]`;
 }
 
@@ -332,7 +332,7 @@ export function renderGuidedWritingTemplateText(
   textTemplate: string,
   language: SupportedLanguage = "en",
 ): string {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   return textTemplate.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_match, token) => {
     if (token in labels) {
       return renderPlaceholderToken(token as GuidedWritingPlaceholder, language);
@@ -403,7 +403,7 @@ export function listUnresolvedGuidedPlaceholderLabelsInNote(
   text: string,
   language: SupportedLanguage,
 ): string[] {
-  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? PLACEHOLDER_LABELS_BY_LANG.en;
+  const labels = PLACEHOLDER_LABELS_BY_LANG[language] ?? GUIDED_WRITING_PLACEHOLDER_LABELS;
   const labelValues = new Set(Object.values(labels));
   const found: string[] = [];
   const seen = new Set<string>();

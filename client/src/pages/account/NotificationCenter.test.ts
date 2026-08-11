@@ -5,6 +5,8 @@ import {
   groupNotifications,
   statusLabel,
   statusTone,
+  buildProofTimeline,
+  hasProofReport,
   type NotificationItem,
 } from "./NotificationCenter.logic.ts";
 
@@ -68,8 +70,38 @@ describe("NotificationCenter helpers", () => {
     assert.equal(statusLabel("attachment_downloaded", {
       notificationStatusAttachmentDownloaded: "Attachment opened",
     }), "Attachment opened");
+    assert.equal(statusLabel("receipt_confirmed", {
+      notificationStatusReceiptConfirmed: "Got it",
+    }), "Got it");
     assert.equal(statusLabel("viewed", {}), "Viewed");
     assert.match(statusTone("attachment_downloaded"), /indigo/);
+    assert.match(statusTone("receipt_confirmed"), /teal/);
     assert.match(statusTone("burned"), /amber/);
+  });
+
+  it("builds a proof timeline and detects when a report is available", () => {
+    assert.equal(hasProofReport(notification({ status: "created" })), false);
+    assert.equal(
+      hasProofReport(
+        notification({
+          status: "viewed",
+          openedAt: "2026-07-27T12:00:00.000Z",
+        }),
+      ),
+      true,
+    );
+
+    const timeline = buildProofTimeline(
+      notification({
+        status: "burned",
+        createdAt: "2026-07-27T10:00:00.000Z",
+        openedAt: "2026-07-27T11:00:00.000Z",
+        destroyedAt: "2026-07-27T11:01:00.000Z",
+      }),
+    );
+    assert.deepEqual(
+      timeline.map((entry) => entry.key),
+      ["created", "opened", "destroyed"],
+    );
   });
 });

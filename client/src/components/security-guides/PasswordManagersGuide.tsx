@@ -319,11 +319,12 @@ export function PasswordManagersGuide() {
                 <div className={`grid gap-5 ${tierLayout.managers.length > 1 ? "lg:grid-cols-2" : ""}`}>
                   {tierLayout.managers.map((managerLayout) => {
                     const manager = tier.managers[managerLayout.id];
+                    const showCaution = "caution" in managerLayout && managerLayout.caution;
                     return (
                       <article
                         key={managerLayout.id}
                         className={`rounded-[1.75rem] border bg-gradient-to-br p-6 ${managerLayout.accent} ${
-                          managerLayout.caution ? "ring-1 ring-amber-300/50 dark:ring-amber-800/40" : ""
+                          showCaution ? "ring-1 ring-amber-300/50 dark:ring-amber-800/40" : ""
                         }`}
                       >
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -333,7 +334,7 @@ export function PasswordManagersGuide() {
                               <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <h4 className="text-lg font-bold text-gray-900 dark:text-white">{managerLayout.name}</h4>
-                                  {managerLayout.caution && manager.caution && (
+                                  {showCaution && manager.caution && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                                       <AlertTriangle className="h-3 w-3" />
                                       {manager.caution}

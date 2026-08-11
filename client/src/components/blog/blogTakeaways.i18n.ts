@@ -199,6 +199,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Widerruf bei falschem Empfänger; Nachweis bei Lieferfragen.",
     "Business-Branding hilft Empfängern, eine legitime Enthüllungsseite zu erkennen.",
   ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
 
 
 };
@@ -401,6 +407,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "La preuve d’accès est un reçu de statut—pas une transcription de lecture.",
     "Révoquez pour un mauvais destinataire ; utilisez la preuve pour les questions de livraison.",
     "Le branding Business aide les destinataires à reconnaître une page de révélation légitime.",
+  ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
 
 
@@ -605,6 +617,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "Revoca ante un destinatario incorrecto; usa la prueba para preguntas de entrega.",
     "La marca Business ayuda a reconocer una página de revelación legítima.",
   ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
 
 
 };
@@ -807,6 +825,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "La prova di accesso è una ricevuta di stato—non una trascrizione di lettura.",
     "Revoca per destinatario sbagliato; usa la prova per domande di consegna.",
     "Il branding Business aiuta a riconoscere una pagina di rivelazione legittima.",
+  ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
 
 
@@ -1011,6 +1035,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Trek in bij verkeerde ontvanger; gebruik bewijs voor leveringsvragen.",
     "Business-branding helpt ontvangers een legitieme onthullingspagina te herkennen.",
   ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
 
 
 };
@@ -1213,6 +1243,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "A prova de acesso é um recibo de estado—não uma transcrição de leitura.",
     "Revogue para destinatário errado; use a prova para questões de entrega.",
     "A marca Business ajuda a reconhecer uma página de revelação legítima.",
+  ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
 
 
@@ -1417,6 +1453,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Opozovite za pogrešnog primaoca; koristite dokaz za pitanja isporuke.",
     "Business brendiranje pomaže primaocima da prepoznaju legitimnu stranicu otkrivanja.",
   ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
 
 
 };
@@ -1619,6 +1661,12 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Dokaz pristupa je statusna potvrda—ne transkript čitanja.",
     "Opozovite za pogrešnog primatelja; koristite dokaz za pitanja isporuke.",
     "Business branding pomaže primateljima prepoznati legitimnu stranicu otkrivanja.",
+  ],
+  "delayed-reveal-scheduled-secret-links": [
+    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Share the link early for handovers; recipients wait until the scheduled UTC time.",
+    "The open time must be before the note expires or create is rejected.",
+    "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
 
 

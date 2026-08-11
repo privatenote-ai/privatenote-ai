@@ -7,6 +7,44 @@ import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "../types";
 import {
+  billingCountryFromRequest,
+  billingCurrencyForCountry,
+} from "@shared/billingRegion";
+import {
+  billingCurrencyForStripePrice,
+  billingIntervalForStripePrice,
+  checkoutIdempotencyKey,
+  createStripeCheckoutSession,
+  createStripePortalSession,
+  processStripeWebhookEvent,
+  StripeBillingError,
+  verifyStripeWebhookSignature,
+  type BillingInterval,
+  type PaidBillingPlan,
+  type StripeEvent,
+} from "../stripeBilling";
+import { getAccountEntitlements } from "../accountEntitlements";
+import {
+  parseAccountActivityMetadata,
+  type AccountActivityCreateMetadata,
+} from "../../shared/accountActivityMetadata";
+import {
+  clearSentNoteNotifications,
+  deleteSentNoteNotification,
+  deleteUserNoteDefaults,
+  getSentNoteNotificationsByNoteIds,
+  getUserAccountType,
+  getUserNoteDefaults,
+  listSentNoteNotificationsForUser,
+  upsertUserNoteDefaults,
+  type SentNoteNotificationItem,
+} from "../sentNotesService";
+import { hostedAiMonthlyLimit, planFeaturesFor } from "@shared/planCatalog";
+import { readHostedAiQuotaSnapshot } from "../planHostedAi";
+import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { parseNoteFileAccessWindowFromBody } from "@shared/noteFileAccess";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
+import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
@@ -37,6 +75,15 @@ import {
   type MagicLinkEmailPurpose,
 } from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
+import { isStagingAppHost } from "@shared/pagesAppHosts";
+
+const STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+]);
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -2720,13 +2767,11 @@ async function schedulePendingAccountDeletion(
 
 const FREE_TIER_USAGE_LIMITS = {
   notesPerDay: 10,
-  aiUsesPerDay: 2,
 } as const;
 
 const ACCOUNT_ACTIVITY_EVENT_TYPES = new Set([
   "note_created",
   "ai_note_created",
-  "note_opened",
   "note_expired",
 ]);
 
@@ -2734,22 +2779,26 @@ type AccountType = "free" | "personal_premium" | "business_premium";
 
 function normalizeAccountType(raw: string | null | undefined): AccountType {
   const value = (raw || "free").toLowerCase();
-  if (value === "personal_premium" || value === "pro") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
+  if (value === "personal_premium" || value === "pro" || value === "premium" || value === "starter") {
+    return "personal_premium";
+  }
+  if (value === "business_premium" || value === "business" || value === "plus") {
+    return "business_premium";
+  }
   return "free";
 }
 
 function usageLimitsForPlan(plan: string | null | undefined): {
   notesPerDay: number | null;
   aiUsesPerDay: number | null;
+  aiUsesPerMonth: number;
 } {
   const accountType = normalizeAccountType(plan);
-  if (accountType === "personal_premium" || accountType === "business_premium") {
-    return { notesPerDay: null, aiUsesPerDay: null };
-  }
   return {
-    notesPerDay: FREE_TIER_USAGE_LIMITS.notesPerDay,
-    aiUsesPerDay: FREE_TIER_USAGE_LIMITS.aiUsesPerDay,
+    notesPerDay: accountType === "free" ? FREE_TIER_USAGE_LIMITS.notesPerDay : null,
+    // Hosted AI is billed monthly by plan (3 / 50 / 300). Keep aiUsesPerDay null for clients.
+    aiUsesPerDay: null,
+    aiUsesPerMonth: hostedAiMonthlyLimit(accountType),
   };
 }
 
@@ -2794,11 +2843,28 @@ export async function recordAccountActivity(
   }
 }
 
-const RATE_LIMIT_ACCOUNT_ACTIVITY_POST = {
-  MAX_REQUESTS: 48,
-  WINDOW_SECONDS: 60,
-  KEY_PREFIX: "rl:post:acct_act:",
-};
+export async function deleteAccountActivityEvent(
+  env: Env,
+  userId: string,
+  activityId: string,
+): Promise<boolean> {
+  if (!env.AUTH_DB || !activityId) return false;
+  const result = await env.AUTH_DB.prepare(
+    `DELETE FROM account_activity WHERE id = ? AND user_id = ?`,
+  )
+    .bind(activityId, userId)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
+
+export async function clearAccountActivityEvents(env: Env, userId: string): Promise<number> {
+  if (!env.AUTH_DB) return 0;
+  const result = await env.AUTH_DB.prepare(`DELETE FROM account_activity WHERE user_id = ?`)
+    .bind(userId)
+    .run();
+  return result.meta?.changes ?? 0;
+}
+
 
 export async function getSessionFromRequest(
   env: Env,
@@ -3693,6 +3759,312 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
+  if (pathname === "/api/auth/billing/stripe/webhook" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const webhookSecret = env.STRIPE_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const rawPayload = await request.text();
+    const signatureValid = await verifyStripeWebhookSignature(
+      rawPayload,
+      request.headers.get("Stripe-Signature"),
+      webhookSecret,
+    );
+    if (!signatureValid) {
+      return jsonResponse({ error: "invalid_signature" }, 400, request);
+    }
+    let event: StripeEvent;
+    try {
+      event = JSON.parse(rawPayload) as StripeEvent;
+    } catch {
+      return jsonResponse({ error: "invalid_event" }, 400, request);
+    }
+    try {
+      const result = await processStripeWebhookEvent(env, event);
+      return jsonResponse({ received: true, ...result }, 200, request);
+    } catch (error) {
+      console.error("[BILLING] Stripe webhook processing failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "webhook_processing_failed",
+          message: billingError?.message ?? "Webhook processing failed.",
+        },
+        billingError?.status ?? 500,
+        request,
+      );
+    }
+  }
+
+  if (pathname === "/api/auth/billing/status" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    let billing: {
+      stripe_customer_id: string | null;
+      stripe_subscription_id: string | null;
+      subscription_status: string | null;
+      stripe_price_id: string | null;
+      subscription_cancel_at_period_end: number | null;
+      subscription_updated_at: string | null;
+      manual_entitlement_expires_at: string | null;
+    } | null = null;
+    try {
+      billing = await env.AUTH_DB.prepare(
+        `SELECT
+           stripe_customer_id,
+           stripe_subscription_id,
+           subscription_status,
+           stripe_price_id,
+           subscription_cancel_at_period_end,
+           subscription_updated_at,
+           manual_entitlement_expires_at
+         FROM users WHERE id = ? LIMIT 1`,
+      ).bind(session.id).first<{
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        subscription_status: string | null;
+        stripe_price_id: string | null;
+        subscription_cancel_at_period_end: number | null;
+        subscription_updated_at: string | null;
+        manual_entitlement_expires_at: string | null;
+      }>();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[BILLING] Could not load billing status:", error);
+      const migrationMissing = /no such (?:table|column)/i.test(message);
+      return jsonResponse(
+        {
+          error: migrationMissing
+            ? "billing_migration_required"
+            : "billing_status_unavailable",
+          message: migrationMissing
+            ? "Apply the billing database migration before using subscriptions."
+            : "Billing status is temporarily unavailable. Please try again.",
+        },
+        migrationMissing ? 503 : 500,
+        request,
+      );
+    }
+    return jsonResponse({
+      ok: true,
+      accountType: entitlements.accountType,
+      configuredAccountType: entitlements.configuredAccountType,
+      subscriptionState: entitlements.state,
+      paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+      billingCustomerLinked: Boolean(billing?.stripe_customer_id),
+      billingSubscriptionLinked: Boolean(billing?.stripe_subscription_id),
+      canChangeSubscription:
+        Boolean(billing?.stripe_subscription_id) &&
+        STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES.has(
+          billing?.subscription_status?.toLowerCase() ?? "",
+        ),
+      managementMode: billing?.stripe_customer_id
+        ? "stripe"
+        : billing?.manual_entitlement_expires_at
+          ? "manual"
+          : "none",
+      billingInterval: billingIntervalForStripePrice(
+        env,
+        billing?.stripe_price_id ?? null,
+      ),
+      billingCountry: billingCountryFromRequest(request),
+      billingCurrency:
+        billingCurrencyForStripePrice(
+          env,
+          billing?.stripe_price_id ?? null,
+        ) ??
+        billingCurrencyForCountry(billingCountryFromRequest(request)),
+      cancelAtPeriodEnd: billing?.subscription_cancel_at_period_end === 1,
+      subscriptionUpdatedAt: billing?.subscription_updated_at ?? null,
+      serverNow: new Date().toISOString(),
+    }, 200, request);
+  }
+
+  if (pathname === "/api/auth/billing/checkout" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    let body: { plan?: unknown; interval?: unknown };
+    try {
+      body = (await readJsonBody(request)) as typeof body;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const plan =
+      body.plan === "personal_premium" || body.plan === "business_premium"
+        ? (body.plan as PaidBillingPlan)
+        : null;
+    const interval =
+      body.interval === "month" || body.interval === "year"
+        ? (body.interval as BillingInterval)
+        : null;
+    if (!plan || !interval) {
+      return jsonResponse(
+        {
+          error: "invalid_billing_selection",
+          message: "Select a valid paid plan and billing interval.",
+        },
+        400,
+        request,
+      );
+    }
+    const user = await env.AUTH_DB.prepare(
+      `SELECT email, stripe_customer_id, stripe_subscription_id, subscription_status
+       FROM users WHERE id = ? LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{
+        email: string | null;
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        subscription_status: string | null;
+      }>();
+    if (!user) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const appOrigin = getMagicLinkOrigin(env, request);
+    const changeable = new Set(["active", "trialing", "past_due", "unpaid", "paused"]);
+    // Existing paid subscriptions must change plans in the Customer Portal
+    // (not a second Checkout session). Return a portal URL so upgrade CTAs work.
+    if (
+      user.stripe_subscription_id &&
+      changeable.has(user.subscription_status?.toLowerCase() ?? "")
+    ) {
+      if (!user.stripe_customer_id) {
+        return jsonResponse(
+          {
+            error: "subscription_already_exists",
+            message: "Manage the existing subscription in the billing portal.",
+          },
+          409,
+          request,
+        );
+      }
+      try {
+        const portal = await createStripePortalSession(env, {
+          stripeCustomerId: user.stripe_customer_id,
+          subscriptionId: user.stripe_subscription_id,
+          flow: "subscription_update",
+          returnUrl: `${appOrigin}/account?billing=updated`,
+        });
+        return jsonResponse(
+          {
+            ok: true,
+            url: portal.url,
+            mode: "portal",
+          },
+          200,
+          request,
+        );
+      } catch (error) {
+        console.error("[BILLING] Portal fallback for checkout failed:", error);
+        const billingError = error instanceof StripeBillingError ? error : null;
+        return jsonResponse(
+          {
+            error: billingError?.code ?? "subscription_already_exists",
+            message:
+              billingError?.message ??
+              "Manage the existing subscription in the billing portal.",
+          },
+          billingError?.status ?? 409,
+          request,
+        );
+      }
+    }
+    const billingCountry = billingCountryFromRequest(request);
+    const billingCurrency = billingCurrencyForCountry(billingCountry);
+    try {
+      const checkout = await createStripeCheckoutSession(env, {
+        userId: session.id,
+        email: user.email,
+        stripeCustomerId: user.stripe_customer_id,
+        plan,
+        interval,
+        currency: billingCurrency,
+        successUrl: `${appOrigin}/account?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appOrigin}/premium?billing=cancelled`,
+        idempotencyKey: checkoutIdempotencyKey(
+          session.id,
+          plan,
+          interval,
+          new Date(),
+          billingCurrency,
+        ),
+      });
+      return jsonResponse(
+        {
+          ok: true,
+          url: checkout.url,
+          mode: "checkout",
+          billingCountry,
+          billingCurrency,
+        },
+        200,
+        request,
+      );
+    } catch (error) {
+      console.error("[BILLING] Checkout session creation failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "checkout_failed",
+          message: billingError?.message ?? "Checkout could not be started.",
+        },
+        billingError?.status ?? 502,
+        request,
+      );
+    }
+  }
+
+  if (pathname === "/api/auth/billing/portal" && method === "POST") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "billing_not_configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const user = await env.AUTH_DB.prepare(
+      `SELECT stripe_customer_id FROM users WHERE id = ? LIMIT 1`,
+    )
+      .bind(session.id)
+      .first<{ stripe_customer_id: string | null }>();
+    if (!user?.stripe_customer_id) {
+      return jsonResponse(
+        {
+          error: "no_billing_customer",
+          message: "No Stripe customer is linked to this account yet.",
+        },
+        404,
+        request,
+      );
+    }
+    const appOrigin = getMagicLinkOrigin(env, request);
+    try {
+      const portal = await createStripePortalSession(env, {
+        stripeCustomerId: user.stripe_customer_id,
+        returnUrl: `${appOrigin}/account`,
+      });
+      return jsonResponse({ ok: true, url: portal.url }, 200, request);
+    } catch (error) {
+      console.error("[BILLING] Portal session creation failed:", error);
+      const billingError = error instanceof StripeBillingError ? error : null;
+      return jsonResponse(
+        {
+          error: billingError?.code ?? "portal_failed",
+          message: billingError?.message ?? "Billing portal could not be opened.",
+        },
+        billingError?.status ?? 502,
+        request,
+      );
+    }
+  }
+
   if (pathname === "/api/auth/me" && method === "GET") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -3721,6 +4093,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
+    const entitlements = await getAccountEntitlements(env, session.id);
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
@@ -3735,8 +4108,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         emailVerified: (user?.email_verified ?? 0) === 1,
         lastStepUpAt: session.lastStepUpAt,
         createdAt: user?.created_at ?? null,
-        plan: normalizeAccountType(user?.account_type ?? user?.plan),
-        accountType: normalizeAccountType(user?.account_type ?? user?.plan),
+        plan: entitlements.accountType,
+        accountType: entitlements.accountType,
+        configuredAccountType: entitlements.configuredAccountType,
+        subscriptionState: entitlements.state,
+        paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
@@ -3754,7 +4130,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
     const userColumns = await getUsersTableColumns(env);
-    const userSelect = buildUserSelect(["id", "email", "created_at"], userColumns);
+    const userSelect = buildUserSelect(["id", "email", "email_verified", "created_at"], userColumns);
     const user = await env.AUTH_DB.prepare(
       `SELECT ${userSelect} FROM users WHERE id = ? LIMIT 1`
     )
@@ -3762,6 +4138,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       .first<{
         id: string;
         email: string | null;
+        email_verified?: number | null;
         created_at: string | null;
         plan?: string | null;
         account_type?: string | null;
@@ -3771,8 +4148,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         allow_hosted_ai?: number | null;
       }>();
 
-    const normalizedAccountType = normalizeAccountType(user?.account_type ?? user?.plan);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    const normalizedAccountType = entitlements.accountType;
     const limits = usageLimitsForPlan(normalizedAccountType);
+    const hostedAiUsage = await readHostedAiQuotaSnapshot(
+      env,
+      session.id,
+      normalizedAccountType,
+    );
     let notesToday = 0;
     let aiToday = 0;
     let notesMonth = 0;
@@ -3796,6 +4179,55 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       console.warn("[account/summary] usage query failed (migration missing?):", e);
     }
 
+    let billing: {
+      stripeCustomerLinked: boolean;
+      stripeSubscriptionLinked: boolean;
+      subscriptionStatus: string | null;
+      subscriptionCurrentPeriodEnd: string | null;
+      premiumGrantedAt: string | null;
+      premiumRevokedAt: string | null;
+    } = {
+      stripeCustomerLinked: false,
+      stripeSubscriptionLinked: false,
+      subscriptionStatus: null,
+      subscriptionCurrentPeriodEnd: null,
+      premiumGrantedAt: null,
+      premiumRevokedAt: null,
+    };
+    try {
+      const billingRow = await env.AUTH_DB.prepare(
+        `SELECT
+           stripe_customer_id,
+           stripe_subscription_id,
+           subscription_status,
+           subscription_current_period_end,
+           premium_granted_at,
+           premium_revoked_at
+         FROM users WHERE id = ? LIMIT 1`,
+      )
+        .bind(session.id)
+        .first<{
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          subscription_status: string | null;
+          subscription_current_period_end: string | null;
+          premium_granted_at: string | null;
+          premium_revoked_at: string | null;
+        }>();
+      if (billingRow) {
+        billing = {
+          stripeCustomerLinked: Boolean(billingRow.stripe_customer_id),
+          stripeSubscriptionLinked: Boolean(billingRow.stripe_subscription_id),
+          subscriptionStatus: billingRow.subscription_status,
+          subscriptionCurrentPeriodEnd: billingRow.subscription_current_period_end,
+          premiumGrantedAt: billingRow.premium_granted_at,
+          premiumRevokedAt: billingRow.premium_revoked_at,
+        };
+      }
+    } catch (e) {
+      console.warn("[account/summary] billing query failed (migration missing?):", e);
+    }
+
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
@@ -3807,6 +4239,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         createdAt: user?.created_at ?? null,
         plan: normalizedAccountType,
         accountType: normalizedAccountType,
+        configuredAccountType: entitlements.configuredAccountType,
+        subscriptionState: entitlements.state,
+        paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+        billingCustomerLinked: billing.stripeCustomerLinked,
+        emailVerified: (user?.email_verified ?? 0) === 1,
         businessDisplayName: user?.business_display_name ?? null,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
@@ -3814,6 +4251,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         limits: {
           notesPerDay: limits.notesPerDay,
           aiUsesPerDay: limits.aiUsesPerDay,
+          aiUsesPerMonth: limits.aiUsesPerMonth,
         },
         usage: {
           notesToday,
@@ -3821,10 +4259,71 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           notesMonth,
           aiMonth,
         },
+        hostedAiUsage,
         storageUsedBytes: null,
+        billing,
+        entitlements: {
+          state: entitlements.state,
+          configuredAccountType: entitlements.configuredAccountType,
+          paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+        },
       }),
       { status: 200, headers }
     );
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "GET") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const limitRaw = Number(url.searchParams.get("limit") ?? "50");
+    const limit = Math.min(50, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50));
+    const [entitlements, notifications] = await Promise.all([
+      getAccountEntitlements(env, session.id),
+      listSentNoteNotificationsForUser(env, session.id, limit),
+    ]);
+    if (!entitlements.capabilities.sentNotesDashboard) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    return jsonResponse({ ok: true, notifications }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/notifications" && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    const cleared = await clearSentNoteNotifications(env, session.id);
+    return jsonResponse({ ok: true, cleared }, 200, request);
+  }
+
+  {
+    const deleteOneMatch = pathname.match(/^\/api\/auth\/account\/notifications\/([^/]+)$/);
+    if (deleteOneMatch && method === "DELETE") {
+      if (!env.AUTH_DB) {
+        return jsonResponse({ message: "Auth database not configured" }, 501, request);
+      }
+      const session = await getSessionFromRequest(env, request, { rotate: false });
+      if (!session) {
+        return jsonResponse({ message: "Unauthorized" }, 401, request);
+      }
+      const notificationId = decodeURIComponent(deleteOneMatch[1] ?? "");
+      if (!notificationId) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      const deleted = await deleteSentNoteNotification(env, session.id, notificationId);
+      if (!deleted) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      return jsonResponse({ ok: true }, 200, request);
+    }
   }
 
   if (pathname === "/api/auth/account/activity" && method === "GET") {
@@ -3838,21 +4337,73 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const url = new URL(request.url);
     const limitRaw = Number(url.searchParams.get("limit") ?? "30");
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 30));
+    const entitlements = await getAccountEntitlements(env, session.id);
+    const canTrackDelivery = entitlements.capabilities.sentNotesDashboard === true;
+    const canRevokeUnopened = entitlements.capabilities.revokeUnopened === true;
 
-    let events: Array<{ id: string; type: string; noteId: string | null; createdAt: string }> = [];
+    let events: Array<{
+      id: string;
+      type: string;
+      noteId: string | null;
+      createdAt: string;
+      metadata?: AccountActivityCreateMetadata | null;
+      delivery?: SentNoteNotificationItem | null;
+    }> = [];
     try {
-      const res = await env.AUTH_DB.prepare(
-        `SELECT id, event_type, note_id, created_at FROM account_activity
-         WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`
-      )
-        .bind(session.id, limit)
-        .all<{ id: string; event_type: string; note_id: string | null; created_at: string }>();
-      events = (res.results || []).map((r) => ({
+      // Hide companion ai_note_created rows from the timeline (still counted for quotas).
+      // AI is shown via metadata.aiEnhanced on the note_created card.
+      type ActivityRow = {
+        id: string;
+        event_type: string;
+        note_id: string | null;
+        created_at: string;
+        metadata?: string | null;
+      };
+      let rows: ActivityRow[] = [];
+      try {
+        const res = await env.AUTH_DB.prepare(
+          `SELECT id, event_type, note_id, created_at, metadata
+           FROM account_activity
+           WHERE user_id = ?
+             AND event_type NOT IN ('note_opened', 'ai_note_created')
+           ORDER BY datetime(created_at) DESC
+           LIMIT ?`,
+        )
+          .bind(session.id, limit)
+          .all<ActivityRow>();
+        rows = res.results || [];
+      } catch {
+        // Pre-migration DBs without metadata column.
+        const res = await env.AUTH_DB.prepare(
+          `SELECT id, event_type, note_id, created_at
+           FROM account_activity
+           WHERE user_id = ?
+             AND event_type NOT IN ('note_opened', 'ai_note_created')
+           ORDER BY datetime(created_at) DESC
+           LIMIT ?`,
+        )
+          .bind(session.id, limit)
+          .all<ActivityRow>();
+        rows = res.results || [];
+      }
+      events = rows.map((r) => ({
         id: r.id,
         type: r.event_type,
         noteId: r.note_id,
         createdAt: coerceAccountActivityCreatedAtUtcToIso(r.created_at),
+        metadata: parseAccountActivityMetadata(r.metadata ?? null),
       }));
+
+      if (canTrackDelivery || canRevokeUnopened) {
+        const noteIds = events
+          .map((e) => e.noteId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0);
+        const deliveryByNote = await getSentNoteNotificationsByNoteIds(env, session.id, noteIds);
+        events = events.map((event) => {
+          if (!event.noteId) return { ...event, delivery: null };
+          return { ...event, delivery: deliveryByNote.get(event.noteId) ?? null };
+        });
+      }
     } catch (e) {
       console.warn("[account/activity] list failed:", e);
     }
@@ -3860,10 +4411,20 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     applyRotatedSession(request, headers, session);
-    return new Response(JSON.stringify({ ok: true, events }), { status: 200, headers });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        events,
+        capabilities: {
+          sentNotesDashboard: canTrackDelivery,
+          revokeUnopened: canRevokeUnopened,
+        },
+      }),
+      { status: 200, headers },
+    );
   }
 
-  if (pathname === "/api/auth/account/activity" && method === "POST") {
+  if (pathname === "/api/auth/account/activity" && method === "DELETE") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
     }
@@ -3871,29 +4432,43 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    const rl = await checkRateLimit(env, session.id, RATE_LIMIT_ACCOUNT_ACTIVITY_POST);
-    if (!rl.allowed) {
-      return jsonResponse({ message: "Too many requests" }, 429, request);
-    }
+    const cleared = await clearAccountActivityEvents(env, session.id);
+    return jsonResponse({ ok: true, cleared }, 200, request);
+  }
 
-    let body: { event?: string; noteId?: string };
-    try {
-      body = (await request.json()) as { event?: string; noteId?: string };
-    } catch {
-      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+  {
+    const deleteOneMatch = pathname.match(/^\/api\/auth\/account\/activity\/([^/]+)$/);
+    if (deleteOneMatch && method === "DELETE") {
+      if (!env.AUTH_DB) {
+        return jsonResponse({ message: "Auth database not configured" }, 501, request);
+      }
+      const session = await getSessionFromRequest(env, request, { rotate: false });
+      if (!session) {
+        return jsonResponse({ message: "Unauthorized" }, 401, request);
+      }
+      const activityId = decodeURIComponent(deleteOneMatch[1] ?? "");
+      if (!activityId) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      const deleted = await deleteAccountActivityEvent(env, session.id, activityId);
+      if (!deleted) {
+        return jsonResponse({ message: "Not found" }, 404, request);
+      }
+      return jsonResponse({ ok: true }, 200, request);
     }
-    if (body.event !== "note_opened") {
-      return jsonResponse({ message: "Unsupported event" }, 400, request);
-    }
-    const noteId = typeof body.noteId === "string" ? body.noteId : "";
-    if (!isValidNoteId(noteId)) {
-      return jsonResponse({ message: "Invalid note id" }, 400, request);
-    }
+  }
 
-    await recordAccountActivity(env, session.id, "note_opened", noteId);
-    const headers = new Headers(getCorsHeaders(request));
-    headers.set("Content-Type", "application/json");
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  if (pathname === "/api/auth/account/activity" && method === "POST") {
+    // Self-open events were removed from Activity; keep the route as a no-op so
+    // older clients that still POST note_opened do not error.
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    return jsonResponse({ ok: true, ignored: true }, 200, request);
   }
 
   if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
@@ -3977,6 +4552,97 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       }),
       { status: 200, headers }
     );
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "GET") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: true });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const accountType = await getUserAccountType(env, session.id);
+    const capabilities = planFeaturesFor(accountType);
+    if (!capabilities.savedDefaults) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    const row = await getUserNoteDefaults(env, session.id);
+    return jsonResponse({
+      ok: true,
+      defaults: row
+        ? {
+            expirySeconds: row.expiry_seconds,
+            maxReads: row.max_reads,
+            fileAccessWindowSeconds: row.file_access_window_seconds,
+            readerLanguage: row.reader_language,
+            notifyOnOpen: row.notify_on_open === 1,
+            requireRecipientVerification: row.require_recipient_verification === 1,
+          }
+        : null,
+    }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "PUT") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const accountType = await getUserAccountType(env, session.id);
+    const capabilities = planFeaturesFor(accountType);
+    if (!capabilities.savedDefaults) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = (await readJsonBody(request)) as Record<string, unknown>;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const expiry = parseNoteExpirySecondsFromBody(body.expirySeconds, {
+      maxExpirySeconds: capabilities.maxExpirySeconds,
+    });
+    const reads = parseMaxReadsFromBody(body.maxReads, {
+      allowedReadCounts: capabilities.allowedReadCounts,
+    });
+    const fileWindow = parseNoteFileAccessWindowFromBody(body.fileAccessWindowSeconds, {
+      maxSeconds: capabilities.maxFileAccessWindowSeconds,
+    });
+    if (!expiry.ok) return jsonResponse({ message: expiry.message }, 400, request);
+    if (!reads.ok) return jsonResponse({ message: reads.message }, 400, request);
+    if (!fileWindow.ok) return jsonResponse({ message: fileWindow.message }, 400, request);
+    const readerLanguage =
+      body.readerLanguage == null || body.readerLanguage === "auto"
+        ? null
+        : body.readerLanguage;
+    if (
+      readerLanguage != null &&
+      (!capabilities.readerLanguage ||
+        typeof readerLanguage !== "string" ||
+        !isSupportedLanguage(readerLanguage))
+    ) {
+      return jsonResponse(
+        { error: capabilities.readerLanguage ? "invalid_reader_language" : "premium_required" },
+        capabilities.readerLanguage ? 400 : 403,
+        request,
+      );
+    }
+    const requireRecipientVerification = body.requireRecipientVerification === true;
+    if (requireRecipientVerification && !capabilities.recipientVerification) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    await upsertUserNoteDefaults(env, session.id, {
+      expirySeconds: expiry.seconds,
+      maxReads: reads.maxReads,
+      fileAccessWindowSeconds: fileWindow.seconds,
+      readerLanguage: typeof readerLanguage === "string" ? readerLanguage : null,
+      notifyOnOpen: body.notifyOnOpen === true,
+      requireRecipientVerification,
+    });
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/note-defaults" && method === "DELETE") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const deleted = await deleteUserNoteDefaults(env, session.id);
+    return jsonResponse({ ok: true, deleted }, 200, request);
   }
 
   if (pathname === "/api/auth/webauthn/stepup/options" && method === "POST") {
@@ -4902,6 +5568,22 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
 
     if (!isLocal && env.TURNSTILE_SECRET_KEY) {
+      // Staging QA: Pages builds often omit VITE_TURNSTILE_SITE_KEY, and
+      // premium.privatenote.ai may be missing from the Turnstile allowlist.
+      // Requiring Turnstile then returns silent 200 and never calls Resend.
+      let browserHost = "";
+      try {
+        const origin = request.headers.get("Origin");
+        if (origin) browserHost = new URL(origin).hostname;
+      } catch {
+        /* ignore */
+      }
+      if (!browserHost) {
+        browserHost = (request.headers.get("X-Forwarded-Host") || "").split(":")[0].trim().toLowerCase();
+      }
+      const skipTurnstile =
+        env.AUTH_RELAX_TURNSTILE === "1" || isStagingAppHost(browserHost);
+      if (!skipTurnstile) {
       const token = body?.turnstileToken;
       if (!token) {
         console.error(
@@ -4919,6 +5601,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         );
         await jitterDelay();
         return jsonResponse(responsePayload, 200, request);
+      }
       }
     }
 

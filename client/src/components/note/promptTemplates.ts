@@ -78,6 +78,8 @@ export interface PromptTemplate {
   promptPlaceholder: string;
   starterExamples?: readonly PromptStarter[];
   outputExample?: string;
+  /** Starter+ template pack entries; omitted/`free` are available to everyone. */
+  access?: "free" | "premium";
 }
 
 export type PromptBuildModelTier = ModelTier;
@@ -398,6 +400,7 @@ export const promptTemplates: PromptTemplate[] = [
 
   {
     id: "document-summary",
+    access: "premium",
     name: "Document Summary",
     description:
       "Summarize long text into key points. Length follows your sentence setting.",
@@ -417,6 +420,7 @@ export const promptTemplates: PromptTemplate[] = [
 
   {
     id: "privacy-check",
+    access: "premium",
     name: "Privacy Check",
     description:
       "Remove private or identifying information.",
@@ -443,6 +447,10 @@ export function getPromptTemplateById(
   language: SupportedLanguage = "en",
 ): PromptTemplate | undefined {
   return getPromptTemplatesForLanguage(language).find((t) => t.id === id);
+}
+
+export function isPremiumPromptTemplateId(id: string | null | undefined): boolean {
+  return promptTemplates.some((template) => template.id === id && template.access === "premium");
 }
 
 /** @deprecated Use getModelTier from @shared/modelTier */

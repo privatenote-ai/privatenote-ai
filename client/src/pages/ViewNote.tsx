@@ -1,14 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRoute } from 'wouter';
 import { NoteDisplay } from '@/components/note/NoteDisplay';
 import { isLikelyTruncatedNoteUrlFragmentKey } from '@shared/urlFragmentKey';
-
-interface RevealBranding {
-  logoUrl?: string;
-  sharerName?: string;
-  companyName?: string;
-  accentColor?: string;
-}
 
 type NoteLinkCapture = { encryptionKey: string | null; linkKeyMissing: boolean };
 
@@ -31,7 +24,6 @@ function snapshotNoteLink(noteId: string): NoteLinkCapture {
 
 const ViewNote: React.FC = () => {
   const [match, params] = useRoute('/note/:id');
-  const [revealBranding, setRevealBranding] = useState<RevealBranding | undefined>(undefined);
 
   const { encryptionKey, linkKeyMissing } =
     match && params.id ? snapshotNoteLink(params.id) : { encryptionKey: null, linkKeyMissing: true };
@@ -49,18 +41,6 @@ const ViewNote: React.FC = () => {
     }
   }, [match, params?.id, encryptionKey]);
 
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const logoUrl = query.get('logo')?.trim() || undefined;
-    const sharerName = query.get('sender')?.trim() || undefined;
-    const companyName = query.get('company')?.trim() || undefined;
-    const accentColor = query.get('accent')?.trim() || undefined;
-
-    if (logoUrl || sharerName || companyName || accentColor) {
-      setRevealBranding({ logoUrl, sharerName, companyName, accentColor });
-    }
-  }, []);
-  
   if (!match || !params.id) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -75,13 +55,12 @@ const ViewNote: React.FC = () => {
   }
   
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
+    <div className="min-w-0 overflow-x-clip pb-20 pt-24">
       <NoteDisplay
         id={params.id}
         encryptionKey={encryptionKey}
         linkKeyMissing={linkKeyMissing}
         linkKeyTruncated={linkKeyTruncated}
-        revealBranding={revealBranding}
       />
     </div>
   );
