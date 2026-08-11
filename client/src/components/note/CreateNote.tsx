@@ -47,8 +47,10 @@ import { getLocalAiPreloadNetworkPolicy } from "@/utils/localAiNetworkDownloadPo
 import {
   Shield,
   Lock,
+  ChevronDown,
   ChevronUp,
   Eye,
+  File,
   Key,
   Settings,
   Sparkles,
@@ -58,6 +60,12 @@ import {
   Mic,
   X,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQrShare } from "@/hooks/useQrShare";
@@ -65,6 +73,7 @@ import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile, isVoiceRecordingSupported } from "@/utils/voiceMessageRecording";
+import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
@@ -540,6 +549,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
+  const attachActionButtonClass =
+    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25 sm:px-5";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -2725,6 +2736,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}
           {!isAiMode || (noteContent && isAiMode && !showPrompt && aiDraftAccepted) ? (
             <div className="space-y-3 mt-1">
+              {folderInputMounted ? (
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  className="sr-only"
+                  tabIndex={-1}
+                  multiple
+                  onChange={handleAttachFolderSelected}
+                  {...({
+                    webkitdirectory: "",
+                    directory: "",
+                  } as React.InputHTMLAttributes<HTMLInputElement> & {
+                    webkitdirectory: string;
+                    directory: string;
+                  })}
+                />
+              ) : null}
               {isFileTransferMode && !selectedFile ? (
                 <>
                   <input
@@ -2736,24 +2764,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     aria-hidden
                     onChange={handleAttachFileSelected}
                   />
-                  {folderInputMounted ? (
-                    <input
-                      ref={folderInputRef}
-                      type="file"
-                      className="sr-only"
-                      tabIndex={-1}
-                      aria-hidden
-                      multiple
-                      onChange={handleAttachFolderSelected}
-                      {...({
-                        webkitdirectory: "",
-                        directory: "",
-                      } as React.InputHTMLAttributes<HTMLInputElement> & {
-                        webkitdirectory: string;
-                        directory: string;
-                      })}
-                    />
-                  ) : null}
                   <GravityDropZone
                     isDragOver={isFileDragOver}
                     onDragOver={handleDropZoneDragOver}
@@ -2863,113 +2873,173 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 type="file"
                 className="sr-only"
                 tabIndex={-1}
-                aria-hidden
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customizeSheetExperiment) {
-                        setCustomizeSheetOpen(true);
-                      } else {
-                        setShowAdvancedOptions(!showAdvancedOptions);
-                      }
-                    }}
-                    className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 sm:flex-none sm:px-5`}
-                  >
-                    {customizeSheetExperiment || !showAdvancedOptions ? (
-                      <>
-                        <Settings className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.customize}</span>
-                      </>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                {selectedFile ? (
+                  <div className="flex min-w-0 w-full items-center gap-2 sm:flex-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 shrink-0 gap-1.5 px-3 sm:px-5`}
+                    >
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
+                    </button>
+                    {selectedFileIsVoice ? (
+                      <button
+                        type="button"
+                        onClick={handleRecordMessageClick}
+                        title={selectedFile.name}
+                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:max-w-[14rem] sm:px-5`}
+                      >
+                        <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className="truncate">{recordMessageButtonLabel}</span>
+                      </button>
                     ) : (
-                      <>
-                        <ChevronUp className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.hideOptions}</span>
-                      </>
-                    )}
-                  </button>
-
-                  <div
-                    className={
-                      selectedFile
-                        ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
-                        : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
-                    }
-                  >
-                    {selectedFile ? (
-                      <>
-                        {canAttachFiles && !selectedFileIsVoice ? (
-                          <label
-                            htmlFor={noteFileInputId}
-                            title={selectedFile.name}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:px-5`}
-                          >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="truncate">{attachFileButtonLabel}</span>
-                          </label>
-                        ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            onClick={
-                              selectedFileIsVoice ? handleRecordMessageClick : handleAttachFileClick
-                            }
                             title={selectedFile.name}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`}
+                            disabled={isPreparingFolder}
+                            className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:max-w-[14rem] sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
                           >
-                            {selectedFileIsVoice ? (
-                              <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            {isPreparingFolder ? (
+                              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                            ) : selectedFile.type === "application/zip" ||
+                              selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                             ) : (
                               <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                             )}
                             <span className="truncate">
-                              {selectedFileIsVoice ? recordMessageButtonLabel : attachFileButtonLabel}
+                              {isPreparingFolder
+                                ? (t.sftZippingFolder ?? "Zipping…")
+                                : attachFileButtonLabel}
                             </span>
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary opacity-80" aria-hidden />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedFile(null)}
-                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                          aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                        >
-                          <X className="h-4 w-4" aria-hidden />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {canAttachFiles ? (
-                          <label
-                            htmlFor={noteFileInputId}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 cursor-pointer gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[10.5rem]">
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              window.setTimeout(() => handleAttachFileClick(), 0);
+                            }}
                           >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
-                          </label>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleAttachFileClick}
-                            className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
+                            <File className="mr-2 h-4 w-4" aria-hidden />
+                            {t.sftSelectFile ?? "File"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              window.setTimeout(() => handleAttachFolderClick(), 0);
+                            }}
                           >
-                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                            <span className="whitespace-nowrap">{attachFileButtonLabel}</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleRecordMessageClick}
-                          className={`${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`}
-                        >
-                          <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                          <span className="whitespace-nowrap">{recordMessageButtonLabel}</span>
-                        </button>
-                      </>
+                            <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
+                            {t.sftSelectFolder ?? "Folder"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid min-w-0 w-full grid-cols-3 gap-2 sm:flex sm:flex-1 sm:flex-wrap sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
+                    >
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={isPreparingFolder}
+                          className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                          {isPreparingFolder ? (
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                          ) : (
+                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          )}
+                          <span className="truncate">
+                            {isPreparingFolder
+                              ? (t.sftZippingFolder ?? "Zipping…")
+                              : attachFileButtonLabel}
+                          </span>
+                          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary opacity-80" aria-hidden />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[10.5rem]">
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            window.setTimeout(() => handleAttachFileClick(), 0);
+                          }}
+                        >
+                          <File className="mr-2 h-4 w-4" aria-hidden />
+                          {t.sftSelectFile ?? "File"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            window.setTimeout(() => handleAttachFolderClick(), 0);
+                          }}
+                        >
+                          <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
+                          {t.sftSelectFolder ?? "Folder"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <button
+                      type="button"
+                      onClick={handleRecordMessageClick}
+                      disabled={isPreparingFolder}
+                      className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">{recordMessageButtonLabel}</span>
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -3085,6 +3155,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onOpenChange={setVoiceRecorderOpen}
             onRecorded={handleVoiceMessageRecorded}
             maxBytes={fileLimitBytes}
+            formatPreference={
+              isPremiumUser ? readVoiceRecordingFormatPreference() : "auto"
+            }
           />
         </Suspense>
       ) : null}

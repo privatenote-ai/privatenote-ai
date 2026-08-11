@@ -22,6 +22,7 @@ import {
   formatRecordingDuration,
   isVoiceRecordingSupported,
   pickVoiceRecordingStrategy,
+  type VoiceRecordingFormatPreference,
   type VoiceRecordingStrategy,
 } from "@/utils/voiceMessageRecording";
 
@@ -34,6 +35,8 @@ type VoiceMessageRecorderDialogProps = {
   maxBytes: number;
   /** Plan-based recording cap; defaults to Free (5 minutes). */
   maxDurationSeconds?: number;
+  /** Premium preference: auto / wav / m4a. Free always uses auto. */
+  formatPreference?: VoiceRecordingFormatPreference;
 };
 
 function stopMediaStream(stream: MediaStream | null): void {
@@ -49,6 +52,7 @@ export function VoiceMessageRecorderDialog({
   onRecorded,
   maxBytes,
   maxDurationSeconds = VOICE_MESSAGE_MAX_DURATION_SECONDS,
+  formatPreference = "auto",
 }: VoiceMessageRecorderDialogProps) {
   const { t } = useLanguage();
   const [phase, setPhase] = useState<RecorderPhase>("idle");
@@ -66,7 +70,9 @@ export function VoiceMessageRecorderDialog({
   const inputSampleRateRef = useRef(VOICE_MESSAGE_WAV_SAMPLE_RATE);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
-  const strategyRef = useRef<VoiceRecordingStrategy>(pickVoiceRecordingStrategy());
+  const strategyRef = useRef<VoiceRecordingStrategy>(
+    pickVoiceRecordingStrategy(formatPreference),
+  );
   const recordedBlobRef = useRef<Blob | null>(null);
   const timerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number>(0);
@@ -223,7 +229,7 @@ export function VoiceMessageRecorderDialog({
         },
       });
       streamRef.current = stream;
-      strategyRef.current = pickVoiceRecordingStrategy();
+      strategyRef.current = pickVoiceRecordingStrategy(formatPreference);
       chunksRef.current = [];
       pcmChunksRef.current = [];
       discardOnStopRef.current = false;
@@ -330,24 +336,65 @@ export function VoiceMessageRecorderDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-4 py-2">
+        <div className="flex flex-col items-center gap-5 py-3">
           <div
             className={
               phase === "recording"
-                ? "flex h-20 w-20 items-center justify-center rounded-full bg-red-500/15 text-red-600 ring-4 ring-red-500/20 dark:text-red-400"
-                : "flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary"
+                ? "relative flex h-20 w-20 items-center justify-center rounded-full bg-red-500/12 text-red-600 ring-4 ring-red-500/15 dark:text-red-400"
+                : phase === "preview"
+                  ? "flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+                  : "flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary"
             }
             aria-hidden
           >
-            <Mic className={phase === "recording" ? "h-9 w-9 animate-pulse" : "h-9 w-9"} />
+            {phase === "recording" ? (
+              <span className="absolute inset-0 animate-ping rounded-full bg-red-500/10" />
+            ) : null}
+            {phase === "preview" ? (
+              <Check className="relative h-9 w-9" />
+            ) : (
+              <Mic className={`relative h-9 w-9${phase === "recording" ? " animate-pulse" : ""}`} />
+            )}
           </div>
 
-          <p className="font-mono text-2xl tabular-nums text-gray-900 dark:text-gray-100">
-            {formatRecordingDuration(elapsedSeconds)}
-            <span className="ml-1 text-sm font-sans text-gray-400">
-              / {formatRecordingDuration(durationCapSeconds)}
-            </span>
-          </p>
+          <div className="flex flex-col items-center gap-1.5">
+            <p
+              className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums text-gray-900 dark:text-gray-50"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <span>{formatRecordingDuration(elapsedSeconds)}</span>
+              <span className="mx-1.5 text-lg font-medium text-gray-300 dark:text-gray-600">/</span>
+              <span className="text-lg font-medium tabular-nums text-gray-400 dark:text-gray-500">
+                {formatRecordingDuration(durationCapSeconds)}
+              </span>
+            </p>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+              {phase === "recording"
+                ? (t.recordMessageRecordingStatus ?? "Recording")
+                : phase === "preview"
+                  ? (t.recordMessagePreviewStatus ?? "Preview")
+                  : (t.recordMessageReadyStatus ?? "Ready")}
+            </p>
+          </div>
+
+          {phase === "recording" || phase === "preview" ? (
+            <div
+              className="h-1.5 w-full max-w-[14rem] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
+              aria-hidden
+            >
+              <div
+                className={
+                  phase === "recording"
+                    ? "h-full rounded-full bg-red-500 transition-[width] duration-200 ease-linear"
+                    : "h-full rounded-full bg-emerald-500"
+                }
+                style={{
+                  width: `${Math.min(100, (elapsedSeconds / durationCapSeconds) * 100)}%`,
+                }}
+              />
+            </div>
+          ) : null}
 
           {phase === "preview" && previewUrl ? (
             <audio controls src={previewUrl} className="w-full" preload="metadata">
@@ -362,7 +409,7 @@ export function VoiceMessageRecorderDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-2 sm:justify-center sm:space-x-0 sm:gap-2">
           {phase === "idle" ? (
             <Button type="button" onClick={() => void startRecording()} disabled={isStarting}>
               <Mic className="mr-1.5 h-4 w-4" aria-hidden />

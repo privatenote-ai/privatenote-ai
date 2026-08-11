@@ -50,12 +50,18 @@ describe("voiceMessageRecording", () => {
   });
 
   it("falls back to WAV strategy when MediaRecorder mp4 is unavailable", () => {
-    const strategy = pickVoiceRecordingStrategy();
+    const strategy = pickVoiceRecordingStrategy("auto");
     assert.ok(strategy.kind === "wav" || strategy.kind === "media-recorder");
     if (strategy.kind === "wav") {
       assert.equal(strategy.extension, "wav");
       assert.equal(strategy.mimeType, "audio/wav");
     }
+  });
+
+  it("honors an explicit WAV preference", () => {
+    const strategy = pickVoiceRecordingStrategy("wav");
+    assert.equal(strategy.kind, "wav");
+    assert.equal(strategy.extension, "wav");
   });
 
   it("downsamples and encodes a mono WAV blob", async () => {

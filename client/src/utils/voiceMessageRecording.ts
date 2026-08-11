@@ -1,3 +1,7 @@
+import type { VoiceRecordingFormatPreference } from "./voiceRecordingFormatPreference";
+
+export type { VoiceRecordingFormatPreference };
+
 /** Prefer formats recipients can play across Chrome and Safari. */
 const MEDIA_RECORDER_CANDIDATES: ReadonlyArray<{ mimeType: string; extension: string }> = [
   // AAC-in-MP4 plays in Safari and Chrome; prefer whenever the browser can record it.
@@ -15,23 +19,46 @@ export type VoiceRecordingStrategy =
   | { kind: "media-recorder"; mimeType: string; extension: string }
   | { kind: "wav"; mimeType: "audio/wav"; extension: "wav" };
 
-export function pickVoiceRecordingMime(): { mimeType: string; extension: string } {
-  const strategy = pickVoiceRecordingStrategy();
+export function isVoiceRecordingMp4Supported(): boolean {
+  if (typeof MediaRecorder === "undefined") return false;
+  return MEDIA_RECORDER_CANDIDATES.some((candidate) =>
+    MediaRecorder.isTypeSupported(candidate.mimeType),
+  );
+}
+
+function pickMediaRecorderMp4Strategy(): VoiceRecordingStrategy | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  for (const candidate of MEDIA_RECORDER_CANDIDATES) {
+    if (MediaRecorder.isTypeSupported(candidate.mimeType)) {
+      return {
+        kind: "media-recorder",
+        mimeType: candidate.mimeType,
+        extension: candidate.extension,
+      };
+    }
+  }
+  return null;
+}
+
+export function pickVoiceRecordingMime(
+  preference: VoiceRecordingFormatPreference = "auto",
+): { mimeType: string; extension: string } {
+  const strategy = pickVoiceRecordingStrategy(preference);
   return { mimeType: strategy.mimeType, extension: strategy.extension };
 }
 
 /**
  * Choose a recording path that recipients can play in both Chrome and Safari.
- * - Safari: MediaRecorder → M4A/AAC
- * - Chrome/Firefox: PCM → WAV (WebM/Opus often fails in Safari)
+ * - auto: M4A/AAC when the browser can record it, otherwise WAV
+ * - m4a: prefer compact AAC-in-MP4 (falls back to WAV if unsupported here)
+ * - wav: always PCM WAV for maximum playback compatibility
  */
-export function pickVoiceRecordingStrategy(): VoiceRecordingStrategy {
-  if (typeof MediaRecorder !== "undefined") {
-    for (const candidate of MEDIA_RECORDER_CANDIDATES) {
-      if (MediaRecorder.isTypeSupported(candidate.mimeType)) {
-        return { kind: "media-recorder", mimeType: candidate.mimeType, extension: candidate.extension };
-      }
-    }
+export function pickVoiceRecordingStrategy(
+  preference: VoiceRecordingFormatPreference = "auto",
+): VoiceRecordingStrategy {
+  if (preference !== "wav") {
+    const mp4 = pickMediaRecorderMp4Strategy();
+    if (mp4) return mp4;
   }
   return { kind: "wav", mimeType: "audio/wav", extension: "wav" };
 }
