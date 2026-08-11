@@ -76,6 +76,7 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "argon2": "^0.41.1",
     "argon2-browser": "^1.18.0",
+    "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",

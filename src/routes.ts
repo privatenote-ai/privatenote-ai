@@ -7,6 +7,9 @@ import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
   NOTE_FILE_AES_GCM_TAG_BYTES,
+  NOTE_FILE_MAX_CHUNK_INDEX,
+  NOTE_FILE_MAX_CHUNKS,
+  NOTE_FILE_SECRETSTREAM_ABYTES,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
 } from "@shared/noteFileLimits";
@@ -42,7 +45,7 @@ import {
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import {
   type NoteReservationRecord,
@@ -54,6 +57,8 @@ import {
   noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
+import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
+import { createNoteFilePresignedPutUrl, readR2PresignConfig } from "./r2Presign";
 import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
@@ -249,6 +254,15 @@ const SECOND_FACTOR_STEP_UP_CODE = "second_factor_step_up_required";
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOrigin(request) : null;
+  let hostname = "";
+  try {
+    hostname = new URL(request.url).hostname;
+  } catch {
+    hostname = "";
+  }
+  if (isUploadRelayHostname(hostname)) {
+    return buildUploadRelayCorsHeaders(request, allowedOrigin);
+  }
 
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
@@ -7134,6 +7148,36 @@ function bytesToHex(bytes: Uint8Array): string {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+/** Best-effort discard so Safari does not mask early 4xx as status 0 while still uploading. */
+async function discardRequestBody(request: Request): Promise<void> {
+  try {
+    if (request.body) {
+      await request.body.cancel();
+    }
+  } catch {
+    try {
+      await request.arrayBuffer();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+async function sha256HexOfStream(
+  stream: ReadableStream<Uint8Array>,
+): Promise<{ hex: string; byteLength: number }> {
+  const hasher = sha256.create();
+  let byteLength = 0;
+  const reader = stream.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    hasher.update(value);
+    byteLength += value.byteLength;
+  }
+  return { hex: bytesToHex(hasher.digest()), byteLength };
+}
+
 async function persistNoteReservation(env: Env, noteId: string, record: NoteReservationRecord): Promise<void> {
   const expiresIn = record.fileStorageUserId
     ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
@@ -8172,11 +8216,384 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
   }
 
-  const noteFileChunkParams = parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
+  // Large attachments (≥ ~90 MB ciphertext): browser PUT → R2 via S3 presign
+  // (bypasses Cloudflare CDN max request body on the upload Worker hop).
+  const filePresignParams = parsePathParams(pathname, "/api/notes/:id/file/presign");
+  if (filePresignParams && method === "POST") {
+    const { id } = filePresignParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid file chunk" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    const presignConfig = readR2PresignConfig(env);
+    if (!presignConfig) {
+      return jsonResponse(
+        {
+          error: "r2_presign_unavailable",
+          message:
+            "Direct R2 upload is not configured. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ACCOUNT_ID, and R2_BUCKET_NAME.",
+        },
+        503,
+        request,
+      );
+    }
+    const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
+    if (!uploadAuth.ok) {
+      return uploadAuth.response;
+    }
+    const clientId = getClientIdentifier(request);
+    const chunkRateLimit = await checkRateLimit(
+      env,
+      `${clientId}:file-presign:${id}`,
+      RATE_LIMIT_FILE_CHUNK_PUT,
+    );
+    if (!chunkRateLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "rate_limited",
+          message: `Too many upload requests. Please try again in ${chunkRateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: chunkRateLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+    const reservation = uploadAuth.record;
+    if (
+      reservation.attachmentPlaintextSize == null ||
+      reservation.attachmentEncryptedSize == null ||
+      !(uploadAuth.record.fileStorageUserId ?? uploadAuth.premiumUserId)
+    ) {
+      return jsonResponse(
+        { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+        401,
+        request,
+      );
+    }
+    try {
+      const objectKey = noteFileChunkObjectKey(id, 0);
+      const { uploadUrl, expiresIn } = await createNoteFilePresignedPutUrl(presignConfig, objectKey);
+      return jsonResponse(
+        {
+          uploadUrl,
+          expiresIn,
+          objectKey,
+          encryptedSize: reservation.attachmentEncryptedSize,
+        },
+        200,
+        request,
+      );
+    } catch (error) {
+      console.error("[ROUTES] Failed to presign R2 upload:", error);
+      return jsonResponse({ error: "Failed to prepare direct upload" }, 500, request);
+    }
+  }
+
+  const fileCompleteParams = parsePathParams(pathname, "/api/notes/:id/file/complete");
+  if (fileCompleteParams && method === "POST") {
+    const { id } = fileCompleteParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid file chunk" }, 400, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse(
+        { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+        503,
+        request,
+      );
+    }
+    const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
+    if (!uploadAuth.ok) {
+      return uploadAuth.response;
+    }
+
+    let completeBody: { chunkSha256?: unknown; encryptedSize?: unknown } = {};
+    try {
+      completeBody = (await request.json()) as typeof completeBody;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body" }, 400, request);
+    }
+    const claimedHash =
+      typeof completeBody.chunkSha256 === "string" ? completeBody.chunkSha256.trim().toLowerCase() : "";
+    if (!isValidAttachmentContentHash(claimedHash)) {
+      return jsonResponse({ error: "chunkSha256 is required" }, 400, request);
+    }
+
+    const premiumUserId = uploadAuth.premiumUserId;
+    const isPremium = premiumUserId !== null;
+    const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
+    const reservation = uploadAuth.record;
+    if (
+      !fileStorageUserId ||
+      reservation.attachmentPlaintextSize == null ||
+      reservation.attachmentEncryptedSize == null
+    ) {
+      return jsonResponse(
+        { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+        401,
+        request,
+      );
+    }
+
+    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const plaintextSize = reservation.attachmentPlaintextSize;
+    const encryptedTotalSize = reservation.attachmentEncryptedSize;
+    if (plaintextSize > plaintextLimit) {
+      return jsonResponse(
+        {
+          error: "file_too_large",
+          message: `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+        },
+        413,
+        request,
+      );
+    }
+    const claimedSize =
+      typeof completeBody.encryptedSize === "number" && Number.isInteger(completeBody.encryptedSize)
+        ? completeBody.encryptedSize
+        : encryptedTotalSize;
+    if (claimedSize !== encryptedTotalSize) {
+      return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
+    }
+
+    if (fileStorageUserId) {
+      const quotaReservation = await reserveAccountFileStorageBytes(
+        env,
+        fileStorageUserId,
+        id,
+        encryptedTotalSize,
+        noteFileTotalStorageBytesForAccount(isPremium),
+      );
+      if (!quotaReservation.ok) {
+        return jsonResponse(quotaReservation.body, quotaReservation.status, request);
+      }
+    }
+
+    const chunkKey = uploadedChunkHashKey(0);
+    const objectKey = noteFileChunkObjectKey(id, 0);
+    try {
+      const freshRaw = await env.NOTES_KV.get(getReservationKey(id));
+      const freshReservation = freshRaw
+        ? (JSON.parse(freshRaw) as NoteReservationRecord)
+        : reservation;
+      const existingHash = freshReservation.uploadedChunkHashes?.[chunkKey];
+      const existingObject = await env.NOTE_FILES_R2.head(objectKey);
+      if (!existingObject || existingObject.size !== encryptedTotalSize) {
+        return jsonResponse({ error: "Attachment upload missing" }, 400, request);
+      }
+      if (existingHash === claimedHash) {
+        return jsonResponse(
+          { ok: true, encryptedSize: encryptedTotalSize, idempotent: true },
+          200,
+          request,
+        );
+      }
+
+      await persistNoteReservation(env, id, {
+        ...freshReservation,
+        uploadedChunkHashes: {
+          ...(freshReservation.uploadedChunkHashes ?? {}),
+          [chunkKey]: claimedHash,
+        },
+      });
+      return jsonResponse({ ok: true, encryptedSize: encryptedTotalSize }, 200, request);
+    } catch (error) {
+      console.error("[ROUTES] Failed to complete R2 direct upload:", error);
+      return jsonResponse({ error: "Failed to complete upload" }, 500, request);
+    }
+  }
+
+  // encrypt.lu-style single Blob PUT lands on /file (not /file/chunks/0).
+  const singleFileUploadParams = parsePathParams(pathname, "/api/notes/:id/file");
+  const isSingleFileUpload = Boolean(singleFileUploadParams && (method === "PUT" || method === "POST"));
+  const noteFileChunkParams = isSingleFileUpload
+    ? { id: singleFileUploadParams!.id, chunkIndex: "0" }
+    : parsePathParams(pathname, "/api/notes/:id/file/chunks/:chunkIndex");
   if (noteFileChunkParams && (method === "PUT" || method === "POST")) {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
-    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+
+    if (isSingleFileUpload) {
+      if (!isValidNoteId(id)) {
+        await discardRequestBody(request);
+        return jsonResponse({ error: "Invalid file chunk" }, 400, request);
+      }
+      if (!env.NOTE_FILES_R2) {
+        await discardRequestBody(request);
+        return jsonResponse(
+          { error: "file_storage_unavailable", message: "Encrypted file storage is not configured." },
+          503,
+          request,
+        );
+      }
+
+      const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
+      if (!uploadAuth.ok) {
+        await discardRequestBody(request);
+        return uploadAuth.response;
+      }
+
+      const clientId = getClientIdentifier(request);
+      const chunkRateLimit = await checkRateLimit(
+        env,
+        `${clientId}:file-chunk:${id}`,
+        RATE_LIMIT_FILE_CHUNK_PUT,
+      );
+      if (!chunkRateLimit.allowed) {
+        await discardRequestBody(request);
+        return jsonResponse(
+          {
+            error: "Rate limit exceeded",
+            message: `Too many attachment chunk uploads. Please try again in ${chunkRateLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+            resetAt: chunkRateLimit.resetAt,
+          },
+          429,
+          request,
+        );
+      }
+
+      const contentLengthHeader = request.headers.get("Content-Length");
+      const contentLength =
+        contentLengthHeader != null && contentLengthHeader !== ""
+          ? Number(contentLengthHeader)
+          : NaN;
+      if (contentLength === 0) {
+        return applyCorsHeaders(new Response(null, { status: 204 }), request);
+      }
+
+      const premiumUserId = uploadAuth.premiumUserId;
+      const isPremium = premiumUserId !== null;
+      const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
+      const reservation = uploadAuth.record;
+      if (
+        !fileStorageUserId ||
+        reservation.attachmentPlaintextSize == null ||
+        reservation.attachmentEncryptedSize == null
+      ) {
+        await discardRequestBody(request);
+        return jsonResponse(
+          { error: "file_upload_auth_required", message: "Sign in to attach encrypted files." },
+          401,
+          request,
+        );
+      }
+
+      const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+      const plaintextSize = reservation.attachmentPlaintextSize;
+      const encryptedTotalSize = reservation.attachmentEncryptedSize;
+      if (plaintextSize > plaintextLimit) {
+        await discardRequestBody(request);
+        return jsonResponse(
+          {
+            error: "file_too_large",
+            message: `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+          },
+          413,
+          request,
+        );
+      }
+      const encryptedTotalLimit =
+        plaintextLimit + NOTE_FILE_SECRETSTREAM_ABYTES * NOTE_FILE_MAX_CHUNKS + 24;
+      if (encryptedTotalSize > encryptedTotalLimit) {
+        await discardRequestBody(request);
+        return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
+      }
+      if (Number.isInteger(contentLength) && contentLength !== encryptedTotalSize) {
+        await discardRequestBody(request);
+        return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
+      }
+
+      if (fileStorageUserId) {
+        const quotaReservation = await reserveAccountFileStorageBytes(
+          env,
+          fileStorageUserId,
+          id,
+          encryptedTotalSize,
+          noteFileTotalStorageBytesForAccount(isPremium),
+        );
+        if (!quotaReservation.ok) {
+          await discardRequestBody(request);
+          return jsonResponse(quotaReservation.body, quotaReservation.status, request);
+        }
+      }
+
+      if (!request.body) {
+        return jsonResponse({ error: "Missing upload body" }, 400, request);
+      }
+
+      const chunkKey = uploadedChunkHashKey(0);
+      const objectKey = noteFileChunkObjectKey(id, 0);
+
+      try {
+        const freshRaw = await env.NOTES_KV.get(getReservationKey(id));
+        const freshReservation = freshRaw
+          ? (JSON.parse(freshRaw) as NoteReservationRecord)
+          : reservation;
+        const existingHash = freshReservation.uploadedChunkHashes?.[chunkKey];
+        if (existingHash) {
+          const existingObject = await env.NOTE_FILES_R2.head(objectKey);
+          if (existingObject && existingObject.size === encryptedTotalSize) {
+            await discardRequestBody(request);
+            return jsonResponse(
+              { ok: true, encryptedSize: encryptedTotalSize, idempotent: true },
+              200,
+              request,
+            );
+          }
+        }
+
+        const [toR2, toHash] = request.body.tee();
+        const hashPromise = sha256HexOfStream(toHash);
+        const putPromise = env.NOTE_FILES_R2.put(objectKey, toR2 as any, {
+          httpMetadata: { contentType: "application/octet-stream" },
+          customMetadata: {
+            encryptedSize: String(encryptedTotalSize),
+            chunkIndex: "0",
+            chunkEncryptedSize: String(encryptedTotalSize),
+            createdAt: new Date().toISOString(),
+          },
+        });
+        const [{ hex: chunkSha256Hex, byteLength }] = await Promise.all([hashPromise, putPromise]);
+        if (byteLength !== encryptedTotalSize) {
+          try {
+            await env.NOTE_FILES_R2.delete(objectKey);
+          } catch {
+            /* best effort */
+          }
+          return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
+        }
+
+        await persistNoteReservation(env, id, {
+          ...freshReservation,
+          uploadedChunkHashes: {
+            ...(freshReservation.uploadedChunkHashes ?? {}),
+            [chunkKey]: chunkSha256Hex,
+          },
+        });
+
+        return jsonResponse({ ok: true, encryptedSize: byteLength }, 201, request);
+      } catch (error) {
+        console.error(`[NOTE_FILES] Single-blob upload failed for ${id}:`, error);
+        return jsonResponse(
+          {
+            error: "file_chunk_upload_failed",
+            message: "Encrypted file upload failed. Please retry.",
+          },
+          500,
+          request,
+        );
+      }
+    }
+
+    const encryptedBytes = await request.arrayBuffer();
+
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
       return jsonResponse({ error: "Invalid file chunk" }, 400, request);
     }
     if (!env.NOTE_FILES_R2) {
@@ -8208,13 +8625,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-
-    // Drain the request body BEFORE any size/quota validation. Safari/WebKit reports
-    // an opaque "The network connection was lost" (masking the real HTTP status)
-    // whenever a Worker responds while the upload body is still streaming. Reading the
-    // body first guarantees the client sees real 4xx/5xx statuses so its retry and
-    // route-fallback logic can actually engage.
-    const encryptedBytes = await request.arrayBuffer();
 
     // Safari fires one empty-body probe to warm the HTTP/2 connection before real
     // chunks. Answer 204 so DevTools doesn't look like a failed upload.
@@ -8270,7 +8680,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     ) {
       return jsonResponse({ error: "Attachment encrypted size mismatch" }, 400, request);
     }
-    const encryptedTotalLimit = plaintextLimit + NOTE_FILE_AES_GCM_TAG_BYTES * 1000 + 24;
+    const encryptedTotalLimit =
+      plaintextLimit + NOTE_FILE_SECRETSTREAM_ABYTES * NOTE_FILE_MAX_CHUNKS + 24;
     if (encryptedTotalSize > encryptedTotalLimit) {
       return jsonResponse({ error: "Encrypted file exceeds the account limit" }, 413, request);
     }
@@ -8360,7 +8771,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (noteFileChunkParams && method === "GET") {
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
-    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > 999) {
+    if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
       return jsonResponse({ error: "Invalid file chunk" }, 400, request);
     }
     if (!env.NOTE_FILES_R2) {

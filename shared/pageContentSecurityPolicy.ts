@@ -8,6 +8,9 @@ export const PAGE_CSP_CONNECT_SRC = [
   "http://localhost:*",
   "http://127.0.0.1:*",
   "https://privatenote-api.marjan-skrobot.workers.dev",
+  "https://privatenote-api-staging.marjan-skrobot.workers.dev",
+  "https://upload.privatenote.ai",
+  "https://upload-staging.privatenote.ai",
   "https://privatenote-ai.pages.dev",
   "https://*.privatenote-ai.pages.dev",
   "https://*.pages.dev",
@@ -25,6 +28,7 @@ export const PAGE_CSP_CONNECT_SRC = [
   "https://cdn-lfs-eu-1.hf.co",
   "https://*.hf.co",
   "https://*.r2.dev",
+  "https://*.r2.cloudflarestorage.com",
   "https://raw.githubusercontent.com",
   "https://cdn.jsdelivr.net",
 ].join(" ");
