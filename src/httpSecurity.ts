@@ -53,3 +53,22 @@ export function resolveAccessControlAllowHeaders(request: Request): string {
   const requested = request.headers.get("Access-Control-Request-Headers")?.trim();
   return requested || API_CORS_ALLOW_HEADERS_DEFAULT;
 }
+
+/**
+ * Minimal CORS for cookie-less upload relays — matches relay.encrypt.lu:
+ * Allow-Origin + Allow-Headers + Allow-Methods only (no credentials, no CSP dump).
+ */
+export function buildUploadRelayCorsHeaders(
+  request: Request,
+  allowedOrigin: string | null,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+    "Access-Control-Allow-Headers": resolveAccessControlAllowHeaders(request),
+  };
+  if (request.headers.get("Origin")) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin ?? "null";
+    headers["Vary"] = "Origin";
+  }
+  return headers;
+}

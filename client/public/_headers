@@ -1,27 +1,53 @@
 /*
-  # Cross-Origin Isolation — required for SharedArrayBuffer (used by WebLLM / MLC-AI on-device inference).
-  # Without COOP + COEP, window.crossOriginIsolated = false and the WASM threading engine cannot start.
-  #
-  # COEP: credentialless (preferred over require-corp for Cloudflare Pages)
-  #   • Enables cross-origin isolation without requiring every cross-origin sub-resource
-  #     to carry CORS or Cross-Origin-Resource-Policy headers.
-  #   • Cross-origin requests are made without credentials (cookies/auth), which is fine
-  #     for public CDN assets (fonts, model files, Turnstile scripts).
-  #   • Supported in Chrome 96+, Firefox 119+, Safari 17.2+.
-  #   • Falls back gracefully in older browsers (no isolation, local AI uses its own error path).
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: credentialless
   # CSP via HTTP header (meta cannot set frame-ancestors). Host allowlists in script-src are a known
   # trade-off for Turnstile, Cloudflare Insights, jsDelivr, and local AI CDNs; tightening further needs
   # nonce/hash + strict-dynamic from an edge HTML rewriter, not static builds alone.
   # Trusted Types (require-trusted-types-for) is omitted — it breaks typical React/Vite without policies.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Pd9avegm7A0nYU/IhTKuSf8GuRF+nk2Dqx69XTNaGjM=' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com blob: data:; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none';
+  #
+  # No COOP/COEP on the default SPA — encrypt.lu has neither on the share/upload surface, and Safari
+  # aborts multi‑MiB cross-origin XHR uploads from COEP:credentialless documents. Cross-origin
+  # isolation (SharedArrayBuffer / WebLLM) is enabled only on local-AI routes below.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Pd9avegm7A0nYU/IhTKuSf8GuRF+nk2Dqx69XTNaGjM=' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-api-staging.marjan-skrobot.workers.dev https://upload.privatenote.ai https://upload-staging.privatenote.ai https://privatenote-ai.pages.dev https://*.privatenote-ai.pages.dev https://*.pages.dev https://privatenote.ai https://*.privatenote.ai https://api.pwnedpasswords.com https://challenges.cloudflare.com https://cloudflareinsights.com https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cdn-lfs-eu-1.huggingface.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co https://*.hf.co https://*.r2.dev https://*.r2.cloudflarestorage.com https://raw.githubusercontent.com https://cdn.jsdelivr.net; img-src 'self' data: https: blob:; media-src 'self' blob:; frame-src https://challenges.cloudflare.com blob: data:; worker-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none';
   X-Frame-Options: DENY
   # HSTS: 1y+ max-age and preload satisfy modern audits; only use preload if every HTTPS
   # response on this host and includeSubDomains hosts is correct (see https://hstspreload.org/).
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+
+# SPA entry must revalidate after every deploy. Stale HTML + replaced hashed chunks → module 404s
+# and a missing composer (see deploy-pages-staging.yml concurrency note).
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/*.html
+  Cache-Control: no-cache
+
+# Content-hashed Vite assets are safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# SharedArrayBuffer / WebLLM — isolation only where on-device AI runs (not create-note uploads).
+/llm-ui
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  X-Robots-Tag: noindex, nofollow
+
+/llm-ui/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+
+/test-llm
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  X-Robots-Tag: noindex, nofollow
+
+/test-llm/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
 
 /admin/*
   X-Robots-Tag: noindex, nofollow
@@ -42,12 +68,6 @@
   X-Robots-Tag: noindex, nofollow
 
 /note/*
-  X-Robots-Tag: noindex, nofollow
-
-/test-llm
-  X-Robots-Tag: noindex, nofollow
-
-/llm-ui
   X-Robots-Tag: noindex, nofollow
 
 /api/*

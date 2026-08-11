@@ -10,7 +10,8 @@ import {
 } from "./routes";
 import type { Env } from "./types";
 import { getAllowedOriginFromRequest } from "./trustedOrigins";
-import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS } from "./httpSecurity";
+import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
+import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
 
 // Export both for migration compatibility
 // SecureNoteStorage is deleted in v3 migration but needed for migration history
@@ -19,6 +20,15 @@ export { SecureNoteStorage, SecureNoteStorageSql, AuthTokenStore };
 const getCorsHeaders = (request: Request): Record<string, string> => {
   const origin = request.headers.get("Origin");
   const allowedOrigin = origin ? getAllowedOriginFromRequest(request) : null;
+  let hostname = "";
+  try {
+    hostname = new URL(request.url).hostname;
+  } catch {
+    hostname = "";
+  }
+  if (isUploadRelayHostname(hostname)) {
+    return buildUploadRelayCorsHeaders(request, allowedOrigin);
+  }
   const headers: Record<string, string> = {
     ...SECURITY_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -73,6 +83,15 @@ export default {
 
       // Handle API routes
       if (pathname.startsWith("/api")) {
+        if (pathname === "/api/health" && request.method === "GET") {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              ...getCorsHeaders(request),
+            },
+          });
+        }
         return await registerRoutes(request, env);
       }
 
@@ -90,7 +109,10 @@ export default {
           }),
           {
             status: 200,
-            headers: { "Content-Type": "application/json" }
+            headers: {
+              "Content-Type": "application/json",
+              ...getCorsHeaders(request),
+            }
           }
         );
       }
