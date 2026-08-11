@@ -521,7 +521,7 @@ function DeliveryDetail({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {t.authActivityNoDeliveryTracking ??
-              "No delivery tracking for this note. Tracking and proof of access start when you send with recipient alerts enabled on a Starter or Business plan."}
+              "No delivery tracking for this note. On Starter and Business, newly created notes are tracked so you can revoke unopened links and view proof of access from Activity."}
           </p>
         </div>
       </div>

@@ -946,20 +946,25 @@ async function registerPremiumSentNote(
   const notifyOnAttachmentDownload = input.notifyOnAttachmentDownload === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
   const requireReceiptAck = input.requireReceiptAck === true;
-  if (
-    !notifyOnOpen &&
-    !notifyOnDestroyed &&
-    !notifyOnAttachmentDownload &&
-    !requireRecipientVerification &&
-    !requireReceiptAck
-  ) {
-    return;
-  }
+  const wantsExplicitTracking =
+    notifyOnOpen ||
+    notifyOnDestroyed ||
+    notifyOnAttachmentDownload ||
+    requireRecipientVerification ||
+    requireReceiptAck;
   if (!env.AUTH_DB) return;
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session?.id) return;
+    // Starter/Business can revoke unopened notes; register tracking even when no
+    // alert/gate options were selected so revoke is available from success + Activity.
+    const canRevokeUnopened = planFeaturesFor(
+      (await getAccountEntitlements(env, session.id)).accountType,
+    ).revokeUnopened;
+    if (!wantsExplicitTracking && !canRevokeUnopened) {
+      return;
+    }
     await insertSentNote(env, {
       userId: session.id,
       noteId,

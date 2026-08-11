@@ -2433,6 +2433,9 @@ export const en: Translations = {
   documentMetaAuthRootTitle: "Sign in or sign up",
   documentMetaAuthRootDescription:
     "Sign in or create a PrivateNote.ai account with email or passkeys to manage secure notes, recovery settings, and private account access from any browser.",
+  documentMetaAdminTitle: "Admin",
+  documentMetaAdminDescription:
+    "Sign in to the PrivateNote.ai admin dashboard for analytics and operations.",
   documentMetaAdminBlogTitle: "Blog admin",
   documentMetaAdminBlogDescription: "Create and manage blog posts.",
   documentMetaAnalyticsTitle: "Analytics",
@@ -2488,6 +2491,22 @@ export const en: Translations = {
   notificationStatusRecordingDownloaded: "Downloaded recording",
   notificationStatusReceiptConfirmed: "Receipt confirmed",
   notificationStatusRevoked: "Revoked",
+  notificationRevokeAria: "Revoke unopened note",
+  notificationRevokeHint:
+    "Still unopened — you can revoke the link so it can no longer be opened.",
+  notificationRevokeDialogTitle: "Revoke this note?",
+  notificationRevokeDialogBody:
+    "The secret link will stop working immediately. This only works if the note has not been opened yet.",
+  notificationRevokeConfirm: "Revoke link",
+  notificationRevoking: "Revoking...",
+  notificationRevokeSuccessTitle: "Note revoked",
+  notificationRevokeSuccessBody: "The link can no longer be opened.",
+  notificationRevokeAlreadyOpened:
+    "This note was already opened and can no longer be revoked.",
+  notificationRevokeError: "Could not revoke that note.",
+  successRevokeTitle: "Revoke before it is opened",
+  successRevokeHint:
+    "Changed your mind? Destroy this link now. You can also revoke later from Activity.",
 
   prefillPartnerBodyPrefix: "This note was pre-filled by",
   prefillPartnerBodySuffix: "PrivateNote has not created or shared anything yet.",

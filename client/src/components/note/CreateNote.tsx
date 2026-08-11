@@ -386,6 +386,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [showQrHelp, setShowQrHelp] = useState(false);
   const [selectedDoDont, setSelectedDoDont] = useState<"do" | "dont" | null>(null);
   const [successLinkCopied, setSuccessLinkCopied] = useState(false);
+  const [noteRevoked, setNoteRevoked] = useState(false);
+  const [revokingNote, setRevokingNote] = useState(false);
   const successQrSectionRef = useRef<HTMLDivElement | null>(null);
 
   // ── Mode ──────────────────────────────────────────────────────────────────
@@ -1461,6 +1463,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
+      planCapabilities.revokeUnopened ||
       (canNotifyOnOpen &&
         (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload)) ||
       applyRequireRecipientVerification ||
@@ -1936,6 +1939,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ? trimmedLinkDeliveryEmail.toLowerCase()
         : "";
 
+      setNoteRevoked(false);
+      setRevokingNote(false);
       setCreatedNote({
         url,
         meta: {
@@ -2145,10 +2150,70 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     ],
   );
 
+  const revokeCreatedNote = useCallback(async () => {
+    if (!createdNote?.url || noteRevoked || revokingNote) return;
+    if (!planCapabilities.revokeUnopened) return;
+
+    const noteId =
+      createdNote.meta?.noteId ??
+      (() => {
+        try {
+          const parsed = new URL(createdNote.url);
+          return parsed.pathname.match(/\/note\/([^/]+)/i)?.[1] ?? null;
+        } catch {
+          return null;
+        }
+      })();
+    if (!noteId) {
+      toast({
+        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        variant: "destructive",
+      });
+      throw new Error("note_id_missing");
+    }
+
+    setRevokingNote(true);
+    try {
+      await apiRequest(`/api/notes/${encodeURIComponent(noteId)}/revoke`, "POST");
+      setNoteRevoked(true);
+      toast({
+        title: t.notificationRevokeSuccessTitle ?? "Note revoked",
+        description: t.notificationRevokeSuccessBody ?? "The link can no longer be opened.",
+      });
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 409) {
+        setNoteRevoked(true);
+        toast({
+          title: t.notificationRevokeAlreadyOpened ?? "Already opened",
+          description:
+            t.notificationRevokeAlreadyOpened ??
+            "This note was already opened and can no longer be revoked.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        description:
+          error instanceof ApiRequestError && error.status === 403
+            ? (t.recipientLinkDeliveryUpgradeHint ??
+              "Starter and Business can revoke unopened notes.")
+            : undefined,
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setRevokingNote(false);
+    }
+  }, [createdNote, noteRevoked, planCapabilities.revokeUnopened, revokingNote, t, toast]);
+
   const createNewNote = () => {
     clearCreateNoteAuthDraft();
     setShowSuccessQr(false);
     setSuccessLinkCopied(false);
+    setRecipientLinkDeliveryRetrying(false);
+    setNoteRevoked(false);
+    setRevokingNote(false);
     setCreatedNote(null);
     setNoteContent("");
     resetPrefill();
@@ -2809,6 +2874,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
+        canRevoke={Boolean(user) && planCapabilities.revokeUnopened && !noteRevoked}
+        noteRevoked={noteRevoked}
+        revoking={revokingNote}
+        onRevoke={revokeCreatedNote}
         createdPassword={
           createdNote.meta?.isPasswordProtected ? password.trim() || undefined : undefined
         }

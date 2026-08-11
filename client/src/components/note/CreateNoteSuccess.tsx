@@ -22,10 +22,21 @@ import {
   Eye,
   EyeOff,
   Tag,
+  Ban,
 } from "lucide-react";
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
 import { useToast } from "@/hooks/use-toast";
 import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verify_email";
 
@@ -103,6 +114,11 @@ export type CreateNoteSuccessProps = {
   onShareQrCode: () => Promise<void>;
   onDownloadQrCode: () => Promise<void>;
   onCreateNewNote: () => void;
+  /** Starter/Business: revoke an unopened note from the success screen. */
+  canRevoke?: boolean;
+  noteRevoked?: boolean;
+  revoking?: boolean;
+  onRevoke?: () => Promise<void>;
   /** Plaintext note password for OOB share/copy on the success page only. Never sent to the server. */
   createdPassword?: string;
   /** Device-local name for Activity when tracking is enabled. */
@@ -131,6 +147,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   onShareQrCode,
   onDownloadQrCode,
   onCreateNewNote,
+  canRevoke = false,
+  noteRevoked = false,
+  revoking = false,
+  onRevoke,
   createdPassword,
   noteLabel = "",
   onNoteLabelChange,
@@ -142,6 +162,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const [deliverEmailInput, setDeliverEmailInput] = useState("");
   const [showCreatedPassword, setShowCreatedPassword] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const isFileTransfer = variant === "file-transfer";
   const createdNoteMeta = createdNote.meta;
 
@@ -608,6 +629,45 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   )}
                 </div>
 
+                {canRevoke || noteRevoked ? (
+                  <div className="rounded-lg border border-gray-200 bg-white px-4 py-3.5 dark:border-gray-700 dark:bg-gray-950/40">
+                    {noteRevoked ? (
+                      <div className="text-sm text-rose-900 dark:text-rose-100" role="status">
+                        <p className="m-0 inline-flex items-center gap-1.5 font-medium">
+                          <Ban className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
+                          {t.notificationRevokeSuccessTitle ?? "Note revoked"}
+                        </p>
+                        <p className="mt-1.5 m-0 text-xs leading-snug opacity-90">
+                          {t.notificationRevokeSuccessBody ?? "The link can no longer be opened."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="m-0 inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+                            <Ban className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
+                            {t.successRevokeTitle ?? "Revoke before it is opened"}
+                          </p>
+                          <p className="mt-1 m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                            {t.successRevokeHint ??
+                              "Changed your mind? Destroy this link now. You can also revoke later from Activity."}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRevokeDialogOpen(true)}
+                          disabled={revoking || !onRevoke}
+                          className="inline-flex shrink-0 items-center justify-center rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900 dark:bg-gray-950 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                        >
+                          {revoking
+                            ? t.notificationRevoking ?? "Revoking..."
+                            : t.notificationRevokeConfirm ?? "Revoke link"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="pt-5 sm:pt-6 w-full flex flex-col items-center">
                   {showSuccessQr && (
                     <div
@@ -763,6 +823,49 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         </section>
       </div>
+
+      <AlertDialog
+        open={revokeDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !revoking) setRevokeDialogOpen(false);
+          else setRevokeDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.notificationRevokeDialogTitle ?? "Revoke this note?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.notificationRevokeDialogBody ??
+                "The secret link will stop working immediately. This only works if the note has not been opened yet."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revoking}>{t.cancel ?? "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={revoking || !onRevoke}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!onRevoke) return;
+                void (async () => {
+                  try {
+                    await onRevoke();
+                    setRevokeDialogOpen(false);
+                  } catch {
+                    // Keep dialog open on failure; parent shows a toast.
+                  }
+                })();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
+            >
+              {revoking
+                ? t.notificationRevoking ?? "Revoking..."
+                : t.notificationRevokeConfirm ?? "Revoke link"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
