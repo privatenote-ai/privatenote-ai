@@ -714,7 +714,7 @@ export const sr: Translations = {
   attachmentProgressEncrypting: "Šifrovanje u pregledaču…",
   attachmentProgressUploading: "Otpremanje šifrovanog fajla…",
   attachmentProgressFinalizing: "Pravljenje bezbedne poruke…",
-  attachmentProgressChunkDetail: "{done} od {total} delova · {name}",
+  attachmentProgressChunkDetail: "{done} od {total} · {name}",
   attachmentProgressFootnote:
     "Fajl se šifruje u ovom pregledaču pre otpremanja. Ostavi ovaj tab u prvom planu — pozadinski tabovi se usporavaju i otpremanje traje mnogo duže.",
   attachmentDecryptProgressTitle: "Dešifrovanje u pregledaču…",

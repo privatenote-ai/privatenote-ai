@@ -733,7 +733,7 @@ export const de: Translations = {
   attachmentProgressEncrypting: "Verschlüsselung in Ihrem Browser…",
   attachmentProgressUploading: "Verschlüsselte Datei wird hochgeladen…",
   attachmentProgressFinalizing: "Sichere Notiz wird erstellt…",
-  attachmentProgressChunkDetail: "{done} von {total} Teilen · {name}",
+  attachmentProgressChunkDetail: "{done} von {total} · {name}",
   attachmentProgressFootnote:
     "Ihre Datei wird in diesem Browser verschlüsselt, bevor sie hochgeladen wird. Lassen Sie diesen Tab im Vordergrund — Hintergrund-Tabs werden gedrosselt und Uploads werden deutlich langsamer.",
   attachmentDecryptProgressTitle: "Entschlüsselung in Ihrem Browser…",
