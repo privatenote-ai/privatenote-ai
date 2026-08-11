@@ -100,6 +100,15 @@ export const en: Translations = {
   voiceMessagePlaybackUnsupported:
     "This browser can’t play this voice message inline. Download it to listen.",
   voiceMessageDownloadToPlay: "Download to play",
+  voiceMessageDownloadFormat: "Download",
+  voiceMessageDownloadOriginal: "Original file",
+  voiceMessageDownloadWav: "WAV (decoded)",
+  voiceMessageDownloadM4a: "M4A (decoded)",
+  voiceMessageDecoding: "Decoding…",
+  voiceMessageDecodingToWav: "Decoding to WAV…",
+  voiceMessageDecodingToM4a: "Decoding to M4A…",
+  voiceMessageDecodeFailedDesc:
+    "The voice message could not be decoded into that format. Try Original or WAV.",
   howItWorks: "How It Works",
   resources: "Resources",
   developers: "Developers",
