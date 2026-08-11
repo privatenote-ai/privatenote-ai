@@ -8975,12 +8975,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "missing attachment upload");
           return jsonResponse({ error: "Attachment upload missing" }, 400, request);
         }
-        const uploadedChunkSize = Number(uploadedChunk.customMetadata?.chunkEncryptedSize ?? NaN);
+        // Direct browser→R2 PUTs have no customMetadata; fall back to object size + KV hash.
+        const uploadedChunkSize = Number(
+          uploadedChunk.customMetadata?.chunkEncryptedSize ?? uploadedChunk.size ?? NaN,
+        );
         if (uploadedChunkSize !== chunk.encryptedSize) {
           await cleanupNoteFileChunks(env, id, "incomplete attachment upload");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
         }
-        const r2ChunkHash = uploadedChunk.customMetadata?.chunkSha256;
+        const r2ChunkHash =
+          uploadedChunk.customMetadata?.chunkSha256 ??
+          reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(index)];
         if (!r2ChunkHash) {
           await cleanupNoteFileChunks(env, id, "attachment chunk hash missing from R2");
           return jsonResponse({ error: "Attachment upload incomplete" }, 400, request);
@@ -9004,10 +9009,21 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         await cleanupNoteFileChunks(env, id, "missing attachment content hash");
         return jsonResponse({ error: "Attachment content hash is required" }, 400, request);
       }
-      const computedContentHash = await computeUploadedAttachmentContentHash(env, id, totalChunks);
-      if (!computedContentHash || computedContentHash !== attachmentContentHash.toLowerCase()) {
-        await cleanupNoteFileChunks(env, id, "attachment content hash mismatch");
-        return jsonResponse({ error: "Attachment content hash mismatch" }, 400, request);
+      // Single-blob direct R2: /file/complete recorded client chunkSha256 after R2 size check.
+      // Skip a full object re-hash when that value matches attachmentContentHash (required for ~1 GB).
+      const singleChunkReservationHash =
+        totalChunks === 1
+          ? reservation?.uploadedChunkHashes?.[uploadedChunkHashKey(0)]?.toLowerCase()
+          : null;
+      const expectedContentHash = attachmentContentHash.toLowerCase();
+      if (singleChunkReservationHash && singleChunkReservationHash === expectedContentHash) {
+        // size-checked on complete; content hash bound here
+      } else {
+        const computedContentHash = await computeUploadedAttachmentContentHash(env, id, totalChunks);
+        if (!computedContentHash || computedContentHash !== expectedContentHash) {
+          await cleanupNoteFileChunks(env, id, "attachment content hash mismatch");
+          return jsonResponse({ error: "Attachment content hash mismatch" }, 400, request);
+        }
       }
     }
 

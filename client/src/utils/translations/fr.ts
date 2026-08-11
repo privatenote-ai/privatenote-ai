@@ -718,7 +718,7 @@ export const fr: Translations = {
   attachmentProgressEncrypting: "Chiffrement dans votre navigateur…",
   attachmentProgressUploading: "Envoi du fichier chiffré…",
   attachmentProgressFinalizing: "Création de la note sécurisée…",
-  attachmentProgressChunkDetail: "{done} sur {total} parties · {name}",
+  attachmentProgressChunkDetail: "{done} sur {total} · {name}",
   attachmentProgressFootnote:
     "Votre fichier est chiffré dans ce navigateur avant l’envoi. Gardez cet onglet au premier plan — les onglets en arrière-plan sont ralentis et l’envoi devient beaucoup plus lent.",
   attachmentDecryptProgressTitle: "Déchiffrement dans votre navigateur…",

@@ -733,7 +733,7 @@ export const nl: Translations = {
   attachmentProgressEncrypting: "Versleutelen in uw browser…",
   attachmentProgressUploading: "Versleuteld bestand uploaden…",
   attachmentProgressFinalizing: "Veilige notitie maken…",
-  attachmentProgressChunkDetail: "{done} van {total} delen · {name}",
+  attachmentProgressChunkDetail: "{done} van {total} · {name}",
   attachmentProgressFootnote:
     "Uw bestand wordt in deze browser versleuteld voordat het wordt geüpload. Houd dit tabblad op de voorgrond — achtergrondtabbladen worden beperkt en uploads worden veel trager.",
   attachmentDecryptProgressTitle: "Ontsleutelen in uw browser…",

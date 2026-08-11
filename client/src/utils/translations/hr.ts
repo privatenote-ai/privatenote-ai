@@ -714,7 +714,7 @@ export const hr: Translations = {
   attachmentProgressEncrypting: "Šifriranje u pregledniku…",
   attachmentProgressUploading: "Prijenos šifrirane datoteke…",
   attachmentProgressFinalizing: "Stvaranje sigurne bilješke…",
-  attachmentProgressChunkDetail: "{done} od {total} dijelova · {name}",
+  attachmentProgressChunkDetail: "{done} od {total} · {name}",
   attachmentProgressFootnote:
     "Datoteka se šifrira u ovom pregledniku prije prijenosa. Držite ovu karticu u prvom planu — pozadinske kartice se usporavaju i prijenos traje puno dulje.",
   attachmentDecryptProgressTitle: "Dešifriranje u pregledniku…",

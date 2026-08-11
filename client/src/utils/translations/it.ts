@@ -718,7 +718,7 @@ export const it: Translations = {
   attachmentProgressEncrypting: "Crittografia nel browser…",
   attachmentProgressUploading: "Caricamento del file crittografato…",
   attachmentProgressFinalizing: "Creazione della nota sicura…",
-  attachmentProgressChunkDetail: "{done} di {total} parti · {name}",
+  attachmentProgressChunkDetail: "{done} di {total} · {name}",
   attachmentProgressFootnote:
     "Il file viene crittografato in questo browser prima del caricamento. Tieni questa scheda in primo piano: le schede in background vengono limitate e il caricamento rallenta molto.",
   attachmentDecryptProgressTitle: "Decrittografia nel browser…",

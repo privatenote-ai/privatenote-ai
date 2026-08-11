@@ -714,7 +714,7 @@ export const pt: Translations = {
   attachmentProgressEncrypting: "A encriptar no seu browser…",
   attachmentProgressUploading: "A enviar o ficheiro encriptado…",
   attachmentProgressFinalizing: "A criar nota segura…",
-  attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
+  attachmentProgressChunkDetail: "{done} de {total} · {name}",
   attachmentProgressFootnote:
     "O seu ficheiro é encriptado neste browser antes do envio. Mantenha este separador em primeiro plano — separadores em segundo plano são limitados e o envio fica bem mais lento.",
   attachmentDecryptProgressTitle: "A desencriptar no seu browser…",

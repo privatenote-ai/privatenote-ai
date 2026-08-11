@@ -733,7 +733,7 @@ export const es: Translations = {
   attachmentProgressEncrypting: "Cifrando en su navegador…",
   attachmentProgressUploading: "Subiendo el archivo cifrado…",
   attachmentProgressFinalizing: "Creando nota segura…",
-  attachmentProgressChunkDetail: "{done} de {total} partes · {name}",
+  attachmentProgressChunkDetail: "{done} de {total} · {name}",
   attachmentProgressFootnote:
     "Su archivo se cifra en este navegador antes de subirse. Mantenga esta pestaña en primer plano: las pestañas en segundo plano se limitan y la subida se ralentiza mucho.",
   attachmentDecryptProgressTitle: "Descifrando en su navegador…",

@@ -576,21 +576,33 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   );
 
   const reportAttachmentDecryptProgress = useCallback(
-    (completedChunks: number, totalChunks: number) => {
-      const ratio = totalChunks > 0 ? completedChunks / totalChunks : 1;
+    (completedChunks: number, totalChunks: number, ratio?: number) => {
+      const resolvedRatio =
+        typeof ratio === "number" && Number.isFinite(ratio)
+          ? Math.min(1, Math.max(0, ratio))
+          : totalChunks > 0
+            ? completedChunks / totalChunks
+            : 1;
+      const next = Math.max(1, Math.min(100, Math.round(resolvedRatio * 100)));
       const fullName = attachmentMetadata?.name || "file";
       const name = formatAttachmentDisplayName(fullName);
-      setAttachmentDecryptProgress({
+      setAttachmentDecryptProgress((prev) => ({
         phase: "decrypt",
-        progress: Math.round(ratio * 100),
+        mode: "download",
+        // Never jump backwards while decrypt frames paint.
+        progress: Math.max(prev?.phase === "decrypt" ? prev.progress : 0, next),
         title: t.attachmentDecryptProgressTitle,
-        detail: t.attachmentProgressChunkDetail
-          .replace("{done}", String(completedChunks))
-          .replace("{total}", String(totalChunks))
-          .replace("{name}", name),
+        // Single-blob (and 1-part) downloads: filename only — never "N of M chunks".
+        detail:
+          totalChunks <= 1
+            ? name
+            : t.attachmentProgressChunkDetail
+                .replace("{done}", String(completedChunks))
+                .replace("{total}", String(totalChunks))
+                .replace("{name}", name),
         detailTitle: fullName,
         footnote: t.attachmentDecryptProgressFootnote,
-      });
+      }));
     },
     [attachmentMetadata?.name, t],
   );
@@ -620,7 +632,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       },
       options?.onProgress
         ? (pipeline) => {
-            reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+            reportAttachmentDecryptProgress(
+              pipeline.completedChunks,
+              pipeline.totalChunks,
+              pipeline.ratio,
+            );
           }
         : undefined,
     );
@@ -1099,7 +1115,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           return new Uint8Array(await encryptedChunkBlob.arrayBuffer());
         },
         (pipeline) => {
-          reportAttachmentDecryptProgress(pipeline.completedChunks, pipeline.totalChunks);
+          reportAttachmentDecryptProgress(
+            pipeline.completedChunks,
+            pipeline.totalChunks,
+            pipeline.ratio,
+          );
         },
       )) as BlobPart[];
       let blob = new Blob(decryptedParts, {
