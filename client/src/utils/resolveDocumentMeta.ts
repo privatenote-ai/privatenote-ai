@@ -429,6 +429,13 @@ function metaForAuthSegments(segments: string[], t: Translations): { title: stri
 function metaForAdminSegments(segments: string[], t: Translations): { title: string; description: string } | null {
   if (segments[0] !== "admin") return null;
   switch (segments[1]) {
+    case undefined:
+      return {
+        title: buildDocumentTitle(t.documentMetaAdminTitle ?? "Admin"),
+        description:
+          t.documentMetaAdminDescription ??
+          "Sign in to the PrivateNote.ai admin dashboard for analytics and operations.",
+      };
     case "blog":
       return {
         title: buildDocumentTitle(t.documentMetaAdminBlogTitle),

@@ -94,6 +94,27 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 type LazyRouteErrorBoundaryState = { error: Error | null };
 
+const LAZY_CHUNK_RELOAD_KEY = "pn:lazy-chunk-reload-at";
+
+function isLikelyStaleChunkLoadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Loading chunk [\d]+ failed/i.test(
+    message,
+  );
+}
+
+function reloadOnceForStaleChunk(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(LAZY_CHUNK_RELOAD_KEY) || "0");
+    if (Number.isFinite(last) && Date.now() - last < 15_000) return false;
+    sessionStorage.setItem(LAZY_CHUNK_RELOAD_KEY, String(Date.now()));
+  } catch {
+    /* private mode / quota */
+  }
+  window.location.reload();
+  return true;
+}
+
 class LazyRouteErrorBoundary extends Component<
   { children: ReactNode },
   LazyRouteErrorBoundaryState
@@ -104,12 +125,22 @@ class LazyRouteErrorBoundary extends Component<
     return { error };
   }
 
+  componentDidCatch(error: Error) {
+    if (isLikelyStaleChunkLoadError(error)) {
+      reloadOnceForStaleChunk();
+    }
+  }
+
   render() {
     if (this.state.error) {
       return (
         <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
           <p className="text-base font-medium text-foreground">This page failed to load.</p>
-          <p className="text-sm text-muted-foreground">Check your connection, then try again.</p>
+          <p className="text-sm text-muted-foreground">
+            {isLikelyStaleChunkLoadError(this.state.error)
+              ? "A newer deploy may have replaced this page’s scripts. Reloading usually fixes it."
+              : "Check your connection, then try again."}
+          </p>
           <button
             type="button"
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"

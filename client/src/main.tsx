@@ -34,6 +34,24 @@ if (typeof window !== "undefined") {
       );
     }
   });
+
+  /**
+   * After a Pages deploy, a tab can keep an old HTML shell that points at hashed chunks
+   * that no longer exist (404 → HTML). Safari then throws "Importing a module script failed."
+   * Reload once so the browser picks up the new index + asset map.
+   */
+  const CHUNK_RELOAD_KEY = "pn:vite-chunk-reload-at";
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    try {
+      const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
+      if (Number.isFinite(last) && Date.now() - last < 15_000) return;
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+    } catch {
+      /* private mode / quota — still attempt one reload */
+    }
+    window.location.reload();
+  });
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -13,6 +13,13 @@ test("isNoindexPath marks private app routes", () => {
   assert.equal(isNoindexPath("/admin/blog"), true);
 });
 
+test("resolveDocumentMeta treats /admin as the admin dashboard, not 404", () => {
+  const meta = resolveDocumentMeta("/admin", en);
+  assert.equal(meta.title, "Admin · PrivateNote.ai");
+  assert.match(meta.description, /admin dashboard/i);
+  assert.notEqual(meta.title, resolveDocumentMeta("/missing-page", en).title);
+});
+
 test("isNoindexPath allows public marketing and locale routes", () => {
   assert.equal(isNoindexPath("/"), false);
   assert.equal(isNoindexPath("/de/"), false);
