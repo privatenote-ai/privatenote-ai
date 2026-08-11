@@ -59,10 +59,6 @@ class_name = "AuthTokenStore"
 tag = "v4-auth-tokens"
 new_classes = ["AuthTokenStore"]
 
-[[migrations]]
-tag = "v5-secure-notes-sqlite"
-new_sqlite_classes = ["SecureNoteStorageSql"]
-
 # SecureNoteStorageSql uses the Durable Object SQL API (`state.storage.sql`). Local `wrangler dev`
 # must use `wrangler.local.toml` (includes v5 `new_sqlite_classes`). Production deploy uses this
 # file without v5 — migration was already applied remotely; re-adding it causes error 10074.
