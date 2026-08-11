@@ -15,6 +15,8 @@ export type AttachmentProgressState = {
   progress: number;
   title: string;
   detail?: string;
+  /** Full filename for native tooltip when `detail` is shortened. */
+  detailTitle?: string;
   footnote: string;
   /** Create-note flow: show encrypt → upload → finalize bars. Download uses a single bar. */
   mode?: "create" | "download";
@@ -122,7 +124,7 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
         onEscapeKeyDown={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="min-w-0 overflow-hidden text-center sm:text-center">
           <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
             {showLock ? (
               <Lock className="h-8 w-8" aria-hidden />
@@ -134,11 +136,11 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
             {progress?.title}
           </DialogTitle>
           <DialogDescription asChild>
-            <div className="space-y-4 pt-2 text-center">
+            <div className="min-w-0 space-y-4 pt-2 text-center">
               {progress?.detail ? (
                 <p
-                  className="mx-auto w-full min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-1 text-sm font-medium leading-snug text-foreground/90"
-                  title={progress.detail}
+                  className="mx-auto w-full min-w-0 max-w-xs truncate px-1 text-sm font-medium leading-snug text-foreground/90"
+                  title={progress.detailTitle ?? progress.detail}
                 >
                   {progress.detail}
                 </p>
