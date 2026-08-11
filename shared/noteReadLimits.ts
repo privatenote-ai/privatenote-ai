@@ -7,21 +7,22 @@ export const NOTE_READ_LIMIT_DEFAULT: NoteReadLimit = 1;
 
 const READ_LIMIT_SET: ReadonlySet<number> = new Set(NOTE_READ_LIMIT_OPTIONS);
 
-export const NOTE_READ_LIMIT_PREMIUM_ONLY: ReadonlySet<NoteReadLimit> = new Set([2, 3, 5]);
-
-export function isPremiumNoteReadLimit(value: number): boolean {
-  return NOTE_READ_LIMIT_PREMIUM_ONLY.has(value as NoteReadLimit);
+export function isNoteReadLimitAllowedForAccount(
+  maxReads: number,
+  allowedReadCounts: readonly number[],
+): boolean {
+  return READ_LIMIT_SET.has(maxReads) && allowedReadCounts.includes(maxReads);
 }
 
-export function isNoteReadLimitAllowedForAccount(maxReads: number, isPremium: boolean): boolean {
-  if (!READ_LIMIT_SET.has(maxReads)) return false;
-  if (isPremium) return true;
-  return maxReads === NOTE_READ_LIMIT_DEFAULT;
-}
-
-export function clampNoteReadLimitForAccount(maxReads: number, isPremium: boolean): NoteReadLimit {
+export function clampNoteReadLimitForAccount(
+  maxReads: number,
+  allowedReadCounts: readonly number[],
+): NoteReadLimit {
   if (!READ_LIMIT_SET.has(maxReads)) return NOTE_READ_LIMIT_DEFAULT;
-  if (!isPremium && maxReads > NOTE_READ_LIMIT_DEFAULT) return NOTE_READ_LIMIT_DEFAULT;
+  if (!allowedReadCounts.includes(maxReads)) {
+    const fallback = NOTE_READ_LIMIT_OPTIONS.find((value) => allowedReadCounts.includes(value));
+    return fallback ?? NOTE_READ_LIMIT_DEFAULT;
+  }
   return maxReads as NoteReadLimit;
 }
 
@@ -30,6 +31,9 @@ export type NoteReadLimitParseResult =
   | { ok: false; message: string };
 
 export type NoteReadLimitParseOptions = {
+  /** Defaults to one view so omitted entitlement context fails closed. */
+  allowedReadCounts?: readonly number[];
+  /** @deprecated Pass the resolved plan's allowedReadCounts capability. */
   isPremium?: boolean;
 };
 
@@ -37,7 +41,9 @@ export function parseMaxReadsFromBody(
   maxReads: unknown,
   options?: NoteReadLimitParseOptions,
 ): NoteReadLimitParseResult {
-  const isPremium = options?.isPremium === true;
+  const allowedReadCounts =
+    options?.allowedReadCounts ??
+    (options?.isPremium === true ? NOTE_READ_LIMIT_OPTIONS : [NOTE_READ_LIMIT_DEFAULT]);
 
   if (maxReads === undefined || maxReads === null) {
     return { ok: true, maxReads: NOTE_READ_LIMIT_DEFAULT };
@@ -57,10 +63,10 @@ export function parseMaxReadsFromBody(
   if (!READ_LIMIT_SET.has(asInt)) {
     return { ok: false, message: "maxReads is not an allowed view limit" };
   }
-  if (!isNoteReadLimitAllowedForAccount(asInt, isPremium)) {
+  if (!isNoteReadLimitAllowedForAccount(asInt, allowedReadCounts)) {
     return {
       ok: false,
-      message: "View limits above once (2, 3, or 5) require a Premium plan",
+      message: "That view limit is not available on your plan",
     };
   }
   return { ok: true, maxReads: asInt as NoteReadLimit };

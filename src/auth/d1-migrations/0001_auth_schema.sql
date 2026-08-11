@@ -11,10 +11,28 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TEXT,
   plan TEXT NOT NULL DEFAULT 'free',
   account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
+  stripe_customer_id TEXT UNIQUE,
+  stripe_subscription_id TEXT UNIQUE,
+  subscription_status TEXT,
+  subscription_current_period_end TEXT,
+  premium_granted_at TEXT,
+  premium_revoked_at TEXT,
   business_display_name TEXT,
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
   preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es')),
   allow_hosted_ai INTEGER NOT NULL DEFAULT 0 CHECK (allow_hosted_ai IN (0, 1))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON users(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_subscription_id ON users(stripe_subscription_id);
+
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  livemode INTEGER NOT NULL DEFAULT 0 CHECK (livemode IN (0, 1)),
+  received_at TEXT NOT NULL DEFAULT (datetime('now')),
+  processed_at TEXT,
+  processing_error TEXT
 );
 
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
@@ -115,8 +133,69 @@ CREATE TABLE IF NOT EXISTS account_activity (
   user_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   note_id TEXT,
+  metadata TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_account_activity_user_created ON account_activity(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS sent_notes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  note_id TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'created'
+    CHECK (status IN ('created', 'opened', 'expired', 'destroyed', 'revoked')),
+  label TEXT,
+  recipient_email_hint TEXT,
+  notify_on_open INTEGER NOT NULL DEFAULT 0,
+  notify_on_destroyed INTEGER NOT NULL DEFAULT 0,
+  notify_on_attachment_download INTEGER NOT NULL DEFAULT 0,
+  require_recipient_verification INTEGER NOT NULL DEFAULT 0,
+  proof_enabled INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  opened_at TEXT,
+  destroyed_at TEXT,
+  revoked_at TEXT,
+  opened_notified_at TEXT,
+  destroyed_notified_at TEXT,
+  open_country TEXT,
+  open_device_class TEXT,
+  open_browser TEXT,
+  attachment_downloaded_at TEXT,
+  attachment_downloaded_notified_at TEXT,
+  notification_deleted_at TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sent_notes_user_created ON sent_notes(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sent_notes_note_id ON sent_notes(note_id);
+
+CREATE TABLE IF NOT EXISTS account_file_storage_usage (
+  user_id TEXT PRIMARY KEY,
+  used_bytes INTEGER NOT NULL DEFAULT 0 CHECK (used_bytes >= 0),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS account_file_storage_reservations (
+  note_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  encrypted_size INTEGER NOT NULL CHECK (encrypted_size >= 0),
+  total_chunks INTEGER,
+  max_reads INTEGER,
+  file_access_window_seconds INTEGER NOT NULL DEFAULT 900,
+  expires_at TEXT,
+  last_checked_at TEXT,
+  status TEXT NOT NULL DEFAULT 'reserved'
+    CHECK (status IN ('reserved', 'active', 'released')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  activated_at TEXT,
+  released_at TEXT,
+  release_reason TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_file_storage_reservations_user_status
+  ON account_file_storage_reservations(user_id, status);

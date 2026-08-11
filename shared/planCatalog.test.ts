@@ -71,15 +71,25 @@ describe("planCatalog", () => {
     assert.equal(free.maxFileAccessWindowSeconds, 15 * 60);
     assert.equal(starter.maxFileAccessWindowSeconds, 30 * 60);
     assert.equal(business.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(free.maxVoiceMessageSeconds, 5 * 60);
+    assert.equal(starter.maxVoiceMessageSeconds, 15 * 60);
+    assert.equal(business.maxVoiceMessageSeconds, 30 * 60);
   });
 
   it("enables workflow on Starter and branding on Business", () => {
     assert.equal(planDefinitionFor("free").features.proofOfAccess, false);
     assert.equal(planDefinitionFor("personal_premium").features.proofOfAccess, true);
     assert.equal(planFeaturesFor("personal_premium").revealBranding, false);
+    assert.equal(planFeaturesFor("personal_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("personal_premium").customPromptTemplates, false);
     assert.equal(planFeaturesFor("business_premium").revealBranding, true);
+    assert.equal(planFeaturesFor("business_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("business_premium").customPromptTemplates, true);
+    assert.equal(planFeaturesFor("personal_premium").noteLabelPortability, false);
+    assert.equal(planFeaturesFor("business_premium").noteLabelPortability, true);
+    assert.equal(planFeaturesFor("free").premiumTemplatePacks, false);
+    assert.equal(planFeaturesFor("free").customPromptTemplates, false);
+    assert.equal(planFeaturesFor("free").noteLabelPortability, false);
   });
 
   it("exposes note customization capabilities by plan", () => {
@@ -87,14 +97,16 @@ describe("planCatalog", () => {
     const starter = planFeaturesFor("personal_premium");
     assert.equal(free.maxExpirySeconds, 3 * 24 * 60 * 60);
     assert.deepEqual(free.allowedReadCounts, [1]);
-    assert.equal(free.extendedFileAccess, false);
     assert.equal(free.recipientLinkDelivery, false);
     assert.equal(free.readerLanguage, false);
-    assert.equal(starter.maxExpirySeconds, 30 * 24 * 60 * 60);
-    assert.deepEqual(starter.allowedReadCounts, [1, 2, 3, 5]);
-    assert.equal(starter.extendedFileAccess, true);
+    assert.equal(free.delayedReveal, false);
+    assert.equal(starter.maxExpirySeconds, 15 * 24 * 60 * 60);
+    assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);
+    assert.equal(starter.delayedReveal, true);
+    assert.equal(free.receiptAcknowledgment, false);
+    assert.equal(starter.receiptAcknowledgment, true);
   });
 
   it("allows open/destroyed email alerts on free and paid tiers", () => {

@@ -1,7 +1,7 @@
 import type { DurableObjectState } from "@cloudflare/workers-types";
 import { decodeNoteAadBase64, parseNoteAadPlaintext } from "@shared/noteAad";
 import { tryParseKdfParamsV2Object, type KdfParamsV2 } from "@shared/kdfParamsV2";
-import { noteMetaEligibility, type NoteMetaRow } from "@shared/noteMetaEligibility";
+import { noteMetaEligibility, parseNoteOpensAtFromBody, type NoteMetaRow } from "@shared/noteMetaEligibility";
 import {
   passwordWireFieldsPresent,
   validateNoteAesGcmIvWire,
@@ -24,6 +24,7 @@ import {
   type ParsedStoredNoteCiphertext,
 } from "@shared/storedNotePayload";
 import { isSupportedLanguage } from "@shared/supportedLanguages";
+import { parseStoredRevealBranding } from "@shared/businessBranding";
 
 type StoredCiphertext = ParsedStoredNoteCiphertext;
 
@@ -133,7 +134,8 @@ export class SecureNoteStorageSql {
         "expires_at TEXT NOT NULL," +
         "max_reads INTEGER NOT NULL," +
         "current_reads INTEGER NOT NULL," +
-        "consumed INTEGER NOT NULL" +
+        "consumed INTEGER NOT NULL," +
+        "opens_at TEXT" +
         ")",
     );
     this.state.storage.sql.exec(
@@ -142,12 +144,22 @@ export class SecureNoteStorageSql {
     // Legacy deployments may still have consumed=1 tombstones (ciphertext already removed).
     // Runs once per DO instance wake, not on a periodic schedule.
     this.state.storage.sql.exec("DELETE FROM notes_meta WHERE consumed = 1");
+    this.ensureOpensAtColumn();
     this.schemaReady = true;
+  }
+
+  /** Add delayed-reveal column on existing DO databases created before opens_at existed. */
+  private ensureOpensAtColumn(): void {
+    try {
+      this.state.storage.sql.exec("ALTER TABLE notes_meta ADD COLUMN opens_at TEXT");
+    } catch {
+      // Column already exists on upgraded DOs.
+    }
   }
 
   private async getMeta(noteId: string): Promise<NoteMetaRow | null> {
     const cursor = this.state.storage.sql.exec(
-      "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?",
+      "SELECT note_id, expires_at, max_reads, current_reads, consumed, opens_at FROM notes_meta WHERE note_id = ?",
       noteId,
     );
     return await getOneRow<NoteMetaRow>(cursor);
@@ -174,12 +186,13 @@ export class SecureNoteStorageSql {
     this.state.storage.transactionSync(() => {
       this.state.storage.sql.exec("INSERT INTO notes_cipher (note_id, payload) VALUES (?, ?)", noteId, payload);
       this.state.storage.sql.exec(
-        "INSERT INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO notes_meta (note_id, expires_at, max_reads, current_reads, consumed, opens_at) VALUES (?, ?, ?, ?, ?, ?)",
         meta.note_id,
         meta.expires_at,
         meta.max_reads,
         meta.current_reads,
         meta.consumed,
+        meta.opens_at ?? null,
       );
     });
   }
@@ -209,6 +222,8 @@ export class SecureNoteStorageSql {
       attachment: attachmentRaw = undefined,
       fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
       readerLanguage: readerLanguageRaw = undefined,
+      revealBranding: revealBrandingRaw = undefined,
+      opensAt: opensAtRaw = undefined,
     } = body || {};
 
     const ippField = body?.isPasswordProtected;
@@ -357,6 +372,14 @@ export class SecureNoteStorageSql {
         ? Math.floor(parsedMaxReads)
         : 1;
 
+    const opensAtParsed = parseNoteOpensAtFromBody(opensAtRaw, { expiresAt });
+    if (!opensAtParsed.ok) {
+      return new Response(JSON.stringify({ error: opensAtParsed.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const plaintext = decodeNoteAadBase64(aad);
     const parsedAad = plaintext !== null ? parseNoteAadPlaintext(plaintext) : null;
     if (
@@ -382,6 +405,7 @@ export class SecureNoteStorageSql {
       max_reads: safeMaxReads,
       current_reads: 0,
       consumed: 0,
+      opens_at: opensAtParsed.opensAt,
     };
 
     const contentTrimmed = content.trim();
@@ -403,6 +427,9 @@ export class SecureNoteStorageSql {
         headers: { "Content-Type": "application/json" },
       });
     }
+    // The Worker resolves branding from the sender's account and strips anything
+    // the client sent, so this only has to drop values that are unsafe to render.
+    const revealBranding = parseStoredRevealBranding(revealBrandingRaw);
     const fileAccessWindowSeconds =
       fileAccessWindowSecondsRaw == null
         ? NOTE_FILE_ACCESS_DEFAULT_SECONDS
@@ -427,6 +454,7 @@ export class SecureNoteStorageSql {
       ...(attachment ? { attachment } : {}),
       ...(attachment ? { fileAccessWindowSeconds } : {}),
       ...(readerLanguage ? { readerLanguage } : {}),
+      ...(revealBranding ? { revealBranding } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
       ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
         ? { keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2 }
@@ -476,6 +504,19 @@ export class SecureNoteStorageSql {
     const meta = await this.getMeta(noteId);
     const elig = noteMetaEligibility(meta, new Date());
     if (!elig.ok) {
+      if (elig.kind === "not_yet_available") {
+        return new Response(
+          JSON.stringify({
+            error: "note_not_yet_available",
+            opensAt: elig.opensAt,
+            message: "This note cannot be opened yet.",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
       if (elig.kind === "expired" || elig.kind === "exhausted") {
         try {
           this.terminalConsumeSync(noteId);
@@ -500,7 +541,10 @@ export class SecureNoteStorageSql {
         readCount: row.current_reads,
         maxReads: row.max_reads,
         expiresAt: row.expires_at,
+        ...(row.opens_at ? { opensAt: row.opens_at } : {}),
         ...(ciphertext?.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
+        // Needed before reveal so the branding frames the confirmation step.
+        ...(ciphertext?.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
       }),
       {
         status: 200,
@@ -511,19 +555,24 @@ export class SecureNoteStorageSql {
 
   private revealNote(noteId: string): Response {
     const now = new Date();
-    type RevealTxnResult = { ok: true; body: Record<string, unknown> } | { ok: false };
+    type RevealTxnResult =
+      | { ok: true; body: Record<string, unknown> }
+      | { ok: false; kind?: "not_yet_available"; opensAt?: string };
 
     let txnResult: RevealTxnResult;
     try {
       txnResult = this.state.storage.transactionSync((): RevealTxnResult => {
         const meta = getOneRowSync<NoteMetaRow>(
           this.state.storage.sql.exec(
-            "SELECT note_id, expires_at, max_reads, current_reads, consumed FROM notes_meta WHERE note_id = ?",
+            "SELECT note_id, expires_at, max_reads, current_reads, consumed, opens_at FROM notes_meta WHERE note_id = ?",
             noteId,
           ),
         );
         const elig = noteMetaEligibility(meta, now);
         if (!elig.ok) {
+          if (elig.kind === "not_yet_available") {
+            return { ok: false, kind: "not_yet_available", opensAt: elig.opensAt };
+          }
           if (elig.kind === "expired" || elig.kind === "exhausted") {
             this.purgeNoteRowsSync(noteId);
           }
@@ -572,6 +621,7 @@ export class SecureNoteStorageSql {
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
           ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
           ...(ciphertext.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
+          ...(ciphertext.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
           ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
           ...(ciphertext.attachment
             ? {
@@ -597,6 +647,19 @@ export class SecureNoteStorageSql {
     }
 
     if (!txnResult.ok) {
+      if (txnResult.kind === "not_yet_available") {
+        return new Response(
+          JSON.stringify({
+            error: "note_not_yet_available",
+            opensAt: txnResult.opensAt,
+            message: "This note cannot be opened yet.",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
       return new Response(JSON.stringify({ error: "Note not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },

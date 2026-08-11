@@ -11,15 +11,20 @@ import {
   utf8ByteLength,
 } from "@shared/noteSizeLimits";
 import {
+  NOTE_FILE_BUSINESS_MAX_BYTES,
+  NOTE_FILE_STARTER_MAX_BYTES,
   formatNoteFileSize,
   noteFileLimitBytesForAccount,
+  resolveFileSizeUpgradePlan,
 } from "@shared/noteFileLimits";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
   clampNoteExpiryPresetForAccount,
   noteExpiryPresetIdToSeconds,
+  noteExpirySecondsToPresetId,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
+import { planFeaturesFor } from "@shared/planCatalog";
 import {
   NOTE_READ_LIMIT_DEFAULT,
   clampNoteReadLimitForAccount,
@@ -28,6 +33,7 @@ import {
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   clampNoteFileAccessWindowForAccount,
+  isNoteFileAccessWindowSeconds,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
@@ -112,6 +118,7 @@ import {
   writeLocalHostedAiAllowed,
 } from "@/utils/hostedAiPreference";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { localizedPath } from "@/utils/localizedPath";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { saveNoteLabel } from "@/utils/noteLabelsStorage";
@@ -141,7 +148,6 @@ async function uploadEncryptedAttachmentBlob(
   });
   await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", blob, headers, {
     uploadToken,
-    fileSize: blob.size,
     onUploadProgress,
   });
   logFileUpload("info", "attachment blob uploaded", { url, bodyBytes: blob.size });
@@ -152,7 +158,6 @@ async function uploadEncryptedAttachmentChunk(
   encryptedBytes: Uint8Array,
   headers: Record<string, string>,
   uploadToken: string,
-  onUploadProgress?: (progress: { loaded: number; total: number }) => void,
 ): Promise<void> {
   const chunkIndex = url.match(/\/chunks\/(\d+)$/)?.[1] ?? "?";
   const copy = new Uint8Array(encryptedBytes.byteLength);
@@ -166,7 +171,6 @@ async function uploadEncryptedAttachmentChunk(
   });
   await apiBinaryRequest<{ encryptedSize: number }>(url, "PUT", body, headers, {
     uploadToken,
-    onUploadProgress,
   });
   logFileUpload("info", "chunk uploaded", { chunkIndex, url });
 }
@@ -190,6 +194,7 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
   if (expiryValue === "3d") return t.expiry3d;
   if (expiryValue === "7d") return t.expiry7d;
   if (expiryValue === "14d") return t.expiry14d;
+  if (expiryValue === "15d") return t.expiry15d ?? "15 days";
   if (expiryValue === "30d") return t.expiry30d;
   return expiryValue;
 }
@@ -198,8 +203,6 @@ interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
   mode?: "note" | "file-transfer";
 }
-
-type AccountType = "free" | "personal_premium" | "business_premium";
 
 const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
 const CREATE_NOTE_AUTH_DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -259,12 +262,6 @@ function writeCloudAssistModeSession(preferHosted: boolean, consentGiven: boolea
 
 function isReaderLanguageSetting(value: unknown): value is ReaderLanguageSetting {
   return value === "auto" || (typeof value === "string" && SUPPORTED_LANGUAGES.includes(value as SupportedLanguage));
-}
-
-function normalizeAccountType(value: unknown): AccountType {
-  if (value === "personal_premium" || value === "pro" || value === "premium") return "personal_premium";
-  if (value === "business_premium" || value === "business") return "business_premium";
-  return "free";
 }
 
 function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
@@ -363,6 +360,11 @@ function clearCreateNoteAuthDraft(): void {
 export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mode = "note" }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const { entitlements, loading: entitlementsLoading } = useAccountEntitlements();
+  const accountType = entitlements.accountType;
+  const accountEmailNotifications = entitlements.emailNotifications;
+  const accountEmailVerified = entitlements.emailVerified;
+  const premiumStatusLoading = Boolean(user) && entitlementsLoading;
   const isFileTransferMode = mode === "file-transfer";
 
   // ── Note content ──────────────────────────────────────────────────────────
@@ -454,32 +456,60 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [expiryValue, setExpiryValue] = useState<NoteExpiryPresetId>(NOTE_EXPIRY_DEFAULT_PRESET_ID);
   const [notifyOnOpen, setNotifyOnOpen] = useState(false);
   const [notifyOnDestroyed, setNotifyOnDestroyed] = useState(false);
-  const [restrictRecipientEmail, setRestrictRecipientEmail] = useState(false);
+  const [notifyOnAttachmentDownload, setNotifyOnAttachmentDownload] = useState(false);
+  const [emailLinkToRecipient, setEmailLinkToRecipient] = useState(false);
+  const [linkDeliveryEmail, setLinkDeliveryEmail] = useState("");
+  const [delayedReveal, setDelayedReveal] = useState(false);
+  const [opensAtLocal, setOpensAtLocal] = useState("");
+  const [requireReceiptAck, setRequireReceiptAck] = useState(false);
+  const [alertNotifyAccountEmail, setAlertNotifyAccountEmail] = useState(true);
+  const [alertCustomEmail, setAlertCustomEmail] = useState("");
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
-  const [accountType, setAccountType] = useState<AccountType>("free");
-  const [accountEmailNotifications, setAccountEmailNotifications] = useState(false);
-  const [accountEmailVerified, setAccountEmailVerified] = useState(false);
-  const [premiumStatusLoading, setPremiumStatusLoading] = useState(false);
   const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
+  const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
+    "personal_premium" | "business_premium" | null
+  >(null);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
   const fileTransferFileInputId = useId();
   const noteFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
+  const planCapabilities = planFeaturesFor(accountType);
+  const maxExpirySeconds = planCapabilities.maxExpirySeconds;
   const canAttachFiles = Boolean(user);
-  const canNotifyOnOpen = isPremiumUser && accountEmailNotifications && accountEmailVerified;
-  const fileLimitBytes = noteFileLimitBytesForAccount(isPremiumUser);
+  const canNotifyOnOpen =
+    Boolean(user) &&
+    planCapabilities.openNotifications &&
+    accountEmailVerified &&
+    (accountEmailNotifications || isPremiumUser);
+  const canEmailLinkToRecipient =
+    Boolean(user) && planCapabilities.recipientLinkDelivery && accountEmailVerified;
+  const canDelayedReveal = isPremiumUser && planCapabilities.delayedReveal;
+  const canRequireReceiptAck = isPremiumUser && planCapabilities.receiptAcknowledgment;
+  const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
+  const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
+    "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.")
+    .replace("{starterLimit}", formatNoteFileSize(NOTE_FILE_STARTER_MAX_BYTES))
+    .replace("{businessLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES))
+    .replace("{premiumLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES));
+  const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
+    "{limit}",
+    fileLimitLabel,
+  );
+
   const attachFileReturnTo =
     typeof window === "undefined"
       ? localizedPath("/", language)
@@ -494,6 +524,28 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [canAttachFiles]);
 
   const { toast } = useToast();
+
+  const rejectOversizedAttachment = (file: File): boolean => {
+    if (file.size <= fileLimitBytes) return false;
+    const upgradePlan = resolveFileSizeUpgradePlan(accountType, file.size);
+    if (upgradePlan) {
+      setFileSizeUpgradePlan(upgradePlan);
+      return true;
+    }
+    toast({
+      title: t.fileTooLarge,
+      description: (t.fileTooLargeDescription ?? "This file is {size}. Your plan allows up to {limit} per file.")
+        .replace("{size}", formatNoteFileSize(file.size))
+        .replace("{limit}", fileLimitLabel),
+      variant: "destructive",
+    });
+    return true;
+  };
+
+  const handleVoiceMessageRecorded = (file: File) => {
+    if (rejectOversizedAttachment(file)) return;
+    setSelectedFile(file);
+  };
 
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
@@ -592,21 +644,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setVoiceRecorderOpen(true);
   };
 
-  const handleVoiceMessageRecorded = (file: File) => {
-    if (file.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: (t.fileTooLargeDescription).replace(
-          "{limit}",
-          formatNoteFileSize(fileLimitBytes),
-        ),
-        variant: "destructive",
-      });
-      return;
-    }
-    setSelectedFile(file);
-  };
-
   const handleAttachFolderClick = () => {
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
@@ -625,16 +662,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!file) return;
-    if (file.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: (
-          t.fileTooLargeDescription
-        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
-        variant: "destructive",
-      });
-      return;
-    }
+    if (rejectOversizedAttachment(file)) return;
     setSelectedFile(file);
   };
 
@@ -646,17 +674,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     try {
       const { createStoredZipFromFiles } = await import("@/utils/createStoredZip");
       const zippedFolder = await createStoredZipFromFiles(files);
-      if (zippedFolder.size > fileLimitBytes) {
-        toast({
-          title: t.fileTooLarge,
-          description: t.fileTooLargeDescription.replace(
-            "{limit}",
-            formatNoteFileSize(fileLimitBytes),
-          ),
-          variant: "destructive",
-        });
-        return;
-      }
+      if (rejectOversizedAttachment(zippedFolder)) return;
       setSelectedFile(zippedFolder);
     } catch (error) {
       toast({
@@ -691,16 +709,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       window.location.href = attachFileSignInHref;
       return;
     }
-    if (file.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: (
-          t.fileTooLargeDescription
-        ).replace("{limit}", formatNoteFileSize(fileLimitBytes)),
-        variant: "destructive",
-      });
-      return;
-    }
+    if (rejectOversizedAttachment(file)) return;
     setSelectedFile(file);
   };
 
@@ -744,12 +753,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [prefillText]);
 
   const authDraftRestoredRef = useRef(false);
+  const authDraftAppliedRef = useRef(false);
   useEffect(() => {
     if (authDraftRestoredRef.current || prefillText) return;
     authDraftRestoredRef.current = true;
     const draft = readCreateNoteAuthDraft();
     if (!draft) return;
     clearCreateNoteAuthDraft();
+    authDraftAppliedRef.current = true;
 
     const { text } = truncateUtf8StringToMaxBytes(
       draft.noteContent,
@@ -779,65 +790,102 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [prefillText]);
 
   useEffect(() => {
+    if (planCapabilities.premiumTemplatePacks || !selectedTemplateId) return;
+    void loadPromptTemplatesModule().then((m) => {
+      if (m.isPremiumPromptTemplateId(selectedTemplateId)) {
+        setSelectedTemplateId("ask-anything");
+      }
+    });
+  }, [planCapabilities.premiumTemplatePacks, selectedTemplateId]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!user) {
-      setAccountType("free");
-      setAccountEmailNotifications(false);
-      setAccountEmailVerified(false);
       setNotifyOnOpen(false);
       setNotifyOnDestroyed(false);
-      setRestrictRecipientEmail(false);
+      setNotifyOnAttachmentDownload(false);
+      setEmailLinkToRecipient(false);
+      setLinkDeliveryEmail("");
+      setDelayedReveal(false);
+      setOpensAtLocal("");
+      setAlertNotifyAccountEmail(true);
+      setAlertCustomEmail("");
       setRequireRecipientVerification(false);
       setRecipientEmail("");
       setNoteLabel("");
-      setPremiumStatusLoading(false);
       return;
     }
 
-    setPremiumStatusLoading(true);
+    if (
+      authDraftAppliedRef.current ||
+      prefillText ||
+      !planFeaturesFor(accountType).savedDefaults ||
+      premiumStatusLoading
+    ) {
+      return;
+    }
+
     void (async () => {
       try {
-        const summary = await apiRequest<{
+        const defaultsResponse = await apiRequest<{
           ok?: boolean;
-          accountType?: unknown;
-          plan?: unknown;
-          emailNotifications?: boolean;
-          emailVerified?: boolean;
-        }>("/api/auth/account/summary", "GET");
-        if (cancelled) return;
-        setAccountType(normalizeAccountType(summary.accountType ?? summary.plan));
-        setAccountEmailNotifications(summary.emailNotifications === true);
-        setAccountEmailVerified(summary.emailVerified === true);
-      } catch {
-        if (!cancelled) {
-          setAccountType("free");
-          setAccountEmailNotifications(false);
-          setAccountEmailVerified(false);
-          setNotifyOnOpen(false);
-          setNotifyOnDestroyed(false);
-          setRestrictRecipientEmail(false);
-          setRequireRecipientVerification(false);
-          setRecipientEmail("");
-          setNoteLabel("");
+          defaults: {
+            expirySeconds: number | null;
+            maxReads: NoteReadLimit | null;
+            fileAccessWindowSeconds: number | null;
+            readerLanguage: SupportedLanguage | null;
+            notifyOnOpen: boolean;
+            requireRecipientVerification: boolean;
+          } | null;
+        }>("/api/auth/account/note-defaults", "GET");
+        if (cancelled || !defaultsResponse.defaults) return;
+        const defaults = defaultsResponse.defaults;
+        const expiryPreset =
+          typeof defaults.expirySeconds === "number"
+            ? noteExpirySecondsToPresetId(defaults.expirySeconds)
+            : null;
+        if (expiryPreset) setExpiryValue(expiryPreset);
+        if (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5) {
+          setReadCount(defaults.maxReads);
         }
-      } finally {
-        if (!cancelled) setPremiumStatusLoading(false);
+        if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
+          setFileAccessWindowSeconds(defaults.fileAccessWindowSeconds);
+        }
+        if (
+          defaults.readerLanguage &&
+          SUPPORTED_LANGUAGES.includes(defaults.readerLanguage)
+        ) {
+          setReaderLanguage(defaults.readerLanguage);
+        } else {
+          setReaderLanguage("auto");
+        }
+        setNotifyOnOpen(defaults.notifyOnOpen === true);
+        setRequireRecipientVerification(defaults.requireRecipientVerification === true);
+      } catch {
+        /* defaults are optional */
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, accountType, premiumStatusLoading, prefillText]);
 
   useEffect(() => {
     if (premiumStatusLoading) return;
-    setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, isPremiumUser));
-    setReadCount((current) => clampNoteReadLimitForAccount(current, isPremiumUser));
-    setFileAccessWindowSeconds((current) =>
-      clampNoteFileAccessWindowForAccount(current, isPremiumUser),
+    setExpiryValue((current) => clampNoteExpiryPresetForAccount(current, maxExpirySeconds));
+    setReadCount((current) =>
+      clampNoteReadLimitForAccount(current, planCapabilities.allowedReadCounts),
     );
-  }, [isPremiumUser, premiumStatusLoading]);
+    setFileAccessWindowSeconds((current) =>
+      clampNoteFileAccessWindowForAccount(current, accountType),
+    );
+  }, [
+    accountType,
+    maxExpirySeconds,
+    planCapabilities.allowedReadCounts,
+    premiumStatusLoading,
+  ]);
 
   useEffect(() => {
     if (!canAttachFiles && selectedFile) {
@@ -852,21 +900,64 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!canNotifyOnOpen && notifyOnDestroyed) {
       setNotifyOnDestroyed(false);
     }
-  }, [canNotifyOnOpen, notifyOnDestroyed, notifyOnOpen]);
+    if (!canNotifyOnOpen && notifyOnAttachmentDownload) {
+      setNotifyOnAttachmentDownload(false);
+    }
+  }, [canNotifyOnOpen, notifyOnAttachmentDownload, notifyOnDestroyed, notifyOnOpen]);
+
+  useEffect(() => {
+    if (canEmailLinkToRecipient) return;
+    if (!emailLinkToRecipient && !linkDeliveryEmail) return;
+    setEmailLinkToRecipient(false);
+    setLinkDeliveryEmail("");
+  }, [canEmailLinkToRecipient, emailLinkToRecipient, linkDeliveryEmail]);
+
+  useEffect(() => {
+    if (canDelayedReveal) return;
+    if (!delayedReveal && !opensAtLocal) return;
+    setDelayedReveal(false);
+    setOpensAtLocal("");
+  }, [canDelayedReveal, delayedReveal, opensAtLocal]);
+
+  useEffect(() => {
+    if (canRequireReceiptAck) return;
+    if (!requireReceiptAck) return;
+    setRequireReceiptAck(false);
+  }, [canRequireReceiptAck, requireReceiptAck]);
+
+  useEffect(() => {
+    if (selectedFile) return;
+    if (!notifyOnAttachmentDownload) return;
+    setNotifyOnAttachmentDownload(false);
+  }, [notifyOnAttachmentDownload, selectedFile]);
+
+  // One-time notes open and destroy together — keep both notify flags aligned.
+  useEffect(() => {
+    if (readCount !== 1) return;
+    if (notifyOnOpen === notifyOnDestroyed) return;
+    const enabled = notifyOnOpen || notifyOnDestroyed;
+    setNotifyOnOpen(enabled);
+    setNotifyOnDestroyed(enabled);
+  }, [notifyOnDestroyed, notifyOnOpen, readCount]);
+
+  useEffect(() => {
+    if (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload) return;
+    setAlertNotifyAccountEmail(true);
+    setAlertCustomEmail("");
+  }, [notifyOnAttachmentDownload, notifyOnDestroyed, notifyOnOpen]);
 
   useEffect(() => {
     if (isPremiumUser) return;
-    if (restrictRecipientEmail) setRestrictRecipientEmail(false);
+    setAlertNotifyAccountEmail(true);
+    setAlertCustomEmail("");
+  }, [isPremiumUser]);
+
+  useEffect(() => {
+    if (isPremiumUser) return;
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
-  }, [
-    isPremiumUser,
-    recipientEmail,
-    readerLanguage,
-    requireRecipientVerification,
-    restrictRecipientEmail,
-  ]);
+  }, [isPremiumUser, readerLanguage, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1251,15 +1342,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (selectedFile && selectedFile.size > fileLimitBytes) {
-      toast({
-        title: t.fileTooLarge,
-        description: t.fileTooLargeDescription.replace(
-          "{limit}",
-          formatNoteFileSize(fileLimitBytes),
-        ),
-        variant: "destructive",
-      });
+    if (selectedFile && rejectOversizedAttachment(selectedFile)) {
       return;
     }
 
@@ -1272,28 +1355,116 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    const applyRestrictRecipientEmail = isPremiumUser && restrictRecipientEmail;
     const applyRequireRecipientVerification = isPremiumUser && requireRecipientVerification;
-    if (applyRestrictRecipientEmail) {
-      const trimmedRecipientEmail = recipientEmail.trim();
-      if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
+    const alertsEnabled =
+      canNotifyOnOpen && (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload);
+    const applyAlertNotifyAccountEmail = !isPremiumUser || alertNotifyAccountEmail;
+    const trimmedAlertCustomEmail = isPremiumUser ? alertCustomEmail.trim() : "";
+    if (alertsEnabled) {
+      if (isPremiumUser && trimmedAlertCustomEmail && !isPlausibleEmailFormat(trimmedAlertCustomEmail)) {
         toast({
-          title: t.settingsRecipientEmailInvalid,
-          description: t.settingsRecipientEmailInvalidHint,
+          title: t.settingsEmailAlertCustomEmailInvalid ?? "Invalid alert email",
+          description:
+            t.settingsEmailAlertCustomEmailInvalidHint ??
+            "Enter a valid email address for alerts.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (
+        isPremiumUser &&
+        !applyAlertNotifyAccountEmail &&
+        !isPlausibleEmailFormat(trimmedAlertCustomEmail)
+      ) {
+        toast({
+          title: t.settingsEmailAlertDestinationRequired ?? "Choose where to send alerts",
+          description:
+            t.settingsEmailAlertDestinationRequiredHint ??
+            "Keep your account email checked, or enter another email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (applyAlertNotifyAccountEmail && !accountEmailNotifications) {
+        toast({
+          title: t.settingsEmailAlerts ?? "Email alerts",
+          description:
+            t.settingsEmailAlertsPrefsHintPrefix ??
+            "Turn on email notifications in Account → Preferences to use your account email.",
           variant: "destructive",
         });
         return;
       }
     }
 
+    if (applyRequireRecipientVerification) {
+      const trimmedRecipientEmail = recipientEmail.trim();
+      if (!isPlausibleEmailFormat(trimmedRecipientEmail)) {
+        toast({
+          title: t.settingsRecipientVerificationEmailInvalid ?? "Recipient email required",
+          description:
+            t.settingsRecipientVerificationEmailInvalidHint ??
+            "Enter a valid recipient email to send the verification code.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const applyEmailLinkToRecipient = canEmailLinkToRecipient && emailLinkToRecipient;
+    const trimmedLinkDeliveryEmail = linkDeliveryEmail.trim();
+    if (applyEmailLinkToRecipient && !isPlausibleEmailFormat(trimmedLinkDeliveryEmail)) {
+      toast({
+        title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
+        description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const applyDelayedReveal = canDelayedReveal && delayedReveal;
+    const applyRequireReceiptAck = canRequireReceiptAck && requireReceiptAck;
+    let opensAtIso: string | undefined;
+    if (applyDelayedReveal) {
+      if (!opensAtLocal.trim()) {
+        toast({
+          title: t.settingsDelayedRevealInvalid ?? "Choose a future open time",
+          description:
+            t.settingsDelayedRevealInvalidHint ??
+            "Pick a time after now and before the note expires.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const opensAtDate = new Date(opensAtLocal);
+      const expiresAtDate = new Date(
+        Date.now() + noteExpiryPresetIdToSeconds(expiryValue) * 1000,
+      );
+      if (
+        !Number.isFinite(opensAtDate.getTime()) ||
+        opensAtDate.getTime() <= Date.now() + 30_000 ||
+        opensAtDate.getTime() >= expiresAtDate.getTime()
+      ) {
+        toast({
+          title: t.settingsDelayedRevealInvalid ?? "Choose a future open time",
+          description:
+            t.settingsDelayedRevealInvalidHint ??
+            "Pick a time after now and before the note expires.",
+          variant: "destructive",
+        });
+        return;
+      }
+      opensAtIso = opensAtDate.toISOString();
+    }
+
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const tracksDelivery =
-      (notifyOnOpen && canNotifyOnOpen) ||
-      (notifyOnDestroyed && canNotifyOnOpen) ||
-      applyRestrictRecipientEmail ||
-      applyRequireRecipientVerification;
+      (canNotifyOnOpen &&
+        (notifyOnOpen || notifyOnDestroyed || notifyOnAttachmentDownload)) ||
+      applyRequireRecipientVerification ||
+      applyRequireReceiptAck;
 
     if (noteHasUnresolvedGuidedPlaceholders(noteContent, language)) {
       toast({
@@ -1341,11 +1512,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     }
 
     setIsLoading(true);
-    // 4 MiB matches SODIUM_ATTACHMENT_CHUNK_SIZE_BYTES — avoid awaiting the sodium
-    // module just to show an immediate 0/N chunk label.
-    const earlyTotalChunks = selectedFile
-      ? Math.max(1, Math.ceil(selectedFile.size / (4 * 1024 * 1024)))
-      : 0;
     setAttachmentProgress(
       selectedFile
         ? {
@@ -1361,6 +1527,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         encryptNote,
         generateRootKeyBytes,
         deriveNoteRootKeys,
+        deriveReceiptAckTokenHex,
+        hashReceiptAckTokenHex,
         arrayBufferToBase64,
         currentKdfParamsV2,
         deriveAesKeyFromPassword,
@@ -1384,6 +1552,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       };
 
       const {
+        getAttachmentChunkSizeBytes,
         attachmentEncryptedSizeUpperBound,
         usesSingleBlobAttachmentUpload,
         encryptFileToSodiumBlob,
@@ -1484,6 +1653,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         encryptedBase64 = wirePayload.content;
         ivBase64 = wirePayload.iv;
       }
+      let receiptAckTokenHash: string | undefined;
+      if (applyRequireReceiptAck) {
+        receiptAckTokenHash = await hashReceiptAckTokenHex(
+          await deriveReceiptAckTokenHex(rootKeyBytes),
+        );
+      }
       rootKeyBytes.fill(0);
 
       if (selectedFile) {
@@ -1491,7 +1666,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           throw new Error("Upload token missing from note reservation.");
         }
         try {
-          const { getAttachmentChunkSizeBytes } = await import("@/utils/libsodiumFileAttachment");
           const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(selectedFile.size);
           const singleBlob = usesSingleBlobAttachmentUpload(selectedFile.size);
           const totalChunksHint = singleBlob
@@ -1531,12 +1705,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 const next = Math.max(2, Math.min(99, Math.round(ratio * 100)));
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
+                  // Never jump backwards (initial 8% must not drop to 2%).
                   progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, next),
                   detail: fileLabel,
                 }));
               },
             );
             attachment = encrypted.metadata;
+            setAttachmentProgress({
+              phase: "encrypt",
+              progress: 100,
+              detail: fileLabel,
+            });
             setAttachmentProgress({
               phase: "upload",
               progress: 4,
@@ -1589,32 +1769,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             });
           } else {
             const fileLabel = formatAttachmentDisplayName(selectedFile.name);
-            const totalChunks = totalChunksHint;
-            const encryptedSizeUpperBound = encryptedSizeBound;
             const chunkDetail = (done: number, total: number) =>
               total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
             const completedChunksRef = { current: 0 };
-            const inFlightChunkRatios = new Map<number, number>();
-            let lastProgressPublishMs = 0;
-            const publishUploadProgress = (force = false) => {
-              const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-              if (!force && now - lastProgressPublishMs < 80) return;
-              lastProgressPublishMs = now;
-              let inFlightSum = 0;
-              for (const ratio of inFlightChunkRatios.values()) {
-                inFlightSum += ratio;
-              }
-              const overall =
-                totalChunks > 0
-                  ? Math.min(1, (completedChunksRef.current + inFlightSum) / totalChunks)
-                  : 1;
-              const nextProgress = Math.round(5 + overall * 90);
-              setAttachmentProgress((prev) => ({
-                phase: "upload",
-                progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, nextProgress),
-                detail: chunkDetail(completedChunksRef.current, totalChunks),
-              }));
-            };
             setAttachmentProgress({
               phase: "encrypt",
               progress: 5,
@@ -1626,56 +1783,57 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               metadataKey!,
               reservedId,
               async (chunk) => {
-                inFlightChunkRatios.set(chunk.index, 0);
-                publishUploadProgress(true);
-                try {
-                  await uploadEncryptedAttachmentChunk(
-                    `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                    chunk.encryptedBytes,
-                    {
-                      "Content-Type": "application/octet-stream",
-                      "x-file-plaintext-size": String(selectedFile.size),
-                      "x-file-encrypted-size": String(encryptedSizeUpperBound),
-                      "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
-                      "x-file-chunk-sha256": chunk.sha256,
-                    },
-                    uploadToken,
-                    ({ loaded, total }) => {
-                      inFlightChunkRatios.set(
-                        chunk.index,
-                        total > 0 ? Math.min(1, loaded / total) : 0,
-                      );
-                      publishUploadProgress();
-                    },
-                  );
-                } finally {
-                  inFlightChunkRatios.delete(chunk.index);
-                }
+                await uploadEncryptedAttachmentChunk(
+                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
+                  chunk.encryptedBytes,
+                  {
+                    "x-file-plaintext-size": String(selectedFile.size),
+                    "x-file-encrypted-size": String(encryptedSizeBound),
+                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                    "x-file-chunk-sha256": chunk.sha256,
+                  },
+                  uploadToken,
+                );
               },
               (pipeline) => {
-                if (pipeline.phase !== "upload") {
-                  setAttachmentProgress((prev) => ({
-                    phase: "encrypt",
-                    progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, 5),
-                    detail: fileLabel,
-                  }));
-                  return;
+                if (pipeline.phase === "upload") {
+                  completedChunksRef.current = pipeline.completedChunks;
                 }
-                completedChunksRef.current = pipeline.completedChunks;
-                publishUploadProgress(true);
+                const done =
+                  pipeline.phase === "upload"
+                    ? pipeline.completedChunks
+                    : completedChunksRef.current;
+                const ratio =
+                  typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
+                    ? pipeline.ratio
+                    : pipeline.totalChunks > 0
+                      ? pipeline.completedChunks / pipeline.totalChunks
+                      : 1;
+                const within = Math.round(ratio * 100);
+                setAttachmentProgress({
+                  phase: pipeline.phase === "upload" ? "upload" : "encrypt",
+                  progress: Math.min(100, Math.max(pipeline.phase === "encrypt" ? 5 : 4, within)),
+                  detail: chunkDetail(done, pipeline.totalChunks),
+                });
               },
             );
+            setAttachmentProgress({
+              phase: "upload",
+              progress: 100,
+              detail: fileLabel,
+            });
           }
+
           setAttachmentProgress({
             phase: "finalize",
-            progress: 98,
+            progress: 35,
             detail: formatAttachmentDisplayName(selectedFile.name),
           });
           logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
             totalChunks: attachment.totalChunks,
             encryptedSize: attachment.encryptedSize,
-            singleBlob: usesSingleBlobAttachmentUpload(selectedFile.size),
+            singleBlob,
           });
         } catch (error) {
           logFileUpload("error", "attachment failed", {
@@ -1699,35 +1857,57 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         }
       }
 
-      const { id, recipientVerificationCode } = await apiRequest<{
+      const { id } = await apiRequest<{
         id: string;
-        recipientVerificationCode?: string;
       }>("/api/notes", "POST", {
         id: reservedId,
         content: encryptedBase64,
         iv: ivBase64,
         expirySeconds,
         maxReads: readCount,
-        notifyOnOpen: notifyOnOpen && canNotifyOnOpen,
-        notifyOnDestroyed: notifyOnDestroyed && canNotifyOnOpen,
-        ...(applyRestrictRecipientEmail
+        notifyOnOpen:
+          canNotifyOnOpen &&
+          (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnOpen),
+        notifyOnDestroyed:
+          canNotifyOnOpen &&
+          (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
+        notifyOnAttachmentDownload:
+          Boolean(selectedFile) && canNotifyOnOpen && notifyOnAttachmentDownload,
+        ...(alertsEnabled
           ? {
-              restrictRecipientEmail: true,
-              recipientEmail: recipientEmail.trim().toLowerCase(),
+              alertNotifyAccountEmail: applyAlertNotifyAccountEmail,
+              ...(isPlausibleEmailFormat(trimmedAlertCustomEmail)
+                ? { alertCustomEmail: trimmedAlertCustomEmail.toLowerCase() }
+                : {}),
             }
           : {}),
         ...(applyRequireRecipientVerification
-          ? { requireRecipientVerification: true }
+          ? {
+              requireRecipientVerification: true,
+              recipientEmail: recipientEmail.trim().toLowerCase(),
+            }
           : {}),
+        ...(applyRequireReceiptAck && receiptAckTokenHash
+          ? {
+              requireReceiptAck: true,
+              receiptAckTokenHash,
+            }
+          : {}),
+        ...(applyNoteLabel ? { label: applyNoteLabel } : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
+        ...(opensAtIso ? { opensAt: opensAtIso } : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
         keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         aad,
         ...(attachment
-          ? { attachment, attachmentContentHash: attachment.encryptedContentSha256 }
+          ? {
+              attachment,
+              attachmentContentHash: attachment.encryptedContentSha256,
+              ...(selectedFileIsVoice ? { hasVoiceMessage: true } : {}),
+            }
           : {}),
         _hp: honeypotValue,
         creationSource: "web",
@@ -1751,18 +1931,26 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
+
+      const deliveryEmailForCreate = applyEmailLinkToRecipient
+        ? trimmedLinkDeliveryEmail.toLowerCase()
+        : "";
+
       setCreatedNote({
         url,
         meta: {
           expiryValue,
           readCount,
           isPasswordProtected,
-          recipientVerificationCode:
-            typeof recipientVerificationCode === "string"
-              ? recipientVerificationCode
-              : undefined,
+          noteId: id,
+          tracksDelivery,
         },
       });
+
+      if (deliveryEmailForCreate) {
+        void deliverRecipientLink(deliveryEmailForCreate, url);
+      }
+
       resetAiTurnstileWidget();
       try {
         const d = await apiRequest<{ required: boolean }>("/api/notes/turnstile-challenge", "GET");
@@ -1852,6 +2040,111 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     await copyToClipboard();
   };
 
+  const recipientLinkDeliveryGate =
+    !user
+      ? ("sign_in" as const)
+      : !planCapabilities.recipientLinkDelivery
+        ? ("upgrade" as const)
+        : !accountEmailVerified
+          ? ("verify_email" as const)
+          : ("ready" as const);
+
+  const deliverRecipientLink = useCallback(
+    async (rawEmail: string, noteUrl?: string) => {
+      const url = noteUrl ?? createdNote?.url;
+      if (!url || recipientLinkDeliveryGate !== "ready") return;
+      const email = rawEmail.trim().toLowerCase();
+      if (!isPlausibleEmailFormat(email)) {
+        toast({
+          title: t.toastInvalidRecipientEmailTitle ?? "Invalid recipient email",
+          description: t.toastInvalidRecipientEmailDesc ?? "Enter a valid email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const noteIdMatch = url.match(/\/note\/([^/#]+)/);
+      const noteId = noteIdMatch?.[1];
+      if (!noteId) return;
+      setRecipientLinkDeliveryRetrying(true);
+      try {
+        await apiRequest(`/api/notes/${noteId}/deliver-link`, "POST", {
+          recipientEmail: email,
+          noteUrl: url,
+        });
+        setCreatedNote((current) =>
+          current
+            ? {
+                ...current,
+                meta: current.meta
+                  ? {
+                      ...current.meta,
+                      recipientLinkDelivery: { status: "sent", email },
+                    }
+                  : current.meta,
+              }
+            : current,
+        );
+        toast({
+          title: t.recipientLinkDeliverySentTitle ?? "Link emailed",
+          description: (t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
+            "{email}",
+            email,
+          ),
+        });
+      } catch (error) {
+        setCreatedNote((current) =>
+          current
+            ? {
+                ...current,
+                meta: current.meta
+                  ? {
+                      ...current.meta,
+                      recipientLinkDelivery: { status: "failed", email },
+                    }
+                  : current.meta,
+              }
+            : current,
+        );
+        let description = (
+          t.recipientLinkDeliveryFailedBody ??
+          "We could not send the link to {email}. You can still copy it above."
+        ).replace("{email}", email);
+        if (error instanceof ApiRequestError) {
+          if (error.status === 401) {
+            description =
+              t.recipientLinkDeliverySignInHint ??
+              "Sign in with Starter or Business to email the link.";
+          } else if (error.status === 403) {
+            if (/sender_email_unverified/i.test(error.bodyText)) {
+              description =
+                t.recipientLinkDeliveryVerifyEmailHint ??
+                "Verify your account email before we can send the link for you.";
+            } else if (/premium_required/i.test(error.bodyText)) {
+              description =
+                t.recipientLinkDeliveryUpgradeHint ??
+                "Starter and Business can email the link.";
+            }
+          } else if (error.status === 429) {
+            description = "Too many email attempts. Please wait and try again.";
+          }
+        }
+        toast({
+          title: t.recipientLinkDeliveryFailedTitle ?? "Could not email the link",
+          description,
+          variant: "destructive",
+        });
+      } finally {
+        setRecipientLinkDeliveryRetrying(false);
+      }
+    },
+    [
+      createdNote?.url,
+      recipientLinkDeliveryGate,
+      t,
+      toast,
+    ],
+  );
+
   const createNewNote = () => {
     clearCreateNoteAuthDraft();
     setShowSuccessQr(false);
@@ -1865,7 +2158,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowAdvancedOptions(false);
     setNotifyOnOpen(false);
     setNotifyOnDestroyed(false);
-    setRestrictRecipientEmail(false);
+    setNotifyOnAttachmentDownload(false);
+    setEmailLinkToRecipient(false);
+    setLinkDeliveryEmail("");
+    setDelayedReveal(false);
+    setOpensAtLocal("");
+    setAlertNotifyAccountEmail(true);
+    setAlertCustomEmail("");
     setRequireRecipientVerification(false);
     setRecipientEmail("");
     setNoteLabel("");
@@ -1904,6 +2203,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       setSelectedTemplateId(template.id);
     });
   };
+
+  const handleSaveNoteDefaults = useCallback(async () => {
+    await apiRequest("/api/auth/account/note-defaults", "PUT", {
+      expirySeconds: noteExpiryPresetIdToSeconds(expiryValue),
+      maxReads: readCount,
+      fileAccessWindowSeconds,
+      readerLanguage: readerLanguage === "auto" ? null : readerLanguage,
+      notifyOnOpen,
+      requireRecipientVerification,
+    });
+    toast({
+      title: "Note defaults saved",
+      description: "These settings will be used on your signed-in devices.",
+    });
+  }, [
+    expiryValue,
+    fileAccessWindowSeconds,
+    notifyOnOpen,
+    readCount,
+    readerLanguage,
+    requireRecipientVerification,
+    toast,
+  ]);
 
   const handleSentenceLengthChange = useCallback(
     (id: AiSentenceLengthId) => {
@@ -2426,11 +2748,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           <Shield className="h-3 w-3 mr-1 text-green-500" />
           {t.endToEndEncrypted}
         </span>
-        <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
-        <span className="flex items-center whitespace-nowrap">
-          <Lock className="h-3 w-3 mr-1 text-blue-500" />
-          AES-256 GCM
-        </span>
+        {!isPasswordProtected && (
+          <>
+            <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
+            <span className="flex items-center whitespace-nowrap">
+              <Lock className="h-3 w-3 mr-1 text-blue-500" />
+              AES-256 GCM
+            </span>
+          </>
+        )}
         <span className="h-1 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hidden md:block" />
         <span className="flex items-center whitespace-nowrap">
           <Eye className="h-3 w-3 mr-1 text-purple-500 opacity-20" />
@@ -2443,7 +2769,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     isGeneratingContent ||
     cellularPreloadConfirmOpen ||
     showTemplateOfferPrompt ||
-    Boolean(attachmentProgress);
+    Boolean(attachmentProgress) ||
+    fileSizeUpgradePlan !== null;
 
   const handleUseCloudAssist = useCallback(() => {
     setShowTemplateOfferPrompt(false);
@@ -2475,10 +2802,25 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         setSelectedDoDont={setSelectedDoDont}
         successLinkCopied={successLinkCopied}
         onCopyLink={copyToClipboard}
+        onDeliverRecipientLink={deliverRecipientLink}
+        recipientLinkDeliveryGate={recipientLinkDeliveryGate}
+        recipientLinkDeliveryRetrying={recipientLinkDeliveryRetrying}
         onShareLink={shareLink}
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
+        createdPassword={
+          createdNote.meta?.isPasswordProtected ? password.trim() || undefined : undefined
+        }
+        noteLabel={noteLabel}
+        onNoteLabelChange={
+          createdNote.meta?.tracksDelivery && createdNote.meta.noteId
+            ? (value) => {
+                setNoteLabel(value);
+                saveNoteLabel(createdNote.meta!.noteId!, value);
+              }
+            : undefined
+        }
         successQrSectionRef={successQrSectionRef}
         variant={isFileTransferMode ? "file-transfer" : "note"}
       />
@@ -2599,6 +2941,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 preferHostedCloudAfterLocalFailure={preferHostedCloudAfterLocalFailure}
                 onPreferHostedCloudChange={handlePreferHostedCloudChange}
                 onWriteWithoutAi={() => setIsAiMode(false)}
+                canUsePremiumTemplates={planCapabilities.premiumTemplatePacks}
+                canUseCustomTemplates={planCapabilities.customPromptTemplates}
                 />
               </Suspense>
             </div>
@@ -2665,12 +3009,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             <div className="mb-4 space-y-4">
               <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
                 <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                <span
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
-                  title={selectedFile.name}
-                >
-                  {formatAttachmentDisplayName(selectedFile.name)}
-                </span>
+                    <span
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
+                      title={selectedFile.name}
+                    >
+                      {formatAttachmentDisplayName(selectedFile.name)}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                      {formatNoteFileSize(selectedFile.size)}
+                    </span>
                 <button
                   type="button"
                   onClick={() => setSelectedFile(null)}
@@ -2735,13 +3082,35 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setNotifyOnOpen={setNotifyOnOpen}
                 notifyOnDestroyed={notifyOnDestroyed}
                 setNotifyOnDestroyed={setNotifyOnDestroyed}
+                notifyOnAttachmentDownload={notifyOnAttachmentDownload}
+                setNotifyOnAttachmentDownload={setNotifyOnAttachmentDownload}
+                hasAttachment={Boolean(selectedFile)}
+                hasVoiceMessage={selectedFileIsVoice}
                 canNotifyOnOpen={canNotifyOnOpen}
+                emailLinkToRecipient={emailLinkToRecipient}
+                setEmailLinkToRecipient={setEmailLinkToRecipient}
+                linkDeliveryEmail={linkDeliveryEmail}
+                setLinkDeliveryEmail={setLinkDeliveryEmail}
+                canEmailLinkToRecipient={canEmailLinkToRecipient}
+                delayedReveal={delayedReveal}
+                setDelayedReveal={setDelayedReveal}
+                opensAtLocal={opensAtLocal}
+                setOpensAtLocal={setOpensAtLocal}
+                requireReceiptAck={requireReceiptAck}
+                setRequireReceiptAck={setRequireReceiptAck}
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
+                accountEmail={user?.email ?? null}
+                alertNotifyAccountEmail={alertNotifyAccountEmail}
+                setAlertNotifyAccountEmail={setAlertNotifyAccountEmail}
+                alertCustomEmail={alertCustomEmail}
+                setAlertCustomEmail={setAlertCustomEmail}
+                maxExpirySeconds={maxExpirySeconds}
+                allowedReadCounts={planCapabilities.allowedReadCounts}
+                maxFileAccessWindowSeconds={planCapabilities.maxFileAccessWindowSeconds}
+                isSignedIn={Boolean(user)}
                 premiumStatusLoading={premiumStatusLoading}
-                restrictRecipientEmail={restrictRecipientEmail}
-                setRestrictRecipientEmail={setRestrictRecipientEmail}
                 requireRecipientVerification={requireRecipientVerification}
                 setRequireRecipientVerification={setRequireRecipientVerification}
                 recipientEmail={recipientEmail}
@@ -2752,6 +3121,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
                 readerLanguage={readerLanguage}
                 setReaderLanguage={setReaderLanguage}
+                onSaveDefaults={
+                  planCapabilities.savedDefaults ? handleSaveNoteDefaults : undefined
+                }
               />
             </Suspense>
           )}
@@ -2784,7 +3156,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     type="file"
                     className="sr-only"
                     tabIndex={-1}
-                    aria-hidden
                     onChange={handleAttachFileSelected}
                   />
                   <GravityDropZone
@@ -2795,7 +3166,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     ariaLabel={t.sftDropZoneAriaLabel}
                     dropTitle={t.sftDropZoneTitle}
                     dropTitleDragging={t.sftDropZoneTitleDragging}
-                    subtitle={t.sftDropZoneSubtitle}
+                    subtitle={`${t.sftDropZoneSubtitle} · ${attachFileMaxSizeHint}`}
                   >
                     {canAttachFiles ? (
                       <label
@@ -2831,18 +3202,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     {t.sftNeedHigherLimits}{" "}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toast({
-                          title: t.sftPremiumComingSoonTitle,
-                          description: t.sftPremiumComingSoonDescription,
-                        })
-                      }
+                    <a
+                      href={localizedPath("/premium", language)}
                       className="font-medium text-primary hover:underline focus:outline-none"
                     >
                       {t.sftPremiumUpsell}
-                    </button>
+                    </a>
                   </p>
                 </>
               ) : isFileTransferMode && selectedFile ? (
@@ -3101,6 +3466,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   )}
                 </button>
               </div>
+              {canAttachFiles ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {attachFileMaxSizeHint}
+                  {!isPremiumUser ? (
+                    <>
+                      {" · "}
+                      {paidFileUpgradeHint}
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
                 </>
               )}
             </div>
@@ -3130,13 +3506,35 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setNotifyOnOpen,
               notifyOnDestroyed,
               setNotifyOnDestroyed,
+              notifyOnAttachmentDownload,
+              setNotifyOnAttachmentDownload,
+              hasAttachment: Boolean(selectedFile),
+              hasVoiceMessage: selectedFileIsVoice,
               canNotifyOnOpen,
+              emailLinkToRecipient,
+              setEmailLinkToRecipient,
+              linkDeliveryEmail,
+              setLinkDeliveryEmail,
+              canEmailLinkToRecipient,
+              delayedReveal,
+              setDelayedReveal,
+              opensAtLocal,
+              setOpensAtLocal,
+              requireReceiptAck,
+              setRequireReceiptAck,
               noteLabel,
               setNoteLabel,
               isPremiumUser,
+              accountEmail: user?.email ?? null,
+              alertNotifyAccountEmail,
+              setAlertNotifyAccountEmail,
+              alertCustomEmail,
+              setAlertCustomEmail,
+              maxExpirySeconds,
+              allowedReadCounts: planCapabilities.allowedReadCounts,
+              maxFileAccessWindowSeconds: planCapabilities.maxFileAccessWindowSeconds,
+              isSignedIn: Boolean(user),
               premiumStatusLoading,
-              restrictRecipientEmail,
-              setRestrictRecipientEmail,
               requireRecipientVerification,
               setRequireRecipientVerification,
               recipientEmail,
@@ -3147,6 +3545,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setFileAccessWindowSeconds,
               readerLanguage,
               setReaderLanguage,
+              onSaveDefaults: planCapabilities.savedDefaults
+                ? handleSaveNoteDefaults
+                : undefined,
             }}
           />
         </Suspense>
@@ -3158,6 +3559,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             aiProgress={aiProgress}
             attachmentProgress={attachmentProgress}
             cellularPreloadConfirmOpen={cellularPreloadConfirmOpen}
+            fileSizeUpgradePlan={fileSizeUpgradePlan}
+            currentFileLimitBytes={fileLimitBytes}
             isGeneratingContent={isGeneratingContent && !usesHostedCloudAi}
             onStartFreeModelDownload={() => {
               void startFreeModelDownload();
@@ -3165,6 +3568,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onUseCloudAssist={handleUseCloudAssist}
             onWriteWithoutAi={() => setIsAiMode(false)}
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}
+            setFileSizeUpgradePlan={setFileSizeUpgradePlan}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}
           />
@@ -3178,6 +3582,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             onOpenChange={setVoiceRecorderOpen}
             onRecorded={handleVoiceMessageRecorded}
             maxBytes={fileLimitBytes}
+            maxDurationSeconds={planCapabilities.maxVoiceMessageSeconds}
             formatPreference={
               isPremiumUser ? readVoiceRecordingFormatPreference() : "auto"
             }

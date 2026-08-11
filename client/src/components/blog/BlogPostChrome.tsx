@@ -105,6 +105,7 @@ export function BlogPostHeader({
   title,
   subtitle,
   excerpt,
+  excerptClassName,
   titleClassName,
   headerClassName,
   publishedAt,
@@ -119,6 +120,7 @@ export function BlogPostHeader({
   /** Short line under the H1 (not the excerpt/dek). */
   subtitle?: string;
   excerpt?: string;
+  excerptClassName?: string;
   titleClassName?: string;
   headerClassName?: string;
   publishedAt?: Date;
@@ -212,7 +214,14 @@ export function BlogPostHeader({
       ) : null}
 
       {excerpt ? (
-        <p className="mt-5 max-w-3xl text-lg leading-relaxed text-gray-600 dark:text-gray-400 sm:mt-6">{excerpt}</p>
+        <p
+          className={cn(
+            "mt-5 max-w-3xl text-lg leading-relaxed text-gray-600 dark:text-gray-400 sm:mt-6",
+            excerptClassName,
+          )}
+        >
+          {excerpt}
+        </p>
       ) : null}
 
       {children ? (

@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS account_activity (
   user_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   note_id TEXT,
+  metadata TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

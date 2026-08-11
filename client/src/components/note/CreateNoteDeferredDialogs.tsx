@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { localizedPath } from "@/utils/localizedPath";
+import {
+  formatNoteFileSize,
+  noteFileLimitBytesForAccount,
+} from "@shared/noteFileLimits";
 import { getLocalAiGenerationGlyph, localAiAnalyzingPromptLabel, isLocalAiReadyToGenerateProgress, localAiWorkingLabel } from "@/utils/localAiUxText";
 import type { ModelLoadProgress } from "@/utils/clientLLM";
 import { ThinkingBrainIcon } from "./ThinkingBrainIcon";
@@ -36,15 +45,20 @@ export type AttachmentUploadUiProgress = {
   detail?: string;
 };
 
+export type FileSizeUpgradePlan = "personal_premium" | "business_premium";
+
 type CreateNoteDeferredDialogsProps = {
   aiProgress: ModelLoadProgress | null;
   attachmentProgress: AttachmentUploadUiProgress | null;
   cellularPreloadConfirmOpen: boolean;
+  fileSizeUpgradePlan: FileSizeUpgradePlan | null;
+  currentFileLimitBytes: number;
   isGeneratingContent: boolean;
   onStartFreeModelDownload: () => void;
   onUseCloudAssist: () => void;
   onWriteWithoutAi: () => void;
   setCellularPreloadConfirmOpen: Dispatch<SetStateAction<boolean>>;
+  setFileSizeUpgradePlan: Dispatch<SetStateAction<FileSizeUpgradePlan | null>>;
   setShowTemplateOfferPrompt: Dispatch<SetStateAction<boolean>>;
   showTemplateOfferPrompt: boolean;
 };
@@ -53,15 +67,21 @@ export function CreateNoteDeferredDialogs({
   aiProgress,
   attachmentProgress,
   cellularPreloadConfirmOpen,
+  fileSizeUpgradePlan,
+  currentFileLimitBytes,
   isGeneratingContent,
   onStartFreeModelDownload,
   onUseCloudAssist,
   onWriteWithoutAi: _onWriteWithoutAi,
   setCellularPreloadConfirmOpen,
+  setFileSizeUpgradePlan,
   setShowTemplateOfferPrompt,
   showTemplateOfferPrompt,
 }: CreateNoteDeferredDialogsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const primaryLine = localAiDialogPrimaryLine(aiProgress);
 
   const attachmentTitle =
@@ -72,6 +92,54 @@ export function CreateNoteDeferredDialogs({
         : attachmentProgress?.phase === "upload"
           ? t.attachmentProgressUploading
           : t.attachmentProgressEncrypting;
+
+  const upgradeIsStarter = fileSizeUpgradePlan === "personal_premium";
+  const currentLimitLabel = formatNoteFileSize(currentFileLimitBytes);
+  const nextLimitLabel = formatNoteFileSize(
+    noteFileLimitBytesForAccount(fileSizeUpgradePlan ?? "personal_premium"),
+  );
+
+  const startFileSizeUpgradeCheckout = async () => {
+    if (!fileSizeUpgradePlan || checkoutBusy) return;
+    if (!user) {
+      const returnBase = localizedPath("/premium", language);
+      const returnTo = `${returnBase}?checkout=${fileSizeUpgradePlan}&interval=year`;
+      const signIn = localizedPath("/auth/sign-in", language);
+      window.location.assign(`${signIn}?returnTo=${encodeURIComponent(returnTo)}`);
+      return;
+    }
+    setCheckoutBusy(true);
+    try {
+      const checkout = await apiRequest<{ url: string }>(
+        "/api/auth/billing/checkout",
+        "POST",
+        { plan: fileSizeUpgradePlan, interval: "year" },
+      );
+      window.location.assign(checkout.url);
+    } catch (error) {
+      const alreadySubscribed =
+        error instanceof Error &&
+        (/409/.test(error.message) || /subscription_already_exists/.test(String(error)));
+      if (alreadySubscribed) {
+        try {
+          const portal = await apiRequest<{ url: string }>(
+            "/api/auth/billing/portal",
+            "POST",
+          );
+          window.location.assign(portal.url);
+          return;
+        } catch {
+          // Fall through to toast.
+        }
+      }
+      toast({
+        title: t.fileSizeUpgradeCheckoutFailedTitle,
+        description: t.fileSizeUpgradeCheckoutFailedDesc,
+        variant: "destructive",
+      });
+      setCheckoutBusy(false);
+    }
+  };
 
   return (
     <>
@@ -134,6 +202,60 @@ export function CreateNoteDeferredDialogs({
             : null
         }
       />
+
+      <Dialog
+        open={fileSizeUpgradePlan !== null}
+        onOpenChange={(open) => {
+          if (!open && !checkoutBusy) setFileSizeUpgradePlan(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {upgradeIsStarter ? t.fileSizeUpgradeTitleStarter : t.fileSizeUpgradeTitleBusiness}
+            </DialogTitle>
+            <DialogDescription>
+              {(upgradeIsStarter
+                ? t.fileSizeUpgradeDescriptionStarter
+                : t.fileSizeUpgradeDescriptionBusiness
+              )
+                .replace("{currentLimit}", currentLimitLabel)
+                .replace("{nextLimit}", nextLimitLabel)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
+            {(upgradeIsStarter
+              ? t.fileSizeUpgradeHighlightStarter
+              : t.fileSizeUpgradeHighlightBusiness
+            ).replace("{nextLimit}", nextLimitLabel)}
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={checkoutBusy}
+              onClick={() => setFileSizeUpgradePlan(null)}
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto sm:min-w-[11rem]"
+              disabled={checkoutBusy}
+              onClick={() => {
+                void startFileSizeUpgradeCheckout();
+              }}
+            >
+              {checkoutBusy
+                ? t.fileSizeUpgradeOpeningCheckout
+                : upgradeIsStarter
+                  ? t.fileSizeUpgradeCtaStarter
+                  : t.fileSizeUpgradeCtaBusiness}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={cellularPreloadConfirmOpen}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -13,7 +14,6 @@ import {
   XCircle,
   ChevronRight,
   FilePlus2,
-  Eye,
   Clock,
   Sparkles,
   Shield,
@@ -25,12 +25,16 @@ import {
   Moon,
   Monitor,
   Copy,
+  CreditCard,
 } from "lucide-react";
 import { getThemePreference } from "@/hooks/useThemePreference";
+import {
+  PLAN_CATALOG,
+  normalizeAccountType,
+  type AccountType,
+} from "@shared/planCatalog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type AccountType = "free" | "personal_premium" | "business_premium";
 
 type AccountSummary = {
   ok: boolean;
@@ -43,6 +47,14 @@ type AccountSummary = {
   emailNotifications: boolean;
   limits: { notesPerDay: number | null; aiUsesPerDay: number | null };
   usage: { notesToday: number; aiToday: number; notesMonth: number; aiMonth: number };
+  billing?: {
+    stripeCustomerLinked?: boolean;
+    stripeSubscriptionLinked?: boolean;
+    subscriptionStatus?: string | null;
+    subscriptionCurrentPeriodEnd?: string | null;
+    premiumGrantedAt?: string | null;
+    premiumRevokedAt?: string | null;
+  };
 };
 
 type MeResponse = {
@@ -61,19 +73,6 @@ type ActivityEvent = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function normalizeAccountType(raw: string | null | undefined): AccountType {
-  const v = (raw ?? "free").toLowerCase();
-  if (v === "personal_premium" || v === "pro") return "personal_premium";
-  if (v === "business_premium" || v === "business") return "business_premium";
-  return "free";
-}
-
-const PLAN_LABEL: Record<AccountType, string> = {
-  free: "Free",
-  personal_premium: "Personal Premium",
-  business_premium: "Business Premium",
-};
-
 const PLAN_BADGE_CLASS: Record<AccountType, string> = {
   free: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   personal_premium: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -84,7 +83,6 @@ function eventLabel(type: string): string {
   switch (type) {
     case "note_created": return "authActivitySecureNoteCreated";
     case "ai_note_created": return "authActivityAiNoteCreated";
-    case "note_opened": return "authActivityNoteOpened";
     case "note_expired": return "authActivityNoteExpired";
     default: return type.replace(/_/g, " ");
   }
@@ -95,7 +93,6 @@ function EventIcon({ type }: { type: string }) {
   switch (type) {
     case "note_created": return <FilePlus2 className={cls} />;
     case "ai_note_created": return <Sparkles className={cls} />;
-    case "note_opened": return <Eye className={cls} />;
     case "note_expired": return <Clock className={cls} />;
     default: return <FilePlus2 className={cls} />;
   }
@@ -105,7 +102,6 @@ function eventAccent(type: string): string {
   switch (type) {
     case "note_created": return "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30";
     case "ai_note_created": return "text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30";
-    case "note_opened": return "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30";
     case "note_expired": return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
     default: return "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
   }
@@ -124,6 +120,7 @@ export default function AccountOverview() {
   const { t } = useLanguage();
   const tx = (key: string, fallback: string) => t[key] || fallback;
   const { user, loading: authLoading } = useAuth();
+  const { entitlements } = useAccountEntitlements();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null);
@@ -131,6 +128,7 @@ export default function AccountOverview() {
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const [themePref, setThemePref] = useState(getThemePreference());
 
   // Keep theme label in sync with storage changes
@@ -209,6 +207,25 @@ export default function AccountOverview() {
     }
   }, [summary?.id, toast]);
 
+  const openBillingPortal = useCallback(async () => {
+    setBillingPortalLoading(true);
+    try {
+      const result = await apiRequest<{ ok: boolean; url?: string }>("/api/auth/billing/portal", "POST", {});
+      if (result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+      throw new Error("Missing portal URL");
+    } catch {
+      toast({
+        title: tx("authBillingPortalFailedTitle", "Billing portal unavailable"),
+        description: tx("authBillingPortalFailedDesc", "Could not open billing management. Please try again later."),
+        variant: "destructive",
+      });
+      setBillingPortalLoading(false);
+    }
+  }, [toast]);
+
   // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
@@ -239,11 +256,18 @@ export default function AccountOverview() {
     );
   }
 
-  const accountType = normalizeAccountType(summary?.accountType ?? summary?.plan);
-  const planLabel = PLAN_LABEL[accountType];
+  const accountType = entitlements.accountType;
+  const planLabel = PLAN_CATALOG[accountType].label;
   const planBadge = PLAN_BADGE_CLASS[accountType];
   const hasPasskeys = me?.hasPasskeys ?? false;
   const emailVerified = me?.emailVerified ?? false;
+  const stripeCustomerLinked =
+    entitlements.billingCustomerLinked ||
+    summary?.billing?.stripeCustomerLinked === true;
+  const subscriptionStatus =
+    entitlements.subscriptionState !== "free"
+      ? entitlements.subscriptionState
+      : summary?.billing?.subscriptionStatus ?? null;
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
@@ -465,6 +489,17 @@ export default function AccountOverview() {
                 </span>
               )}
             </div>
+            <Link
+              href="/account/activity"
+              className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/40"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {tx("authNavActivity", "Activity")}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {tx("authOpen", "Open")} <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
           </div>
         </section>
 
@@ -475,16 +510,52 @@ export default function AccountOverview() {
               {tx("authCurrentPlan", "Current plan")}
             </p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">{planLabel}</p>
+            {subscriptionStatus ? (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {tx("authBillingStatus", "Billing status")}: {subscriptionStatus}
+              </p>
+            ) : null}
+            <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
+              {tx(
+                "authPlanHostedAiNote",
+                "Starter and Business unlock higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
+              )}
+            </p>
+            {stripeCustomerLinked ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={openBillingPortal}
+                disabled={billingPortalLoading}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {billingPortalLoading
+                  ? tx("authBillingOpening", "Opening...")
+                  : tx("authManageBilling", "Manage billing")}
+              </Button>
+            ) : null}
           </div>
 
           {accountType === "free" && (
             <div className="mt-4 pt-4 border-t border-blue-200/60 dark:border-blue-900/40 grid gap-3 sm:grid-cols-2">
               {(["personal_premium", "business_premium"] as AccountType[]).map((t) => (
                 <div key={t} className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{PLAN_LABEL[t]}</p>
-                  <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5">
-                    {tx("authPlanned", "Planned")}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {PLAN_CATALOG[t].label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {PLAN_CATALOG[t].tagline}
+                    </p>
+                  </div>
+                  <Link
+                    href="/premium"
+                    className="shrink-0 text-[11px] font-medium text-primary rounded-full bg-primary/10 px-2 py-0.5 hover:bg-primary/15"
+                  >
+                    {tx("authComparePlans", "Compare")}
+                  </Link>
                 </div>
               ))}
             </div>

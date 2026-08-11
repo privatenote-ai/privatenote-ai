@@ -12,6 +12,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
+import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
 import Home from "@/pages/Home";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
@@ -58,6 +59,7 @@ const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
+const Premium = lazy(() => import("@/pages/Premium"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
@@ -285,7 +287,7 @@ function Router() {
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
-              <Route path={`/${language}/premium`} component={() => <Redirect to={`/${language}/`} />} />
+              <Route path={`/${language}/premium`} component={() => <LocalizedRoute language={language} component={Premium} />} />
               <Route path={`/${language}/developers/:integrationId`} component={() => <LocalizedRoute language={language} component={DeveloperIntegrationDetail} />} />
               <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
@@ -307,7 +309,7 @@ function Router() {
           <Route path="/privacy" component={() => <LazyRoute component={Privacy} />} />
           <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
           <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
-          <Route path="/premium" component={() => <Redirect to="/" />} />
+          <Route path="/premium" component={() => <LazyRoute component={Premium} />} />
           <Route path="/developers/:integrationId" component={() => <LazyRoute component={DeveloperIntegrationDetail} />} />
           <Route path="/developers" component={() => <LazyRoute component={Developers} />} />
           <Route path="/about" component={() => <LazyRoute component={About} />} />
@@ -339,6 +341,9 @@ function Router() {
           </Route>
           <Route path="/account/security" component={() => <LazyRoute component={SecuritySettings} />} />
           <Route path="/account/activity" component={() => <LazyRoute component={AccountActivity} />} />
+          <Route path="/account/notifications">
+            <Redirect to="/account/activity" />
+          </Route>
           <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
           <Route path="/account" component={() => <LazyRoute component={AccountOverview} />} />
           <Route component={() => <LazyRoute component={NotFound} />} />
@@ -354,9 +359,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <AuthProvider>
-          <ThemePreferenceRoot />
-          <Router />
-          <DeferredToaster />
+          <AccountEntitlementsProvider>
+            <ThemePreferenceRoot />
+            <Router />
+            <DeferredToaster />
+          </AccountEntitlementsProvider>
         </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>

@@ -3,16 +3,24 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
+import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
-  NOTE_FILE_AES_GCM_TAG_BYTES,
+  normalizeAccountType,
+  planFeaturesFor,
+  type AccountType,
+} from "@shared/planCatalog";
+import { commitHostedAiQuota, readHostedAiQuota } from "./planHostedAi";
+import {
   NOTE_FILE_MAX_CHUNK_INDEX,
   NOTE_FILE_MAX_CHUNKS,
   NOTE_FILE_SECRETSTREAM_ABYTES,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
 } from "@shared/noteFileLimits";
+import { createNoteFilePresignedPutUrl, readR2PresignConfig } from "./r2Presign";
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   NOTE_FILE_ACCESS_WINDOW_OPTIONS,
@@ -39,14 +47,18 @@ import {
   isPagesPreviewBrowserOrigin,
   isWebAuthnRpAllowedOrigin,
   normalizeOrigin,
+  ALLOWED_ORIGINS,
   PAGES_PRODUCTION_WEB_HOSTS,
+  STAGING_CUSTOM_APP_HOSTS,
   type SessionCookieKind,
   SESSION_COOKIE_PREVIEW_NAME,
   SESSION_COOKIE_PROD_NAME,
   sessionCookieNameForKind,
 } from "./trustedOrigins";
+import { buildRecipientNoteLinkEmail, parseDeliverableNoteUrl } from "@shared/noteLinkDelivery";
 import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
 import {
   type NoteReservationRecord,
   type NoteReserveAttachmentBinding,
@@ -54,17 +66,17 @@ import {
   isValidAttachmentContentHash,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
-  noteReservationUploadClientMatches,
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
-import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
-import { createNoteFilePresignedPutUrl, readR2PresignConfig } from "./r2Presign";
 import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import { withEuStoredDataEnv } from "./euD1Kv";
 import {
   getRecipientGateStatus,
+  getSentNoteByNoteId,
+  getUserAccountType,
   insertSentNote,
   isRecipientVerified,
   noteRequiresRecipientVerification,
@@ -72,8 +84,14 @@ import {
   recipientVerifiedCookieHeader,
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
+  acknowledgeSentNoteReceipt,
+  clearRecipientGate,
+  revokeSentNote,
+  sendRecipientVerificationCode,
   verifyRecipientAccess,
 } from "./sentNotesService";
+import { getAccountEntitlements } from "./accountEntitlements";
+import { recordNoteCreatedActivity } from "./noteCreationActivity";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -86,6 +104,14 @@ const RATE_LIMIT_GLOBAL_POST = {
   MAX_REQUESTS: 72,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:post:global:",
+};
+
+// Stripe retries and short bursts are expected; this ceiling only absorbs
+// unauthenticated floods before signature verification performs HMAC work.
+const RATE_LIMIT_STRIPE_WEBHOOK = {
+  MAX_REQUESTS: 300,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:stripe-webhook:",
 };
 
 const RATE_LIMIT_RESERVE = {
@@ -112,6 +138,24 @@ const RATE_LIMIT_RECIPIENT_VERIFY = {
   KEY_PREFIX: "rl:recipient-verify:",
 };
 
+const RATE_LIMIT_RECIPIENT_SEND_CODE = {
+  MAX_REQUESTS: 5,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:recipient-send-code:",
+};
+
+const RATE_LIMIT_RECEIPT_ACK = {
+  MAX_REQUESTS: 10,
+  WINDOW_SECONDS: 15 * 60,
+  KEY_PREFIX: "rl:receipt-ack:",
+};
+
+const RATE_LIMIT_DELIVER_NOTE_LINK = {
+  MAX_REQUESTS: 10,
+  WINDOW_SECONDS: 60 * 60,
+  KEY_PREFIX: "rl:deliver-note-link:",
+};
+
 const RATE_LIMIT_FILE_CHUNK_PUT = {
   MAX_REQUESTS: 120,
   WINDOW_SECONDS: 60,
@@ -127,9 +171,6 @@ const AI_VERIFICATION = {
 const HOSTED_AI_DRAFT = {
   MODEL: "@cf/google/gemma-4-26b-a4b-it",
   MODEL_LABEL: "Gemma 4 26B",
-  FREE_USES: 3,
-  WINDOW_SECONDS: 24 * 60 * 60,
-  KEY_PREFIX: "hosted_ai_draft:",
   MAX_PROMPT_CHARS: 2500,
   MAX_OUTPUT_TOKENS: 2048,
 };
@@ -858,20 +899,18 @@ function isPremiumAccountType(accountType: unknown, plan: unknown): boolean {
   );
 }
 
-async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+async function noteCreationAccountType(env: Env, request: Request): Promise<AccountType> {
   const session = await getSessionFromRequest(env, request, { rotate: false });
-  if (!session?.id || !env.AUTH_DB) return false;
+  if (!session?.id || !env.AUTH_DB) return "free";
   try {
-    const user = await env.AUTH_DB.prepare(
-      "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
-    )
-      .bind(session.id)
-      .first<{ account_type: string | null; plan: string | null }>();
-    if (!user) return false;
-    return isPremiumAccountType(user.account_type, user.plan);
+    return (await getAccountEntitlements(env, session.id)).accountType;
   } catch {
-    return false;
+    return "free";
   }
+}
+
+async function noteCreationAllowsPremiumExpiry(env: Env, request: Request): Promise<boolean> {
+  return (await noteCreationAccountType(env, request)) !== "free";
 }
 
 function noteReadNotificationDeviceLabel(request: Request): string {
@@ -891,50 +930,54 @@ async function registerPremiumSentNote(
   input: {
     notifyOnOpen?: boolean;
     notifyOnDestroyed?: boolean;
-    restrictRecipientEmail?: boolean;
+    notifyOnAttachmentDownload?: boolean;
     requireRecipientVerification?: boolean;
+    requireReceiptAck?: boolean;
+    receiptAckTokenHash?: string | null;
     recipientEmail?: string | null;
+    alertNotifyAccountEmail?: boolean;
+    alertCustomEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
   },
-): Promise<{ recipientVerificationCode?: string } | undefined> {
+): Promise<void> {
   const notifyOnOpen = input.notifyOnOpen === true;
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
-  const restrictRecipientEmail = input.restrictRecipientEmail === true;
+  const notifyOnAttachmentDownload = input.notifyOnAttachmentDownload === true;
   const requireRecipientVerification = input.requireRecipientVerification === true;
+  const requireReceiptAck = input.requireReceiptAck === true;
   if (
     !notifyOnOpen &&
     !notifyOnDestroyed &&
-    !restrictRecipientEmail &&
-    !requireRecipientVerification
+    !notifyOnAttachmentDownload &&
+    !requireRecipientVerification &&
+    !requireReceiptAck
   ) {
-    return undefined;
+    return;
   }
-  if (!env.AUTH_DB) return undefined;
+  if (!env.AUTH_DB) return;
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session?.id) return undefined;
-    const recipientEmail =
-      typeof input.recipientEmail === "string" ? input.recipientEmail.trim() : null;
-    const result = await insertSentNote(env, {
+    if (!session?.id) return;
+    await insertSentNote(env, {
       userId: session.id,
       noteId,
       label: input.label,
-      recipientEmail,
+      recipientEmail: input.recipientEmail,
       notifyOnOpen,
       notifyOnDestroyed,
-      restrictRecipientEmail,
+      notifyOnAttachmentDownload,
+      alertNotifyAccountEmail: input.alertNotifyAccountEmail,
+      alertCustomEmail: input.alertCustomEmail,
       requireRecipientVerification,
+      requireReceiptAck,
+      receiptAckTokenHash: input.receiptAckTokenHash,
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
-    return result.verificationCode
-      ? { recipientVerificationCode: result.verificationCode }
-      : undefined;
   } catch (error) {
     console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
-    return undefined;
   }
 }
 
@@ -957,13 +1000,22 @@ function jsonResponse(data: any, status: number = 200, request?: Request): Respo
   }
 
   // First-party rate-limit cookie: combined with IP for abuse buckets (shared NAT). HttpOnly, not used for analytics.
+  // Upload relays are cookie-less (encrypt.lu); never Set-Cookie on that host.
   if (request) {
-    const cookieHeader = request.headers.get("Cookie") || "";
-    const hasClientCookie = /(?:^|;\s*)pn_client_id=([^;]+)/.test(cookieHeader);
-    if (!hasClientCookie) {
-      const clientId = randomId(16);
-      const maxAge = 30 * 24 * 60 * 60;
-      headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure; HttpOnly`;
+    let uploadRelay = false;
+    try {
+      uploadRelay = isUploadRelayHostname(new URL(request.url).hostname);
+    } catch {
+      uploadRelay = false;
+    }
+    if (!uploadRelay) {
+      const cookieHeader = request.headers.get("Cookie") || "";
+      const hasClientCookie = /(?:^|;\s*)pn_client_id=([^;]+)/.test(cookieHeader);
+      if (!hasClientCookie) {
+        const clientId = randomId(16);
+        const maxAge = 30 * 24 * 60 * 60;
+        headers["Set-Cookie"] = `pn_client_id=${clientId}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure; HttpOnly`;
+      }
     }
   }
 
@@ -3401,8 +3453,8 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       bindings.push(body.emailNotifications ? 1 : 0);
     }
     if (typeof body.preferredLanguage === "string") {
-      const preferredLanguage = body.preferredLanguage.trim().toLowerCase();
-      if (!["en", "de", "fr", "es"].includes(preferredLanguage)) {
+      const preferredLanguage = body.preferredLanguage.trim().toLowerCase().split("-")[0];
+      if (!isSupportedLanguage(preferredLanguage)) {
         return jsonResponse({ message: "Unsupported language" }, 400, request);
       }
       updates.push("preferred_language = ?");
@@ -6661,67 +6713,6 @@ async function recipientVerificationFailureDelay(usedAttempts: number): Promise<
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-type HostedAiQuota = {
-  count: number;
-  windowStart: number;
-};
-
-function getHostedAiQuotaKey(identifier: string): string {
-  return `${HOSTED_AI_DRAFT.KEY_PREFIX}${identifier}`;
-}
-
-async function readHostedAiQuota(
-  env: Env,
-  identifier: string,
-): Promise<{ allowed: boolean; remaining: number; resetAt: number; nextCount: number }> {
-  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
-  const now = Math.floor(Date.now() / 1000);
-  const windowStart = now - (now % HOSTED_AI_DRAFT.WINDOW_SECONDS);
-  const resetAt = windowStart + HOSTED_AI_DRAFT.WINDOW_SECONDS;
-
-  try {
-    const stored = (await kv.get(getHostedAiQuotaKey(identifier), { type: "json" })) as HostedAiQuota | null;
-    const count = stored?.windowStart === windowStart ? stored.count : 0;
-    if (count >= HOSTED_AI_DRAFT.FREE_USES) {
-      return { allowed: false, remaining: 0, resetAt, nextCount: count };
-    }
-    return {
-      allowed: true,
-      remaining: HOSTED_AI_DRAFT.FREE_USES - count,
-      resetAt,
-      nextCount: count + 1,
-    };
-  } catch (error) {
-    console.error("[HOSTED_AI] Error reading quota:", error);
-    return {
-      allowed: true,
-      remaining: HOSTED_AI_DRAFT.FREE_USES,
-      resetAt,
-      nextCount: 1,
-    };
-  }
-}
-
-async function commitHostedAiQuota(
-  env: Env,
-  identifier: string,
-  count: number,
-  resetAt: number,
-): Promise<void> {
-  const kv = env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
-  const now = Math.floor(Date.now() / 1000);
-  const windowStart = resetAt - HOSTED_AI_DRAFT.WINDOW_SECONDS;
-  try {
-    await kv.put(
-      getHostedAiQuotaKey(identifier),
-      JSON.stringify({ count, windowStart }),
-      { expirationTtl: Math.max(60, resetAt - now + 10) },
-    );
-  } catch (error) {
-    console.error("[HOSTED_AI] Error committing quota:", error);
-  }
-}
-
 function hostedAiLanguageLabel(raw: unknown): string {
   const language = typeof raw === "string" ? raw.toLowerCase() : "en";
   if (language.startsWith("de")) return "German";
@@ -7049,14 +7040,15 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
     );
   }
 
-  const clientId = getClientIdentifier(request);
-  const quota = await readHostedAiQuota(env, clientId);
+  const accountType = await getUserAccountType(env, session.id);
+  const quota = await readHostedAiQuota(env, session.id, accountType);
+  const hostedAiLimit = quota.limit;
   if (!quota.allowed) {
     return jsonResponse(
       {
         error: "hosted_ai_quota_exhausted",
-        message: "Free hosted drafts are used up for this device today.",
-        limit: HOSTED_AI_DRAFT.FREE_USES,
+        message: "Your hosted AI drafts for this billing month are used up.",
+        limit: hostedAiLimit,
         remaining: 0,
         resetAt: quota.resetAt,
       },
@@ -7105,14 +7097,14 @@ async function handleHostedAiDraft(request: Request, env: Env): Promise<Response
       completionTokens: usage.completionTokens,
       costUsd,
     });
-    await commitHostedAiQuota(env, clientId, quota.nextCount, quota.resetAt);
+    await commitHostedAiQuota(env, session.id, accountType, quota.nextCount, quota.resetAt);
     return jsonResponse(
       {
         ok: true,
         text,
         model: HOSTED_AI_DRAFT.MODEL_LABEL,
-        limit: HOSTED_AI_DRAFT.FREE_USES,
-        remaining: Math.max(0, HOSTED_AI_DRAFT.FREE_USES - quota.nextCount),
+        limit: hostedAiLimit,
+        remaining: Math.max(0, hostedAiLimit - quota.nextCount),
         resetAt: quota.resetAt,
       },
       200,
@@ -7196,8 +7188,14 @@ async function computeUploadedAttachmentContentHash(
   const hasher = sha256.create();
   for (let index = 0; index < totalChunks; index += 1) {
     const object = await env.NOTE_FILES_R2.get(noteFileChunkObjectKey(noteId, index));
-    if (!object) return null;
-    hasher.update(new Uint8Array(await object.arrayBuffer()));
+    if (!object?.body) return null;
+    // Stream — never arrayBuffer() full objects (premium up to 1 GB).
+    const reader = object.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      hasher.update(value);
+    }
   }
   return bytesToHex(hasher.digest());
 }
@@ -7243,13 +7241,11 @@ async function authorizeNoteFileChunkUpload(
     return { ok: false, response: jsonResponse({ error: "Invalid upload token" }, 403, request) };
   }
 
-  if (!noteReservationUploadClientMatches(
-    record,
-    getClientIdentifier(request),
-    readClientIpFromRequestHeaders(request.headers),
-  )) {
-    return { ok: false, response: jsonResponse({ error: "Upload client mismatch" }, 403, request) };
-  }
+  // Capability = uploadToken only. Do not also bind reserve client IP/cookie:
+  // reserve hits Pages /api (one CF edge) while the Blob PUT hits
+  // upload[.privatenote.ai]|upload-staging (another). IPv4/IPv6 disagreement
+  // returned 403 while Safari was still streaming — WebKit surfaces that as
+  // status 0 / "network connection was lost". Token hash is the capability.
 
   return { ok: true, premiumUserId: record.premiumUserId ?? null, record };
 }
@@ -7324,20 +7320,35 @@ async function ensureAccountFileStorageSchema(env: Env): Promise<boolean> {
 async function getAuthenticatedAccountForNoteFiles(
   env: Env,
   request: Request,
-): Promise<{ userId: string; isPremium: boolean } | null> {
+): Promise<{ userId: string; accountType: AccountType; isPremium: boolean } | null> {
   if (!env.AUTH_DB) return null;
   const session = await getSessionFromRequest(env, request, { rotate: false });
   if (!session?.id) return null;
-  const user = await env.AUTH_DB.prepare(
-    "SELECT account_type, plan FROM users WHERE id = ? LIMIT 1",
-  )
-    .bind(session.id)
-    .first<{ account_type: string | null; plan: string | null }>();
-  if (!user) return null;
+  const entitlements = await getAccountEntitlements(env, session.id);
   return {
     userId: session.id,
-    isPremium: isPremiumAccountType(user.account_type, user.plan),
+    accountType: entitlements.accountType,
+    isPremium: entitlements.accountType !== "free",
   };
+}
+
+async function resolveUploadFileAccountType(
+  env: Env,
+  reservation: NoteReservationRecord,
+  fileStorageUserId: string,
+): Promise<AccountType> {
+  if (reservation.fileAccountType) {
+    return normalizeAccountType(reservation.fileAccountType);
+  }
+  if (env.AUTH_DB) {
+    try {
+      return (await getAccountEntitlements(env, fileStorageUserId)).accountType;
+    } catch {
+      /* fall through */
+    }
+  }
+  // Legacy reservations: premiumUserId meant paid, but not which tier — prefer Starter caps.
+  return reservation.premiumUserId ? "personal_premium" : "free";
 }
 
 export async function reserveAccountFileStorageBytes(
@@ -7738,7 +7749,7 @@ async function requireNoteFileAccess(env: Env, request: Request, noteId: string)
 async function reserveNoteId(
   env: Env,
   clientId: string,
-  fileAccount: { userId: string; isPremium: boolean } | null,
+  fileAccount: { userId: string; accountType: AccountType; isPremium: boolean } | null,
   attachmentBinding: NoteReserveAttachmentBinding | null,
   clientIp?: string,
 ): Promise<{ id: string; uploadToken: string; expiresIn: number }> {
@@ -7749,6 +7760,17 @@ async function reserveNoteId(
   const expiresIn = attachmentBinding
     ? NOTE_RESERVATION.ATTACHMENT_TTL_SECONDS
     : NOTE_RESERVATION.TTL_SECONDS;
+  if (attachmentBinding && fileAccount) {
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccount.accountType);
+    if (attachmentBinding.attachmentPlaintextSize > plaintextLimit) {
+      throw Object.assign(
+        new Error(
+          `File exceeds the ${plaintextLimit / (1024 * 1024)} MB limit for this account.`,
+        ),
+        { status: 413, code: "file_too_large" },
+      );
+    }
+  }
   const kv = env.NOTES_KV;
   await kv.put(
     getReservationKey(id),
@@ -7759,6 +7781,7 @@ async function reserveNoteId(
       uploadTokenHash,
       fileStorageUserId: attachmentBinding ? fileAccount?.userId ?? null : null,
       premiumUserId: attachmentBinding && fileAccount?.isPremium ? fileAccount.userId : null,
+      fileAccountType: attachmentBinding ? fileAccount?.accountType ?? "free" : null,
       ...(attachmentBinding ?? {}),
     } satisfies NoteReservationRecord),
     { expirationTtl: expiresIn },
@@ -8077,8 +8100,28 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const csrfError = verifyCsrfOrigin(request);
   if (csrfError) return csrfError;
 
-  // Rate limits: calm global POST cap + tighter per-route budgets (no fingerprinting).
-  if (request.method === "POST") {
+  // Rate limits: calm global POST cap + discrete per-route budgets (no fingerprinting).
+  const isProviderWebhook =
+    pathname === "/api/auth/billing/stripe/webhook" && request.method === "POST";
+  if (isProviderWebhook) {
+    const clientId = getClientIdentifier(request);
+    const webhookLimit = await checkRateLimit(
+      env,
+      clientId,
+      RATE_LIMIT_STRIPE_WEBHOOK,
+    );
+    if (!webhookLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "webhook_rate_limit_exceeded",
+          message: "Too many webhook requests. Retry later.",
+          resetAt: webhookLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+  } else if (request.method === "POST") {
     const clientId = getClientIdentifier(request);
     console.log(`[ROUTES] Rate-limit client bucket: ${clientId}`);
 
@@ -8211,6 +8254,18 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     } catch (error) {
+      const status = (error as { status?: number })?.status;
+      const code = (error as { code?: string })?.code;
+      if (status === 413 && code === "file_too_large") {
+        return jsonResponse(
+          {
+            error: "file_too_large",
+            message: error instanceof Error ? error.message : "File exceeds the account limit.",
+          },
+          413,
+          request,
+        );
+      }
       console.error("[ROUTES] Failed to reserve note ID:", error);
       return jsonResponse({ error: "Failed to reserve note ID" }, 500, request);
     }
@@ -8326,7 +8381,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const premiumUserId = uploadAuth.premiumUserId;
-    const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
     const reservation = uploadAuth.record;
     if (
@@ -8341,7 +8395,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       );
     }
 
-    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+    const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
     const plaintextSize = reservation.attachmentPlaintextSize;
     const encryptedTotalSize = reservation.attachmentEncryptedSize;
     if (plaintextSize > plaintextLimit) {
@@ -8368,7 +8423,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         fileStorageUserId,
         id,
         encryptedTotalSize,
-        noteFileTotalStorageBytesForAccount(isPremium),
+        noteFileTotalStorageBytesForAccount(fileAccountType),
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8395,6 +8450,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
 
+      // Trust client ciphertext hash after size check. Re-streaming ~1 GB from R2 to
+      // recompute SHA-256 hits Worker timeouts (Safari sees 503/CORS). A lying client
+      // only breaks their own note; finalize binds attachmentContentHash to this value.
       await persistNoteReservation(env, id, {
         ...freshReservation,
         uploadedChunkHashes: {
@@ -8410,6 +8468,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   }
 
   // encrypt.lu-style single Blob PUT lands on /file (not /file/chunks/0).
+  // Map it onto chunk index 0 so storage + finalize stay one code path.
   const singleFileUploadParams = parsePathParams(pathname, "/api/notes/:id/file");
   const isSingleFileUpload = Boolean(singleFileUploadParams && (method === "PUT" || method === "POST"));
   const noteFileChunkParams = isSingleFileUpload
@@ -8419,6 +8478,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     const { id, chunkIndex: chunkIndexRaw } = noteFileChunkParams;
     const chunkIndex = Number(chunkIndexRaw);
 
+    // ── Single Blob PUT: stream to R2 (no full-body arrayBuffer) ────────────
+    // Buffering ~30 MiB+ in the Worker has aborted Safari mid-PUT (status 0 after
+    // ~15 s). Auth uses the query uploadToken; sizes come from the reservation.
     if (isSingleFileUpload) {
       if (!isValidNoteId(id)) {
         await discardRequestBody(request);
@@ -8468,7 +8530,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
 
       const premiumUserId = uploadAuth.premiumUserId;
-      const isPremium = premiumUserId !== null;
       const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
       const reservation = uploadAuth.record;
       if (
@@ -8484,7 +8545,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
 
-      const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
+      const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+      const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
       const plaintextSize = reservation.attachmentPlaintextSize;
       const encryptedTotalSize = reservation.attachmentEncryptedSize;
       if (plaintextSize > plaintextLimit) {
@@ -8515,7 +8577,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           fileStorageUserId,
           id,
           encryptedTotalSize,
-          noteFileTotalStorageBytesForAccount(isPremium),
+          noteFileTotalStorageBytesForAccount(fileAccountType),
         );
         if (!quotaReservation.ok) {
           await discardRequestBody(request);
@@ -8548,8 +8610,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           }
         }
 
+        // Tee: one branch → R2, one → SHA-256. Avoids buffering the full ~30 MiB+
+        // body in Worker memory (arrayBuffer was aborting Safari mid-PUT).
         const [toR2, toHash] = request.body.tee();
         const hashPromise = sha256HexOfStream(toHash);
+        // DOM vs workers-types ReadableStream diverge; R2 accepts the stream at runtime.
         const putPromise = env.NOTE_FILES_R2.put(objectKey, toR2 as any, {
           httpMetadata: { contentType: "application/octet-stream" },
           customMetadata: {
@@ -8559,7 +8624,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
             createdAt: new Date().toISOString(),
           },
         });
-        const [{ hex: chunkSha256Hex, byteLength }] = await Promise.all([hashPromise, putPromise]);
+        const [{ hex: chunkSha256Hex, byteLength }] = await Promise.all([
+          hashPromise,
+          putPromise,
+        ]);
         if (byteLength !== encryptedTotalSize) {
           try {
             await env.NOTE_FILES_R2.delete(objectKey);
@@ -8569,6 +8637,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           return jsonResponse({ error: "File chunk size mismatch" }, 400, request);
         }
 
+        // Hash lives in KV (R2 has no metadata-only patch). Finalize falls back to
+        // reservation.uploadedChunkHashes when customMetadata.chunkSha256 is absent.
         await persistNoteReservation(env, id, {
           ...freshReservation,
           uploadedChunkHashes: {
@@ -8591,6 +8661,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
+    // Drain BEFORE any 4xx/5xx. Safari still streaming a multi‑MiB body treats an
+    // early close as status 0 / "network connection was lost" with no responseURL.
     const encryptedBytes = await request.arrayBuffer();
 
     if (!isValidNoteId(id) || !Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex > NOTE_FILE_MAX_CHUNK_INDEX) {
@@ -8603,6 +8675,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
+
     const uploadAuth = await authorizeNoteFileChunkUpload(env, request, id);
     if (!uploadAuth.ok) {
       return uploadAuth.response;
@@ -8634,7 +8707,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const premiumUserId = uploadAuth.premiumUserId;
-    const isPremium = premiumUserId !== null;
     const fileStorageUserId = uploadAuth.record.fileStorageUserId ?? premiumUserId;
     const reservation = uploadAuth.record;
     if (
@@ -8648,8 +8720,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-    const plaintextLimit = noteFileLimitBytesForAccount(isPremium);
-    const plaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
+    const fileAccountType = await resolveUploadFileAccountType(env, reservation, fileStorageUserId);
+    const plaintextLimit = noteFileLimitBytesForAccount(fileAccountType);
+    // Bearer + omitMetadata (encrypt.lu primary): sizes come from the reservation.
+    const requestedPlaintextSize = readUploadInteger(request, "x-file-plaintext-size", "plaintextSize");
+    const plaintextSize =
+      isSingleFileUpload && !Number.isInteger(requestedPlaintextSize)
+        ? reservation.attachmentPlaintextSize
+        : requestedPlaintextSize;
     if (!Number.isInteger(plaintextSize) || plaintextSize < 0) {
       return jsonResponse({ error: "Missing or invalid x-file-plaintext-size" }, 400, request);
     }
@@ -8670,7 +8748,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       return jsonResponse({ error: "Attachment plaintext size mismatch" }, 400, request);
     }
 
-    const encryptedTotalSize = readUploadInteger(request, "x-file-encrypted-size", "encryptedSize");
+    const requestedEncryptedTotalSize = readUploadInteger(
+      request,
+      "x-file-encrypted-size",
+      "encryptedSize",
+    );
+    const encryptedTotalSize =
+      isSingleFileUpload && !Number.isInteger(requestedEncryptedTotalSize)
+        ? reservation.attachmentEncryptedSize
+        : requestedEncryptedTotalSize;
     if (!Number.isInteger(encryptedTotalSize) || encryptedTotalSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-encrypted-size" }, 400, request);
     }
@@ -8691,14 +8777,22 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         fileStorageUserId,
         id,
         encryptedTotalSize,
-        noteFileTotalStorageBytesForAccount(isPremium),
+        noteFileTotalStorageBytesForAccount(fileAccountType),
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
       }
     }
 
-    const encryptedChunkSize = readUploadInteger(request, "x-file-chunk-encrypted-size", "chunkEncryptedSize");
+    const requestedEncryptedChunkSize = readUploadInteger(
+      request,
+      "x-file-chunk-encrypted-size",
+      "chunkEncryptedSize",
+    );
+    const encryptedChunkSize =
+      isSingleFileUpload && !Number.isInteger(requestedEncryptedChunkSize)
+        ? encryptedTotalSize
+        : requestedEncryptedChunkSize;
     if (!Number.isInteger(encryptedChunkSize) || encryptedChunkSize <= 0) {
       return jsonResponse({ error: "Missing or invalid x-file-chunk-encrypted-size" }, 400, request);
     }
@@ -8785,7 +8879,16 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (accessError) return accessError;
     if (chunkIndex === 0) {
       try {
-        await recordSentNoteAttachmentDownloaded(env, id);
+        await recordSentNoteAttachmentDownloaded(
+          env,
+          id,
+          request,
+          async (to, subject, text, html) => {
+            const result = await sendEmail(env, { to, subject, text, html });
+            if (!result.ok) throw new Error(result.error ?? "Email send failed");
+            return result;
+          },
+        );
       } catch (error) {
         console.warn("[SENT_NOTES] Failed to record attachment download:", error);
       }
@@ -8805,7 +8908,9 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   if (pathname === "/api/notes" && method === "POST") {
     let requestBody: any | null = null;
     let noteForAnalytics: Note | null = null;
-    const noteCreationIsPremium = await noteCreationAllowsPremiumExpiry(env, request);
+    const noteCreationAccount = await noteCreationAccountType(env, request);
+    const noteCreationFeatures = planFeaturesFor(noteCreationAccount);
+    const noteCreationMaxExpirySeconds = noteCreationFeatures.maxExpirySeconds;
     try {
       requestBody = await request.clone().json();
 
@@ -8817,10 +8922,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         return jsonResponse({ id: crypto.randomUUID() }, 200, request);
       }
       const expiryParsed = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
-        isPremium: noteCreationIsPremium,
+        maxExpirySeconds: noteCreationMaxExpirySeconds,
       });
       const maxReadsParsed = parseMaxReadsFromBody(requestBody?.maxReads, {
-        isPremium: noteCreationIsPremium,
+        allowedReadCounts: noteCreationFeatures.allowedReadCounts,
       });
       if (requestBody?.content && requestBody?.iv && expiryParsed.ok && maxReadsParsed.ok) {
         noteForAnalytics = {
@@ -8916,14 +9021,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     const expiryForCreate = parseNoteExpirySecondsFromBody(requestBody?.expirySeconds, {
-      isPremium: noteCreationIsPremium,
+      maxExpirySeconds: noteCreationMaxExpirySeconds,
     });
     if (!expiryForCreate.ok) {
       return jsonResponse({ error: expiryForCreate.message }, 400, request);
     }
 
     const maxReadsForCreate = parseMaxReadsFromBody(requestBody?.maxReads, {
-      isPremium: noteCreationIsPremium,
+      allowedReadCounts: noteCreationFeatures.allowedReadCounts,
     });
     if (!maxReadsForCreate.ok) {
       return jsonResponse({ error: maxReadsForCreate.message }, 400, request);
@@ -8931,10 +9036,57 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const fileAccessWindowForCreate = parseNoteFileAccessWindowFromBody(
       requestBody?.fileAccessWindowSeconds,
-      { isPremium: noteCreationIsPremium },
+      { accountType: noteCreationAccount },
     );
     if (!fileAccessWindowForCreate.ok) {
       return jsonResponse({ error: fileAccessWindowForCreate.message }, 400, request);
+    }
+
+    const hasOpensAt =
+      requestBody?.opensAt != null &&
+      !(typeof requestBody.opensAt === "string" && requestBody.opensAt.trim() === "");
+    if (hasOpensAt) {
+      if (!noteCreationFeatures.delayedReveal) {
+        return jsonResponse(
+          {
+            error: "premium_required",
+            message: "Delayed reveal requires Starter or Business.",
+          },
+          403,
+          request,
+        );
+      }
+      const opensAtParsed = parseNoteOpensAtFromBody(requestBody.opensAt, {
+        expiresAt: new Date(Date.now() + expiryForCreate.seconds * 1000),
+      });
+      if (!opensAtParsed.ok) {
+        return jsonResponse({ error: opensAtParsed.message }, 400, request);
+      }
+    }
+
+    const requireReceiptAck = requestBody?.requireReceiptAck === true;
+    const receiptAckTokenHashRaw =
+      typeof requestBody?.receiptAckTokenHash === "string"
+        ? requestBody.receiptAckTokenHash.trim().toLowerCase()
+        : "";
+    if (requireReceiptAck) {
+      if (!noteCreationFeatures.receiptAcknowledgment) {
+        return jsonResponse(
+          {
+            error: "premium_required",
+            message: "Receipt confirmation requires Starter or Business.",
+          },
+          403,
+          request,
+        );
+      }
+      if (!isValidReceiptAckTokenHash(receiptAckTokenHashRaw)) {
+        return jsonResponse(
+          { error: "receipt_ack_token_hash_required", message: "Invalid receipt acknowledgment token hash." },
+          400,
+          request,
+        );
+      }
     }
 
     const id = requestedId || crypto.randomUUID();
@@ -8975,7 +9127,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           await cleanupNoteFileChunks(env, id, "missing attachment upload");
           return jsonResponse({ error: "Attachment upload missing" }, 400, request);
         }
-        // Direct browser→R2 PUTs have no customMetadata; fall back to object size + KV hash.
         const uploadedChunkSize = Number(
           uploadedChunk.customMetadata?.chunkEncryptedSize ?? uploadedChunk.size ?? NaN,
         );
@@ -9085,18 +9236,50 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	      await bumpAiNoteCountAndMaybeChallenge(env, getClientIdentifier(request));
     }
 
-    let premiumSentNoteExtras: { recipientVerificationCode?: string } | undefined;
     if (doResponse.ok) {
-      premiumSentNoteExtras = await registerPremiumSentNote(env, request, id, {
+      await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
-        restrictRecipientEmail: requestBody?.restrictRecipientEmail === true,
+        notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
         requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        requireReceiptAck: requestBody?.requireReceiptAck === true,
+        receiptAckTokenHash:
+          typeof requestBody?.receiptAckTokenHash === "string"
+            ? requestBody.receiptAckTokenHash.trim().toLowerCase()
+            : null,
         recipientEmail:
           typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
+        alertNotifyAccountEmail: requestBody?.alertNotifyAccountEmail !== false,
+        alertCustomEmail:
+          typeof requestBody?.alertCustomEmail === "string" ? requestBody.alertCustomEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
+
+      const activitySession = await getSessionFromRequest(env, request, { rotate: false });
+      if (activitySession?.id) {
+        const rawAiMode = requestBody?.aiMode;
+        const activityAiMode: "local" | "cloud" | null =
+          rawAiMode === "local"
+            ? "local"
+            : rawAiMode === "cloud" || (aiMode && rawAiMode !== "local")
+              ? "cloud"
+              : null;
+        await recordNoteCreatedActivity(env, activitySession.id, id, {
+          aiEnhanced: aiMode,
+          aiMode: activityAiMode,
+          hasAttachment: requestBody?.attachment != null,
+          hasVoiceMessage: requestBody?.hasVoiceMessage === true && requestBody?.attachment != null,
+          passwordProtected: requestBody?.isPasswordProtected === true,
+          maxReads: maxReadsForCreate.maxReads,
+          expirySeconds: expiryForCreate.seconds,
+          notifyOnOpen: requestBody?.notifyOnOpen === true,
+          notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
+          notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
+          requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+          requireReceiptAck: requireReceiptAck,
+        });
+      }
     }
 
 	    if (doResponse.ok && requestedId) {
@@ -9107,24 +9290,129 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
 	    }
 
-      if (doResponse.ok && premiumSentNoteExtras?.recipientVerificationCode) {
-        try {
-          const created = (await doResponse.clone().json()) as Record<string, unknown>;
-          return jsonResponse(
-            {
-              ...created,
-              recipientVerificationCode: premiumSentNoteExtras.recipientVerificationCode,
-            },
-            doResponse.status,
-            request,
-          );
-        } catch {
-          // fall through to raw DO response
-        }
-      }
-
 	    return applyCorsHeaders(doResponse as unknown as Response, request);
 	  }
+
+  const deliverLinkParams = parsePathParams(pathname, "/api/notes/:id/deliver-link");
+  if (deliverLinkParams && method === "POST") {
+    const { id } = deliverLinkParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+
+    const user = await env.AUTH_DB.prepare(
+      "SELECT email, email_verified, account_type, plan FROM users WHERE id = ? LIMIT 1",
+    )
+      .bind(session.id)
+      .first<{
+        email: string | null;
+        email_verified: number | null;
+        account_type: string | null;
+        plan: string | null;
+      }>();
+    if (!user) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+    const capabilities = planFeaturesFor(user.account_type ?? user.plan);
+    if (!capabilities.recipientLinkDelivery) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+    if (user.email_verified !== 1) {
+      return jsonResponse({ error: "sender_email_unverified" }, 403, request);
+    }
+
+    const deliverLimit = await checkRateLimit(
+      env,
+      session.id,
+      RATE_LIMIT_DELIVER_NOTE_LINK,
+    );
+    if (!deliverLimit.allowed) {
+      return jsonResponse({ error: "rate_limited" }, 429, request);
+    }
+
+    let body: { recipientEmail?: unknown; noteUrl?: unknown } = {};
+    try {
+      body = (await request.json()) as { recipientEmail?: unknown; noteUrl?: unknown };
+    } catch {
+      return jsonResponse({ error: "Invalid JSON" }, 400, request);
+    }
+
+    const recipientEmail =
+      typeof body.recipientEmail === "string" ? body.recipientEmail.trim().toLowerCase() : "";
+    if (!isPlausibleEmailFormat(recipientEmail)) {
+      return jsonResponse({ error: "invalid_recipient_email" }, 400, request);
+    }
+
+    const allowedHosts = new Set<string>([
+      ...PAGES_PRODUCTION_WEB_HOSTS,
+      ...STAGING_CUSTOM_APP_HOSTS,
+      "privatenote.ai",
+      "www.privatenote.ai",
+      "app.privatenote.ai",
+      "localhost",
+      "127.0.0.1",
+    ]);
+    for (const origin of ALLOWED_ORIGINS) {
+      try {
+        allowedHosts.add(new URL(origin).hostname.toLowerCase());
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const noteUrl = typeof body.noteUrl === "string" ? body.noteUrl : "";
+    const parsedUrl = parseDeliverableNoteUrl(noteUrl, id, { allowedHosts });
+    if (!parsedUrl.ok) {
+      return jsonResponse({ error: parsedUrl.error }, 400, request);
+    }
+
+    const mail = buildRecipientNoteLinkEmail({
+      noteUrl: parsedUrl.href,
+      senderEmail: user.email,
+    });
+    const emailResult = await sendEmail(env, {
+      to: recipientEmail,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+    if (!emailResult.ok) {
+      console.warn(
+        `[DELIVER_LINK] Failed to email recipient=${maskEmailForLog(recipientEmail)} noteId=${id}: ${emailResult.error}`,
+      );
+      return jsonResponse({ error: "email_send_failed" }, 502, request);
+    }
+
+    console.log(
+      `[DELIVER_LINK] Sent note link email recipient=${maskEmailForLog(recipientEmail)} noteId=${id}`,
+    );
+
+    // Ensure the note is tracked so Premium can revoke it from Notification Center.
+    try {
+      const existing = await getSentNoteByNoteId(env, id);
+      if (!existing) {
+        await insertSentNote(env, {
+          userId: session.id,
+          noteId: id,
+          notifyOnOpen: false,
+          notifyOnDestroyed: false,
+          requireRecipientVerification: false,
+          proofEnabled: true,
+        });
+      }
+    } catch (error) {
+      console.warn(`[DELIVER_LINK] Failed to register sent-note tracking for ${id}:`, error);
+    }
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
 
   const recipientGateParams = parsePathParams(pathname, "/api/notes/:id/recipient-gate");
   if (recipientGateParams && method === "GET") {
@@ -9137,15 +9425,84 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     return jsonResponse({ ...status, verified }, 200, request);
   }
 
+  const recipientSendCodeParams = parsePathParams(pathname, "/api/notes/:id/recipient-send-code");
+  if (recipientSendCodeParams && method === "POST") {
+    const { id } = recipientSendCodeParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const sendLimit = await checkRateLimit(
+      env,
+      `${id}:${clientId}`,
+      RATE_LIMIT_RECIPIENT_SEND_CODE,
+    );
+    if (!sendLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "recipient_send_code_rate_limited",
+          message: `Too many code requests. Please try again in ${sendLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: sendLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    const result = await sendRecipientVerificationCode(
+      env,
+      id,
+      async (to, subject, text, html) => {
+        const emailResult = await sendEmail(env, { to, subject, text, html });
+        if (!emailResult.ok) {
+          throw new Error(emailResult.error || "send_failed");
+        }
+      },
+      { webOrigin: getMagicLinkOrigin(env, request) },
+    );
+    if (!result.ok) {
+      if (result.error === "cooldown") {
+        return jsonResponse(
+          {
+            error: "cooldown",
+            message: `Please wait ${result.retryAfterSeconds ?? 60} seconds before requesting another code.`,
+            retryAfterSeconds: result.retryAfterSeconds ?? 60,
+          },
+          429,
+          request,
+        );
+      }
+      if (result.error === "send_failed") {
+        return jsonResponse(
+          {
+            error: "send_failed",
+            message: "Could not send the verification code. Please try again.",
+          },
+          502,
+          request,
+        );
+      }
+      return jsonResponse(
+        {
+          error: result.error,
+          message: "Recipient verification is not available for this note.",
+        },
+        400,
+        request,
+      );
+    }
+    return jsonResponse({ ok: true, emailHint: result.emailHint }, 200, request);
+  }
+
   const recipientVerifyParams = parsePathParams(pathname, "/api/notes/:id/recipient-verify");
   if (recipientVerifyParams && method === "POST") {
     const { id } = recipientVerifyParams;
     if (!isValidNoteId(id)) {
       return jsonResponse({ error: "Invalid note ID" }, 400, request);
     }
-    let body: { code?: unknown; email?: unknown } = {};
+    let body: { code?: unknown } = {};
     try {
-      body = (await request.json()) as { code?: unknown; email?: unknown };
+      body = (await request.json()) as { code?: unknown };
     } catch {
       return jsonResponse({ error: "Invalid JSON" }, 400, request);
     }
@@ -9180,7 +9537,6 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const result = await verifyRecipientAccess(env, id, {
       code: typeof body.code === "string" ? body.code : undefined,
-      email: typeof body.email === "string" ? body.email : undefined,
     });
     if (!result.ok) {
       const usedAttempts = RATE_LIMIT_RECIPIENT_VERIFY.MAX_REQUESTS - verifyLimit.remaining;
@@ -9200,13 +9556,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const message =
         result.error === "invalid_code"
           ? "Invalid verification code."
-          : result.error === "invalid_email"
-            ? "This email does not match the intended recipient."
-            : result.error === "email_required"
-              ? "Recipient email is required."
-              : result.error === "code_required"
-                ? "Verification code is required."
-                : "Recipient verification is not available for this note.";
+          : result.error === "code_required"
+            ? "Verification code is required."
+            : result.error === "code_not_sent"
+              ? "Request a verification code first."
+              : "Recipient verification is not available for this note.";
       return jsonResponse({ error: result.error, message }, 400, request);
     }
     await logAuditEvent(env, {
@@ -9223,6 +9577,66 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       recipientVerifiedCookieHeader(id, result.setCookie, request),
     );
     return response;
+  }
+
+  const receiptAckParams = parsePathParams(pathname, "/api/notes/:id/acknowledge-receipt");
+  if (receiptAckParams && method === "POST") {
+    const { id } = receiptAckParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    const clientId = getClientIdentifier(request);
+    const ackLimit = await checkRateLimit(env, `${clientId}:receipt-ack:${id}`, RATE_LIMIT_RECEIPT_ACK);
+    if (!ackLimit.allowed) {
+      return jsonResponse(
+        {
+          error: "Rate limit exceeded",
+          message: `Too many receipt confirmation attempts. Please try again in ${ackLimit.resetAt - Math.floor(Date.now() / 1000)} seconds.`,
+          resetAt: ackLimit.resetAt,
+        },
+        429,
+        request,
+      );
+    }
+
+    let body: { ackToken?: unknown } = {};
+    try {
+      body = (await request.json()) as { ackToken?: unknown };
+    } catch {
+      return jsonResponse({ error: "invalid_json" }, 400, request);
+    }
+    const ackToken = typeof body.ackToken === "string" ? body.ackToken.trim().toLowerCase() : "";
+    const result = await acknowledgeSentNoteReceipt(
+      env,
+      id,
+      ackToken,
+      request,
+      async (to, subject, text, html) => {
+        const emailResult = await sendEmail(env, { to, subject, text, html });
+        if (!emailResult.ok) throw new Error(emailResult.error ?? "Email send failed");
+        return emailResult;
+      },
+    );
+    if (!result.ok) {
+      const status =
+        result.error === "not_found"
+          ? 404
+          : result.error === "not_configured"
+            ? 501
+            : result.error === "not_required"
+              ? 400
+              : 403;
+      return jsonResponse({ error: result.error }, status, request);
+    }
+    return jsonResponse(
+      {
+        ok: true,
+        alreadyConfirmed: result.alreadyConfirmed,
+        acknowledgedAt: result.acknowledgedAt,
+      },
+      200,
+      request,
+    );
   }
 
   const noteRevealParams = parsePathParams(pathname, "/api/notes/:id/reveal");
@@ -9361,6 +9775,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       } catch (error) {
         console.warn("[ROUTES] Failed to issue file access token:", error);
       }
+      try {
+        const sent = await getSentNoteByNoteId(env, id);
+        if (sent?.require_receipt_ack === 1) {
+          const data = (await doResponse.clone().json()) as Record<string, unknown>;
+          doResponse = jsonResponse(
+            {
+              ...data,
+              receiptAck: {
+                required: true,
+                acknowledged: Boolean(sent.receipt_acknowledged_at),
+                acknowledgedAt: sent.receipt_acknowledged_at,
+              },
+            },
+            doResponse.status,
+            request,
+          ) as unknown as typeof doResponse;
+        }
+      } catch (error) {
+        console.warn("[ROUTES] Failed to attach receipt-ack metadata:", error);
+      }
     } else if (doResponse.status === 404) {
       // Note not found — expired, exhausted, or never existed
       await cleanupNoteFileChunks(env, id, "reveal returned 404");
@@ -9368,6 +9802,97 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     return applyCorsHeaders(doResponse as unknown as Response, request);
+  }
+
+  const revokeNoteParams = parsePathParams(pathname, "/api/notes/:id/revoke");
+  if (revokeNoteParams && method === "POST") {
+    const { id } = revokeNoteParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note ID" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Unauthorized" }, 401, request);
+    }
+
+    const accountType = await noteCreationAccountType(env, request);
+    if (!planFeaturesFor(accountType).revokeUnopened) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
+
+    const revoked = await revokeSentNote(env, session.id, id);
+    if (!revoked.ok) {
+      if (revoked.error === "already_opened") {
+        return jsonResponse({ error: "already_opened" }, 409, request);
+      }
+      if (revoked.error === "not_configured") {
+        return jsonResponse({ error: "Auth database not configured" }, 501, request);
+      }
+      return jsonResponse({ error: "not_found" }, 404, request);
+    }
+
+    try {
+      const stub = getSecureNoteStub(env, id, true);
+      const deleteRequest = new Request(new URL(`/api/notes/${id}`, request.url).toString(), {
+        method: "DELETE",
+      });
+      let doResponse = await stub.fetch(deleteRequest as any);
+      if (doResponse.status === 404) {
+        const legacyStub = getSecureNoteStub(env, id, false);
+        doResponse = await legacyStub.fetch(deleteRequest as any);
+      }
+      if (doResponse.ok || doResponse.status === 404) {
+        await cleanupNoteFileChunks(env, id, `note revoked (${doResponse.status})`);
+        await clearRecipientGate(env, id);
+      } else {
+        console.warn(`[REVOKE] DO delete returned ${doResponse.status} for note ${id}`);
+      }
+    } catch (error) {
+      console.warn(`[REVOKE] Failed to purge note ciphertext for ${id}:`, error);
+    }
+
+    return jsonResponse({ ok: true }, 200, request);
+  }
+
+  const noteSenderStatusParams = parsePathParams(pathname, "/api/notes/:id/sender-status");
+  if (noteSenderStatusParams && method === "GET") {
+    const { id } = noteSenderStatusParams;
+    if (!isValidNoteId(id)) {
+      return jsonResponse({ error: "Invalid note id" }, 400, request);
+    }
+    if (!env.AUTH_DB) {
+      return jsonResponse({ error: "sent_note_status_unavailable" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id) {
+      return jsonResponse({ error: "Authentication required" }, 401, request);
+    }
+    const row = await getSentNoteByNoteId(env, id);
+    if (!row || row.user_id !== session.id) {
+      return jsonResponse({ error: "Not found" }, 404, request);
+    }
+    return jsonResponse(
+      {
+        ok: true,
+        status: {
+          noteId: row.note_id,
+          status: row.status,
+          createdAt: row.created_at,
+          openedAt: row.opened_at,
+          attachmentDownloadedAt: row.attachment_downloaded_at,
+          receiptAcknowledgedAt: row.receipt_acknowledged_at,
+          requireReceiptAck: row.require_receipt_ack === 1,
+          expiresAt: row.expires_at,
+          destroyedAt: row.destroyed_at,
+          revokedAt: row.revoked_at,
+        },
+      },
+      200,
+      request,
+    );
   }
 
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
@@ -9382,6 +9907,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
     if (method === "DELETE" && (doResponse.ok || doResponse.status === 404)) {
       await cleanupNoteFileChunks(env, id, `note delete returned ${doResponse.status}`);
+      try {
+        const session = await getSessionFromRequest(env, request, { rotate: false });
+        if (session?.id) {
+          await revokeSentNote(env, session.id, id);
+        }
+      } catch (error) {
+        console.warn("[SENT_NOTES] Failed to revoke sent-note record after delete:", error);
+      }
     }
     return applyCorsHeaders(doResponse as unknown as Response, request);
   }

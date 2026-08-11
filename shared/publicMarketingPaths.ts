@@ -20,6 +20,7 @@ const NON_BLOG_LOCALIZED_MARKETING_PATHS = [
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",
+  "/premium",
   "/developers",
   "/about",
   "/contact",

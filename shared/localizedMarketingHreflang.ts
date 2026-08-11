@@ -21,6 +21,7 @@ const LOCALIZED_MARKETING_STEMS = new Set([
   "privacy-tools",
   "security-resources",
   "how-it-works",
+  "premium",
   "developers",
   "about",
   "contact",

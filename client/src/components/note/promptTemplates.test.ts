@@ -4,6 +4,8 @@ import {
   cleanOutput,
   validateLocalLlmOutput,
   classifyAskAnythingIntent,
+  isPremiumPromptTemplateId,
+  promptTemplates,
 } from "./promptTemplates";
 
 describe("cleanOutput", () => {
@@ -24,6 +26,18 @@ describe("cleanOutput", () => {
   it("does not strip a single-line note starting with Sure", () => {
     const t = "Sure, I can send the file by Friday.";
     assert.equal(cleanOutput(t), t);
+  });
+});
+
+describe("premium template packs", () => {
+  it("marks Document Summary and Privacy Check as Starter pack templates", () => {
+    assert.equal(isPremiumPromptTemplateId("document-summary"), true);
+    assert.equal(isPremiumPromptTemplateId("privacy-check"), true);
+    assert.equal(isPremiumPromptTemplateId("ask-anything"), false);
+    assert.deepEqual(
+      promptTemplates.filter((template) => template.access === "premium").map((t) => t.id).sort(),
+      ["document-summary", "privacy-check"],
+    );
   });
 });
 
