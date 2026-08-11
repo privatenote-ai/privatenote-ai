@@ -16,9 +16,11 @@ import {
   Mic,
   BadgeCheck,
   Tags,
+  ChevronDown,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
+import { hasPremiumFeatures } from '@shared/planCatalog';
 import {
   mergeNoteLabelsIntoLocal,
   parseNoteLabelsExport,
@@ -40,6 +42,11 @@ import {
   canBrowserPlayVoiceAttachment,
   isVoiceMessageAttachment,
 } from '@/utils/voiceMessageRecording';
+import {
+  convertVoiceAttachmentForDownload,
+  isVoiceDownloadConversionAvailable,
+  type VoiceDownloadFormat,
+} from '@/utils/voiceMessageDownloadFormat';
 import { useToast } from '@/hooks/use-toast';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -55,6 +62,12 @@ import {
   AttachmentProgressDialog,
   type AttachmentProgressState,
 } from '@/components/note/AttachmentProgressDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type NoteAccessProblemVariant = 'note_gone' | 'link_incomplete' | 'key_truncated' | 'not_yet_available';
 
@@ -575,6 +588,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const recipientCodeAutoSendRef = useRef(false);
   const { toast } = useToast();
   const { entitlements } = useAccountEntitlements();
+  const canChooseVoiceDownloadFormat = hasPremiumFeatures(entitlements.accountType);
   const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
   const importedLabelsPack = useMemo(
     () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
@@ -1330,7 +1344,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
   };
 
-  const handleDownloadAttachment = async () => {
+  const handleDownloadAttachment = async (downloadFormat: VoiceDownloadFormat = "original") => {
     if (!noteData?.attachment || !contentKey) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
@@ -1343,6 +1357,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     const fileAccessHeaders: Record<string, string> = noteData.fileAccessToken
       ? { "x-file-access-token": noteData.fileAccessToken }
       : {};
+    const wantsConversion =
+      attachmentPreviewKind === "audio" &&
+      downloadFormat !== "original" &&
+      canChooseVoiceDownloadFormat;
     setIsDownloadingFile(true);
     setAttachmentDecryptProgress({
       phase: "decrypt",
@@ -1377,13 +1395,37 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           );
         },
       )) as BlobPart[];
-      const blob = new Blob(decryptedParts, {
+      let blob = new Blob(decryptedParts, {
         type: attachmentMetadata?.type || "application/octet-stream",
       });
+      let downloadName = attachmentMetadata?.name || "privatenote-file";
+      if (wantsConversion) {
+        setAttachmentDecryptProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: Math.max(prev.progress, 92),
+                detail:
+                  downloadFormat === "wav"
+                    ? (t.voiceMessageDecodingToWav ?? "Decoding to WAV…")
+                    : (t.voiceMessageDecodingToM4a ?? "Decoding to M4A…"),
+                detailTitle: attachmentMetadata?.name,
+              }
+            : prev,
+        );
+        const converted = await convertVoiceAttachmentForDownload({
+          blob,
+          format: downloadFormat,
+          sourceFileName: attachmentMetadata?.name,
+          sourceMimeType: attachmentMetadata?.type,
+        });
+        blob = converted.blob;
+        downloadName = converted.fileName;
+      }
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = attachmentMetadata?.name || "privatenote-file";
+      link.download = downloadName;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1394,7 +1436,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       }
       toast({
         title: t.toastFileDownloadFailed,
-        description: t.toastFileDownloadFailedDesc,
+        description:
+          wantsConversion
+            ? (t.voiceMessageDecodeFailedDesc ??
+              "The voice message could not be decoded into that format. Try Original or WAV.")
+            : t.toastFileDownloadFailedDesc,
         variant: "destructive",
       });
     } finally {
@@ -1829,15 +1875,54 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                               : "View"}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => void handleDownloadAttachment()}
-                      disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-                    >
-                      <Download className="h-3.5 w-3.5" aria-hidden />
-                      {isDownloadingFile ? "Decrypting…" : "Download"}
-                    </button>
+                    {attachmentPreviewKind === "audio" && canChooseVoiceDownloadFormat ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                          >
+                            <Download className="h-3.5 w-3.5" aria-hidden />
+                            {isDownloadingFile
+                              ? (t.voiceMessageDecoding ?? "Decoding…")
+                              : (t.voiceMessageDownloadFormat ?? "Download")}
+                            <ChevronDown className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[12rem]">
+                          <DropdownMenuItem
+                            onSelect={() => void handleDownloadAttachment("original")}
+                          >
+                            {t.voiceMessageDownloadOriginal ?? "Original file"}
+                          </DropdownMenuItem>
+                          {isVoiceDownloadConversionAvailable("wav") ? (
+                            <DropdownMenuItem
+                              onSelect={() => void handleDownloadAttachment("wav")}
+                            >
+                              {t.voiceMessageDownloadWav ?? "WAV (decoded)"}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {isVoiceDownloadConversionAvailable("m4a") ? (
+                            <DropdownMenuItem
+                              onSelect={() => void handleDownloadAttachment("m4a")}
+                            >
+                              {t.voiceMessageDownloadM4a ?? "M4A (decoded)"}
+                            </DropdownMenuItem>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleDownloadAttachment("original")}
+                        disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden />
+                        {isDownloadingFile ? "Decrypting…" : "Download"}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1887,7 +1972,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                         </p>
                         <button
                           type="button"
-                          onClick={() => void handleDownloadAttachment()}
+                          onClick={() => void handleDownloadAttachment("original")}
                           disabled={isDownloadingFile || !contentKey || fileAccessExpired}
                           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                         >
@@ -1896,6 +1981,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                             ? "Decrypting…"
                             : (t.voiceMessageDownloadToPlay ?? "Download to play")}
                         </button>
+                        {canChooseVoiceDownloadFormat && isVoiceDownloadConversionAvailable("wav") ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadAttachment("wav")}
+                            disabled={isDownloadingFile || !contentKey || fileAccessExpired}
+                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-white px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/35 dark:bg-gray-900 dark:hover:bg-primary/10 sm:w-auto"
+                          >
+                            {t.voiceMessageDownloadWav ?? "Download as WAV (decoded)"}
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
