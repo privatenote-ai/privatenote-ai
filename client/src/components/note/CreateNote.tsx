@@ -1403,10 +1403,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ? {
             phase: "prepare",
             progress: 2,
-            detail: t.attachmentProgressChunkDetail
-              .replace("{done}", "0")
-              .replace("{total}", String(earlyTotalChunks))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name)),
+            detail: formatAttachmentDisplayName(selectedFile.name),
           }
         : null,
     );
@@ -1562,11 +1559,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             `/api/notes/${reservedId}/file/chunks/0`,
             uploadToken,
           );
+          const fileLabel = formatAttachmentDisplayName(selectedFile.name);
           const chunkDetail = (done: number, total: number) =>
-            t.attachmentProgressChunkDetail
-              .replace("{done}", String(done))
-              .replace("{total}", String(total))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
+            total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
           // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
           // modal stuck with no chunk count for a long time on slow uplinks.
           const completedChunksRef = { current: 0 };
@@ -1586,15 +1581,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 : 1;
             const nextProgress = Math.round(5 + overall * 90);
             setAttachmentProgress((prev) => ({
-              phase: "encrypt",
-              progress: Math.max(prev?.progress ?? 0, nextProgress),
+              phase: "upload",
+              progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, nextProgress),
               detail: chunkDetail(completedChunksRef.current, totalChunks),
             }));
           };
           setAttachmentProgress({
             phase: "encrypt",
             progress: 5,
-            detail: chunkDetail(0, totalChunks),
+            detail: fileLabel,
           });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
@@ -1635,8 +1630,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               if (pipeline.phase !== "upload") {
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
-                  progress: Math.max(prev?.progress ?? 0, 5),
-                  detail: chunkDetail(completedChunksRef.current, pipeline.totalChunks),
+                  progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, 5),
+                  detail: fileLabel,
                 }));
                 return;
               }
@@ -1647,7 +1642,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           setAttachmentProgress({
             phase: "finalize",
             progress: 98,
-            detail: selectedFile.name,
+            detail: formatAttachmentDisplayName(selectedFile.name),
           });
           logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
