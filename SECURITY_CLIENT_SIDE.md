@@ -18,6 +18,7 @@ style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 connect-src 'self' https://privatenote-api.marjan-skrobot.workers.dev https://privatenote-ai.pages.dev https://privatenote.ai https://challenges.cloudflare.com;
 img-src 'self' data: https: blob:;
+media-src 'self' blob:;
 base-uri 'self';
 form-action 'self';
 frame-ancestors 'none';

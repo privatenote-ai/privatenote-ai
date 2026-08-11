@@ -13,6 +13,7 @@ export function getApiContentSecurityPolicy(): string {
     "font-src 'self'",
     `connect-src ${PAGE_CSP_CONNECT_SRC}`,
     "img-src 'self' data: https: blob:",
+    "media-src 'self' blob:",
     "frame-src https://challenges.cloudflare.com blob: data:",
     "base-uri 'none'",
     "form-action 'self'",
