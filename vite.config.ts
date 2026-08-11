@@ -44,6 +44,24 @@ function htmlFontPreloadPlugin(): Plugin {
     },
   };
 }
+
+/**
+ * Copy the empty Vite index shell to spa-shell.html for Pages Functions.
+ * Production prerender overwrites index.html with the homepage; client routes
+ * (/auth, /admin, /premium, /account) must serve an empty #root instead.
+ */
+function spaShellCopyPlugin(): Plugin {
+  return {
+    name: "spa-shell-copy",
+    apply: "build",
+    closeBundle() {
+      const distDir = path.resolve(__dirname, "dist");
+      const indexPath = path.join(distDir, "index.html");
+      if (!fs.existsSync(indexPath)) return;
+      fs.copyFileSync(indexPath, path.join(distDir, "spa-shell.html"));
+    },
+  };
+}
 const configuredApiUrl = (process.env.VITE_API_URL || "").trim();
 const isLocalApiUrl =
   configuredApiUrl.includes("localhost") || configuredApiUrl.includes("127.0.0.1");
@@ -109,6 +127,7 @@ const devContentSecurityPolicy = buildDevPageContentSecurityPolicy();
 export default defineConfig({
   plugins: [
     htmlFontPreloadPlugin(),
+    spaShellCopyPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
       : []),

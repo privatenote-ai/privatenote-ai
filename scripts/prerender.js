@@ -212,6 +212,15 @@ async function prepareOutputDir() {
       console.log(`📦 No cached HTML in ${HTML_CACHE_DIR} — first incremental run will prerender all routes.`);
     }
   }
+
+  // Keep an empty Vite shell for SPA route Functions. Prerender overwrites
+  // index.html with the homepage; /auth, /admin, /premium, /account must not
+  // serve that homepage DOM (see functions/_shared/serveSpaShell.ts).
+  await fs.copyFile(
+    path.join(BUILD_DIR, "index.html"),
+    path.join(DIST_DIR, "spa-shell.html"),
+  );
+  console.log("📄 Wrote spa-shell.html (empty #root) for client-route Functions");
 }
 
 function routeOutDir(route) {

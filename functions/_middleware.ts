@@ -37,6 +37,15 @@ export async function onRequest(context: {
     return Response.redirect(url.toString(), 301);
   }
 
+  // Old /pricing URL → current premium pricing page.
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    normalizedPath === "/pricing"
+  ) {
+    url.pathname = "/premium";
+    return Response.redirect(url.toString(), 301);
+  }
+
   const legacyBlogRedirect = resolveLegacyBlogPostRedirect(normalizedPath);
   if (
     (request.method === "GET" || request.method === "HEAD") &&

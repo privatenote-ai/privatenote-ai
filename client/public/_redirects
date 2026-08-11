@@ -10,6 +10,9 @@
 # Bare /note is not a public page (only /note/:id exists). Avoid duplicate homepage in Search Console.
 /note  /  301
 
+# Legacy marketing URL — Pricing lives at /premium.
+/pricing  /premium  301
+
 # Explicit SPA shells (wrangler pages deploy may ignore splat redirects — see functions/magic.ts).
 /magic   /index.html   200
 
