@@ -1230,7 +1230,7 @@ export const sr: Translations = {
     "Kako sastaviti stek privatnosti po poslu—ne po hipu. Modeli pretnji, podrazumevani izbori naspram alternativa, minimalni starter komplet i ono što odbijamo da preporučimo.",
   blogPrivacyMetaTitle: "Stek alata za privatnost za 2026.",
   blogPrivacyMetaDescription:
-    "Praktičan vodič za 2026. o alatima za privatnost po poslu: lozinke, jednokratne tajne, poruke, e-pošta, pregledanje, VPN-ovi i higijena naloga—plus minimalni starter komplet.",
+    "Vodič 2026. o alatima za privatnost po poslu: lozinke, tajne, poruke, e-pošta, pregledanje, VPN-ovi i higijena naloga—plus starter komplet.",
 
   blogSecurityRecommendations: "Bezbednosne preporuke",
   blogAdditionalResources: "Dodatni resursi",
@@ -1813,14 +1813,14 @@ export const sr: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Saradnja ili privremena predaja?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive blista u dugoročnoj saradnji. Jednokratni šifrovani linkovi minimizuju zadržavanje za jednokratne poverljive predaje. Saznajte kada koji pristup pristaje.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs jednokratni linkovi za poverljive datoteke",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs šifrovani jednokratni link",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Uporedite Google Drive i jednokratne šifrovane linkove za poverljive datoteke. Kada koji pristup pristaje i kako minimizovati dugoročnu izloženost.",
   blogSocialMediaBansTitle: "Da li će zabrane društvenih mreža za decu delovati?",
   blogSocialMediaBansSubtitle: "Šta kaže evidencija",
   blogSocialMediaBansExcerpt:
     "Australija, Francuska i Norveška raspravljaju o zabrani ispod 16 godina—istraživači upozoravaju na pomeranje rizika, proveru starosti i pravi problem: zavisni dizajn platformi.",
-  blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za decu: evidencija",
+  blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za decu",
   blogSocialMediaBansMetaDescription:
     "Da li zabrane ispod 16 godina funkcionišu? Evidencija o digitalnom pomeranju, privatnosti provere starosti i alternativama iz Information Labs izveštaja.",
   blogMakePrivateNoteTitle: "Kako napraviti privatnu belešku",

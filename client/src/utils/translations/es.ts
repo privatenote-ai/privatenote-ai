@@ -1317,7 +1317,7 @@ export const es: Translations = {
     "Cómo montar una pila de privacidad por tarea—no por hype. Modelos de amenaza, opciones por defecto frente a alternativas, un kit mínimo de inicio y lo que nos negamos a recomendar.",
   blogPrivacyMetaTitle: "Pila de herramientas de privacidad 2026",
   blogPrivacyMetaDescription:
-    "Guía práctica 2026 de herramientas de privacidad por tarea: contraseñas, secretos de un solo uso, mensajería, correo, navegación, VPN e higiene de cuentas—más un kit de inicio mínimo.",
+    "Guía 2026 de herramientas de privacidad por tarea: contraseñas, secretos, mensajería, correo, navegación, VPN e higiene de cuentas—más kit mínimo.",
 
   blogSecurityRecommendations: "Recomendaciones de seguridad",
   blogAdditionalResources: "Recursos adicionales",
@@ -1438,7 +1438,7 @@ export const es: Translations = {
   blogSharePasswordSecurelySubtitle: "Sin correo, Teams ni WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Deja de pegar contraseñas en Microsoft Teams, WhatsApp o el correo. Enlaces cifrados de un solo uso, RGPD y gestor vs enlace puntual.",
-  blogSharePasswordSecurelyMetaTitle: "Cómo compartir una contraseña de forma segura",
+  blogSharePasswordSecurelyMetaTitle: "Compartir contraseñas de forma segura",
   blogSharePasswordSecurelyMetaDescription:
     "Comparte contraseñas sin correo, Teams ni WhatsApp: enlaces cifrados de un solo uso, RGPD y ejemplos prácticos.",
   blogCicdEnvGithubSecretsTitle: "Cómo los desarrolladores filtran secretos en CI/CD y GitHub",
@@ -1473,16 +1473,16 @@ export const es: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "¿Colaboración o entrega temporal?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive destaca en la colaboración a largo plazo. Los enlaces cifrados de un solo uso minimizan la retención en entregas confidenciales puntuales. Aprende cuándo encaja cada enfoque.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs enlaces de un solo uso confidenciales",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs enlaces cifrados únicos",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Compara Google Drive y los enlaces cifrados de un solo uso para archivos confidenciales. Cuándo encaja cada uno y cómo minimizar la exposición a largo plazo.",
   blogSocialMediaBansTitle: "¿Funcionarán las prohibiciones de redes sociales para menores?",
   blogSocialMediaBansSubtitle: "Lo que dice la evidencia",
   blogSocialMediaBansExcerpt:
     "Australia, Francia y Noruega debaten prohibiciones para menores de 16 años, pero investigadores advierten sobre desplazamiento del daño, verificación de edad y el problema real: el diseño adictivo de las plataformas.",
-  blogSocialMediaBansMetaTitle: "Prohibiciones de redes sociales para menores: evidencia",
+  blogSocialMediaBansMetaTitle: "Prohibiciones redes sociales para menores",
   blogSocialMediaBansMetaDescription:
-    "¿Funcionan las prohibiciones para menores de 16? Evidencia sobre desplazamiento digital, privacidad en la verificación de edad y alternativas según el informe de Information Labs.",
+    "¿Funcionan las prohibiciones para menores de 16? Evidencia sobre desplazamiento digital, verificación de edad y alternativas según Information Labs.",
   blogMakePrivateNoteTitle: "Cómo hacer una nota privada",
   blogMakePrivateNoteSubtitle: "Y mantenerla realmente privada",
   blogMakePrivateNoteExcerpt:

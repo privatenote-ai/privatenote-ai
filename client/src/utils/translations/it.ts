@@ -1264,7 +1264,7 @@ export const it: Translations = {
     "Come assemblare uno stack privacy per compito—non per hype. Modelli di minaccia, default vs alternative, kit di partenza minimo e ciò che rifiutiamo di consigliare.",
   blogPrivacyMetaTitle: "Stack di strumenti per la privacy 2026",
   blogPrivacyMetaDescription:
-    "Guida pratica 2026 agli strumenti per la privacy per compito: password, segreti monouso, messaging, email, browsing, VPN e igiene degli account—più un kit di partenza minimo.",
+    "Guida 2026 agli strumenti privacy per compito: password, segreti monouso, messaging, email, browsing, VPN e igiene account—più kit minimo.",
 
   blogSecurityRecommendations: "Raccomandazioni sulla sicurezza",
   blogAdditionalResources: "Risorse aggiuntive",
@@ -1771,7 +1771,7 @@ export const it: Translations = {
   blogSharePasswordSecurelySubtitle: "Senza email, Teams o WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Smetti di incollare password in Microsoft Teams, WhatsApp o email. Link crittografati monouso, GDPR e password manager vs condivisione puntuale.",
-  blogSharePasswordSecurelyMetaTitle: "Come condividere una password in modo sicuro",
+  blogSharePasswordSecurelyMetaTitle: "Condividere password in modo sicuro",
   blogSharePasswordSecurelyMetaDescription:
     "Condividi password senza email, Teams o WhatsApp: link crittografati monouso, GDPR ed esempi pratici.",
   blogCicdEnvGithubSecretsTitle: "Come gli sviluppatori espongono i segreti in CI/CD e GitHub",
@@ -1806,14 +1806,14 @@ export const it: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Collaborazione o consegna temporanea?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive eccelle nella collaborazione a lungo termine. I link crittografati monouso minimizzano la conservazione per consegne confidenziali una tantum. Scopri quando ogni approccio è adatto.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs link monouso per file confidenziali",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs link crittografati monouso",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Confronta Google Drive e i link crittografati monouso per file confidenziali. Quando ogni approccio si adatta e come ridurre l’esposizione a lungo termine.",
   blogSocialMediaBansTitle: "I divieti sui social media per i minori funzioneranno?",
   blogSocialMediaBansSubtitle: "Cosa dice l'evidenza",
   blogSocialMediaBansExcerpt:
     "Australia, Francia e Norvegia discutono divieti sotto i 16 anni—ma i ricercatori avvertono su spostamento del rischio, verifica dell'età e il vero problema: il design addictivo delle piattaforme.",
-  blogSocialMediaBansMetaTitle: "Divieti social per minori: cosa dice l'evidenza",
+  blogSocialMediaBansMetaTitle: "Divieti social per minori: l'evidenza",
   blogSocialMediaBansMetaDescription:
     "I divieti sotto i 16 funzionano? Evidenza su spostamento digitale, rischi privacy della verifica età e alternative dal rapporto Information Labs.",
   blogMakePrivateNoteTitle: "Come creare una nota privata",

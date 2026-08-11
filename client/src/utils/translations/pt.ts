@@ -1230,7 +1230,7 @@ export const pt: Translations = {
     "Como montar uma stack de privacidade por tarefa—não por hype. Modelos de ameaça, padrões vs. alternativas, um kit inicial mínimo e o que nos recusamos a recomendar.",
   blogPrivacyMetaTitle: "Stack de ferramentas de privacidade 2026",
   blogPrivacyMetaDescription:
-    "Guia prático 2026 de ferramentas de privacidade por tarefa: palavras-passe, segredos únicos, mensagens, e-mail, navegação, VPNs e higiene de contas—mais um kit inicial mínimo.",
+    "Guia 2026 de ferramentas de privacidade por tarefa: palavras-passe, segredos, mensagens, e-mail, navegação, VPNs e higiene de contas—mais kit mínimo.",
 
   blogSecurityRecommendations: "Recomendações de segurança",
   blogAdditionalResources: "Recursos Adicionais",
@@ -1778,7 +1778,7 @@ export const pt: Translations = {
   blogSharePasswordSecurelySubtitle: "Sem e-mail, Teams ou WhatsApp",
   blogSharePasswordSecurelyExcerpt:
     "Deixe de colar palavras-passe em Microsoft Teams, WhatsApp ou e-mail. Ligações encriptadas de uso único, RGPD e gestor vs partilha pontual.",
-  blogSharePasswordSecurelyMetaTitle: "Como partilhar uma palavra-passe com segurança",
+  blogSharePasswordSecurelyMetaTitle: "Partilhar palavra-passe com segurança",
   blogSharePasswordSecurelyMetaDescription:
     "Partilhe palavras-passe sem e-mail, Teams ou WhatsApp: ligações encriptadas de uso único, RGPD e exemplos práticos.",
   blogCicdEnvGithubSecretsTitle: "Como developers vazam segredos em CI/CD e GitHub",
@@ -1813,16 +1813,16 @@ export const pt: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Colaboração ou entrega temporária?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "O Google Drive destaca-se na colaboração a longo prazo. Links encriptados de uso único minimizam a retenção em entregas confidenciais pontuais. Saiba quando cada abordagem encaixa.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs links de uso único confidenciais",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs links encriptados únicos",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Compare o Google Drive e links encriptados de uso único para ficheiros confidenciais. Quando cada um encaixa e como minimizar a exposição a longo prazo.",
   blogSocialMediaBansTitle: "As proibições de redes sociais para crianças funcionarão?",
   blogSocialMediaBansSubtitle: "O que a evidência diz",
   blogSocialMediaBansExcerpt:
     "Austrália, França e Noruega debatem proibições para menores de 16—pesquisadores alertam para deslocamento de danos, verificação de idade e o problema real: design viciante das plataformas.",
-  blogSocialMediaBansMetaTitle: "Proibições de redes sociais para crianças: evidência",
+  blogSocialMediaBansMetaTitle: "Proibições redes sociais para crianças",
   blogSocialMediaBansMetaDescription:
-    "As proibições para menores de 16 funcionam? Evidência sobre deslocamento digital, privacidade na verificação de idade e alternativas no relatório Information Labs.",
+    "As proibições para menores de 16 funcionam? Evidência sobre deslocamento digital, verificação de idade e alternativas (Information Labs).",
   blogMakePrivateNoteTitle: "Como fazer uma nota privada",
   blogMakePrivateNoteSubtitle: "E mantê-la realmente privada",
   blogMakePrivateNoteExcerpt:

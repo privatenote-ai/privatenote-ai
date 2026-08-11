@@ -1518,7 +1518,7 @@ export const en: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Collaboration or temporary handoff?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive excels at long-term collaboration. One-time encrypted links minimise retention for one-off confidential handoffs. Learn when each approach fits.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs one-time links for confidential files",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs one-time encrypted links",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Compare Google Drive and one-time encrypted links for confidential files. Learn when each fits and how to minimise long-term exposure.",
   blogCommonSecretHandlingMistakesTitle: "Are You Making These Common Mistakes When Handling Secrets?",
@@ -1527,7 +1527,7 @@ export const en: Translations = {
     "From passwords and API keys to contracts and recovery codes, these are the most common mistakes people make when handling confidential information—and how to avoid them.",
   blogCommonSecretHandlingMistakesMetaTitle: "Common mistakes when handling secrets",
   blogCommonSecretHandlingMistakesMetaDescription:
-    "From passwords and API keys to contracts and recovery codes, these are the most common mistakes people make when handling confidential information—and how to avoid them.",
+    "Common mistakes with passwords, API keys, contracts, and recovery codes—and how to avoid leaving confidential information exposed.",
   blogMythosAiCryptanalysisHawkTitle:
     "Did Anthropic’s Mythos Break Cryptography? HAWK, AES, and the Real Result",
   blogMythosAiCryptanalysisHawkSubtitle: "",
@@ -1582,9 +1582,9 @@ export const en: Translations = {
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:
     "Australia, France, and Norway are debating under-16 bans—but researchers warn blanket restrictions may displace harm, fail on age verification, and miss the real issue: addictive platform design.",
-  blogSocialMediaBansMetaTitle: "Social media bans for children: what the evidence says",
+  blogSocialMediaBansMetaTitle: "Social media bans for children: evidence",
   blogSocialMediaBansMetaDescription:
-    "Do under-16 social media bans work? Evidence on digital displacement, age-verification privacy risks, platform design, and alternatives from the Information Labs report.",
+    "Do under-16 social media bans work? Evidence on displacement, age-verification risks, platform design, and Information Labs alternatives.",
   blogMakePrivateNoteTitle: "How to Make a Private Note",
   blogMakePrivateNoteSubtitle: "And actually keep it private",
   blogMakePrivateNoteExcerpt:
