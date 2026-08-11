@@ -79,6 +79,23 @@ export const en: Translations = {
   fileTooLargeDescription: "Maximum file size is {limit} for your account.",
   signInToAttachFiles: "Sign in to attach files",
   signInToAttachFilesHint: "Sign in to add encrypted file attachments.",
+  recordMessage: "Record message",
+  recordMessageTitle: "Record a message",
+  recordMessageDescription:
+    "Record a private voice message. It is encrypted in your browser like a file attachment before upload.",
+  recordMessageStart: "Start recording",
+  recordMessageStarting: "Starting…",
+  recordMessageStop: "Stop",
+  recordMessageRetake: "Re-record",
+  recordMessageUse: "Use recording",
+  recordMessageUnsupportedTitle: "Recording unavailable",
+  recordMessageUnsupported: "Voice recording is not supported in this browser.",
+  recordMessageMicDenied:
+    "Microphone access is required to record a message. Allow access and try again.",
+  recordMessageFailed: "Recording failed. Please try again.",
+  recordMessageEmpty: "No audio was captured. Try recording again.",
+  recordMessagePreviewUnsupported: "Your browser cannot preview this recording.",
+  voiceMessageDecrypting: "Decrypting voice message…",
   howItWorks: "How It Works",
   resources: "Resources",
   developers: "Developers",
@@ -1526,6 +1543,41 @@ export const en: Translations = {
   blogHowToSharePhotosSecurelyMetaTitle: "How to share photos securely",
   blogHowToSharePhotosSecurelyMetaDescription:
     "Share sensitive photos with fewer persistent copies. Remove common metadata locally, encrypt before upload, protect the full link, and limit access time.",
+  blogEncryptedVoiceMessageTitle: "How to Send an Encrypted Voice Message",
+  blogEncryptedVoiceMessageSubtitle: "Record Once, Encrypt Locally, Limit the Access Window",
+  blogEncryptedVoiceMessageExcerpt:
+    "Chat voice notes linger in histories and backups. Learn how to record a private voice message in your browser, encrypt it like a file attachment, and deliver it through a short-lived PrivateNote link.",
+  blogEncryptedVoiceMessageMetaTitle: "How to send an encrypted voice message",
+  blogEncryptedVoiceMessageMetaDescription:
+    "Record a private voice message in your browser, encrypt it before upload, and share a short-lived link instead of leaving audio in chat history.",
+  blogRecipientVerificationCodeTitle: "How Recipient Verification Codes Work",
+  blogRecipientVerificationCodeSubtitle: "Make the Link Incomplete Without an Out-of-Band Code",
+  blogRecipientVerificationCodeExcerpt:
+    "A private-note URL can be enough to decrypt. Recipient verification adds a note-specific six-digit code you share separately—so an intercepted link cannot reach reveal alone.",
+  blogRecipientVerificationCodeMetaTitle: "Recipient verification codes before reveal",
+  blogRecipientVerificationCodeMetaDescription:
+    "Require a note-specific verification code before a PrivateNote can be revealed. Split the link and code across channels for safer handoffs.",
+  blogClickToRevealPrivateNotesTitle: "Why PrivateNote Makes You Click Before Revealing a Secret",
+  blogClickToRevealPrivateNotesSubtitle: "A Deliberate Pause Before Browser-Side Decryption",
+  blogClickToRevealPrivateNotesExcerpt:
+    "Loading a link does not have to reveal its secret. PrivateNote waits for an explicit confirmation before browser-side decryption begins.",
+  blogClickToRevealPrivateNotesMetaTitle: "Click-to-reveal for private notes",
+  blogClickToRevealPrivateNotesMetaDescription:
+    "Learn why PrivateNote requires an explicit reveal click before browser-side decryption, and how that pause helps prevent accidental opens.",
+  blogKnowWhenSecretLinkOpenedTitle: "How to Know When a Secret Link Was Opened",
+  blogKnowWhenSecretLinkOpenedSubtitle: "Status Alerts Without Emailing the Secret",
+  blogKnowWhenSecretLinkOpenedExcerpt:
+    "Stop guessing whether a handoff landed. Use email, live in-tab, and browser alerts for opened, destroyed, and related events—never message contents.",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Know when a secret link was opened",
+  blogKnowWhenSecretLinkOpenedMetaDescription:
+    "Get PrivateNote open and destroy alerts by email or live toast—status only, never the note contents—so you can rotate or follow up.",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "How to Revoke an Unopened Note",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stop Access Before Reveal and Keep a Coarse Receipt",
+  blogRevokeUnopenedNoteProofOfAccessExcerpt:
+    "Changed your mind before anyone opened the link? Revoke it. Need a coarse delivery receipt later? Use proof of access—without exposing note contents.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoke unopened notes and proof of access",
+  blogRevokeUnopenedNoteProofOfAccessMetaDescription:
+    "Revoke unopened PrivateNote links and view proof-of-access timelines for delivery events—without putting secrets into email.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

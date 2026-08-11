@@ -169,6 +169,36 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Im Browser verschlüsseln und einmalige oder kurzlebige Links nutzen.",
     "Auf das Nötige zuschneiden; Passphrasen über einen separaten Kanal senden.",
   ],
+  "how-to-send-encrypted-voice-message": [
+    "Im Browser aufnehmen; PrivateNote verschlüsselt Audio wie einen Dateianhang vor dem Upload.",
+    "Sprache für kurzen Kontext—nicht für Geheimnisse, die exakt getippt werden müssen.",
+    "Link mit kurzen Öffnungslimits und optionaler Verifizierung kombinieren.",
+    "Empfänger können Audio nach dem Entschlüsseln speichern; Ablauf ist keine Fernlöschung.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Ein einmaliger sechsstelliger Code sperrt die Enthüllung vor dem Entschlüsseln.",
+    "Code über einen anderen Kanal als den Link teilen.",
+    "Verifizierung ist getrennt von optionaler Passphrase-Umhüllung.",
+    "Starter und Business können es pro Notiz oder als Kontodefault aktivieren.",
+  ],
+  "click-to-reveal-private-notes": [
+    "Enthüllung ist bewusst: Entschlüsselung wartet auf einen bestätigten Klick.",
+    "Diese Pause ist praktische verzögerte Enthüllung—kein Kalender-Timer.",
+    "Mit Lebensdauer, Öffnungslimits und Verifizierung kombinieren.",
+    "Versehentliches Öffnen bei Einmal-Notizen verbraucht den Zugriff—Empfänger warnen.",
+  ],
+  "know-when-secret-link-opened": [
+    "E-Mail- und Live-Alerts melden nur Status—niemals Notizinhalt.",
+    "„Geöffnet“ als Impuls nutzen, Zugangsdaten zu rotieren oder den Kreis zu schließen.",
+    "Site offen halten für In-Tab-Toasts; E-Mail funktioniert asynchron.",
+    "Zugriffsnachweis ergänzt eine grobe Timeline auf geeigneten Plänen.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Widerruf zerstört ungeöffnete Links; er löscht keine Kopie nach der Enthüllung.",
+    "Zugriffsnachweis ist eine Statusquittung—kein Lesetranskript.",
+    "Widerruf bei falschem Empfänger; Nachweis bei Lieferfragen.",
+    "Business-Branding hilft Empfängern, eine legitime Enthüllungsseite zu erkennen.",
+  ],
 
 
 };
@@ -341,6 +371,36 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "PrivateNote peut supprimer GPS/EXIF dans le navigateur avant chiffrement (JPEG/PNG/WebP/HEIC).",
     "Chiffrer dans le navigateur et utiliser des liens à usage unique ou de courte durée.",
     "Recadrer au nécessaire ; envoyer les phrases secrètes sur un canal séparé.",
+  ],
+  "how-to-send-encrypted-voice-message": [
+    "Enregistrez dans le navigateur ; PrivateNote chiffre l’audio comme une pièce jointe avant l’envoi.",
+    "Préférez la voix pour un contexte court—pas pour des secrets à saisir exactement.",
+    "Associez le lien à de courtes limites d’ouverture et une vérification optionnelle.",
+    "Les destinataires peuvent encore enregistrer l’audio après déchiffrement ; l’expiration n’est pas une suppression à distance.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Un code à six chiffres à usage unique bloque la révélation avant le déchiffrement.",
+    "Partagez le code sur un canal différent du lien.",
+    "La vérification est distincte de l’encapsulation par phrase secrète optionnelle.",
+    "Starter et Business peuvent l’activer par note ou comme défaut de compte.",
+  ],
+  "click-to-reveal-private-notes": [
+    "La révélation est intentionnelle : le déchiffrement attend un clic confirmé.",
+    "Cette pause est une révélation différée pratique—pas une minuterie calendaire.",
+    "Combinez durée de vie, limites d’ouverture et vérification pour des transferts plus sûrs.",
+    "Une ouverture accidentelle sur une note à usage unique brûle l’accès—prévenez le destinataire.",
+  ],
+  "know-when-secret-link-opened": [
+    "E-mails et alertes en direct signalent le statut seulement—jamais le contenu.",
+    "Traitez « ouvert » comme un signal pour faire tourner un secret ou clôturer le transfert.",
+    "Gardez le site ouvert pour les toasts ; l’e-mail fonctionne en asynchrone.",
+    "La preuve d’accès ajoute une chronologie sommaire sur les forfaits éligibles.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "La révocation détruit les liens non ouverts ; elle n’efface pas une copie après révélation.",
+    "La preuve d’accès est un reçu de statut—pas une transcription de lecture.",
+    "Révoquez pour un mauvais destinataire ; utilisez la preuve pour les questions de livraison.",
+    "Le branding Business aide les destinataires à reconnaître une page de révélation légitime.",
   ],
 
 
@@ -515,6 +575,36 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "Cifra en el navegador y usa enlaces de un solo uso o de corta duración.",
     "Recorta a lo necesario; envía la frase secreta por un canal aparte.",
   ],
+  "how-to-send-encrypted-voice-message": [
+    "Graba en el navegador; PrivateNote cifra el audio como un archivo adjunto antes de subirlo.",
+    "Prefiere la voz para contexto breve—no para secretos que deben escribirse exactamente.",
+    "Combina el enlace con límites de apertura cortos y verificación opcional.",
+    "Los destinatarios aún pueden guardar el audio tras descifrar; la caducidad no es borrado remoto.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Un código de seis dígitos de un solo uso bloquea la revelación antes de descifrar.",
+    "Comparte el código por un canal distinto al del enlace.",
+    "La verificación es distinta del cifrado opcional con frase secreta.",
+    "Starter y Business pueden activarlo por nota o como valor predeterminado de la cuenta.",
+  ],
+  "click-to-reveal-private-notes": [
+    "La revelación es intencional: el descifrado espera un clic confirmado.",
+    "Esa pausa es una revelación diferida práctica—no un temporizador de calendario.",
+    "Combina vida útil, límites de apertura y verificación para entregas más seguras.",
+    "Una apertura accidental en notas de un solo uso quema el acceso—avisa al destinatario.",
+  ],
+  "know-when-secret-link-opened": [
+    "Alertas por email y en vivo informan solo el estado—nunca el contenido.",
+    "Usa «abierto» como señal para rotar credenciales o cerrar el ciclo.",
+    "Mantén el sitio abierto para toasts; el email funciona de forma asíncrona.",
+    "La prueba de acceso añade una línea temporal básica en planes elegibles.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Revocar destruye enlaces no abiertos; no borra una copia tras la revelación.",
+    "La prueba de acceso es un recibo de estado—no una transcripción de lectura.",
+    "Revoca ante un destinatario incorrecto; usa la prueba para preguntas de entrega.",
+    "La marca Business ayuda a reconocer una página de revelación legítima.",
+  ],
 
 
 };
@@ -687,6 +777,36 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "PrivateNote può rimuovere GPS/EXIF nel browser prima della cifratura (JPEG/PNG/WebP/HEIC).",
     "Cifra nel browser e usa link monouso o di breve durata.",
     "Ritaglia all’essenziale; invia le passphrase su un canale separato.",
+  ],
+  "how-to-send-encrypted-voice-message": [
+    "Registra nel browser; PrivateNote cifra l’audio come un allegato prima del caricamento.",
+    "Preferisci la voce per un contesto breve—non per segreti da digitare esattamente.",
+    "Abbina il link a limiti di apertura brevi e verifica opzionale.",
+    "I destinatari possono ancora salvare l’audio dopo la decifratura; la scadenza non è cancellazione remota.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Un codice a sei cifre monouso blocca la rivelazione prima della decifratura.",
+    "Condividi il codice su un canale diverso dal link.",
+    "La verifica è distinta dall’eventuale wrapping con passphrase.",
+    "Starter e Business possono attivarla per nota o come predefinito dell’account.",
+  ],
+  "click-to-reveal-private-notes": [
+    "La rivelazione è intenzionale: la decifratura attende un clic confermato.",
+    "Quella pausa è una rivelazione ritardata pratica—non un timer di calendario.",
+    "Combina durata, limiti di apertura e verifica per consegne più sicure.",
+    "Un’apertura accidentale su note monouso brucia l’accesso—avvisa il destinatario.",
+  ],
+  "know-when-secret-link-opened": [
+    "Email e avvisi live riportano solo lo stato—mai i contenuti.",
+    "Tratta «aperto» come segnale per ruotare le credenziali o chiudere il ciclo.",
+    "Tieni il sito aperto per i toast; l’email funziona in asincrono.",
+    "La prova di accesso aggiunge una timeline sintetica sui piani idonei.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "La revoca distrugge i link non aperti; non cancella una copia dopo la rivelazione.",
+    "La prova di accesso è una ricevuta di stato—non una trascrizione di lettura.",
+    "Revoca per destinatario sbagliato; usa la prova per domande di consegna.",
+    "Il branding Business aiuta a riconoscere una pagina di rivelazione legittima.",
   ],
 
 
@@ -861,6 +981,36 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Versleutel in de browser en gebruik eenmalige of kortlevende links.",
     "Bijsnijden tot het nodige; stuur wachtzinnen via een apart kanaal.",
   ],
+  "how-to-send-encrypted-voice-message": [
+    "Neem op in de browser; PrivateNote versleutelt audio als een bijlage vóór upload.",
+    "Gebruik spraak voor korte context—niet voor geheimen die exact getypt moeten worden.",
+    "Combineer de link met korte openingslimieten en optionele verificatie.",
+    "Ontvangers kunnen audio na ontsleuteling nog opslaan; verlopen is geen externe verwijdering.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Een eenmalige zescijferige code blokkeert onthulling vóór ontsleuteling.",
+    "Deel de code via een ander kanaal dan de link.",
+    "Verificatie is gescheiden van optionele wachtzin-wrapping.",
+    "Starter en Business kunnen het per notitie of als accountdefault inschakelen.",
+  ],
+  "click-to-reveal-private-notes": [
+    "Onthulling is bewust: ontsleuteling wacht op een bevestigde klik.",
+    "Die pauze is praktische vertraagde onthulling—geen kalender-timer.",
+    "Combineer levensduur, openingslimieten en verificatie voor veiligere overdracht.",
+    "Per ongeluk openen bij eenmalige notities verbrandt toegang—waarschuw de ontvanger.",
+  ],
+  "know-when-secret-link-opened": [
+    "E-mail- en live-alerts melden alleen status—nooit notitie-inhoud.",
+    "Gebruik «geopend» als sein om credentials te roteren of de lus te sluiten.",
+    "Houd de site open voor in-tab toasts; e-mail werkt asynchroon.",
+    "Bewijs van toegang voegt een grove tijdlijn toe op in aanmerking komende plannen.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Intrekken vernietigt niet-geopende links; het wist geen kopie na onthulling.",
+    "Bewijs van toegang is een statusbewijs—geen leestranscript.",
+    "Trek in bij verkeerde ontvanger; gebruik bewijs voor leveringsvragen.",
+    "Business-branding helpt ontvangers een legitieme onthullingspagina te herkennen.",
+  ],
 
 
 };
@@ -1033,6 +1183,36 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "O PrivateNote pode remover GPS/EXIF no browser antes da encriptação (JPEG/PNG/WebP/HEIC).",
     "Encripte no browser e use links de uso único ou curta duração.",
     "Recorte ao necessário; envie frases-passe noutro canal.",
+  ],
+  "how-to-send-encrypted-voice-message": [
+    "Grave no browser; o PrivateNote encripta o áudio como um anexo antes do envio.",
+    "Prefira voz para contexto curto—não para segredos que devem ser digitados exatamente.",
+    "Combine o link com limites de abertura curtos e verificação opcional.",
+    "Os destinatários ainda podem guardar o áudio após desencriptar; a expiração não é eliminação remota.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Um código de seis dígitos de uso único bloqueia a revelação antes da desencriptação.",
+    "Partilhe o código num canal diferente do link.",
+    "A verificação é distinta do wrapping opcional com frase-passe.",
+    "Starter e Business podem ativá-la por nota ou como predefinição da conta.",
+  ],
+  "click-to-reveal-private-notes": [
+    "A revelação é intencional: a desencriptação espera um clique confirmado.",
+    "Essa pausa é uma revelação adiada prática—não um temporizador de calendário.",
+    "Combine duração, limites de abertura e verificação para entregas mais seguras.",
+    "Uma abertura acidental em notas de uso único queima o acesso—avise o destinatário.",
+  ],
+  "know-when-secret-link-opened": [
+    "Alertas por email e em direto reportam apenas o estado—nunca o conteúdo.",
+    "Trate «aberto» como sinal para rodar credenciais ou fechar o ciclo.",
+    "Mantenha o site aberto para toasts; o email funciona em assíncrono.",
+    "A prova de acesso adiciona uma linha temporal grosseira em planos elegíveis.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Revogar destrói links não abertos; não apaga uma cópia após a revelação.",
+    "A prova de acesso é um recibo de estado—não uma transcrição de leitura.",
+    "Revogue para destinatário errado; use a prova para questões de entrega.",
+    "A marca Business ajuda a reconhecer uma página de revelação legítima.",
   ],
 
 
@@ -1207,6 +1387,36 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Šifrujte u pregledaču i koristite jednokratne ili kratkotrajne linkove.",
     "Iscecite na potrebno; lozinke šaljite drugim kanalom.",
   ],
+  "how-to-send-encrypted-voice-message": [
+    "Snimite u pregledaču; PrivateNote šifruje audio kao prilog pre otpremanja.",
+    "Glas za kratak kontekst—ne za tajne koje moraju tačno da se ukucaju.",
+    "Kombinujte link sa kratkim limitima otvaranja i opcionom verifikacijom.",
+    "Primaoci i dalje mogu sačuvati audio posle dešifrovanja; istek nije daljinsko brisanje.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Jednokratni šestocifreni kod blokira otkrivanje pre dešifrovanja.",
+    "Podelite kod drugim kanalom od linka.",
+    "Verifikacija je odvojena od opcionog passphrase wrappinga.",
+    "Starter i Business mogu da je uključe po belešci ili kao podrazumevano na nalogu.",
+  ],
+  "click-to-reveal-private-notes": [
+    "Otkrivanje je namerno: dešifrovanje čeka potvrđen klik.",
+    "Ta pauza je praktično odloženo otkrivanje—ne kalendarski tajmer.",
+    "Kombinujte životni vek, limite otvaranja i verifikaciju za bezbednije predaje.",
+    "Slučajno otvaranje jednokratne beleške troši pristup—upozorite primaoca.",
+  ],
+  "know-when-secret-link-opened": [
+    "Email i uživo upozorenja prijavljuju samo status—nikad sadržaj beleške.",
+    "Tretirajte „otvoreno“ kao znak da rotirate tajne ili zatvorite petlju.",
+    "Držite sajt otvorenim za toastove; email radi asinhrono.",
+    "Dokaz pristupa dodaje grubu vremensku liniju na pogodnim planovima.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Opoziv uništava neotvorene linkove; ne briše kopiju posle otkrivanja.",
+    "Dokaz pristupa je statusna potvrda—ne transkript čitanja.",
+    "Opozovite za pogrešnog primaoca; koristite dokaz za pitanja isporuke.",
+    "Business brendiranje pomaže primaocima da prepoznaju legitimnu stranicu otkrivanja.",
+  ],
 
 
 };
@@ -1379,6 +1589,36 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "PrivateNote može ukloniti GPS/EXIF u pregledniku prije šifriranja (JPEG/PNG/WebP/HEIC).",
     "Šifrirajte u pregledniku i koristite jednokratne ili kratkotrajne poveznice.",
     "Izrežite na potrebno; lozinke šaljite drugim kanalom.",
+  ],
+  "how-to-send-encrypted-voice-message": [
+    "Snimite u pregledniku; PrivateNote šifrira audio kao privitak prije prijenosa.",
+    "Glas za kratki kontekst—ne za tajne koje moraju točno biti upisane.",
+    "Kombinirajte poveznicu s kratkim limitima otvaranja i opcionalnom verifikacijom.",
+    "Primatelji i dalje mogu spremiti audio nakon dešifriranja; istek nije daljinsko brisanje.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "Jednokratni šesteroznamenkasti kod blokira otkrivanje prije dešifriranja.",
+    "Podijelite kod drugim kanalom od poveznice.",
+    "Verifikacija je odvojena od opcionalnog passphrase wrappinga.",
+    "Starter i Business mogu je uključiti po bilješci ili kao zadano na računu.",
+  ],
+  "click-to-reveal-private-notes": [
+    "Otkrivanje je namjerno: dešifriranje čeka potvrđeni klik.",
+    "Ta pauza je praktično odgođeno otkrivanje—ne kalendarski tajmer.",
+    "Kombinirajte životni vijek, limite otvaranja i verifikaciju za sigurnije predaje.",
+    "Slučajno otvaranje jednokratne bilješke troši pristup—upozorite primatelja.",
+  ],
+  "know-when-secret-link-opened": [
+    "Email i uživo upozorenja prijavljuju samo status—nikad sadržaj bilješke.",
+    "Tretirajte „otvoreno“ kao znak da rotirate tajne ili zatvorite petlju.",
+    "Držite stranicu otvorenom za toastove; email radi asinkrono.",
+    "Dokaz pristupa dodaje grubu vremensku crtu na pogodnim planovima.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Opoziv uništava neotvorene poveznice; ne briše kopiju nakon otkrivanja.",
+    "Dokaz pristupa je statusna potvrda—ne transkript čitanja.",
+    "Opozovite za pogrešnog primatelja; koristite dokaz za pitanja isporuke.",
+    "Business branding pomaže primateljima prepoznati legitimnu stranicu otkrivanja.",
   ],
 
 

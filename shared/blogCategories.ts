@@ -38,6 +38,11 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "google-drive-vs-one-time-encrypted-links": "secrets",
   "common-secret-handling-mistakes": "secrets",
   "how-to-share-photos-securely": "secrets",
+  "how-to-send-encrypted-voice-message": "secrets",
+  "recipient-verification-code-before-reveal": "secrets",
+  "click-to-reveal-private-notes": "secrets",
+  "know-when-secret-link-opened": "secrets",
+  "revoke-unopened-note-proof-of-access": "secrets",
   "how-to-make-a-private-note": "secrets",
   "how-we-generate-passwords": "secrets",
 

@@ -320,6 +320,62 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
     ],
     trust: "/how-it-works",
   },
+  "how-to-send-encrypted-voice-message": {
+    related: [
+      "one-time-secret-links",
+      "encrypted-vs-secure-file-sharing",
+      "send-secret-message-without-account",
+      "recipient-verification-code-before-reveal",
+      "how-to-share-a-password-securely",
+      "click-to-reveal-private-notes",
+    ],
+    trust: "/how-it-works",
+  },
+  "recipient-verification-code-before-reveal": {
+    related: [
+      "how-to-share-a-password-securely",
+      "one-time-secret-links",
+      "click-to-reveal-private-notes",
+      "know-when-secret-link-opened",
+      "revoke-unopened-note-proof-of-access",
+      "how-to-share-api-key-securely",
+    ],
+    trust: "/how-it-works",
+  },
+  "click-to-reveal-private-notes": {
+    related: [
+      "one-time-secret-links",
+      "how-to-make-a-private-note",
+      "recipient-verification-code-before-reveal",
+      "know-when-secret-link-opened",
+      "what-is-end-to-end-encryption",
+      "send-secret-message-without-account",
+    ],
+    trust: "/how-it-works",
+  },
+  "know-when-secret-link-opened": {
+    related: [
+      "revoke-unopened-note-proof-of-access",
+      "how-to-make-a-private-note",
+      "one-time-secret-links",
+      "click-to-reveal-private-notes",
+      "recipient-verification-code-before-reveal",
+      "send-secret-message-without-account",
+    ],
+    trust: "/how-it-works",
+  },
+  "revoke-unopened-note-proof-of-access": {
+    related: [
+      "know-when-secret-link-opened",
+      "recipient-verification-code-before-reveal",
+      "click-to-reveal-private-notes",
+      "one-time-secret-links",
+      "how-to-make-a-private-note",
+      "common-secret-handling-mistakes",
+    ],
+    trust: "/how-it-works",
+  },
+
 };
 
 export function getBlogPostCrossLinks(slug: BlogCanonicalSlug): BlogPostCrossLinks {
