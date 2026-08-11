@@ -38,6 +38,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "click-to-reveal-private-notes": "2026-08-09T12:00:00.000Z",
   "know-when-secret-link-opened": "2026-08-09T13:00:00.000Z",
   "revoke-unopened-note-proof-of-access": "2026-08-09T14:00:00.000Z",
+  "delayed-reveal-scheduled-secret-links": "2026-08-06T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -77,6 +78,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "click-to-reveal-private-notes": 6,
   "know-when-secret-link-opened": 6,
   "revoke-unopened-note-proof-of-access": 6,
+  "delayed-reveal-scheduled-secret-links": 6,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -112,6 +114,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -35,
+      title: t.blogDelayedRevealTitle,
+      excerpt: t.blogDelayedRevealExcerpt,
+      author: "PrivateNote.ai",
+      slug: "delayed-reveal-scheduled-secret-links",
+      publishedAt: at("delayed-reveal-scheduled-secret-links"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity]),
+      content: "",
+      coverImage: "/images/blog-how-to-make-a-private-note-hero.jpg",
+      published: true,
+      createdAt: at("delayed-reveal-scheduled-secret-links"),
+      updatedAt: at("delayed-reveal-scheduled-secret-links"),
+    },
     {
       id: -34,
       title: t.blogRevokeUnopenedNoteProofOfAccessTitle,

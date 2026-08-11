@@ -201,7 +201,13 @@ export default function AccountPreferences() {
           setPreferredLanguage(fb);
         }
       }
-      const nextAccountType = normalizeAccountType(data.accountType ?? data.plan);
+      const nextAccountType = normalizeAccountType(
+        typeof data.accountType === "string"
+          ? data.accountType
+          : typeof data.plan === "string"
+            ? data.plan
+            : undefined,
+      );
       setAccountType(nextAccountType);
       if (planFeaturesFor(nextAccountType).savedDefaults) {
         const defaultsResponse = await apiRequest<{

@@ -142,4 +142,8 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/RevokeUnopenedNoteProofOfAccessPost"),
     "RevokeUnopenedNoteProofOfAccessPost",
   ),
+  "delayed-reveal-scheduled-secret-links": lazyPost(
+    () => import("@/components/blog/DelayedRevealScheduledSecretLinksPost"),
+    "DelayedRevealScheduledSecretLinksPost",
+  ),
 };
