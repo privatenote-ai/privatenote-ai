@@ -6,6 +6,7 @@ import { resolveLegacyBlogPostRedirect } from "../shared/localizedBlogSlugs";
 import { resolveLegacyImageRedirect } from "../shared/legacyImageRedirects";
 import { isPublicMarketingPath } from "../shared/publicMarketingPaths";
 import { isLocaleHomeSegment, NON_ENGLISH_LANGUAGE_CODES } from "../shared/supportedLanguages";
+import { PREMIUM_PAGE_PUBLIC } from "../shared/premiumPagePublic";
 import { applyHtmlPageSecurity } from "./_shared/applyHtmlPageSecurity";
 import { serveSpaShell, type SpaShellEnv } from "./_shared/serveSpaShell";
 
@@ -14,6 +15,13 @@ type MiddlewareEnv = SpaShellEnv;
 const LOCALE_HOME_WITH_SLASH = new Set(
   NON_ENGLISH_LANGUAGE_CODES.map((code) => `/${code}/`),
 );
+
+function isPremiumMarketingPath(pathname: string): boolean {
+  if (pathname === "/premium" || pathname === "/pricing") return true;
+  return NON_ENGLISH_LANGUAGE_CODES.some(
+    (code) => pathname === `/${code}/premium` || pathname === `/${code}/pricing`,
+  );
+}
 
 export async function onRequest(context: {
   request: Request;
@@ -37,13 +45,19 @@ export async function onRequest(context: {
     return Response.redirect(url.toString(), 301);
   }
 
-  // Old /pricing URL → current premium pricing page.
+  // Old /pricing URL → current premium pricing page (or home while Pricing is hidden).
   if (
     (request.method === "GET" || request.method === "HEAD") &&
-    normalizedPath === "/pricing"
+    isPremiumMarketingPath(normalizedPath)
   ) {
-    url.pathname = "/premium";
-    return Response.redirect(url.toString(), 301);
+    if (!PREMIUM_PAGE_PUBLIC) {
+      url.pathname = "/";
+      return Response.redirect(url.toString(), 302);
+    }
+    if (normalizedPath === "/pricing" || normalizedPath.endsWith("/pricing")) {
+      url.pathname = normalizedPath.replace(/\/pricing$/, "/premium");
+      return Response.redirect(url.toString(), 301);
+    }
   }
 
   const legacyBlogRedirect = resolveLegacyBlogPostRedirect(normalizedPath);

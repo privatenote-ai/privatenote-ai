@@ -31,6 +31,7 @@ import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
 import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
+import { PREMIUM_PAGE_PUBLIC } from "@shared/premiumPagePublic";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
@@ -318,7 +319,13 @@ function Router() {
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
               <Route path={`/${language}/how-it-works`} component={() => <LocalizedRoute language={language} component={HowItWorks} />} />
-              <Route path={`/${language}/premium`} component={() => <LocalizedRoute language={language} component={Premium} />} />
+              {PREMIUM_PAGE_PUBLIC ? (
+                <Route path={`/${language}/premium`} component={() => <LocalizedRoute language={language} component={Premium} />} />
+              ) : (
+                <Route path={`/${language}/premium`}>
+                  <Redirect to={`/${language}/`} />
+                </Route>
+              )}
               <Route path={`/${language}/developers/:integrationId`} component={() => <LocalizedRoute language={language} component={DeveloperIntegrationDetail} />} />
               <Route path={`/${language}/developers`} component={() => <LocalizedRoute language={language} component={Developers} />} />
               <Route path={`/${language}/about`} component={() => <LocalizedRoute language={language} component={About} />} />
@@ -340,7 +347,13 @@ function Router() {
           <Route path="/privacy" component={() => <LazyRoute component={Privacy} />} />
           <Route path="/terms" component={() => <LazyRoute component={Terms} />} />
           <Route path="/how-it-works" component={() => <LazyRoute component={HowItWorks} />} />
-          <Route path="/premium" component={() => <LazyRoute component={Premium} />} />
+          {PREMIUM_PAGE_PUBLIC ? (
+            <Route path="/premium" component={() => <LazyRoute component={Premium} />} />
+          ) : (
+            <Route path="/premium">
+              <Redirect to="/" />
+            </Route>
+          )}
           <Route path="/developers/:integrationId" component={() => <LazyRoute component={DeveloperIntegrationDetail} />} />
           <Route path="/developers" component={() => <LazyRoute component={Developers} />} />
           <Route path="/about" component={() => <LazyRoute component={About} />} />
