@@ -96,6 +96,10 @@ export const en: Translations = {
   recordMessageEmpty: "No audio was captured. Try recording again.",
   recordMessagePreviewUnsupported: "Your browser cannot preview this recording.",
   voiceMessageDecrypting: "Decrypting voice message…",
+  voiceMessageAttachment: "Voice message",
+  voiceMessagePlaybackUnsupported:
+    "This browser can’t play this voice message inline. Download it to listen.",
+  voiceMessageDownloadToPlay: "Download to play",
   howItWorks: "How It Works",
   resources: "Resources",
   developers: "Developers",
