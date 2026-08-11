@@ -673,7 +673,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             ? completedChunks / totalChunks
             : 1;
       const next = Math.max(1, Math.min(100, Math.round(resolvedRatio * 100)));
-      const name = formatAttachmentDisplayName(attachmentMetadata?.name || "file");
+      const fullName = attachmentMetadata?.name || "file";
+      const name = formatAttachmentDisplayName(fullName);
       setAttachmentDecryptProgress((prev) => ({
         phase: "decrypt",
         mode: "download",
@@ -687,6 +688,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 .replace("{done}", String(completedChunks))
                 .replace("{total}", String(totalChunks))
                 .replace("{name}", name),
+        detailTitle: fullName,
         footnote: t.attachmentDecryptProgressFootnote,
       }));
     },
@@ -1350,6 +1352,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       detail: attachmentMetadata?.name
         ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
         : undefined,
+      detailTitle: attachmentMetadata?.name,
       footnote: t.attachmentDecryptProgressFootnote,
     });
     try {
@@ -1429,6 +1432,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       detail: attachmentMetadata?.name
         ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
         : undefined,
+      detailTitle: attachmentMetadata?.name,
       footnote: t.attachmentDecryptProgressFootnote,
     });
     try {
