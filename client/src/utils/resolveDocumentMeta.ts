@@ -137,6 +137,31 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogHowToSharePhotosSecurelyMetaTitle),
         description: t.blogHowToSharePhotosSecurelyMetaDescription,
       };
+    case "how-to-send-encrypted-voice-message":
+      return {
+        title: buildDocumentTitle(t.blogEncryptedVoiceMessageMetaTitle),
+        description: t.blogEncryptedVoiceMessageMetaDescription,
+      };
+    case "recipient-verification-code-before-reveal":
+      return {
+        title: buildDocumentTitle(t.blogRecipientVerificationCodeMetaTitle),
+        description: t.blogRecipientVerificationCodeMetaDescription,
+      };
+    case "click-to-reveal-private-notes":
+      return {
+        title: buildDocumentTitle(t.blogClickToRevealPrivateNotesMetaTitle),
+        description: t.blogClickToRevealPrivateNotesMetaDescription,
+      };
+    case "know-when-secret-link-opened":
+      return {
+        title: buildDocumentTitle(t.blogKnowWhenSecretLinkOpenedMetaTitle),
+        description: t.blogKnowWhenSecretLinkOpenedMetaDescription,
+      };
+    case "revoke-unopened-note-proof-of-access":
+      return {
+        title: buildDocumentTitle(t.blogRevokeUnopenedNoteProofOfAccessMetaTitle),
+        description: t.blogRevokeUnopenedNoteProofOfAccessMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

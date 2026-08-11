@@ -77,6 +77,23 @@ export const nl: Translations = {
   fileTooLargeDescription: "Maximale bestandsgrootte is {limit} voor uw account.",
   signInToAttachFiles: "Meld je aan om bestanden bij te voegen",
   signInToAttachFilesHint: "Meld je aan om versleutelde bijlagen toe te voegen.",
+  recordMessage: "Bericht opnemen",
+  recordMessageTitle: "Een bericht opnemen",
+  recordMessageDescription:
+    "Neem een privé-spraakbericht op. Het wordt in je browser versleuteld zoals een bijlage voordat het wordt geüpload.",
+  recordMessageStart: "Opname starten",
+  recordMessageStarting: "Bezig met starten…",
+  recordMessageStop: "Stop",
+  recordMessageRetake: "Opnieuw opnemen",
+  recordMessageUse: "Opname gebruiken",
+  recordMessageUnsupportedTitle: "Opnemen niet beschikbaar",
+  recordMessageUnsupported: "Spraakopname wordt niet ondersteund in deze browser.",
+  recordMessageMicDenied:
+    "Microfoontoegang is vereist. Sta toegang toe en probeer opnieuw.",
+  recordMessageFailed: "Opnemen mislukt. Probeer opnieuw.",
+  recordMessageEmpty: "Geen audio vastgelegd. Probeer opnieuw.",
+  recordMessagePreviewUnsupported: "Deze browser kan de opname niet afspelen.",
+  voiceMessageDecrypting: "Spraakbericht ontcijferen…",
   howItWorks: "Hoe het werkt",
   resources: "Bronnen",
   developers: "Ontwikkelaars",
@@ -1294,7 +1311,7 @@ export const nl: Translations = {
     "Hoe je een privacystack per taak samenstelt—niet op hype. Dreigingsmodellen, standaardkeuzes vs. alternatieven, een minimale starterkit en wat we weigeren aan te bevelen.",
   blogPrivacyMetaTitle: "Privacytools-stack voor 2026",
   blogPrivacyMetaDescription:
-    "Praktische gids 2026 voor privacytools per taak: wachtwoorden, eenmalige geheimen, messaging, e-mail, browsen, VPN’s en accounthygiëne—plus een minimale starterkit.",
+    "Gids 2026 voor privacytools per taak: wachtwoorden, geheimen, messaging, e-mail, browsen, VPN's en accounthygiëne—plus starterkit.",
 
   blogSecurityRecommendations: "Beveiligingsaanbevelingen",
   blogAdditionalResources: "Aanvullende bronnen",
@@ -1409,14 +1426,14 @@ export const nl: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Samenwerking of tijdelijke overdracht?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive blinkt uit in langetermijnsamenwerking. Eenmalige versleutelde links minimaliseren retentie bij eenmalige vertrouwelijke overdrachten. Leer wanneer welke aanpak past.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs eenmalige links voor vertrouwelijke bestanden",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs eenmalige versleutelde link",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
-    "Vergelijk Google Drive en eenmalige versleutelde links voor vertrouwelijke bestanden. Wanneer elke aanpak past en hoe je langetermijnblootstelling minimaliseert.",
+    "Vergelijk Google Drive en eenmalige versleutelde links voor vertrouwelijke bestanden. Wanneer elke aanpak past en hoe je blootstelling minimaliseert.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
   blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
     "Australië, Frankrijk en Noorwegen debatteren over verboden onder 16—onderzoekers waarschuwen voor verschuiving van schade, leeftijdsverificatie en het echte probleem: verslavend platformontwerp.",
-  blogSocialMediaBansMetaTitle: "Socialmediaverboden voor kinderen: het bewijs",
+  blogSocialMediaBansMetaTitle: "Socialmediaverboden voor kinderen: bewijs",
   blogSocialMediaBansMetaDescription:
     "Werken verboden onder 16? Bewijs over digitale verschuiving, privacyrisico's van leeftijdsverificatie en alternatieven volgens het Information Labs-rapport.",
   blogMakePrivateNoteTitle: "Hoe maak je een privénotitie",

@@ -62,6 +62,23 @@ export const fr: Translations = {
   fileTooLargeDescription: "La taille maximale est de {limit} pour votre compte.",
   signInToAttachFiles: "Connectez-vous pour joindre des fichiers",
   signInToAttachFilesHint: "Connectez-vous pour ajouter des pièces jointes chiffrées.",
+  recordMessage: "Enregistrer un message",
+  recordMessageTitle: "Enregistrer un message",
+  recordMessageDescription:
+    "Enregistrez un message vocal privé. Il est chiffré dans votre navigateur comme une pièce jointe avant l’envoi.",
+  recordMessageStart: "Démarrer l’enregistrement",
+  recordMessageStarting: "Démarrage…",
+  recordMessageStop: "Arrêter",
+  recordMessageRetake: "Réenregistrer",
+  recordMessageUse: "Utiliser l’enregistrement",
+  recordMessageUnsupportedTitle: "Enregistrement indisponible",
+  recordMessageUnsupported: "L’enregistrement vocal n’est pas pris en charge dans ce navigateur.",
+  recordMessageMicDenied:
+    "L’accès au microphone est requis. Autorisez-le puis réessayez.",
+  recordMessageFailed: "Échec de l’enregistrement. Veuillez réessayer.",
+  recordMessageEmpty: "Aucun audio capturé. Réessayez.",
+  recordMessagePreviewUnsupported: "Votre navigateur ne peut pas prévisualiser cet enregistrement.",
+  voiceMessageDecrypting: "Déchiffrement du message vocal…",
   howItWorks: "Fonctionnement",
   resources: "Ressources",
   developers: "Développeurs",
@@ -1247,7 +1264,7 @@ export const fr: Translations = {
     "Comment assembler une stack de confidentialité par tâche—pas par hype. Modèles de menace, choix par défaut vs alternatives, kit de démarrage minimal, et ce que nous refusons de recommander.",
   blogPrivacyMetaTitle: "Stack d’outils de confidentialité 2026",
   blogPrivacyMetaDescription:
-    "Guide pratique 2026 des outils de confidentialité par tâche : mots de passe, secrets ponctuels, messagerie, e-mail, navigation, VPN et hygiène des comptes—plus un kit de démarrage minimal.",
+    "Guide 2026 des outils de confidentialité par tâche : mots de passe, secrets, messagerie, e-mail, navigation, VPN et hygiène des comptes—plus kit minimal.",
 
   blogSecurityRecommendations: "Recommandations de sécurité",
   blogAdditionalResources: "Ressources supplémentaires",
@@ -1789,16 +1806,16 @@ export const fr: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Collaboration ou transmission temporaire ?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive excelle pour la collaboration à long terme. Les liens chiffrés à usage unique minimisent la rétention pour les transmissions confidentielles ponctuelles. Découvrez quand chaque approche convient.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs liens à usage unique confidentiels",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs liens chiffrés uniques",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
-    "Comparez Google Drive et les liens chiffrés à usage unique pour fichiers confidentiels. Quand chaque approche convient et comment minimiser l’exposition à long terme.",
+    "Google Drive vs liens chiffrés à usage unique pour fichiers confidentiels : quand chaque approche convient et comment limiter l'exposition.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
   blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:
     "L'Australie, la France et la Norvège débattent d'interdictions pour les moins de 16 ans—mais les chercheurs alertent sur le déplacement des risques, la vérification d'âge et le vrai problème : la conception addictive des plateformes.",
-  blogSocialMediaBansMetaTitle: "Interdictions de réseaux sociaux pour enfants : les preuves",
+  blogSocialMediaBansMetaTitle: "Interdictions réseaux sociaux pour enfants",
   blogSocialMediaBansMetaDescription:
-    "Les interdictions pour les moins de 16 ans fonctionnent-elles ? Déplacement numérique, risques de vérification d'âge et alternatives selon le rapport Information Labs.",
+    "Les interdictions pour les moins de 16 ans fonctionnent-elles ? Déplacement numérique, risques de vérification d'âge et alternatives (Information Labs).",
   blogMakePrivateNoteTitle: "Comment créer une note privée",
   blogMakePrivateNoteSubtitle: "Et la garder vraiment privée",
   blogMakePrivateNoteExcerpt:

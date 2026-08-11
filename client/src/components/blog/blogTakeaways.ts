@@ -180,6 +180,36 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "A read-once note can still allow attachment downloads during its configured post-open window.",
     "Treat the complete link as a bearer secret and send any passphrase separately.",
   ],
+  "how-to-send-encrypted-voice-message": [
+    "Record in the browser; PrivateNote encrypts audio like a file attachment before upload.",
+    "Prefer voice for short spoken context—not for secrets that must be typed exactly.",
+    "Pair the link with short open limits and optional verification.",
+    "Recipients can still save audio after decrypt; expiration is not remote deletion.",
+  ],
+  "recipient-verification-code-before-reveal": [
+    "A note-specific six-digit code gates reveal before decrypt.",
+    "Share the code on a different channel from the link.",
+    "Verification is separate from optional passphrase wrapping.",
+    "Starter and Business can enable it per note or as an account default.",
+  ],
+  "click-to-reveal-private-notes": [
+    "Reveal is intentional: decrypt waits for a confirmed click.",
+    "That pause reduces accidental reveals; it is not a calendar unlock timer.",
+    "Combine with lifetime, open limits, and verification for safer handoffs.",
+    "Accidental opens on one-time notes still burn access—warn recipients.",
+  ],
+  "know-when-secret-link-opened": [
+    "Email and live alerts report status only—never note contents.",
+    "Use opened as a cue to rotate credentials or close the loop.",
+    "Keep the site open for in-tab toasts; email works asynchronously.",
+    "Proof of access adds a coarse timeline on eligible plans.",
+  ],
+  "revoke-unopened-note-proof-of-access": [
+    "Revoke destroys unopened links; it cannot erase a post-reveal copy.",
+    "Proof of access is a status receipt—not a reading transcript.",
+    "Use revoke for wrong recipients; use proof for delivery questions.",
+    "After reveal, assume the recipient may retain the plaintext and rotate exposed credentials.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

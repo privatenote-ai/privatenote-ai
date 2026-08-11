@@ -122,4 +122,24 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/HowToSharePhotosSecurelyPost"),
     "HowToSharePhotosSecurelyPost",
   ),
+  "how-to-send-encrypted-voice-message": lazyPost(
+    () => import("@/components/blog/EncryptedVoiceMessagePost"),
+    "EncryptedVoiceMessagePost",
+  ),
+  "recipient-verification-code-before-reveal": lazyPost(
+    () => import("@/components/blog/RecipientVerificationCodePost"),
+    "RecipientVerificationCodePost",
+  ),
+  "click-to-reveal-private-notes": lazyPost(
+    () => import("@/components/blog/ClickToRevealPrivateNotesPost"),
+    "ClickToRevealPrivateNotesPost",
+  ),
+  "know-when-secret-link-opened": lazyPost(
+    () => import("@/components/blog/KnowWhenSecretLinkOpenedPost"),
+    "KnowWhenSecretLinkOpenedPost",
+  ),
+  "revoke-unopened-note-proof-of-access": lazyPost(
+    () => import("@/components/blog/RevokeUnopenedNoteProofOfAccessPost"),
+    "RevokeUnopenedNoteProofOfAccessPost",
+  ),
 };

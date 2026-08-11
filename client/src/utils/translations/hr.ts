@@ -62,6 +62,23 @@ export const hr: Translations = {
   fileTooLargeDescription: "Maksimalna veličina datoteke je {limit} za vaš račun.",
   signInToAttachFiles: "Prijavite se za prilaganje datoteka",
   signInToAttachFilesHint: "Prijavite se za dodavanje šifriranih privitaka datoteka.",
+  recordMessage: "Snimi poruku",
+  recordMessageTitle: "Snimi poruku",
+  recordMessageDescription:
+    "Snimite privatnu govornu poruku. Šifrira se u pregledniku kao privitak prije prijenosa.",
+  recordMessageStart: "Započni snimanje",
+  recordMessageStarting: "Pokretanje…",
+  recordMessageStop: "Zaustavi",
+  recordMessageRetake: "Snimi ponovno",
+  recordMessageUse: "Koristi snimku",
+  recordMessageUnsupportedTitle: "Snimanje nije dostupno",
+  recordMessageUnsupported: "Snimanje glasa nije podržano u ovom pregledniku.",
+  recordMessageMicDenied:
+    "Potreban je pristup mikrofonu. Dopustite pristup i pokušajte ponovo.",
+  recordMessageFailed: "Snimanje nije uspjelo. Pokušajte ponovo.",
+  recordMessageEmpty: "Nije snimljen zvuk. Pokušajte ponovo.",
+  recordMessagePreviewUnsupported: "Preglednik ne može reproducirati ovu snimku.",
+  voiceMessageDecrypting: "Dešifriranje govorne poruke…",
   howItWorks: "Kako to radi",
   resources: "Resursi",
   developers: "Programeri",
@@ -1213,7 +1230,7 @@ export const hr: Translations = {
     "Kako sastaviti stack privatnosti po poslu—ne po hipu. Modeli prijetnji, zadani izbori naspram alternativa, minimalni starter komplet i ono što odbijamo preporučiti.",
   blogPrivacyMetaTitle: "Stack alata za privatnost za 2026.",
   blogPrivacyMetaDescription:
-    "Praktičan vodič za 2026. o alatima za privatnost po poslu: lozinke, jednokratne tajne, poruke, e-pošta, pregledavanje, VPN-ovi i higijena računa—plus minimalni starter komplet.",
+    "Vodič 2026. o alatima za privatnost po poslu: lozinke, tajne, poruke, e-pošta, pregledavanje, VPN-ovi i higijena računa—plus starter komplet.",
 
   blogSecurityRecommendations: "Sigurnosne preporuke",
   blogAdditionalResources: "Dodatni resursi",
@@ -1796,14 +1813,14 @@ export const hr: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Suradnja ili privremena predaja?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive blista u dugoročnoj suradnji. Jednokratni šifrirani linkovi minimiziraju zadržavanje za jednokratne povjerljive predaje. Saznajte kada koji pristup pristaje.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs jednokratni linkovi za povjerljive datoteke",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs šifrirani jednokratni link",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Usporedite Google Drive i jednokratne šifrirane linkove za povjerljive datoteke. Kada koji pristup pristaje i kako minimizirati dugoročnu izloženost.",
   blogSocialMediaBansTitle: "Hoće li zabrane društvenih mreža za djecu djelovati?",
   blogSocialMediaBansSubtitle: "Što kaže evidencija",
   blogSocialMediaBansExcerpt:
     "Australija, Francuska i Norveška raspravljaju o zabrani ispod 16 godina—istraživači upozoravaju na premještanje rizika, provjeru dobi i pravi problem: ovisni dizajn platformi.",
-  blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za djecu: evidencija",
+  blogSocialMediaBansMetaTitle: "Zabrane društvenih mreža za djecu",
   blogSocialMediaBansMetaDescription:
     "Hoće li zabrane ispod 16 godina funkcionirati? Evidencija o digitalnom premještanju, privatnosti provjere dobi i alternativama iz Information Labs izvještaja.",
   blogMakePrivateNoteTitle: "Kako napraviti privatnu bilješku",

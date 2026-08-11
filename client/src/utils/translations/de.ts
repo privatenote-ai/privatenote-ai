@@ -77,6 +77,23 @@ export const de: Translations = {
   fileTooLargeDescription: "Maximale Dateigröße ist {limit} für Ihr Konto.",
   signInToAttachFiles: "Anmelden, um Dateien anzuhängen",
   signInToAttachFilesHint: "Melden Sie sich an, um verschlüsselte Dateianhänge hinzuzufügen.",
+  recordMessage: "Nachricht aufnehmen",
+  recordMessageTitle: "Nachricht aufnehmen",
+  recordMessageDescription:
+    "Nehmen Sie eine private Sprachnachricht auf. Sie wird wie ein Dateianhang im Browser verschlüsselt, bevor sie hochgeladen wird.",
+  recordMessageStart: "Aufnahme starten",
+  recordMessageStarting: "Startet…",
+  recordMessageStop: "Stopp",
+  recordMessageRetake: "Erneut aufnehmen",
+  recordMessageUse: "Aufnahme verwenden",
+  recordMessageUnsupportedTitle: "Aufnahme nicht verfügbar",
+  recordMessageUnsupported: "Sprachnachrichten werden in diesem Browser nicht unterstützt.",
+  recordMessageMicDenied:
+    "Mikrofonzugriff ist erforderlich. Bitte erlauben Sie den Zugriff und versuchen Sie es erneut.",
+  recordMessageFailed: "Aufnahme fehlgeschlagen. Bitte erneut versuchen.",
+  recordMessageEmpty: "Keine Audioaufnahme erkannt. Bitte erneut versuchen.",
+  recordMessagePreviewUnsupported: "Dieser Browser kann die Aufnahme nicht wiedergeben.",
+  voiceMessageDecrypting: "Sprachnachricht wird entschlüsselt…",
   howItWorks: "So funktioniert es",
   resources: "Ressourcen",
   developers: "Entwickler",
@@ -1283,7 +1300,7 @@ export const de: Translations = {
     "So stellen Sie einen Datenschutz-Stack nach Aufgabe zusammen – nicht nach Hype. Bedrohungsmodelle, Standardwahl vs. Alternativen, ein minimales Starter-Kit und was wir nicht empfehlen.",
   blogPrivacyMetaTitle: "Datenschutz-Tools-Stack für 2026",
   blogPrivacyMetaDescription:
-    "Praktischer Leitfaden 2026 zu Datenschutz-Tools nach Aufgabe: Passwörter, einmalige Geheimnisse, Messaging, E-Mail, Browser, VPNs und Kontohygiene – plus ein minimales Starter-Kit.",
+    "Leitfaden 2026 zu Datenschutz-Tools nach Aufgabe: Passwörter, Geheimnisse, Messaging, E-Mail, Browser, VPNs und Kontohygiene—plus Starter-Kit.",
 
   blogSecurityRecommendations: "Sicherheitsempfehlungen",
   blogAdditionalResources: "Weitere Ressourcen",
@@ -1452,16 +1469,16 @@ export const de: Translations = {
   blogGoogleDriveVsOneTimeLinksSubtitle: "Zusammenarbeit oder vorübergehende Übergabe?",
   blogGoogleDriveVsOneTimeLinksExcerpt:
     "Google Drive glänzt bei langfristiger Zusammenarbeit. Einmalige verschlüsselte Links minimieren die Aufbewahrung bei einmaligen vertraulichen Übergaben. Erfahren Sie, wann welcher Ansatz passt.",
-  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs Einmal-Links für vertrauliche Dateien",
+  blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs verschlüsselte Einmal-Links",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
-    "Vergleichen Sie Google Drive und einmalige verschlüsselte Links für vertrauliche Dateien. Wann welcher Ansatz passt und wie Sie langfristige Exposition minimieren.",
+    "Google Drive und Einmal-Links für vertrauliche Dateien vergleichen: wann welcher Ansatz passt und wie Sie Exposition minimieren.",
   blogSocialMediaBansTitle: "Wirken Social-Media-Verbote für Kinder?",
   blogSocialMediaBansSubtitle: "Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:
     "Australien, Frankreich und Norwegen debattieren Unter-16-Verbote—Forscher warnen jedoch vor Verlagerung von Risiken, Problemen bei Altersverifikation und dem eigentlichen Kern: suchtfoerderndem Plattformdesign.",
   blogSocialMediaBansMetaTitle: "Social-Media-Verbote fuer Kinder: Evidenz",
   blogSocialMediaBansMetaDescription:
-    "Funktionieren Social-Media-Verbote fuer Kinder? Evidenz zu digitaler Verlagerung, Datenschutzrisiken der Altersverifikation und Alternativen laut Information-Labs-Bericht.",
+    "Wirken Social-Media-Verbote für Kinder? Evidenz zu Verlagerung, Altersverifikations-Risiken und Alternativen laut Information-Labs-Bericht.",
   blogMakePrivateNoteTitle: "Wie man eine private Notiz erstellt",
   blogMakePrivateNoteSubtitle: "Und sie wirklich privat hält",
   blogMakePrivateNoteExcerpt:

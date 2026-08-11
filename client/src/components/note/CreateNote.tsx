@@ -47,22 +47,33 @@ import { getLocalAiPreloadNetworkPolicy } from "@/utils/localAiNetworkDownloadPo
 import {
   Shield,
   Lock,
+  ChevronDown,
   ChevronUp,
   Eye,
+  File,
   Key,
   Settings,
   Sparkles,
   Loader2,
   Paperclip,
   FolderArchive,
+  Mic,
   X,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { usePasswordBreachCheck } from "@/hooks/usePasswordBreachCheck";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQrShare } from "@/hooks/useQrShare";
 import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
+import { isVoiceMessageFile, isVoiceRecordingSupported } from "@/utils/voiceMessageRecording";
+import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
@@ -73,6 +84,9 @@ const AiComposer = lazy(() =>
 );
 const CreateNoteDeferredDialogs = lazy(() =>
   import("./CreateNoteDeferredDialogs").then((m) => ({ default: m.CreateNoteDeferredDialogs })),
+);
+const VoiceMessageRecorderDialog = lazy(() =>
+  import("./VoiceMessageRecorderDialog").then((m) => ({ default: m.VoiceMessageRecorderDialog })),
 );
 const NoteSettingsPanel = lazy(() =>
   import("./NoteSettingsPanel").then((m) => ({ default: m.NoteSettingsPanel })),
@@ -505,10 +519,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
   const [isPreparingFolder, setIsPreparingFolder] = useState(false);
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const fileTransferFileInputId = useId();
+  const noteFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
@@ -533,6 +549,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
   const secondaryActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 sm:px-5";
+  const attachActionButtonClass =
+    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25 sm:px-5";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -605,6 +623,40 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
     fileInputRef.current?.click();
+  };
+
+  const handleRecordMessageClick = () => {
+    if (!canAttachFiles) {
+      saveAuthRedirectDraft();
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    if (!isVoiceRecordingSupported()) {
+      toast({
+        title: t.recordMessageUnsupportedTitle ?? "Recording unavailable",
+        description:
+          t.recordMessageUnsupported ??
+          "Voice recording is not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setVoiceRecorderOpen(true);
+  };
+
+  const handleVoiceMessageRecorded = (file: File) => {
+    if (file.size > fileLimitBytes) {
+      toast({
+        title: t.fileTooLarge,
+        description: (t.fileTooLargeDescription).replace(
+          "{limit}",
+          formatNoteFileSize(fileLimitBytes),
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedFile(file);
   };
 
   const handleAttachFolderClick = () => {
@@ -704,11 +756,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setSelectedFile(file);
   };
 
+  const selectedFileIsVoice = isVoiceMessageFile(selectedFile);
   const attachFileButtonLabel = selectedFile
     ? formatAttachmentDisplayName(selectedFile.name)
     : isFileTransferMode
       ? t.sftAttachFile
       : t.attachFile;
+  const recordMessageButtonLabel = selectedFileIsVoice
+    ? formatAttachmentDisplayName(selectedFile!.name)
+    : (t.recordMessage ?? "Record message");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -1347,10 +1403,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ? {
             phase: "prepare",
             progress: 2,
-            detail: t.attachmentProgressChunkDetail
-              .replace("{done}", "0")
-              .replace("{total}", String(earlyTotalChunks))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name)),
+            detail: formatAttachmentDisplayName(selectedFile.name),
           }
         : null,
     );
@@ -1506,11 +1559,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             `/api/notes/${reservedId}/file/chunks/0`,
             uploadToken,
           );
+          const fileLabel = formatAttachmentDisplayName(selectedFile.name);
           const chunkDetail = (done: number, total: number) =>
-            t.attachmentProgressChunkDetail
-              .replace("{done}", String(done))
-              .replace("{total}", String(total))
-              .replace("{name}", formatAttachmentDisplayName(selectedFile.name));
+            total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
           // Show 0/N immediately — waiting for the first 4MB PUT to finish left the
           // modal stuck with no chunk count for a long time on slow uplinks.
           const completedChunksRef = { current: 0 };
@@ -1530,15 +1581,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 : 1;
             const nextProgress = Math.round(5 + overall * 90);
             setAttachmentProgress((prev) => ({
-              phase: "encrypt",
-              progress: Math.max(prev?.progress ?? 0, nextProgress),
+              phase: "upload",
+              progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, nextProgress),
               detail: chunkDetail(completedChunksRef.current, totalChunks),
             }));
           };
           setAttachmentProgress({
             phase: "encrypt",
             progress: 5,
-            detail: chunkDetail(0, totalChunks),
+            detail: fileLabel,
           });
           attachment = await encryptFileToSodiumChunks(
             selectedFile,
@@ -1579,8 +1630,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               if (pipeline.phase !== "upload") {
                 setAttachmentProgress((prev) => ({
                   phase: "encrypt",
-                  progress: Math.max(prev?.progress ?? 0, 5),
-                  detail: chunkDetail(completedChunksRef.current, pipeline.totalChunks),
+                  progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, 5),
+                  detail: fileLabel,
                 }));
                 return;
               }
@@ -1591,7 +1642,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           setAttachmentProgress({
             phase: "finalize",
             progress: 98,
-            detail: selectedFile.name,
+            detail: formatAttachmentDisplayName(selectedFile.name),
           });
           logFileUpload("info", "attachment encryption+upload complete", {
             noteId: reservedId,
@@ -2680,6 +2731,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           {/* Show create/settings when not in AI mode, or after the AI draft is accepted. */}
           {!isAiMode || (noteContent && isAiMode && !showPrompt && aiDraftAccepted) ? (
             <div className="space-y-3 mt-1">
+              {folderInputMounted ? (
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  className="sr-only"
+                  tabIndex={-1}
+                  multiple
+                  onChange={handleAttachFolderSelected}
+                  {...({
+                    webkitdirectory: "",
+                    directory: "",
+                  } as React.InputHTMLAttributes<HTMLInputElement> & {
+                    webkitdirectory: string;
+                    directory: string;
+                  })}
+                />
+              ) : null}
               {isFileTransferMode && !selectedFile ? (
                 <>
                   <input
@@ -2691,24 +2759,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     aria-hidden
                     onChange={handleAttachFileSelected}
                   />
-                  {folderInputMounted ? (
-                    <input
-                      ref={folderInputRef}
-                      type="file"
-                      className="sr-only"
-                      tabIndex={-1}
-                      aria-hidden
-                      multiple
-                      onChange={handleAttachFolderSelected}
-                      {...({
-                        webkitdirectory: "",
-                        directory: "",
-                      } as React.InputHTMLAttributes<HTMLInputElement> & {
-                        webkitdirectory: string;
-                        directory: string;
-                      })}
-                    />
-                  ) : null}
                   <GravityDropZone
                     isDragOver={isFileDragOver}
                     onDragOver={handleDropZoneDragOver}
@@ -2814,72 +2864,177 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <>
               <input
                 ref={fileInputRef}
+                id={canAttachFiles ? noteFileInputId : undefined}
                 type="file"
                 className="sr-only"
                 tabIndex={-1}
-                aria-hidden
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full min-w-0 items-center gap-2 sm:min-w-0 sm:flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customizeSheetExperiment) {
-                        setCustomizeSheetOpen(true);
-                      } else {
-                        setShowAdvancedOptions(!showAdvancedOptions);
-                      }
-                    }}
-                    className={`${secondaryActionButtonClass} min-h-11 min-w-0 flex-1 sm:flex-none sm:px-5`}
-                  >
-                    {customizeSheetExperiment || !showAdvancedOptions ? (
-                      <>
-                        <Settings className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.customize}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-                        <span>{t.hideOptions}</span>
-                      </>
-                    )}
-                  </button>
-
-                  <div
-                    className={
-                      selectedFile
-                        ? "flex min-w-0 flex-1 items-center gap-1 sm:max-w-[14rem]"
-                        : "flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
-                    }
-                  >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                {selectedFile ? (
+                  <div className="flex min-w-0 w-full items-center gap-2 sm:flex-1">
                     <button
                       type="button"
-                      onClick={handleAttachFileClick}
-                      title={selectedFile ? selectedFile.name : undefined}
-                      className={
-                        selectedFile
-                          ? `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:px-5`
-                          : `${secondaryActionButtonClass} min-h-11 w-full min-w-0 flex-1 gap-1.5 sm:w-auto sm:flex-none sm:px-5`
-                      }
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 shrink-0 gap-1.5 px-3 sm:px-5`}
                     >
-                      <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                      <span className={selectedFile ? "truncate" : "whitespace-nowrap"}>
-                        {attachFileButtonLabel}
-                      </span>
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
                     </button>
-                    {selectedFile ? (
+                    {selectedFileIsVoice ? (
                       <button
                         type="button"
-                        onClick={() => setSelectedFile(null)}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                        aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                        onClick={handleRecordMessageClick}
+                        title={selectedFile.name}
+                        className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:max-w-[14rem] sm:px-5`}
                       >
-                        <X className="h-4 w-4" aria-hidden />
+                        <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        <span className="truncate">{recordMessageButtonLabel}</span>
                       </button>
-                    ) : null}
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            title={selectedFile.name}
+                            disabled={isPreparingFolder}
+                            className={`${attachActionButtonClass} min-h-11 min-w-0 flex-1 gap-1.5 px-3 sm:max-w-[14rem] sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                          >
+                            {isPreparingFolder ? (
+                              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                            ) : selectedFile.type === "application/zip" ||
+                              selectedFile.name.toLowerCase().endsWith(".zip") ? (
+                              <FolderArchive className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            ) : (
+                              <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                            )}
+                            <span className="truncate">
+                              {isPreparingFolder
+                                ? (t.sftZippingFolder ?? "Zipping…")
+                                : attachFileButtonLabel}
+                            </span>
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary opacity-80" aria-hidden />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[10.5rem]">
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              window.setTimeout(() => handleAttachFileClick(), 0);
+                            }}
+                          >
+                            <File className="mr-2 h-4 w-4" aria-hidden />
+                            {t.sftSelectFile ?? "File"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              window.setTimeout(() => handleAttachFolderClick(), 0);
+                            }}
+                          >
+                            <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
+                            {t.sftSelectFolder ?? "Folder"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid min-w-0 w-full grid-cols-3 gap-2 sm:flex sm:flex-1 sm:flex-wrap sm:items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customizeSheetExperiment) {
+                          setCustomizeSheetOpen(true);
+                        } else {
+                          setShowAdvancedOptions(!showAdvancedOptions);
+                        }
+                      }}
+                      className={`${secondaryActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5`}
+                    >
+                      {customizeSheetExperiment || !showAdvancedOptions ? (
+                        <>
+                          <Settings className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.customize}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          <span className="truncate">{t.hideOptions}</span>
+                        </>
+                      )}
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={isPreparingFolder}
+                          className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                          {isPreparingFolder ? (
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                          ) : (
+                            <Paperclip className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                          )}
+                          <span className="truncate">
+                            {isPreparingFolder
+                              ? (t.sftZippingFolder ?? "Zipping…")
+                              : attachFileButtonLabel}
+                          </span>
+                          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary opacity-80" aria-hidden />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[10.5rem]">
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            window.setTimeout(() => handleAttachFileClick(), 0);
+                          }}
+                        >
+                          <File className="mr-2 h-4 w-4" aria-hidden />
+                          {t.sftSelectFile ?? "File"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            window.setTimeout(() => handleAttachFolderClick(), 0);
+                          }}
+                        >
+                          <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
+                          {t.sftSelectFolder ?? "Folder"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <button
+                      type="button"
+                      onClick={handleRecordMessageClick}
+                      disabled={isPreparingFolder}
+                      className={`${attachActionButtonClass} min-h-11 w-full gap-1.5 px-3 sm:w-auto sm:flex-none sm:px-5 disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      <Mic className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">{recordMessageButtonLabel}</span>
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -2984,6 +3139,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             setCellularPreloadConfirmOpen={setCellularPreloadConfirmOpen}
             setShowTemplateOfferPrompt={setShowTemplateOfferPrompt}
             showTemplateOfferPrompt={showTemplateOfferPrompt}
+          />
+        </Suspense>
+      ) : null}
+
+      {voiceRecorderOpen ? (
+        <Suspense fallback={null}>
+          <VoiceMessageRecorderDialog
+            open={voiceRecorderOpen}
+            onOpenChange={setVoiceRecorderOpen}
+            onRecorded={handleVoiceMessageRecorded}
+            maxBytes={fileLimitBytes}
+            formatPreference={
+              isPremiumUser ? readVoiceRecordingFormatPreference() : "auto"
+            }
           />
         </Suspense>
       ) : null}
