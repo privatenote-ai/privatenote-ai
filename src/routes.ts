@@ -92,6 +92,7 @@ import {
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
+import { toRevealBranding } from "@shared/businessBranding";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -906,6 +907,38 @@ async function noteCreationAccountType(env: Env, request: Request): Promise<Acco
     return (await getAccountEntitlements(env, session.id)).accountType;
   } catch {
     return "free";
+  }
+}
+
+async function resolveAccountRevealBranding(env: Env, request: Request) {
+  const session = await getSessionFromRequest(env, request, { rotate: false });
+  if (!session?.id || !env.AUTH_DB) return undefined;
+  const entitlements = await getAccountEntitlements(env, session.id);
+  if (!entitlements.capabilities.revealBranding) return undefined;
+  try {
+    const row = await env.AUTH_DB.prepare(
+      `SELECT business_display_name, business_sender_name, business_sender_role,
+              business_trust_message, business_logo_key, business_banner_key,
+              business_accent_color, business_background_style
+       FROM users WHERE id = ? LIMIT 1`,
+    ).bind(session.id).first<Record<string, string | null>>();
+    if (!row) return undefined;
+    const origin = new URL(request.url).origin;
+    const assetUrl = (key: string | null, prefix: string, path: string) =>
+      key?.startsWith(prefix) ? `${origin}${path}${key.slice(prefix.length)}` : null;
+    return toRevealBranding({
+      companyName: row.business_display_name,
+      senderName: row.business_sender_name,
+      senderRole: row.business_sender_role,
+      trustMessage: row.business_trust_message,
+      logoUrl: assetUrl(row.business_logo_key, "account-branding/", "/api/auth/branding/logo/"),
+      bannerUrl: assetUrl(row.business_banner_key, "account-branding/banner/", "/api/auth/branding/banner/"),
+      accentColor: row.business_accent_color,
+      backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "banner",
+    });
+  } catch (error) {
+    console.warn("[BRANDING] Could not resolve account branding:", error);
+    return undefined;
   }
 }
 
@@ -9096,6 +9129,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     const id = requestedId || crypto.randomUUID();
 
+    // The browser may only request that branding be applied. The actual public
+    // snapshot is always rebuilt from the authenticated Business account.
+    if (requestBody?.revealBranding != null) {
+      const trustedBranding = await resolveAccountRevealBranding(env, request);
+      if (trustedBranding) requestBody.revealBranding = trustedBranding;
+      else delete requestBody.revealBranding;
+    }
+
     if (requestBody?.attachment != null) {
       if (!env.NOTE_FILES_R2) {
         return jsonResponse(
@@ -9191,7 +9232,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       new Request(doUrl.toString(), {
         method: "POST",
         headers: request.headers,
-        body: request.body,
+        body: JSON.stringify(requestBody),
       }) as any,
     );
 

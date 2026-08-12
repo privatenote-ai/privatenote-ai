@@ -13,6 +13,13 @@ CREATE TABLE IF NOT EXISTS users (
   plan TEXT NOT NULL DEFAULT 'free',
   account_type TEXT NOT NULL DEFAULT 'free' CHECK (account_type IN ('free', 'personal_premium', 'business_premium')),
   business_display_name TEXT,
+  business_sender_name TEXT,
+  business_sender_role TEXT,
+  business_trust_message TEXT,
+  business_logo_key TEXT,
+  business_banner_key TEXT,
+  business_accent_color TEXT,
+  business_background_style TEXT DEFAULT 'neutral' CHECK (business_background_style IN ('neutral', 'gradient', 'banner')),
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
   preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es')),
   allow_hosted_ai INTEGER NOT NULL DEFAULT 0 CHECK (allow_hosted_ai IN (0, 1))

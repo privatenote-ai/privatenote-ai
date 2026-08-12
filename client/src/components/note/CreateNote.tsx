@@ -25,6 +25,7 @@ import {
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import { planFeaturesFor } from "@shared/planCatalog";
+import { toRevealBranding } from "@shared/businessBranding";
 import {
   NOTE_READ_LIMIT_DEFAULT,
   clampNoteReadLimitForAccount,
@@ -474,6 +475,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
+  const [applyBranding, setApplyBranding] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
     "personal_premium" | "business_premium" | null
@@ -488,8 +490,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const folderInputRef = useRef<HTMLInputElement>(null);
   const isPasswordProtected = password.trim().length > 0;
   const isPremiumUser = accountType === "personal_premium" || accountType === "business_premium";
-  const planCapabilities = planFeaturesFor(accountType);
+  const planCapabilities = entitlements.capabilities;
   const maxExpirySeconds = planCapabilities.maxExpirySeconds;
+  const canBrandRevealPage = planCapabilities.revealBranding === true;
+  const revealBrandingSnapshot = toRevealBranding({
+    companyName: entitlements.businessDisplayName,
+    senderName: entitlements.businessSenderName,
+    senderRole: entitlements.businessSenderRole,
+    trustMessage: entitlements.businessTrustMessage,
+    logoUrl: entitlements.businessLogoUrl,
+    bannerUrl: entitlements.businessBannerUrl,
+    accentColor: entitlements.businessAccentColor,
+    backgroundStyle: entitlements.businessBackgroundStyle,
+  });
+  const hasRevealBranding = Boolean(revealBrandingSnapshot);
   const canAttachFiles = Boolean(user);
   const canNotifyOnOpen =
     Boolean(user) &&
@@ -1900,6 +1914,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
         ...(opensAtIso ? { opensAt: opensAtIso } : {}),
+        ...(canBrandRevealPage && applyBranding && revealBrandingSnapshot
+          ? { revealBranding: revealBrandingSnapshot }
+          : {}),
         aiMode: isAiMode,
         uiLanguage: language,
         isPasswordProtected,
@@ -3190,6 +3207,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
                 readerLanguage={readerLanguage}
                 setReaderLanguage={setReaderLanguage}
+                canBrandRevealPage={canBrandRevealPage}
+                configuredAccountType={entitlements.configuredAccountType}
+                hasRevealBranding={hasRevealBranding}
+                applyBranding={applyBranding}
+                setApplyBranding={setApplyBranding}
                 onSaveDefaults={
                   planCapabilities.savedDefaults ? handleSaveNoteDefaults : undefined
                 }
@@ -3614,6 +3636,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setFileAccessWindowSeconds,
               readerLanguage,
               setReaderLanguage,
+              canBrandRevealPage,
+              configuredAccountType: entitlements.configuredAccountType,
+              hasRevealBranding,
+              applyBranding,
+              setApplyBranding,
               onSaveDefaults: planCapabilities.savedDefaults
                 ? handleSaveNoteDefaults
                 : undefined,

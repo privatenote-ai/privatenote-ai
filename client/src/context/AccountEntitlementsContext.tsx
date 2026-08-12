@@ -29,6 +29,13 @@ export type AccountEntitlementSnapshot = {
   emailVerified: boolean;
   allowHostedAi: boolean;
   businessDisplayName: string | null;
+  businessLogoUrl: string | null;
+  businessAccentColor: string | null;
+  businessSenderName: string | null;
+  businessSenderRole: string | null;
+  businessTrustMessage: string | null;
+  businessBannerUrl: string | null;
+  businessBackgroundStyle: "neutral" | "gradient" | "banner";
   hostedAiUsage: {
     used: number;
     limit: number;
@@ -49,6 +56,13 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   emailVerified: false,
   allowHostedAi: false,
   businessDisplayName: null,
+  businessLogoUrl: null,
+  businessAccentColor: null,
+  businessSenderName: null,
+  businessSenderRole: null,
+  businessTrustMessage: null,
+  businessBannerUrl: null,
+  businessBackgroundStyle: "neutral",
   hostedAiUsage: {
     used: 0,
     limit: planFeaturesFor("free").hostedAiMonthly,
@@ -103,11 +117,21 @@ export function AccountEntitlementsProvider({
       emailVerified?: boolean;
       allowHostedAi?: boolean;
       businessDisplayName?: string | null;
+      businessLogoUrl?: string | null;
+      businessAccentColor?: string | null;
+      businessSenderName?: string | null;
+      businessSenderRole?: string | null;
+      businessTrustMessage?: string | null;
+      businessBannerUrl?: string | null;
+      businessBackgroundStyle?: "neutral" | "gradient" | "banner";
       hostedAiUsage?: {
         used?: number;
         limit?: number;
         remaining?: number;
         resetAt?: number;
+      };
+      entitlements?: {
+        capabilities?: PlanFeatureFlags;
       };
     }>("/api/auth/account/summary", "GET")
       .then((summary) => {
@@ -116,6 +140,11 @@ export function AccountEntitlementsProvider({
           summary.accountType ?? summary.plan,
         );
         const planHostedAiLimit = planFeaturesFor(accountType).hostedAiMonthly;
+        const serverCapabilities = summary.entitlements?.capabilities;
+        const capabilities =
+          serverCapabilities && typeof serverCapabilities.revealBranding === "boolean"
+            ? serverCapabilities
+            : planFeaturesFor(accountType);
         const next: AccountEntitlementSnapshot = {
           accountType,
           configuredAccountType: normalizeAccountType(
@@ -128,6 +157,13 @@ export function AccountEntitlementsProvider({
           emailVerified: summary.emailVerified === true,
           allowHostedAi: summary.allowHostedAi === true,
           businessDisplayName: summary.businessDisplayName ?? null,
+          businessLogoUrl: summary.businessLogoUrl ?? null,
+          businessAccentColor: summary.businessAccentColor ?? null,
+          businessSenderName: summary.businessSenderName ?? null,
+          businessSenderRole: summary.businessSenderRole ?? null,
+          businessTrustMessage: summary.businessTrustMessage ?? null,
+          businessBannerUrl: summary.businessBannerUrl ?? null,
+          businessBackgroundStyle: summary.businessBackgroundStyle ?? "neutral",
           hostedAiUsage: {
             used: Math.max(0, Number(summary.hostedAiUsage?.used ?? 0)),
             limit: Math.max(
@@ -140,7 +176,7 @@ export function AccountEntitlementsProvider({
             ),
             resetAt: Math.max(0, Number(summary.hostedAiUsage?.resetAt ?? 0)),
           },
-          capabilities: planFeaturesFor(accountType),
+          capabilities,
           refreshedAt: new Date().toISOString(),
         };
         hasLoadedRef.current = true;

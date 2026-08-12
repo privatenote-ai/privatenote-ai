@@ -13,37 +13,57 @@
 
 export const BRANDING_COMPANY_NAME_MAX = 80;
 export const BRANDING_SENDER_NAME_MAX = 80;
+export const BRANDING_SENDER_ROLE_MAX = 80;
+export const BRANDING_TRUST_MESSAGE_MAX = 160;
 export const BRANDING_LOGO_URL_MAX = 512;
+
+export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
 
 /** Persisted shape. `null` means "not configured". */
 export type BusinessBranding = {
   companyName: string | null;
   senderName: string | null;
+  senderRole?: string | null;
+  trustMessage?: string | null;
   logoUrl: string | null;
+  bannerUrl?: string | null;
   accentColor: string | null;
+  backgroundStyle?: BrandingBackgroundStyle;
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
 export type RevealBranding = {
   companyName?: string;
   senderName?: string;
+  senderRole?: string;
+  trustMessage?: string;
   logoUrl?: string;
+  bannerUrl?: string;
   accentColor?: string;
+  backgroundStyle?: BrandingBackgroundStyle;
 };
 
 export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   companyName: null,
   senderName: null,
+  senderRole: null,
+  trustMessage: null,
   logoUrl: null,
+  bannerUrl: null,
   accentColor: null,
+  backgroundStyle: "neutral",
 };
 
 export type BrandingErrorCode =
   | "premium_required"
   | "invalid_company_name"
   | "invalid_sender_name"
+  | "invalid_sender_role"
+  | "invalid_trust_message"
   | "invalid_logo_url"
-  | "invalid_accent_color";
+  | "invalid_banner_url"
+  | "invalid_accent_color"
+  | "invalid_background_style";
 
 export type BusinessBrandingParseResult =
   | { ok: true; branding: BusinessBranding }
@@ -111,6 +131,17 @@ export function parseBrandingLogoUrl(
   return { ok: true, value: url.toString() };
 }
 
+export const parseBrandingBannerUrl = parseBrandingLogoUrl;
+
+function parseBackgroundStyle(
+  raw: unknown,
+): { ok: true; value: BrandingBackgroundStyle } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") return { ok: true, value: "neutral" };
+  return raw === "neutral" || raw === "gradient" || raw === "banner"
+    ? { ok: true, value: raw }
+    : { ok: false };
+}
+
 export function parseBrandingAccentColor(
   raw: unknown,
 ): { ok: true; value: string | null } | { ok: false } {
@@ -163,6 +194,17 @@ export function parseBusinessBrandingInput(
     };
   }
 
+  const senderRole = parseName(body.senderRole, BRANDING_SENDER_ROLE_MAX);
+  if (!senderRole.ok) {
+    return { ok: false, code: "invalid_sender_role", status: 400,
+      message: `Sender role must be plain text of at most ${BRANDING_SENDER_ROLE_MAX} characters` };
+  }
+  const trustMessage = parseName(body.trustMessage, BRANDING_TRUST_MESSAGE_MAX);
+  if (!trustMessage.ok) {
+    return { ok: false, code: "invalid_trust_message", status: 400,
+      message: `Trust message must be plain text of at most ${BRANDING_TRUST_MESSAGE_MAX} characters` };
+  }
+
   const logoUrl = parseBrandingLogoUrl(body.logoUrl);
   if (!logoUrl.ok) {
     return {
@@ -182,14 +224,28 @@ export function parseBusinessBrandingInput(
       message: "Accent colour must be a hex value such as #2563eb",
     };
   }
+  const bannerUrl = parseBrandingBannerUrl(body.bannerUrl);
+  if (!bannerUrl.ok) {
+    return { ok: false, code: "invalid_banner_url", status: 400,
+      message: "Banner must be an absolute https:// URL" };
+  }
+  const backgroundStyle = parseBackgroundStyle(body.backgroundStyle);
+  if (!backgroundStyle.ok) {
+    return { ok: false, code: "invalid_background_style", status: 400,
+      message: "Background style must be neutral, gradient, or banner" };
+  }
 
   return {
     ok: true,
     branding: {
       companyName: companyName.value,
       senderName: senderName.value,
+      senderRole: senderRole.value,
+      trustMessage: trustMessage.value,
       logoUrl: logoUrl.value,
+      bannerUrl: bannerUrl.value,
       accentColor: accentColor.value,
+      backgroundStyle: backgroundStyle.value,
     },
   };
 }
@@ -197,7 +253,9 @@ export function parseBusinessBrandingInput(
 export function brandingIsEmpty(branding: BusinessBranding | null | undefined): boolean {
   if (!branding) return true;
   return (
-    !branding.companyName && !branding.senderName && !branding.logoUrl && !branding.accentColor
+    !branding.companyName && !branding.senderName && !branding.senderRole &&
+    !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl &&
+    !branding.accentColor
   );
 }
 
@@ -214,8 +272,14 @@ export function toRevealBranding(
   return {
     ...(branding.companyName ? { companyName: branding.companyName } : {}),
     ...(branding.senderName ? { senderName: branding.senderName } : {}),
+    ...(branding.senderRole ? { senderRole: branding.senderRole } : {}),
+    ...(branding.trustMessage ? { trustMessage: branding.trustMessage } : {}),
     ...(branding.logoUrl ? { logoUrl: branding.logoUrl } : {}),
+    ...(branding.bannerUrl ? { bannerUrl: branding.bannerUrl } : {}),
     ...(branding.accentColor ? { accentColor: branding.accentColor } : {}),
+    ...(branding.backgroundStyle && branding.backgroundStyle !== "neutral"
+      ? { backgroundStyle: branding.backgroundStyle }
+      : {}),
   };
 }
 
@@ -233,13 +297,21 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
 
   const companyName = parseName(source.companyName, BRANDING_COMPANY_NAME_MAX);
   const senderName = parseName(source.senderName, BRANDING_SENDER_NAME_MAX);
+  const senderRole = parseName(source.senderRole, BRANDING_SENDER_ROLE_MAX);
+  const trustMessage = parseName(source.trustMessage, BRANDING_TRUST_MESSAGE_MAX);
   const logoUrl = parseBrandingLogoUrl(source.logoUrl);
+  const bannerUrl = parseBrandingBannerUrl(source.bannerUrl);
   const accentColor = parseBrandingAccentColor(source.accentColor);
+  const backgroundStyle = parseBackgroundStyle(source.backgroundStyle);
 
   return toRevealBranding({
     companyName: companyName.ok ? companyName.value : null,
     senderName: senderName.ok ? senderName.value : null,
+    senderRole: senderRole.ok ? senderRole.value : null,
+    trustMessage: trustMessage.ok ? trustMessage.value : null,
     logoUrl: logoUrl.ok ? logoUrl.value : null,
+    bannerUrl: bannerUrl.ok ? bannerUrl.value : null,
     accentColor: accentColor.ok ? accentColor.value : null,
+    backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
   });
 }

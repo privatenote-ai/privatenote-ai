@@ -35,8 +35,12 @@ describe("parseBusinessBrandingInput", () => {
       {
         companyName: "passwords.lu",
         senderName: "Marjan",
+        senderRole: "Security Operations",
+        trustMessage: "Verify unexpected requests through your usual channel.",
         logoUrl: "https://passwords.lu/logo.svg",
+        bannerUrl: "https://passwords.lu/banner.webp",
         accentColor: "#2563EB",
+        backgroundStyle: "banner",
       },
       allowed,
     );
@@ -44,8 +48,12 @@ describe("parseBusinessBrandingInput", () => {
     assert.deepEqual(result.ok === true && result.branding, {
       companyName: "passwords.lu",
       senderName: "Marjan",
+      senderRole: "Security Operations",
+      trustMessage: "Verify unexpected requests through your usual channel.",
       logoUrl: "https://passwords.lu/logo.svg",
+      bannerUrl: "https://passwords.lu/banner.webp",
       accentColor: "#2563eb",
+      backgroundStyle: "banner",
     });
   });
 

@@ -83,9 +83,16 @@ interface NoteDisplayProps {
 
 interface RevealBranding {
   logoUrl?: string;
+  /** Preferred wire field from shared/businessBranding. */
+  senderName?: string;
+  senderRole?: string;
+  trustMessage?: string;
+  /** Legacy alias still accepted when reading stored notes. */
   sharerName?: string;
   companyName?: string;
   accentColor?: string;
+  bannerUrl?: string;
+  backgroundStyle?: "neutral" | "gradient" | "banner";
 }
 
 interface NoteData {
@@ -109,6 +116,7 @@ interface NoteData {
   fileAccessTokenExpiresAtMs?: number;
   attachment?: NoteAttachment;
   readerLanguage?: SupportedLanguage;
+  revealBranding?: RevealBranding;
 }
 
 interface NoteAttachmentV2 {
@@ -287,7 +295,10 @@ const TrustSignals: React.FC<{ t: Translations }> = ({ t }) => (
 
 const getBrandingLine = (branding: RevealBranding | undefined, t: Translations): string | null => {
   if (!branding) return null;
-  const sharer = branding.sharerName?.trim();
+  const baseSharer = branding.senderName?.trim() || branding.sharerName?.trim();
+  const sharer = baseSharer && branding.senderRole?.trim()
+    ? `${baseSharer}, ${branding.senderRole.trim()}`
+    : baseSharer;
   const company = branding.companyName?.trim();
   if (sharer && company) {
     return (t.revealBrandingSharedByFrom ?? "{sender} from {company} shared a private note")
@@ -460,36 +471,49 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   const brandingLine = getBrandingLine(branding, t);
   const hasBranding = Boolean(brandingLine || branding?.logoUrl);
   const buttonStyle = branding?.accentColor ? { backgroundColor: branding.accentColor } : undefined;
+  const brandingCardStyle = branding?.accentColor
+    ? { borderTopColor: branding.accentColor, borderTopWidth: 3 }
+    : undefined;
+  const brandedHeroStyle = branding?.backgroundStyle === "banner" && branding.bannerUrl
+    ? { backgroundImage: `linear-gradient(rgba(3,7,18,.78),rgba(3,7,18,.78)),url(${branding.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : branding?.backgroundStyle === "gradient" && branding.accentColor
+      ? { background: `linear-gradient(135deg, ${branding.accentColor}20, transparent)` }
+      : undefined;
+  const bannerMode = branding?.backgroundStyle === "banner" && Boolean(branding.bannerUrl);
 
   return (
     <section className={NOTE_VIEW_SHELL}>
-      <section className={NOTE_VIEW_HERO_SECTION}>
+      <section className={`${NOTE_VIEW_HERO_SECTION} overflow-hidden rounded-2xl`} style={brandedHeroStyle}>
         <div className="text-center">
           {hasBranding && (
-            <div className="mb-5 flex flex-col items-center gap-2">
+            <div
+              className="mb-7 flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/60"
+              style={brandingCardStyle}
+            >
               {branding?.logoUrl && (
                 <img
                   src={branding.logoUrl}
-                  alt=""
-                  className="max-h-12 w-auto object-contain"
+                  alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+                  className="max-h-14 w-auto object-contain"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                 />
               )}
               {brandingLine && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 m-0">{brandingLine}</p>
+                <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
               )}
+              {branding?.trustMessage ? <p className="m-0 max-w-md text-xs leading-relaxed text-gray-500 dark:text-gray-400">{branding.trustMessage}</p> : null}
             </div>
           )}
 
-          <h1 className="page-title text-gray-900 dark:text-white">
+          <h1 className={`page-title ${bannerMode ? "text-white" : "text-gray-900 dark:text-white"}`}>
             {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
           </h1>
-          <div className="mt-3 text-xs leading-relaxed text-gray-500/85 dark:text-gray-400/85">
+          <div className={`mt-3 text-xs leading-relaxed ${bannerMode ? "text-white/70" : "text-gray-500/85 dark:text-gray-400/85"}`}>
             <p className="m-0 font-medium">{(t.revealPrivateNoteId ?? "Private note #{id}").replace("{id}", noteId)}</p>
             <p className="m-0">{(t.revealLanguageLine ?? "Language: {language}").replace("{language}", readerLanguageLabel)}</p>
           </div>
-          <p className={NOTE_VIEW_HERO_SUBTITLE}>
+          <p className={`${NOTE_VIEW_HERO_SUBTITLE} ${bannerMode ? "!text-white/85" : ""}`}>
             {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
           </p>
 
@@ -535,6 +559,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 }) => {
   const { language } = useLanguage();
   const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
+  // Branding is returned as public note metadata before reveal. Keep it in local
+  // state because ViewNote cannot know a note's snapshotted branding up front.
+  const [resolvedRevealBranding, setResolvedRevealBranding] =
+    useState<RevealBranding | undefined>(revealBranding);
+  const activeRevealBranding = resolvedRevealBranding ?? revealBranding;
   const readerLanguage = senderSelectedLanguage ?? language ?? "en";
   const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
     getTranslations(readerLanguage),
@@ -616,13 +645,18 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   useEffect(() => {
     if (!id) {
       setSenderSelectedLanguage(null);
+      setResolvedRevealBranding(revealBranding);
       setDelayedRevealOpensAt(null);
       setDelayedRevealChecked(true);
       return;
     }
     let cancelled = false;
+    setResolvedRevealBranding(revealBranding);
     setDelayedRevealChecked(false);
-    void apiRequest<{ readerLanguage?: string }>(`/api/notes/${id}`, "GET")
+    void apiRequest<{ readerLanguage?: string; revealBranding?: RevealBranding }>(
+      `/api/notes/${id}`,
+      "GET",
+    )
       .then((meta) => {
         if (cancelled) return;
         setDelayedRevealOpensAt(null);
@@ -631,6 +665,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             ? normalizeLanguageCode(meta.readerLanguage)
             : null,
         );
+        setResolvedRevealBranding(meta.revealBranding ?? revealBranding);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -654,7 +689,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, revealBranding]);
 
   // Drop the wait screen the moment the scheduled time passes, so the recipient
   // moves straight on to verification (or reveal) without reloading the page.
@@ -686,14 +721,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           : totalChunks > 0
             ? completedChunks / totalChunks
             : 1;
+      // Overall ratio already includes download + decrypt weighting.
       const next = Math.max(1, Math.min(100, Math.round(resolvedRatio * 100)));
       const fullName = attachmentMetadata?.name || "file";
       const name = formatAttachmentDisplayName(fullName);
       setAttachmentDecryptProgress((prev) => ({
         phase: "decrypt",
         mode: "download",
-        // Never jump backwards while decrypt frames paint.
-        progress: Math.max(prev?.phase === "decrypt" ? prev.progress : 0, next),
+        // Never jump backwards across download ETA ticks or decrypt frames.
+        progress: Math.max(prev?.mode === "download" ? prev.progress : 0, next),
         title: t.attachmentDecryptProgressTitle,
         detail:
           totalChunks <= 1
@@ -1086,6 +1122,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setIsPasswordProtected(data.isPasswordProtected || false);
       if (typeof data.readerLanguage === "string") {
         setSenderSelectedLanguage(normalizeLanguageCode(data.readerLanguage));
+      }
+      if (data.revealBranding) {
+        setResolvedRevealBranding(data.revealBranding);
       }
       const receiptAck = data.receiptAck as
         | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null }
@@ -1629,7 +1668,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         isRevealing={isRevealing}
         isRevealButtonReady={isRevealButtonReady}
         onReveal={handleReveal}
-        branding={revealBranding}
+        branding={activeRevealBranding}
         readerLanguageLabel={readerLanguageLabel}
         t={t}
       />
@@ -1715,28 +1754,43 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     );
   }
 
-  const brandingLine = getBrandingLine(revealBranding, t);
-  const hasBranding = Boolean(brandingLine || revealBranding?.logoUrl);
-  const accentStyle = revealBranding?.accentColor ? { backgroundColor: revealBranding.accentColor } : undefined;
+  const brandingLine = getBrandingLine(activeRevealBranding, t);
+  const hasBranding = Boolean(brandingLine || activeRevealBranding?.logoUrl);
+  const accentStyle = activeRevealBranding?.accentColor
+    ? { backgroundColor: activeRevealBranding.accentColor }
+    : undefined;
+  const revealedBackgroundStyle = activeRevealBranding?.backgroundStyle === "banner" && activeRevealBranding.bannerUrl
+    ? { backgroundImage: `linear-gradient(rgba(3,7,18,.82),rgba(3,7,18,.82)),url(${activeRevealBranding.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : activeRevealBranding?.backgroundStyle === "gradient" && activeRevealBranding.accentColor
+      ? { background: `linear-gradient(135deg, ${activeRevealBranding.accentColor}20, transparent)` }
+      : undefined;
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
     <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
-      <section className={NOTE_VIEW_HERO_SECTION}>
+      <section className={`${NOTE_VIEW_HERO_SECTION} overflow-hidden rounded-2xl`} style={revealedBackgroundStyle}>
         {hasBranding && (
-          <div className="mb-5 flex flex-col items-center gap-2 text-center">
-            {revealBranding?.logoUrl && (
+          <div
+            className="mb-6 flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-5 py-4 text-center dark:border-gray-700 dark:bg-gray-900/60"
+            style={activeRevealBranding?.accentColor
+              ? { borderTopColor: activeRevealBranding.accentColor, borderTopWidth: 3 }
+              : undefined}
+          >
+            {activeRevealBranding?.logoUrl && (
               <img
-                src={revealBranding.logoUrl}
-                alt=""
-                className="max-h-10 w-auto object-contain"
+                src={activeRevealBranding.logoUrl}
+                alt={activeRevealBranding.companyName
+                  ? `${activeRevealBranding.companyName} logo`
+                  : "Sender logo"}
+                className="max-h-12 w-auto object-contain"
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
             )}
             {brandingLine && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 m-0">{brandingLine}</p>
+              <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
             )}
+            {activeRevealBranding?.trustMessage ? <p className="m-0 max-w-md text-xs leading-relaxed text-gray-500 dark:text-gray-400">{activeRevealBranding.trustMessage}</p> : null}
           </div>
         )}
 

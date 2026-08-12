@@ -84,6 +84,17 @@ const STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES = new Set([
   "unpaid",
   "paused",
 ]);
+const BUSINESS_LOGO = {
+  OBJECT_PREFIX: "account-branding/",
+  PUBLIC_PATH_PREFIX: "/api/auth/branding/logo/",
+  MAX_BYTES: 1024 * 1024,
+} as const;
+const BUSINESS_BANNER = {
+  OBJECT_PREFIX: "account-branding/banner/",
+  PUBLIC_PATH_PREFIX: "/api/auth/branding/banner/",
+  MAX_BYTES: 3 * 1024 * 1024,
+} as const;
+const BUSINESS_ACCENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -512,6 +523,13 @@ type UsersTableColumns = {
   plan: boolean;
   account_type: boolean;
   business_display_name: boolean;
+  business_logo_key: boolean;
+  business_accent_color: boolean;
+  business_sender_name: boolean;
+  business_sender_role: boolean;
+  business_trust_message: boolean;
+  business_banner_key: boolean;
+  business_background_style: boolean;
   email_notifications: boolean;
   preferred_language: boolean;
   allow_hosted_ai: boolean;
@@ -522,6 +540,13 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     plan: false,
     account_type: false,
     business_display_name: false,
+    business_logo_key: false,
+    business_accent_color: false,
+    business_sender_name: false,
+    business_sender_role: false,
+    business_trust_message: false,
+    business_banner_key: false,
+    business_background_style: false,
     email_notifications: false,
     preferred_language: false,
     allow_hosted_ai: false,
@@ -534,6 +559,13 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       plan: names.has("plan"),
       account_type: names.has("account_type"),
       business_display_name: names.has("business_display_name"),
+      business_logo_key: names.has("business_logo_key"),
+      business_accent_color: names.has("business_accent_color"),
+      business_sender_name: names.has("business_sender_name"),
+      business_sender_role: names.has("business_sender_role"),
+      business_trust_message: names.has("business_trust_message"),
+      business_banner_key: names.has("business_banner_key"),
+      business_background_style: names.has("business_background_style"),
       email_notifications: names.has("email_notifications"),
       preferred_language: names.has("preferred_language"),
       allow_hosted_ai: names.has("allow_hosted_ai"),
@@ -548,6 +580,13 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.plan) columns.push("plan");
   if (optionalColumns.account_type) columns.push("account_type");
   if (optionalColumns.business_display_name) columns.push("business_display_name");
+  if (optionalColumns.business_logo_key) columns.push("business_logo_key");
+  if (optionalColumns.business_accent_color) columns.push("business_accent_color");
+  if (optionalColumns.business_sender_name) columns.push("business_sender_name");
+  if (optionalColumns.business_sender_role) columns.push("business_sender_role");
+  if (optionalColumns.business_trust_message) columns.push("business_trust_message");
+  if (optionalColumns.business_banner_key) columns.push("business_banner_key");
+  if (optionalColumns.business_background_style) columns.push("business_background_style");
   if (optionalColumns.email_notifications) columns.push("email_notifications");
   if (optionalColumns.preferred_language) columns.push("preferred_language");
   if (optionalColumns.allow_hosted_ai) columns.push("allow_hosted_ai");
@@ -1542,6 +1581,56 @@ function randomId(bytes = 32): string {
   const buffer = new Uint8Array(bytes);
   crypto.getRandomValues(buffer);
   return base64UrlEncode(buffer);
+}
+
+function detectBusinessLogoType(
+  bytes: Uint8Array,
+): { extension: "png" | "jpg" | "webp"; contentType: string } | null {
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return { extension: "png", contentType: "image/png" };
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return { extension: "jpg", contentType: "image/jpeg" };
+  }
+  if (
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+  ) {
+    return { extension: "webp", contentType: "image/webp" };
+  }
+  return null;
+}
+
+function businessLogoPublicUrl(
+  request: Request,
+  objectKey: string | null | undefined,
+): string | null {
+  if (!objectKey?.startsWith(BUSINESS_LOGO.OBJECT_PREFIX)) return null;
+  const fileName = objectKey.slice(BUSINESS_LOGO.OBJECT_PREFIX.length);
+  if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) return null;
+  const origin = new URL(request.url).origin;
+  return `${origin}${BUSINESS_LOGO.PUBLIC_PATH_PREFIX}${fileName}`;
+}
+
+function businessBannerPublicUrl(
+  request: Request,
+  objectKey: string | null | undefined,
+): string | null {
+  if (!objectKey?.startsWith(BUSINESS_BANNER.OBJECT_PREFIX)) return null;
+  const fileName = objectKey.slice(BUSINESS_BANNER.OBJECT_PREFIX.length);
+  if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) return null;
+  return `${new URL(request.url).origin}${BUSINESS_BANNER.PUBLIC_PATH_PREFIX}${fileName}`;
 }
 
 async function sha256Base64Url(input: string): Promise<string> {
@@ -3167,6 +3256,51 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     return null;
   }
 
+  if (pathname.startsWith(BUSINESS_BANNER.PUBLIC_PATH_PREFIX) && method === "GET") {
+    if (!env.NOTE_FILES_R2) return new Response("Not found", { status: 404 });
+    const fileName = pathname.slice(BUSINESS_BANNER.PUBLIC_PATH_PREFIX.length);
+    if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) {
+      return new Response("Not found", { status: 404 });
+    }
+    const object = await env.NOTE_FILES_R2.get(`${BUSINESS_BANNER.OBJECT_PREFIX}${fileName}`);
+    if (!object) return new Response("Not found", { status: 404 });
+    const headers = new Headers({
+      "Content-Type": object.httpMetadata?.contentType ??
+        (fileName.endsWith(".png") ? "image/png" : fileName.endsWith(".webp") ? "image/webp" : "image/jpeg"),
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+    });
+    return new Response(object.body as unknown as BodyInit, { status: 200, headers });
+  }
+
+  if (pathname.startsWith(BUSINESS_LOGO.PUBLIC_PATH_PREFIX) && method === "GET") {
+    if (!env.NOTE_FILES_R2) {
+      return new Response("Not found", { status: 404 });
+    }
+    const fileName = pathname.slice(BUSINESS_LOGO.PUBLIC_PATH_PREFIX.length);
+    if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) {
+      return new Response("Not found", { status: 404 });
+    }
+    const object = await env.NOTE_FILES_R2.get(`${BUSINESS_LOGO.OBJECT_PREFIX}${fileName}`);
+    if (!object) return new Response("Not found", { status: 404 });
+    const headers = new Headers();
+    headers.set(
+      "Content-Type",
+      object.httpMetadata?.contentType ??
+        (fileName.endsWith(".png")
+          ? "image/png"
+          : fileName.endsWith(".webp")
+            ? "image/webp"
+            : "image/jpeg"),
+    );
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    headers.set("X-Content-Type-Options", "nosniff");
+    headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+    if (object.size != null) headers.set("Content-Length", String(object.size));
+    return new Response(object.body as unknown as BodyInit, { status: 200, headers });
+  }
+
   if (pathname === "/api/auth/webauthn/register/options" && method === "POST") {
     let body: any;
     try {
@@ -4088,6 +4222,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         plan?: string | null;
         account_type?: string | null;
         business_display_name?: string | null;
+        business_logo_key?: string | null;
+        business_accent_color?: string | null;
+        business_sender_name?: string | null;
+        business_sender_role?: string | null;
+        business_trust_message?: string | null;
+        business_banner_key?: string | null;
+        business_background_style?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
       }>();
@@ -4114,6 +4255,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         subscriptionState: entitlements.state,
         paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
         businessDisplayName: user?.business_display_name ?? null,
+        businessLogoUrl: businessLogoPublicUrl(request, user?.business_logo_key),
+        businessAccentColor: user?.business_accent_color ?? null,
+        businessSenderName: user?.business_sender_name ?? null,
+        businessSenderRole: user?.business_sender_role ?? null,
+        businessTrustMessage: user?.business_trust_message ?? null,
+        businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
+        businessBackgroundStyle: user?.business_background_style ?? "neutral",
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
       }),
@@ -4143,6 +4291,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         plan?: string | null;
         account_type?: string | null;
         business_display_name?: string | null;
+        business_logo_key?: string | null;
+        business_accent_color?: string | null;
+        business_sender_name?: string | null;
+        business_sender_role?: string | null;
+        business_trust_message?: string | null;
+        business_banner_key?: string | null;
+        business_background_style?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
         allow_hosted_ai?: number | null;
@@ -4245,6 +4400,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         billingCustomerLinked: billing.stripeCustomerLinked,
         emailVerified: (user?.email_verified ?? 0) === 1,
         businessDisplayName: user?.business_display_name ?? null,
+        businessLogoUrl: businessLogoPublicUrl(request, user?.business_logo_key),
+        businessAccentColor: user?.business_accent_color ?? null,
+        businessSenderName: user?.business_sender_name ?? null,
+        businessSenderRole: user?.business_sender_role ?? null,
+        businessTrustMessage: user?.business_trust_message ?? null,
+        businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
+        businessBackgroundStyle: user?.business_background_style ?? "neutral",
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
         allowHostedAi: userColumns.allow_hosted_ai ? user?.allow_hosted_ai === 1 : false,
@@ -4266,6 +4428,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           state: entitlements.state,
           configuredAccountType: entitlements.configuredAccountType,
           paidAccessExpiresAt: entitlements.paidAccessExpiresAt,
+          capabilities: entitlements.capabilities,
         },
       }),
       { status: 200, headers }
@@ -4471,6 +4634,140 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     return jsonResponse({ ok: true, ignored: true }, 200, request);
   }
 
+  if (pathname === "/api/auth/account/branding/logo" && method === "PUT") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    if (!entitlements.capabilities.revealBranding) {
+      return jsonResponse({ error: "premium_plus_required" }, 403, request);
+    }
+    if (!env.NOTE_FILES_R2) {
+      return jsonResponse({ message: "Branding storage is not configured" }, 503, request);
+    }
+    const userColumns = await getUsersTableColumns(env);
+    if (!userColumns.business_logo_key) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    const declaredLength = Number(request.headers.get("Content-Length") ?? "0");
+    if (Number.isFinite(declaredLength) && declaredLength > BUSINESS_LOGO.MAX_BYTES) {
+      return jsonResponse({ error: "logo_too_large", maxBytes: BUSINESS_LOGO.MAX_BYTES }, 413, request);
+    }
+    const payload = await request.arrayBuffer();
+    if (payload.byteLength === 0 || payload.byteLength > BUSINESS_LOGO.MAX_BYTES) {
+      return jsonResponse(
+        {
+          error: payload.byteLength === 0 ? "logo_required" : "logo_too_large",
+          maxBytes: BUSINESS_LOGO.MAX_BYTES,
+        },
+        payload.byteLength === 0 ? 400 : 413,
+        request,
+      );
+    }
+    const detectedType = detectBusinessLogoType(new Uint8Array(payload));
+    if (!detectedType) {
+      return jsonResponse(
+        { error: "invalid_logo_type", message: "Use a PNG, JPEG, or WebP image." },
+        400,
+        request,
+      );
+    }
+    const objectKey = `${BUSINESS_LOGO.OBJECT_PREFIX}${randomId(20)}.${detectedType.extension}`;
+    await env.NOTE_FILES_R2.put(objectKey, payload, {
+      httpMetadata: {
+        contentType: detectedType.contentType,
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+      customMetadata: { purpose: "account-branding-logo" },
+    });
+    try {
+      await env.AUTH_DB.prepare(
+        "UPDATE users SET business_logo_key = ?, updated_at = datetime('now') WHERE id = ?",
+      )
+        .bind(objectKey, session.id)
+        .run();
+    } catch (error) {
+      await env.NOTE_FILES_R2.delete(objectKey);
+      throw error;
+    }
+    // Do not delete the previous immutable object here: existing notes contain
+    // a public branding snapshot that may still reference it.
+    return jsonResponse(
+      { ok: true, logoUrl: businessLogoPublicUrl(request, objectKey) },
+      200,
+      request,
+    );
+  }
+
+  if (pathname === "/api/auth/account/branding/logo" && method === "DELETE") {
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const userColumns = await getUsersTableColumns(env);
+    if (!userColumns.business_logo_key) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    await env.AUTH_DB.prepare(
+      "UPDATE users SET business_logo_key = NULL, updated_at = datetime('now') WHERE id = ?",
+    )
+      .bind(session.id)
+      .run();
+    // Existing note snapshots retain their logo even after the account default is cleared.
+    return jsonResponse({ ok: true, logoUrl: null }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/branding/banner" && method === "PUT") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    if (!entitlements.capabilities.revealBranding) {
+      return jsonResponse({ error: "premium_plus_required" }, 403, request);
+    }
+    if (!env.NOTE_FILES_R2) return jsonResponse({ message: "Branding storage is not configured" }, 503, request);
+    const userColumns = await getUsersTableColumns(env);
+    if (!userColumns.business_banner_key) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    const payload = await request.arrayBuffer();
+    if (payload.byteLength === 0 || payload.byteLength > BUSINESS_BANNER.MAX_BYTES) {
+      return jsonResponse({ error: payload.byteLength ? "banner_too_large" : "banner_required",
+        maxBytes: BUSINESS_BANNER.MAX_BYTES }, payload.byteLength ? 413 : 400, request);
+    }
+    const detectedType = detectBusinessLogoType(new Uint8Array(payload));
+    if (!detectedType) return jsonResponse({ error: "invalid_banner_type", message: "Use a PNG, JPEG, or WebP image." }, 400, request);
+    const objectKey = `${BUSINESS_BANNER.OBJECT_PREFIX}${randomId(20)}.${detectedType.extension}`;
+    await env.NOTE_FILES_R2.put(objectKey, payload, {
+      httpMetadata: { contentType: detectedType.contentType, cacheControl: "public, max-age=31536000, immutable" },
+      customMetadata: { purpose: "account-branding-banner" },
+    });
+    try {
+      await env.AUTH_DB.prepare("UPDATE users SET business_banner_key = ?, updated_at = datetime('now') WHERE id = ?")
+        .bind(objectKey, session.id).run();
+    } catch (error) {
+      await env.NOTE_FILES_R2.delete(objectKey);
+      throw error;
+    }
+    // Preserve the previous object for notes that already snapshotted this banner.
+    return jsonResponse({ ok: true, bannerUrl: businessBannerPublicUrl(request, objectKey) }, 200, request);
+  }
+
+  if (pathname === "/api/auth/account/branding/banner" && method === "DELETE") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const userColumns = await getUsersTableColumns(env);
+    if (!userColumns.business_banner_key) return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    await env.AUTH_DB.prepare("UPDATE users SET business_banner_key = NULL, updated_at = datetime('now') WHERE id = ?")
+      .bind(session.id).run();
+    // Existing note snapshots retain their banner after the account default is cleared.
+    return jsonResponse({ ok: true, bannerUrl: null }, 200, request);
+  }
+
   if (pathname === "/api/auth/account/preferences" && method === "PATCH") {
     if (!env.AUTH_DB) {
       return jsonResponse({ message: "Auth database not configured" }, 501, request);
@@ -4479,12 +4776,28 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (!session) {
       return jsonResponse({ message: "Unauthorized" }, 401, request);
     }
-    let body: { emailNotifications?: boolean; preferredLanguage?: string | null; allowHostedAi?: boolean };
+    let body: {
+      emailNotifications?: boolean;
+      preferredLanguage?: string | null;
+      allowHostedAi?: boolean;
+      businessDisplayName?: string | null;
+      businessAccentColor?: string | null;
+      businessSenderName?: string | null;
+      businessSenderRole?: string | null;
+      businessTrustMessage?: string | null;
+      businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+    };
     try {
       body = (await readJsonBody(request)) as {
         emailNotifications?: boolean;
         preferredLanguage?: string | null;
         allowHostedAi?: boolean;
+        businessDisplayName?: string | null;
+        businessAccentColor?: string | null;
+        businessSenderName?: string | null;
+        businessSenderRole?: string | null;
+        businessTrustMessage?: string | null;
+        businessBackgroundStyle?: "neutral" | "gradient" | "banner";
       };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
@@ -4492,11 +4805,26 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const hasEmailNotifications = typeof body.emailNotifications === "boolean";
     const hasPreferredLanguage = Object.prototype.hasOwnProperty.call(body, "preferredLanguage");
     const hasAllowHostedAi = typeof body.allowHostedAi === "boolean";
-    if (!hasEmailNotifications && !hasPreferredLanguage && !hasAllowHostedAi) {
+    const hasBusinessDisplayName = Object.prototype.hasOwnProperty.call(body, "businessDisplayName");
+    const hasBusinessAccentColor = Object.prototype.hasOwnProperty.call(body, "businessAccentColor");
+    const hasBusinessSenderName = Object.prototype.hasOwnProperty.call(body, "businessSenderName");
+    const hasBusinessSenderRole = Object.prototype.hasOwnProperty.call(body, "businessSenderRole");
+    const hasBusinessTrustMessage = Object.prototype.hasOwnProperty.call(body, "businessTrustMessage");
+    const hasBusinessBackgroundStyle = Object.prototype.hasOwnProperty.call(body, "businessBackgroundStyle");
+    if (
+      !hasEmailNotifications &&
+      !hasPreferredLanguage &&
+      !hasAllowHostedAi &&
+      !hasBusinessDisplayName &&
+      !hasBusinessAccentColor && !hasBusinessSenderName && !hasBusinessSenderRole &&
+      !hasBusinessTrustMessage && !hasBusinessBackgroundStyle
+    ) {
       return jsonResponse(
-        { message: "At least one of emailNotifications, preferredLanguage, or allowHostedAi is required" },
+        {
+          message: "At least one supported account preference is required",
+        },
         400,
-        request
+        request,
       );
     }
     const userColumns = await getUsersTableColumns(env);
@@ -4509,6 +4837,25 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (hasAllowHostedAi && !userColumns.allow_hosted_ai) {
       return jsonResponse({ message: "Hosted AI preference migration is required" }, 503, request);
     }
+    if (hasBusinessDisplayName && !userColumns.business_display_name) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    if (hasBusinessAccentColor && !userColumns.business_accent_color) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    if ((hasBusinessSenderName && !userColumns.business_sender_name) ||
+        (hasBusinessSenderRole && !userColumns.business_sender_role) ||
+        (hasBusinessTrustMessage && !userColumns.business_trust_message) ||
+        (hasBusinessBackgroundStyle && !userColumns.business_background_style)) {
+      return jsonResponse({ message: "Business branding migration is required" }, 503, request);
+    }
+    if (hasBusinessDisplayName || hasBusinessAccentColor || hasBusinessSenderName ||
+        hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle) {
+      const entitlements = await getAccountEntitlements(env, session.id);
+      if (!entitlements.capabilities.revealBranding) {
+        return jsonResponse({ error: "premium_plus_required" }, 403, request);
+      }
+    }
 
     let normalizedPreferredLanguage: string | null | undefined = undefined;
     if (hasPreferredLanguage) {
@@ -4517,6 +4864,56 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         return jsonResponse({ message: parsed.message }, 400, request);
       }
       normalizedPreferredLanguage = parsed.value;
+    }
+    let normalizedBusinessDisplayName: string | null | undefined;
+    if (hasBusinessDisplayName) {
+      if (body.businessDisplayName != null && typeof body.businessDisplayName !== "string") {
+        return jsonResponse({ message: "Invalid business display name" }, 400, request);
+      }
+      normalizedBusinessDisplayName =
+        typeof body.businessDisplayName === "string"
+          ? body.businessDisplayName.trim().replace(/\s+/g, " ") || null
+          : null;
+      if ((normalizedBusinessDisplayName?.length ?? 0) > 120) {
+        return jsonResponse(
+          { message: "Business display name must be 120 characters or fewer" },
+          400,
+          request,
+        );
+      }
+    }
+    let normalizedBusinessAccentColor: string | null | undefined;
+    if (hasBusinessAccentColor) {
+      if (body.businessAccentColor != null && typeof body.businessAccentColor !== "string") {
+        return jsonResponse({ message: "Invalid business accent color" }, 400, request);
+      }
+      const accent =
+        typeof body.businessAccentColor === "string" ? body.businessAccentColor.trim() : "";
+      if (accent && !BUSINESS_ACCENT_COLOR_PATTERN.test(accent)) {
+        return jsonResponse({ message: "Business accent color must be a hex color" }, 400, request);
+      }
+      normalizedBusinessAccentColor = accent || null;
+    }
+    const normalizeBrandText = (value: unknown, max: number): string | null | undefined => {
+      if (value == null) return null;
+      if (typeof value !== "string") return undefined;
+      const normalized = value.trim().replace(/\s+/g, " ") || null;
+      return (normalized?.length ?? 0) <= max ? normalized : undefined;
+    };
+    const normalizedBusinessSenderName = hasBusinessSenderName ? normalizeBrandText(body.businessSenderName, 80) : undefined;
+    const normalizedBusinessSenderRole = hasBusinessSenderRole ? normalizeBrandText(body.businessSenderRole, 80) : undefined;
+    const normalizedBusinessTrustMessage = hasBusinessTrustMessage ? normalizeBrandText(body.businessTrustMessage, 160) : undefined;
+    if ((hasBusinessSenderName && normalizedBusinessSenderName === undefined) ||
+        (hasBusinessSenderRole && normalizedBusinessSenderRole === undefined) ||
+        (hasBusinessTrustMessage && normalizedBusinessTrustMessage === undefined)) {
+      return jsonResponse({ message: "Branding text is invalid or too long" }, 400, request);
+    }
+    const normalizedBusinessBackgroundStyle = hasBusinessBackgroundStyle &&
+      ["neutral", "gradient", "banner"].includes(String(body.businessBackgroundStyle))
+        ? body.businessBackgroundStyle!
+        : hasBusinessBackgroundStyle ? null : undefined;
+    if (hasBusinessBackgroundStyle && !normalizedBusinessBackgroundStyle) {
+      return jsonResponse({ message: "Invalid branding background style" }, 400, request);
     }
 
     const updates: string[] = [];
@@ -4533,6 +4930,18 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       updates.push("allow_hosted_ai = ?");
       bindings.push(body.allowHostedAi ? 1 : 0);
     }
+    if (hasBusinessDisplayName) {
+      updates.push("business_display_name = ?");
+      bindings.push(normalizedBusinessDisplayName ?? null);
+    }
+    if (hasBusinessAccentColor) {
+      updates.push("business_accent_color = ?");
+      bindings.push(normalizedBusinessAccentColor ?? null);
+    }
+    if (hasBusinessSenderName) { updates.push("business_sender_name = ?"); bindings.push(normalizedBusinessSenderName ?? null); }
+    if (hasBusinessSenderRole) { updates.push("business_sender_role = ?"); bindings.push(normalizedBusinessSenderRole ?? null); }
+    if (hasBusinessTrustMessage) { updates.push("business_trust_message = ?"); bindings.push(normalizedBusinessTrustMessage ?? null); }
+    if (hasBusinessBackgroundStyle) { updates.push("business_background_style = ?"); bindings.push(normalizedBusinessBackgroundStyle ?? "neutral"); }
     updates.push("updated_at = datetime('now')");
     bindings.push(session.id);
 
@@ -4549,6 +4958,16 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         emailNotifications: hasEmailNotifications ? body.emailNotifications : undefined,
         preferredLanguage: hasPreferredLanguage ? (normalizedPreferredLanguage ?? null) : undefined,
         allowHostedAi: hasAllowHostedAi ? body.allowHostedAi : undefined,
+        businessDisplayName: hasBusinessDisplayName
+          ? normalizedBusinessDisplayName ?? null
+          : undefined,
+        businessAccentColor: hasBusinessAccentColor
+          ? normalizedBusinessAccentColor ?? null
+          : undefined,
+        businessSenderName: hasBusinessSenderName ? normalizedBusinessSenderName ?? null : undefined,
+        businessSenderRole: hasBusinessSenderRole ? normalizedBusinessSenderRole ?? null : undefined,
+        businessTrustMessage: hasBusinessTrustMessage ? normalizedBusinessTrustMessage ?? null : undefined,
+        businessBackgroundStyle: hasBusinessBackgroundStyle ? normalizedBusinessBackgroundStyle : undefined,
       }),
       { status: 200, headers }
     );

@@ -33,6 +33,7 @@ import {
   formatNoteFileAccessWindow,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
+import type { AccountType } from "@shared/planCatalog";
 import {
   DEFAULT_STRONG_PASSWORD_LENGTH,
   TRANSPORT_SAFE_STRONG_PASSWORD_CHARSET,
@@ -418,6 +419,7 @@ export type NoteSettingsPanelProps = {
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
   /** Business — show the account's saved branding on the reveal page. */
   canBrandRevealPage?: boolean;
+  configuredAccountType?: AccountType;
   /** False when the plan allows branding but the account has not set any up. */
   hasRevealBranding?: boolean;
   applyBranding?: boolean;
@@ -485,6 +487,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   readerLanguage,
   setReaderLanguage,
   canBrandRevealPage = false,
+  configuredAccountType = "free",
   hasRevealBranding = false,
   applyBranding = false,
   setApplyBranding,
@@ -493,8 +496,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
+  const accountHref = localizedPath("/account", language);
   const preferencesHref = localizedPath("/account/preferences", language);
-  const brandingHref = localizedPath("/account/branding", language);
+  const brandingHref = `${preferencesHref}#reveal-branding`;
+  const isConfiguredBusiness = configuredAccountType === "business_premium";
+  const brandingAllowed = canBrandRevealPage || isConfiguredBusiness;
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
   const [savingDefaults, setSavingDefaults] = React.useState(false);
@@ -1387,7 +1393,11 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
               </div>
               <SettingsOptionList>
-                {canBrandRevealPage ? (
+                {premiumStatusLoading ? (
+                  <div className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">
+                    {t.authLoading ?? "Loading account…"}
+                  </div>
+                ) : brandingAllowed ? (
                   hasRevealBranding ? (
                     <SettingsToggleRow
                       id="apply-branding"
@@ -1483,7 +1493,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {t.settingsPremiumFeatureDialogTitle ?? "Available with Starter and Business"}
+              {selectedPremiumFeature?.title === brandedRevealFeature.title
+                ? (t.settingsPremiumFeatureDialogTitleBusiness ?? "Available with Business")
+                : (t.settingsPremiumFeatureDialogTitle ?? "Available with Starter and Business")}
             </DialogTitle>
             <DialogDescription>
               {selectedPremiumFeature?.description ??
@@ -1492,19 +1504,37 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
-            {(
-              t.settingsPremiumFeaturePartOfPremium ??
-              "{feature} is included with Starter and Business."
-            ).replace(
-              "{feature}",
-              selectedPremiumFeature?.title ?? "Delivery & Verification",
-            )}
+            {selectedPremiumFeature?.title === brandedRevealFeature.title
+              ? (
+                  t.settingsPremiumFeaturePartOfBusiness ??
+                  "{feature} is included with Business."
+                ).replace(
+                  "{feature}",
+                  selectedPremiumFeature?.title ?? "Branded reveal page",
+                )
+              : (
+                  t.settingsPremiumFeaturePartOfPremium ??
+                  "{feature} is included with Starter and Business."
+                ).replace(
+                  "{feature}",
+                  selectedPremiumFeature?.title ?? "Delivery & Verification",
+                )}
           </div>
           <a
-            href={premiumUpgradeHref}
+            href={
+              selectedPremiumFeature?.title === brandedRevealFeature.title
+                ? isConfiguredBusiness
+                  ? brandingHref
+                  : accountHref
+                : premiumUpgradeHref
+            }
             className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            {t.settingsUpgradeToPremium ?? "Compare plans"}
+            {selectedPremiumFeature?.title === brandedRevealFeature.title
+              ? isConfiguredBusiness
+                ? (t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding")
+                : (t.settingsViewAccountPlan ?? "View account plan")
+              : (t.settingsUpgradeToPremium ?? "Compare plans")}
           </a>
         </DialogContent>
       </Dialog>
