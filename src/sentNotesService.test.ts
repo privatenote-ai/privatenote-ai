@@ -165,7 +165,7 @@ describe("sent note notification service", () => {
 
   it("maps Business confirmation and organization metadata", () => {
     const item = toSentNoteNotificationItem(sentNote({
-      receipt_ack_statement: "I confirm I received these credentials securely.",
+      receipt_ack_statement: "I confirm that I received these credentials securely.",
       receipt_ack_statement_id: "credentials",
       activity_folder: "Client A",
       activity_tags: JSON.stringify(["credentials", "urgent"]),

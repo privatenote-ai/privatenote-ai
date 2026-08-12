@@ -694,7 +694,16 @@ export const en: Translations = {
     "Pick a time after now and before the note expires.",
   settingsRequireReceiptAck: "Require receipt confirmation",
   settingsRequireReceiptAckInfo:
-    "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.",
+    "After the recipient decrypts the note, they can confirm receipt. That confirmation is saved for you even if the note burns on open.",
+  settingsReceiptStatementPreset: "What they confirm",
+  settingsReceiptStatementHint:
+    "Shown on the reveal page after decryption. It’s a delivery receipt for you—not legal proof of identity.",
+  settingsReceiptStatementCustom: "Write your own",
+  settingsReceiptStatementCustomHint: "Use wording that fits this handoff.",
+  settingsReceiptStatementCustomLabel: "Confirmation text",
+  settingsReceiptStatementCustomPlaceholder:
+    "I confirm that I received this secure message.",
+  settingsReceiptStatementCharsLeft: "{n} characters left",
   revealNotYetAvailableTitle: "Not available yet",
   revealNotYetAvailableDescription:
     "The sender scheduled this note to unlock later. It cannot be opened before then.",

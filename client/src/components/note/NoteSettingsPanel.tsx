@@ -545,6 +545,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const receiptAckInfo =
     t.settingsRequireReceiptAckInfo ??
     "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.";
+  const selectedReceiptAckPreset =
+    BUSINESS_RECEIPT_ACK_PRESETS.find((preset) => preset.label === receiptAckStatement) ?? null;
+  const isCustomReceiptAckStatement = selectedReceiptAckPreset === null;
+  const receiptAckOptionBase =
+    "w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40";
+  const receiptAckOptionIdle =
+    "border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50/60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-teal-700 dark:hover:bg-teal-950/40";
+  const receiptAckOptionActive =
+    "border-teal-500 bg-white text-gray-900 shadow-sm ring-1 ring-teal-500/30 dark:border-teal-400 dark:bg-gray-950 dark:text-gray-50 dark:ring-teal-400/30";
 
   const defaultOpensAtLocal = (): string => {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -1360,34 +1369,127 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
               </div>
               {isConfiguredBusiness && requireReceiptAck ? (
-                <div className="space-y-2 rounded-md border border-teal-200/70 bg-teal-50/50 p-3 dark:border-teal-900/50 dark:bg-teal-950/20">
-                  <label htmlFor="receipt-confirmation-preset" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {t.settingsReceiptStatementPreset ?? "Confirmation statement"}
-                  </label>
-                  <select
-                    id="receipt-confirmation-preset"
-                    value={BUSINESS_RECEIPT_ACK_PRESETS.some((preset) => preset.label === receiptAckStatement) ? receiptAckStatement : "custom"}
-                    onChange={(event) => {
-                      if (event.target.value !== "custom") setReceiptAckStatement(event.target.value);
-                    }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                <div className="space-y-3 rounded-md border border-teal-200/70 bg-teal-50/50 p-3 dark:border-teal-900/50 dark:bg-teal-950/20">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {t.settingsReceiptStatementPreset ?? "What they confirm"}
+                    </p>
+                    <p className="text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.settingsReceiptStatementHint ??
+                        "Shown on the reveal page after decryption. It’s a delivery receipt for you—not legal proof of identity."}
+                    </p>
+                  </div>
+                  <div
+                    className="space-y-2"
+                    role="radiogroup"
+                    aria-label={t.settingsReceiptStatementPreset ?? "What they confirm"}
                   >
-                    {BUSINESS_RECEIPT_ACK_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.label}>{preset.label}</option>
-                    ))}
-                    <option value="custom">{t.settingsReceiptStatementCustom ?? "Custom statement"}</option>
-                  </select>
-                  <textarea
-                    value={receiptAckStatement}
-                    onChange={(event) => setReceiptAckStatement(event.target.value)}
-                    maxLength={RECEIPT_ACK_STATEMENT_MAX_LENGTH}
-                    rows={2}
-                    placeholder="I confirm I received this secure message."
-                    className="w-full resize-none rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t.settingsReceiptStatementHint ?? "Shown after decryption. This records acknowledgment, not legal proof or verified identity."}
-                  </p>
+                    {BUSINESS_RECEIPT_ACK_PRESETS.map((preset) => {
+                      const selected = selectedReceiptAckPreset?.id === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setReceiptAckStatement(preset.label)}
+                          className={`${receiptAckOptionBase} ${selected ? receiptAckOptionActive : receiptAckOptionIdle}`}
+                        >
+                          <span className="flex items-start gap-2.5">
+                            <span
+                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                selected
+                                  ? "border-teal-600 bg-teal-600 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-gray-950"
+                                  : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
+                              }`}
+                              aria-hidden
+                            >
+                              {selected ? (
+                                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                              ) : null}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block font-medium leading-snug text-gray-900 dark:text-gray-50">
+                                {preset.title}
+                              </span>
+                              <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                                “{preset.label}”
+                              </span>
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={isCustomReceiptAckStatement}
+                      onClick={() => {
+                        if (!isCustomReceiptAckStatement) setReceiptAckStatement("");
+                      }}
+                      className={`${receiptAckOptionBase} ${isCustomReceiptAckStatement ? receiptAckOptionActive : receiptAckOptionIdle}`}
+                    >
+                      <span className="flex items-start gap-2.5">
+                        <span
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                            isCustomReceiptAckStatement
+                              ? "border-teal-600 bg-teal-600 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-gray-950"
+                              : "border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
+                          }`}
+                          aria-hidden
+                        >
+                          {isCustomReceiptAckStatement ? (
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-medium leading-snug text-gray-900 dark:text-gray-50">
+                            {t.settingsReceiptStatementCustom ?? "Write your own"}
+                          </span>
+                          <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                            {t.settingsReceiptStatementCustomHint ??
+                              "Use wording that fits this handoff."}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                  {isCustomReceiptAckStatement ? (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="receipt-confirmation-custom"
+                        className="text-xs font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {t.settingsReceiptStatementCustomLabel ?? "Confirmation text"}
+                      </label>
+                      <textarea
+                        id="receipt-confirmation-custom"
+                        value={receiptAckStatement}
+                        onChange={(event) => setReceiptAckStatement(event.target.value)}
+                        maxLength={RECEIPT_ACK_STATEMENT_MAX_LENGTH}
+                        rows={3}
+                        autoFocus
+                        placeholder={
+                          t.settingsReceiptStatementCustomPlaceholder ??
+                          "I confirm that I received this secure message."
+                        }
+                        className="w-full resize-none rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 shadow-sm focus:border-teal-500/60 focus:outline-none focus:ring-2 focus:ring-teal-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {(
+                          t.settingsReceiptStatementCharsLeft ?? "{n} characters left"
+                        ).replace(
+                          "{n}",
+                          String(
+                            Math.max(
+                              0,
+                              RECEIPT_ACK_STATEMENT_MAX_LENGTH - receiptAckStatement.length,
+                            ),
+                          ),
+                        )}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {isConfiguredBusiness ? (
