@@ -280,6 +280,29 @@ function SectionHeading({
   );
 }
 
+/** Clear locked affordance for free users — lock + plan badge, not a dead switch. */
+function LockedPremiumToggle({
+  label,
+  premiumLabel = "Starter",
+  onClick,
+}: {
+  label: string;
+  premiumLabel?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200 dark:hover:bg-amber-900/40"
+      aria-label={`${label} — ${premiumLabel}`}
+    >
+      <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {premiumLabel}
+    </button>
+  );
+}
+
 function SettingsOptionList({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
@@ -294,6 +317,7 @@ function SettingsToggleRow({
   info,
   checked,
   locked,
+  premiumLabel = "Starter",
   onCheckedChange,
   onLockedClick,
 }: {
@@ -302,6 +326,7 @@ function SettingsToggleRow({
   info: string;
   checked?: boolean;
   locked: boolean;
+  premiumLabel?: string;
   onCheckedChange?: (checked: boolean) => void;
   onLockedClick?: () => void;
 }) {
@@ -322,17 +347,21 @@ function SettingsToggleRow({
     if (onLockedClick) {
       return (
         <button type="button" onClick={onLockedClick} className={className}>
-          <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
           {titleContent}
-          <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200">
+            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {premiumLabel}
+          </span>
         </button>
       );
     }
     return (
       <div className={className} aria-disabled="true">
-        <Lock className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
         {titleContent}
-        <Switch checked={false} disabled aria-hidden className="pointer-events-none ml-auto opacity-50" />
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200">
+          <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {premiumLabel}
+        </span>
       </div>
     );
   }
@@ -572,86 +601,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <SectionHeading id="note-access-controls-heading" title={t.settingsAccessControls} />
 
               <div className="flex flex-col space-y-2">
-                <div className={SETTINGS_TOGGLE_ROW}>
-                  <div className="min-w-0 flex-1">
-                    <SettingsFieldLabel
-                      htmlFor="require-recipient-verification"
-                      icon={<MailCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
-                      iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
-                      label={recipientCodeTitle}
-                      info={recipientCodeInfo}
-                      singleLine
-                    />
-                  </div>
-                  <div className="flex shrink-0 items-center">
-                    {!isPremiumUser ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedPremiumFeature({
-                            title: recipientCodeTitle,
-                            description: recipientCodeInfo,
-                          })
-                        }
-                        className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        aria-label={recipientCodeTitle}
-                      >
-                        <Switch
-                          id="require-recipient-verification"
-                          checked={false}
-                          disabled
-                          aria-hidden
-                          className="pointer-events-none opacity-50"
-                        />
-                      </button>
-                    ) : (
-                      <Switch
-                        id="require-recipient-verification"
-                        checked={requireRecipientVerification}
-                        onCheckedChange={(checked) => {
-                          setRequireRecipientVerification(checked);
-                          if (!checked) setRecipientEmail("");
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-                {isPremiumUser && requireRecipientVerification ? (
-                  <div className="px-1 pb-1">
-                    <label
-                      htmlFor="recipient-email"
-                      className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {t.settingsRecipientVerificationEmail ?? "Recipient email"}
-                    </label>
-                    <input
-                      id="recipient-email"
-                      type="email"
-                      autoComplete="email"
-                      value={recipientEmail}
-                      onChange={(event) => setRecipientEmail(event.target.value)}
-                      placeholder={
-                        t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
-                      }
-                      className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                    />
-                    <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {isFileTransfer
-                        ? "A one-time code will be emailed to the recipient when they open the link."
-                        : (t.settingsRecipientVerificationEmailHint ??
-                          "When they open the link, we email a one-time code to this address.")}
-                    </p>
-                  </div>
-                ) : null}
-                {!isPremiumUser ? (
-                  <PremiumSectionFooter>
-                    {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
-                    <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
-                      {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
-                    </a>
-                  </PremiumSectionFooter>
-                ) : null}
-
                 <div className={SETTINGS_FIELD_ROW}>
                   <div>
               <SettingsFieldLabel
@@ -1181,6 +1130,68 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <div className={SETTINGS_TOGGLE_ROW}>
                 <div className="min-w-0 flex-1">
                   <SettingsFieldLabel
+                    htmlFor="require-recipient-verification"
+                    icon={<MailCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                    iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                    label={recipientCodeTitle}
+                    info={recipientCodeInfo}
+                    singleLine
+                  />
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {!isPremiumUser ? (
+                    <LockedPremiumToggle
+                      label={recipientCodeTitle}
+                      premiumLabel={t.premium ?? "Starter"}
+                      onClick={() =>
+                        setSelectedPremiumFeature({
+                          title: recipientCodeTitle,
+                          description: recipientCodeInfo,
+                        })
+                      }
+                    />
+                  ) : (
+                    <Switch
+                      id="require-recipient-verification"
+                      checked={requireRecipientVerification}
+                      onCheckedChange={(checked) => {
+                        setRequireRecipientVerification(checked);
+                        if (!checked) setRecipientEmail("");
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+              {isPremiumUser && requireRecipientVerification ? (
+                <div className="px-1 pb-1">
+                  <label
+                    htmlFor="recipient-email"
+                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {t.settingsRecipientVerificationEmail ?? "Recipient email"}
+                  </label>
+                  <input
+                    id="recipient-email"
+                    type="email"
+                    autoComplete="email"
+                    value={recipientEmail}
+                    onChange={(event) => setRecipientEmail(event.target.value)}
+                    placeholder={
+                      t.settingsRecipientVerificationEmailPlaceholder ?? "recipient@example.com"
+                    }
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  />
+                  <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    {isFileTransfer
+                      ? "A one-time code will be emailed to the recipient when they open the link."
+                      : (t.settingsRecipientVerificationEmailHint ??
+                        "When they open the link, we email a one-time code to this address.")}
+                  </p>
+                </div>
+              ) : null}
+              <div className={SETTINGS_TOGGLE_ROW}>
+                <div className="min-w-0 flex-1">
+                  <SettingsFieldLabel
                     htmlFor="email-link-to-recipient"
                     icon={<Mail className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
                     iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
@@ -1191,25 +1202,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
                 <div className="flex shrink-0 items-center">
                   {!isPremiumUser ? (
-                    <button
-                      type="button"
+                    <LockedPremiumToggle
+                      label={emailLinkTitle}
+                      premiumLabel={t.premium ?? "Starter"}
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: emailLinkTitle,
                           description: emailLinkInfo,
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      aria-label={emailLinkTitle}
-                    >
-                      <Switch
-                        id="email-link-to-recipient"
-                        checked={false}
-                        disabled
-                        aria-hidden
-                        className="pointer-events-none opacity-50"
-                      />
-                    </button>
+                    />
                   ) : (
                     <Switch
                       id="email-link-to-recipient"
@@ -1271,25 +1273,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
                 <div className="flex shrink-0 items-center">
                   {!isPremiumUser ? (
-                    <button
-                      type="button"
+                    <LockedPremiumToggle
+                      label={delayedRevealTitle}
+                      premiumLabel={t.premium ?? "Starter"}
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: delayedRevealTitle,
                           description: delayedRevealInfo,
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      aria-label={delayedRevealTitle}
-                    >
-                      <Switch
-                        id="delayed-reveal"
-                        checked={false}
-                        disabled
-                        aria-hidden
-                        className="pointer-events-none opacity-50"
-                      />
-                    </button>
+                    />
                   ) : (
                     <Switch
                       id="delayed-reveal"
@@ -1340,25 +1333,16 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
                 <div className="flex shrink-0 items-center">
                   {!isPremiumUser ? (
-                    <button
-                      type="button"
+                    <LockedPremiumToggle
+                      label={receiptAckTitle}
+                      premiumLabel={t.premium ?? "Starter"}
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: receiptAckTitle,
                           description: receiptAckInfo,
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      aria-label={receiptAckTitle}
-                    >
-                      <Switch
-                        id="require-receipt-ack"
-                        checked={false}
-                        disabled
-                        aria-hidden
-                        className="pointer-events-none opacity-50"
-                      />
-                    </button>
+                    />
                   ) : (
                     <Switch
                       id="require-receipt-ack"
@@ -1614,6 +1598,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 ) : (
                   <SettingsToggleRow
                     locked
+                    premiumLabel={t.premium ?? "Starter"}
                     title={brandedRevealFeature.title}
                     info={brandedRevealFeature.description}
                     onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}

@@ -346,7 +346,7 @@ export const Navbar: React.FC = () => {
                 Pricing
               </NavLink>
             ) : null}
-            <div className="relative z-10" ref={resourcesRef}>
+            <div className="relative z-10 flex h-16 items-center" ref={resourcesRef}>
               <button
                 type="button"
                 onClick={(event) => {
@@ -368,44 +368,43 @@ export const Navbar: React.FC = () => {
               {isResourcesOpen ? (
                 <div
                   id="desktop-resources-menu"
-                  className="absolute left-1/2 top-full z-50 mt-2 w-[22.5rem] -translate-x-1/2 origin-top animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150 overflow-hidden rounded-xl border border-gray-200/90 bg-white p-2 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.28)] dark:border-gray-700 dark:bg-gray-950"
+                  className="absolute right-0 top-full z-50 mt-2 w-[40rem] animate-in fade-in-0 duration-150 overflow-hidden rounded-xl border border-gray-200/90 bg-white p-3 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.28)] dark:border-gray-700 dark:bg-gray-950"
                   role="menu"
                 >
-                  {resourceGroups.map((group, groupIndex) => (
-                    <div
-                      key={group.id}
-                      className={groupIndex > 0 ? "mt-1 border-t border-gray-100 pt-1 dark:border-gray-800" : undefined}
-                    >
-                      <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">
-                        {group.label}
-                      </p>
-                      <div className="space-y-0.5">
-                        {group.items.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <NavLink
-                              key={item.href}
-                              href={item.href}
-                              closeMenu={closeMenu}
-                              className={desktopDropdownItem}
-                            >
-                              <span
-                                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.iconTone}`}
+                  <div className="grid grid-cols-3 gap-1">
+                    {resourceGroups.map((group) => (
+                      <div key={group.id} className="min-w-0">
+                        <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">
+                          {group.label}
+                        </p>
+                        <div className="space-y-0.5">
+                          {group.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <NavLink
+                                key={item.href}
+                                href={item.href}
+                                closeMenu={closeMenu}
+                                className={desktopDropdownItem}
                               >
-                                <Icon className="h-4 w-4" aria-hidden />
-                              </span>
-                              <span className="min-w-0">
-                                <span className="block font-medium leading-snug">{item.label}</span>
-                                <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                                  {item.description}
+                                <span
+                                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.iconTone}`}
+                                >
+                                  <Icon className="h-4 w-4" aria-hidden />
                                 </span>
-                              </span>
-                            </NavLink>
-                          );
-                        })}
+                                <span className="min-w-0">
+                                  <span className="block font-medium leading-snug">{item.label}</span>
+                                  <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                                    {item.description}
+                                  </span>
+                                </span>
+                              </NavLink>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>
