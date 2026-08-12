@@ -6,6 +6,7 @@ import {
   attachmentUploadConcurrency,
   attachmentUploadSettleMs,
   DEFAULT_ATTACHMENT_CHUNK_BYTES,
+  isSafariBrowser,
   singleBlobEncryptedSizeUpperBound,
   usesSingleBlobAttachmentUpload,
 } from "@/lib/safariSafeChunkUpload";
@@ -605,20 +606,96 @@ export type AttachmentDecryptProgress = {
   completedChunks: number;
   totalChunks: number;
   /**
-   * 0–1 within the decrypt phase when byte-accurate progress is available
-   * (preferred over completedChunks/totalChunks for single-blob multi-frame decrypt).
+   * 0–1 overall across download + decrypt (preferred for a single linear bar).
+   * Download is weighted ahead of decrypt so the bar does not sit at 0% while
+   * fetching, then slam through decrypt (especially noticeable on Safari).
    */
   ratio?: number;
 };
 
+/** Fraction of the overall bar reserved for network fetch + ArrayBuffer copy. */
+const DECRYPT_DOWNLOAD_PROGRESS_SHARE = 0.58;
+
 async function yieldForDecryptProgressPaint(): Promise<void> {
+  // Double-rAF so React can commit + the browser can paint before the next
+  // crypto frame. Single rAF is often insufficient on Safari under load.
   await new Promise<void>((resolve) => {
     if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => resolve());
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
     } else {
       globalThis.setTimeout(resolve, 0);
     }
   });
+}
+
+/**
+ * Advance a 0–1 ratio linearly over an ETA while `work` runs (Safari-friendly
+ * when the browser gives no download/decrypt byte events). Caps at 0.95 until
+ * completion so a slow fetch does not look "done" early.
+ */
+async function withEstimatedRatioProgress<T>(
+  expectedBytes: number,
+  onRatio: (ratio: number) => void,
+  work: () => Promise<T>,
+  options?: { bytesPerSec?: number },
+): Promise<T> {
+  const bytes = Math.max(0, expectedBytes);
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    onRatio(0);
+    const result = await work();
+    onRatio(1);
+    return result;
+  }
+
+  const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const assumedBytesPerSec =
+    typeof options?.bytesPerSec === "number" && options.bytesPerSec > 0
+      ? options.bytesPerSec
+      : isSafariBrowser()
+        ? 4 * 1024 * 1024
+        : 10 * 1024 * 1024;
+  const etaSec = Math.max(0.6, bytes / assumedBytesPerSec);
+  let lastRatio = 0;
+  const tick = () => {
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const elapsedSec = Math.max(0, (now - startedAt) / 1000);
+    const next = Math.min(0.95, elapsedSec / etaSec);
+    if (next <= lastRatio) return;
+    lastRatio = next;
+    onRatio(next);
+  };
+  tick();
+  const timer = globalThis.setInterval(tick, 100);
+  try {
+    const result = await work();
+    onRatio(1);
+    return result;
+  } finally {
+    globalThis.clearInterval(timer);
+  }
+}
+
+function clampUnit(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+function mapDownloadRatio(chunkIndex: number, totalChunks: number, withinChunk: number): number {
+  const total = Math.max(1, totalChunks);
+  const chunkShare = 1 / total;
+  const base = chunkIndex / total;
+  return clampUnit((base + chunkShare * clampUnit(withinChunk)) * DECRYPT_DOWNLOAD_PROGRESS_SHARE);
+}
+
+function mapDecryptRatio(chunkIndex: number, totalChunks: number, withinChunk: number): number {
+  const total = Math.max(1, totalChunks);
+  const chunkShare = 1 / total;
+  const base = chunkIndex / total;
+  const decryptShare = 1 - DECRYPT_DOWNLOAD_PROGRESS_SHARE;
+  return clampUnit(
+    DECRYPT_DOWNLOAD_PROGRESS_SHARE + (base + chunkShare * clampUnit(withinChunk)) * decryptShare,
+  );
 }
 
 export async function decryptSodiumAttachmentChunks(
@@ -639,21 +716,54 @@ export async function decryptSodiumAttachmentChunks(
   const totalChunks = attachment.totalChunks;
   const maxFrameEncrypted = Math.max(1, attachment.chunkSize) + 17;
 
-  const reportDecryptProgress = async (completedChunks: number, ratio: number) => {
+  const reportProgress = async (
+    phase: AttachmentDecryptProgress["phase"],
+    completedChunks: number,
+    ratio: number,
+    yieldPaint: boolean,
+  ) => {
     onProgress?.({
-      phase: "decrypt",
+      phase,
       completedChunks,
       totalChunks,
-      ratio: Math.min(1, Math.max(0, ratio)),
+      ratio: clampUnit(ratio),
     });
-    // Multi-frame decrypt is otherwise a tight sync loop; yield so the progress
-    // bar can paint (same approach as encryptFileToSodiumBlob).
-    await yieldForDecryptProgressPaint();
+    if (yieldPaint) {
+      await yieldForDecryptProgressPaint();
+    }
   };
 
   try {
     for (let index = 0; index < totalChunks; index += 1) {
-      const encryptedChunk = await getChunk(index);
+      const expectedEncryptedBytes =
+        attachment.chunks?.[index]?.encryptedSize ??
+        (totalChunks === 1 && typeof attachment.encryptedSize === "number"
+          ? attachment.encryptedSize
+          : Math.max(1, attachment.chunkSize) + 17);
+
+      let downloadFloor = mapDownloadRatio(index, totalChunks, 0);
+      const encryptedChunk = await withEstimatedRatioProgress(
+        expectedEncryptedBytes,
+        (within) => {
+          const next = Math.max(downloadFloor, mapDownloadRatio(index, totalChunks, within));
+          downloadFloor = next;
+          onProgress?.({
+            phase: "download",
+            completedChunks: index,
+            totalChunks,
+            ratio: next,
+          });
+        },
+        () => getChunk(index),
+      );
+
+      await reportProgress(
+        "download",
+        index,
+        Math.max(downloadFloor, mapDownloadRatio(index, totalChunks, 1)),
+        true,
+      );
+
       // Single HTTP blob may contain multiple secretstream frames (progress-sized
       // encrypt). Older notes used one frame for the whole file (chunkSize ≈ plaintext).
       if (totalChunks === 1 && encryptedChunk.byteLength > maxFrameEncrypted) {
@@ -675,8 +785,13 @@ export async function decryptSodiumAttachmentChunks(
           }
           plaintextChunks.push(result.message);
           offset += frameLen;
-          const ratio = offset / encryptedChunk.byteLength;
-          await reportDecryptProgress(ratio >= 1 ? 1 : 0, ratio);
+          const within = offset / encryptedChunk.byteLength;
+          await reportProgress(
+            "decrypt",
+            within >= 1 ? 1 : 0,
+            mapDecryptRatio(0, 1, within),
+            true,
+          );
         }
       } else {
         const result = sodium.crypto_secretstream_xchacha20poly1305_pull(state, encryptedChunk, aad);
@@ -692,12 +807,16 @@ export async function decryptSodiumAttachmentChunks(
         }
         plaintextChunks.push(result.message);
         const completed = index + 1;
-        await reportDecryptProgress(
+        await reportProgress(
+          "decrypt",
           completed,
-          totalChunks > 0 ? completed / totalChunks : 1,
+          mapDecryptRatio(index, totalChunks, 1),
+          true,
         );
       }
     }
+
+    await reportProgress("decrypt", totalChunks, 1, false);
   } finally {
     fileKey.fill(0);
   }

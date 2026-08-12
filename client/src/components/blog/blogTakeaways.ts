@@ -202,7 +202,7 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "Email and live alerts report status only—never note contents.",
     "Use opened as a cue to rotate credentials or close the loop.",
     "Keep the site open for in-tab toasts; email works asynchronously.",
-    "Proof of access adds a coarse timeline on eligible plans.",
+    "Proof of access adds a privacy-safe event timeline on eligible plans.",
   ],
   "revoke-unopened-note-proof-of-access": [
     "Revoke destroys unopened links; it cannot erase a post-reveal copy.",

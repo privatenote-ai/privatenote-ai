@@ -48,20 +48,11 @@ export const Navbar: React.FC = () => {
   const [mobileSheet, setMobileSheet] = useState<MobileSheet>("closed");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
   const { language, t } = useLanguage();
   const profileRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
-
-  // Solid translucent bg only after the user scrolls; transparent on hero
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 8);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const closeMobileSheetsAndProfile = useCallback(() => {
     setMobileSheet("closed");
@@ -83,20 +74,23 @@ export const Navbar: React.FC = () => {
     setMobileSheet((s) => (s === "account" ? "closed" : "account"));
   }, []);
 
-  // Handle clicks outside of desktop dropdown menus.
+  // Close desktop dropdowns on outside pointerdown only while open (avoids toggle races).
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+    if (!isProfileOpen && !isResourcesOpen) return;
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (isProfileOpen && profileRef.current && !profileRef.current.contains(target)) {
         setIsProfileOpen(false);
       }
-      if (resourcesRef.current && !resourcesRef.current.contains(event.target as Node)) {
+      if (isResourcesOpen && resourcesRef.current && !resourcesRef.current.contains(target)) {
         setIsResourcesOpen(false);
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    return () => document.removeEventListener("pointerdown", handlePointerDownOutside);
+  }, [isProfileOpen, isResourcesOpen]);
 
   // Close menus on route change, and re-check auth state.
   // This is a safety net so the navbar always reflects sign-in state after
@@ -104,6 +98,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMobileSheet("closed");
     setIsProfileOpen(false);
+    setIsResourcesOpen(false);
     if (shouldEagerPrefetchAuth(location)) {
       void refreshAuth();
     }
@@ -181,20 +176,19 @@ export const Navbar: React.FC = () => {
   const desktopDropdownItem =
     "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
 
-  const navShellClass = [
-    'fixed top-0 left-0 right-0 z-50 overflow-visible',
-    'transition-[background-color,backdrop-filter,box-shadow,border-color] duration-200',
-    isScrolled
-      ? 'bg-background/95 backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]'
-      : 'bg-transparent border-b border-transparent shadow-none backdrop-blur-0',
-  ].join(' ');
+  const navShellClass =
+    "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
 
   const authCluster = user?.email || !isAuthRoute ? (
     user?.email ? (
       <div className="relative">
         <button
           type="button"
-          onClick={() => setIsProfileOpen((open) => !open)}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsProfileOpen((open) => !open);
+          }}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white"
           aria-haspopup="menu"
           aria-expanded={isProfileOpen}
@@ -316,10 +310,14 @@ export const Navbar: React.FC = () => {
                 Pricing
               </NavLink>
             ) : null}
-            <div className="relative" ref={resourcesRef}>
+            <div className="relative z-10" ref={resourcesRef}>
               <button
                 type="button"
-                onClick={() => setIsResourcesOpen((open) => !open)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsResourcesOpen((open) => !open);
+                }}
                 className={`${desktopLink} inline-flex items-center gap-1.5`}
                 aria-haspopup="menu"
                 aria-expanded={isResourcesOpen}
@@ -331,41 +329,40 @@ export const Navbar: React.FC = () => {
                   aria-hidden
                 />
               </button>
-              <div
-                id="desktop-resources-menu"
-                className={`absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 transition-opacity ${
-                  isResourcesOpen ? "opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"
-                }`}
-                role="menu"
-                aria-hidden={!isResourcesOpen}
-              >
-                {resourceLinks.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.href}
-                      href={item.href}
-                      closeMenu={closeMenu}
-                      className={desktopDropdownItem}
-                    >
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
-                      <span>
-                        <span className="block font-semibold">{item.label}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                          {item.description}
+              {isResourcesOpen ? (
+                <div
+                  id="desktop-resources-menu"
+                  className="absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900"
+                  role="menu"
+                >
+                  {resourceLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.href}
+                        href={item.href}
+                        closeMenu={closeMenu}
+                        className={desktopDropdownItem}
+                      >
+                        <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
+                        <span>
+                          <span className="block font-semibold">{item.label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                            {item.description}
+                          </span>
                         </span>
-                      </span>
-                    </NavLink>
-                  );
-                })}
-              </div>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </nav>
 
           {/* Auth — sits just outside the right edge of the editor column */}
           {authCluster && (
             <div
-              className="absolute left-full top-1/2 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center"
+              className="absolute left-full top-1/2 z-10 -translate-y-1/2 pl-4 2xl:pl-6 flex min-w-max shrink-0 items-center"
               ref={user?.email ? profileRef : undefined}
             >
               {authCluster}

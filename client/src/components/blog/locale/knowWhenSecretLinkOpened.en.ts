@@ -37,8 +37,8 @@ export const knowWhenSecretLinkOpenedEn: BlogGuideArticleCopy = {
             "Heads-up when the tab is in the background",
           ],
           [
-            "Notification center / activity (plan dependent)",
-            "Account history",
+            "Account → Activity (plan dependent)",
+            "Your private activity history",
             "Reviewing what happened later",
           ],
         ],

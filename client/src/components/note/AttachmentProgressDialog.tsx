@@ -173,7 +173,7 @@ export function AttachmentProgressDialog({ progress }: AttachmentProgressDialogP
               ) : (
                 <div className="mx-auto h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-75 ease-linear"
+                    className="h-full rounded-full bg-primary transition-[width] duration-200 ease-linear"
                     style={{
                       width: `${clampPercent(progress?.progress ?? 0)}%`,
                     }}

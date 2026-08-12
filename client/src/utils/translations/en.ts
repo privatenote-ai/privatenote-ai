@@ -1792,11 +1792,11 @@ export const en: Translations = {
   blogKnowWhenSecretLinkOpenedMetaTitle: "Know when a secret link was opened",
   blogKnowWhenSecretLinkOpenedMetaDescription:
     "Get PrivateNote open and destroy alerts by email or live toast—status only, never the note contents—so you can rotate or follow up.",
-  blogRevokeUnopenedNoteProofOfAccessTitle: "How to Revoke an Unopened Note",
-  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stop Access Before Reveal and Keep a Coarse Receipt",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "How to Revoke a Private Note Before It’s Opened",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stop the Link Before Reveal and Keep a Privacy-Safe Access Record",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:
-    "Changed your mind before anyone opened the link? Revoke it. Need a coarse delivery receipt later? Use proof of access—without exposing note contents.",
-  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoke unopened notes and proof of access",
+    "Sent a private note by mistake? Revoke it before it is opened, then use proof of access to review key delivery events without exposing its contents.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "How to revoke a private note before it is opened",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoke unopened PrivateNote links and view proof-of-access timelines for delivery events—without putting secrets into email.",
   blogDelayedRevealTitle: "Delayed Reveal for One-Time Secret Links",

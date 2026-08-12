@@ -228,23 +228,37 @@ describe("libsodium attachment chunk encryption", () => {
 
     const encryptedBytes = new Uint8Array(await encrypted.blob.arrayBuffer());
     const ratios: number[] = [];
+    const phases: Array<"download" | "decrypt"> = [];
     const decrypted = await decryptSodiumAttachmentChunks(
       encrypted.metadata,
       fileWrapKey,
       async () => encryptedBytes,
       (progress: AttachmentDecryptProgress) => {
-        assert.equal(progress.phase, "decrypt");
+        assert.ok(progress.phase === "download" || progress.phase === "decrypt");
         assert.equal(typeof progress.ratio, "number");
         ratios.push(progress.ratio!);
+        phases.push(progress.phase);
       },
     );
 
     assert.deepEqual(join(decrypted), bytes);
     assert.ok(ratios.length >= 2, `expected multiple progress ticks, got ${ratios.length}`);
+    assert.ok(
+      phases.includes("download"),
+      "expected download-phase progress so the bar moves during fetch",
+    );
+    assert.ok(phases.includes("decrypt"), "expected decrypt-phase progress");
     for (let i = 1; i < ratios.length; i += 1) {
-      assert.ok(ratios[i]! >= ratios[i - 1]!, `progress went backwards at ${i}`);
+      assert.ok(ratios[i]! + 1e-9 >= ratios[i - 1]!, `progress went backwards at ${i}`);
     }
     assert.equal(ratios[ratios.length - 1], 1);
+    // Download should claim a meaningful share before decrypt finishes the bar.
+    const firstDecryptIdx = phases.indexOf("decrypt");
+    assert.ok(firstDecryptIdx > 0, "decrypt should follow download ticks");
+    assert.ok(
+      ratios[firstDecryptIdx - 1]! >= 0.5,
+      `expected download to cover most of the early bar, got ${ratios[firstDecryptIdx - 1]}`,
+    );
   });
 
   it("rejects truncated chunks", async () => {
