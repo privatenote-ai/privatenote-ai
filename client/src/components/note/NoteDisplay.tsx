@@ -581,6 +581,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(null);
   const [receiptAckSubmitting, setReceiptAckSubmitting] = useState(false);
   const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(null);
+  const [receiptAckStatement, setReceiptAckStatement] = useState<string | null>(null);
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -1127,11 +1128,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         setResolvedRevealBranding(data.revealBranding);
       }
       const receiptAck = data.receiptAck as
-        | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null }
+        | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null; statement?: string | null }
         | undefined;
       const ackRequired = receiptAck?.required === true;
       const ackAlready = receiptAck?.acknowledged === true;
       setReceiptAckRequired(ackRequired);
+      setReceiptAckStatement(
+        typeof receiptAck?.statement === "string" ? receiptAck.statement.trim() || null : null,
+      );
       setReceiptAckAcknowledged(ackAlready);
       setReceiptAckMessage(
         ackAlready
@@ -2149,6 +2153,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     : (t.revealReceiptRequestedHint ??
                       "Optional — confirm only after you’ve decrypted the note. You can leave without confirming.")}
                 </p>
+                {receiptAckStatement && !receiptAckAcknowledged ? (
+                  <blockquote className="m-0 mt-3 rounded-md border-l-2 border-teal-500 bg-white/60 px-3 py-2 text-sm font-medium text-teal-950 dark:bg-black/15 dark:text-teal-50">
+                    “{receiptAckStatement}”
+                  </blockquote>
+                ) : null}
                 {!receiptAckAcknowledged ? (
                   <button
                     type="button"
@@ -2158,7 +2167,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   >
                     {receiptAckSubmitting
                       ? (t.revealReceiptConfirming ?? "Confirming…")
-                      : (t.revealReceiptConfirmButton ?? "Confirm receipt")}
+                      : receiptAckStatement
+                        ? (t.revealReceiptConfirmStatementButton ?? "I confirm")
+                        : (t.revealReceiptConfirmButton ?? "Confirm receipt")}
                   </button>
                 ) : null}
               </div>

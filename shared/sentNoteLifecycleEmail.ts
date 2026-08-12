@@ -6,7 +6,8 @@ export type SentNoteLifecycleEmailEvent =
   | "opened_destroyed"
   | "expired"
   | "attachment_downloaded"
-  | "receipt_acknowledged";
+  | "receipt_acknowledged"
+  | "unopened_reminder";
 
 const LIFECYCLE_EMAIL_FOOTER =
   "End-to-end encrypted private notes — only you and your recipients can read them.";
@@ -86,8 +87,10 @@ export function buildSentNoteLifecycleEmailContent(input: {
       ? "opened and destroyed"
       : input.event === "attachment_downloaded"
         ? "attachment downloaded"
-        : input.event === "receipt_acknowledged"
-          ? "receipt confirmed"
+      : input.event === "receipt_acknowledged"
+        ? "receipt confirmed"
+        : input.event === "unopened_reminder"
+          ? "still unopened"
           : input.event === "expired"
             ? "expired"
             : input.event;
@@ -97,6 +100,8 @@ export function buildSentNoteLifecycleEmailContent(input: {
       ? `PrivateNote: your file "${label}" was downloaded`
       : input.event === "receipt_acknowledged"
         ? `PrivateNote: receipt confirmed for "${label}"`
+        : input.event === "unopened_reminder"
+          ? `PrivateNote reminder: "${label}" is still unopened`
         : `PrivateNote: your note "${label}" was ${eventLabel}`;
 
   const title =
@@ -104,6 +109,8 @@ export function buildSentNoteLifecycleEmailContent(input: {
       ? "Attachment downloaded"
       : input.event === "receipt_acknowledged"
         ? "Receipt confirmed"
+        : input.event === "unopened_reminder"
+          ? "Note still unopened"
         : input.event === "opened_destroyed"
           ? "Note opened and destroyed"
           : input.event === "opened"
@@ -119,6 +126,8 @@ export function buildSentNoteLifecycleEmailContent(input: {
       ? `Your encrypted file "${label}" was downloaded.`
       : input.event === "receipt_acknowledged"
         ? `Receipt was confirmed for your secure note "${label}".`
+        : input.event === "unopened_reminder"
+          ? `Your secure note "${label}" has not been opened yet.`
         : `Your secure note "${label}" was ${eventLabel}.`;
 
   const explanatoryLine =
@@ -128,6 +137,8 @@ export function buildSentNoteLifecycleEmailContent(input: {
         ? "This confirms the encrypted attachment was requested for download. PrivateNote cannot see the decrypted file contents."
         : input.event === "receipt_acknowledged"
           ? "The recipient confirmed they successfully decrypted the note. This is stronger than an open receipt."
+          : input.event === "unopened_reminder"
+            ? "You can keep waiting or revoke the unopened link from Activity."
           : input.event === "expired"
             ? "This means the note can no longer be opened because its expiry time passed."
             : input.event === "opened_destroyed"

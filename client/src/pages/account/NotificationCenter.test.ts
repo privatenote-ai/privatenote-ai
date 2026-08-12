@@ -7,6 +7,7 @@ import {
   statusTone,
   buildProofTimeline,
   hasProofReport,
+  deliveryStatusFilterFor,
   type NotificationItem,
 } from "./NotificationCenter.logic.ts";
 
@@ -74,9 +75,20 @@ describe("NotificationCenter helpers", () => {
       notificationStatusReceiptConfirmed: "Got it",
     }), "Got it");
     assert.equal(statusLabel("viewed", {}), "Viewed");
+    assert.equal(statusLabel("created", {}), "Active · Unopened");
     assert.match(statusTone("attachment_downloaded"), /indigo/);
     assert.match(statusTone("receipt_confirmed"), /teal/);
     assert.match(statusTone("burned"), /amber/);
+  });
+
+  it("groups delivery states into activity filters", () => {
+    assert.equal(deliveryStatusFilterFor("created"), "active");
+    assert.equal(deliveryStatusFilterFor("viewed"), "viewed");
+    assert.equal(deliveryStatusFilterFor("attachment_downloaded"), "viewed");
+    assert.equal(deliveryStatusFilterFor("receipt_confirmed"), "viewed");
+    assert.equal(deliveryStatusFilterFor("burned"), "ended");
+    assert.equal(deliveryStatusFilterFor("expired"), "ended");
+    assert.equal(deliveryStatusFilterFor("revoked"), "ended");
   });
 
   it("builds a proof timeline and detects when a report is available", () => {

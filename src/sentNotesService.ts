@@ -15,6 +15,10 @@ import {
   timingSafeEqualHex,
 } from "@shared/noteReceiptAck";
 import { buildSentNoteLifecycleEmailContent } from "@shared/sentNoteLifecycleEmail";
+import {
+  normalizeReceiptAckStatement,
+  receiptAckStatementId,
+} from "@shared/receiptAcknowledgment";
 
 export type SentNoteStatus = "created" | "opened" | "expired" | "destroyed" | "revoked";
 
@@ -33,6 +37,12 @@ export type SentNoteRow = {
   receipt_ack_token_hash: string | null;
   receipt_acknowledged_at: string | null;
   receipt_ack_notified_at: string | null;
+  receipt_ack_statement: string | null;
+  receipt_ack_statement_id: string | null;
+  activity_folder: string | null;
+  activity_tags: string | null;
+  unopened_reminder_at: string | null;
+  unopened_reminded_at: string | null;
   proof_enabled: number;
   expires_at: string | null;
   created_at: string;
@@ -68,6 +78,8 @@ export type CreateSentNoteInput = {
   requireReceiptAck?: boolean;
   /** SHA-256 hex of the 32-byte receipt ack token (required when requireReceiptAck). */
   receiptAckTokenHash?: string | null;
+  receiptAckStatement?: string | null;
+  unopenedReminderHours?: number | null;
   proofEnabled?: boolean;
   expiresAt?: string | null;
 };
@@ -187,6 +199,16 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
   const requireReceiptAck = input.requireReceiptAck === true;
   const receiptAckTokenHash =
     typeof input.receiptAckTokenHash === "string" ? input.receiptAckTokenHash.trim().toLowerCase() : "";
+  const customReceiptStatement = normalizeReceiptAckStatement(input.receiptAckStatement);
+  const isBusiness = entitlements.accountType === "business_premium";
+  if (input.receiptAckStatement != null && (!requireReceiptAck || !isBusiness || !customReceiptStatement)) {
+    throw new Error("business_custom_receipt_required");
+  }
+  const reminderHours = Number(input.unopenedReminderHours);
+  const unopenedReminderAt =
+    isBusiness && [24, 48, 72].includes(reminderHours)
+      ? new Date(Date.now() + reminderHours * 60 * 60 * 1000).toISOString()
+      : null;
   const wantsOpenNotifications =
     input.notifyOnOpen === true ||
     input.notifyOnDestroyed === true ||
@@ -241,9 +263,10 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     `INSERT INTO sent_notes (
       id, user_id, note_id, status, label, recipient_email_hint,
       notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification,
-      require_receipt_ack, receipt_ack_token_hash, proof_enabled, expires_at,
+      require_receipt_ack, receipt_ack_token_hash, receipt_ack_statement, receipt_ack_statement_id,
+      proof_enabled, expires_at, unopened_reminder_at,
       alert_notify_account_email, alert_custom_email
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -257,8 +280,11 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       hasRecipientGate ? 1 : 0,
       requireReceiptAck ? 1 : 0,
       requireReceiptAck ? receiptAckTokenHash : null,
+      requireReceiptAck ? customReceiptStatement : null,
+      requireReceiptAck && customReceiptStatement ? receiptAckStatementId(customReceiptStatement) : null,
       proofEnabled ? 1 : 0,
       input.expiresAt ?? null,
+      unopenedReminderAt,
       wantsOpenNotifications && alertNotifyAccountEmail ? 1 : 0,
       wantsOpenNotifications ? alertCustomEmail : null,
     )
@@ -311,11 +337,44 @@ export type SentNoteNotificationItem = {
   attachmentDownloadedAt: string | null;
   receiptAcknowledgedAt: string | null;
   requireReceiptAck: boolean;
+  receiptAckStatement: string | null;
+  receiptAckStatementId: string | null;
+  folder: string | null;
+  tags: string[];
+  unopenedReminderAt: string | null;
+  unopenedRemindedAt: string | null;
 };
 
-export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificationItem {
-  const { status, eventAt } = resolveSentNoteNotificationEvent(row);
+function timestampMs(value: string | null | undefined): number {
+  if (!value) return Number.NaN;
+  const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  return Date.parse(hasExplicitZone ? value : `${value.replace(" ", "T")}Z`);
+}
+
+export function toSentNoteNotificationItem(
+  row: SentNoteRow,
+  nowMs = Date.now(),
+): SentNoteNotificationItem {
+  const isEffectivelyExpired =
+    row.status === "created" &&
+    Number.isFinite(timestampMs(row.expires_at)) &&
+    timestampMs(row.expires_at) <= nowMs;
+  const effectiveRow = isEffectivelyExpired
+    ? {
+        ...row,
+        status: "expired" as const,
+        destroyed_at: row.destroyed_at ?? new Date(timestampMs(row.expires_at)).toISOString(),
+      }
+    : row;
+  const { status, eventAt } = resolveSentNoteNotificationEvent(effectiveRow);
   const proofEnabled = row.proof_enabled === 1;
+  let tags: string[] = [];
+  try {
+    const parsed = JSON.parse(row.activity_tags ?? "[]");
+    if (Array.isArray(parsed)) tags = parsed.filter((tag): tag is string => typeof tag === "string").slice(0, 10);
+  } catch {
+    tags = [];
+  }
   return {
     id: row.id,
     noteId: row.note_id,
@@ -326,7 +385,7 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     label: row.label,
     createdAt: row.created_at,
     openedAt: row.opened_at,
-    destroyedAt: row.destroyed_at,
+    destroyedAt: effectiveRow.destroyed_at,
     revokedAt: row.revoked_at,
     expiresAt: row.expires_at,
     proofEnabled,
@@ -336,6 +395,12 @@ export function toSentNoteNotificationItem(row: SentNoteRow): SentNoteNotificati
     attachmentDownloadedAt: row.attachment_downloaded_at,
     receiptAcknowledgedAt: row.receipt_acknowledged_at,
     requireReceiptAck: row.require_receipt_ack === 1,
+    receiptAckStatement: row.receipt_ack_statement ?? null,
+    receiptAckStatementId: row.receipt_ack_statement_id ?? null,
+    folder: row.activity_folder ?? null,
+    tags,
+    unopenedReminderAt: row.unopened_reminder_at ?? null,
+    unopenedRemindedAt: row.unopened_reminded_at ?? null,
   };
 }
 
@@ -345,7 +410,7 @@ export async function listSentNoteNotificationsForUser(
   limit = 50,
 ): Promise<SentNoteNotificationItem[]> {
   const rows = await listSentNotesForUser(env, userId, limit);
-  return rows.map(toSentNoteNotificationItem);
+  return rows.map((row) => toSentNoteNotificationItem(row));
 }
 
 /** Map note_id → delivery item for Activity inspect (includes soft-deleted inbox rows). */
@@ -393,6 +458,43 @@ export async function deleteSentNoteNotification(
   )
     .bind(notificationId, userId)
     .run();
+  return ((result?.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
+}
+
+export async function updateSentNoteLabel(
+  env: Env,
+  userId: string,
+  notificationId: string,
+  label: string | null,
+): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  const normalizedLabel = label?.trim().slice(0, 120) || null;
+  const result = await env.AUTH_DB.prepare(
+    `UPDATE sent_notes
+       SET label = ?
+     WHERE id = ? AND user_id = ?`,
+  )
+    .bind(normalizedLabel, notificationId, userId)
+    .run();
+  return ((result?.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
+}
+
+export async function updateSentNoteOrganization(
+  env: Env,
+  userId: string,
+  notificationId: string,
+  input: { label: string | null; folder: string | null; tags: string[] },
+): Promise<boolean> {
+  if (!env.AUTH_DB) return false;
+  const label = input.label?.trim().slice(0, 120) || null;
+  const folder = input.folder?.trim().slice(0, 80) || null;
+  const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))]
+    .slice(0, 10)
+    .map((tag) => tag.slice(0, 32));
+  const result = await env.AUTH_DB.prepare(
+    `UPDATE sent_notes SET label = ?, activity_folder = ?, activity_tags = ?
+     WHERE id = ? AND user_id = ?`,
+  ).bind(label, folder, JSON.stringify(tags), notificationId, userId).run();
   return ((result?.meta as { changes?: number } | undefined)?.changes ?? 0) > 0;
 }
 
@@ -875,7 +977,8 @@ type SentNoteLifecycleEvent =
   | "opened_destroyed"
   | "expired"
   | "attachment_downloaded"
-  | "receipt_acknowledged";
+  | "receipt_acknowledged"
+  | "unopened_reminder";
 
 async function sendSentNoteLifecycleEmail(
   env: Env,
@@ -917,7 +1020,7 @@ async function sendSentNoteLifecycleEmail(
   }
   // Receipt confirmation always notifies the verified account when no alert destinations were set.
   if (
-    event === "receipt_acknowledged" &&
+    (event === "receipt_acknowledged" || event === "unopened_reminder") &&
     recipients.size === 0 &&
     senderRow?.email &&
     isPlausibleEmailFormat(senderRow.email) &&
@@ -937,6 +1040,8 @@ async function sendSentNoteLifecycleEmail(
           ? "attachment_downloaded_notified_at = ?"
           : event === "receipt_acknowledged"
             ? "receipt_ack_notified_at = ?"
+          : event === "unopened_reminder"
+            ? "unopened_reminded_at = ?"
         : "destroyed_notified_at = ?";
   const whereClause =
     event === "opened"
@@ -947,6 +1052,8 @@ async function sendSentNoteLifecycleEmail(
           ? "attachment_downloaded_notified_at IS NULL"
           : event === "receipt_acknowledged"
             ? "receipt_ack_notified_at IS NULL"
+          : event === "unopened_reminder"
+            ? "unopened_reminded_at IS NULL"
         : "destroyed_notified_at IS NULL";
   const bindValues =
     event === "opened_destroyed" ? [eventAt, eventAt, noteId] : [eventAt, noteId];
@@ -986,6 +1093,8 @@ async function sendSentNoteLifecycleEmail(
             ? "attachment_downloaded_notified_at = NULL"
             : event === "receipt_acknowledged"
               ? "receipt_ack_notified_at = NULL"
+            : event === "unopened_reminder"
+              ? "unopened_reminded_at = NULL"
           : "destroyed_notified_at = NULL";
     await env.AUTH_DB!.prepare(`UPDATE sent_notes SET ${resetClause} WHERE note_id = ?`)
       .bind(noteId)
@@ -1026,6 +1135,39 @@ export async function processExpiredSentNotes(
       }
     }
     return { processed, notified };
+  } catch (error) {
+    return { processed: 0, notified: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function processDueUnopenedReminders(
+  env: Env,
+  sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
+  limit = 100,
+): Promise<{ processed: number; notified: number; error?: string }> {
+  if (!env.AUTH_DB) return { processed: 0, notified: 0 };
+  try {
+    const rows = await env.AUTH_DB.prepare(
+      `SELECT * FROM sent_notes
+       WHERE status = 'created'
+         AND unopened_reminder_at IS NOT NULL
+         AND unopened_reminded_at IS NULL
+         AND datetime(unopened_reminder_at) <= datetime('now')
+       ORDER BY unopened_reminder_at ASC LIMIT ?`,
+    ).bind(limit).all<SentNoteRow>();
+    let notified = 0;
+    for (const row of rows.results ?? []) {
+      await sendSentNoteLifecycleEmail(
+        env,
+        row,
+        row.note_id,
+        "unopened_reminder",
+        new Date().toISOString(),
+        { sendEmailFn },
+      );
+      notified += 1;
+    }
+    return { processed: rows.results?.length ?? 0, notified };
   } catch (error) {
     return { processed: 0, notified: 0, error: error instanceof Error ? error.message : String(error) };
   }

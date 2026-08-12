@@ -3,6 +3,17 @@ import { describe, it } from "node:test";
 import { buildSentNoteLifecycleEmailContent } from "./sentNoteLifecycleEmail.ts";
 
 describe("buildSentNoteLifecycleEmailContent", () => {
+  it("builds an unopened reminder without message content", () => {
+    const email = buildSentNoteLifecycleEmailContent({
+      event: "unopened_reminder",
+      label: "Client onboarding",
+      eventAt: "2026-08-12T10:00:00.000Z",
+      webOrigin: "https://privatenote.ai",
+    });
+    assert.match(email.subject, /still unopened/i);
+    assert.match(email.text, /revoke the unopened link/i);
+    assert.doesNotMatch(email.text, /message content:/i);
+  });
   it("builds a branded receipt email with Activity CTA and logo", () => {
     const email = buildSentNoteLifecycleEmailContent({
       event: "receipt_acknowledged",

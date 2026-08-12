@@ -10,6 +10,9 @@ import {
   recordSentNoteAttachmentDownloaded,
   revokeSentNote,
   sendRecipientVerificationCode,
+  toSentNoteNotificationItem,
+  updateSentNoteLabel,
+  updateSentNoteOrganization,
   verifyRecipientAccess,
   type SentNoteRow,
 } from "./sentNotesService.ts";
@@ -102,6 +105,12 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     receipt_ack_token_hash: null,
     receipt_acknowledged_at: null,
     receipt_ack_notified_at: null,
+    receipt_ack_statement: null,
+    receipt_ack_statement_id: null,
+    activity_folder: null,
+    activity_tags: null,
+    unopened_reminder_at: null,
+    unopened_reminded_at: null,
     proof_enabled: 1,
     expires_at: null,
     created_at: "2026-06-14T09:00:00.000Z",
@@ -154,6 +163,35 @@ describe("sent note notification service", () => {
     assert.deepEqual(db.alls[0]?.bindings, ["user-1", noteId]);
   });
 
+  it("maps Business confirmation and organization metadata", () => {
+    const item = toSentNoteNotificationItem(sentNote({
+      receipt_ack_statement: "I confirm I received these credentials securely.",
+      receipt_ack_statement_id: "credentials",
+      activity_folder: "Client A",
+      activity_tags: JSON.stringify(["credentials", "urgent"]),
+      unopened_reminder_at: "2026-06-15T09:00:00.000Z",
+    }));
+    assert.equal(item.receiptAckStatementId, "credentials");
+    assert.equal(item.folder, "Client A");
+    assert.deepEqual(item.tags, ["credentials", "urgent"]);
+    assert.equal(item.unopenedReminderAt, "2026-06-15T09:00:00.000Z");
+  });
+
+  it("shows an overdue unopened note as expired before scheduled cleanup runs", async () => {
+    const item = toSentNoteNotificationItem(
+      sentNote({
+        status: "created",
+        expires_at: "2026-06-14 10:00:00",
+        destroyed_at: null,
+      }),
+      Date.parse("2026-06-14T10:00:01.000Z"),
+    );
+
+    assert.equal(item.status, "expired");
+    assert.equal(item.eventAt, "2026-06-14T10:00:00.000Z");
+    assert.equal(item.destroyedAt, "2026-06-14T10:00:00.000Z");
+  });
+
   it("soft-deletes one notification without deleting the sent_notes row", async () => {
     const db = new FakeD1Database();
 
@@ -166,6 +204,34 @@ describe("sent note notification service", () => {
     assert.match(sql, /notification_deleted_at IS NULL/);
     assert.doesNotMatch(sql, /\bDELETE\b/i);
     assert.deepEqual(db.runs[0]?.bindings, ["sent-note-1", "user-1"]);
+  });
+
+  it("updates a sent-note label only for its owner", async () => {
+    const db = new FakeD1Database();
+
+    const updated = await updateSentNoteLabel(
+      envWithDb(db),
+      "user-1",
+      "sent-note-1",
+      "  Payroll access  ",
+    );
+
+    assert.equal(updated, true);
+    assert.match(db.runs[0]?.sql ?? "", /UPDATE sent_notes/);
+    assert.deepEqual(db.runs[0]?.bindings, ["Payroll access", "sent-note-1", "user-1"]);
+  });
+
+  it("updates Business folder and tags with the label", async () => {
+    const db = new FakeD1Database();
+    const updated = await updateSentNoteOrganization(envWithDb(db), "user-1", "sent-note-1", {
+      label: "Payroll",
+      folder: "Finance",
+      tags: ["urgent", "quarterly", "urgent"],
+    });
+    assert.equal(updated, true);
+    assert.deepEqual(db.runs[0]?.bindings, [
+      "Payroll", "Finance", JSON.stringify(["urgent", "quarterly"]), "sent-note-1", "user-1",
+    ]);
   });
 
   it("soft-clears notification history without deleting operational records", async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   Activity,
@@ -18,6 +18,8 @@ import {
   Mic,
   MonitorSmartphone,
   Paperclip,
+  Pencil,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Timer,
@@ -26,6 +28,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,14 +58,18 @@ import {
   deleteNoteLabel,
   deleteNoteLabels,
   readNoteLabels,
+  saveNoteLabel,
 } from "@/utils/noteLabelsStorage";
+import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import {
   buildProofTimeline,
+  deliveryStatusFilterFor,
   formatDeviceClass,
   formatProofTimestamp,
   statusLabel,
   type NotificationItem,
+  type DeliveryStatusFilter,
   type ProofTimelineEntry,
 } from "./NotificationCenter.logic";
 
@@ -591,6 +598,29 @@ function DeliveryDetail({
 
       {createOptions}
 
+      {delivery.receiptAckStatement ? (
+        <section className="rounded-2xl border border-teal-200/70 bg-teal-50/50 px-4 py-4 dark:border-teal-900/50 dark:bg-teal-950/20">
+          <h3 className="text-sm font-semibold text-foreground">
+            {t.authActivityConfirmationStatement ?? "Confirmation statement"}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">“{delivery.receiptAckStatement}”</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {delivery.receiptAcknowledgedAt
+              ? (t.authActivityConfirmationRecorded ?? "Recipient acknowledgment was recorded.")
+              : (t.authActivityConfirmationPending ?? "Waiting for recipient acknowledgment.")}
+          </p>
+        </section>
+      ) : null}
+
+      {delivery.unopenedReminderAt ? (
+        <p className="text-xs text-muted-foreground">
+          {delivery.unopenedRemindedAt
+            ? (t.authActivityReminderSent ?? "Unopened reminder sent")
+            : (t.authActivityReminderScheduled ?? "Unopened reminder scheduled")}{" "}
+          · {formatProofTimestamp(delivery.unopenedRemindedAt ?? delivery.unopenedReminderAt)}
+        </p>
+      ) : null}
+
       <section className="space-y-4 rounded-2xl border border-border/70 bg-background px-4 py-4 shadow-sm">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-700 dark:text-teal-300">
@@ -748,6 +778,13 @@ export default function AccountActivity() {
   const [clearing, setClearing] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<NotificationItem | null>(null);
   const [revokingNoteId, setRevokingNoteId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<DeliveryStatusFilter>("all");
+  const [refreshing, setRefreshing] = useState(false);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editFolder, setEditFolder] = useState("");
+  const [editTags, setEditTags] = useState("");
+  const [savingLabel, setSavingLabel] = useState(false);
 
   const selectedEvent = events.find((entry) => entry.id === selectedId) ?? null;
   const selectedNamedLabel =
@@ -789,6 +826,145 @@ export default function AccountActivity() {
     }
     void load();
   }, [authLoading, user, load]);
+
+  useEffect(() => {
+    if (!user) return;
+    const refreshVisibleActivity = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const interval = window.setInterval(refreshVisibleActivity, 30_000);
+    document.addEventListener("visibilitychange", refreshVisibleActivity);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshVisibleActivity);
+    };
+  }, [user, load]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<DeliveryStatusFilter, number> = {
+      all: events.length,
+      active: 0,
+      viewed: 0,
+      ended: 0,
+    };
+    for (const event of events) {
+      if (!event.delivery) continue;
+      counts[deliveryStatusFilterFor(event.delivery.status)] += 1;
+    }
+    return counts;
+  }, [events]);
+
+  const visibleEvents = useMemo(() => {
+    if (statusFilter === "all") return events;
+    return events.filter(
+      (event) =>
+        event.delivery && deliveryStatusFilterFor(event.delivery.status) === statusFilter,
+    );
+  }, [events, statusFilter]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const openLabelEditor = (event: ActivityEvent, click?: React.MouseEvent) => {
+    click?.stopPropagation();
+    if (!event.noteId) return;
+    setEditTargetId(event.id);
+    setEditLabel(noteLabels[event.noteId] ?? event.delivery?.label ?? "");
+    setEditFolder(event.delivery?.folder ?? "");
+    setEditTags((event.delivery?.tags ?? []).join(", "));
+  };
+
+  const saveEditedLabel = async () => {
+    const event = events.find((item) => item.id === editTargetId);
+    if (!event?.noteId) return;
+    const normalized = editLabel.trim().slice(0, NOTE_LABEL_MAX_LENGTH);
+    const normalizedFolder = editFolder.trim().slice(0, 80);
+    const normalizedTags = [...new Set(editTags.split(",").map((tag) => tag.trim()).filter(Boolean))]
+      .slice(0, 10)
+      .map((tag) => tag.slice(0, 32));
+    setSavingLabel(true);
+    setError(null);
+    try {
+      if (event.delivery?.id) {
+        await apiRequest(
+          `/api/auth/account/notifications/${encodeURIComponent(event.delivery.id)}/label`,
+          "PATCH",
+          { label: normalized || null, folder: normalizedFolder || null, tags: normalizedTags },
+        );
+      }
+      if (normalized) saveNoteLabel(event.noteId, normalized);
+      else deleteNoteLabel(event.noteId);
+      setNoteLabels(readNoteLabels());
+      setEvents((previous) =>
+        previous.map((item) =>
+          item.id === event.id && item.delivery
+            ? {
+                ...item,
+                delivery: {
+                  ...item.delivery,
+                  label: normalized || null,
+                  folder: normalizedFolder || null,
+                  tags: normalizedTags,
+                },
+              }
+            : item,
+        ),
+      );
+      setEditTargetId(null);
+      toast({
+        title: tx("authActivityLabelSavedTitle", normalized ? "Label saved" : "Label removed"),
+        description: tx(
+          "authActivityLabelSavedBody",
+          "The label helps identify this message; its encrypted contents remain private.",
+        ),
+      });
+    } catch {
+      setError(tx("authActivityLabelSaveError", "Could not save the note label."));
+    } finally {
+      setSavingLabel(false);
+    }
+  };
+
+  const exportAuditMetadata = () => {
+    const exportRows = events
+      .filter((event) => event.delivery)
+      .map((event) => ({
+        reference: event.delivery!.displayNoteId,
+        label: noteLabels[event.noteId ?? ""] ?? event.delivery!.label ?? null,
+        folder: event.delivery!.folder ?? null,
+        tags: event.delivery!.tags ?? [],
+        status: event.delivery!.status,
+        createdAt: event.delivery!.createdAt ?? event.createdAt,
+        openedAt: event.delivery!.openedAt ?? null,
+        receiptAcknowledgedAt: event.delivery!.receiptAcknowledgedAt ?? null,
+        receiptStatementId: event.delivery!.receiptAckStatementId ?? null,
+        receiptStatement: event.delivery!.receiptAckStatement ?? null,
+        destroyedAt: event.delivery!.destroyedAt ?? null,
+        revokedAt: event.delivery!.revokedAt ?? null,
+        expiresAt: event.delivery!.expiresAt ?? null,
+        unopenedReminderAt: event.delivery!.unopenedReminderAt ?? null,
+        unopenedRemindedAt: event.delivery!.unopenedRemindedAt ?? null,
+      }));
+    const payload = JSON.stringify({
+      kind: "privatenote.activity.audit",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      contentIncluded: false,
+      events: exportRows,
+    }, null, 2);
+    const url = URL.createObjectURL(new Blob([`${payload}\n`], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `privatenote-activity-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const periodLabel = (period: TimePeriod): string => {
     switch (period) {
@@ -975,7 +1151,13 @@ export default function AccountActivity() {
     );
   }
 
-  const groups = groupEvents(events);
+  const groups = groupEvents(visibleEvents);
+  const statusFilters: Array<{ value: DeliveryStatusFilter; label: string }> = [
+    { value: "all", label: tx("authActivityFilterAll", "All") },
+    { value: "active", label: tx("authActivityFilterActive", "Active") },
+    { value: "viewed", label: tx("authActivityFilterViewed", "Viewed") },
+    { value: "ended", label: tx("authActivityFilterEnded", "Ended") },
+  ];
 
   return (
     <AccountSettingsShell>
@@ -991,15 +1173,34 @@ export default function AccountActivity() {
             </p>
           </div>
           {events.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0 text-muted-foreground"
-              onClick={() => setClearDialogOpen(true)}
-            >
-              {tx("authActivityClearHistory", "Clear history")}
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              {entitlements.configuredAccountType === "business_premium" ? (
+                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={exportAuditMetadata}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  {tx("authActivityExportAudit", "Export audit")}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+                {tx("authActivityRefresh", "Refresh")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => setClearDialogOpen(true)}
+              >
+                {tx("authActivityClearHistory", "Clear history")}
+              </Button>
+            </div>
           ) : null}
         </div>
 
@@ -1014,6 +1215,34 @@ export default function AccountActivity() {
           </div>
         ) : null}
 
+        {canTrackDelivery && events.length > 0 ? (
+          <div
+            className="flex flex-wrap gap-1 rounded-2xl border border-border/70 bg-muted/25 p-1.5"
+            role="group"
+            aria-label={tx("authActivityFilterLabel", "Filter messages by status")}
+          >
+            {statusFilters.map((filter) => {
+              const selected = statusFilter === filter.value;
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setStatusFilter(filter.value)}
+                  aria-pressed={selected}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
+                    selected
+                      ? "bg-background text-foreground shadow-sm ring-1 ring-border/70"
+                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                  }`}
+                >
+                  {filter.label}
+                  <span className="tabular-nums text-[10px] opacity-70">{statusCounts[filter.value]}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {events.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
@@ -1024,6 +1253,15 @@ export default function AccountActivity() {
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {t.authActivityCreateHint || "Create a note while signed in to see it here."}
+            </p>
+          </div>
+        ) : visibleEvents.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {tx("authActivityNoStatusMatches", "No messages with this status")}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {tx("authActivityNoStatusMatchesHint", "Choose another status or refresh activity.")}
             </p>
           </div>
         ) : (
@@ -1083,6 +1321,12 @@ export default function AccountActivity() {
                                   {namedLabel}
                                 </p>
                               ) : null}
+                              {delivery?.folder || delivery?.tags?.length ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {delivery.folder ? <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">{delivery.folder}</span> : null}
+                                  {(delivery.tags ?? []).map((tag) => <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">#{tag}</span>)}
+                                </div>
+                              ) : null}
                               <div className="flex flex-wrap items-center gap-2">
                                 <p
                                   className={`text-sm ${
@@ -1132,16 +1376,27 @@ export default function AccountActivity() {
                               aria-hidden
                             />
                           </button>
-                          <div className="flex items-start border-l border-border/50 py-3 pr-2">
+                          <div className="flex flex-col items-center gap-1 border-l border-border/50 py-3 pr-2">
                             <button
                               type="button"
                               onClick={(e) => void handleDelete(ev.id, e)}
                               disabled={deletingId === ev.id || Boolean(revokingNoteId)}
-                              className="rounded-xl p-2 text-muted-foreground/50 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 group-hover:opacity-100 disabled:opacity-40 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                              className="rounded-xl p-2 text-muted-foreground/60 transition-all hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                               aria-label={tx("authActivityDeleteAria", "Delete activity item")}
                             >
                               <Trash2 className="h-4 w-4" aria-hidden />
                             </button>
+                            {canTrackDelivery && ev.noteId ? (
+                              <button
+                                type="button"
+                                onClick={(e) => openLabelEditor(ev, e)}
+                                disabled={deletingId === ev.id || Boolean(revokingNoteId)}
+                                className="rounded-xl p-2 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
+                                aria-label={tx("authActivityEditLabelAria", "Edit note label")}
+                              >
+                                <Pencil className="h-4 w-4" aria-hidden />
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       </li>
@@ -1209,6 +1464,70 @@ export default function AccountActivity() {
               </div>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open && !savingLabel) setEditTargetId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tx("authActivityEditLabelTitle", "Edit note label")}</DialogTitle>
+            <DialogDescription>
+              {tx(
+                "authActivityEditLabelBody",
+                "Add a private reference such as “Payroll access” or “Client onboarding.” Do not put the secret itself in the label.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveEditedLabel();
+            }}
+          >
+            <div className="space-y-1.5">
+              <label htmlFor="activity-note-label" className="text-sm font-medium text-foreground">
+                {tx("authActivityNoteLabel", "Note label")}
+              </label>
+              <Input
+                id="activity-note-label"
+                value={editLabel}
+                onChange={(event) => setEditLabel(event.target.value)}
+                maxLength={NOTE_LABEL_MAX_LENGTH}
+                autoFocus
+                placeholder={tx("authActivityNoteLabelPlaceholder", "e.g. Client onboarding")}
+              />
+              <p className="text-right text-xs tabular-nums text-muted-foreground">
+                {editLabel.length}/{NOTE_LABEL_MAX_LENGTH}
+              </p>
+            </div>
+            {entitlements.configuredAccountType === "business_premium" ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="activity-note-folder" className="text-sm font-medium text-foreground">{tx("authActivityFolder", "Folder")}</label>
+                  <Input id="activity-note-folder" value={editFolder} onChange={(event) => setEditFolder(event.target.value)} maxLength={80} placeholder="Client projects" />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="activity-note-tags" className="text-sm font-medium text-foreground">{tx("authActivityTags", "Tags")}</label>
+                  <Input id="activity-note-tags" value={editTags} onChange={(event) => setEditTags(event.target.value)} placeholder="urgent, finance" />
+                  <p className="text-xs text-muted-foreground">{tx("authActivityTagsHint", "Separate up to 10 tags with commas.")}</p>
+                </div>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" disabled={savingLabel} onClick={() => setEditTargetId(null)}>
+                {tx("cancel", "Cancel")}
+              </Button>
+              <Button type="submit" disabled={savingLabel}>
+                {savingLabel ? tx("saving", "Saving…") : tx("save", "Save")}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 

@@ -22,6 +22,12 @@ export type NotificationItem = {
   attachmentDownloadedAt?: string | null;
   receiptAcknowledgedAt?: string | null;
   requireReceiptAck?: boolean;
+  receiptAckStatement?: string | null;
+  receiptAckStatementId?: string | null;
+  folder?: string | null;
+  tags?: string[];
+  unopenedReminderAt?: string | null;
+  unopenedRemindedAt?: string | null;
 };
 
 export type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
@@ -30,6 +36,25 @@ export type NotificationGroup = {
   period: TimePeriod;
   items: NotificationItem[];
 };
+
+export type DeliveryStatusFilter = "all" | "active" | "viewed" | "ended";
+
+export function deliveryStatusFilterFor(
+  status: SentNoteNotificationStatus,
+): Exclude<DeliveryStatusFilter, "all"> {
+  switch (status) {
+    case "created":
+      return "active";
+    case "viewed":
+    case "attachment_downloaded":
+    case "receipt_confirmed":
+      return "viewed";
+    case "burned":
+    case "expired":
+    case "revoked":
+      return "ended";
+  }
+}
 
 export type ProofTimelineEntry = {
   key: "created" | "opened" | "receipt" | "attachment" | "destroyed" | "expired" | "revoked";
@@ -134,7 +159,7 @@ export function statusLabel(
 ): string {
   switch (status) {
     case "created":
-      return t.notificationStatusCreated ?? "Created";
+      return t.notificationStatusActiveUnopened ?? "Active · Unopened";
     case "viewed":
       return t.notificationStatusViewed ?? "Viewed";
     case "burned":

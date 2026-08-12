@@ -36,6 +36,7 @@ import {
   getUserAccountType,
   getUserNoteDefaults,
   listSentNoteNotificationsForUser,
+  updateSentNoteOrganization,
   upsertUserNoteDefaults,
   type SentNoteNotificationItem,
 } from "../sentNotesService";
@@ -4465,6 +4466,56 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     }
     const cleared = await clearSentNoteNotifications(env, session.id);
     return jsonResponse({ ok: true, cleared }, 200, request);
+  }
+
+  {
+    const labelMatch = pathname.match(/^\/api\/auth\/account\/notifications\/([^/]+)\/label$/);
+    if (labelMatch && method === "PATCH") {
+      if (!env.AUTH_DB) {
+        return jsonResponse({ message: "Auth database not configured" }, 501, request);
+      }
+      const session = await getSessionFromRequest(env, request, { rotate: false });
+      if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+      const entitlements = await getAccountEntitlements(env, session.id);
+      if (!entitlements.capabilities.sentNotesDashboard) {
+        return jsonResponse({ error: "premium_required" }, 403, request);
+      }
+      const notificationId = decodeURIComponent(labelMatch[1] ?? "");
+      let body: { label?: unknown; folder?: unknown; tags?: unknown };
+      try {
+        body = (await readJsonBody(request)) as { label?: unknown; folder?: unknown; tags?: unknown };
+      } catch {
+        return jsonResponse({ message: "Invalid JSON" }, 400, request);
+      }
+      if (body.label !== null && typeof body.label !== "string") {
+        return jsonResponse({ message: "Label must be text or null" }, 400, request);
+      }
+      const label = typeof body.label === "string" ? body.label.trim() : null;
+      if (label && label.length > 120) {
+        return jsonResponse({ message: "Label must be 120 characters or fewer" }, 400, request);
+      }
+      if (body.folder !== undefined && body.folder !== null && typeof body.folder !== "string") {
+        return jsonResponse({ message: "Folder must be text or null" }, 400, request);
+      }
+      const folder = typeof body.folder === "string" ? body.folder.trim() : null;
+      if (folder && folder.length > 80) return jsonResponse({ message: "Folder is too long" }, 400, request);
+      const tags = Array.isArray(body.tags)
+        ? body.tags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim()).filter(Boolean)
+        : [];
+      if (body.tags !== undefined && !Array.isArray(body.tags)) {
+        return jsonResponse({ message: "Tags must be a list" }, 400, request);
+      }
+      if (tags.length > 10 || tags.some((tag) => tag.length > 32)) {
+        return jsonResponse({ message: "Use up to 10 tags of 32 characters each" }, 400, request);
+      }
+      const updated = await updateSentNoteOrganization(env, session.id, notificationId, {
+        label,
+        folder,
+        tags,
+      });
+      if (!updated) return jsonResponse({ message: "Not found" }, 404, request);
+      return jsonResponse({ ok: true, label: label || null, folder: folder || null, tags }, 200, request);
+    }
   }
 
   {

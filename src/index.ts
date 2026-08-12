@@ -6,6 +6,7 @@ import {
   cleanupExpiredSessions,
   cleanupExpiredNoteFileStorage,
   processExpiredSentNoteNotifications,
+  processUnopenedNoteReminders,
   processPendingAccountDeletions,
 } from "./routes";
 import type { Env } from "./types";
@@ -166,6 +167,11 @@ export default {
       const sentNoteResult = await processExpiredSentNoteNotifications(env);
       console.log(
         `[CRON] Sent-note expiry notifications: processed ${sentNoteResult.processed}, notified ${sentNoteResult.notified}${sentNoteResult.error ? `, error: ${sentNoteResult.error}` : ''}`,
+      );
+
+      const reminderResult = await processUnopenedNoteReminders(env);
+      console.log(
+        `[CRON] Unopened reminders: processed ${reminderResult.processed}, notified ${reminderResult.notified}${reminderResult.error ? `, error: ${reminderResult.error}` : ""}`,
       );
 
       const noteFileStorageResult = await cleanupExpiredNoteFileStorage(env);

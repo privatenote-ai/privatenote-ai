@@ -26,6 +26,7 @@ import {
 } from "@shared/noteExpiry";
 import { planFeaturesFor } from "@shared/planCatalog";
 import { toRevealBranding } from "@shared/businessBranding";
+import { BUSINESS_RECEIPT_ACK_PRESETS } from "@shared/receiptAcknowledgment";
 import {
   NOTE_READ_LIMIT_DEFAULT,
   clampNoteReadLimitForAccount,
@@ -465,6 +466,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [delayedReveal, setDelayedReveal] = useState(false);
   const [opensAtLocal, setOpensAtLocal] = useState("");
   const [requireReceiptAck, setRequireReceiptAck] = useState(false);
+  const [receiptAckStatement, setReceiptAckStatement] = useState<string>(
+    BUSINESS_RECEIPT_ACK_PRESETS[0].label,
+  );
+  const [unopenedReminderHours, setUnopenedReminderHours] = useState<number | null>(null);
   const [alertNotifyAccountEmail, setAlertNotifyAccountEmail] = useState(true);
   const [alertCustomEmail, setAlertCustomEmail] = useState("");
   const [requireRecipientVerification, setRequireRecipientVerification] = useState(false);
@@ -1908,7 +1913,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           ? {
               requireReceiptAck: true,
               receiptAckTokenHash,
+              ...(accountType === "business_premium" && receiptAckStatement.trim()
+                ? { receiptAckStatement: receiptAckStatement.trim() }
+                : {}),
             }
+          : {}),
+        ...(accountType === "business_premium" && unopenedReminderHours
+          ? { unopenedReminderHours }
           : {}),
         ...(applyNoteLabel ? { label: applyNoteLabel } : {}),
         fileAccessWindowSeconds,
@@ -3184,6 +3195,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setOpensAtLocal={setOpensAtLocal}
                 requireReceiptAck={requireReceiptAck}
                 setRequireReceiptAck={setRequireReceiptAck}
+                receiptAckStatement={receiptAckStatement}
+                setReceiptAckStatement={setReceiptAckStatement}
+                unopenedReminderHours={unopenedReminderHours}
+                setUnopenedReminderHours={setUnopenedReminderHours}
                 noteLabel={noteLabel}
                 setNoteLabel={setNoteLabel}
                 isPremiumUser={isPremiumUser}
@@ -3613,6 +3628,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setOpensAtLocal,
               requireReceiptAck,
               setRequireReceiptAck,
+              receiptAckStatement,
+              setReceiptAckStatement,
+              unopenedReminderHours,
+              setUnopenedReminderHours,
               noteLabel,
               setNoteLabel,
               isPremiumUser,

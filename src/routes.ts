@@ -81,6 +81,7 @@ import {
   isRecipientVerified,
   noteRequiresRecipientVerification,
   processExpiredSentNotes,
+  processDueUnopenedReminders,
   recipientVerifiedCookieHeader,
   recordSentNoteOpened,
   recordSentNoteAttachmentDownloaded,
@@ -93,6 +94,7 @@ import {
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
 import { toRevealBranding } from "@shared/businessBranding";
+import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -967,6 +969,8 @@ async function registerPremiumSentNote(
     requireRecipientVerification?: boolean;
     requireReceiptAck?: boolean;
     receiptAckTokenHash?: string | null;
+    receiptAckStatement?: string | null;
+    unopenedReminderHours?: number | null;
     recipientEmail?: string | null;
     alertNotifyAccountEmail?: boolean;
     alertCustomEmail?: string | null;
@@ -1011,6 +1015,8 @@ async function registerPremiumSentNote(
       requireRecipientVerification,
       requireReceiptAck,
       receiptAckTokenHash: input.receiptAckTokenHash,
+      receiptAckStatement: input.receiptAckStatement,
+      unopenedReminderHours: input.unopenedReminderHours,
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
@@ -1072,10 +1078,8 @@ const getEuSecureNotesNamespace = (env: Env): DurableObjectNamespace => {
   }
 };
 
-// EU storage migration fallback: keep legacy global namespace reads until 2026-07-03
-// so pre-migration notes with the maximum 30-day expiry can still be opened.
-const getSecureNoteStub = (env: Env, id: string, useEuNamespace: boolean): DurableObjectStub => {
-  const namespace = useEuNamespace ? getEuSecureNotesNamespace(env) : env.SECURE_NOTES;
+const getSecureNoteStub = (env: Env, id: string): DurableObjectStub => {
+  const namespace = getEuSecureNotesNamespace(env);
   return namespace.get(namespace.idFromName(id));
 };
 
@@ -7696,13 +7700,8 @@ export async function cleanupExpiredNoteFileStorage(
       checked += 1;
       const doUrl = new URL(`https://internal.privatenote.invalid/api/notes/${noteId}`);
       const request = new Request(doUrl.toString(), { method: "GET" });
-      const stub = getSecureNoteStub(env, noteId, true);
-      let response = await stub.fetch(request as any);
-
-      if (response.status === 404) {
-        const legacyStub = getSecureNoteStub(env, noteId, false);
-        response = await legacyStub.fetch(request as any);
-      }
+      const stub = getSecureNoteStub(env, noteId);
+      const response = await stub.fetch(request as any);
 
       if (response.status === 404) {
         await cleanupNoteFileChunks(env, noteId, "scheduled expired or destroyed attachment cleanup");
@@ -9126,6 +9125,26 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
     }
+    const customReceiptStatement = normalizeReceiptAckStatement(requestBody?.receiptAckStatement);
+    if (requestBody?.receiptAckStatement != null) {
+      const creationAccountType = await noteCreationAccountType(env, request);
+      if (creationAccountType !== "business_premium" || !requireReceiptAck || !customReceiptStatement) {
+        return jsonResponse(
+          { error: "business_custom_receipt_required", message: "Custom confirmation statements require Business and receipt confirmation." },
+          403,
+          request,
+        );
+      }
+      requestBody.receiptAckStatement = customReceiptStatement;
+    }
+    if (requestBody?.unopenedReminderHours != null) {
+      const creationAccountType = await noteCreationAccountType(env, request);
+      const reminderHours = Number(requestBody.unopenedReminderHours);
+      if (creationAccountType !== "business_premium" || ![24, 48, 72].includes(reminderHours)) {
+        return jsonResponse({ error: "invalid_unopened_reminder" }, 403, request);
+      }
+      requestBody.unopenedReminderHours = reminderHours;
+    }
 
     const id = requestedId || crypto.randomUUID();
 
@@ -9224,7 +9243,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    const stub = getSecureNoteStub(env, id, true);
+    const stub = getSecureNoteStub(env, id);
     const doUrl = new URL(request.url);
     doUrl.pathname = `/api/notes/${id}`;
 
@@ -9292,6 +9311,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         receiptAckTokenHash:
           typeof requestBody?.receiptAckTokenHash === "string"
             ? requestBody.receiptAckTokenHash.trim().toLowerCase()
+            : null,
+        receiptAckStatement:
+          typeof requestBody?.receiptAckStatement === "string"
+            ? requestBody.receiptAckStatement
+            : null,
+        unopenedReminderHours:
+          typeof requestBody?.unopenedReminderHours === "number"
+            ? requestBody.unopenedReminderHours
             : null,
         recipientEmail:
           typeof requestBody?.recipientEmail === "string" ? requestBody.recipientEmail : null,
@@ -9716,13 +9743,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       }
     }
 
-    const stub = getSecureNoteStub(env, id, true);
+    const stub = getSecureNoteStub(env, id);
     let doResponse = await stub.fetch(request as any);
-
-    if (doResponse.status === 404) {
-      const legacyStub = getSecureNoteStub(env, id, false);
-      doResponse = await legacyStub.fetch(request as any);
-    }
 
     if (!doResponse.ok) {
       let errorBodyPreview = "";
@@ -9832,6 +9854,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
                 required: true,
                 acknowledged: Boolean(sent.receipt_acknowledged_at),
                 acknowledgedAt: sent.receipt_acknowledged_at,
+                statement: sent.receipt_ack_statement,
+                statementId: sent.receipt_ack_statement_id,
               },
             },
             doResponse.status,
@@ -9881,15 +9905,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     try {
-      const stub = getSecureNoteStub(env, id, true);
+      const stub = getSecureNoteStub(env, id);
       const deleteRequest = new Request(new URL(`/api/notes/${id}`, request.url).toString(), {
         method: "DELETE",
       });
-      let doResponse = await stub.fetch(deleteRequest as any);
-      if (doResponse.status === 404) {
-        const legacyStub = getSecureNoteStub(env, id, false);
-        doResponse = await legacyStub.fetch(deleteRequest as any);
-      }
+      const doResponse = await stub.fetch(deleteRequest as any);
       if (doResponse.ok || doResponse.status === 404) {
         await cleanupNoteFileChunks(env, id, `note revoked (${doResponse.status})`);
         await clearRecipientGate(env, id);
@@ -9944,13 +9964,8 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   const noteParams = parsePathParams(pathname, "/api/notes/:id");
   if (noteParams && (method === "GET" || method === "DELETE")) {
     const { id } = noteParams;
-    const stub = getSecureNoteStub(env, id, true);
-    let doResponse = await stub.fetch(request as any);
-
-    if (doResponse.status === 404) {
-      const legacyStub = getSecureNoteStub(env, id, false);
-      doResponse = await legacyStub.fetch(request as any);
-    }
+    const stub = getSecureNoteStub(env, id);
+    const doResponse = await stub.fetch(request as any);
     if (method === "DELETE" && (doResponse.ok || doResponse.status === 404)) {
       await cleanupNoteFileChunks(env, id, `note delete returned ${doResponse.status}`);
       try {
@@ -10810,6 +10825,16 @@ export async function processExpiredSentNoteNotifications(
   env: Env,
 ): Promise<{ processed: number; notified: number; error?: string }> {
   return processExpiredSentNotes(env, async (to, subject, text, html) => {
+    const result = await sendEmail(env, { to, subject, text, html });
+    if (!result.ok) throw new Error(result.error ?? "Email send failed");
+    return result;
+  });
+}
+
+export async function processUnopenedNoteReminders(
+  env: Env,
+): Promise<{ processed: number; notified: number; error?: string }> {
+  return processDueUnopenedReminders(env, async (to, subject, text, html) => {
     const result = await sendEmail(env, { to, subject, text, html });
     if (!result.ok) throw new Error(result.error ?? "Email send failed");
     return result;

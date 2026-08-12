@@ -35,6 +35,10 @@ import {
 } from "@shared/noteFileAccess";
 import type { AccountType } from "@shared/planCatalog";
 import {
+  BUSINESS_RECEIPT_ACK_PRESETS,
+  RECEIPT_ACK_STATEMENT_MAX_LENGTH,
+} from "@shared/receiptAcknowledgment";
+import {
   DEFAULT_STRONG_PASSWORD_LENGTH,
   TRANSPORT_SAFE_STRONG_PASSWORD_CHARSET,
 } from "@shared/transportSafePassword";
@@ -394,6 +398,10 @@ export type NoteSettingsPanelProps = {
   /** Starter+: recipient confirms receipt after successful decrypt. */
   requireReceiptAck: boolean;
   setRequireReceiptAck: (v: boolean) => void;
+  receiptAckStatement: string;
+  setReceiptAckStatement: (v: string) => void;
+  unopenedReminderHours: number | null;
+  setUnopenedReminderHours: (v: number | null) => void;
   noteLabel: string;
   setNoteLabel: (v: string) => void;
   isPremiumUser: boolean;
@@ -463,6 +471,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setOpensAtLocal,
   requireReceiptAck,
   setRequireReceiptAck,
+  receiptAckStatement,
+  setReceiptAckStatement,
+  unopenedReminderHours,
+  setUnopenedReminderHours,
   noteLabel,
   setNoteLabel,
   isPremiumUser,
@@ -1347,6 +1359,59 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   )}
                 </div>
               </div>
+              {isConfiguredBusiness && requireReceiptAck ? (
+                <div className="space-y-2 rounded-md border border-teal-200/70 bg-teal-50/50 p-3 dark:border-teal-900/50 dark:bg-teal-950/20">
+                  <label htmlFor="receipt-confirmation-preset" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {t.settingsReceiptStatementPreset ?? "Confirmation statement"}
+                  </label>
+                  <select
+                    id="receipt-confirmation-preset"
+                    value={BUSINESS_RECEIPT_ACK_PRESETS.some((preset) => preset.label === receiptAckStatement) ? receiptAckStatement : "custom"}
+                    onChange={(event) => {
+                      if (event.target.value !== "custom") setReceiptAckStatement(event.target.value);
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    {BUSINESS_RECEIPT_ACK_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.label}>{preset.label}</option>
+                    ))}
+                    <option value="custom">{t.settingsReceiptStatementCustom ?? "Custom statement"}</option>
+                  </select>
+                  <textarea
+                    value={receiptAckStatement}
+                    onChange={(event) => setReceiptAckStatement(event.target.value)}
+                    maxLength={RECEIPT_ACK_STATEMENT_MAX_LENGTH}
+                    rows={2}
+                    placeholder="I confirm I received this secure message."
+                    className="w-full resize-none rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t.settingsReceiptStatementHint ?? "Shown after decryption. This records acknowledgment, not legal proof or verified identity."}
+                  </p>
+                </div>
+              ) : null}
+              {isConfiguredBusiness ? (
+                <div className={SETTINGS_FIELD_ROW}>
+                  <SettingsFieldLabel
+                    htmlFor="unopened-reminder"
+                    icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                    iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                    label={t.settingsUnopenedReminder ?? "Unopened reminder"}
+                    info={t.settingsUnopenedReminderInfo ?? "Email me if this note is still unopened."}
+                  />
+                  <select
+                    id="unopened-reminder"
+                    value={unopenedReminderHours ?? ""}
+                    onChange={(event) => setUnopenedReminderHours(event.target.value ? Number(event.target.value) : null)}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <option value="">{t.settingsUnopenedReminderOff ?? "Off"}</option>
+                    <option value="24">{t.settingsUnopenedReminder24 ?? "After 24 hours"}</option>
+                    <option value="48">{t.settingsUnopenedReminder48 ?? "After 48 hours"}</option>
+                    <option value="72">{t.settingsUnopenedReminder72 ?? "After 72 hours"}</option>
+                  </select>
+                </div>
+              ) : null}
               <div className={SETTINGS_FIELD_ROW}>
                 <div>
                   <SettingsFieldLabel
