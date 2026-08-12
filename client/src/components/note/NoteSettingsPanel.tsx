@@ -1494,24 +1494,46 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               ) : null}
               {isConfiguredBusiness ? (
                 <div className={SETTINGS_FIELD_ROW}>
-                  <SettingsFieldLabel
-                    htmlFor="unopened-reminder"
-                    icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
-                    iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
-                    label={t.settingsUnopenedReminder ?? "Unopened reminder"}
-                    info={t.settingsUnopenedReminderInfo ?? "Email me if this note is still unopened."}
-                  />
-                  <select
-                    id="unopened-reminder"
-                    value={unopenedReminderHours ?? ""}
-                    onChange={(event) => setUnopenedReminderHours(event.target.value ? Number(event.target.value) : null)}
-                    className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
-                  >
-                    <option value="">{t.settingsUnopenedReminderOff ?? "Off"}</option>
-                    <option value="24">{t.settingsUnopenedReminder24 ?? "After 24 hours"}</option>
-                    <option value="48">{t.settingsUnopenedReminder48 ?? "After 48 hours"}</option>
-                    <option value="72">{t.settingsUnopenedReminder72 ?? "After 72 hours"}</option>
-                  </select>
+                  <div>
+                    <SettingsFieldLabel
+                      htmlFor="unopened-reminder"
+                      icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
+                      iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
+                      label={t.settingsUnopenedReminder ?? "Unopened reminder"}
+                      info={
+                        t.settingsUnopenedReminderInfo ??
+                        "Email me if this note is still unopened."
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <select
+                      id="unopened-reminder"
+                      value={unopenedReminderHours ?? ""}
+                      onChange={(event) =>
+                        setUnopenedReminderHours(
+                          event.target.value ? Number(event.target.value) : null,
+                        )
+                      }
+                      className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                      style={SELECT_CHEVRON_STYLE}
+                    >
+                      <option value="">{t.settingsUnopenedReminderOff ?? "Off"}</option>
+                      <option value="24">
+                        {t.settingsUnopenedReminder24 ?? "After 24 hours"}
+                      </option>
+                      <option value="48">
+                        {t.settingsUnopenedReminder48 ?? "After 48 hours"}
+                      </option>
+                      <option value="72">
+                        {t.settingsUnopenedReminder72 ?? "After 72 hours"}
+                      </option>
+                    </select>
+                    <SettingsFieldHelper>
+                      {t.settingsUnopenedReminderHint ??
+                        "Only sent if the note is still unopened after the delay."}
+                    </SettingsFieldHelper>
+                  </div>
                 </div>
               ) : null}
               <div className={SETTINGS_FIELD_ROW}>

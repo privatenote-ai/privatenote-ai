@@ -137,8 +137,12 @@ const Home: React.FC = () => {
           </div>
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
-              <span className="block">{t.homeHeroLine1}</span>
-              <span className="block mt-0.5 sm:mt-1 text-primary">{t.homeHeroLine2}</span>
+              <span className="block animate-in fade-in-0 slide-in-from-bottom-1 duration-500 fill-mode-both">
+                {t.homeHeroLine1}
+              </span>
+              <span className="mt-0.5 block animate-in fade-in-0 slide-in-from-bottom-1 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
+                {t.homeHeroLine2}
+              </span>
             </h1>
             <p className="mt-2 max-w-4xl mx-auto text-lg text-gray-500 dark:text-gray-400 sm:mt-4 sm:text-xl md:mt-6 md:text-[1.375rem] md:max-w-5xl">
               {t.homeHeroSubtitle}

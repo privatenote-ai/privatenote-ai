@@ -1827,6 +1827,34 @@ export const fr: Translations = {
   blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs liens chiffrés uniques",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Google Drive vs liens chiffrés à usage unique pour fichiers confidentiels : quand chaque approche convient et comment limiter l'exposition.",
+  blogRecipientVerificationCodeTitle: "Comment fonctionnent les codes de vérification destinataire",
+  blogRecipientVerificationCodeSubtitle: "Rendre le lien incomplet sans un code hors bande",
+  blogRecipientVerificationCodeExcerpt:
+    "Une URL de note privée peut suffire à déchiffrer. La vérification destinataire ajoute un code à six chiffres propre à la note, à partager séparément—ainsi un lien intercepté ne suffit pas à atteindre la révélation.",
+  blogRecipientVerificationCodeMetaTitle: "Codes de vérification destinataire avant révélation",
+  blogRecipientVerificationCodeMetaDescription:
+    "Exigez un code de vérification propre à la note avant qu’une PrivateNote puisse être révélée. Séparez le lien et le code sur des canaux distincts pour des transmissions plus sûres.",
+  blogClickToRevealPrivateNotesTitle: "Pourquoi PrivateNote exige un clic avant de révéler un secret",
+  blogClickToRevealPrivateNotesSubtitle: "Une pause délibérée avant le déchiffrement côté navigateur",
+  blogClickToRevealPrivateNotesExcerpt:
+    "Charger un lien n’a pas à révéler son secret. PrivateNote attend une confirmation explicite avant que le déchiffrement côté navigateur ne commence.",
+  blogClickToRevealPrivateNotesMetaTitle: "Clic pour révéler les notes privées",
+  blogClickToRevealPrivateNotesMetaDescription:
+    "Découvrez pourquoi PrivateNote exige un clic de révélation explicite avant le déchiffrement côté navigateur, et comment cette pause limite les ouvertures accidentelles.",
+  blogKnowWhenSecretLinkOpenedTitle: "Comment savoir quand un lien secret a été ouvert",
+  blogKnowWhenSecretLinkOpenedSubtitle: "Alertes de statut sans envoyer le secret par e-mail",
+  blogKnowWhenSecretLinkOpenedExcerpt:
+    "Arrêtez de deviner si une transmission est arrivée. Utilisez les alertes e-mail, en direct dans l’onglet et navigateur pour ouvert, détruit et événements liés—jamais le contenu du message.",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Savoir quand un lien secret a été ouvert",
+  blogKnowWhenSecretLinkOpenedMetaDescription:
+    "Recevez des alertes PrivateNote d’ouverture et de destruction par e-mail ou toast en direct—statut uniquement, jamais le contenu de la note—pour pouvoir faire tourner les secrets ou relancer.",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "Comment révoquer une note privée avant qu’elle soit ouverte",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stopper le lien avant la révélation et garder une preuve d’accès respectueuse de la vie privée",
+  blogRevokeUnopenedNoteProofOfAccessExcerpt:
+    "Note privée envoyée par erreur ? Révoquez-la avant qu’elle soit ouverte, puis utilisez la preuve d’accès pour revoir les événements clés de livraison—sans exposer son contenu.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Révoquer une note privée avant ouverture",
+  blogRevokeUnopenedNoteProofOfAccessMetaDescription:
+    "Révoquez les liens PrivateNote non ouverts et consultez les chronologies de preuve d’accès pour les événements de livraison—sans mettre de secrets dans les e-mails.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
   blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:

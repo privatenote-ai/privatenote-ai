@@ -1834,6 +1834,34 @@ export const hr: Translations = {
   blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs šifrirani jednokratni link",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Usporedite Google Drive i jednokratne šifrirane linkove za povjerljive datoteke. Kada koji pristup pristaje i kako minimizirati dugoročnu izloženost.",
+  blogRecipientVerificationCodeTitle: "Kako rade verifikacijski kodovi za primatelja",
+  blogRecipientVerificationCodeSubtitle: "Učinite link nepotpunim bez out-of-band koda",
+  blogRecipientVerificationCodeExcerpt:
+    "URL privatne bilješke može biti dovoljan za dešifriranje. Verifikacija primatelja dodaje šesteroznamenkasti kod specifičan za bilješku koji dijelite odvojeno—tako presretnuti link sam ne može doći do otkrivanja.",
+  blogRecipientVerificationCodeMetaTitle: "Verifikacijski kodovi za primatelja prije otkrivanja",
+  blogRecipientVerificationCodeMetaDescription:
+    "Zahtijevajte verifikacijski kod specifičan za bilješku prije nego što se PrivateNote može otkriti. Podijelite link i kod preko različitih kanala za sigurnije predaje.",
+  blogClickToRevealPrivateNotesTitle: "Zašto PrivateNote traži klik prije otkrivanja tajne",
+  blogClickToRevealPrivateNotesSubtitle: "Namjerna pauza prije dešifriranja u pregledniku",
+  blogClickToRevealPrivateNotesExcerpt:
+    "Učitavanje linka ne mora otkriti tajnu. PrivateNote čeka eksplicitnu potvrdu prije nego što dešifriranje u pregledniku počne.",
+  blogClickToRevealPrivateNotesMetaTitle: "Klik za otkrivanje privatnih bilješki",
+  blogClickToRevealPrivateNotesMetaDescription:
+    "Saznajte zašto PrivateNote zahtijeva eksplicitan klik za otkrivanje prije dešifriranja u pregledniku i kako ta pauza pomaže spriječiti slučajna otvaranja.",
+  blogKnowWhenSecretLinkOpenedTitle: "Kako znati kada je tajni link otvoren",
+  blogKnowWhenSecretLinkOpenedSubtitle: "Statusna upozorenja bez slanja tajne e-poštom",
+  blogKnowWhenSecretLinkOpenedExcerpt:
+    "Prestanite nagađati je li predaja stigla. Koristite e-mail, uživo u kartici i upozorenja preglednika za otvoreno, uništeno i povezane događaje—nikad sadržaj poruke.",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Znajte kada je tajni link otvoren",
+  blogKnowWhenSecretLinkOpenedMetaDescription:
+    "Primajte PrivateNote upozorenja o otvaranju i uništenju e-poštom ili uživo toastom—samo status, nikad sadržaj bilješke—da biste mogli rotirati ili pratiti.",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "Kako opozvati privatnu bilješku prije nego što bude otvorena",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Zaustavite link prije otkrivanja i sačuvajte zapis o pristupu koji štiti privatnost",
+  blogRevokeUnopenedNoteProofOfAccessExcerpt:
+    "Poslali ste privatnu bilješku greškom? Opozovite je prije otvaranja, zatim koristite dokaz pristupa da pregledate ključne događaje isporuke bez izlaganja sadržaja.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Kako opozvati privatnu bilješku prije otvaranja",
+  blogRevokeUnopenedNoteProofOfAccessMetaDescription:
+    "Opozovite neotvorene PrivateNote linkove i pregledajte vremenske crte dokaza pristupa za događaje isporuke—bez stavljanja tajni u e-poštu.",
   blogSocialMediaBansTitle: "Hoće li zabrane društvenih mreža za djecu djelovati?",
   blogSocialMediaBansSubtitle: "Što kaže evidencija",
   blogSocialMediaBansExcerpt:

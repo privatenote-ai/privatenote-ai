@@ -1490,6 +1490,34 @@ export const de: Translations = {
   blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs verschlüsselte Einmal-Links",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Google Drive und Einmal-Links für vertrauliche Dateien vergleichen: wann welcher Ansatz passt und wie Sie Exposition minimieren.",
+  blogRecipientVerificationCodeTitle: "So funktionieren Empfänger-Verifizierungscodes",
+  blogRecipientVerificationCodeSubtitle: "Den Link ohne Out-of-Band-Code unvollständig machen",
+  blogRecipientVerificationCodeExcerpt:
+    "Eine Private-Note-URL kann zum Entschlüsseln ausreichen. Empfänger-Verifizierung fügt einen notizspezifischen sechsstelligen Code hinzu, den Sie separat teilen—damit ein abgefangener Link allein die Anzeige nicht erreicht.",
+  blogRecipientVerificationCodeMetaTitle: "Empfänger-Verifizierungscodes vor dem Anzeigen",
+  blogRecipientVerificationCodeMetaDescription:
+    "Verlangen Sie einen notizspezifischen Verifizierungscode, bevor eine PrivateNote angezeigt werden kann. Teilen Sie Link und Code über getrennte Kanäle für sicherere Übergaben.",
+  blogClickToRevealPrivateNotesTitle: "Warum PrivateNote vor dem Anzeigen eines Geheimnisses einen Klick verlangt",
+  blogClickToRevealPrivateNotesSubtitle: "Eine bewusste Pause vor der browserseitigen Entschlüsselung",
+  blogClickToRevealPrivateNotesExcerpt:
+    "Das Laden eines Links muss das Geheimnis nicht sofort preisgeben. PrivateNote wartet auf eine ausdrückliche Bestätigung, bevor die browserseitige Entschlüsselung beginnt.",
+  blogClickToRevealPrivateNotesMetaTitle: "Klick-zum-Anzeigen für private Notizen",
+  blogClickToRevealPrivateNotesMetaDescription:
+    "Erfahren Sie, warum PrivateNote vor der browserseitigen Entschlüsselung einen ausdrücklichen Anzeige-Klick verlangt und wie diese Pause versehentliches Öffnen verhindert.",
+  blogKnowWhenSecretLinkOpenedTitle: "So erfahren Sie, wann ein Geheim-Link geöffnet wurde",
+  blogKnowWhenSecretLinkOpenedSubtitle: "Status-Benachrichtigungen, ohne das Geheimnis per E-Mail zu senden",
+  blogKnowWhenSecretLinkOpenedExcerpt:
+    "Raten Sie nicht länger, ob eine Übergabe angekommen ist. Nutzen Sie E-Mail-, Live-Tab- und Browser-Benachrichtigungen für geöffnet, zerstört und verwandte Ereignisse—nie die Nachrichteninhalte.",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Wissen, wann ein Geheim-Link geöffnet wurde",
+  blogKnowWhenSecretLinkOpenedMetaDescription:
+    "Erhalten Sie PrivateNote-Öffnungs- und Zerstörungsbenachrichtigungen per E-Mail oder Live-Toast—nur Status, nie die Notizinhalte—damit Sie rotieren oder nachfassen können.",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "So widerrufen Sie eine private Notiz, bevor sie geöffnet wird",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Den Link vor dem Anzeigen stoppen und einen datenschutzsicheren Zugriffsbeleg behalten",
+  blogRevokeUnopenedNoteProofOfAccessExcerpt:
+    "Private Notiz versehentlich gesendet? Widerrufen Sie sie, bevor sie geöffnet wird, und nutzen Sie den Zugriffsbeleg, um wichtige Zustellereignisse zu prüfen—ohne Inhalte preiszugeben.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Private Notiz vor dem Öffnen widerrufen",
+  blogRevokeUnopenedNoteProofOfAccessMetaDescription:
+    "Widerrufen Sie ungeöffnete PrivateNote-Links und sehen Sie Zugriffsbeleg-Zeitlinien für Zustellereignisse—ohne Geheimnisse in E-Mails zu legen.",
   blogSocialMediaBansTitle: "Wirken Social-Media-Verbote für Kinder?",
   blogSocialMediaBansSubtitle: "Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:

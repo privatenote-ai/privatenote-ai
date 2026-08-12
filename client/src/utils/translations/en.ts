@@ -150,6 +150,9 @@ export const en: Translations = {
   signInToAttachFilesHint: "Sign in to add encrypted file attachments.",
   howItWorks: "How It Works",
   resources: "Resources",
+  navResourcesLearn: "Learn",
+  navResourcesBuild: "Build",
+  navResourcesCompany: "Company",
   developers: "Developers",
   security: "Security",
   blog: "Blog",
@@ -695,6 +698,13 @@ export const en: Translations = {
   settingsRequireReceiptAck: "Require receipt confirmation",
   settingsRequireReceiptAckInfo:
     "After the recipient decrypts the note, they can confirm receipt. That confirmation is saved for you even if the note burns on open.",
+  settingsUnopenedReminder: "Unopened reminder",
+  settingsUnopenedReminderInfo: "Email me if this note is still unopened.",
+  settingsUnopenedReminderOff: "Off",
+  settingsUnopenedReminder24: "After 24 hours",
+  settingsUnopenedReminder48: "After 48 hours",
+  settingsUnopenedReminder72: "After 72 hours",
+  settingsUnopenedReminderHint: "Only sent if the note is still unopened after the delay.",
   settingsReceiptStatementPreset: "What they confirm",
   settingsReceiptStatementHint:
     "Shown on the reveal page after decryption. It’s a delivery receipt for you—not legal proof of identity.",

@@ -174,7 +174,7 @@ export const Navbar: React.FC = () => {
     "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary dark:text-blue-300 transition-colors hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   const desktopDropdownItem =
-    "flex items-start gap-3 px-4 py-3 text-sm text-primary transition-colors hover:bg-gray-50 hover:text-black dark:hover:bg-gray-800/60 dark:hover:text-black";
+    "flex items-start gap-3 rounded-lg px-2.5 py-2.5 text-sm text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-gray-100 dark:hover:bg-gray-800/70 dark:hover:text-white";
 
   const navShellClass =
     "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
@@ -241,38 +241,74 @@ export const Navbar: React.FC = () => {
     )
   ) : null;
 
-  const resourceLinks = [
+  const resourceGroups: Array<{
+    id: string;
+    label: string;
+    items: Array<{
+      href: string;
+      label: string;
+      description: string;
+      icon: typeof Shield;
+      iconTone: string;
+    }>;
+  }> = [
     {
-      href: lp("/how-it-works"),
-      label: t.howItWorks,
-      description: t.navHowItWorksDesc,
-      icon: Shield,
+      id: "learn",
+      label: t.navResourcesLearn ?? "Learn",
+      items: [
+        {
+          href: lp("/how-it-works"),
+          label: t.howItWorks,
+          description: t.navHowItWorksDesc,
+          icon: Shield,
+          iconTone: "bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+        },
+        {
+          href: lp("/security-resources"),
+          label: t.security,
+          description: t.navSecurityDesc,
+          icon: Sparkles,
+          iconTone: "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+        },
+        {
+          href: lp("/blog"),
+          label: t.blog,
+          description: t.navBlogDesc,
+          icon: FileText,
+          iconTone: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+        },
+      ],
     },
     {
-      href: lp("/security-resources"),
-      label: t.security,
-      description: t.navSecurityDesc,
-      icon: Sparkles,
+      id: "build",
+      label: t.navResourcesBuild ?? "Build",
+      items: [
+        {
+          href: lp("/developers"),
+          label: t.developers,
+          description: t.navDevelopersDesc,
+          icon: Code2,
+          iconTone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+        },
+      ],
     },
     {
-      href: lp("/developers"),
-      label: t.developers,
-      description: t.navDevelopersDesc,
-      icon: Code2,
-    },
-    {
-      href: lp("/blog"),
-      label: t.blog,
-      description: t.navBlogDesc,
-      icon: FileText,
-    },
-    {
-      href: lp("/about"),
-      label: t.about,
-      description: t.navAboutDesc,
-      icon: Info,
+      id: "company",
+      label: t.navResourcesCompany ?? "Company",
+      items: [
+        {
+          href: lp("/about"),
+          label: t.about,
+          description: t.navAboutDesc,
+          icon: Info,
+          iconTone: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+        },
+      ],
     },
   ];
+
+  // Flat list for the mobile sheet (order matches previous Resources list).
+  const resourceLinks = resourceGroups.flatMap((group) => group.items);
 
   return (
     <>
@@ -332,28 +368,44 @@ export const Navbar: React.FC = () => {
               {isResourcesOpen ? (
                 <div
                   id="desktop-resources-menu"
-                  className="absolute left-1/2 top-full z-50 mt-3 w-72 -translate-x-1/2 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900"
+                  className="absolute left-1/2 top-full z-50 mt-2 w-[22.5rem] -translate-x-1/2 origin-top animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150 overflow-hidden rounded-xl border border-gray-200/90 bg-white p-2 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.28)] dark:border-gray-700 dark:bg-gray-950"
                   role="menu"
                 >
-                  {resourceLinks.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.href}
-                        href={item.href}
-                        closeMenu={closeMenu}
-                        className={desktopDropdownItem}
-                      >
-                        <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
-                        <span>
-                          <span className="block font-semibold">{item.label}</span>
-                          <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                            {item.description}
-                          </span>
-                        </span>
-                      </NavLink>
-                    );
-                  })}
+                  {resourceGroups.map((group, groupIndex) => (
+                    <div
+                      key={group.id}
+                      className={groupIndex > 0 ? "mt-1 border-t border-gray-100 pt-1 dark:border-gray-800" : undefined}
+                    >
+                      <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">
+                        {group.label}
+                      </p>
+                      <div className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <NavLink
+                              key={item.href}
+                              href={item.href}
+                              closeMenu={closeMenu}
+                              className={desktopDropdownItem}
+                            >
+                              <span
+                                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.iconTone}`}
+                              >
+                                <Icon className="h-4 w-4" aria-hidden />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block font-medium leading-snug">{item.label}</span>
+                                <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                                  {item.description}
+                                </span>
+                              </span>
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : null}
             </div>

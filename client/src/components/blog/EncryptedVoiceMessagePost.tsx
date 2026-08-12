@@ -5,7 +5,7 @@ import { StaticBlogGuidePost } from "@/components/blog/StaticBlogGuidePost";
 import { encryptedVoiceMessageEn } from "@/components/blog/locale/encryptedVoiceMessage.en";
 import type { BlogGuideArticleCopy } from "@/components/blog/locale/blogGuideArticle.types";
 
-const heroImagePath = "/images/blog-encrypted-voice-message-hero.jpg";
+const heroImagePath = "/images/blog-encrypted-voice-message-hero-v2.jpg";
 const slug = "how-to-send-encrypted-voice-message";
 
 const copy: Partial<Record<SupportedLanguage, BlogGuideArticleCopy>> & {

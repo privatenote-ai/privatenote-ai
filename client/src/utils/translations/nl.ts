@@ -1447,6 +1447,34 @@ export const nl: Translations = {
   blogGoogleDriveVsOneTimeLinksMetaTitle: "Google Drive vs eenmalige versleutelde link",
   blogGoogleDriveVsOneTimeLinksMetaDescription:
     "Vergelijk Google Drive en eenmalige versleutelde links voor vertrouwelijke bestanden. Wanneer elke aanpak past en hoe je blootstelling minimaliseert.",
+  blogRecipientVerificationCodeTitle: "Hoe verificatiecodes voor ontvangers werken",
+  blogRecipientVerificationCodeSubtitle: "Maak de link incompleet zonder een out-of-band-code",
+  blogRecipientVerificationCodeExcerpt:
+    "Een privénotitie-URL kan genoeg zijn om te ontsleutelen. Ontvangersverificatie voegt een notitie-specifieke zescijferige code toe die je apart deelt—zodat een onderschepte link alleen de openstap niet bereikt.",
+  blogRecipientVerificationCodeMetaTitle: "Verificatiecodes voor ontvangers vóór openen",
+  blogRecipientVerificationCodeMetaDescription:
+    "Vereis een notitie-specifieke verificatiecode voordat een PrivateNote kan worden geopend. Splits link en code over aparte kanalen voor veiligere overdrachten.",
+  blogClickToRevealPrivateNotesTitle: "Waarom PrivateNote je laat klikken vóór het openen van een secret",
+  blogClickToRevealPrivateNotesSubtitle: "Een bewuste pauze vóór browser-side decryptie",
+  blogClickToRevealPrivateNotesExcerpt:
+    "Een link laden hoeft het secret niet te onthullen. PrivateNote wacht op een expliciete bevestiging voordat browser-side decryptie begint.",
+  blogClickToRevealPrivateNotesMetaTitle: "Klik-om-te-openen voor privénotities",
+  blogClickToRevealPrivateNotesMetaDescription:
+    "Leer waarom PrivateNote een expliciete open-klik vereist vóór browser-side decryptie, en hoe die pauze accidentele opens helpt voorkomen.",
+  blogKnowWhenSecretLinkOpenedTitle: "Hoe je weet wanneer een secret-link is geopend",
+  blogKnowWhenSecretLinkOpenedSubtitle: "Statusmeldingen zonder het secret per e-mail te sturen",
+  blogKnowWhenSecretLinkOpenedExcerpt:
+    "Stop met gissen of een overdracht is aangekomen. Gebruik e-mail-, live-in-tab- en browsermeldingen voor geopend, vernietigd en gerelateerde events—nooit de berichtinhoud.",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Weten wanneer een secret-link is geopend",
+  blogKnowWhenSecretLinkOpenedMetaDescription:
+    "Krijg PrivateNote-open- en vernietigingsmeldingen per e-mail of live toast—alleen status, nooit de notitie-inhoud—zodat je kunt roteren of opvolgen.",
+  blogRevokeUnopenedNoteProofOfAccessTitle: "Hoe je een privénotitie intrekt voordat hij is geopend",
+  blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stop de link vóór openen en bewaar een privacyvriendelijk toegangsrecord",
+  blogRevokeUnopenedNoteProofOfAccessExcerpt:
+    "Per ongeluk een privénotitie gestuurd? Trek hem in voordat hij is geopend, en gebruik bewijs van toegang om belangrijke leveringsgebeurtenissen te bekijken zonder de inhoud bloot te geven.",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Hoe je een privénotitie intrekt vóór openen",
+  blogRevokeUnopenedNoteProofOfAccessMetaDescription:
+    "Trek ongeopende PrivateNote-links in en bekijk bewijs-van-toegang-tijdlijnen voor leveringsgebeurtenissen—zonder secrets in e-mail te zetten.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
   blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
