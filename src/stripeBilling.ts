@@ -20,6 +20,8 @@ export type StripeSubscription = {
   current_period_end?: number | null;
   ended_at?: number | null;
   cancel_at_period_end?: boolean | null;
+  cancel_at?: number | null;
+  canceled_at?: number | null;
   trial_end?: number | null;
   metadata?: StripeMetadata | null;
   items?: {
@@ -94,6 +96,23 @@ function subscriptionPeriodEnd(subscription: StripeSubscription): string | null 
       typeof value === "number" && Number.isFinite(value) && value > 0
     );
   return itemEnds.length ? unixSecondsToIso(Math.max(...itemEnds)) : null;
+}
+
+/**
+ * True when the subscription is still active but already scheduled to end.
+ *
+ * Stripe no longer always expresses this as `cancel_at_period_end`: cancelling
+ * through the Customer Portal leaves that boolean false and instead sets
+ * `cancel_at` to the end of the paid period (with `canceled_at` recording when
+ * the customer asked). Reading only the boolean made us report such a
+ * subscription as renewing normally.
+ */
+function subscriptionCancelsAtPeriodEnd(
+  subscription: StripeSubscription,
+): boolean {
+  if (subscription.cancel_at_period_end === true) return true;
+  const cancelAt = subscription.cancel_at;
+  return typeof cancelAt === "number" && Number.isFinite(cancelAt) && cancelAt > 0;
 }
 
 function subscriptionPriceId(subscription: StripeSubscription): string | null {
@@ -217,7 +236,7 @@ async function stripeApiRequest<T>(
   env: Env,
   path: string,
   options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "DELETE";
     form?: URLSearchParams;
     idempotencyKey?: string;
     fetchImpl?: typeof fetch;
@@ -257,6 +276,26 @@ async function stripeApiRequest<T>(
     );
   }
   return body;
+}
+
+/**
+ * End a subscription now, without proration or a refund.
+ *
+ * Only for cases where the customer keeps no way back into billing — account
+ * deletion, where there is no account left to sign in with and the portal has
+ * no customer login page. Scheduled cancellations belong in the portal so the
+ * customer keeps the period they already paid for.
+ */
+export async function cancelStripeSubscriptionImmediately(
+  env: Env,
+  subscriptionId: string,
+  fetchImpl?: typeof fetch,
+): Promise<StripeSubscription> {
+  return stripeApiRequest<StripeSubscription>(
+    env,
+    `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    { method: "DELETE", fetchImpl },
+  );
 }
 
 async function applyInvoiceVatFooter(
@@ -833,7 +872,7 @@ async function synchronizeSubscription(
     customerId,
     linkedSubscriptionId,
     priceId,
-    subscription.cancel_at_period_end === true ? 1 : 0,
+    subscriptionCancelsAtPeriodEnd(subscription) ? 1 : 0,
   ];
   let updateChanges = 0;
   if (authoritative) {
@@ -1097,12 +1136,16 @@ export async function processStripeWebhookEvent(
             });
           } else if (
             event.type === "customer.subscription.deleted" ||
-            subscription.cancel_at_period_end === true
+            subscriptionCancelsAtPeriodEnd(subscription)
           ) {
+            // Stripe's own cancellation date wins over the period end: the two
+            // normally match, but a cancellation scheduled for a specific date
+            // would otherwise be announced for the wrong day.
             const effectiveAt =
               event.type === "customer.subscription.deleted"
                 ? null
-                : subscriptionPeriodEnd(subscription);
+                : unixSecondsToIso(subscription.cancel_at) ??
+                  subscriptionPeriodEnd(subscription);
             await queueBillingNotification(env, {
               key: `cancellation_confirmed:${subscription.id}:${effectiveAt ?? "immediate"}`,
               userId,
@@ -1284,7 +1327,7 @@ function subscriptionDiffers(
     local.stripe_subscription_id !== expectedSubscriptionId ||
     local.stripe_price_id !== priceId ||
     (local.subscription_cancel_at_period_end === 1) !==
-      (remote.cancel_at_period_end === true)
+      subscriptionCancelsAtPeriodEnd(remote)
   );
 }
 

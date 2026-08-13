@@ -274,12 +274,14 @@ function subscription(input: {
   price?: string;
   periodEnd?: number;
   cancelAtPeriodEnd?: boolean;
+  cancelAt?: number;
 } = {}): StripeSubscription {
   return {
     id: input.id ?? "sub_1",
     customer: "cus_1",
     status: input.status ?? "active",
     cancel_at_period_end: input.cancelAtPeriodEnd ?? false,
+    ...(input.cancelAt === undefined ? {} : { cancel_at: input.cancelAt }),
     metadata: { privatenote_user_id: "user-1" },
     items: {
       data: [{
@@ -471,6 +473,43 @@ describe("Stripe billing lifecycle integration", () => {
     assert.equal(user.subscription_cancel_at_period_end, 1);
     assert.equal(entitlements(user, NOW_SECONDS + DAY).accountType, "personal_premium");
     assert.equal(entitlements(user, NOW_SECONDS + 7 * DAY + 1).accountType, "free");
+  });
+
+  it("recognizes a Portal cancellation that only sets cancel_at", async () => {
+    const user = freeUser();
+    const memory = new BillingMemoryDb([user]);
+    await processStripeWebhookEvent(
+      envFor(memory),
+      event(
+        "evt_portal_cancel",
+        "customer.subscription.updated",
+        // The Customer Portal leaves cancel_at_period_end false and schedules
+        // the end with cancel_at instead.
+        subscription({
+          cancelAtPeriodEnd: false,
+          cancelAt: NOW_SECONDS + 7 * DAY,
+          periodEnd: NOW_SECONDS + 7 * DAY,
+        }),
+      ),
+    );
+    assert.equal(user.subscription_cancel_at_period_end, 1);
+    assert.equal(user.subscription_status, "active");
+    assert.equal(entitlements(user, NOW_SECONDS + DAY).accountType, "personal_premium");
+    assert.equal(entitlements(user, NOW_SECONDS + 7 * DAY + 1).accountType, "free");
+  });
+
+  it("still reports a renewing subscription as renewing", async () => {
+    const user = freeUser();
+    const memory = new BillingMemoryDb([user]);
+    await processStripeWebhookEvent(
+      envFor(memory),
+      event(
+        "evt_renewing",
+        "customer.subscription.updated",
+        subscription({ periodEnd: NOW_SECONDS + 30 * DAY }),
+      ),
+    );
+    assert.equal(user.subscription_cancel_at_period_end, 0);
   });
 
   it("applies upgrades and downgrades between Individual and Business", async () => {

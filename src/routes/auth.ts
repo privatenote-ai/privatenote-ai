@@ -13,6 +13,7 @@ import {
 import {
   billingCurrencyForStripePrice,
   billingIntervalForStripePrice,
+  cancelStripeSubscriptionImmediately,
   checkoutIdempotencyKey,
   createStripeCheckoutSession,
   createStripePortalSession,
@@ -1748,6 +1749,7 @@ type AuditEventType =
   | "account_delete_scheduled"
   | "account_delete_cancelled"
   | "account_delete_finalized"
+  | "account_delete_subscription_cancelled"
   | "account_delete_blocked"
   | "magic_link_sent"
   | "magic_link_email_failed"
@@ -2768,6 +2770,88 @@ async function revokeAllUserSessions(
     status: "success",
     details: { reason, revokeType: "all_sessions" },
   });
+}
+
+type AccountDeletionBilling = {
+  subscriptionId: string;
+  customerId: string | null;
+};
+
+/** Stripe ids that outlive the user row and have to be cleaned up by hand otherwise. */
+async function loadSubscriptionForAccountDeletion(
+  env: Env,
+  userId: string,
+): Promise<AccountDeletionBilling | null> {
+  if (!env.AUTH_DB) return null;
+  try {
+    const row = await env.AUTH_DB.prepare(
+      `SELECT stripe_subscription_id, stripe_customer_id, subscription_status
+       FROM users
+       WHERE id = ?`
+    )
+      .bind(userId)
+      .first<{
+        stripe_subscription_id: string | null;
+        stripe_customer_id: string | null;
+        subscription_status: string | null;
+      }>();
+    const subscriptionId = row?.stripe_subscription_id?.trim();
+    if (!subscriptionId) return null;
+    if ((row?.subscription_status ?? "").trim() === "canceled") return null;
+    return {
+      subscriptionId,
+      customerId: row?.stripe_customer_id?.trim() || null,
+    };
+  } catch (error) {
+    console.error(
+      `[BILLING] Could not read billing ids before deleting user ${userId}:`,
+      error,
+    );
+    return null;
+  }
+}
+
+/**
+ * Stop billing for an account that has just been deleted.
+ *
+ * Runs after the row is gone rather than before, because the delete is the
+ * atomic step: the scheduled path only deletes when the 48-hour hold was never
+ * called off, and cancelling first would kill the subscription of anyone who
+ * cancelled their deletion in time. Erasure must not be blocked by Stripe being
+ * unreachable either, so a failure is recorded with the ids needed to cancel by
+ * hand instead of being propagated.
+ */
+async function cancelSubscriptionAfterAccountDeletion(
+  env: Env,
+  userId: string,
+  billing: AccountDeletionBilling,
+): Promise<void> {
+  const details = {
+    deletedUserId: userId,
+    subscriptionId: billing.subscriptionId,
+    customerId: billing.customerId,
+  };
+  try {
+    await cancelStripeSubscriptionImmediately(env, billing.subscriptionId);
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "account_delete_subscription_cancelled",
+      status: "success",
+      details,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(
+      `[BILLING] Deleted user ${userId} left live subscription ${billing.subscriptionId} — cancel it manually:`,
+      message,
+    );
+    await logAuditEvent(env, {
+      userId: null,
+      eventType: "account_delete_subscription_cancelled",
+      status: "failure",
+      details: { ...details, error: message },
+    });
+  }
 }
 
 async function schedulePendingAccountDeletion(
@@ -7031,8 +7115,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       );
     }
 
+    const deletionBilling = await loadSubscriptionForAccountDeletion(env, userId);
+
     // Delete user row: child tables use ON DELETE CASCADE; audit_log uses ON DELETE SET NULL (see src/auth/schema.sql).
     await env.AUTH_DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+
+    if (deletionBilling) {
+      await cancelSubscriptionAfterAccountDeletion(env, userId, deletionBilling);
+    }
 
     await logAuditEvent(env, {
       userId: null,
@@ -7042,6 +7132,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         deletedUserId: userId,
         emailMasked: normalizedStored.replace(/(.{2})(.*)(@.*)/, "$1***$3"),
         verificationMethod: proof,
+        stripeSubscriptionId: deletionBilling?.subscriptionId ?? null,
       },
       ip: getRequestIp(request),
       userAgent: request.headers.get("User-Agent"),
@@ -7743,6 +7834,7 @@ export async function processPendingAccountDeletions(
 
     let finalized = 0;
     for (const row of rows.results || []) {
+      const deletionBilling = await loadSubscriptionForAccountDeletion(env, row.user_id);
       const deleteUserRes = await env.AUTH_DB.prepare(
         `DELETE FROM users
          WHERE id = ?
@@ -7761,11 +7853,18 @@ export async function processPendingAccountDeletions(
         continue;
       }
       finalized += 1;
+      if (deletionBilling) {
+        await cancelSubscriptionAfterAccountDeletion(env, row.user_id, deletionBilling);
+      }
       await logAuditEvent(env, {
         userId: null,
         eventType: "account_delete_finalized",
         status: "success",
-        details: { deletedUserId: row.user_id, finalizedBy: "cron" },
+        details: {
+          deletedUserId: row.user_id,
+          finalizedBy: "cron",
+          stripeSubscriptionId: deletionBilling?.subscriptionId ?? null,
+        },
       });
       // Backward-compat dashboard event name.
       await logAuditEvent(env, {

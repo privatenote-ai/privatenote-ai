@@ -5,6 +5,7 @@ import type {
   D1PreparedStatement,
 } from "@cloudflare/workers-types";
 import {
+  cancelStripeSubscriptionImmediately,
   checkoutIdempotencyKey,
   cleanupBillingOperationalHistory,
   createStripeCheckoutSession,
@@ -16,6 +17,7 @@ import {
   verifyStripeWebhookSignature,
   type StripeEvent,
 } from "./stripeBilling";
+import { BILLING_TERMS_VERSION } from "@shared/billingTerms";
 import type { Env } from "./types";
 
 const PRICES = {
@@ -271,7 +273,7 @@ describe("Stripe billing", () => {
     assert.equal(form.get("subscription_data[metadata][privatenote_currency]"), "eur");
     assert.equal(
       form.get("subscription_data[metadata][privatenote_terms_version]"),
-      "2026-07-30",
+      BILLING_TERMS_VERSION,
     );
     assert.equal(form.get("customer_update[address]"), null);
     assert.equal(form.get("customer_update[name]"), null);
@@ -462,6 +464,29 @@ describe("Stripe billing", () => {
         async () => Response.json({ id: "bps_x", url: "https://example.com" }),
       ),
       /No active subscription/,
+    );
+  });
+
+  it("cancels a subscription outright for account deletion", async () => {
+    let capturedRequest: Request | null = null;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      capturedRequest = new Request(input, init);
+      return Response.json({ id: "sub_test_1", status: "canceled" });
+    };
+
+    const result = await cancelStripeSubscriptionImmediately(
+      billingEnv(),
+      "sub_test_1",
+      fetchImpl,
+    );
+
+    assert.equal(result.status, "canceled");
+    assert.ok(capturedRequest);
+    const request = capturedRequest as Request;
+    assert.equal(request.method, "DELETE");
+    assert.equal(
+      new URL(request.url).pathname,
+      "/v1/subscriptions/sub_test_1",
     );
   });
 

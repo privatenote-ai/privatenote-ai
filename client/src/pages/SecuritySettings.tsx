@@ -29,8 +29,12 @@ import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { isServerStepUpFresh } from "@/pages/security-settings/isServerStepUpFresh";
 import { AccountSettingsShell } from "@/pages/account/AccountSettingsShell";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 
 type TotpSetupResponse = { setupId: string; secret: string; otpauthUri: string };
+
+/** States that imply a Stripe subscription which account deletion has to cancel. */
+const LIVE_SUBSCRIPTION_STATES = new Set(["active", "trialing", "grace"]);
 
 export default function SecuritySettings() {
   const { toast } = useToast();
@@ -38,6 +42,10 @@ export default function SecuritySettings() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { t } = useLanguage();
   const stepUpForRetry = useStepUpAuth();
+  const { entitlements } = useAccountEntitlements();
+  const hasLiveSubscription = LIVE_SUBSCRIPTION_STATES.has(
+    entitlements.subscriptionState,
+  );
 
   const {
     loading,
@@ -939,6 +947,7 @@ export default function SecuritySettings() {
         deleteEmailInput={deleteEmailInput}
         onDeleteEmailInputChange={setDeleteEmailInput}
         deletingAccount={deletingAccount}
+        hasLiveSubscription={hasLiveSubscription}
         onCopyEmail={() => void copyEmail()}
         onClose={closeDeleteAccountDialog}
         onConfirmDelete={() => void handleDeleteAccount()}

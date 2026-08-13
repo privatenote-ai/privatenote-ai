@@ -464,6 +464,8 @@ export const en: Translations = {
   authSecDone: "Done",
   authSecDeleteTitle: "Delete account",
   authSecDeleteDesc: "Verify it's you to continue. Type your email address as a final confirmation.",
+  authSecDeleteSubscriptionWarning:
+    "This also cancels your subscription when the deletion completes. No further payments will be taken, and unused time in the period you already paid for is not refunded.",
   authSecLoadingVerificationOptions: "Loading verification options…",
   authSecYourEmail: "Your email",
   authSecEnterYourEmail: "Enter your email",

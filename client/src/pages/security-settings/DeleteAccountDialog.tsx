@@ -31,6 +31,8 @@ type Props = {
   deleteEmailInput: string;
   onDeleteEmailInputChange: (value: string) => void;
   deletingAccount: boolean;
+  /** Shows the billing consequence when a Stripe subscription is still live. */
+  hasLiveSubscription: boolean;
   onCopyEmail: () => void;
   onClose: () => void;
   onConfirmDelete: () => void;
@@ -54,6 +56,7 @@ export function DeleteAccountDialog({
   deleteEmailInput,
   onDeleteEmailInputChange,
   deletingAccount,
+  hasLiveSubscription,
   onCopyEmail,
   onClose,
   onConfirmDelete,
@@ -94,6 +97,12 @@ export function DeleteAccountDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {hasLiveSubscription && (
+            <p className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+              {t.authSecDeleteSubscriptionWarning ||
+                "This also cancels your subscription when the deletion completes. No further payments will be taken, and unused time in the period you already paid for is not refunded."}
+            </p>
+          )}
           {optionsLoading && (
 <p className="text-sm text-gray-600 dark:text-gray-400">{t.authSecLoadingVerificationOptions || "Loading verification options…"}</p>
           )}

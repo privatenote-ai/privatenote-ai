@@ -76,6 +76,15 @@ type ActivityEvent = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Keep in sync with STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES on the API. */
+const CANCELLABLE_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+]);
+
 const PLAN_BADGE_CLASS: Record<AccountType, string> = {
   free: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   personal_premium: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -287,7 +296,15 @@ export default function AccountOverview() {
   const cancelAtPeriodEnd = summary?.billing?.cancelAtPeriodEnd === true;
   const periodEnd = summary?.billing?.subscriptionCurrentPeriodEnd ?? null;
   const periodEndLabel = periodEnd ? formatDate(periodEnd, dateFormatter) : null;
-  const canCancelSubscription = subscriptionLinked && !cancelAtPeriodEnd;
+  // Mirrors the statuses the API will actually let us change or cancel, so a
+  // subscription that already ended never offers a cancel button.
+  const canCancelSubscription =
+    subscriptionLinked &&
+    CANCELLABLE_SUBSCRIPTION_STATUSES.has(
+      summary?.billing?.subscriptionStatus?.toLowerCase() ?? "",
+    ) &&
+    !cancelAtPeriodEnd;
+  const showPlanOptions = accountType === "free" || cancelAtPeriodEnd;
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
@@ -598,9 +615,17 @@ export default function AccountOverview() {
                 )}
               </p>
             ) : null}
+            {cancelAtPeriodEnd ? (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 max-w-xl">
+                {tx(
+                  "authSubscriptionCancelledNote",
+                  "Nothing more will be charged. Renew in the billing portal, or pick a plan below to start again.",
+                )}
+              </p>
+            ) : null}
           </div>
 
-          {accountType === "free" && (
+          {showPlanOptions && (
             <div className="mt-4 pt-4 border-t border-blue-200/60 dark:border-blue-900/40 grid gap-3 sm:grid-cols-2">
               {(["personal_premium", "business_premium"] as AccountType[]).map((t) => (
                 <div key={t} className="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
