@@ -141,7 +141,10 @@ async function deliverNotification(
     const content = buildBillingNotificationContent(
       row.notification_type,
       row.effective_at,
-      `${origin}/account/subscription`,
+      // Account overview carries both "Manage billing" and "Cancel subscription";
+      // there is no /account/subscription route, so linking it 404s the one
+      // remedy a customer with a declined card has.
+      `${origin}/account`,
     );
     await sendBillingEmail(env, { to: row.email, ...content }, fetchImpl);
     await env.AUTH_DB.prepare(

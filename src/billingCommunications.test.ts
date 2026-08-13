@@ -7,11 +7,12 @@ import type {
 import {
   buildBillingNotificationContent,
   processBillingCommunications,
+  queueBillingNotification,
 } from "./billingCommunications";
 import type { Env } from "./types";
 
 describe("billing customer communications", () => {
-  const accountUrl = "https://privatenote.ai/account/subscription";
+  const accountUrl = "https://privatenote.ai/account";
   const deadline = "2026-08-01T12:00:00.000Z";
 
   for (const [type, subjectText, actionText] of [
@@ -25,7 +26,7 @@ describe("billing customer communications", () => {
       assert.match(content.subject, new RegExp(subjectText, "i"));
       assert.match(content.text, new RegExp(actionText, "i"));
       assert.match(content.text, /August 1, 2026/);
-      assert.match(content.html, /account\/subscription/);
+      assert.match(content.html, new RegExp(`href="${accountUrl}"`));
     });
   }
 
@@ -131,5 +132,71 @@ describe("billing customer communications", () => {
         sql.includes("subscription_state_changed"),
     );
     assert.ok(skipped);
+  });
+
+  it("links the payment-failure email at a route that exists", async () => {
+    const db = {
+      prepare(sql: string) {
+        const statement = {
+          bind() {
+            return statement;
+          },
+          async first() {
+            if (sql.includes("FROM billing_customer_notifications n")) {
+              return {
+                id: "notification-2",
+                user_id: "user-2",
+                email: "declined@example.com",
+                email_verified: 1,
+                subscription_status: "past_due",
+                notification_type: "payment_failed",
+                effective_at: "2026-08-01T12:00:00.000Z",
+                status: "pending",
+                attempts: 0,
+              };
+            }
+            return null;
+          },
+          async all() {
+            return { success: true, results: [], meta: {} };
+          },
+          async run() {
+            return { success: true, results: [], meta: { changes: 1 } };
+          },
+        };
+        return statement as unknown as D1PreparedStatement;
+      },
+    } as unknown as D1Database;
+    let sentBody: { html?: string; text?: string } | null = null;
+
+    const delivered = await queueBillingNotification(
+      {
+        AUTH_DB: db,
+        AUTH_EMAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "test",
+        AUTH_EMAIL_FROM: "PrivateNote <test@example.com>",
+        PUBLIC_WEB_APP_ORIGIN: "https://privatenote.ai",
+      } as unknown as Env,
+      {
+        key: "payment_failed:sub_1:2026-08-01T12:00:00.000Z",
+        userId: "user-2",
+        subscriptionId: "sub_1",
+        type: "payment_failed",
+        effectiveAt: "2026-08-01T12:00:00.000Z",
+      },
+      async (_input, init) => {
+        sentBody = JSON.parse(String(init?.body ?? "{}"));
+        return Response.json({ id: "email-2" });
+      },
+    );
+
+    assert.equal(delivered, true);
+    const body = sentBody as { html?: string; text?: string } | null;
+    assert.ok(body);
+    // /account/subscription is not a route: linking it 404s the only remedy a
+    // customer with a declined card is given.
+    assert.doesNotMatch(String(body?.html), /\/account\/subscription/);
+    assert.doesNotMatch(String(body?.text), /\/account\/subscription/);
+    assert.match(String(body?.html), /href="https:\/\/privatenote\.ai\/account"/);
   });
 });
