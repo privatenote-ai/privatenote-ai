@@ -5,7 +5,7 @@
  * time, because the reveal page is anonymous and cannot look up the sender.
  *
  * Every value here is rendered into the reveal page for an untrusted audience,
- * so parsing is allowlist-based: the accent colour lands in an inline style and
+ * so parsing is allowlist-based: the three brand colours land in inline styles and
  * the logo lands in an `<img src>`. Anything that is not provably safe is
  * rejected rather than sanitised, so a caller cannot smuggle a value through by
  * finding a gap in an escaping routine.
@@ -16,6 +16,12 @@ export const BRANDING_SENDER_NAME_MAX = 80;
 export const BRANDING_SENDER_ROLE_MAX = 80;
 export const BRANDING_TRUST_MESSAGE_MAX = 160;
 export const BRANDING_LOGO_URL_MAX = 512;
+
+/** Soft recommendations for Business upload UI (enforced limits are byte size + type). */
+export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
+export const BRANDING_BANNER_MAX_BYTES = 3 * 1024 * 1024;
+export const BRANDING_LOGO_RECOMMENDED_PX = { width: 512, height: 512 } as const;
+export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 720 } as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
 
@@ -28,6 +34,8 @@ export type BusinessBranding = {
   logoUrl: string | null;
   bannerUrl?: string | null;
   accentColor: string | null;
+  backgroundColor?: string | null;
+  textColor?: string | null;
   backgroundStyle?: BrandingBackgroundStyle;
 };
 
@@ -40,7 +48,23 @@ export type RevealBranding = {
   logoUrl?: string;
   bannerUrl?: string;
   accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
   backgroundStyle?: BrandingBackgroundStyle;
+};
+
+export type BrandingCtaStyle = {
+  backgroundColor: string;
+  color: string;
+  border?: string;
+};
+
+export type BrandingHeroStyle = {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  background?: string;
 };
 
 export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
@@ -51,6 +75,8 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   logoUrl: null,
   bannerUrl: null,
   accentColor: null,
+  backgroundColor: null,
+  textColor: null,
   backgroundStyle: "neutral",
 };
 
@@ -63,6 +89,8 @@ export type BrandingErrorCode =
   | "invalid_logo_url"
   | "invalid_banner_url"
   | "invalid_accent_color"
+  | "invalid_background_color"
+  | "invalid_text_color"
   | "invalid_background_style";
 
 export type BusinessBrandingParseResult =
@@ -142,7 +170,7 @@ function parseBackgroundStyle(
     : { ok: false };
 }
 
-export function parseBrandingAccentColor(
+export function parseBrandingHexColor(
   raw: unknown,
 ): { ok: true; value: string | null } | { ok: false } {
   if (raw === undefined || raw === null) return { ok: true, value: null };
@@ -150,7 +178,97 @@ export function parseBrandingAccentColor(
   const trimmed = raw.trim();
   if (trimmed.length === 0) return { ok: true, value: null };
   if (!HEX_COLOR.test(trimmed)) return { ok: false };
-  return { ok: true, value: trimmed.toLowerCase() };
+  const lower = trimmed.toLowerCase();
+  if (lower.length === 4) {
+    return {
+      ok: true,
+      value: `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`,
+    };
+  }
+  return { ok: true, value: lower };
+}
+
+export const parseBrandingAccentColor = parseBrandingHexColor;
+
+function hexChannel(hex: string, index: number): number {
+  return Number.parseInt(hex.slice(index, index + 2), 16) / 255;
+}
+
+function linearizeSrgb(channel: number): number {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+/** WCAG relative luminance for a parsed `#rrggbb` value. */
+export function brandingRelativeLuminance(hex: string): number {
+  const r = linearizeSrgb(hexChannel(hex, 1));
+  const g = linearizeSrgb(hexChannel(hex, 3));
+  const b = linearizeSrgb(hexChannel(hex, 5));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function contrastingTextOn(hex: string): "#ffffff" | "#111827" {
+  return brandingRelativeLuminance(hex) > 0.55 ? "#111827" : "#ffffff";
+}
+
+function contrastRatio(a: string, b: string): number {
+  const lighter = Math.max(brandingRelativeLuminance(a), brandingRelativeLuminance(b));
+  const darker = Math.min(brandingRelativeLuminance(a), brandingRelativeLuminance(b));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Text painted on the accent fill. Uses the configured text colour when it
+ * actually contrasts; otherwise falls back so a white accent cannot hide the CTA.
+ */
+export function brandingButtonTextColor(accentColor: string, textColor?: string): string {
+  if (textColor && contrastRatio(accentColor, textColor) >= 3) return textColor;
+  return contrastingTextOn(accentColor);
+}
+
+export function brandingCtaStyle(
+  branding: Pick<RevealBranding, "accentColor" | "textColor"> | undefined,
+): BrandingCtaStyle | undefined {
+  if (!branding?.accentColor) return undefined;
+  const color = brandingButtonTextColor(branding.accentColor, branding.textColor);
+  const style: BrandingCtaStyle = {
+    backgroundColor: branding.accentColor,
+    color,
+  };
+  if (brandingRelativeLuminance(branding.accentColor) > 0.85) {
+    style.border = `1px solid ${color === "#ffffff" ? "#d1d5db" : color}`;
+  }
+  return style;
+}
+
+export function brandingHeroStyle(
+  branding: RevealBranding | undefined,
+): BrandingHeroStyle | undefined {
+  if (!branding) return undefined;
+  if (branding.backgroundStyle === "banner" && branding.bannerUrl) {
+    return {
+      backgroundImage: `linear-gradient(rgba(3,7,18,.78),rgba(3,7,18,.78)),url(${branding.bannerUrl})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    };
+  }
+  if (branding.backgroundStyle === "gradient" && branding.accentColor) {
+    const base = branding.backgroundColor ?? "transparent";
+    return {
+      background: `linear-gradient(135deg, ${branding.accentColor}20, ${base})`,
+    };
+  }
+  if (branding.backgroundColor) {
+    return { backgroundColor: branding.backgroundColor };
+  }
+  return undefined;
+}
+
+export function brandingHeroUsesLightText(branding: RevealBranding | undefined): boolean {
+  if (branding?.backgroundStyle === "banner" && branding.bannerUrl) return true;
+  if (branding?.backgroundColor) {
+    return contrastingTextOn(branding.backgroundColor) === "#ffffff";
+  }
+  return false;
 }
 
 /**
@@ -215,13 +333,31 @@ export function parseBusinessBrandingInput(
     };
   }
 
-  const accentColor = parseBrandingAccentColor(body.accentColor);
+  const accentColor = parseBrandingHexColor(body.accentColor);
   if (!accentColor.ok) {
     return {
       ok: false,
       code: "invalid_accent_color",
       status: 400,
       message: "Accent colour must be a hex value such as #2563eb",
+    };
+  }
+  const backgroundColor = parseBrandingHexColor(body.backgroundColor);
+  if (!backgroundColor.ok) {
+    return {
+      ok: false,
+      code: "invalid_background_color",
+      status: 400,
+      message: "Background colour must be a hex value such as #ffffff",
+    };
+  }
+  const textColor = parseBrandingHexColor(body.textColor);
+  if (!textColor.ok) {
+    return {
+      ok: false,
+      code: "invalid_text_color",
+      status: 400,
+      message: "Text colour must be a hex value such as #111827",
     };
   }
   const bannerUrl = parseBrandingBannerUrl(body.bannerUrl);
@@ -245,6 +381,8 @@ export function parseBusinessBrandingInput(
       logoUrl: logoUrl.value,
       bannerUrl: bannerUrl.value,
       accentColor: accentColor.value,
+      backgroundColor: backgroundColor.value,
+      textColor: textColor.value,
       backgroundStyle: backgroundStyle.value,
     },
   };
@@ -255,7 +393,7 @@ export function brandingIsEmpty(branding: BusinessBranding | null | undefined): 
   return (
     !branding.companyName && !branding.senderName && !branding.senderRole &&
     !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl &&
-    !branding.accentColor
+    !branding.accentColor && !branding.backgroundColor && !branding.textColor
   );
 }
 
@@ -277,6 +415,8 @@ export function toRevealBranding(
     ...(branding.logoUrl ? { logoUrl: branding.logoUrl } : {}),
     ...(branding.bannerUrl ? { bannerUrl: branding.bannerUrl } : {}),
     ...(branding.accentColor ? { accentColor: branding.accentColor } : {}),
+    ...(branding.backgroundColor ? { backgroundColor: branding.backgroundColor } : {}),
+    ...(branding.textColor ? { textColor: branding.textColor } : {}),
     ...(branding.backgroundStyle && branding.backgroundStyle !== "neutral"
       ? { backgroundStyle: branding.backgroundStyle }
       : {}),
@@ -301,7 +441,9 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
   const trustMessage = parseName(source.trustMessage, BRANDING_TRUST_MESSAGE_MAX);
   const logoUrl = parseBrandingLogoUrl(source.logoUrl);
   const bannerUrl = parseBrandingBannerUrl(source.bannerUrl);
-  const accentColor = parseBrandingAccentColor(source.accentColor);
+  const accentColor = parseBrandingHexColor(source.accentColor);
+  const backgroundColor = parseBrandingHexColor(source.backgroundColor);
+  const textColor = parseBrandingHexColor(source.textColor);
   const backgroundStyle = parseBackgroundStyle(source.backgroundStyle);
 
   return toRevealBranding({
@@ -312,6 +454,8 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     logoUrl: logoUrl.ok ? logoUrl.value : null,
     bannerUrl: bannerUrl.ok ? bannerUrl.value : null,
     accentColor: accentColor.ok ? accentColor.value : null,
+    backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
+    textColor: textColor.ok ? textColor.value : null,
     backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
   });
 }

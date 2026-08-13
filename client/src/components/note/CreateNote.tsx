@@ -505,6 +505,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     logoUrl: entitlements.businessLogoUrl,
     bannerUrl: entitlements.businessBannerUrl,
     accentColor: entitlements.businessAccentColor,
+    backgroundColor: entitlements.businessBackgroundColor,
+    textColor: entitlements.businessTextColor,
     backgroundStyle: entitlements.businessBackgroundStyle,
   });
   const hasRevealBranding = Boolean(revealBrandingSnapshot);

@@ -45,6 +45,12 @@ import {
   planFeaturesFor,
   type AccountType,
 } from "@shared/planCatalog";
+import {
+  brandingCtaStyle,
+  brandingHeroStyle,
+  brandingHeroUsesLightText,
+  contrastingTextOn,
+} from "@shared/businessBranding";
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
 import {
@@ -167,6 +173,8 @@ export default function AccountPreferences() {
   const [savedNoteDefaultsIndicator, setSavedNoteDefaultsIndicator] = useState(false);
   const [businessDisplayName, setBusinessDisplayName] = useState("");
   const [businessAccentColor, setBusinessAccentColor] = useState("#2563eb");
+  const [businessBackgroundColor, setBusinessBackgroundColor] = useState("#ffffff");
+  const [businessTextColor, setBusinessTextColor] = useState("#ffffff");
   const [businessLogoUrl, setBusinessLogoUrl] = useState<string | null>(null);
   const [businessSenderName, setBusinessSenderName] = useState("");
   const [businessSenderRole, setBusinessSenderRole] = useState("");
@@ -222,6 +230,8 @@ export default function AccountPreferences() {
         businessDisplayName?: string | null;
         businessLogoUrl?: string | null;
         businessAccentColor?: string | null;
+        businessBackgroundColor?: string | null;
+        businessTextColor?: string | null;
         businessSenderName?: string | null;
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
@@ -239,6 +249,11 @@ export default function AccountPreferences() {
         setBusinessDisplayName(data.businessDisplayName ?? "");
         setBusinessLogoUrl(data.businessLogoUrl ?? null);
         setBusinessAccentColor(data.businessAccentColor ?? "#2563eb");
+        setBusinessBackgroundColor(data.businessBackgroundColor ?? "#ffffff");
+        setBusinessTextColor(
+          data.businessTextColor
+            ?? contrastingTextOn(data.businessAccentColor ?? "#2563eb"),
+        );
         setBusinessSenderName(data.businessSenderName ?? "");
         setBusinessSenderRole(data.businessSenderRole ?? "");
         setBusinessTrustMessage(data.businessTrustMessage ?? "");
@@ -416,9 +431,13 @@ export default function AccountPreferences() {
       const response = await apiRequest<{
         businessDisplayName: string | null;
         businessAccentColor: string | null;
+        businessBackgroundColor: string | null;
+        businessTextColor: string | null;
       }>("/api/auth/account/preferences", "PATCH", {
         businessDisplayName,
         businessAccentColor,
+        businessBackgroundColor,
+        businessTextColor,
         businessSenderName,
         businessSenderRole,
         businessTrustMessage,
@@ -426,6 +445,11 @@ export default function AccountPreferences() {
       });
       setBusinessDisplayName(response.businessDisplayName ?? "");
       setBusinessAccentColor(response.businessAccentColor ?? "#2563eb");
+      setBusinessBackgroundColor(response.businessBackgroundColor ?? "#ffffff");
+      setBusinessTextColor(
+        response.businessTextColor
+          ?? contrastingTextOn(response.businessAccentColor ?? "#2563eb"),
+      );
       setSavedBrandingIndicator(true);
       setTimeout(() => setSavedBrandingIndicator(false), 2000);
       await refreshEntitlements();
@@ -761,40 +785,69 @@ export default function AccountPreferences() {
 
           {accountEntitlements.capabilities.revealBranding ? (
             <div className="space-y-5 px-5 py-5">
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9rem]">
-                <div>
-                  <Label htmlFor="business-display-name" className="mb-2 block text-sm">
-                    Display name
-                  </Label>
-                  <input
-                    id="business-display-name"
-                    value={businessDisplayName}
-                    onChange={(event) => setBusinessDisplayName(event.target.value)}
-                    maxLength={120}
-                    placeholder="Company or team name"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                  />
-                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    Shown as the company name on branded reveal pages.
-                  </p>
+              <div>
+                <Label htmlFor="business-display-name" className="mb-2 block text-sm">
+                  Display name
+                </Label>
+                <input
+                  id="business-display-name"
+                  value={businessDisplayName}
+                  onChange={(event) => setBusinessDisplayName(event.target.value)}
+                  maxLength={120}
+                  placeholder="Company or team name"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Shown as the company name on branded reveal pages.
+                </p>
+              </div>
+
+              <div>
+                <Label className="mb-2 block text-sm">Brand colors</Label>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {([
+                    {
+                      id: "business-background-color",
+                      label: "Background",
+                      value: businessBackgroundColor,
+                      onChange: setBusinessBackgroundColor,
+                    },
+                    {
+                      id: "business-accent-color",
+                      label: "Accent",
+                      value: businessAccentColor,
+                      onChange: setBusinessAccentColor,
+                    },
+                    {
+                      id: "business-text-color",
+                      label: "Text",
+                      value: businessTextColor,
+                      onChange: setBusinessTextColor,
+                    },
+                  ] as const).map((swatch) => (
+                    <div key={swatch.id}>
+                      <Label htmlFor={swatch.id} className="mb-2 block text-xs text-gray-500 dark:text-gray-400">
+                        {swatch.label}
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id={swatch.id}
+                          type="color"
+                          value={swatch.value}
+                          onChange={(event) => swatch.onChange(event.target.value)}
+                          className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
+                        />
+                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                          {swatch.value}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="business-accent-color" className="mb-2 block text-sm">
-                    Accent color
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="business-accent-color"
-                      type="color"
-                      value={businessAccentColor}
-                      onChange={(event) => setBusinessAccentColor(event.target.value)}
-                      className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
-                    />
-                    <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                      {businessAccentColor}
-                    </span>
-                  </div>
-                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Background tints the reveal page. Accent fills Reveal and Copy.
+                  Text is the label on those buttons.
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -869,7 +922,8 @@ export default function AccountPreferences() {
                   ) : null}
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  PNG, JPEG, or WebP; maximum 1 MB. Uploaded logos are served from
+                  PNG, JPEG, or WebP; maximum 1 MB. Recommended 512×512 (square) or
+                  wider lockup up to about 1200×400. Uploaded logos are served from
                   PrivateNote instead of an external host.
                 </p>
               </div>
@@ -895,26 +949,49 @@ export default function AccountPreferences() {
                   {businessBannerUrl ? <Button type="button" variant="ghost" disabled={uploadingBanner}
                     onClick={() => void removeBusinessBanner()}><Trash2 className="mr-2 h-4 w-4" />Remove</Button> : null}
                 </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Decorative PNG, JPEG, or WebP; maximum 3 MB. A dark overlay preserves readability.</p>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Decorative PNG, JPEG, or WebP; maximum 3 MB. Recommended 1920×720
+                  (≈8:3 landscape). Keep important detail in the center — edges crop
+                  on cover. A dark overlay preserves text readability.
+                </p>
               </div>
 
               <div>
                 <Label className="mb-2 block text-sm">Live recipient preview</Label>
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-950">
                   <div className="relative min-h-48 px-6 py-7 text-center"
-                    style={businessBackgroundStyle === "banner" && businessBannerUrl
-                      ? { backgroundImage: `linear-gradient(rgba(3,7,18,.76),rgba(3,7,18,.76)),url(${businessBannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                      : businessBackgroundStyle === "gradient"
-                        ? { background: `linear-gradient(135deg, ${businessAccentColor}22, transparent)` }
-                        : undefined}>
+                    style={brandingHeroStyle({
+                      accentColor: businessAccentColor,
+                      backgroundColor: businessBackgroundColor,
+                      textColor: businessTextColor,
+                      backgroundStyle: businessBackgroundStyle,
+                      bannerUrl: businessBannerUrl ?? undefined,
+                    })}>
                     {businessLogoUrl ? <img src={businessLogoUrl} alt="Brand preview" className="mx-auto mb-3 max-h-12 max-w-40 object-contain" /> : null}
-                    <p className={`m-0 text-sm font-semibold ${businessBackgroundStyle === "banner" ? "text-white" : "text-gray-900 dark:text-white"}`}>
+                    <p className={`m-0 text-sm font-semibold ${brandingHeroUsesLightText({
+                      backgroundColor: businessBackgroundColor,
+                      backgroundStyle: businessBackgroundStyle,
+                      bannerUrl: businessBannerUrl ?? undefined,
+                    }) ? "text-white" : "text-gray-900 dark:text-white"}`}>
                       {businessSenderName || businessDisplayName
                         ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
                         : "Your company shared a private note"}
                     </p>
-                    {businessTrustMessage ? <p className={`mx-auto mt-2 max-w-md text-xs ${businessBackgroundStyle === "banner" ? "text-white/80" : "text-gray-500"}`}>{businessTrustMessage}</p> : null}
-                    <button type="button" className="mt-6 rounded-md px-5 py-2.5 text-sm font-semibold text-white" style={{ backgroundColor: businessAccentColor }}>Reveal note</button>
+                    {businessTrustMessage ? <p className={`mx-auto mt-2 max-w-md text-xs ${brandingHeroUsesLightText({
+                      backgroundColor: businessBackgroundColor,
+                      backgroundStyle: businessBackgroundStyle,
+                      bannerUrl: businessBannerUrl ?? undefined,
+                    }) ? "text-white/80" : "text-gray-500"}`}>{businessTrustMessage}</p> : null}
+                    <button
+                      type="button"
+                      className="mt-6 rounded-md px-5 py-2.5 text-sm font-semibold"
+                      style={brandingCtaStyle({
+                        accentColor: businessAccentColor,
+                        textColor: businessTextColor,
+                      })}
+                    >
+                      Reveal note
+                    </button>
                   </div>
                 </div>
               </div>
@@ -942,8 +1019,9 @@ export default function AccountPreferences() {
                     Available with Business
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                    Add your display name, hosted logo, and accent color to note
-                    reveal pages. Stored branding remains retained if you downgrade.
+                    Add your display name, hosted logo, and three brand colors
+                    (background, accent, and text) to note reveal pages. Stored
+                    branding remains retained if you downgrade.
                   </p>
                   {(businessDisplayName || businessLogoUrl) ? (
                     <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">

@@ -24,6 +24,7 @@ import {
   type StripeEvent,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
+import { parseBrandingHexColor } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -95,7 +96,6 @@ const BUSINESS_BANNER = {
   PUBLIC_PATH_PREFIX: "/api/auth/branding/banner/",
   MAX_BYTES: 3 * 1024 * 1024,
 } as const;
-const BUSINESS_ACCENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -526,6 +526,8 @@ type UsersTableColumns = {
   business_display_name: boolean;
   business_logo_key: boolean;
   business_accent_color: boolean;
+  business_background_color: boolean;
+  business_text_color: boolean;
   business_sender_name: boolean;
   business_sender_role: boolean;
   business_trust_message: boolean;
@@ -543,6 +545,8 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     business_display_name: false,
     business_logo_key: false,
     business_accent_color: false,
+    business_background_color: false,
+    business_text_color: false,
     business_sender_name: false,
     business_sender_role: false,
     business_trust_message: false,
@@ -562,6 +566,8 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       business_display_name: names.has("business_display_name"),
       business_logo_key: names.has("business_logo_key"),
       business_accent_color: names.has("business_accent_color"),
+      business_background_color: names.has("business_background_color"),
+      business_text_color: names.has("business_text_color"),
       business_sender_name: names.has("business_sender_name"),
       business_sender_role: names.has("business_sender_role"),
       business_trust_message: names.has("business_trust_message"),
@@ -583,6 +589,8 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.business_display_name) columns.push("business_display_name");
   if (optionalColumns.business_logo_key) columns.push("business_logo_key");
   if (optionalColumns.business_accent_color) columns.push("business_accent_color");
+  if (optionalColumns.business_background_color) columns.push("business_background_color");
+  if (optionalColumns.business_text_color) columns.push("business_text_color");
   if (optionalColumns.business_sender_name) columns.push("business_sender_name");
   if (optionalColumns.business_sender_role) columns.push("business_sender_role");
   if (optionalColumns.business_trust_message) columns.push("business_trust_message");
@@ -4225,6 +4233,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_display_name?: string | null;
         business_logo_key?: string | null;
         business_accent_color?: string | null;
+        business_background_color?: string | null;
+        business_text_color?: string | null;
         business_sender_name?: string | null;
         business_sender_role?: string | null;
         business_trust_message?: string | null;
@@ -4258,6 +4268,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessDisplayName: user?.business_display_name ?? null,
         businessLogoUrl: businessLogoPublicUrl(request, user?.business_logo_key),
         businessAccentColor: user?.business_accent_color ?? null,
+        businessBackgroundColor: user?.business_background_color ?? null,
+        businessTextColor: user?.business_text_color ?? null,
         businessSenderName: user?.business_sender_name ?? null,
         businessSenderRole: user?.business_sender_role ?? null,
         businessTrustMessage: user?.business_trust_message ?? null,
@@ -4294,6 +4306,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_display_name?: string | null;
         business_logo_key?: string | null;
         business_accent_color?: string | null;
+        business_background_color?: string | null;
+        business_text_color?: string | null;
         business_sender_name?: string | null;
         business_sender_role?: string | null;
         business_trust_message?: string | null;
@@ -4403,6 +4417,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessDisplayName: user?.business_display_name ?? null,
         businessLogoUrl: businessLogoPublicUrl(request, user?.business_logo_key),
         businessAccentColor: user?.business_accent_color ?? null,
+        businessBackgroundColor: user?.business_background_color ?? null,
+        businessTextColor: user?.business_text_color ?? null,
         businessSenderName: user?.business_sender_name ?? null,
         businessSenderRole: user?.business_sender_role ?? null,
         businessTrustMessage: user?.business_trust_message ?? null,
@@ -4833,6 +4849,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       allowHostedAi?: boolean;
       businessDisplayName?: string | null;
       businessAccentColor?: string | null;
+      businessBackgroundColor?: string | null;
+      businessTextColor?: string | null;
       businessSenderName?: string | null;
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
@@ -4845,6 +4863,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         allowHostedAi?: boolean;
         businessDisplayName?: string | null;
         businessAccentColor?: string | null;
+        businessBackgroundColor?: string | null;
+        businessTextColor?: string | null;
         businessSenderName?: string | null;
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
@@ -4858,17 +4878,20 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const hasAllowHostedAi = typeof body.allowHostedAi === "boolean";
     const hasBusinessDisplayName = Object.prototype.hasOwnProperty.call(body, "businessDisplayName");
     const hasBusinessAccentColor = Object.prototype.hasOwnProperty.call(body, "businessAccentColor");
+    const hasBusinessBackgroundColor = Object.prototype.hasOwnProperty.call(body, "businessBackgroundColor");
+    const hasBusinessTextColor = Object.prototype.hasOwnProperty.call(body, "businessTextColor");
     const hasBusinessSenderName = Object.prototype.hasOwnProperty.call(body, "businessSenderName");
     const hasBusinessSenderRole = Object.prototype.hasOwnProperty.call(body, "businessSenderRole");
     const hasBusinessTrustMessage = Object.prototype.hasOwnProperty.call(body, "businessTrustMessage");
     const hasBusinessBackgroundStyle = Object.prototype.hasOwnProperty.call(body, "businessBackgroundStyle");
+    const hasBrandingPreference = hasBusinessDisplayName || hasBusinessAccentColor
+      || hasBusinessBackgroundColor || hasBusinessTextColor || hasBusinessSenderName
+      || hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle;
     if (
       !hasEmailNotifications &&
       !hasPreferredLanguage &&
       !hasAllowHostedAi &&
-      !hasBusinessDisplayName &&
-      !hasBusinessAccentColor && !hasBusinessSenderName && !hasBusinessSenderRole &&
-      !hasBusinessTrustMessage && !hasBusinessBackgroundStyle
+      !hasBrandingPreference
     ) {
       return jsonResponse(
         {
@@ -4894,14 +4917,15 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (hasBusinessAccentColor && !userColumns.business_accent_color) {
       return jsonResponse({ message: "Business branding migration is required" }, 503, request);
     }
-    if ((hasBusinessSenderName && !userColumns.business_sender_name) ||
+    if ((hasBusinessBackgroundColor && !userColumns.business_background_color) ||
+        (hasBusinessTextColor && !userColumns.business_text_color) ||
+        (hasBusinessSenderName && !userColumns.business_sender_name) ||
         (hasBusinessSenderRole && !userColumns.business_sender_role) ||
         (hasBusinessTrustMessage && !userColumns.business_trust_message) ||
         (hasBusinessBackgroundStyle && !userColumns.business_background_style)) {
       return jsonResponse({ message: "Business branding migration is required" }, 503, request);
     }
-    if (hasBusinessDisplayName || hasBusinessAccentColor || hasBusinessSenderName ||
-        hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle) {
+    if (hasBrandingPreference) {
       const entitlements = await getAccountEntitlements(env, session.id);
       if (!entitlements.capabilities.revealBranding) {
         return jsonResponse({ error: "premium_plus_required" }, 403, request);
@@ -4933,17 +4957,36 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         );
       }
     }
+    const parsePreferenceHex = (
+      raw: unknown,
+      label: string,
+    ): { ok: true; value: string | null } | { ok: false; message: string } => {
+      if (raw != null && typeof raw !== "string") {
+        return { ok: false, message: `Invalid business ${label} color` };
+      }
+      const parsed = parseBrandingHexColor(raw);
+      if (!parsed.ok) {
+        return { ok: false, message: `Business ${label} color must be a hex color` };
+      }
+      return parsed;
+    };
     let normalizedBusinessAccentColor: string | null | undefined;
     if (hasBusinessAccentColor) {
-      if (body.businessAccentColor != null && typeof body.businessAccentColor !== "string") {
-        return jsonResponse({ message: "Invalid business accent color" }, 400, request);
-      }
-      const accent =
-        typeof body.businessAccentColor === "string" ? body.businessAccentColor.trim() : "";
-      if (accent && !BUSINESS_ACCENT_COLOR_PATTERN.test(accent)) {
-        return jsonResponse({ message: "Business accent color must be a hex color" }, 400, request);
-      }
-      normalizedBusinessAccentColor = accent || null;
+      const parsed = parsePreferenceHex(body.businessAccentColor, "accent");
+      if (!parsed.ok) return jsonResponse({ message: parsed.message }, 400, request);
+      normalizedBusinessAccentColor = parsed.value;
+    }
+    let normalizedBusinessBackgroundColor: string | null | undefined;
+    if (hasBusinessBackgroundColor) {
+      const parsed = parsePreferenceHex(body.businessBackgroundColor, "background");
+      if (!parsed.ok) return jsonResponse({ message: parsed.message }, 400, request);
+      normalizedBusinessBackgroundColor = parsed.value;
+    }
+    let normalizedBusinessTextColor: string | null | undefined;
+    if (hasBusinessTextColor) {
+      const parsed = parsePreferenceHex(body.businessTextColor, "text");
+      if (!parsed.ok) return jsonResponse({ message: parsed.message }, 400, request);
+      normalizedBusinessTextColor = parsed.value;
     }
     const normalizeBrandText = (value: unknown, max: number): string | null | undefined => {
       if (value == null) return null;
@@ -4989,6 +5032,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       updates.push("business_accent_color = ?");
       bindings.push(normalizedBusinessAccentColor ?? null);
     }
+    if (hasBusinessBackgroundColor) {
+      updates.push("business_background_color = ?");
+      bindings.push(normalizedBusinessBackgroundColor ?? null);
+    }
+    if (hasBusinessTextColor) {
+      updates.push("business_text_color = ?");
+      bindings.push(normalizedBusinessTextColor ?? null);
+    }
     if (hasBusinessSenderName) { updates.push("business_sender_name = ?"); bindings.push(normalizedBusinessSenderName ?? null); }
     if (hasBusinessSenderRole) { updates.push("business_sender_role = ?"); bindings.push(normalizedBusinessSenderRole ?? null); }
     if (hasBusinessTrustMessage) { updates.push("business_trust_message = ?"); bindings.push(normalizedBusinessTrustMessage ?? null); }
@@ -5014,6 +5065,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           : undefined,
         businessAccentColor: hasBusinessAccentColor
           ? normalizedBusinessAccentColor ?? null
+          : undefined,
+        businessBackgroundColor: hasBusinessBackgroundColor
+          ? normalizedBusinessBackgroundColor ?? null
+          : undefined,
+        businessTextColor: hasBusinessTextColor
+          ? normalizedBusinessTextColor ?? null
           : undefined,
         businessSenderName: hasBusinessSenderName ? normalizedBusinessSenderName ?? null : undefined,
         businessSenderRole: hasBusinessSenderRole ? normalizedBusinessSenderRole ?? null : undefined,

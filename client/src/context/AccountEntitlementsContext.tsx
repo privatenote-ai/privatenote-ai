@@ -31,6 +31,8 @@ export type AccountEntitlementSnapshot = {
   businessDisplayName: string | null;
   businessLogoUrl: string | null;
   businessAccentColor: string | null;
+  businessBackgroundColor: string | null;
+  businessTextColor: string | null;
   businessSenderName: string | null;
   businessSenderRole: string | null;
   businessTrustMessage: string | null;
@@ -58,6 +60,8 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   businessDisplayName: null,
   businessLogoUrl: null,
   businessAccentColor: null,
+  businessBackgroundColor: null,
+  businessTextColor: null,
   businessSenderName: null,
   businessSenderRole: null,
   businessTrustMessage: null,
@@ -119,6 +123,8 @@ export function AccountEntitlementsProvider({
       businessDisplayName?: string | null;
       businessLogoUrl?: string | null;
       businessAccentColor?: string | null;
+      businessBackgroundColor?: string | null;
+      businessTextColor?: string | null;
       businessSenderName?: string | null;
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
@@ -159,6 +165,8 @@ export function AccountEntitlementsProvider({
           businessDisplayName: summary.businessDisplayName ?? null,
           businessLogoUrl: summary.businessLogoUrl ?? null,
           businessAccentColor: summary.businessAccentColor ?? null,
+          businessBackgroundColor: summary.businessBackgroundColor ?? null,
+          businessTextColor: summary.businessTextColor ?? null,
           businessSenderName: summary.businessSenderName ?? null,
           businessSenderRole: summary.businessSenderRole ?? null,
           businessTrustMessage: summary.businessTrustMessage ?? null,

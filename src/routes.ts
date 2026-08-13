@@ -921,7 +921,8 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
     const row = await env.AUTH_DB.prepare(
       `SELECT business_display_name, business_sender_name, business_sender_role,
               business_trust_message, business_logo_key, business_banner_key,
-              business_accent_color, business_background_style
+              business_accent_color, business_background_color, business_text_color,
+              business_background_style
        FROM users WHERE id = ? LIMIT 1`,
     ).bind(session.id).first<Record<string, string | null>>();
     if (!row) return undefined;
@@ -936,6 +937,8 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       logoUrl: assetUrl(row.business_logo_key, "account-branding/", "/api/auth/branding/logo/"),
       bannerUrl: assetUrl(row.business_banner_key, "account-branding/banner/", "/api/auth/branding/banner/"),
       accentColor: row.business_accent_color,
+      backgroundColor: row.business_background_color,
+      textColor: row.business_text_color,
       backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "banner",
     });
   } catch (error) {

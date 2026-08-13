@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   BRANDING_COMPANY_NAME_MAX,
   BRANDING_LOGO_URL_MAX,
+  brandingCtaStyle,
   brandingIsEmpty,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
@@ -40,6 +41,8 @@ describe("parseBusinessBrandingInput", () => {
         logoUrl: "https://passwords.lu/logo.svg",
         bannerUrl: "https://passwords.lu/banner.webp",
         accentColor: "#2563EB",
+        backgroundColor: "#FFFFFF",
+        textColor: "#111827",
         backgroundStyle: "banner",
       },
       allowed,
@@ -53,6 +56,8 @@ describe("parseBusinessBrandingInput", () => {
       logoUrl: "https://passwords.lu/logo.svg",
       bannerUrl: "https://passwords.lu/banner.webp",
       accentColor: "#2563eb",
+      backgroundColor: "#ffffff",
+      textColor: "#111827",
       backgroundStyle: "banner",
     });
   });
@@ -95,6 +100,12 @@ describe("parseBusinessBrandingInput", () => {
 
     const badAccent = parseBusinessBrandingInput({ accentColor: "red" }, allowed);
     assert.equal(badAccent.ok === false && badAccent.code, "invalid_accent_color");
+
+    const badBackground = parseBusinessBrandingInput({ backgroundColor: "white" }, allowed);
+    assert.equal(badBackground.ok === false && badBackground.code, "invalid_background_color");
+
+    const badText = parseBusinessBrandingInput({ textColor: "rgb(0,0,0)" }, allowed);
+    assert.equal(badText.ok === false && badText.code, "invalid_text_color");
   });
 });
 
@@ -140,8 +151,8 @@ describe("parseBrandingLogoUrl", () => {
 });
 
 describe("parseBrandingAccentColor", () => {
-  it("accepts three and six digit hex, normalized to lowercase", () => {
-    assert.deepEqual(parseBrandingAccentColor("#ABC"), { ok: true, value: "#abc" });
+  it("accepts three and six digit hex, normalized to lowercase six-digit", () => {
+    assert.deepEqual(parseBrandingAccentColor("#ABC"), { ok: true, value: "#aabbcc" });
     assert.deepEqual(parseBrandingAccentColor("#2563EB"), { ok: true, value: "#2563eb" });
   });
 
@@ -173,8 +184,15 @@ describe("toRevealBranding", () => {
       senderName: null,
       logoUrl: null,
       accentColor: "#2563eb",
+      backgroundColor: "#ffffff",
+      textColor: "#111827",
     });
-    assert.deepEqual(wire, { companyName: "passwords.lu", accentColor: "#2563eb" });
+    assert.deepEqual(wire, {
+      companyName: "passwords.lu",
+      accentColor: "#2563eb",
+      backgroundColor: "#ffffff",
+      textColor: "#111827",
+    });
   });
 
   it("returns undefined when nothing would render", () => {
@@ -217,9 +235,50 @@ describe("parseStoredRevealBranding", () => {
     assert.deepEqual(wire, { companyName: "passwords.lu" });
   });
 
+  it("round-trips background and text colours", () => {
+    assert.deepEqual(
+      parseStoredRevealBranding({
+        accentColor: "#ffffff",
+        backgroundColor: "#0f172a",
+        textColor: "#111827",
+      }),
+      {
+        accentColor: "#ffffff",
+        backgroundColor: "#0f172a",
+        textColor: "#111827",
+      },
+    );
+  });
+
   it("ignores non-object payloads", () => {
     for (const raw of [undefined, null, "x", 5, [], true]) {
       assert.equal(parseStoredRevealBranding(raw), undefined);
     }
+  });
+});
+
+describe("brandingCtaStyle", () => {
+  it("uses configured text colour when it contrasts with the accent", () => {
+    assert.deepEqual(brandingCtaStyle({ accentColor: "#2563eb", textColor: "#ffffff" }), {
+      backgroundColor: "#2563eb",
+      color: "#ffffff",
+    });
+  });
+
+  it("does not render a white-on-white reveal button", () => {
+    const style = brandingCtaStyle({ accentColor: "#ffffff" });
+    assert.equal(style?.backgroundColor, "#ffffff");
+    assert.equal(style?.color, "#111827");
+    assert.equal(style?.border, "1px solid #111827");
+  });
+
+  it("replaces a text colour that disappears on the accent fill", () => {
+    const style = brandingCtaStyle({ accentColor: "#ffffff", textColor: "#ffffff" });
+    assert.equal(style?.color, "#111827");
+  });
+
+  it("keeps dark text on a pale accent such as #f8fafc", () => {
+    const style = brandingCtaStyle({ accentColor: "#f8fafc", textColor: "#ffffff" });
+    assert.equal(style?.color, "#111827");
   });
 });

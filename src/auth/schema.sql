@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   business_logo_key TEXT,
   business_banner_key TEXT,
   business_accent_color TEXT,
+  business_background_color TEXT,
+  business_text_color TEXT,
   business_background_style TEXT DEFAULT 'neutral' CHECK (business_background_style IN ('neutral', 'gradient', 'banner')),
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
   preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es')),

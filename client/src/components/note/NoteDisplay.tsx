@@ -48,6 +48,11 @@ import {
   type VoiceDownloadFormat,
 } from '@/utils/voiceMessageDownloadFormat';
 import { useToast } from '@/hooks/use-toast';
+import {
+  brandingCtaStyle,
+  brandingHeroStyle,
+  brandingHeroUsesLightText,
+} from '@shared/businessBranding';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
 import {
@@ -91,6 +96,8 @@ interface RevealBranding {
   sharerName?: string;
   companyName?: string;
   accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
   bannerUrl?: string;
   backgroundStyle?: "neutral" | "gradient" | "banner";
 }
@@ -470,16 +477,12 @@ const RevealHero: React.FC<RevealHeroProps> = ({
 }) => {
   const brandingLine = getBrandingLine(branding, t);
   const hasBranding = Boolean(brandingLine || branding?.logoUrl);
-  const buttonStyle = branding?.accentColor ? { backgroundColor: branding.accentColor } : undefined;
+  const buttonStyle = brandingCtaStyle(branding);
   const brandingCardStyle = branding?.accentColor
     ? { borderTopColor: branding.accentColor, borderTopWidth: 3 }
     : undefined;
-  const brandedHeroStyle = branding?.backgroundStyle === "banner" && branding.bannerUrl
-    ? { backgroundImage: `linear-gradient(rgba(3,7,18,.78),rgba(3,7,18,.78)),url(${branding.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : branding?.backgroundStyle === "gradient" && branding.accentColor
-      ? { background: `linear-gradient(135deg, ${branding.accentColor}20, transparent)` }
-      : undefined;
-  const bannerMode = branding?.backgroundStyle === "banner" && Boolean(branding.bannerUrl);
+  const brandedHeroStyle = brandingHeroStyle(branding);
+  const bannerMode = brandingHeroUsesLightText(branding);
 
   return (
     <section className={NOTE_VIEW_SHELL}>
@@ -523,11 +526,15 @@ const RevealHero: React.FC<RevealHeroProps> = ({
               onClick={(ev) => void onReveal(ev)}
               disabled={isRevealing || !isRevealButtonReady}
               style={buttonStyle}
-              className="w-full max-w-sm inline-flex items-center justify-center px-5 py-3 text-base font-semibold bg-primary text-white rounded-md transition-all duration-200 hover:bg-primary/90 hover:scale-[1.015] hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full max-w-sm inline-flex items-center justify-center px-5 py-3 text-base font-semibold rounded-md transition-all duration-200 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                buttonStyle
+                  ? "hover:shadow-[0_0_18px_rgba(15,23,42,0.18)] focus-visible:ring-gray-400"
+                  : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus-visible:ring-primary"
+              }`}
             >
               {isRevealing ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2" />
                   {t.revealing ?? "Revealing..."}
                 </>
               ) : (
@@ -1760,14 +1767,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   const brandingLine = getBrandingLine(activeRevealBranding, t);
   const hasBranding = Boolean(brandingLine || activeRevealBranding?.logoUrl);
-  const accentStyle = activeRevealBranding?.accentColor
-    ? { backgroundColor: activeRevealBranding.accentColor }
-    : undefined;
-  const revealedBackgroundStyle = activeRevealBranding?.backgroundStyle === "banner" && activeRevealBranding.bannerUrl
-    ? { backgroundImage: `linear-gradient(rgba(3,7,18,.82),rgba(3,7,18,.82)),url(${activeRevealBranding.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : activeRevealBranding?.backgroundStyle === "gradient" && activeRevealBranding.accentColor
-      ? { background: `linear-gradient(135deg, ${activeRevealBranding.accentColor}20, transparent)` }
-      : undefined;
+  const accentStyle = brandingCtaStyle(activeRevealBranding);
+  const revealedBackgroundStyle = brandingHeroStyle(activeRevealBranding);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
@@ -2113,7 +2114,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             type="button"
             onClick={() => void handleCopy()}
             style={accentStyle}
-            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold bg-primary text-white rounded-md transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-w-[170px]"
+            className={`inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 min-w-[170px] ${
+              accentStyle
+                ? "focus-visible:ring-gray-400"
+                : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+            }`}
           >
             <Copy className="h-4 w-4 mr-2" />
             {t.copyNote}
