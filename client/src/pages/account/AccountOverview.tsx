@@ -52,10 +52,13 @@ type AccountSummary = {
     stripeSubscriptionLinked?: boolean;
     subscriptionStatus?: string | null;
     subscriptionCurrentPeriodEnd?: string | null;
+    cancelAtPeriodEnd?: boolean;
     premiumGrantedAt?: string | null;
     premiumRevokedAt?: string | null;
   };
 };
+
+type BillingPortalFlow = "manage" | "cancel";
 
 type MeResponse = {
   id: string;
@@ -78,6 +81,14 @@ const PLAN_BADGE_CLASS: Record<AccountType, string> = {
   personal_premium: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
   business_premium: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
 };
+
+function formatDate(
+  value: string,
+  formatter: Intl.DateTimeFormat,
+): string | null {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : formatter.format(parsed);
+}
 
 function eventLabel(type: string): string {
   switch (type) {
@@ -128,7 +139,7 @@ export default function AccountOverview() {
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
+  const [billingPortalFlow, setBillingPortalFlow] = useState<BillingPortalFlow | null>(null);
   const [themePref, setThemePref] = useState(getThemePreference());
 
   // Keep theme label in sync with storage changes
@@ -207,10 +218,14 @@ export default function AccountOverview() {
     }
   }, [summary?.id, toast]);
 
-  const openBillingPortal = useCallback(async () => {
-    setBillingPortalLoading(true);
+  const openBillingPortal = useCallback(async (flow: BillingPortalFlow = "manage") => {
+    setBillingPortalFlow(flow);
     try {
-      const result = await apiRequest<{ ok: boolean; url?: string }>("/api/auth/billing/portal", "POST", {});
+      const result = await apiRequest<{ ok: boolean; url?: string }>(
+        "/api/auth/billing/portal",
+        "POST",
+        { flow },
+      );
       if (result.url) {
         window.location.assign(result.url);
         return;
@@ -222,7 +237,7 @@ export default function AccountOverview() {
         description: tx("authBillingPortalFailedDesc", "Could not open billing management. Please try again later."),
         variant: "destructive",
       });
-      setBillingPortalLoading(false);
+      setBillingPortalFlow(null);
     }
   }, [toast]);
 
@@ -268,6 +283,11 @@ export default function AccountOverview() {
     entitlements.subscriptionState !== "free"
       ? entitlements.subscriptionState
       : summary?.billing?.subscriptionStatus ?? null;
+  const subscriptionLinked = summary?.billing?.stripeSubscriptionLinked === true;
+  const cancelAtPeriodEnd = summary?.billing?.cancelAtPeriodEnd === true;
+  const periodEnd = summary?.billing?.subscriptionCurrentPeriodEnd ?? null;
+  const periodEndLabel = periodEnd ? formatDate(periodEnd, dateFormatter) : null;
+  const canCancelSubscription = subscriptionLinked && !cancelAtPeriodEnd;
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
@@ -515,6 +535,25 @@ export default function AccountOverview() {
                 {tx("authBillingStatus", "Billing status")}: {subscriptionStatus}
               </p>
             ) : null}
+            {subscriptionLinked && periodEndLabel ? (
+              <p
+                className={`mt-1 text-xs ${
+                  cancelAtPeriodEnd
+                    ? "font-medium text-amber-700 dark:text-amber-300"
+                    : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {cancelAtPeriodEnd
+                  ? tx(
+                      "authSubscriptionEndsOn",
+                      "Cancelled — access continues until {date}",
+                    ).replace("{date}", periodEndLabel)
+                  : tx("authSubscriptionRenewsOn", "Renews on {date}").replace(
+                      "{date}",
+                      periodEndLabel,
+                    )}
+              </p>
+            ) : null}
             <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/85 max-w-xl">
               {tx(
                 "authPlanHostedAiNote",
@@ -522,19 +561,42 @@ export default function AccountOverview() {
               )}
             </p>
             {stripeCustomerLinked ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={openBillingPortal}
-                disabled={billingPortalLoading}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {billingPortalLoading
-                  ? tx("authBillingOpening", "Opening...")
-                  : tx("authManageBilling", "Manage billing")}
-              </Button>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void openBillingPortal("manage")}
+                  disabled={billingPortalFlow !== null}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {billingPortalFlow === "manage"
+                    ? tx("authBillingOpening", "Opening...")
+                    : tx("authManageBilling", "Manage billing")}
+                </Button>
+                {canCancelSubscription ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-600 hover:text-red-700 dark:text-gray-400 dark:hover:text-red-300"
+                    onClick={() => void openBillingPortal("cancel")}
+                    disabled={billingPortalFlow !== null}
+                  >
+                    {billingPortalFlow === "cancel"
+                      ? tx("authBillingOpening", "Opening...")
+                      : tx("authCancelSubscription", "Cancel subscription")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {canCancelSubscription ? (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 max-w-xl">
+                {tx(
+                  "authCancelSubscriptionNote",
+                  "Cancelling keeps your plan active until the end of the period you already paid for.",
+                )}
+              </p>
             ) : null}
           </div>
 

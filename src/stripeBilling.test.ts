@@ -9,6 +9,7 @@ import {
   cleanupBillingOperationalHistory,
   createStripeCheckoutSession,
   createStripePortalSession,
+  createSubscriptionChangeSession,
   getStripeBillingConfigHealth,
   planForStripePrice,
   processStripeWebhookEvent,
@@ -276,7 +277,10 @@ describe("Stripe billing", () => {
     assert.equal(form.get("customer_update[name]"), null);
   });
 
-  it("sets subscription invoice footer on Dahlia API versions", async () => {
+  // Regression: Checkout answers 400 "Received unknown parameter:
+  // subscription_data[invoice_settings][footer]" on Dahlia too, which took the
+  // staging subscribe button down.
+  it("never sends the unsupported subscription invoice_settings footer", async () => {
     let capturedRequest: Request | null = null;
     const fetchImpl: typeof fetch = async (input, init) => {
       capturedRequest = new Request(input, init);
@@ -309,11 +313,8 @@ describe("Stripe billing", () => {
     const request = capturedRequest as Request;
     assert.equal(request.headers.get("Stripe-Version"), "2026-07-29.dahlia");
     const form = new URLSearchParams(await request.text());
-    assert.match(
-      form.get("subscription_data[invoice_settings][footer]") ?? "",
-      /Article 57bis/,
-    );
-    assert.equal(form.get("subscription_data[description]"), null);
+    assert.equal(form.get("subscription_data[invoice_settings][footer]"), null);
+    assert.match(form.get("subscription_data[description]") ?? "", /Article 57bis/);
   });
 
   it("updates billing identity fields for an existing Stripe customer", async () => {
@@ -412,6 +413,155 @@ describe("Stripe billing", () => {
       "sub_test_1",
     );
     assert.equal(form.get("flow_data[after_completion][type]"), "redirect");
+  });
+
+  it("deep-links into the Portal cancellation flow", async () => {
+    let capturedRequest: Request | null = null;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      capturedRequest = new Request(input, init);
+      return Response.json({
+        id: "bps_cancel_1",
+        url: "https://billing.stripe.com/p/session/cancel",
+      });
+    };
+
+    await createStripePortalSession(
+      billingEnv(),
+      {
+        stripeCustomerId: "cus_test_1",
+        subscriptionId: "sub_test_1",
+        flow: "subscription_cancel",
+        returnUrl: "https://privatenote.ai/account",
+      },
+      fetchImpl,
+    );
+
+    assert.ok(capturedRequest);
+    const form = new URLSearchParams(await (capturedRequest as Request).text());
+    assert.equal(form.get("flow_data[type]"), "subscription_cancel");
+    assert.equal(
+      form.get("flow_data[subscription_cancel][subscription]"),
+      "sub_test_1",
+    );
+    assert.equal(
+      form.get("flow_data[after_completion][redirect][return_url]"),
+      "https://privatenote.ai/account",
+    );
+  });
+
+  it("refuses a cancellation deep link without a subscription", async () => {
+    await assert.rejects(
+      createStripePortalSession(
+        billingEnv(),
+        {
+          stripeCustomerId: "cus_test_1",
+          subscriptionId: null,
+          flow: "subscription_cancel",
+          returnUrl: "https://privatenote.ai/account",
+        },
+        async () => Response.json({ id: "bps_x", url: "https://example.com" }),
+      ),
+      /No active subscription/,
+    );
+  });
+
+  it("preselects the clicked plan in the customer's own currency", async () => {
+    const requests: Array<{ url: string; body: string }> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const request = new Request(input, init);
+      requests.push({ url: request.url, body: await request.text() });
+      if (request.url.includes("/v1/subscriptions/")) {
+        return Response.json({
+          id: "sub_eur_1",
+          items: {
+            data: [{ id: "si_eur_1", price: { id: PRICES.STRIPE_PRICE_PERSONAL_YEARLY_EUR } }],
+          },
+        });
+      }
+      return Response.json({
+        id: "bps_confirm_1",
+        url: "https://billing.stripe.com/p/session/confirm",
+      });
+    };
+
+    const result = await createSubscriptionChangeSession(
+      { ...billingEnv(), STRIPE_PORTAL_CONFIGURATION_ID: "bpc_test_catalog" },
+      {
+        stripeCustomerId: "cus_eur_1",
+        subscriptionId: "sub_eur_1",
+        plan: "business_premium",
+        interval: "year",
+        // A USD fallback must not win over the subscription's EUR price.
+        fallbackCurrency: "usd",
+        returnUrl: "https://privatenote.ai/account?billing=updated",
+      },
+      fetchImpl,
+    );
+
+    assert.equal(result.flow, "subscription_update_confirm");
+    const portal = new URLSearchParams(requests.at(-1)?.body ?? "");
+    assert.equal(portal.get("flow_data[type]"), "subscription_update_confirm");
+    assert.equal(
+      portal.get("flow_data[subscription_update_confirm][subscription]"),
+      "sub_eur_1",
+    );
+    assert.equal(
+      portal.get("flow_data[subscription_update_confirm][items][0][id]"),
+      "si_eur_1",
+    );
+    assert.equal(
+      portal.get("flow_data[subscription_update_confirm][items][0][price]"),
+      PRICES.STRIPE_PRICE_BUSINESS_YEARLY_EUR,
+    );
+  });
+
+  it("falls back to the portal home when no switchable products are configured", async () => {
+    const flows: Array<string | null> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const request = new Request(input, init);
+      if (request.url.includes("/v1/subscriptions/")) {
+        return Response.json({
+          id: "sub_1",
+          items: { data: [{ id: "si_1", price: { id: PRICES.STRIPE_PRICE_PERSONAL_MONTHLY } }] },
+        });
+      }
+      const form = new URLSearchParams(await request.text());
+      const flow = form.get("flow_data[type]");
+      flows.push(flow);
+      // Mirrors the live failure: the portal configuration lists no products.
+      if (flow) {
+        return Response.json(
+          {
+            error: {
+              message:
+                "The subscription cannot be updated because there is no price in the portal configuration available to change to and the quantity cannot be changed.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+      return Response.json({
+        id: "bps_manage_1",
+        url: "https://billing.stripe.com/p/session/manage",
+      });
+    };
+
+    const result = await createSubscriptionChangeSession(
+      billingEnv(),
+      {
+        stripeCustomerId: "cus_1",
+        subscriptionId: "sub_1",
+        plan: "business_premium",
+        interval: "month",
+        fallbackCurrency: "usd",
+        returnUrl: "https://privatenote.ai/account?billing=updated",
+      },
+      fetchImpl,
+    );
+
+    assert.equal(result.flow, "manage");
+    assert.equal(result.url, "https://billing.stripe.com/p/session/manage");
+    assert.deepEqual(flows, ["subscription_update_confirm", "subscription_update", null]);
   });
 
   it("validates all eight configured recurring regional Stripe prices", async () => {

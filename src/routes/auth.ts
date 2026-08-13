@@ -16,12 +16,14 @@ import {
   checkoutIdempotencyKey,
   createStripeCheckoutSession,
   createStripePortalSession,
+  createSubscriptionChangeSession,
   processStripeWebhookEvent,
   StripeBillingError,
   verifyStripeWebhookSignature,
   type BillingInterval,
   type PaidBillingPlan,
   type StripeEvent,
+  type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
 import { parseBrandingHexColor, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES } from "@shared/businessBranding";
@@ -4091,10 +4093,14 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         );
       }
       try {
-        const portal = await createStripePortalSession(env, {
+        const portal = await createSubscriptionChangeSession(env, {
           stripeCustomerId: user.stripe_customer_id,
           subscriptionId: user.stripe_subscription_id,
-          flow: "subscription_update",
+          plan,
+          interval,
+          fallbackCurrency: billingCurrencyForCountry(
+            billingCountryFromRequest(request),
+          ),
           returnUrl: `${appOrigin}/account?billing=updated`,
         });
         return jsonResponse(
@@ -4102,6 +4108,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
             ok: true,
             url: portal.url,
             mode: "portal",
+            flow: portal.flow,
           },
           200,
           request,
@@ -4173,10 +4180,15 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const session = await getSessionFromRequest(env, request, { rotate: false });
     if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
     const user = await env.AUTH_DB.prepare(
-      `SELECT stripe_customer_id FROM users WHERE id = ? LIMIT 1`,
+      `SELECT stripe_customer_id, stripe_subscription_id, subscription_status
+       FROM users WHERE id = ? LIMIT 1`,
     )
       .bind(session.id)
-      .first<{ stripe_customer_id: string | null }>();
+      .first<{
+        stripe_customer_id: string | null;
+        stripe_subscription_id: string | null;
+        subscription_status: string | null;
+      }>();
     if (!user?.stripe_customer_id) {
       return jsonResponse(
         {
@@ -4187,13 +4199,45 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         request,
       );
     }
-    const appOrigin = getMagicLinkOrigin(env, request);
+    let requestedFlow: unknown = null;
     try {
-      const portal = await createStripePortalSession(env, {
-        stripeCustomerId: user.stripe_customer_id,
-        returnUrl: `${appOrigin}/account`,
-      });
-      return jsonResponse({ ok: true, url: portal.url }, 200, request);
+      const body = (await readJsonBody(request)) as { flow?: unknown } | null;
+      requestedFlow = body?.flow ?? null;
+    } catch {
+      // An empty or unparseable body simply means the portal home.
+    }
+    const cancelRequested =
+      requestedFlow === "cancel" || requestedFlow === "subscription_cancel";
+    const cancellable =
+      cancelRequested &&
+      Boolean(user.stripe_subscription_id) &&
+      STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES.has(
+        user.subscription_status?.toLowerCase() ?? "",
+      );
+    const appOrigin = getMagicLinkOrigin(env, request);
+    // Deep-link straight into Stripe's cancel flow when asked, but never strand
+    // the customer: an unavailable flow still opens the portal home, where the
+    // same cancellation is reachable manually.
+    const flows: StripePortalFlow[] = cancellable
+      ? ["subscription_cancel", "manage"]
+      : ["manage"];
+    try {
+      let lastError: unknown = null;
+      for (const flow of flows) {
+        try {
+          const portal = await createStripePortalSession(env, {
+            stripeCustomerId: user.stripe_customer_id,
+            subscriptionId: user.stripe_subscription_id,
+            flow,
+            returnUrl: `${appOrigin}/account`,
+          });
+          return jsonResponse({ ok: true, url: portal.url, flow }, 200, request);
+        } catch (error) {
+          lastError = error;
+          console.warn(`[BILLING] Portal ${flow} flow unavailable:`, error);
+        }
+      }
+      throw lastError;
     } catch (error) {
       console.error("[BILLING] Portal session creation failed:", error);
       const billingError = error instanceof StripeBillingError ? error : null;
@@ -4354,6 +4398,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       stripeSubscriptionLinked: boolean;
       subscriptionStatus: string | null;
       subscriptionCurrentPeriodEnd: string | null;
+      cancelAtPeriodEnd: boolean;
       premiumGrantedAt: string | null;
       premiumRevokedAt: string | null;
     } = {
@@ -4361,6 +4406,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       stripeSubscriptionLinked: false,
       subscriptionStatus: null,
       subscriptionCurrentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
       premiumGrantedAt: null,
       premiumRevokedAt: null,
     };
@@ -4371,6 +4417,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
            stripe_subscription_id,
            subscription_status,
            subscription_current_period_end,
+           subscription_cancel_at_period_end,
            premium_granted_at,
            premium_revoked_at
          FROM users WHERE id = ? LIMIT 1`,
@@ -4381,6 +4428,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           stripe_subscription_id: string | null;
           subscription_status: string | null;
           subscription_current_period_end: string | null;
+          subscription_cancel_at_period_end: number | null;
           premium_granted_at: string | null;
           premium_revoked_at: string | null;
         }>();
@@ -4390,6 +4438,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           stripeSubscriptionLinked: Boolean(billingRow.stripe_subscription_id),
           subscriptionStatus: billingRow.subscription_status,
           subscriptionCurrentPeriodEnd: billingRow.subscription_current_period_end,
+          cancelAtPeriodEnd: billingRow.subscription_cancel_at_period_end === 1,
           premiumGrantedAt: billingRow.premium_granted_at,
           premiumRevokedAt: billingRow.premium_revoked_at,
         };

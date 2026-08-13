@@ -24,6 +24,7 @@ export type StripeSubscription = {
   metadata?: StripeMetadata | null;
   items?: {
     data?: Array<{
+      id?: string | null;
       current_period_end?: number | null;
       price?: { id?: string | null } | string | null;
     }>;
@@ -212,12 +213,6 @@ function configuredStripeApiVersion(env: Env): string {
   return env.STRIPE_API_VERSION?.trim() || DEFAULT_STRIPE_API_VERSION;
 }
 
-/** True for API versions that accept subscription invoice_settings.footer (Dahlia+). */
-function supportsSubscriptionInvoiceFooter(env: Env): boolean {
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(configuredStripeApiVersion(env));
-  return Boolean(match && match[1]! >= "2026-06-24");
-}
-
 async function stripeApiRequest<T>(
   env: Env,
   path: string,
@@ -324,16 +319,11 @@ export async function createStripeCheckoutSession(
   form.set("metadata[privatenote_plan]", input.plan);
   form.set("metadata[privatenote_currency]", input.currency);
   form.set("metadata[privatenote_terms_version]", BILLING_TERMS_VERSION);
-  // Prefer native subscription invoice footer on Dahlia+; description remains a
-  // fallback note on older API versions (e.g. production still on basil).
-  if (supportsSubscriptionInvoiceFooter(env)) {
-    form.set(
-      "subscription_data[invoice_settings][footer]",
-      BILLING_INVOICE_VAT_FOOTER,
-    );
-  } else {
-    form.set("subscription_data[description]", BILLING_INVOICE_VAT_FOOTER);
-  }
+  // Checkout rejects subscription_data[invoice_settings][footer] on every API
+  // version, including Dahlia. Carry the VAT note as the subscription
+  // description here; renewal drafts get the real footer via the
+  // invoice.created webhook (see applyInvoiceVatFooter).
+  form.set("subscription_data[description]", BILLING_INVOICE_VAT_FOOTER);
   form.set("subscription_data[metadata][privatenote_user_id]", input.userId);
   form.set("subscription_data[metadata][privatenote_plan]", input.plan);
   form.set("subscription_data[metadata][privatenote_currency]", input.currency);
@@ -359,13 +349,23 @@ export async function createStripeCheckoutSession(
   );
 }
 
+export type StripePortalFlow =
+  | "manage"
+  | "subscription_cancel"
+  | "subscription_update"
+  | "subscription_update_confirm";
+
 export async function createStripePortalSession(
   env: Env,
   input: {
     stripeCustomerId: string;
     returnUrl: string;
     subscriptionId?: string | null;
-    flow?: "manage" | "subscription_update";
+    flow?: StripePortalFlow;
+    /** Target price, required by the subscription_update_confirm flow. */
+    priceId?: string | null;
+    /** Item on the existing subscription that the target price replaces. */
+    subscriptionItemId?: string | null;
   },
   fetchImpl?: typeof fetch,
 ): Promise<{ id: string; url: string }> {
@@ -377,7 +377,7 @@ export async function createStripePortalSession(
   if (configurationId) {
     form.set("configuration", configurationId);
   }
-  if (input.flow === "subscription_update") {
+  if (input.flow && input.flow !== "manage") {
     const subscriptionId = input.subscriptionId?.trim();
     if (!subscriptionId) {
       throw new StripeBillingError(
@@ -386,8 +386,22 @@ export async function createStripePortalSession(
         "subscription_not_found",
       );
     }
-    form.set("flow_data[type]", "subscription_update");
-    form.set("flow_data[subscription_update][subscription]", subscriptionId);
+    form.set("flow_data[type]", input.flow);
+    form.set(`flow_data[${input.flow}][subscription]`, subscriptionId);
+    if (input.flow === "subscription_update_confirm") {
+      const priceId = input.priceId?.trim();
+      const itemId = input.subscriptionItemId?.trim();
+      if (!priceId || !itemId) {
+        throw new StripeBillingError(
+          "The selected billing price is not configured.",
+          503,
+          "price_not_configured",
+        );
+      }
+      form.set("flow_data[subscription_update_confirm][items][0][id]", itemId);
+      form.set("flow_data[subscription_update_confirm][items][0][price]", priceId);
+      form.set("flow_data[subscription_update_confirm][items][0][quantity]", "1");
+    }
     form.set("flow_data[after_completion][type]", "redirect");
     form.set("flow_data[after_completion][redirect][return_url]", input.returnUrl);
   }
@@ -396,6 +410,94 @@ export async function createStripePortalSession(
     "/v1/billing_portal/sessions",
     { form, fetchImpl },
   );
+}
+
+/**
+ * Portal session for a customer who already pays for a plan.
+ *
+ * Prefers the confirm flow so the customer lands on the plan they actually
+ * clicked instead of a second plan picker. Each flow is attempted in turn and
+ * the plain portal is the last resort: the confirm and update flows both depend
+ * on the portal configuration listing switchable products, and when that list is
+ * empty Stripe rejects the session outright. Degrading to the portal home keeps
+ * the customer in self-service instead of showing them a dead end.
+ */
+export async function createSubscriptionChangeSession(
+  env: Env,
+  input: {
+    stripeCustomerId: string;
+    subscriptionId: string;
+    plan: PaidBillingPlan;
+    interval: BillingInterval;
+    /** Used only when the subscription's own currency cannot be resolved. */
+    fallbackCurrency: BillingCurrency;
+    returnUrl: string;
+  },
+  fetchImpl?: typeof fetch,
+): Promise<{ id: string; url: string; flow: StripePortalFlow }> {
+  let itemId: string | null = null;
+  let currentPriceId: string | null = null;
+  try {
+    const subscription = await retrieveStripeSubscription(
+      env,
+      input.subscriptionId,
+      fetchImpl,
+    );
+    const item = subscription.items?.data?.[0];
+    itemId = item?.id?.trim() || null;
+    currentPriceId = subscriptionPriceId(subscription);
+  } catch (error) {
+    console.warn(
+      "[BILLING] Could not read subscription for plan change, falling back to the plan picker:",
+      error,
+    );
+  }
+
+  // Stripe cannot switch a subscription to another currency, so the target
+  // price must match what the customer already pays in.
+  const currency =
+    billingCurrencyForStripePrice(env, currentPriceId) ?? input.fallbackCurrency;
+  const targetPriceId = stripePriceIdFor(
+    env,
+    input.plan,
+    input.interval,
+    currency,
+  );
+
+  const flows: StripePortalFlow[] = [];
+  if (itemId && targetPriceId && targetPriceId !== currentPriceId) {
+    flows.push("subscription_update_confirm");
+  }
+  flows.push("subscription_update", "manage");
+
+  let lastError: unknown = null;
+  for (const flow of flows) {
+    try {
+      const session = await createStripePortalSession(
+        env,
+        {
+          stripeCustomerId: input.stripeCustomerId,
+          subscriptionId: input.subscriptionId,
+          returnUrl: input.returnUrl,
+          flow,
+          priceId: targetPriceId,
+          subscriptionItemId: itemId,
+        },
+        fetchImpl,
+      );
+      return { ...session, flow };
+    } catch (error) {
+      lastError = error;
+      console.warn(`[BILLING] Portal ${flow} flow unavailable:`, error);
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new StripeBillingError(
+        "The billing portal is unavailable.",
+        502,
+        "portal_unavailable",
+      );
 }
 
 export type StripeBillingConfigHealth = {
