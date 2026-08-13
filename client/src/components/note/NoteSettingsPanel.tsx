@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
-  noteExpiryPresetsForAccount,
   noteExpiryPresetDisplayLabel,
+  noteExpiryPresetIdToSeconds,
+  NOTE_EXPIRY_PRESETS,
   type NoteExpiryPresetId,
 } from "@shared/noteExpiry";
 import {
@@ -47,7 +48,6 @@ import {
   SIMPLE_PASSWORD_NOUNS,
 } from "./simplePasswordWordlists";
 import type { PasswordStrength, BreachState } from "@/hooks/usePasswordBreachCheck";
-import { Link } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/context/LanguageContext";
 import { localizedPath } from "@/utils/localizedPath";
@@ -75,6 +75,50 @@ const SELECT_CHEVRON_STYLE = {
   backgroundPosition: "right 0.75rem center",
   backgroundSize: "0.75em",
 };
+
+/** Native <option> styling for locked (premium) choices — light gray, still selectable. */
+const LOCKED_OPTION_STYLE: React.CSSProperties = { color: "#9ca3af" };
+
+/** Starter plan caps (Business is above these). */
+const STARTER_MAX_EXPIRY_SECONDS = 15 * 24 * 60 * 60;
+const FREE_MAX_EXPIRY_SECONDS = 3 * 24 * 60 * 60;
+const STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS = 30 * 60;
+const FREE_MAX_FILE_ACCESS_WINDOW_SECONDS = 15 * 60;
+
+type PlanUnlockTier = "free" | "starter" | "business";
+
+function planUnlockLabel(plan: PlanUnlockTier, t: Record<string, string>): string {
+  if (plan === "business") return t.settingsPlanBusiness ?? "Business";
+  return t.premium ?? "Starter";
+}
+
+/** e.g. "2 views — Starter"; free options stay unlabeled. */
+function withPlanUnlock(
+  label: string,
+  plan: PlanUnlockTier,
+  t: Record<string, string>,
+): string {
+  if (plan === "free") return label;
+  return `${label} — ${planUnlockLabel(plan, t)}`;
+}
+
+function expiryPlanUnlock(seconds: number): PlanUnlockTier {
+  if (seconds <= FREE_MAX_EXPIRY_SECONDS) return "free";
+  if (seconds <= STARTER_MAX_EXPIRY_SECONDS) return "starter";
+  return "business";
+}
+
+function readLimitPlanUnlock(limit: number): PlanUnlockTier {
+  if (limit <= 1) return "free";
+  if (limit <= 3) return "starter";
+  return "business";
+}
+
+function fileAccessPlanUnlock(seconds: number): PlanUnlockTier {
+  if (seconds <= FREE_MAX_FILE_ACCESS_WINDOW_SECONDS) return "free";
+  if (seconds <= STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS) return "starter";
+  return "business";
+}
 
 function SettingsFieldHelper({ children }: { children: React.ReactNode }) {
   return (
@@ -250,6 +294,7 @@ export const generateStrongPassword = (): string => {
 type PremiumFeature = {
   title: string;
   description: string;
+  plan: "starter" | "business";
 };
 
 export type ReaderLanguageSetting = "auto" | SupportedLanguage;
@@ -280,109 +325,26 @@ function SectionHeading({
   );
 }
 
-/** Clear locked affordance for free users — lock + plan badge, not a dead switch. */
+/** Locked switch for plan-gated rows; the section badge and CTA explain the upgrade. */
 function LockedPremiumToggle({
   label,
-  premiumLabel = "Starter",
+  plan,
   onClick,
 }: {
   label: string;
-  premiumLabel?: string;
+  plan: "Starter" | "Business";
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200 dark:hover:bg-amber-900/40"
-      aria-label={`${label} — ${premiumLabel}`}
+      className="inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      aria-label={`${label} — locked, available with ${plan}`}
+      title={`Available with ${plan}`}
     >
-      <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      {premiumLabel}
+      <Switch checked={false} disabled aria-hidden className="pointer-events-none opacity-50" />
     </button>
-  );
-}
-
-function SettingsOptionList({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-md border border-gray-200/80 bg-white/50 divide-y divide-gray-200/80 dark:border-gray-700/80 dark:bg-gray-950/20 dark:divide-gray-700/80">
-      {children}
-    </div>
-  );
-}
-
-function SettingsToggleRow({
-  id,
-  title,
-  info,
-  checked,
-  locked,
-  premiumLabel = "Starter",
-  onCheckedChange,
-  onLockedClick,
-}: {
-  id?: string;
-  title: string;
-  info: string;
-  checked?: boolean;
-  locked: boolean;
-  premiumLabel?: string;
-  onCheckedChange?: (checked: boolean) => void;
-  onLockedClick?: () => void;
-}) {
-  const titleContent = (
-    <SettingsInfoTooltip text={info}>
-      <span
-        className="flex min-w-0 flex-1 cursor-help items-center text-sm font-medium text-gray-800 dark:text-gray-200"
-        aria-label={info}
-      >
-        <span className="min-w-0 text-left leading-snug">{title}</span>
-      </span>
-    </SettingsInfoTooltip>
-  );
-
-  if (locked) {
-    const className =
-      "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/30 dark:hover:bg-gray-900/40";
-    if (onLockedClick) {
-      return (
-        <button type="button" onClick={onLockedClick} className={className}>
-          {titleContent}
-          <span className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200">
-            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {premiumLabel}
-          </span>
-        </button>
-      );
-    }
-    return (
-      <div className={className} aria-disabled="true">
-        {titleContent}
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:border-amber-700/50 dark:bg-amber-900/25 dark:text-amber-200">
-          <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          {premiumLabel}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-white/60 dark:hover:bg-gray-900/40">
-      {titleContent}
-      <Switch
-        id={id}
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        className="ml-auto"
-        aria-label={title}
-      />
-    </div>
-  );
-}
-
-function PremiumSectionFooter({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">{children}</p>
   );
 }
 
@@ -515,7 +477,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   maxExpirySeconds,
   allowedReadCounts,
   maxFileAccessWindowSeconds,
-  isSignedIn,
   premiumStatusLoading,
   requireRecipientVerification,
   setRequireRecipientVerification,
@@ -537,7 +498,6 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
-  const accountHref = localizedPath("/account", language);
   const preferencesHref = localizedPath("/account/preferences", language);
   const brandingHref = `${preferencesHref}#reveal-branding`;
   const isConfiguredBusiness = configuredAccountType === "business_premium";
@@ -553,6 +513,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
       description:
         t.settingsDeliveryBrandedRevealInfo ??
         "Show your brand on the page where the recipient opens the note.",
+      plan: "business",
     }),
     [t],
   );
@@ -562,18 +523,27 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     ? "Enter the recipient's email. When they open the link, we email them a one-time code before the file can be revealed."
     : t.settingsDeliveryVerifyEmailInfo ??
       "Enter the recipient's email. When they open the link, we email them a one-time code before the note can be revealed.";
+  const recipientCodeUpgradeCopy = isFileTransfer
+    ? "Add a second step before reveal. The recipient receives a one-time email code, so the link alone is not enough to open the file."
+    : "Add a second step before reveal. The recipient receives a one-time email code, so the link alone is not enough to open the note.";
   const emailLinkTitle = t.settingsDeliverRecipientEmail ?? "Email link to recipient";
   const emailLinkInfo =
     t.settingsDeliverRecipientEmailInfo ??
     "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.";
+  const emailLinkUpgradeCopy =
+    "Let PrivateNote deliver the link for you and keep the handoff connected to your Activity history.";
   const delayedRevealTitle = t.settingsDelayedReveal ?? "Delayed reveal";
   const delayedRevealInfo =
     t.settingsDelayedRevealInfo ??
     "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.";
+  const delayedRevealUpgradeCopy =
+    "Share ahead of time while keeping the note sealed until the moment you choose.";
   const receiptAckTitle = t.settingsRequireReceiptAck ?? "Require receipt confirmation";
   const receiptAckInfo =
     t.settingsRequireReceiptAckInfo ??
     "After the recipient successfully decrypts the note, they can confirm receipt. Confirmation is stored even if the note burns on open.";
+  const receiptAckUpgradeCopy =
+    "Close the loop with a recipient acknowledgment after successful decryption—without storing the message itself.";
   const selectedReceiptAckPreset =
     BUSINESS_RECEIPT_ACK_PRESETS.find((preset) => preset.label === receiptAckStatement) ?? null;
   const isCustomReceiptAckStatement = selectedReceiptAckPreset === null;
@@ -631,16 +601,36 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 value={expiryValue}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (isNoteExpiryPresetId(v)) setExpiryValue(v);
+                  if (!isNoteExpiryPresetId(v)) return;
+                  if (noteExpiryPresetIdToSeconds(v) > maxExpirySeconds) {
+                    const requiredPlan = expiryPlanUnlock(noteExpiryPresetIdToSeconds(v));
+                    setSelectedPremiumFeature({
+                      title: t.settingsNoteLifetime ?? t.expiration,
+                      description:
+                        t.settingsNoteLifetimeInfo ??
+                        "Longer note lifetimes are available on Starter and Business.",
+                      plan: requiredPlan === "business" ? "business" : "starter",
+                    });
+                    return;
+                  }
+                  setExpiryValue(v);
                 }}
                 className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
                 style={SELECT_CHEVRON_STYLE}
               >
-                {noteExpiryPresetsForAccount(maxExpirySeconds).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {translatedExpiryLabel(p.id, t)}
-                  </option>
-                ))}
+                {NOTE_EXPIRY_PRESETS.map((p) => {
+                  const plan = expiryPlanUnlock(p.seconds);
+                  const locked = p.seconds > maxExpirySeconds;
+                  return (
+                    <option
+                      key={p.id}
+                      value={p.id}
+                      style={locked ? LOCKED_OPTION_STYLE : undefined}
+                    >
+                      {withPlanUnlock(translatedExpiryLabel(p.id, t), plan, t)}
+                    </option>
+                  );
+                })}
               </select>
               <SettingsFieldHelper>
                 {t.settingsNoteLifetimeHint ?? "When the link stops working if never opened."}
@@ -662,26 +652,36 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <select
                 id="note-read-limit"
                 value={readCount}
-                disabled={premiumStatusLoading}
                 onChange={(e) => {
                   const next = Number(e.target.value);
                   if (!NOTE_READ_LIMIT_OPTIONS.includes(next as NoteReadLimit)) return;
-                  if (!allowedReadCounts.includes(next)) return;
+                  if (!allowedReadCounts.includes(next)) {
+                    const requiredPlan = readLimitPlanUnlock(next);
+                    setSelectedPremiumFeature({
+                      title: t.settingsOpenLimit ?? t.viewLimit,
+                      description:
+                        t.settingsOpenLimitInfo ??
+                        t.viewLimitPremiumHint ??
+                        "Starter and Business let you allow multiple opens before the note is destroyed.",
+                      plan: requiredPlan === "business" ? "business" : "starter",
+                    });
+                    return;
+                  }
                   setReadCount(next as NoteReadLimit);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
+                  const plan = readLimitPlanUnlock(limit);
                   const locked = !allowedReadCounts.includes(limit);
                   return (
-                    <option key={limit} value={limit} disabled={locked}>
-                      {translatedReadLimitLabel(limit, t)}
-                      {locked
-                        ? limit === 5
-                          ? " (Business)"
-                          : ` (${t.premium ?? "Starter"})`
-                        : ""}
+                    <option
+                      key={limit}
+                      value={limit}
+                      style={locked ? LOCKED_OPTION_STYLE : undefined}
+                    >
+                      {withPlanUnlock(translatedReadLimitLabel(limit, t), plan, t)}
                     </option>
                   );
                 })}
@@ -708,28 +708,37 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <select
                 id="note-file-access-window"
                 value={fileAccessWindowSeconds}
-                disabled={premiumStatusLoading}
                 onChange={(e) => {
                   const next = Number(e.target.value);
                   if (!NOTE_FILE_ACCESS_WINDOW_OPTIONS.includes(next as NoteFileAccessWindowSeconds)) {
                     return;
                   }
-                  if (next > maxFileAccessWindowSeconds) return;
+                  if (next > maxFileAccessWindowSeconds) {
+                    const requiredPlan = fileAccessPlanUnlock(next);
+                    setSelectedPremiumFeature({
+                      title: t.settingsFileDownloads ?? "File downloads",
+                      description:
+                        t.settingsFileDownloadsInfo ??
+                        "Longer download windows after open are available on Starter and Business.",
+                      plan: requiredPlan === "business" ? "business" : "starter",
+                    });
+                    return;
+                  }
                   setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                  const plan = fileAccessPlanUnlock(seconds);
                   const locked = seconds > maxFileAccessWindowSeconds;
                   return (
-                    <option key={seconds} value={seconds} disabled={locked}>
-                      {translatedFileAccessWindowLabel(seconds, t)}
-                      {locked
-                        ? seconds === 60 * 60
-                          ? " (Business)"
-                          : ` (${t.premium ?? "Starter"})`
-                        : ""}
+                    <option
+                      key={seconds}
+                      value={seconds}
+                      style={locked ? LOCKED_OPTION_STYLE : undefined}
+                    >
+                      {withPlanUnlock(translatedFileAccessWindowLabel(seconds, t), plan, t)}
                     </option>
                   );
                 })}
@@ -1094,26 +1103,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 </div>
               ) : null}
               {!canNotifyOnOpen && !premiumStatusLoading ? (
-                <PremiumSectionFooter>
-                  {isSignedIn ? (
-                    <>
-                      {t.settingsEmailAlertsPrefsHintPrefix ??
-                        "Verify your email and turn on email notifications in"}{" "}
-                      <Link
-                        href={preferencesHref}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {t.settingsEmailAlertsPrefsLink ?? "Account → Preferences"}
-                      </Link>
-                      .
-                    </>
-                  ) : (
-                    <>
-                      {t.settingsEmailAlertsSignInHint ??
-                        "Sign in with a verified email to get open and destroy alerts."}
-                    </>
-                  )}
-                </PremiumSectionFooter>
+                <p className="px-1 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {t.settingsEmailAlertsSignInHint ??
+                    "Sign in with a verified email to get open and destroy alerts."}
+                </p>
               ) : null}
             </section>
 
@@ -1142,11 +1135,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   {!isPremiumUser ? (
                     <LockedPremiumToggle
                       label={recipientCodeTitle}
-                      premiumLabel={t.premium ?? "Starter"}
+                      plan="Starter"
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: recipientCodeTitle,
-                          description: recipientCodeInfo,
+                          description: recipientCodeUpgradeCopy,
+                          plan: "starter",
                         })
                       }
                     />
@@ -1204,11 +1198,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   {!isPremiumUser ? (
                     <LockedPremiumToggle
                       label={emailLinkTitle}
-                      premiumLabel={t.premium ?? "Starter"}
+                      plan="Starter"
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: emailLinkTitle,
-                          description: emailLinkInfo,
+                          description: emailLinkUpgradeCopy,
+                          plan: "starter",
                         })
                       }
                     />
@@ -1275,11 +1270,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   {!isPremiumUser ? (
                     <LockedPremiumToggle
                       label={delayedRevealTitle}
-                      premiumLabel={t.premium ?? "Starter"}
+                      plan="Starter"
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: delayedRevealTitle,
-                          description: delayedRevealInfo,
+                          description: delayedRevealUpgradeCopy,
+                          plan: "starter",
                         })
                       }
                     />
@@ -1335,11 +1331,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   {!isPremiumUser ? (
                     <LockedPremiumToggle
                       label={receiptAckTitle}
-                      premiumLabel={t.premium ?? "Starter"}
+                      plan="Starter"
                       onClick={() =>
                         setSelectedPremiumFeature({
                           title: receiptAckTitle,
-                          description: receiptAckInfo,
+                          description: receiptAckUpgradeCopy,
+                          plan: "starter",
                         })
                       }
                     />
@@ -1537,25 +1534,34 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   <select
                     id="reader-language"
                     value={readerLanguage}
-                    disabled={!isPremiumUser || premiumStatusLoading}
-                    onChange={(event) => setReaderLanguage(event.target.value as ReaderLanguageSetting)}
-                    onClick={() => {
-                      if (!isPremiumUser) {
+                    disabled={premiumStatusLoading}
+                    onChange={(event) => {
+                      const next = event.target.value as ReaderLanguageSetting;
+                      if (!isPremiumUser && next !== "auto") {
                         setSelectedPremiumFeature({
                           title: t.settingsReaderLanguage ?? "Reader Language",
                           description:
                             t.settingsReaderLanguageDescription ??
                             "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
+                          plan: "starter",
                         });
+                        return;
                       }
+                      setReaderLanguage(next);
                     }}
-                    className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
                     style={SELECT_CHEVRON_STYLE}
                   >
-                    <option value="auto">{t.settingsReaderLanguageAuto ?? "Auto"}</option>
+                    <option value="auto">
+                      {withPlanUnlock(t.settingsReaderLanguageAuto ?? "Auto", "free", t)}
+                    </option>
                     {LANGUAGE_OPTIONS.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {option.nativeName}
+                      <option
+                        key={option.code}
+                        value={option.code}
+                        style={!isPremiumUser ? LOCKED_OPTION_STYLE : undefined}
+                      >
+                        {withPlanUnlock(option.nativeName, "starter", t)}
                       </option>
                     ))}
                   </select>
@@ -1565,53 +1571,85 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </SettingsFieldHelper>
                 </div>
               </div>
-              <SettingsOptionList>
-                {premiumStatusLoading ? (
-                  <div className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">
-                    {t.authLoading ?? "Loading account…"}
-                  </div>
-                ) : brandingAllowed ? (
-                  hasRevealBranding ? (
-                    <SettingsToggleRow
-                      id="apply-branding"
-                      locked={false}
-                      checked={applyBranding}
-                      onCheckedChange={(checked) => setApplyBranding?.(checked)}
-                      title={brandedRevealFeature.title}
-                      info={brandedRevealFeature.description}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
-                      <Palette className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
-                      <span className="min-w-0">
-                        <a
-                          href={brandingHref}
-                          className="underline underline-offset-2 hover:text-primary"
-                        >
+              {!isPremiumUser ? (
+                <a
+                  href={premiumUpgradeHref}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-transparent px-3 py-2 text-xs font-medium text-primary transition-colors hover:border-primary/45 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Lock className="h-3.5 w-3.5 opacity-75" aria-hidden />
+                  Unlock delivery controls with Starter or Business
+                </a>
+              ) : null}
+            </section>
+
+            <section
+              className="space-y-2 rounded-lg border border-violet-200/80 bg-violet-50/35 px-3 pb-3 pt-2 dark:border-violet-900/60 dark:bg-violet-950/15"
+              aria-labelledby="note-reveal-branding-heading"
+            >
+              <SectionHeading
+                id="note-reveal-branding-heading"
+                title={t.settingsRevealBrandingSection ?? "Reveal branding"}
+                showPremiumBadge={!isConfiguredBusiness}
+                premiumLabel={t.settingsPlanBusiness ?? "Business"}
+              />
+              <div className={SETTINGS_TOGGLE_ROW}>
+                <div className="min-w-0 flex-1">
+                  {premiumStatusLoading ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {t.authLoading ?? "Loading account…"}
+                    </p>
+                  ) : brandingAllowed && !hasRevealBranding ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <span className="mr-0.5 shrink-0 rounded bg-violet-100 p-1 dark:bg-violet-900/30">
+                        <Palette className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden />
+                      </span>
+                      <span className="min-w-0 leading-snug">
+                        <a href={brandingHref} className="font-medium text-primary underline underline-offset-2">
                           {t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding"}
                         </a>{" "}
-                        {t.settingsDeliveryBrandedRevealSetUpHint ??
-                          "to show it on the reveal page."}
+                        {t.settingsDeliveryBrandedRevealSetUpHint ?? "to show it on the reveal page."}
                       </span>
                     </div>
-                  )
-                ) : (
-                  <SettingsToggleRow
-                    locked
-                    premiumLabel={t.premium ?? "Starter"}
-                    title={brandedRevealFeature.title}
-                    info={brandedRevealFeature.description}
-                    onLockedClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
-                  />
-                )}
-              </SettingsOptionList>
-              {!isPremiumUser ? (
-                <PremiumSectionFooter>
-                  {t.settingsPremiumFeatureLabel ?? "Starter and Business feature —"}{" "}
-                  <a href={premiumUpgradeHref} className="font-medium text-primary hover:underline">
-                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                  ) : (
+                    <SettingsFieldLabel
+                      htmlFor="apply-branding"
+                      icon={<Palette className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                      iconToneClassName="bg-violet-100 dark:bg-violet-900/30"
+                      label={brandedRevealFeature.title}
+                      info={brandedRevealFeature.description}
+                      singleLine
+                    />
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center">
+                  {premiumStatusLoading ? null : brandingAllowed && hasRevealBranding ? (
+                    <Switch
+                      id="apply-branding"
+                      checked={applyBranding}
+                      onCheckedChange={(checked) => setApplyBranding?.(checked)}
+                    />
+                  ) : brandingAllowed ? null : (
+                    <LockedPremiumToggle
+                      label={brandedRevealFeature.title}
+                      plan="Business"
+                      onClick={() => setSelectedPremiumFeature(brandedRevealFeature)}
+                    />
+                  )}
+                </div>
+              </div>
+              {!isConfiguredBusiness ? (
+                <div className="space-y-2">
+                  <p className="px-1 text-xs leading-snug text-violet-700 dark:text-violet-300">
+                    Business adds your company identity to the recipient reveal page.
+                  </p>
+                  <a
+                    href={premiumUpgradeHref}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-violet-300/70 bg-transparent px-3 py-2 text-xs font-medium text-violet-700 transition-colors hover:border-violet-400 hover:bg-violet-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/30 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40"
+                  >
+                    <Lock className="h-3.5 w-3.5 opacity-75" aria-hidden />
+                    Unlock reveal branding with Business
                   </a>
-                </PremiumSectionFooter>
+                </div>
               ) : null}
             </section>
             {isPremiumUser && onSaveDefaults ? (
@@ -1667,48 +1705,39 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {selectedPremiumFeature?.title === brandedRevealFeature.title
-                ? (t.settingsPremiumFeatureDialogTitleBusiness ?? "Available with Business")
-                : (t.settingsPremiumFeatureDialogTitle ?? "Available with Starter and Business")}
+              {selectedPremiumFeature?.plan === "business"
+                ? "Unlock more with Business"
+                : "Add more control with Starter"}
             </DialogTitle>
             <DialogDescription>
-              {selectedPremiumFeature?.description ??
-                t.settingsPremiumFeatureDialogFallback ??
-                "Choose Starter or Business to unlock delivery and verification controls."}
+              <span className="block font-medium text-foreground">
+                {selectedPremiumFeature?.title}
+              </span>
+              <span className="mt-1 block">
+                {selectedPremiumFeature?.description ??
+                  t.settingsPremiumFeatureDialogFallback ??
+                  "Choose Starter or Business to unlock delivery and verification controls."}
+              </span>
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
-            {selectedPremiumFeature?.title === brandedRevealFeature.title
-              ? (
-                  t.settingsPremiumFeaturePartOfBusiness ??
-                  "{feature} is included with Business."
-                ).replace(
-                  "{feature}",
-                  selectedPremiumFeature?.title ?? "Branded reveal page",
-                )
-              : (
-                  t.settingsPremiumFeaturePartOfPremium ??
-                  "{feature} is included with Starter and Business."
-                ).replace(
-                  "{feature}",
-                  selectedPremiumFeature?.title ?? "Delivery & Verification",
-                )}
+            {selectedPremiumFeature?.plan === "business"
+              ? "Included with Business. Your encryption and privacy protections stay the same."
+              : "Included with Starter and Business. Your encryption and privacy protections stay the same."}
           </div>
           <a
             href={
-              selectedPremiumFeature?.title === brandedRevealFeature.title
-                ? isConfiguredBusiness
-                  ? brandingHref
-                  : accountHref
+              selectedPremiumFeature?.plan === "business" && isConfiguredBusiness
+                ? brandingHref
                 : premiumUpgradeHref
             }
             className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
-            {selectedPremiumFeature?.title === brandedRevealFeature.title
-              ? isConfiguredBusiness
-                ? (t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding")
-                : (t.settingsViewAccountPlan ?? "View account plan")
-              : (t.settingsUpgradeToPremium ?? "Compare plans")}
+            {selectedPremiumFeature?.plan === "business" && isConfiguredBusiness
+              ? (t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding")
+              : selectedPremiumFeature?.plan === "business"
+                ? "Upgrade to Business"
+                : "Upgrade to Starter"}
           </a>
         </DialogContent>
       </Dialog>

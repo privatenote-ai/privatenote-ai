@@ -4,7 +4,7 @@ import {
   type AccountType,
   type BillingCurrency,
 } from "@shared/planCatalog";
-import { BILLING_TERMS_VERSION } from "@shared/billingTerms";
+import { BILLING_INVOICE_VAT_FOOTER, BILLING_TERMS_VERSION } from "@shared/billingTerms";
 import type { Env } from "./types";
 import { queueBillingNotification } from "./billingCommunications";
 
@@ -212,6 +212,12 @@ function configuredStripeApiVersion(env: Env): string {
   return env.STRIPE_API_VERSION?.trim() || DEFAULT_STRIPE_API_VERSION;
 }
 
+/** True for API versions that accept subscription invoice_settings.footer (Dahlia+). */
+function supportsSubscriptionInvoiceFooter(env: Env): boolean {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(configuredStripeApiVersion(env));
+  return Boolean(match && match[1]! >= "2026-06-24");
+}
+
 async function stripeApiRequest<T>(
   env: Env,
   path: string,
@@ -256,6 +262,18 @@ async function stripeApiRequest<T>(
     );
   }
   return body;
+}
+
+async function applyInvoiceVatFooter(
+  env: Env,
+  invoiceId: string,
+  fetchImpl?: typeof fetch,
+): Promise<void> {
+  const form = new URLSearchParams({ footer: BILLING_INVOICE_VAT_FOOTER });
+  await stripeApiRequest(env, `/v1/invoices/${encodeURIComponent(invoiceId)}`, {
+    form,
+    fetchImpl,
+  });
 }
 
 export async function createStripeCheckoutSession(
@@ -306,6 +324,16 @@ export async function createStripeCheckoutSession(
   form.set("metadata[privatenote_plan]", input.plan);
   form.set("metadata[privatenote_currency]", input.currency);
   form.set("metadata[privatenote_terms_version]", BILLING_TERMS_VERSION);
+  // Prefer native subscription invoice footer on Dahlia+; description remains a
+  // fallback note on older API versions (e.g. production still on basil).
+  if (supportsSubscriptionInvoiceFooter(env)) {
+    form.set(
+      "subscription_data[invoice_settings][footer]",
+      BILLING_INVOICE_VAT_FOOTER,
+    );
+  } else {
+    form.set("subscription_data[description]", BILLING_INVOICE_VAT_FOOTER);
+  }
   form.set("subscription_data[metadata][privatenote_user_id]", input.userId);
   form.set("subscription_data[metadata][privatenote_plan]", input.plan);
   form.set("subscription_data[metadata][privatenote_currency]", input.currency);
@@ -1008,6 +1036,21 @@ export async function processStripeWebhookEvent(
         if (!planForStripePrice(env, subscriptionPriceId(subscription))) {
           warning = unknownPriceError(subscription);
           console.error(`[BILLING] ${warning.code}: ${warning.message}`);
+        }
+      }
+      handled = true;
+    } else if (event.type === "invoice.created") {
+      const invoiceId = asId(object.id);
+      const status = typeof object.status === "string" ? object.status : "";
+      const existingFooter =
+        typeof object.footer === "string" ? object.footer.trim() : "";
+      if (invoiceId && status === "draft" && !existingFooter) {
+        try {
+          await applyInvoiceVatFooter(env, invoiceId, fetchImpl);
+        } catch (error) {
+          // First subscription invoices often finalize immediately; Dashboard
+          // default footer covers that race. Renewal drafts stay editable.
+          console.error("[BILLING] Could not set VAT franchise invoice footer:", error);
         }
       }
       handled = true;

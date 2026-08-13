@@ -248,7 +248,7 @@ const featureCards = [
   {
     icon: ShieldCheck,
     title: "Proof of access",
-    text: "Coarse open receipts for the sender without storing message content.",
+    text: "Privacy-safe access records for the sender without storing message content.",
   },
   {
     icon: Building2,

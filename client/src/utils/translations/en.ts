@@ -370,7 +370,8 @@ export const en: Translations = {
   authPrefsSaved: "Saved",
   authPrefsPreferredLanguage: "Preferred language",
   authPrefsEmailSectionTitle: "Email",
-  authPrefsEmailNotificationsHint: "Product updates and security alerts from PrivateNote. Critical security emails may still be sent.",
+  authPrefsEmailNotificationsHint:
+    "Note open/destroy alerts, product updates, and security messages. Critical account emails may still be sent.",
   authPrefsComingLater: "Coming later",
   authPrefsComingDigest: "Notification digest frequency",
   authPrefsComingNoteDefaults: "Note defaults (expiry, AI, etc.)",
@@ -567,6 +568,8 @@ export const en: Translations = {
   viewLimitPremiumHint: "Starter and Business let you allow multiple opens before the note is destroyed.",
   viewLimitFreeDescription: "Free accounts use read-once.",
   premium: "Starter",
+  settingsPlanFree: "Free",
+  settingsPlanBusiness: "Business",
   settingsFileDownloads: "File downloads",
   settingsFileDownloadsInfo: "How long recipients can download attachments after opening the note.",
   settingsFileDownloadsHint: "Download window after the note is opened.",
@@ -640,10 +643,10 @@ export const en: Translations = {
   noteLabelsRevealImportDone:
     "Labels were saved on this device for Notification Center.",
   noteLabelsRevealImportButton: "Load labels on this device",
-  settingsEmailAlertsPrefsHintPrefix: "Turn on email notifications in",
+  settingsEmailAlertsPrefsHintPrefix: "Verify your email and turn on email notifications in",
   settingsEmailAlertsPrefsLink: "Account → Preferences",
   settingsPremiumFeatureLabel: "Starter and Business feature —",
-  settingsEmailAlertsUpgradeLink: "Upgrade to unlock email alerts",
+  settingsEmailAlertsUpgradeLink: "Sign in with a verified email to enable open alerts",
   settingsDeliveryVerification: "Delivery & verification",
   settingsDeliveryVerifyEmail: "Require one-time code via email",
   settingsDeliveryVerifyEmailInfo:

@@ -240,9 +240,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
     if (!alertNotifyAccountEmail && !alertCustomEmail) {
       throw new Error("alert_destination_required");
     }
-    if (alertNotifyAccountEmail && sender.email_notifications !== 1) {
-      throw new Error("email_notifications_disabled");
-    }
+    // Per-note notify opt-in is enough; do not require the global marketing/prefs
+    // email_notifications flag (free open/destroy alerts work like Privnote).
     if (alertCustomEmail && !capabilities.openNotifications) {
       throw new Error("premium_required");
     }
@@ -1010,8 +1009,7 @@ async function sendSentNoteLifecycleEmail(
     notifyAccount &&
     senderRow?.email &&
     isPlausibleEmailFormat(senderRow.email) &&
-    senderRow.email_verified === 1 &&
-    senderRow.email_notifications === 1
+    senderRow.email_verified === 1
   ) {
     recipients.add(senderRow.email.trim().toLowerCase());
   }

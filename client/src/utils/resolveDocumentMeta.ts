@@ -301,9 +301,9 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "premium":
       return {
-        title: buildDocumentTitle("Premium"),
+        title: buildDocumentTitle("Pricing"),
         description:
-          "Upgrade PrivateNote with delivery controls, note-open alerts, recipient checks, longer expirations, and higher hosted AI limits.",
+          "Compare Free, Starter, and Business plans — delivery controls, note-open alerts, recipient checks, longer expirations, and higher hosted AI limits.",
       };
     case "about":
       return {

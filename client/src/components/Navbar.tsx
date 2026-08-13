@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown, History, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -215,6 +215,20 @@ export const Navbar: React.FC = () => {
                 className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.security}
+              </NavLink>
+              <NavLink
+                href="/account/activity"
+                closeMenu={closeMenu}
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              >
+                {t.authNavActivity ?? "Activity"}
+              </NavLink>
+              <NavLink
+                href="/account/preferences"
+                closeMenu={closeMenu}
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              >
+                {t.authNavPreferences ?? "Preferences"}
               </NavLink>
               <button
                 type="button"
@@ -640,6 +654,14 @@ export const Navbar: React.FC = () => {
             <NavLink href="/account/security" closeMenu={closeMenu} className={mobileItemClass}>
               <ShieldCheck className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.security}</span>
+            </NavLink>
+            <NavLink href="/account/activity" closeMenu={closeMenu} className={mobileItemClass}>
+              <History className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.authNavActivity ?? "Activity"}</span>
+            </NavLink>
+            <NavLink href="/account/preferences" closeMenu={closeMenu} className={mobileItemClass}>
+              <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.authNavPreferences ?? "Preferences"}</span>
             </NavLink>
             <button
               type="button"

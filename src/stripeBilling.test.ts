@@ -261,6 +261,11 @@ describe("Stripe billing", () => {
       form.get("custom_text[submit][message]") ?? "",
       /renews automatically until cancelled/,
     );
+    assert.equal(form.get("subscription_data[invoice_settings][footer]"), null);
+    assert.match(
+      form.get("subscription_data[description]") ?? "",
+      /Article 57bis/,
+    );
     assert.equal(form.get("subscription_data[metadata][privatenote_user_id]"), "user-1");
     assert.equal(form.get("subscription_data[metadata][privatenote_currency]"), "eur");
     assert.equal(
@@ -269,6 +274,46 @@ describe("Stripe billing", () => {
     );
     assert.equal(form.get("customer_update[address]"), null);
     assert.equal(form.get("customer_update[name]"), null);
+  });
+
+  it("sets subscription invoice footer on Dahlia API versions", async () => {
+    let capturedRequest: Request | null = null;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      capturedRequest = new Request(input, init);
+      return Response.json({
+        id: "cs_dahlia",
+        url: "https://checkout.stripe.com/c/pay/dahlia",
+      });
+    };
+
+    await createStripeCheckoutSession(
+      {
+        ...billingEnv(),
+        STRIPE_API_VERSION: "2026-07-29.dahlia",
+      },
+      {
+        userId: "user-1",
+        email: "user@example.com",
+        stripeCustomerId: null,
+        plan: "personal_premium",
+        interval: "month",
+        currency: "eur",
+        successUrl: "https://example.com/ok",
+        cancelUrl: "https://example.com/cancel",
+        idempotencyKey: "checkout-dahlia",
+      },
+      fetchImpl,
+    );
+
+    assert.ok(capturedRequest);
+    const request = capturedRequest as Request;
+    assert.equal(request.headers.get("Stripe-Version"), "2026-07-29.dahlia");
+    const form = new URLSearchParams(await request.text());
+    assert.match(
+      form.get("subscription_data[invoice_settings][footer]") ?? "",
+      /Article 57bis/,
+    );
+    assert.equal(form.get("subscription_data[description]"), null);
   });
 
   it("updates billing identity fields for an existing Stripe customer", async () => {

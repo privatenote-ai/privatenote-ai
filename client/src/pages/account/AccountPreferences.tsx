@@ -715,7 +715,7 @@ export default function AccountPreferences() {
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
                   {t.authPrefsEmailNotificationsHint ||
-                    "Premium note-open alerts, product updates, and security messages. Critical account emails may still be sent."}
+                    "Note open/destroy alerts, product updates, and security messages. Critical account emails may still be sent."}
                 </p>
               </div>
               <Switch
@@ -998,21 +998,35 @@ export default function AccountPreferences() {
                       <select
                         id="default-expiry"
                         value={noteDefaults.expirySeconds}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const next = Number(event.target.value);
+                          if (next > planCapabilities.maxExpirySeconds) return;
                           setNoteDefaults((current) => ({
                             ...current,
-                            expirySeconds: Number(event.target.value),
-                          }))
-                        }
+                            expirySeconds: next,
+                          }));
+                        }}
                         className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                       >
-                        {NOTE_EXPIRY_PRESETS.filter(
-                          (preset) => preset.seconds <= planCapabilities.maxExpirySeconds,
-                        ).map((preset) => (
-                          <option key={preset.id} value={preset.seconds}>
-                            {preset.label}
-                          </option>
-                        ))}
+                        {NOTE_EXPIRY_PRESETS.map((preset) => {
+                          const locked = preset.seconds > planCapabilities.maxExpirySeconds;
+                          const planLabel =
+                            preset.seconds <= 3 * 24 * 60 * 60
+                              ? null
+                              : preset.seconds <= 15 * 24 * 60 * 60
+                                ? "Starter"
+                                : "Business";
+                          return (
+                            <option
+                              key={preset.id}
+                              value={preset.seconds}
+                              disabled={locked}
+                              style={locked ? { color: "#9ca3af" } : undefined}
+                            >
+                              {planLabel ? `${preset.label} — ${planLabel}` : preset.label}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -1023,21 +1037,35 @@ export default function AccountPreferences() {
                       <select
                         id="default-reads"
                         value={noteDefaults.maxReads}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const next = Number(event.target.value) as NoteReadLimit;
+                          if (!planCapabilities.allowedReadCounts.includes(next)) return;
                           setNoteDefaults((current) => ({
                             ...current,
-                            maxReads: Number(event.target.value) as NoteReadLimit,
-                          }))
-                        }
+                            maxReads: next,
+                          }));
+                        }}
                         className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                       >
-                        {NOTE_READ_LIMIT_OPTIONS.filter((reads) =>
-                          planCapabilities.allowedReadCounts.includes(reads),
-                        ).map((reads) => (
-                          <option key={reads} value={reads}>
-                            {reads === 1 ? "Once (read-once)" : `${reads} views`}
-                          </option>
-                        ))}
+                        {NOTE_READ_LIMIT_OPTIONS.map((reads) => {
+                          const locked = !planCapabilities.allowedReadCounts.includes(reads);
+                          const planLabel =
+                            reads <= 1 ? null : reads <= 3 ? "Starter" : "Business";
+                          return (
+                            <option
+                              key={reads}
+                              value={reads}
+                              disabled={locked}
+                              style={locked ? { color: "#9ca3af" } : undefined}
+                            >
+                              {planLabel
+                                ? `${reads === 1 ? "Once (read-once)" : `${reads} views`} — ${planLabel}`
+                                : reads === 1
+                                  ? "Once (read-once)"
+                                  : `${reads} views`}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -1048,23 +1076,33 @@ export default function AccountPreferences() {
                       <select
                         id="default-file-window"
                         value={noteDefaults.fileAccessWindowSeconds}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const next = Number(event.target.value) as NoteFileAccessWindowSeconds;
+                          if (next > planCapabilities.maxFileAccessWindowSeconds) return;
                           setNoteDefaults((current) => ({
                             ...current,
-                            fileAccessWindowSeconds: Number(
-                              event.target.value,
-                            ) as NoteFileAccessWindowSeconds,
-                          }))
-                        }
+                            fileAccessWindowSeconds: next,
+                          }));
+                        }}
                         className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                       >
-                        {NOTE_FILE_ACCESS_WINDOW_OPTIONS.filter(
-                          (seconds) => seconds <= planCapabilities.maxFileAccessWindowSeconds,
-                        ).map((seconds) => (
-                          <option key={seconds} value={seconds}>
-                            {formatNoteFileAccessWindow(seconds)}
-                          </option>
-                        ))}
+                        {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
+                          const locked = seconds > planCapabilities.maxFileAccessWindowSeconds;
+                          const planLabel =
+                            seconds <= 15 * 60 ? null : seconds <= 30 * 60 ? "Starter" : "Business";
+                          return (
+                            <option
+                              key={seconds}
+                              value={seconds}
+                              disabled={locked}
+                              style={locked ? { color: "#9ca3af" } : undefined}
+                            >
+                              {planLabel
+                                ? `${formatNoteFileAccessWindow(seconds)} — ${planLabel}`
+                                : formatNoteFileAccessWindow(seconds)}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 

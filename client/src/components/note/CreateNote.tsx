@@ -364,7 +364,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const { user } = useAuth();
   const { entitlements, loading: entitlementsLoading } = useAccountEntitlements();
   const accountType = entitlements.accountType;
-  const accountEmailNotifications = entitlements.emailNotifications;
   const accountEmailVerified = entitlements.emailVerified;
   const premiumStatusLoading = Boolean(user) && entitlementsLoading;
   const isFileTransferMode = mode === "file-transfer";
@@ -510,11 +509,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   });
   const hasRevealBranding = Boolean(revealBrandingSnapshot);
   const canAttachFiles = Boolean(user);
-  const canNotifyOnOpen =
-    Boolean(user) &&
-    planCapabilities.openNotifications &&
-    accountEmailVerified &&
-    (accountEmailNotifications || isPremiumUser);
+  // Free + paid: open/destroy alerts once signed in (plan already allows it).
+  // Per-note toggle is consent; verified email is enforced when creating/sending.
+  const canNotifyOnOpen = Boolean(user) && planCapabilities.openNotifications;
   const canEmailLinkToRecipient =
     Boolean(user) && planCapabilities.recipientLinkDelivery && accountEmailVerified;
   const canDelayedReveal = isPremiumUser && planCapabilities.delayedReveal;
@@ -1402,16 +1399,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           description:
             t.settingsEmailAlertDestinationRequiredHint ??
             "Keep your account email checked, or enter another email address.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (applyAlertNotifyAccountEmail && !accountEmailNotifications) {
-        toast({
-          title: t.settingsEmailAlerts ?? "Email alerts",
-          description:
-            t.settingsEmailAlertsPrefsHintPrefix ??
-            "Turn on email notifications in Account → Preferences to use your account email.",
           variant: "destructive",
         });
         return;
