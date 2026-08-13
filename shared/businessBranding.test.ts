@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  BRANDING_BANNER_MAX_BYTES,
+  BRANDING_BANNER_RECOMMENDED_PX,
+  BRANDING_BANNER_SIZE_LABEL,
   BRANDING_COMPANY_NAME_MAX,
   BRANDING_LOGO_URL_MAX,
   brandingCtaStyle,
+  brandingHeroStyle,
   brandingIsEmpty,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
@@ -280,5 +284,21 @@ describe("brandingCtaStyle", () => {
   it("keeps dark text on a pale accent such as #f8fafc", () => {
     const style = brandingCtaStyle({ accentColor: "#f8fafc", textColor: "#ffffff" });
     assert.equal(style?.color, "#111827");
+  });
+});
+
+describe("brandingHeroStyle", () => {
+  it("does not wrap the reveal page in a white card", () => {
+    assert.equal(brandingHeroStyle({ backgroundColor: "#ffffff", accentColor: "#e11d48" }), undefined);
+  });
+});
+
+describe("branding asset sizes", () => {
+  it("defines an 8:3 reveal banner at 1920×720", () => {
+    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width, 1920);
+    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.height, 720);
+    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width / BRANDING_BANNER_RECOMMENDED_PX.height, 8 / 3);
+    assert.equal(BRANDING_BANNER_SIZE_LABEL, "1920×720");
+    assert.equal(BRANDING_BANNER_MAX_BYTES, 3 * 1024 * 1024);
   });
 });

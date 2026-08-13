@@ -466,6 +466,48 @@ const NoteAccessProblem: React.FC<{
   );
 };
 
+const BrandingHeader: React.FC<{
+  branding?: RevealBranding;
+  brandingLine: string | null;
+  lightText: boolean;
+}> = ({ branding, brandingLine, lightText }) => {
+  const hasBranding = Boolean(brandingLine || branding?.logoUrl);
+  if (!hasBranding) return null;
+
+  return (
+    <header
+      className={`-mx-4 mb-10 border-b px-4 pb-8 pt-1 sm:-mx-6 sm:mb-14 sm:px-6 lg:-mx-8 lg:px-8 ${
+        lightText ? "border-white/20" : "border-gray-200/70 dark:border-gray-800"
+      }`}
+      style={branding?.accentColor
+        ? { borderTopWidth: 3, borderTopStyle: "solid", borderTopColor: branding.accentColor }
+        : undefined}
+    >
+      <div className="flex flex-col items-center gap-2.5">
+        {branding?.logoUrl ? (
+          <img
+            src={branding.logoUrl}
+            alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+            className="max-h-12 w-auto object-contain sm:max-h-14"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : null}
+        {brandingLine ? (
+          <p className={`m-0 text-sm font-medium ${lightText ? "text-white/90" : "text-gray-600 dark:text-gray-300"}`}>
+            {brandingLine}
+          </p>
+        ) : null}
+        {branding?.trustMessage ? (
+          <p className={`m-0 max-w-md text-xs leading-relaxed ${lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"}`}>
+            {branding.trustMessage}
+          </p>
+        ) : null}
+      </div>
+    </header>
+  );
+};
+
 const RevealHero: React.FC<RevealHeroProps> = ({
   noteId,
   isRevealing,
@@ -476,38 +518,19 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   t,
 }) => {
   const brandingLine = getBrandingLine(branding, t);
-  const hasBranding = Boolean(brandingLine || branding?.logoUrl);
   const buttonStyle = brandingCtaStyle(branding);
-  const brandingCardStyle = branding?.accentColor
-    ? { borderTopColor: branding.accentColor, borderTopWidth: 3 }
-    : undefined;
   const brandedHeroStyle = brandingHeroStyle(branding);
   const bannerMode = brandingHeroUsesLightText(branding);
+  const paintedHero = Boolean(brandedHeroStyle);
 
   return (
     <section className={NOTE_VIEW_SHELL}>
-      <section className={`${NOTE_VIEW_HERO_SECTION} overflow-hidden rounded-2xl`} style={brandedHeroStyle}>
+      <section
+        className={`${NOTE_VIEW_HERO_SECTION} ${paintedHero ? "overflow-hidden rounded-2xl" : ""}`}
+        style={brandedHeroStyle}
+      >
         <div className="text-center">
-          {hasBranding && (
-            <div
-              className="mb-7 flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-5 py-4 dark:border-gray-700 dark:bg-gray-900/60"
-              style={brandingCardStyle}
-            >
-              {branding?.logoUrl && (
-                <img
-                  src={branding.logoUrl}
-                  alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
-                  className="max-h-14 w-auto object-contain"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              {brandingLine && (
-                <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
-              )}
-              {branding?.trustMessage ? <p className="m-0 max-w-md text-xs leading-relaxed text-gray-500 dark:text-gray-400">{branding.trustMessage}</p> : null}
-            </div>
-          )}
+          <BrandingHeader branding={branding} brandingLine={brandingLine} lightText={bannerMode} />
 
           <h1 className={`page-title ${bannerMode ? "text-white" : "text-gray-900 dark:text-white"}`}>
             {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
@@ -1766,38 +1789,23 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }
 
   const brandingLine = getBrandingLine(activeRevealBranding, t);
-  const hasBranding = Boolean(brandingLine || activeRevealBranding?.logoUrl);
   const accentStyle = brandingCtaStyle(activeRevealBranding);
   const revealedBackgroundStyle = brandingHeroStyle(activeRevealBranding);
+  const revealedLightText = brandingHeroUsesLightText(activeRevealBranding);
+  const paintedHero = Boolean(revealedBackgroundStyle);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
     <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
-      <section className={`${NOTE_VIEW_HERO_SECTION} overflow-hidden rounded-2xl`} style={revealedBackgroundStyle}>
-        {hasBranding && (
-          <div
-            className="mb-6 flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-5 py-4 text-center dark:border-gray-700 dark:bg-gray-900/60"
-            style={activeRevealBranding?.accentColor
-              ? { borderTopColor: activeRevealBranding.accentColor, borderTopWidth: 3 }
-              : undefined}
-          >
-            {activeRevealBranding?.logoUrl && (
-              <img
-                src={activeRevealBranding.logoUrl}
-                alt={activeRevealBranding.companyName
-                  ? `${activeRevealBranding.companyName} logo`
-                  : "Sender logo"}
-                className="max-h-12 w-auto object-contain"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            {brandingLine && (
-              <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
-            )}
-            {activeRevealBranding?.trustMessage ? <p className="m-0 max-w-md text-xs leading-relaxed text-gray-500 dark:text-gray-400">{activeRevealBranding.trustMessage}</p> : null}
-          </div>
-        )}
+      <section
+        className={`${NOTE_VIEW_HERO_SECTION} ${paintedHero ? "overflow-hidden rounded-2xl" : ""}`}
+        style={revealedBackgroundStyle}
+      >
+        <BrandingHeader
+          branding={activeRevealBranding}
+          brandingLine={brandingLine}
+          lightText={revealedLightText}
+        />
 
         <div className="mb-8 text-center sm:mb-10">
           <h1 className="page-title text-primary">{t.privateNote}</h1>

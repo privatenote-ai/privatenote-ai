@@ -21,7 +21,16 @@ export const BRANDING_LOGO_URL_MAX = 512;
 export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
 export const BRANDING_BANNER_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_LOGO_RECOMMENDED_PX = { width: 512, height: 512 } as const;
+/**
+ * Reveal-page cover art. The branded hero is `max-w-5xl` with `background-size: cover`
+ * and center crop, so a wide 8:3 asset (~2× a 960px card) stays sharp on retina
+ * without wasting bytes. Keep logos and copy in the middle third — sides crop on
+ * tall phones.
+ */
 export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 720 } as const;
+export const BRANDING_BANNER_ASPECT_RATIO = "8 / 3" as const;
+export const BRANDING_BANNER_SIZE_LABEL =
+  `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
 
@@ -257,7 +266,7 @@ export function brandingHeroStyle(
       background: `linear-gradient(135deg, ${branding.accentColor}20, ${base})`,
     };
   }
-  if (branding.backgroundColor) {
+  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
     return { backgroundColor: branding.backgroundColor };
   }
   return undefined;

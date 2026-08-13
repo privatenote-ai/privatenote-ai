@@ -46,6 +46,12 @@ import {
   type AccountType,
 } from "@shared/planCatalog";
 import {
+  BRANDING_BANNER_ASPECT_RATIO,
+  BRANDING_BANNER_MAX_BYTES,
+  BRANDING_BANNER_RECOMMENDED_PX,
+  BRANDING_BANNER_SIZE_LABEL,
+  BRANDING_LOGO_MAX_BYTES,
+  BRANDING_LOGO_RECOMMENDED_PX,
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
@@ -469,8 +475,12 @@ export default function AccountPreferences() {
   };
 
   const uploadBusinessBanner = async (file: File) => {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 3 * 1024 * 1024) {
-      toast({ title: "Unsupported banner", description: "Choose a PNG, JPEG, or WebP image under 3 MB.", variant: "destructive" });
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
+      toast({
+        title: "Unsupported banner",
+        description: `Use a PNG, JPEG, or WebP image, ${BRANDING_BANNER_SIZE_LABEL} px, under ${Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.`,
+        variant: "destructive",
+      });
       return;
     }
     setUploadingBanner(true);
@@ -509,7 +519,7 @@ export default function AccountPreferences() {
       });
       return;
     }
-    if (file.size > 1024 * 1024) {
+    if (file.size > BRANDING_LOGO_MAX_BYTES) {
       toast({
         title: "Logo is too large",
         description: "Choose an image smaller than 1 MB.",
@@ -922,14 +932,41 @@ export default function AccountPreferences() {
                   ) : null}
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  PNG, JPEG, or WebP; maximum 1 MB. Recommended 512×512 (square) or
-                  wider lockup up to about 1200×400. Uploaded logos are served from
+                  PNG, JPEG, or WebP; maximum {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB.
+                  Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height} (square)
+                  or a wider lockup up to about 1200×400. Uploaded logos are served from
                   PrivateNote instead of an external host.
                 </p>
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Background treatment</Label>
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <Label className="text-sm">Reveal banner</Label>
+                  <p className="m-0 font-mono text-xs text-gray-500 dark:text-gray-400">
+                    {BRANDING_BANNER_SIZE_LABEL} px · 8:3
+                  </p>
+                </div>
+                <div
+                  className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
+                  style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
+                >
+                  {businessBannerUrl ? (
+                    <img
+                      src={businessBannerUrl}
+                      alt="Reveal banner preview"
+                      className="h-full w-full object-cover object-center"
+                    />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
+                      <p className="m-0 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
+                      </p>
+                      <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                        8:3 landscape cover · PNG, JPEG, or WebP
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <div className="mb-3 grid grid-cols-3 gap-2">
                   {(["neutral", "gradient", "banner"] as const).map((style) => (
                     <button key={style} type="button" onClick={() => setBusinessBackgroundStyle(style)}
@@ -950,48 +987,75 @@ export default function AccountPreferences() {
                     onClick={() => void removeBusinessBanner()}><Trash2 className="mr-2 h-4 w-4" />Remove</Button> : null}
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Decorative PNG, JPEG, or WebP; maximum 3 MB. Recommended 1920×720
-                  (≈8:3 landscape). Keep important detail in the center — edges crop
-                  on cover. A dark overlay preserves text readability.
+                  Export at {BRANDING_BANNER_SIZE_LABEL} pixels (8:3). Maximum{" "}
+                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. The reveal page
+                  covers and center-crops, so keep logos and text in the middle third. A dark
+                  overlay is added so the note stays readable.
                 </p>
               </div>
 
               <div>
                 <Label className="mb-2 block text-sm">Live recipient preview</Label>
-                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-950">
-                  <div className="relative min-h-48 px-6 py-7 text-center"
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-transparent shadow-sm dark:border-gray-700">
+                  <div
+                    className="relative min-h-48 text-center"
                     style={brandingHeroStyle({
                       accentColor: businessAccentColor,
                       backgroundColor: businessBackgroundColor,
                       textColor: businessTextColor,
                       backgroundStyle: businessBackgroundStyle,
                       bannerUrl: businessBannerUrl ?? undefined,
-                    })}>
-                    {businessLogoUrl ? <img src={businessLogoUrl} alt="Brand preview" className="mx-auto mb-3 max-h-12 max-w-40 object-contain" /> : null}
-                    <p className={`m-0 text-sm font-semibold ${brandingHeroUsesLightText({
-                      backgroundColor: businessBackgroundColor,
-                      backgroundStyle: businessBackgroundStyle,
-                      bannerUrl: businessBannerUrl ?? undefined,
-                    }) ? "text-white" : "text-gray-900 dark:text-white"}`}>
-                      {businessSenderName || businessDisplayName
-                        ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                        : "Your company shared a private note"}
-                    </p>
-                    {businessTrustMessage ? <p className={`mx-auto mt-2 max-w-md text-xs ${brandingHeroUsesLightText({
-                      backgroundColor: businessBackgroundColor,
-                      backgroundStyle: businessBackgroundStyle,
-                      bannerUrl: businessBannerUrl ?? undefined,
-                    }) ? "text-white/80" : "text-gray-500"}`}>{businessTrustMessage}</p> : null}
-                    <button
-                      type="button"
-                      className="mt-6 rounded-md px-5 py-2.5 text-sm font-semibold"
-                      style={brandingCtaStyle({
-                        accentColor: businessAccentColor,
-                        textColor: businessTextColor,
-                      })}
-                    >
-                      Reveal note
-                    </button>
+                    })}
+                  >
+                    {(businessLogoUrl || businessSenderName || businessDisplayName) ? (
+                      <header
+                        className={`border-b px-6 pb-5 pt-4 ${
+                          brandingHeroUsesLightText({
+                            backgroundColor: businessBackgroundColor,
+                            backgroundStyle: businessBackgroundStyle,
+                            bannerUrl: businessBannerUrl ?? undefined,
+                          })
+                            ? "border-white/20"
+                            : "border-gray-200/70 dark:border-gray-800"
+                        }`}
+                        style={{ borderTopWidth: 3, borderTopStyle: "solid", borderTopColor: businessAccentColor }}
+                      >
+                        {businessLogoUrl ? <img src={businessLogoUrl} alt="Brand preview" className="mx-auto mb-2 max-h-10 max-w-36 object-contain" /> : null}
+                        <p className={`m-0 text-sm font-medium ${brandingHeroUsesLightText({
+                          backgroundColor: businessBackgroundColor,
+                          backgroundStyle: businessBackgroundStyle,
+                          bannerUrl: businessBannerUrl ?? undefined,
+                        }) ? "text-white/90" : "text-gray-600 dark:text-gray-300"}`}>
+                          {businessSenderName || businessDisplayName
+                            ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
+                            : "Your company shared a private note"}
+                        </p>
+                        {businessTrustMessage ? <p className={`mx-auto mt-1.5 max-w-md text-xs ${brandingHeroUsesLightText({
+                          backgroundColor: businessBackgroundColor,
+                          backgroundStyle: businessBackgroundStyle,
+                          bannerUrl: businessBannerUrl ?? undefined,
+                        }) ? "text-white/70" : "text-gray-500"}`}>{businessTrustMessage}</p> : null}
+                      </header>
+                    ) : null}
+                    <div className="px-6 py-8">
+                      <p className={`m-0 text-lg font-extrabold tracking-tight ${brandingHeroUsesLightText({
+                        backgroundColor: businessBackgroundColor,
+                        backgroundStyle: businessBackgroundStyle,
+                        bannerUrl: businessBannerUrl ?? undefined,
+                      }) ? "text-white" : "text-gray-900 dark:text-white"}`}>
+                        Reveal <span className="text-primary">Private Note</span>
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-8 rounded-md px-5 py-2.5 text-sm font-semibold"
+                        style={brandingCtaStyle({
+                          accentColor: businessAccentColor,
+                          textColor: businessTextColor,
+                        })}
+                      >
+                        Reveal note
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -24,7 +24,7 @@ import {
   type StripeEvent,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor } from "@shared/businessBranding";
+import { parseBrandingHexColor, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -89,12 +89,12 @@ const STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES = new Set([
 const BUSINESS_LOGO = {
   OBJECT_PREFIX: "account-branding/",
   PUBLIC_PATH_PREFIX: "/api/auth/branding/logo/",
-  MAX_BYTES: 1024 * 1024,
+  MAX_BYTES: BRANDING_LOGO_MAX_BYTES,
 } as const;
 const BUSINESS_BANNER = {
   OBJECT_PREFIX: "account-branding/banner/",
   PUBLIC_PATH_PREFIX: "/api/auth/branding/banner/",
-  MAX_BYTES: 3 * 1024 * 1024,
+  MAX_BYTES: BRANDING_BANNER_MAX_BYTES,
 } as const;
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
