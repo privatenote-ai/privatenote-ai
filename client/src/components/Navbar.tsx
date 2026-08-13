@@ -6,7 +6,7 @@ import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
 import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
 import { shouldEagerPrefetchAuth } from '@/utils/authPrefetch';
-import { PREMIUM_PAGE_PUBLIC } from '@shared/premiumPagePublic';
+import { PREMIUM_NAV_LINK_PUBLIC } from '@shared/premiumPagePublic';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -355,7 +355,7 @@ export const Navbar: React.FC = () => {
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
             </NavLink>
-            {PREMIUM_PAGE_PUBLIC ? (
+            {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={desktopLink}>
                 Pricing
               </NavLink>
@@ -544,7 +544,7 @@ export const Navbar: React.FC = () => {
               <Key className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.sharePassword}</span>
             </NavLink>
-            {PREMIUM_PAGE_PUBLIC ? (
+            {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={mobileItemClass}>
                 <span>Pricing</span>
               </NavLink>

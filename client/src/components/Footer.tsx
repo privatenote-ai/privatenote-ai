@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { useLanguage } from "@/context/LanguageContext";
 import { LANGUAGE_OPTIONS } from "@/utils/translation";
 import { localizedPath, switchLanguagePath } from "@/utils/localizedPath";
-import { PREMIUM_PAGE_PUBLIC } from "@shared/premiumPagePublic";
+import { PREMIUM_NAV_LINK_PUBLIC } from "@shared/premiumPagePublic";
 
 type FooterLink = {
   href: string;
@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
     { href: lp("/secure-file-transfer"), label: t.shareFile },
     { href: lp("/password-generator"), label: t.passwordGenerator },
     { href: lp("/how-it-works"), label: t.howItWorks },
-    ...(PREMIUM_PAGE_PUBLIC
+    ...(PREMIUM_NAV_LINK_PUBLIC
       ? [{ href: lp("/premium"), label: "Pricing" }]
       : []),
   ];
