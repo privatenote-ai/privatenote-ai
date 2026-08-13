@@ -49,9 +49,11 @@ import {
 } from '@/utils/voiceMessageDownloadFormat';
 import { useToast } from '@/hooks/use-toast';
 import {
+  brandingBannerStyle,
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
+  brandingShowsBanner,
 } from '@shared/businessBranding';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
@@ -283,18 +285,22 @@ function isDecryptKeyFailureMessage(message: string): boolean {
   );
 }
 
-const TrustSignals: React.FC<{ t: Translations }> = ({ t }) => (
-  <ul className="mt-40 sm:mt-44 flex flex-col items-center gap-2.5 lg:flex-row lg:justify-center lg:gap-6 text-xs sm:text-sm text-gray-600/75 dark:text-gray-300/72">
+const TrustSignals: React.FC<{ t: Translations; lightText?: boolean }> = ({ t, lightText }) => (
+  <ul
+    className={`mt-40 sm:mt-44 flex flex-col items-center gap-2.5 lg:flex-row lg:justify-center lg:gap-6 text-xs sm:text-sm ${
+      lightText ? "text-white/75" : "text-gray-600/75 dark:text-gray-300/72"
+    }`}
+  >
     <li className="inline-flex items-center gap-1.5">
-      <ShieldCheck className="h-4 w-4 text-primary/70" aria-hidden />
+      <ShieldCheck className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
       <span>{t.revealTrustEncrypted ?? "End-to-end encrypted"}</span>
     </li>
     <li className="inline-flex items-center gap-1.5">
-      <Trash2 className="h-4 w-4 text-primary/70" aria-hidden />
+      <Trash2 className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
       <span>{t.revealTrustSelfDestructs ?? "Self-destructs after opening"}</span>
     </li>
     <li className="inline-flex items-center gap-1.5">
-      <UserX className="h-4 w-4 text-primary/70" aria-hidden />
+      <UserX className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
       <span>{t.revealTrustNoAccount ?? "No account required"}</span>
     </li>
   </ul>
@@ -466,45 +472,91 @@ const NoteAccessProblem: React.FC<{
   );
 };
 
+/**
+ * Sender identity strip above the reveal content: logo, who shared the note, and
+ * their trust message. The banner lives lower down, next to the CTA, so nothing
+ * competes with the reveal headline.
+ */
 const BrandingHeader: React.FC<{
   branding?: RevealBranding;
   brandingLine: string | null;
   lightText: boolean;
 }> = ({ branding, brandingLine, lightText }) => {
-  const hasBranding = Boolean(brandingLine || branding?.logoUrl);
-  if (!hasBranding) return null;
+  if (!brandingLine && !branding?.logoUrl) return null;
+
+  const logo = branding?.logoUrl ? (
+    <img
+      src={branding.logoUrl}
+      alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      className="max-h-10 w-auto object-contain sm:max-h-11"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  ) : null;
 
   return (
-    <header
-      className={`-mx-4 mb-10 border-b px-4 pb-8 pt-1 sm:-mx-6 sm:mb-14 sm:px-6 lg:-mx-8 lg:px-8 ${
-        lightText ? "border-white/20" : "border-gray-200/70 dark:border-gray-800"
-      }`}
-      style={branding?.accentColor
-        ? { borderTopWidth: 3, borderTopStyle: "solid", borderTopColor: branding.accentColor }
-        : undefined}
-    >
-      <div className="flex flex-col items-center gap-2.5">
-        {branding?.logoUrl ? (
-          <img
-            src={branding.logoUrl}
-            alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
-            className="max-h-12 w-auto object-contain sm:max-h-14"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
+    <header className="-mx-4 mb-10 sm:-mx-6 sm:mb-12 lg:-mx-8">
+      {branding?.accentColor ? (
+        <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
+      ) : null}
+
+      <div
+        className={`flex flex-col items-center gap-2.5 border-b px-4 pb-7 pt-5 sm:px-6 lg:px-8 ${
+          lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
+        }`}
+      >
+        {/* Dark brand backgrounds swallow dark logos, so give them a light plate. */}
+        {logo ? (
+          lightText ? (
+            <div className="rounded-lg bg-white px-3 py-2 shadow-sm">{logo}</div>
+          ) : (
+            logo
+          )
         ) : null}
         {brandingLine ? (
-          <p className={`m-0 text-sm font-medium ${lightText ? "text-white/90" : "text-gray-600 dark:text-gray-300"}`}>
+          <p
+            className={`m-0 text-sm font-medium ${
+              lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
+            }`}
+          >
             {brandingLine}
           </p>
         ) : null}
         {branding?.trustMessage ? (
-          <p className={`m-0 max-w-md text-xs leading-relaxed ${lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"}`}>
+          <p
+            className={`m-0 max-w-md text-xs leading-relaxed ${
+              lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"
+            }`}
+          >
             {branding.trustMessage}
           </p>
         ) : null}
       </div>
     </header>
+  );
+};
+
+/**
+ * Brand banner shown between the reveal copy and the CTA, where the layout
+ * already leaves a deliberate gap. Kept as a bounded card so it reads as the
+ * sender's artwork rather than a page background.
+ */
+const BrandingBanner: React.FC<{ branding?: RevealBranding; lightText: boolean }> = ({
+  branding,
+  lightText,
+}) => {
+  const bannerStyle = brandingBannerStyle(branding);
+  if (!bannerStyle) return null;
+
+  return (
+    <div
+      role="img"
+      aria-label={branding?.companyName ? `${branding.companyName} banner` : "Sender banner"}
+      className={`mx-auto aspect-[8/3] w-full max-w-xl overflow-hidden rounded-xl border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
+        lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
+      }`}
+      style={bannerStyle}
+    />
   );
 };
 
@@ -520,30 +572,37 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   const brandingLine = getBrandingLine(branding, t);
   const buttonStyle = brandingCtaStyle(branding);
   const brandedHeroStyle = brandingHeroStyle(branding);
-  const bannerMode = brandingHeroUsesLightText(branding);
-  const paintedHero = Boolean(brandedHeroStyle);
+  const lightText = brandingHeroUsesLightText(branding);
+  const showBanner = brandingShowsBanner(branding);
+  const framedHero = Boolean(brandedHeroStyle);
 
   return (
     <section className={NOTE_VIEW_SHELL}>
       <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${paintedHero ? "overflow-hidden rounded-2xl" : ""}`}
+        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
         style={brandedHeroStyle}
       >
         <div className="text-center">
-          <BrandingHeader branding={branding} brandingLine={brandingLine} lightText={bannerMode} />
+          <BrandingHeader branding={branding} brandingLine={brandingLine} lightText={lightText} />
 
-          <h1 className={`page-title ${bannerMode ? "text-white" : "text-gray-900 dark:text-white"}`}>
+          <h1 className={`page-title ${lightText ? "text-white" : "text-gray-900 dark:text-white"}`}>
             {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
           </h1>
-          <div className={`mt-3 text-xs leading-relaxed ${bannerMode ? "text-white/70" : "text-gray-500/85 dark:text-gray-400/85"}`}>
+          <div className={`mt-3 text-xs leading-relaxed ${lightText ? "text-white/70" : "text-gray-500/85 dark:text-gray-400/85"}`}>
             <p className="m-0 font-medium">{(t.revealPrivateNoteId ?? "Private note #{id}").replace("{id}", noteId)}</p>
             <p className="m-0">{(t.revealLanguageLine ?? "Language: {language}").replace("{language}", readerLanguageLabel)}</p>
           </div>
-          <p className={`${NOTE_VIEW_HERO_SUBTITLE} ${bannerMode ? "!text-white/85" : ""}`}>
+          <p className={`${NOTE_VIEW_HERO_SUBTITLE} ${lightText ? "!text-white/85" : ""}`}>
             {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
           </p>
 
-          <div className="mt-24 sm:mt-28 w-full flex justify-center">
+          {showBanner ? (
+            <div className="mt-12 sm:mt-14">
+              <BrandingBanner branding={branding} lightText={lightText} />
+            </div>
+          ) : null}
+
+          <div className={`${showBanner ? "mt-12 sm:mt-14" : "mt-24 sm:mt-28"} w-full flex justify-center`}>
             <button
               type="button"
               onClick={(ev) => void onReveal(ev)}
@@ -569,11 +628,15 @@ const RevealHero: React.FC<RevealHeroProps> = ({
             </button>
           </div>
 
-          <p className="mt-4 sm:mt-5 text-sm text-gray-600/62 dark:text-gray-300/58">
+          <p
+            className={`mt-4 sm:mt-5 text-sm ${
+              lightText ? "text-white/70" : "text-gray-600/62 dark:text-gray-300/58"
+            }`}
+          >
             {t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
           </p>
 
-          <TrustSignals t={t} />
+          <TrustSignals t={t} lightText={lightText} />
         </div>
       </section>
     </section>
@@ -1792,13 +1855,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const accentStyle = brandingCtaStyle(activeRevealBranding);
   const revealedBackgroundStyle = brandingHeroStyle(activeRevealBranding);
   const revealedLightText = brandingHeroUsesLightText(activeRevealBranding);
-  const paintedHero = Boolean(revealedBackgroundStyle);
+  const framedHero = Boolean(revealedBackgroundStyle);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return (
     <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
       <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${paintedHero ? "overflow-hidden rounded-2xl" : ""}`}
+        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
         style={revealedBackgroundStyle}
       >
         <BrandingHeader

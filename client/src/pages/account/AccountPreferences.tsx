@@ -52,10 +52,13 @@ import {
   BRANDING_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
+  brandingBannerStyle,
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
+  brandingShowsBanner,
   contrastingTextOn,
+  type RevealBranding,
 } from "@shared/businessBranding";
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
@@ -65,6 +68,82 @@ import {
   formatNoteFileAccessWindow,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
+
+/** Scaled-down mirror of the reveal page header so branding edits are truthful. */
+const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }> = ({
+  branding,
+  senderLine,
+}) => {
+  const bannerStyle = brandingBannerStyle(branding);
+  const lightText = brandingHeroUsesLightText(branding);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700">
+      <div className="relative min-h-48 text-center" style={brandingHeroStyle(branding)}>
+        <header>
+          {branding.accentColor ? (
+            <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
+          ) : null}
+          <div
+            className={`flex flex-col items-center gap-2 border-b px-6 pb-5 pt-4 ${
+              lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
+            }`}
+          >
+            {branding.logoUrl ? (
+              <div className={lightText ? "rounded-lg bg-white px-3 py-2 shadow-sm" : ""}>
+                <img
+                  src={branding.logoUrl}
+                  alt="Brand preview"
+                  className="max-h-9 max-w-36 object-contain"
+                />
+              </div>
+            ) : null}
+            <p
+              className={`m-0 text-sm font-medium ${
+                lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
+              }`}
+            >
+              {senderLine}
+            </p>
+            {branding.trustMessage ? (
+              <p
+                className={`m-0 max-w-md text-xs ${
+                  lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {branding.trustMessage}
+              </p>
+            ) : null}
+          </div>
+        </header>
+        <div className="px-6 py-8">
+          <p
+            className={`m-0 text-lg font-extrabold tracking-tight ${
+              lightText ? "text-white" : "text-gray-900 dark:text-white"
+            }`}
+          >
+            Reveal <span className="text-primary">Private Note</span>
+          </p>
+          {bannerStyle ? (
+            <div
+              className={`mx-auto mt-6 aspect-[8/3] w-full max-w-xs overflow-hidden rounded-lg border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
+                lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
+              }`}
+              style={bannerStyle}
+            />
+          ) : null}
+          <button
+            type="button"
+            className={`rounded-md px-5 py-2.5 text-sm font-semibold ${bannerStyle ? "mt-6" : "mt-8"}`}
+            style={brandingCtaStyle(branding)}
+          >
+            Reveal note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 type NoteDefaultsForm = {
   expirySeconds: number;
@@ -988,76 +1067,33 @@ export default function AccountPreferences() {
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Export at {BRANDING_BANNER_SIZE_LABEL} pixels (8:3). Maximum{" "}
-                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. The reveal page
-                  covers and center-crops, so keep logos and text in the middle third. A dark
-                  overlay is added so the note stays readable.
+                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. The banner shows in a
+                  card just above the Reveal button at its full 8:3 shape, so nothing is cropped.
+                  Your logo appears separately at the top of the page.
                 </p>
               </div>
 
               <div>
                 <Label className="mb-2 block text-sm">Live recipient preview</Label>
-                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-transparent shadow-sm dark:border-gray-700">
-                  <div
-                    className="relative min-h-48 text-center"
-                    style={brandingHeroStyle({
-                      accentColor: businessAccentColor,
-                      backgroundColor: businessBackgroundColor,
-                      textColor: businessTextColor,
-                      backgroundStyle: businessBackgroundStyle,
-                      bannerUrl: businessBannerUrl ?? undefined,
-                    })}
-                  >
-                    {(businessLogoUrl || businessSenderName || businessDisplayName) ? (
-                      <header
-                        className={`border-b px-6 pb-5 pt-4 ${
-                          brandingHeroUsesLightText({
-                            backgroundColor: businessBackgroundColor,
-                            backgroundStyle: businessBackgroundStyle,
-                            bannerUrl: businessBannerUrl ?? undefined,
-                          })
-                            ? "border-white/20"
-                            : "border-gray-200/70 dark:border-gray-800"
-                        }`}
-                        style={{ borderTopWidth: 3, borderTopStyle: "solid", borderTopColor: businessAccentColor }}
-                      >
-                        {businessLogoUrl ? <img src={businessLogoUrl} alt="Brand preview" className="mx-auto mb-2 max-h-10 max-w-36 object-contain" /> : null}
-                        <p className={`m-0 text-sm font-medium ${brandingHeroUsesLightText({
-                          backgroundColor: businessBackgroundColor,
-                          backgroundStyle: businessBackgroundStyle,
-                          bannerUrl: businessBannerUrl ?? undefined,
-                        }) ? "text-white/90" : "text-gray-600 dark:text-gray-300"}`}>
-                          {businessSenderName || businessDisplayName
-                            ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                            : "Your company shared a private note"}
-                        </p>
-                        {businessTrustMessage ? <p className={`mx-auto mt-1.5 max-w-md text-xs ${brandingHeroUsesLightText({
-                          backgroundColor: businessBackgroundColor,
-                          backgroundStyle: businessBackgroundStyle,
-                          bannerUrl: businessBannerUrl ?? undefined,
-                        }) ? "text-white/70" : "text-gray-500"}`}>{businessTrustMessage}</p> : null}
-                      </header>
-                    ) : null}
-                    <div className="px-6 py-8">
-                      <p className={`m-0 text-lg font-extrabold tracking-tight ${brandingHeroUsesLightText({
-                        backgroundColor: businessBackgroundColor,
-                        backgroundStyle: businessBackgroundStyle,
-                        bannerUrl: businessBannerUrl ?? undefined,
-                      }) ? "text-white" : "text-gray-900 dark:text-white"}`}>
-                        Reveal <span className="text-primary">Private Note</span>
-                      </p>
-                      <button
-                        type="button"
-                        className="mt-8 rounded-md px-5 py-2.5 text-sm font-semibold"
-                        style={brandingCtaStyle({
-                          accentColor: businessAccentColor,
-                          textColor: businessTextColor,
-                        })}
-                      >
-                        Reveal note
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <BrandingPreview
+                  branding={{
+                    companyName: businessDisplayName || undefined,
+                    senderName: businessSenderName || undefined,
+                    senderRole: businessSenderRole || undefined,
+                    trustMessage: businessTrustMessage || undefined,
+                    logoUrl: businessLogoUrl ?? undefined,
+                    bannerUrl: businessBannerUrl ?? undefined,
+                    accentColor: businessAccentColor,
+                    backgroundColor: businessBackgroundColor,
+                    textColor: businessTextColor,
+                    backgroundStyle: businessBackgroundStyle,
+                  }}
+                  senderLine={
+                    businessSenderName || businessDisplayName
+                      ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
+                      : "Your company shared a private note"
+                  }
+                />
               </div>
 
               <div className="flex justify-end border-t border-violet-100 pt-4 dark:border-violet-900/40">

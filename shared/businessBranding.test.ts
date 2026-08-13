@@ -6,9 +6,12 @@ import {
   BRANDING_BANNER_SIZE_LABEL,
   BRANDING_COMPANY_NAME_MAX,
   BRANDING_LOGO_URL_MAX,
+  brandingBannerStyle,
   brandingCtaStyle,
   brandingHeroStyle,
+  brandingHeroUsesLightText,
   brandingIsEmpty,
+  brandingShowsBanner,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
   parseBusinessBrandingInput,
@@ -290,6 +293,50 @@ describe("brandingCtaStyle", () => {
 describe("brandingHeroStyle", () => {
   it("does not wrap the reveal page in a white card", () => {
     assert.equal(brandingHeroStyle({ backgroundColor: "#ffffff", accentColor: "#e11d48" }), undefined);
+  });
+
+  it("never paints the banner behind the reveal copy", () => {
+    const style = brandingHeroStyle({
+      bannerUrl: "https://passwords.lu/banner.webp",
+      backgroundStyle: "banner",
+      accentColor: "#e11d48",
+    });
+    assert.equal(style, undefined);
+  });
+
+  it("keeps a dark background color and switches the copy to light text", () => {
+    const branding = { backgroundColor: "#0f172a", backgroundStyle: "neutral" } as const;
+    assert.deepEqual(brandingHeroStyle(branding), { backgroundColor: "#0f172a" });
+    assert.equal(brandingHeroUsesLightText(branding), true);
+  });
+
+  it("keeps dark copy on a light background color", () => {
+    assert.equal(brandingHeroUsesLightText({ backgroundColor: "#f8fafc" }), false);
+  });
+});
+
+describe("brandingBannerStyle", () => {
+  it("covers and centers the banner in the header band", () => {
+    const branding = {
+      bannerUrl: "https://passwords.lu/banner.webp",
+      backgroundStyle: "banner",
+    } as const;
+    assert.equal(brandingShowsBanner(branding), true);
+    assert.deepEqual(brandingBannerStyle(branding), {
+      backgroundImage: "url(https://passwords.lu/banner.webp)",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    });
+  });
+
+  it("stays absent unless the banner style is selected", () => {
+    const branding = {
+      bannerUrl: "https://passwords.lu/banner.webp",
+      backgroundStyle: "gradient",
+      accentColor: "#e11d48",
+    } as const;
+    assert.equal(brandingShowsBanner(branding), false);
+    assert.equal(brandingBannerStyle(branding), undefined);
   });
 });
 

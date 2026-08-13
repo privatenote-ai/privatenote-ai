@@ -22,10 +22,9 @@ export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
 export const BRANDING_BANNER_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_LOGO_RECOMMENDED_PX = { width: 512, height: 512 } as const;
 /**
- * Reveal-page cover art. The branded hero is `max-w-5xl` with `background-size: cover`
- * and center crop, so a wide 8:3 asset (~2× a 960px card) stays sharp on retina
- * without wasting bytes. Keep logos and copy in the middle third — sides crop on
- * tall phones.
+ * Reveal-page cover art. It renders at its full 8:3 shape in a card above the
+ * Reveal button, so nothing is cropped; 1920px wide keeps it sharp on retina at
+ * the card's ~600px display width without wasting bytes.
  */
 export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 720 } as const;
 export const BRANDING_BANNER_ASPECT_RATIO = "8 / 3" as const;
@@ -249,17 +248,40 @@ export function brandingCtaStyle(
   return style;
 }
 
+export function brandingShowsBanner(
+  branding: RevealBranding | undefined,
+): boolean {
+  return branding?.backgroundStyle === "banner" && Boolean(branding.bannerUrl);
+}
+
+/**
+ * Cover art for the bounded banner card between the reveal copy and the CTA.
+ *
+ * The banner is deliberately not used as the page background: a full-bleed
+ * wordmark competes with the reveal headline and the button, and any overlay
+ * dark enough to fix that turns the whole page into an unreadable slab.
+ */
+export function brandingBannerStyle(
+  branding: RevealBranding | undefined,
+): BrandingHeroStyle | undefined {
+  if (!brandingShowsBanner(branding) || !branding?.bannerUrl) return undefined;
+  return {
+    backgroundImage: `url(${branding.bannerUrl})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  };
+}
+
+/**
+ * Page-level wash behind the reveal hero.
+ *
+ * Near-white values are dropped so branding never draws a white card on top of
+ * the app background, and the banner is excluded because it renders as a band.
+ */
 export function brandingHeroStyle(
   branding: RevealBranding | undefined,
 ): BrandingHeroStyle | undefined {
   if (!branding) return undefined;
-  if (branding.backgroundStyle === "banner" && branding.bannerUrl) {
-    return {
-      backgroundImage: `linear-gradient(rgba(3,7,18,.78),rgba(3,7,18,.78)),url(${branding.bannerUrl})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-    };
-  }
   if (branding.backgroundStyle === "gradient" && branding.accentColor) {
     const base = branding.backgroundColor ?? "transparent";
     return {
@@ -273,7 +295,6 @@ export function brandingHeroStyle(
 }
 
 export function brandingHeroUsesLightText(branding: RevealBranding | undefined): boolean {
-  if (branding?.backgroundStyle === "banner" && branding.bannerUrl) return true;
   if (branding?.backgroundColor) {
     return contrastingTextOn(branding.backgroundColor) === "#ffffff";
   }
