@@ -68,8 +68,11 @@ function formatBytesLabel(bytes: number): string {
 
 function formatFileWindowLabel(seconds: number): string {
   const minutes = Math.round(seconds / 60);
-  if (minutes >= 60) return `${Math.round(minutes / 60)} hour`;
-  return `${minutes} minute`;
+  if (minutes >= 60) {
+    const hours = Math.round(minutes / 60);
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 }
 
 function planCta(
@@ -125,8 +128,8 @@ function planHighlights(planId: AccountType): string[] {
       "Unlimited basic encrypted notes · fair use",
       "Burn after reading and password protection",
       "Open notes without creating an account",
-      "Open notifications when signed in",
-      "On-device AI templates · a few hosted drafts",
+      "Open notifications with a free account",
+      "On-device AI templates · 3 hosted drafts a month, signed in",
     ];
   }
   if (planId === "personal_premium") {
@@ -135,65 +138,78 @@ function planHighlights(planId: AccountType): string[] {
       "Proof of access and recipient verification",
       "Sent-notes dashboard and revoke unopened",
       "Larger attachments and longer expiry",
-      "Starter prompt template packs",
-      "Synchronized note defaults",
+      "Document summary and privacy check AI templates",
+      "Note defaults synchronized across devices",
     ];
   }
   return [
     "Everything in Starter",
     "Company branding on reveal pages",
-    "Custom AI prompt templates",
+    "Custom AI prompt templates, saved in this browser",
     "Largest attachments and payload capacity",
     "Highest hosted AI draft allowance",
     "One professional account — no team seats",
   ];
 }
 
-type ComparisonCell = string;
+/** `note` carries a condition that would otherwise make a bare "Included" misleading. */
+type ComparisonCell = { value: string; note?: string };
+
+const cell = (value: string, note?: string): ComparisonCell => ({ value, note });
+const flag = (on: boolean, note?: string): ComparisonCell =>
+  on ? cell("Included", note) : cell("No");
 
 function comparisonValue(planId: AccountType, key: string): ComparisonCell {
   const features = PLAN_CATALOG[planId].features;
+  // Free is sold as needing no account, but the two features it shares with the
+  // paid plans both run off a signed-in, verified sender.
+  const freeAccountNote = planId === "free" ? "with a free account" : undefined;
   switch (key) {
     case "encryptedNotes":
     case "burnAfterReading":
     case "passwordProtection":
-      return "Included";
+      return flag(true);
     case "openNotifications":
-      return features.openNotifications ? "Included" : "No";
+      return flag(features.openNotifications, freeAccountNote);
     case "proofOfAccess":
-      return features.proofOfAccess ? "Included" : "No";
+      return flag(features.proofOfAccess);
     case "recipientVerification":
-      return features.recipientVerification ? "Included" : "No";
+      return flag(features.recipientVerification);
     case "recipientLinkDelivery":
-      return features.recipientLinkDelivery ? "Included" : "No";
+      return flag(features.recipientLinkDelivery);
     case "delayedReveal":
-      return features.delayedReveal ? "Included" : "No";
+      return flag(features.delayedReveal);
     case "receiptAcknowledgment":
-      return features.receiptAcknowledgment ? "Included" : "No";
+      return flag(features.receiptAcknowledgment);
     case "sentNotesDashboard":
-      return features.sentNotesDashboard ? "Included" : "No";
+      return flag(features.sentNotesDashboard);
     case "revokeUnopened":
-      return features.revokeUnopened ? "Included" : "No";
+      return flag(features.revokeUnopened);
     case "revealBranding":
-      return features.revealBranding ? "Included" : "No";
+      return flag(features.revealBranding);
     case "attachments":
-      return formatBytesLabel(features.attachmentMaxBytes);
+      return cell(formatBytesLabel(features.attachmentMaxBytes));
     case "payloadBuffer":
-      return formatBytesLabel(features.activePayloadBufferBytes);
+      return cell(
+        formatBytesLabel(features.activePayloadBufferBytes),
+        "encrypted attachments",
+      );
     case "expiry":
-      return `Up to ${Math.round(features.maxExpirySeconds / DAY)} days`;
+      return cell(`Up to ${Math.round(features.maxExpirySeconds / DAY)} days`);
     case "readCounts":
-      return features.allowedReadCounts.join(", ");
+      return cell(features.allowedReadCounts.join(", "));
     case "fileWindow":
-      return formatFileWindowLabel(features.maxFileAccessWindowSeconds);
+      return cell(formatFileWindowLabel(features.maxFileAccessWindowSeconds));
     case "hostedAi":
-      return `${features.hostedAiMonthly} / month`;
+      return cell(`${features.hostedAiMonthly} / month`, freeAccountNote);
     case "templates":
-      if (features.customPromptTemplates) return "Starter packs + custom";
-      if (features.premiumTemplatePacks) return "Starter packs";
-      return "On-device templates";
+      if (features.customPromptTemplates) {
+        return cell("All + custom", "saved in this browser");
+      }
+      if (features.premiumTemplatePacks) return cell("All templates");
+      return cell("Standard templates");
     default:
-      return "—";
+      return cell("—");
   }
 }
 
@@ -281,7 +297,7 @@ function buildFaqs(currency: BillingCurrency) {
     },
     {
       q: "What is the difference between Starter and Business?",
-      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds company branding on reveal pages, custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
+      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds company branding on reveal pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
     },
     {
       q: "How does annual billing work?",
@@ -298,18 +314,23 @@ function buildFaqs(currency: BillingCurrency) {
   ];
 }
 
-function FeatureValue({ value }: { value: string }) {
-  const yes = value === "Included";
-  const no = value === "No";
+function FeatureValue({ cell }: { cell: ComparisonCell }) {
+  const yes = cell.value === "Included";
+  const no = cell.value === "No";
   return (
     <span
       className={[
-        "inline-flex min-h-6 items-center text-sm",
+        "flex min-h-6 flex-col text-sm",
         no ? "text-gray-400 dark:text-gray-600" : "text-gray-700 dark:text-gray-300",
       ].join(" ")}
     >
-      {yes ? <Check className="mr-1.5 h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
-      {value}
+      <span className="inline-flex items-center">
+        {yes ? <Check className="mr-1.5 h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
+        {cell.value}
+      </span>
+      {cell.note ? (
+        <span className="text-xs leading-5 text-gray-500 dark:text-gray-500">{cell.note}</span>
+      ) : null}
     </span>
   );
 }
@@ -748,7 +769,7 @@ export default function Premium() {
                               : "",
                           ].join(" ")}
                         >
-                          <FeatureValue value={comparisonValue(planId, row.key)} />
+                          <FeatureValue cell={comparisonValue(planId, row.key)} />
                         </div>
                       ))}
                     </div>
