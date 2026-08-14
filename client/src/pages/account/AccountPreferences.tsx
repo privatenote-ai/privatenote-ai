@@ -84,6 +84,7 @@ const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }
           {branding.accentColor ? (
             <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
           ) : null}
+          {branding.logoUrl || senderLine || branding.trustMessage ? (
           <div
             className={`flex flex-col items-center gap-2 border-b px-6 pb-5 pt-4 ${
               lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
@@ -98,13 +99,15 @@ const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }
                 />
               </div>
             ) : null}
-            <p
-              className={`m-0 text-sm font-medium ${
-                lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
-              }`}
-            >
-              {senderLine}
-            </p>
+            {senderLine ? (
+              <p
+                className={`m-0 text-sm font-medium ${
+                  lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
+                }`}
+              >
+                {senderLine}
+              </p>
+            ) : null}
             {branding.trustMessage ? (
               <p
                 className={`m-0 max-w-md text-xs ${
@@ -115,6 +118,7 @@ const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }
               </p>
             ) : null}
           </div>
+          ) : null}
         </header>
         <div className="px-6 py-8">
           <p
@@ -1091,7 +1095,7 @@ export default function AccountPreferences() {
                   senderLine={
                     businessSenderName || businessDisplayName
                       ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                      : "Your company shared a private note"
+                      : ""
                   }
                 />
               </div>

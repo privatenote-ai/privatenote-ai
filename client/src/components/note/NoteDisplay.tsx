@@ -323,9 +323,6 @@ const getBrandingLine = (branding: RevealBranding | undefined, t: Translations):
   return null;
 };
 
-/** Sender strip above the hero. Off for now on both the reveal button and opened-note views. */
-const SHOW_BRANDING_HEADER = false;
-
 function withFileAccessDeadline<T extends NoteData>(data: T): T {
   if (!data.fileAccessToken || typeof data.fileAccessTokenExpiresIn !== "number") {
     return data;
@@ -485,8 +482,9 @@ const BrandingHeader: React.FC<{
   brandingLine: string | null;
   lightText: boolean;
 }> = ({ branding, brandingLine, lightText }) => {
-  if (!SHOW_BRANDING_HEADER) return null;
-  if (!brandingLine && !branding?.logoUrl) return null;
+  const hasLogo = Boolean(branding?.logoUrl);
+  const hasTrustMessage = Boolean(branding?.trustMessage?.trim());
+  if (!brandingLine && !hasLogo && !hasTrustMessage) return null;
 
   const logo = branding?.logoUrl ? (
     <img
