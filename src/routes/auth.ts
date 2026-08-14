@@ -27,7 +27,7 @@ import {
   type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES } from "@shared/businessBranding";
+import { parseBrandingHexColor, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -1628,21 +1628,16 @@ function businessLogoPublicUrl(
   request: Request,
   objectKey: string | null | undefined,
 ): string | null {
-  if (!objectKey?.startsWith(BUSINESS_LOGO.OBJECT_PREFIX)) return null;
-  const fileName = objectKey.slice(BUSINESS_LOGO.OBJECT_PREFIX.length);
-  if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) return null;
-  const origin = new URL(request.url).origin;
-  return `${origin}${BUSINESS_LOGO.PUBLIC_PATH_PREFIX}${fileName}`;
+  void request;
+  return publicBrandingAssetPath(objectKey, "logo");
 }
 
 function businessBannerPublicUrl(
   request: Request,
   objectKey: string | null | undefined,
 ): string | null {
-  if (!objectKey?.startsWith(BUSINESS_BANNER.OBJECT_PREFIX)) return null;
-  const fileName = objectKey.slice(BUSINESS_BANNER.OBJECT_PREFIX.length);
-  if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) return null;
-  return `${new URL(request.url).origin}${BUSINESS_BANNER.PUBLIC_PATH_PREFIX}${fileName}`;
+  void request;
+  return publicBrandingAssetPath(objectKey, "banner");
 }
 
 async function sha256Base64Url(input: string): Promise<string> {

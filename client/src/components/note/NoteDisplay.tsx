@@ -473,11 +473,10 @@ const NoteAccessProblem: React.FC<{
 };
 
 /**
- * Sender identity strip above the reveal content: logo, who shared the note, and
- * their trust message. The banner lives lower down, next to the CTA, so nothing
- * competes with the reveal headline.
+ * Sender identity in the reveal column: logo, who shared the note, and their
+ * trust message. Shown above the CTA so it is visible even without a sender name.
  */
-const BrandingHeader: React.FC<{
+const BrandingIdentity: React.FC<{
   branding?: RevealBranding;
   brandingLine: string | null;
   lightText: boolean;
@@ -490,51 +489,40 @@ const BrandingHeader: React.FC<{
     <img
       src={branding.logoUrl}
       alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
-      className="max-h-10 w-auto object-contain sm:max-h-11"
+      className="max-h-14 w-auto object-contain sm:max-h-16"
       loading="lazy"
       referrerPolicy="no-referrer"
     />
   ) : null;
 
   return (
-    <header className="-mx-4 mb-10 sm:-mx-6 sm:mb-12 lg:-mx-8">
-      {branding?.accentColor ? (
-        <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2.5">
+      {logo ? (
+        lightText ? (
+          <div className="rounded-lg bg-white px-3 py-2 shadow-sm">{logo}</div>
+        ) : (
+          logo
+        )
       ) : null}
-
-      <div
-        className={`flex flex-col items-center gap-2.5 border-b px-4 pb-7 pt-5 sm:px-6 lg:px-8 ${
-          lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
-        }`}
-      >
-        {/* Dark brand backgrounds swallow dark logos, so give them a light plate. */}
-        {logo ? (
-          lightText ? (
-            <div className="rounded-lg bg-white px-3 py-2 shadow-sm">{logo}</div>
-          ) : (
-            logo
-          )
-        ) : null}
-        {brandingLine ? (
-          <p
-            className={`m-0 text-sm font-medium ${
-              lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
-            }`}
-          >
-            {brandingLine}
-          </p>
-        ) : null}
-        {branding?.trustMessage ? (
-          <p
-            className={`m-0 max-w-md text-xs leading-relaxed ${
-              lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"
-            }`}
-          >
-            {branding.trustMessage}
-          </p>
-        ) : null}
-      </div>
-    </header>
+      {brandingLine ? (
+        <p
+          className={`m-0 text-sm font-medium ${
+            lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
+          }`}
+        >
+          {brandingLine}
+        </p>
+      ) : null}
+      {branding?.trustMessage ? (
+        <p
+          className={`m-0 max-w-md text-sm leading-relaxed ${
+            lightText ? "text-white/80" : "text-gray-600 dark:text-gray-300"
+          }`}
+        >
+          {branding.trustMessage}
+        </p>
+      ) : null}
+    </div>
   );
 };
 
@@ -585,8 +573,6 @@ const RevealHero: React.FC<RevealHeroProps> = ({
         style={brandedHeroStyle}
       >
         <div className="text-center">
-          <BrandingHeader branding={branding} brandingLine={brandingLine} lightText={lightText} />
-
           <h1 className={`page-title ${lightText ? "text-white" : "text-gray-900 dark:text-white"}`}>
             {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
           </h1>
@@ -598,13 +584,19 @@ const RevealHero: React.FC<RevealHeroProps> = ({
             {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
           </p>
 
+          {(brandingLine || branding?.logoUrl || branding?.trustMessage) ? (
+            <div className="mt-8 sm:mt-10">
+              <BrandingIdentity branding={branding} brandingLine={brandingLine} lightText={lightText} />
+            </div>
+          ) : null}
+
           {showBanner ? (
             <div className="mt-12 sm:mt-14">
               <BrandingBanner branding={branding} lightText={lightText} />
             </div>
           ) : null}
 
-          <div className={`${showBanner ? "mt-12 sm:mt-14" : "mt-24 sm:mt-28"} w-full flex justify-center`}>
+          <div className={`${showBanner ? "mt-12 sm:mt-14" : "mt-10 sm:mt-12"} w-full flex justify-center`}>
             <button
               type="button"
               onClick={(ev) => void onReveal(ev)}
@@ -1866,18 +1858,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
         style={revealedBackgroundStyle}
       >
-        <BrandingHeader
-          branding={activeRevealBranding}
-          brandingLine={brandingLine}
-          lightText={revealedLightText}
-        />
-
         <div className="mb-8 text-center sm:mb-10">
           <h1 className="page-title text-primary">{t.privateNote}</h1>
           <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
             <span aria-hidden>⚠️</span>
             {t.noteDeletedWarning}
           </p>
+          <div className="mt-6">
+            <BrandingIdentity
+              branding={activeRevealBranding}
+              brandingLine={brandingLine}
+              lightText={revealedLightText}
+            />
+          </div>
         </div>
 
         {canImportNoteLabels && importedLabelsPack && noteContent ? (

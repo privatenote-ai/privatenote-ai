@@ -124,6 +124,16 @@ describe("parseBrandingLogoUrl", () => {
     });
   });
 
+  it("accepts hosted same-origin paths and rewrites worker URLs to those paths", () => {
+    const file = "abcdefghijklmnopqrstuvwxyz12.png";
+    const path = `/api/auth/branding/logo/${file}`;
+    assert.deepEqual(parseBrandingLogoUrl(path), { ok: true, value: path });
+    assert.deepEqual(
+      parseBrandingLogoUrl(`https://privatenote-api.marjan-skrobot.workers.dev${path}`),
+      { ok: true, value: path },
+    );
+  });
+
   it("treats omitted and blank values as unset", () => {
     for (const raw of [undefined, null, "", "   "]) {
       assert.deepEqual(parseBrandingLogoUrl(raw), { ok: true, value: null });
@@ -217,6 +227,23 @@ describe("toRevealBranding", () => {
 });
 
 describe("parseStoredRevealBranding", () => {
+  it("rewrites a hosted workers.dev logo onto the public path", () => {
+    const file = "abcdefghijklmnopqrstuvwxyz12.png";
+    const path = `/api/auth/branding/logo/${file}`;
+    assert.deepEqual(
+      parseStoredRevealBranding({
+        trustMessage: "Call us if this looks unexpected.",
+        logoUrl: `https://privatenote-api.marjan-skrobot.workers.dev${path}`,
+        accentColor: "#2563eb",
+      }),
+      {
+        trustMessage: "Call us if this looks unexpected.",
+        logoUrl: path,
+        accentColor: "#2563eb",
+      },
+    );
+  });
+
   it("round-trips a valid stored snapshot", () => {
     assert.deepEqual(
       parseStoredRevealBranding({

@@ -16,6 +16,10 @@ export const BRANDING_SENDER_NAME_MAX = 80;
 export const BRANDING_SENDER_ROLE_MAX = 80;
 export const BRANDING_TRUST_MESSAGE_MAX = 160;
 export const BRANDING_LOGO_URL_MAX = 512;
+/** Same-origin paths snapshotted onto notes so recipients never load workers.dev. */
+export const BRANDING_LOGO_PUBLIC_PATH_PREFIX = "/api/auth/branding/logo/";
+export const BRANDING_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/banner/";
+const BRANDING_HOSTED_ASSET_FILE = /^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/;
 
 /** Soft recommendations for Business upload UI (enforced limits are byte size + type). */
 export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
@@ -137,11 +141,40 @@ function parseName(
 }
 
 /**
- * Accepts absolute `https:` URLs only.
+ * Hosted logo/banner object keys (`account-branding/…`) become same-origin
+ * public paths. Absolute URLs that already point at those paths are rewritten
+ * so a note created via the Pages → workers.dev proxy still loads on the app host.
+ */
+export function publicBrandingAssetPath(
+  objectKey: string | null | undefined,
+  kind: "logo" | "banner",
+): string | null {
+  const prefix = kind === "logo" ? "account-branding/" : "account-branding/banner/";
+  const publicPrefix =
+    kind === "logo" ? BRANDING_LOGO_PUBLIC_PATH_PREFIX : BRANDING_BANNER_PUBLIC_PATH_PREFIX;
+  if (!objectKey?.startsWith(prefix)) return null;
+  const fileName = objectKey.slice(prefix.length);
+  if (!BRANDING_HOSTED_ASSET_FILE.test(fileName)) return null;
+  return `${publicPrefix}${fileName}`;
+}
+
+function hostedBrandingPublicPath(pathname: string): string | null | undefined {
+  const prefixes = [BRANDING_LOGO_PUBLIC_PATH_PREFIX, BRANDING_BANNER_PUBLIC_PATH_PREFIX] as const;
+  for (const prefix of prefixes) {
+    if (!pathname.startsWith(prefix)) continue;
+    const fileName = pathname.slice(prefix.length);
+    if (!BRANDING_HOSTED_ASSET_FILE.test(fileName)) return null;
+    return `${prefix}${fileName}`;
+  }
+  return undefined;
+}
+
+/**
+ * Accepts same-origin hosted branding paths, or absolute `https:` URLs.
  *
- * `http:` is excluded because the reveal page is served over TLS and a mixed
- * content image would be blocked anyway. `data:` and `javascript:` are excluded
- * because they turn an image slot into a script/payload vector.
+ * Hosted `/api/auth/branding/{logo,banner}/…` values are stored as paths so the
+ * reveal page loads them from the app origin. Other `https:` URLs stay absolute.
+ * `http:`, `data:`, and `javascript:` are rejected.
  */
 export function parseBrandingLogoUrl(
   raw: unknown,
@@ -152,6 +185,14 @@ export function parseBrandingLogoUrl(
   if (trimmed.length === 0) return { ok: true, value: null };
   if (trimmed.length > BRANDING_LOGO_URL_MAX) return { ok: false };
   if (CONTROL_CHARS.test(trimmed)) return { ok: false };
+  if (trimmed.startsWith("//") || trimmed.includes("\\")) return { ok: false };
+
+  if (trimmed.startsWith("/")) {
+    const hosted = hostedBrandingPublicPath(trimmed.split(/[?#]/, 1)[0] ?? trimmed);
+    if (hosted === undefined) return { ok: false };
+    if (hosted === null) return { ok: false };
+    return { ok: true, value: hosted };
+  }
 
   let url: URL;
   try {
@@ -163,6 +204,10 @@ export function parseBrandingLogoUrl(
   // Embedded credentials would be echoed to every recipient.
   if (url.username || url.password) return { ok: false };
   if (!url.hostname || !url.hostname.includes(".")) return { ok: false };
+
+  const hosted = hostedBrandingPublicPath(url.pathname);
+  if (hosted === null) return { ok: false };
+  if (hosted) return { ok: true, value: hosted };
 
   return { ok: true, value: url.toString() };
 }

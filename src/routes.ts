@@ -93,7 +93,7 @@ import {
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
-import { toRevealBranding } from "@shared/businessBranding";
+import { parseStoredRevealBranding, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
@@ -917,25 +917,30 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
   if (!session?.id || !env.AUTH_DB) return undefined;
   const entitlements = await getAccountEntitlements(env, session.id);
   if (!entitlements.capabilities.revealBranding) return undefined;
-  try {
-    const row = await env.AUTH_DB.prepare(
-      `SELECT business_display_name, business_sender_name, business_sender_role,
+  const selectFull = `SELECT business_display_name, business_sender_name, business_sender_role,
               business_trust_message, business_logo_key, business_banner_key,
               business_accent_color, business_background_color, business_text_color,
               business_background_style
-       FROM users WHERE id = ? LIMIT 1`,
-    ).bind(session.id).first<Record<string, string | null>>();
+       FROM users WHERE id = ? LIMIT 1`;
+  const selectCore = `SELECT business_display_name, business_logo_key, business_accent_color,
+              business_background_color, business_text_color
+       FROM users WHERE id = ? LIMIT 1`;
+  try {
+    let row: Record<string, string | null> | null = null;
+    try {
+      row = await env.AUTH_DB.prepare(selectFull).bind(session.id).first<Record<string, string | null>>();
+    } catch (error) {
+      console.warn("[BRANDING] Full branding select failed, retrying core columns:", error);
+      row = await env.AUTH_DB.prepare(selectCore).bind(session.id).first<Record<string, string | null>>();
+    }
     if (!row) return undefined;
-    const origin = new URL(request.url).origin;
-    const assetUrl = (key: string | null, prefix: string, path: string) =>
-      key?.startsWith(prefix) ? `${origin}${path}${key.slice(prefix.length)}` : null;
     return toRevealBranding({
       companyName: row.business_display_name,
       senderName: row.business_sender_name,
       senderRole: row.business_sender_role,
       trustMessage: row.business_trust_message,
-      logoUrl: assetUrl(row.business_logo_key, "account-branding/", "/api/auth/branding/logo/"),
-      bannerUrl: assetUrl(row.business_banner_key, "account-branding/banner/", "/api/auth/branding/banner/"),
+      logoUrl: publicBrandingAssetPath(row.business_logo_key, "logo"),
+      bannerUrl: publicBrandingAssetPath(row.business_banner_key, "banner"),
       accentColor: row.business_accent_color,
       backgroundColor: row.business_background_color,
       textColor: row.business_text_color,
@@ -9292,8 +9297,17 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     // snapshot is always rebuilt from the authenticated Business account.
     if (requestBody?.revealBranding != null) {
       const trustedBranding = await resolveAccountRevealBranding(env, request);
-      if (trustedBranding) requestBody.revealBranding = trustedBranding;
-      else delete requestBody.revealBranding;
+      if (trustedBranding) {
+        requestBody.revealBranding = trustedBranding;
+      } else {
+        const session = await getSessionFromRequest(env, request, { rotate: false });
+        const parsedClientBranding = parseStoredRevealBranding(requestBody.revealBranding);
+        const allowed = session?.id
+          ? (await getAccountEntitlements(env, session.id)).capabilities.revealBranding
+          : false;
+        if (parsedClientBranding && allowed) requestBody.revealBranding = parsedClientBranding;
+        else delete requestBody.revealBranding;
+      }
     }
 
     if (requestBody?.attachment != null) {
