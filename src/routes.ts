@@ -961,6 +961,21 @@ function noteReadNotificationDeviceLabel(request: Request): string {
   return "unknown device";
 }
 
+/**
+ * Whether the recipient-verification gate for a note actually exists.
+ *
+ * Alerts and receipt acknowledgment degrade quietly when registration fails —
+ * the sender loses a notification. Recipient verification is access control, so
+ * a note whose gate was requested but never written is readable by anyone with
+ * the link, which is the opposite of what the sender was shown. The caller has
+ * to be able to tell those two cases apart.
+ */
+type SentNoteRegistration = {
+  recipientGateRequired: boolean;
+  recipientGateApplied: boolean;
+  failureReason: string | null;
+};
+
 async function registerPremiumSentNote(
   env: Env,
   request: Request,
@@ -980,7 +995,7 @@ async function registerPremiumSentNote(
     label?: string | null;
     expiresAt?: string | null;
   },
-): Promise<void> {
+): Promise<SentNoteRegistration> {
   const notifyOnOpen = input.notifyOnOpen === true;
   const notifyOnDestroyed = input.notifyOnDestroyed === true;
   const notifyOnAttachmentDownload = input.notifyOnAttachmentDownload === true;
@@ -992,18 +1007,23 @@ async function registerPremiumSentNote(
     notifyOnAttachmentDownload ||
     requireRecipientVerification ||
     requireReceiptAck;
-  if (!env.AUTH_DB) return;
+  const notRegistered = (failureReason: string | null): SentNoteRegistration => ({
+    recipientGateRequired: requireRecipientVerification,
+    recipientGateApplied: false,
+    failureReason,
+  });
+  if (!env.AUTH_DB) return notRegistered("auth_db_unavailable");
 
   try {
     const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session?.id) return;
+    if (!session?.id) return notRegistered("unauthenticated");
     // Starter/Business can revoke unopened notes; register tracking even when no
     // alert/gate options were selected so revoke is available from success + Activity.
     const canRevokeUnopened = planFeaturesFor(
       (await getAccountEntitlements(env, session.id)).accountType,
     ).revokeUnopened;
     if (!wantsExplicitTracking && !canRevokeUnopened) {
-      return;
+      return notRegistered(null);
     }
     await insertSentNote(env, {
       userId: session.id,
@@ -1023,8 +1043,93 @@ async function registerPremiumSentNote(
       expiresAt: input.expiresAt,
       proofEnabled: true,
     });
+    return {
+      recipientGateRequired: requireRecipientVerification,
+      // insertSentNote writes the KV gate in the same call and throws rather
+      // than returning when it cannot, so reaching here means the gate is live.
+      recipientGateApplied: requireRecipientVerification,
+      failureReason: null,
+    };
   } catch (error) {
     console.warn("[SENT_NOTES] Failed to register sent-note notification:", error);
+    return notRegistered(error instanceof Error ? error.message : "unknown_error");
+  }
+}
+
+/**
+ * Destroy a note that was stored without the recipient gate it was asked for.
+ *
+ * The note reaches the Durable Object before sent-note registration runs, so a
+ * gate failure otherwise hands back a link that opens for anyone holding it.
+ * Sending nothing is the only safe outcome: the sender can retry, while an
+ * ungated link cannot be un-shared once it has been passed on.
+ */
+async function discardUngatedNote(
+  env: Env,
+  request: Request,
+  noteId: string,
+  options: {
+    hasAttachment: boolean;
+    reservationId: string | null;
+    failureReason: string | null;
+  },
+): Promise<Response> {
+  const reason = `recipient verification gate missing (${options.failureReason ?? "unknown"})`;
+  console.error(`[SENT_NOTES] Discarding note ${noteId}: ${reason}`);
+  try {
+    const stub = getSecureNoteStub(env, noteId);
+    const deleteUrl = new URL(`/api/notes/${noteId}`, request.url);
+    await stub.fetch(new Request(deleteUrl.toString(), { method: "DELETE" }) as any);
+  } catch (error) {
+    console.error(`[SENT_NOTES] Could not delete ungated note ${noteId}:`, error);
+  }
+  if (options.hasAttachment) {
+    await cleanupNoteFileChunks(env, noteId, reason);
+  }
+  await releaseAccountFileStorageReservation(env, noteId, reason);
+  if (options.reservationId) {
+    await clearReservation(env, options.reservationId);
+  }
+
+  switch (options.failureReason) {
+    case "sender_email_unverified":
+      return jsonResponse(
+        {
+          error: "sender_email_unverified",
+          message:
+            "Verify your email address before sending a note that requires recipient verification.",
+        },
+        403,
+        request,
+      );
+    case "premium_required":
+      return jsonResponse(
+        {
+          error: "premium_required",
+          message: "Recipient verification requires Starter or Business.",
+        },
+        403,
+        request,
+      );
+    case "recipient_email_required":
+      return jsonResponse(
+        {
+          error: "recipient_email_required",
+          message: "Recipient verification needs the recipient's email address.",
+        },
+        400,
+        request,
+      );
+    default:
+      return jsonResponse(
+        {
+          error: "recipient_verification_unavailable",
+          message:
+            "Recipient verification could not be applied, so nothing was sent. Please try again.",
+        },
+        503,
+        request,
+      );
   }
 }
 
@@ -9128,6 +9233,38 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         );
       }
     }
+
+    // Rejected up front like delayed reveal and receipt confirmation above.
+    // Registration happens after the note is stored, so without this check an
+    // ineligible or malformed request produced a live link with no gate on it.
+    const requireRecipientVerification =
+      requestBody?.requireRecipientVerification === true;
+    if (requireRecipientVerification) {
+      if (!noteCreationFeatures.recipientVerification) {
+        return jsonResponse(
+          {
+            error: "premium_required",
+            message: "Recipient verification requires Starter or Business.",
+          },
+          403,
+          request,
+        );
+      }
+      const gateRecipientEmail =
+        typeof requestBody?.recipientEmail === "string"
+          ? requestBody.recipientEmail.trim().toLowerCase()
+          : "";
+      if (!isPlausibleEmailFormat(gateRecipientEmail)) {
+        return jsonResponse(
+          {
+            error: "recipient_email_required",
+            message: "Recipient verification needs the recipient's email address.",
+          },
+          400,
+          request,
+        );
+      }
+    }
     const customReceiptStatement = normalizeReceiptAckStatement(requestBody?.receiptAckStatement);
     if (requestBody?.receiptAckStatement != null) {
       const creationAccountType = await noteCreationAccountType(env, request);
@@ -9305,11 +9442,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     }
 
     if (doResponse.ok) {
-      await registerPremiumSentNote(env, request, id, {
+      const registration = await registerPremiumSentNote(env, request, id, {
         notifyOnOpen: requestBody?.notifyOnOpen === true,
         notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
         notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
-        requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+        requireRecipientVerification,
         requireReceiptAck: requestBody?.requireReceiptAck === true,
         receiptAckTokenHash:
           typeof requestBody?.receiptAckTokenHash === "string"
@@ -9332,6 +9469,14 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
       });
 
+      if (registration.recipientGateRequired && !registration.recipientGateApplied) {
+        return discardUngatedNote(env, request, id, {
+          hasAttachment: requestBody?.attachment != null,
+          reservationId: requestedId,
+          failureReason: registration.failureReason,
+        });
+      }
+
       const activitySession = await getSessionFromRequest(env, request, { rotate: false });
       if (activitySession?.id) {
         const rawAiMode = requestBody?.aiMode;
@@ -9352,7 +9497,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           notifyOnOpen: requestBody?.notifyOnOpen === true,
           notifyOnDestroyed: requestBody?.notifyOnDestroyed === true,
           notifyOnAttachmentDownload: requestBody?.notifyOnAttachmentDownload === true,
-          requireRecipientVerification: requestBody?.requireRecipientVerification === true,
+          requireRecipientVerification,
           requireReceiptAck: requireReceiptAck,
         });
       }

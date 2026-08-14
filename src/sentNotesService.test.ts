@@ -6,6 +6,7 @@ import {
   deleteSentNoteNotification,
   getSentNoteNotificationsByNoteIds,
   listSentNoteNotificationsForUser,
+  insertSentNote,
   noteRequiresRecipientVerification,
   recordSentNoteAttachmentDownloaded,
   revokeSentNote,
@@ -130,6 +131,99 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     ...overrides,
   };
 }
+
+/**
+ * `.first()` is a queue: insertSentNote reads the sender row, then
+ * getAccountEntitlements reads the plan row.
+ */
+function gateDb(options: {
+  emailVerified: number;
+  accountType: string;
+}): FakeD1Database {
+  const db = new FakeD1Database();
+  db.firstRows = [
+    {
+      email: "sender@example.com",
+      email_verified: options.emailVerified,
+      email_notifications: 1,
+    },
+    {
+      account_type: options.accountType,
+      plan: options.accountType,
+      subscription_status: options.accountType === "free" ? null : "active",
+      subscription_current_period_end:
+        options.accountType === "free" ? null : "2099-01-01T00:00:00.000Z",
+      subscription_grace_period_end: null,
+      manual_entitlement_expires_at: null,
+      manual_entitlement_account_type: null,
+    },
+  ];
+  return db;
+}
+
+function insertGatedNote(db: FakeD1Database, kvNamespace: FakeKvNamespace) {
+  return insertSentNote(envWithDb(db, kvNamespace), {
+    userId: "user-1",
+    noteId: GATE_NOTE_ID,
+    recipientEmail: "recipient@example.com",
+    requireRecipientVerification: true,
+  });
+}
+
+/**
+ * Recipient verification is access control, and the note is already stored by
+ * the time this runs. If it were to return quietly without writing the gate,
+ * the caller would hand back a link that opens for anyone — so refusing loudly
+ * is the contract the note-create route relies on to discard the note.
+ */
+describe("recipient verification gate creation", () => {
+  it("refuses to skip the gate when the sender's email is unverified", async () => {
+    const db = gateDb({ emailVerified: 0, accountType: "business_premium" });
+    const kvNamespace = new FakeKvNamespace();
+
+    await assert.rejects(insertGatedNote(db, kvNamespace), /sender_email_unverified/);
+    assert.equal(kvNamespace.store.has(GATE_KEY), false);
+    assert.equal(db.runs.length, 0);
+  });
+
+  it("refuses to skip the gate when the plan does not include it", async () => {
+    const db = gateDb({ emailVerified: 1, accountType: "free" });
+    const kvNamespace = new FakeKvNamespace();
+
+    await assert.rejects(insertGatedNote(db, kvNamespace), /premium_required/);
+    assert.equal(kvNamespace.store.has(GATE_KEY), false);
+    assert.equal(db.runs.length, 0);
+  });
+
+  it("refuses to skip the gate when no recipient address was given", async () => {
+    const db = gateDb({ emailVerified: 1, accountType: "business_premium" });
+    const kvNamespace = new FakeKvNamespace();
+
+    await assert.rejects(
+      insertSentNote(envWithDb(db, kvNamespace), {
+        userId: "user-1",
+        noteId: GATE_NOTE_ID,
+        requireRecipientVerification: true,
+      }),
+      /recipient_email_required/,
+    );
+    assert.equal(kvNamespace.store.has(GATE_KEY), false);
+    assert.equal(db.runs.length, 0);
+  });
+
+  it("writes the gate alongside the row when it returns successfully", async () => {
+    const db = gateDb({ emailVerified: 1, accountType: "business_premium" });
+    const kvNamespace = new FakeKvNamespace();
+
+    await insertGatedNote(db, kvNamespace);
+
+    assert.equal(kvNamespace.store.has(GATE_KEY), true);
+    const gate = JSON.parse(kvNamespace.store.get(GATE_KEY)?.value ?? "{}");
+    assert.equal(gate.recipientEmail, "recipient@example.com");
+    assert.equal(db.runs.length, 1);
+    assert.match(db.runs[0]?.sql ?? "", /INSERT INTO sent_notes/);
+  });
+});
 
 describe("sent note notification service", () => {
   it("lists only non-hidden notification rows", async () => {
