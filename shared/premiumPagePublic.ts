@@ -8,4 +8,4 @@ export const PREMIUM_PAGE_PUBLIC = true;
  * When false, hide Pricing in the navbar (and footer) while the page itself stays available.
  * Flip to true when ready to advertise Pricing in primary nav.
  */
-export const PREMIUM_NAV_LINK_PUBLIC = false;
+export const PREMIUM_NAV_LINK_PUBLIC = true;
