@@ -1,6 +1,12 @@
 import React from "react";
 import { Shield, Lock, Cpu, Globe, Scale } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  BILLING_SELLER_ADDRESS_LINE1,
+  BILLING_SELLER_ADDRESS_LINE2,
+  BILLING_SELLER_CAPACITY,
+  BILLING_SELLER_LEGAL_NAME,
+} from "@shared/billingTerms";
 
 type PrivacyLocale = "en" | "de" | "fr";
 
@@ -10,6 +16,7 @@ type PrivacyCopy = {
   controllerTitle: string;
   controllerIntro: string;
   companyName: string;
+  companyLegalForm: string;
   companyAddress1: string;
   companyAddress2: string;
   under16: React.ReactNode;
@@ -54,13 +61,14 @@ type PrivacyCopy = {
 const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   en: {
     title: "Privacy Policy",
-    subtitle: "Version 2.2 • Last updated: April 4, 2026 • Luxembourg, EU",
+    subtitle: "Version 2.3 • Last updated: August 14, 2026 • Luxembourg, EU",
     controllerTitle: "1. Data Controller",
     controllerIntro:
       "For the purposes of the General Data Protection Regulation (GDPR), the data controller is:",
-    companyName: "Pupin Labs",
-    companyAddress1: "62 Rue Marie-Adelaide",
-    companyAddress2: "2128, Luxembourg, Luxembourg",
+    companyName: BILLING_SELLER_LEGAL_NAME,
+    companyLegalForm: BILLING_SELLER_CAPACITY,
+    companyAddress1: BILLING_SELLER_ADDRESS_LINE1,
+    companyAddress2: BILLING_SELLER_ADDRESS_LINE2,
     under16: (
       <>
         PrivateNote.ai is not intended for users under the age of <strong>16</strong>. We do not knowingly
@@ -216,13 +224,14 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   },
   de: {
     title: "Datenschutzerklaerung",
-    subtitle: "Version 2.2 • Zuletzt aktualisiert: 4. April 2026 • Luxemburg, EU",
+    subtitle: "Version 2.3 • Zuletzt aktualisiert: 14. August 2026 • Luxemburg, EU",
     controllerTitle: "1. Verantwortliche Stelle",
     controllerIntro:
       "Im Sinne der Datenschutz-Grundverordnung (DSGVO) ist die verantwortliche Stelle:",
-    companyName: "Pupin Labs",
-    companyAddress1: "62 Rue Marie-Adelaide",
-    companyAddress2: "2128, Luxemburg, Luxemburg",
+    companyName: BILLING_SELLER_LEGAL_NAME,
+    companyLegalForm: BILLING_SELLER_CAPACITY,
+    companyAddress1: BILLING_SELLER_ADDRESS_LINE1,
+    companyAddress2: BILLING_SELLER_ADDRESS_LINE2,
     under16: (
       <>
         PrivateNote.ai ist nicht fuer Nutzer unter <strong>16</strong> Jahren bestimmt. Wir erheben
@@ -384,13 +393,14 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   },
   fr: {
     title: "Politique de confidentialite",
-    subtitle: "Version 2.2 • Derniere mise a jour : 4 avril 2026 • Luxembourg, UE",
+    subtitle: "Version 2.3 • Derniere mise a jour : 14 août 2026 • Luxembourg, UE",
     controllerTitle: "1. Responsable du traitement",
     controllerIntro:
       "Aux fins du Reglement general sur la protection des donnees (RGPD), le responsable du traitement est :",
-    companyName: "Pupin Labs",
-    companyAddress1: "62 Rue Marie-Adelaide",
-    companyAddress2: "2128, Luxembourg, Luxembourg",
+    companyName: BILLING_SELLER_LEGAL_NAME,
+    companyLegalForm: BILLING_SELLER_CAPACITY,
+    companyAddress1: BILLING_SELLER_ADDRESS_LINE1,
+    companyAddress2: BILLING_SELLER_ADDRESS_LINE2,
     under16: (
       <>
         PrivateNote.ai n&apos;est pas destine aux utilisateurs de moins de <strong>16 ans</strong>. Nous ne
@@ -586,6 +596,8 @@ export default function Privacy() {
               <p className="text-sm">{copy.controllerIntro}</p>
               <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm italic">
                 {copy.companyName}
+                <br />
+                {copy.companyLegalForm}
                 <br />
                 {copy.companyAddress1}
                 <br />

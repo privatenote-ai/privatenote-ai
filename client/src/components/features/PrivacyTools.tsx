@@ -144,27 +144,42 @@ function ToolCard({
   const linkProps = isInternal
     ? { href }
     : { href, target: "_blank" as const, rel: "noopener noreferrer" };
+  const initial = tool.name.trim().charAt(0).toUpperCase();
 
   return (
-    <article className="group flex h-full flex-col rounded-xl border border-gray-200/80 bg-white/70 p-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:border-gray-800/80 dark:bg-gray-950/40 dark:hover:border-primary/35">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold text-gray-950 dark:text-white">{tool.name}</h3>
-        <PricingBadge pricing={tool.pricing} label={pricingLabel} />
+    <LinkComponent
+      {...linkProps}
+      className="group flex h-full flex-col rounded-2xl border border-gray-200/80 bg-white p-4 transition-colors hover:border-primary/35 hover:bg-gray-50/80 dark:border-gray-800/80 dark:bg-gray-950 dark:hover:border-primary/40 dark:hover:bg-gray-900/50"
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          aria-hidden
+        >
+          {initial}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="truncate text-sm font-semibold text-gray-950 dark:text-white">{tool.name}</h3>
+            <PricingBadge pricing={tool.pricing} label={pricingLabel} />
+          </div>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-600 dark:text-gray-400">{description}</p>
+        </div>
       </div>
-      <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{description}</p>
       {nuance ? (
-        <p className="mt-3 flex-grow text-sm leading-relaxed text-gray-500 dark:text-gray-500">{nuance}</p>
-      ) : (
-        <div className="flex-grow" />
-      )}
-      <LinkComponent
-        {...linkProps}
-        className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
-      >
+        <p className="mt-3 line-clamp-1 border-t border-gray-100 pt-3 text-xs leading-5 text-gray-500 dark:border-gray-800 dark:text-gray-500">
+          {nuance}
+        </p>
+      ) : null}
+      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
         {linkLabel}
-        {isInternal ? <ArrowRight className="h-3.5 w-3.5" aria-hidden /> : <ExternalLink className="h-3.5 w-3.5" aria-hidden />}
-      </LinkComponent>
-    </article>
+        {isInternal ? (
+          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        ) : (
+          <ExternalLink className="h-3 w-3" aria-hidden />
+        )}
+      </span>
+    </LinkComponent>
   );
 }
 
@@ -361,20 +376,24 @@ export const PrivacyTools: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {jobCards.map(({ id, icon: Icon, title, body, href, internal }) => {
                 const className =
-                  "flex h-full flex-col rounded-xl border border-gray-200/80 bg-white/60 p-5 transition-all hover:border-primary/35 hover:shadow-md dark:border-gray-800/80 dark:bg-gray-950/35 dark:hover:border-primary/40";
+                  "group flex items-start gap-3 rounded-2xl border border-gray-200/80 bg-white p-4 transition-colors hover:border-primary/35 hover:bg-gray-50/80 dark:border-gray-800/80 dark:bg-gray-950 dark:hover:border-primary/40 dark:hover:bg-gray-900/50";
                 const inner = (
                   <>
-                    <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
-                      <Icon className="h-5 w-5" aria-hidden />
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" aria-hidden />
                     </span>
-                    <h3 className="text-base font-semibold text-gray-950 dark:text-white">{title}</h3>
-                    <p className="mt-2 flex-grow text-sm leading-relaxed text-gray-600 dark:text-gray-400">{body}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                      {internal ? t.privacyToolsOpenTool : t.privacyToolsTocTools}
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-gray-950 dark:text-white">{title}</span>
+                      <span className="mt-1 line-clamp-2 block text-sm leading-5 text-gray-600 dark:text-gray-400">
+                        {body}
+                      </span>
+                      <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                        {internal ? t.privacyToolsOpenTool : t.privacyToolsTocTools}
+                        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                      </span>
                     </span>
                   </>
                 );
@@ -466,7 +485,7 @@ export const PrivacyTools: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {category.tools.map((tool) => {
                           const href = tool.internalPath ? lp(tool.internalPath) : tool.href;
                           return (

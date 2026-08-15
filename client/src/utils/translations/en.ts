@@ -2431,7 +2431,7 @@ export const en: Translations = {
   privacyToolsFeaturedCta: "Read the 2026 privacy tools guide",
   documentMetaContactTitle: "Contact",
   documentMetaContactDescription:
-    "Contact PrivateNote.ai for support, feedback, product questions, security concerns, or help using encrypted one-time notes safely.",
+    "Contact PrivateNote.ai for support, billing (cancel vs withdraw, invoices, VAT, failed cards), product questions, or help using encrypted one-time notes.",
   documentMetaPrivacyPolicyDescription:
     "Read how PrivateNote.ai handles personal data, encrypted note retention, cookies, analytics, security logs, and your privacy rights.",
   documentMetaTermsDescription:

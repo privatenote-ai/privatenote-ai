@@ -38,9 +38,9 @@ refund = paid × (1 − days_used ÷ days_in_period)
 ```
 
 `days_used` runs from the period start to the day their email arrived, inclusive.
-Round down to the cent. No VAT is charged today (Luxembourg small-business exemption,
-see the tax note on `/terms`), so the amount paid is the gross amount and there is
-nothing to apportion.
+Round down to the cent. No VAT is charged today (Luxembourg régime de franchise for
+small enterprises — Marjan Skrobot, indépendant; see the tax note on `/terms`), so the
+amount paid is the gross amount and there is nothing to apportion.
 
 | Paid | Request arrives | Refund |
 |---|---|---|

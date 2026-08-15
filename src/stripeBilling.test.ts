@@ -267,7 +267,11 @@ describe("Stripe billing", () => {
     assert.equal(form.get("subscription_data[invoice_settings][footer]"), null);
     assert.match(
       form.get("subscription_data[description]") ?? "",
-      /Article 57bis/,
+      /régime de franchise/,
+    );
+    assert.match(
+      form.get("subscription_data[description]") ?? "",
+      /Marjan Skrobot/,
     );
     assert.equal(form.get("subscription_data[metadata][privatenote_user_id]"), "user-1");
     assert.equal(form.get("subscription_data[metadata][privatenote_currency]"), "eur");
@@ -316,7 +320,7 @@ describe("Stripe billing", () => {
     assert.equal(request.headers.get("Stripe-Version"), "2026-07-29.dahlia");
     const form = new URLSearchParams(await request.text());
     assert.equal(form.get("subscription_data[invoice_settings][footer]"), null);
-    assert.match(form.get("subscription_data[description]") ?? "", /Article 57bis/);
+    assert.match(form.get("subscription_data[description]") ?? "", /régime de franchise/);
   });
 
   it("updates billing identity fields for an existing Stripe customer", async () => {

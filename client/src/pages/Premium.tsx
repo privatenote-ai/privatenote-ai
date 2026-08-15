@@ -26,6 +26,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
+import { BillingFaqSection } from "@/components/billing/BillingFaqSection";
+import { BILLING_FAQ_ANCHOR } from "@shared/billingFaq";
 
 const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
 const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
@@ -213,9 +215,14 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
   }
 }
 
-const comparisonSections: { title: string; rows: { key: string; label: string }[] }[] = [
+const comparisonSections: {
+  title: string;
+  description: string;
+  rows: { key: string; label: string }[];
+}[] = [
   {
     title: "Core",
+    description: "Encryption, expiry, and how many times a note can be opened.",
     rows: [
       { key: "encryptedNotes", label: "Encrypted secure notes" },
       { key: "burnAfterReading", label: "Burn after reading" },
@@ -226,6 +233,7 @@ const comparisonSections: { title: string; rows: { key: string; label: string }[
   },
   {
     title: "Delivery and verification",
+    description: "Who can open a note, how it is sent, and what the sender can prove.",
     rows: [
       { key: "openNotifications", label: "Open and destroy notifications" },
       { key: "proofOfAccess", label: "Proof of access" },
@@ -240,6 +248,7 @@ const comparisonSections: { title: string; rows: { key: string; label: string }[
   },
   {
     title: "Capacity and AI",
+    description: "Attachment size, download window, and hosted drafting limits.",
     rows: [
       { key: "attachments", label: "Max attachment size" },
       { key: "payloadBuffer", label: "Active payload buffer" },
@@ -320,16 +329,26 @@ function FeatureValue({ cell }: { cell: ComparisonCell }) {
   return (
     <span
       className={[
-        "flex min-h-6 flex-col text-sm",
+        "flex min-h-6 flex-col items-center text-center text-sm",
         no ? "text-gray-400 dark:text-gray-600" : "text-gray-700 dark:text-gray-300",
       ].join(" ")}
     >
-      <span className="inline-flex items-center">
-        {yes ? <Check className="mr-1.5 h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden /> : null}
-        {cell.value}
-      </span>
+      {yes ? (
+        <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+          <Check className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Included</span>
+        </span>
+      ) : no ? (
+        <span className="text-base leading-none text-gray-300 dark:text-gray-700" aria-label="Not included">
+          —
+        </span>
+      ) : (
+        <span className="font-medium text-gray-900 dark:text-gray-100">{cell.value}</span>
+      )}
       {cell.note ? (
-        <span className="text-xs leading-5 text-gray-500 dark:text-gray-500">{cell.note}</span>
+        <span className="mt-0.5 max-w-[11rem] text-[11px] leading-4 text-gray-500 dark:text-gray-500">
+          {cell.note}
+        </span>
       ) : null}
     </span>
   );
@@ -692,8 +711,10 @@ export default function Premium() {
       </section>
 
       <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
-        Client-side encryption on every plan · Self-serve Stripe checkout · Cancel anytime before
-        renewal
+        Client-side encryption on every plan · Self-serve Stripe checkout ·{" "}
+        <a href={`#${BILLING_FAQ_ANCHOR}`} className="underline-offset-2 hover:underline">
+          Cancel anytime before renewal
+        </a>
       </p>
 
       <section className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -729,54 +750,90 @@ export default function Premium() {
 
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <div className="overflow-x-auto">
-            <div className="min-w-[720px]">
-              <div className="grid grid-cols-[minmax(220px,1.35fr)_repeat(3,minmax(130px,1fr))] border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/60 dark:text-gray-400">
-                <div className="px-5 py-4">Feature</div>
-                {PLAN_ORDER.map((planId) => (
-                  <div
-                    key={planId}
-                    className={[
-                      "px-5 py-4",
-                      planId === HIGHLIGHTED_PLAN
-                        ? "bg-primary/5 text-primary dark:bg-primary/10"
-                        : "",
-                    ].join(" ")}
-                  >
-                    {PLAN_CATALOG[planId].label}
-                  </div>
-                ))}
-              </div>
-              {comparisonSections.map((section) => (
-                <div key={section.title}>
-                  <div className="border-b border-gray-100 bg-white px-5 py-4 text-sm font-semibold text-gray-950 dark:border-gray-900 dark:bg-gray-950 dark:text-white">
-                    {section.title}
-                  </div>
-                  {section.rows.map((row) => (
-                    <div
-                      key={row.key}
-                      className="grid grid-cols-[minmax(220px,1.35fr)_repeat(3,minmax(130px,1fr))] border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 dark:border-gray-900 dark:hover:bg-gray-900/35"
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <caption className="sr-only">
+                Feature comparison for Free, Starter, and Business plans
+              </caption>
+              <colgroup>
+                <col className="w-[32%]" />
+                <col className="w-[23%]" />
+                <col className="w-[23%]" />
+                <col className="w-[22%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
+                  <th scope="col" className="sticky left-0 z-[1] bg-gray-50 px-5 py-3.5 dark:bg-gray-900/70">
+                    Feature
+                  </th>
+                  {PLAN_ORDER.map((planId) => (
+                    <th
+                      key={planId}
+                      scope="col"
+                      className={[
+                        "px-4 py-3.5 text-center",
+                        planId === HIGHLIGHTED_PLAN
+                          ? "bg-primary/10 text-primary dark:bg-primary/15"
+                          : "",
+                      ].join(" ")}
                     >
-                      <div className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {PLAN_CATALOG[planId].label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              {comparisonSections.map((section) => (
+                <tbody key={section.title} className="[&>tr:last-child]:border-b-0">
+                  <tr className="border-y border-gray-200 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/50">
+                    <th
+                      scope="colgroup"
+                      colSpan={4}
+                      className="px-5 py-3 text-left font-normal"
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                        {section.title}
+                      </p>
+                      <p className="mt-0.5 text-xs font-normal leading-5 text-gray-500 dark:text-gray-500">
+                        {section.description}
+                      </p>
+                    </th>
+                  </tr>
+                  {section.rows.map((row, rowIndex) => (
+                    <tr
+                      key={row.key}
+                      className={[
+                        "border-b border-gray-100 dark:border-gray-900",
+                        rowIndex % 2 === 1 ? "bg-gray-50/40 dark:bg-gray-900/20" : "bg-white dark:bg-gray-950",
+                      ].join(" ")}
+                    >
+                      <th
+                        scope="row"
+                        className={[
+                          "sticky left-0 z-[1] px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-gray-100",
+                          rowIndex % 2 === 1
+                            ? "bg-gray-50/95 dark:bg-gray-900/80"
+                            : "bg-white dark:bg-gray-950",
+                        ].join(" ")}
+                      >
                         {row.label}
-                      </div>
+                      </th>
                       {PLAN_ORDER.map((planId) => (
-                        <div
+                        <td
                           key={planId}
                           className={[
-                            "px-5 py-4",
+                            "px-4 py-3.5 align-middle",
                             planId === HIGHLIGHTED_PLAN
                               ? "bg-primary/5 dark:bg-primary/10"
                               : "",
                           ].join(" ")}
                         >
                           <FeatureValue cell={comparisonValue(planId, row.key)} />
-                        </div>
+                        </td>
                       ))}
-                    </div>
+                    </tr>
                   ))}
-                </div>
+                </tbody>
               ))}
-            </div>
+            </table>
           </div>
         </div>
       </section>
@@ -820,6 +877,13 @@ export default function Premium() {
           ))}
         </div>
       </section>
+
+      <div className="mt-16">
+        <BillingFaqSection
+          schemaId="premium-billing-faq"
+          intro="Cancel versus withdraw, invoices, VAT IDs, failed cards, and what to do if you paid but still see Free. Same answers as on Contact."
+        />
+      </div>
     </MarketingDocShell>
   );
 }

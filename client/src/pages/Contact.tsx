@@ -1,7 +1,15 @@
-import React from 'react';
-import { Mail, MessageSquare } from 'lucide-react';
+import React from "react";
+import { Link } from "wouter";
+import { CreditCard, Mail, MessageSquare } from "lucide-react";
+import { BillingFaqSection } from "@/components/billing/BillingFaqSection";
+import { useLanguage } from "@/context/LanguageContext";
+import { localizedPath } from "@/utils/localizedPath";
+import { BILLING_SUPPORT_EMAIL } from "@shared/billingFaq";
 
 export default function Contact() {
+  const { language } = useLanguage();
+  const lp = (path: string) => localizedPath(path, language);
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-24 pb-16 mb-24 relative">
       {/* Ambient Background Glows */}
@@ -51,10 +59,55 @@ export default function Contact() {
           </p>
         </section>
 
+        <section className="backdrop-blur-sm p-6 rounded-lg border border-gray-100 dark:border-gray-800">
+          <div className="flex items-start mb-4">
+            <CreditCard className="h-6 w-6 text-primary mr-3 mt-1 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-xl font-medium mb-3">Billing and subscriptions</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Most billing questions are answered in the FAQ below — cancel versus withdraw, invoices, VAT IDs, failed cards, and “I paid but still see Free.” Manage a live subscription from{" "}
+                <Link href={lp("/account")} className="text-primary hover:underline">
+                  Account
+                </Link>
+                {" "}or compare plans on{" "}
+                <Link href={lp("/premium")} className="text-primary hover:underline">
+                  Pricing
+                </Link>
+                .
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 mb-3">
+                For EU consumer withdrawal or a charge that does not match the FAQ, email{" "}
+                <a href={`mailto:${BILLING_SUPPORT_EMAIL}`} className="text-primary hover:underline">
+                  {BILLING_SUPPORT_EMAIL}
+                </a>{" "}
+                from the address on the account and include:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300 mb-4">
+                <li>Whether you want to cancel at period end, or withdraw within 14 days (EU/EEA consumers)</li>
+                <li>Charge date, amount, and currency</li>
+                <li>Stripe receipt or invoice number, if you have it</li>
+                <li>Last four digits of the card only — never the full number, CVC, or note keys</li>
+              </ul>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Legal terms for cancellation, withdrawal, and VAT are on{" "}
+                <Link href={lp("/terms")} className="text-primary hover:underline">
+                  Terms
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <BillingFaqSection
+          schemaId="contact-billing-faq"
+          intro="Written from the same billing rules as Checkout, the customer portal, and Terms. Start here before emailing — it is what we send back for these tickets."
+        />
+
         <section className="text-center p-8">
-          <a 
-            href="https://www.buymeacoffee.com/marjanskrobot" 
-            target="_blank" 
+          <a
+            href="https://www.buymeacoffee.com/marjanskrobot"
+            target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#FFDD00] text-black font-medium rounded-lg hover:bg-[#FFDD00]/90 transition-colors"
           >

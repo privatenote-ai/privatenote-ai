@@ -303,7 +303,7 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       return {
         title: buildDocumentTitle("Pricing"),
         description:
-          "Compare Free, Starter, and Business plans — delivery controls, note-open alerts, recipient checks, longer expirations, and higher hosted AI limits.",
+          "Compare Free, Starter, and Business plans. Billing FAQ: cancel vs withdraw, invoices, VAT IDs, failed cards, and what to do if you paid but still see Free.",
       };
     case "about":
       return {

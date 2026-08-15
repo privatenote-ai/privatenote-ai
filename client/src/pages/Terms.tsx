@@ -12,6 +12,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  BILLING_SELLER_ADDRESS,
+  BILLING_SELLER_CAPACITY,
+  BILLING_SELLER_LEGAL_NAME,
+} from "@shared/billingTerms";
 
 type TermsLocale = "en" | "de" | "fr";
 
@@ -53,6 +58,7 @@ type TermsCopy = {
     odrBody: string;
     odrUrl: string;
     companyName: string;
+    companyLegalForm: string;
     companyAddress: string;
   };
 };
@@ -60,7 +66,7 @@ type TermsCopy = {
 const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
   en: {
     title: "Terms of Use",
-    lastUpdated: "Last updated: August 13, 2026 • Luxembourg, EU",
+    lastUpdated: "Last updated: August 14, 2026 • Luxembourg, EU",
     sections: {
       ageTitle: "0. Age Requirement",
       ageBody: (
@@ -129,7 +135,7 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
         "Price changes: we may change prices. Any change applies from your next renewal, and we will tell you by email before it takes effect.",
       ],
       billingTaxNote:
-        "Taxes: the total shown at Stripe Checkout is the amount charged. We do not currently add VAT, because Pupin Labs applies the Luxembourg exemption for small enterprises under Article 57bis of the amended law of 12 February 1979, and your invoice states this. If tax becomes chargeable in future, prices shown to consumers will include it.",
+        "Taxes: the total shown at Stripe Checkout is the amount charged. We do not currently add VAT. The seller is Marjan Skrobot, an independent (indépendant) in Luxembourg, applying the small-enterprise VAT franchise scheme (régime de franchise) under Article 57bis of the amended law of 12 February 1979. Your invoice states this. If tax becomes chargeable in future, prices shown to consumers will include it.",
       availabilityTitle: "6. Service Availability",
       availabilityBody1: (
         <>
@@ -161,13 +167,14 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
       odrBody:
         "The Online Dispute Resolution (ODR) platform is now closed. For consumer assistance, please visit:",
       odrUrl: "https://consumer-redress.ec.europa.eu/index_en",
-      companyName: "Pupin Labs",
-      companyAddress: "62 Rue Marie-Adelaide, 2128, Luxembourg, Luxembourg",
+      companyName: BILLING_SELLER_LEGAL_NAME,
+      companyLegalForm: BILLING_SELLER_CAPACITY,
+      companyAddress: BILLING_SELLER_ADDRESS,
     },
   },
   de: {
     title: "Nutzungsbedingungen",
-    lastUpdated: "Zuletzt aktualisiert: 13. August 2026 • Luxemburg, EU",
+    lastUpdated: "Zuletzt aktualisiert: 14. August 2026 • Luxemburg, EU",
     sections: {
       ageTitle: "0. Altersanforderung",
       ageBody: (
@@ -236,7 +243,7 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
         "Preisänderungen: Wir können Preise ändern. Änderungen gelten ab Ihrer nächsten Verlängerung; wir informieren Sie vorher per E-Mail.",
       ],
       billingTaxNote:
-        "Steuern: Der im Stripe-Checkout angezeigte Gesamtbetrag ist der berechnete Betrag. Wir erheben derzeit keine Mehrwertsteuer, da Pupin Labs die luxemburgische Kleinunternehmerregelung nach Artikel 57bis des geänderten Gesetzes vom 12. Februar 1979 anwendet; Ihre Rechnung weist dies aus. Sollte künftig Steuer anfallen, werden die für Verbraucher angezeigten Preise diese enthalten.",
+        "Steuern: Der im Stripe-Checkout angezeigte Gesamtbetrag ist der berechnete Betrag. Wir erheben derzeit keine Mehrwertsteuer. Verkäufer ist Marjan Skrobot, selbstständig (indépendant) in Luxemburg, im Rahmen der Franchise-Regelung für Kleinunternehmen (régime de franchise) nach Artikel 57bis des geänderten Gesetzes vom 12. Februar 1979. Ihre Rechnung weist dies aus. Sollte künftig Steuer anfallen, werden die für Verbraucher angezeigten Preise diese enthalten.",
       availabilityTitle: "6. Verfügbarkeit des Dienstes",
       availabilityBody1: (
         <>
@@ -267,13 +274,14 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
       odrBody:
         "Die Plattform zur Online-Streitbeilegung (ODR) ist geschlossen. Für Unterstützung für Verbraucher besuchen Sie bitte:",
       odrUrl: "https://consumer-redress.ec.europa.eu/index_de",
-      companyName: "Pupin Labs",
-      companyAddress: "62 Rue Marie-Adelaide, 2128, Luxemburg, Luxemburg",
+      companyName: BILLING_SELLER_LEGAL_NAME,
+      companyLegalForm: BILLING_SELLER_CAPACITY,
+      companyAddress: BILLING_SELLER_ADDRESS,
     },
   },
   fr: {
     title: "Conditions d’utilisation",
-    lastUpdated: "Dernière mise à jour : 13 août 2026 • Luxembourg, UE",
+    lastUpdated: "Dernière mise à jour : 14 août 2026 • Luxembourg, UE",
     sections: {
       ageTitle: "0. Condition d’âge",
       ageBody: (
@@ -343,7 +351,7 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
         "Changements de prix : nous pouvons modifier les prix. Toute modification s’applique à compter de votre prochain renouvellement et vous en serez informé par e-mail au préalable.",
       ],
       billingTaxNote:
-        "Taxes : le total affiché dans Stripe Checkout correspond au montant facturé. Nous n’ajoutons pas de TVA à ce jour, Pupin Labs appliquant le régime luxembourgeois d’exonération des petites entreprises prévu à l’article 57bis de la loi modifiée du 12 février 1979 ; votre facture le mentionne. Si une taxe devient exigible, les prix affichés aux consommateurs l’incluront.",
+        "Taxes : le total affiché dans Stripe Checkout correspond au montant facturé. Nous n’ajoutons pas de TVA à ce jour. Le vendeur est Marjan Skrobot, indépendant au Luxembourg, relevant du régime de franchise des petites entreprises prévu à l’article 57bis de la loi modifiée du 12 février 1979. Votre facture le mentionne. Si une taxe devient exigible, les prix affichés aux consommateurs l’incluront.",
       availabilityTitle: "6. Disponibilité du service",
       availabilityBody1: (
         <>
@@ -375,8 +383,9 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
       odrBody:
         "La plateforme européenne de règlement en ligne des litiges (ODR) est désormais fermée. Pour l’assistance aux consommateurs, veuillez consulter :",
       odrUrl: "https://consumer-redress.ec.europa.eu/index_fr",
-      companyName: "Pupin Labs",
-      companyAddress: "62 Rue Marie-Adelaide, 2128, Luxembourg, Luxembourg",
+      companyName: BILLING_SELLER_LEGAL_NAME,
+      companyLegalForm: BILLING_SELLER_CAPACITY,
+      companyAddress: BILLING_SELLER_ADDRESS,
     },
   },
 };
@@ -599,6 +608,9 @@ export default function Terms() {
         <div className="text-center pt-10 mt-8 border-t border-gray-200 dark:border-gray-800">
           <p className="text-gray-600 dark:text-gray-400 mb-2 font-medium">
             {copy.sections.companyName}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+            {copy.sections.companyLegalForm}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
             {copy.sections.companyAddress}
