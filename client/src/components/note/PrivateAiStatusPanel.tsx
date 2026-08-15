@@ -73,15 +73,15 @@ export function PrivateAiStatusPanel({
       <div className="flex flex-col items-center gap-2 px-10 pt-0.5">
         <div className="flex items-center justify-center gap-2">
           <Sparkles
-            className="h-5 w-5 shrink-0 text-primary dark:text-primary/90 sm:h-[1.125rem] sm:w-[1.125rem]"
+            className="h-5 w-5 shrink-0 text-primary dark:text-blue-300 sm:h-[1.125rem] sm:w-[1.125rem]"
             aria-hidden
           />
           <p className="text-center text-xl font-semibold leading-tight sm:text-2xl">
-            <span className="text-primary dark:text-primary/90">{brand}</span>
+            <span className="text-primary dark:text-blue-300">{brand}</span>
             <span className="text-gray-900 dark:text-gray-100"> — {modelName}</span>
           </p>
         </div>
-        <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary/90 sm:text-xs">
+        <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary dark:border-blue-300/40 dark:bg-blue-400/10 dark:text-blue-300 sm:text-xs">
           {recommendedLabel}
         </span>
       </div>

@@ -568,7 +568,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const secondaryActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800/80 lg:gap-1.5 lg:px-5";
+    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-blue-300 dark:hover:bg-gray-800/80 lg:gap-1.5 lg:px-5";
   const attachActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 lg:gap-1.5 lg:px-5";
   const mobileIconActionClass =
@@ -2930,8 +2930,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               }}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
                 !isAiMode
-                  ? "bg-primary/10 text-primary border-b-2 border-primary"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  ? "border-b-2 border-primary bg-primary/10 text-primary dark:border-blue-300 dark:bg-blue-400/10 dark:text-white"
+                  : "text-primary hover:bg-gray-50 dark:text-blue-300 dark:hover:bg-gray-800/60 dark:hover:text-white"
               }`}
             >
               <div className="flex items-center justify-center">
@@ -2946,8 +2946,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               }}
               className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
                 isAiMode
-                  ? "bg-primary/10 text-primary border-b-2 border-primary"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  ? "border-b-2 border-primary bg-primary/10 text-primary dark:border-blue-300 dark:bg-blue-400/10 dark:text-white"
+                  : "text-primary hover:bg-gray-50 dark:text-blue-300 dark:hover:bg-gray-800/60 dark:hover:text-white"
               }`}
             >
               <div className="flex items-center justify-center">

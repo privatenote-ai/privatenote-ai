@@ -62,8 +62,8 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
                     className={
                       `flex min-h-[2.75rem] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:min-h-0 md:gap-2.5 md:py-2 ` +
                       (active
-                        ? "bg-white text-primary shadow-sm ring-1 ring-black/[0.04] dark:bg-gray-950 dark:text-primary dark:ring-white/[0.06] md:bg-primary/10 md:shadow-none md:ring-0 dark:md:bg-primary/15"
-                        : "text-gray-700 hover:bg-white/80 dark:text-gray-300 dark:hover:bg-gray-950/70 md:text-gray-600 md:hover:bg-gray-100 dark:md:text-gray-400 md:dark:hover:bg-gray-800/80")
+                        ? "bg-white text-primary shadow-sm ring-1 ring-black/[0.04] dark:bg-gray-950 dark:text-white dark:ring-white/[0.06] md:bg-primary/10 md:shadow-none md:ring-0 dark:md:bg-blue-400/10"
+                        : "text-gray-700 hover:bg-white/80 dark:text-blue-300 dark:hover:bg-gray-950/70 dark:hover:text-white md:text-gray-600 md:hover:bg-gray-100 dark:md:text-blue-300 md:dark:hover:bg-gray-800/80")
                     }
                   >
                     <Icon className="h-5 w-5 shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />

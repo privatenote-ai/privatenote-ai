@@ -156,9 +156,9 @@ export const Navbar: React.FC = () => {
   const logoInner = (
     <>
       <Logo size={30} className="shrink-0" />
-      <span className="font-bold text-xl sm:text-2xl text-primary">
+      <span className="font-bold text-xl sm:text-2xl text-primary dark:text-blue-300">
         privateNote
-        <span className="text-xs text-primary align-super ml-0.5">.ai</span>
+        <span className="text-xs text-primary align-super ml-0.5 dark:text-blue-300">.ai</span>
       </span>
     </>
   );
@@ -174,7 +174,7 @@ export const Navbar: React.FC = () => {
     "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary dark:text-blue-300 transition-colors hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   const desktopDropdownItem =
-    "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-gray-100 dark:hover:bg-white/[0.06] dark:hover:text-white";
+    "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-blue-300 dark:hover:bg-white/[0.06] dark:hover:text-white";
 
   const navShellClass =
     "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
@@ -205,28 +205,28 @@ export const Navbar: React.FC = () => {
               <NavLink
                 href="/account"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.account}
               </NavLink>
               <NavLink
                 href="/account/security"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.security}
               </NavLink>
               <NavLink
                 href="/account/activity"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.authNavActivity ?? "Activity"}
               </NavLink>
               <NavLink
                 href="/account/preferences"
                 closeMenu={closeMenu}
-                className="block px-4 py-2 text-sm text-primary hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.authNavPreferences ?? "Preferences"}
               </NavLink>
@@ -386,7 +386,7 @@ export const Navbar: React.FC = () => {
             <button
               type="button"
               onClick={toggleMobileNav}
-              className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
+              className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0 dark:text-blue-300 dark:hover:text-white"
               aria-expanded={mobileSheet === "nav"}
               aria-controls="mobile-nav-sheet"
               aria-label={mobileSheet === "nav" ? t.closeNavigationMenu : t.toggleNavigation}
@@ -438,7 +438,7 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={closeMenu}
-                className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
+                className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0 dark:text-blue-300 dark:hover:text-white"
                 aria-expanded={mobileSheet === "nav"}
                 aria-controls="mobile-nav-sheet"
                 aria-label={t.closeNavigationMenu}
@@ -506,7 +506,7 @@ export const Navbar: React.FC = () => {
               href="https://www.buymeacoffee.com/marjanskrobot"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:hover:text-black hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              className="flex items-center gap-3 px-5 py-4 text-base font-medium text-primary transition-colors hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               onClick={closeMenu}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -551,7 +551,7 @@ export const Navbar: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMobileSheet("nav")}
-                className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0"
+                className="nav-icon-button inline-flex h-10 w-10 items-center justify-center text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-0 dark:text-blue-300 dark:hover:text-white"
                 aria-controls="mobile-nav-sheet"
                 aria-label={t.toggleNavigation}
               >

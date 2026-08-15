@@ -77,7 +77,7 @@ const SELECT_CHEVRON_STYLE = {
 };
 
 const SETTINGS_SELECT_CLASS =
-  "w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 bg-white text-gray-800 shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:[color-scheme:dark]";
+  "w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 bg-white text-gray-800 shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:[color-scheme:dark]";
 
 /** Native <option> styling for locked (premium) choices — light gray, still selectable. */
 const LOCKED_OPTION_STYLE: React.CSSProperties = { color: "#9ca3af" };
@@ -553,9 +553,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const receiptAckOptionBase =
     "w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40";
   const receiptAckOptionIdle =
-    "border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50/60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-teal-700 dark:hover:bg-teal-950/40";
+    "border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50/60 dark:border-gray-700 dark:bg-gray-950 dark:text-blue-300 dark:hover:border-teal-700 dark:hover:bg-teal-950/40";
   const receiptAckOptionActive =
-    "border-teal-500 bg-white text-gray-900 shadow-sm ring-1 ring-teal-500/30 dark:border-teal-400 dark:bg-gray-950 dark:text-gray-300 dark:ring-teal-400/30";
+    "border-teal-500 bg-white text-gray-900 shadow-sm ring-1 ring-teal-500/30 dark:border-teal-400 dark:bg-gray-950 dark:text-white dark:ring-teal-400/30";
 
   const defaultOpensAtLocal = (): string => {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -1393,7 +1393,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                               ) : null}
                             </span>
                             <span className="min-w-0">
-                              <span className="block font-medium leading-snug text-gray-900 dark:text-gray-300">
+                              <span className="block font-medium leading-snug text-gray-900 dark:text-inherit">
                                 {preset.title}
                               </span>
                               <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
@@ -1427,7 +1427,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           ) : null}
                         </span>
                         <span className="min-w-0">
-                          <span className="block font-medium leading-snug text-gray-900 dark:text-gray-300">
+                          <span className="block font-medium leading-snug text-gray-900 dark:text-inherit">
                             {t.settingsReceiptStatementCustom ?? "Write your own"}
                           </span>
                           <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
@@ -1577,7 +1577,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               {!isPremiumUser ? (
                 <a
                   href={premiumUpgradeHref}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-transparent px-3 py-2 text-xs font-medium text-primary transition-colors hover:border-primary/45 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-transparent px-3 py-2 text-xs font-medium text-primary transition-colors hover:border-primary/45 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:text-blue-300 dark:hover:text-white"
                 >
                   <Lock className="h-3.5 w-3.5 opacity-75" aria-hidden />
                   Unlock delivery controls with Starter or Business
@@ -1607,7 +1607,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         <Palette className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden />
                       </span>
                       <span className="min-w-0 leading-snug">
-                        <a href={brandingHref} className="font-medium text-primary underline underline-offset-2">
+                        <a href={brandingHref} className="font-medium text-primary underline underline-offset-2 dark:text-blue-300">
                           {t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding"}
                         </a>{" "}
                         {t.settingsDeliveryBrandedRevealSetUpHint ?? "to show it on the reveal page."}
@@ -1673,7 +1673,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       .catch(() => setDefaultsSaved(false))
                       .finally(() => setSavingDefaults(false));
                   }}
-                  className="rounded-md border border-primary/40 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                  className="rounded-md border border-primary/40 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60 dark:text-blue-300"
                 >
                   {savingDefaults ? "Saving…" : "Save these as my defaults"}
                 </button>

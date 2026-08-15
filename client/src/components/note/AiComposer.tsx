@@ -51,11 +51,11 @@ function templateChipClass(active: boolean, variant: "primary" | "amber" = "prim
   const activeClass =
     variant === "amber"
       ? "font-semibold bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 border-2 border-orange-500 dark:border-orange-600 shadow-md shadow-orange-200/30 ring-1 ring-orange-300/40"
-      : "font-semibold bg-primary/18 dark:bg-primary/28 text-primary border-2 border-primary shadow-md shadow-primary/15 ring-1 ring-primary/20";
+      : "font-semibold bg-primary/18 dark:bg-blue-400/15 text-primary dark:text-white border-2 border-primary dark:border-blue-300 shadow-md shadow-primary/15 ring-1 ring-primary/20";
   return `h-9 px-3.5 rounded-full text-xs border transition-all duration-150 text-center inline-flex items-center justify-center ${
     active
       ? activeClass
-      : "font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700/80"
+      : "font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-blue-300 dark:border-gray-700 dark:hover:bg-gray-700/80 dark:hover:text-white"
   }`;
 }
 
@@ -63,7 +63,7 @@ function StepRow({ step, label, variant = "primary" }: { step: number; label: st
   const badgeClass =
     variant === "amber"
       ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700 border border-orange-300 dark:bg-orange-900/40 dark:border-orange-600 dark:text-orange-300"
-      : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-bold text-primary border border-primary/35 dark:bg-primary/20 dark:border-primary/40";
+      : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[11px] font-bold text-primary border border-primary/35 dark:bg-blue-400/15 dark:border-blue-300/50 dark:text-blue-300";
   return (
     <div className="flex items-center gap-2.5 mb-2.5">
       <span className={badgeClass} aria-hidden>
@@ -395,7 +395,7 @@ export const AiComposer: React.FC<AiComposerProps> = ({
                         setCustomTemplates(next);
                         localStorage.setItem(CUSTOM_TEMPLATES_STORAGE_KEY, JSON.stringify(next));
                       }}
-                      className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+                      className="mt-2 text-xs font-medium text-primary hover:underline disabled:opacity-50 dark:text-blue-300"
                     >
                       {tx("aiComposerSaveCustomTemplate", "Save current prompt as custom template")}
                     </button>
