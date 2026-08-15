@@ -31,9 +31,8 @@ database_name = "privatenote-auth-eu"
 database_id = "3f04a908-4f7a-4782-9d00-cb9c9303ae70"
 migrations_dir = "src/auth/d1-migrations"
 
-[ai]
-binding = "AI"
-experimental_remote = true
+# Workers AI is omitted locally. Wrangler treats [ai] as a remote binding and
+# otherwise fails to start when it cannot create a Cloudflare preview session.
 
 [[durable_objects.bindings]]
 name = "AUTH_TOKENS"

@@ -203,11 +203,19 @@ export default defineConfig({
         }
       : {}),
     ...(useDevHttps ? {} : { https: false as const }),
+    warmup: {
+      clientFiles: [
+        "./src/pages/Home.tsx",
+        "./src/components/note/CreateNote.tsx",
+      ],
+    },
     proxy: {
       '/api': {
         target: proxyTarget,
         changeOrigin: true,
         secure: false,
+        timeout: 8_000,
+        proxyTimeout: 8_000,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('[VITE PROXY] Proxy error:', err);

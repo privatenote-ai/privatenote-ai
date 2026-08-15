@@ -163,9 +163,9 @@ export const Navbar: React.FC = () => {
     </>
   );
 
-  /** Desktop nav link — visible pill hover with a slight lift */
+  /** Desktop nav link — lighter blue in dark mode so it stays readable on navy. */
   const desktopLink =
-    "relative px-3 py-1.5 text-sm font-medium text-primary rounded-md shadow-none transition-all duration-150 hover:text-black dark:hover:text-black hover:bg-primary/12 dark:hover:bg-primary/18 hover:-translate-y-px hover:shadow-none outline-none focus:outline-none focus:ring-0 lg:text-[15px] whitespace-nowrap";
+    "relative px-3 py-1.5 text-sm font-medium text-primary rounded-md shadow-none transition-all duration-150 hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-primary/12 dark:hover:bg-white/10 hover:-translate-y-px hover:shadow-none outline-none focus:outline-none focus:ring-0 lg:text-[15px] whitespace-nowrap";
 
   const authButtonLink =
     "inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 outline-none focus:outline-none focus:ring-0";
@@ -174,7 +174,7 @@ export const Navbar: React.FC = () => {
     "flex items-center gap-3 px-5 py-4 text-base font-medium text-primary dark:text-blue-300 transition-colors hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60";
 
   const desktopDropdownItem =
-    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100/80 hover:text-gray-950 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white";
+    "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-gray-100 dark:hover:bg-white/[0.06] dark:hover:text-white";
 
   const navShellClass =
     "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
@@ -321,7 +321,7 @@ export const Navbar: React.FC = () => {
               {isResourcesOpen ? (
                 <div
                   id="desktop-resources-menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-52 animate-in fade-in-0 duration-150 overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-[0_16px_40px_-16px_rgba(15,23,42,0.28)] dark:border-gray-800 dark:bg-gray-950"
+                  className="absolute right-0 top-full z-50 mt-1.5 w-64 animate-in fade-in-0 duration-150 overflow-hidden rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
                   role="menu"
                 >
                   {resourceLinks.map((item) => {
@@ -333,8 +333,8 @@ export const Navbar: React.FC = () => {
                         closeMenu={closeMenu}
                         className={desktopDropdownItem}
                       >
-                        <Icon className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
-                        <span className="min-w-0 truncate leading-none">{item.label}</span>
+                        <Icon className="h-[18px] w-[18px] shrink-0 text-gray-400 dark:text-blue-300/80" aria-hidden />
+                        <span className="min-w-0 leading-snug">{item.label}</span>
                       </NavLink>
                     );
                   })}

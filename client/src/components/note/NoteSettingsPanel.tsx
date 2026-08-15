@@ -70,11 +70,14 @@ import {
 
 const SELECT_CHEVRON_STYLE = {
   backgroundImage:
-    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+    "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
   backgroundRepeat: "no-repeat" as const,
   backgroundPosition: "right 0.75rem center",
   backgroundSize: "0.75em",
 };
+
+const SETTINGS_SELECT_CLASS =
+  "w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 bg-white text-gray-800 shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:[color-scheme:dark]";
 
 /** Native <option> styling for locked (premium) choices — light gray, still selectable. */
 const LOCKED_OPTION_STYLE: React.CSSProperties = { color: "#9ca3af" };
@@ -552,7 +555,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const receiptAckOptionIdle =
     "border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50/60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-teal-700 dark:hover:bg-teal-950/40";
   const receiptAckOptionActive =
-    "border-teal-500 bg-white text-gray-900 shadow-sm ring-1 ring-teal-500/30 dark:border-teal-400 dark:bg-gray-950 dark:text-gray-50 dark:ring-teal-400/30";
+    "border-teal-500 bg-white text-gray-900 shadow-sm ring-1 ring-teal-500/30 dark:border-teal-400 dark:bg-gray-950 dark:text-gray-300 dark:ring-teal-400/30";
 
   const defaultOpensAtLocal = (): string => {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -615,7 +618,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                   setExpiryValue(v);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                className={SETTINGS_SELECT_CLASS}
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_EXPIRY_PRESETS.map((p) => {
@@ -669,7 +672,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                   setReadCount(next as NoteReadLimit);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                className={SETTINGS_SELECT_CLASS}
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_READ_LIMIT_OPTIONS.map((limit) => {
@@ -726,7 +729,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }
                   setFileAccessWindowSeconds(next as NoteFileAccessWindowSeconds);
                 }}
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                className={SETTINGS_SELECT_CLASS}
                 style={SELECT_CHEVRON_STYLE}
               >
                 {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
@@ -1390,7 +1393,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                               ) : null}
                             </span>
                             <span className="min-w-0">
-                              <span className="block font-medium leading-snug text-gray-900 dark:text-gray-50">
+                              <span className="block font-medium leading-snug text-gray-900 dark:text-gray-300">
                                 {preset.title}
                               </span>
                               <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
@@ -1424,7 +1427,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           ) : null}
                         </span>
                         <span className="min-w-0">
-                          <span className="block font-medium leading-snug text-gray-900 dark:text-gray-50">
+                          <span className="block font-medium leading-snug text-gray-900 dark:text-gray-300">
                             {t.settingsReceiptStatementCustom ?? "Write your own"}
                           </span>
                           <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
@@ -1496,7 +1499,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           event.target.value ? Number(event.target.value) : null,
                         )
                       }
-                      className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer"
+                      className={`${SETTINGS_SELECT_CLASS} min-w-0`}
                       style={SELECT_CHEVRON_STYLE}
                     >
                       <option value="">{t.settingsUnopenedReminderOff ?? "Off"}</option>
@@ -1549,7 +1552,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       }
                       setReaderLanguage(next);
                     }}
-                    className="w-full min-w-0 px-2.5 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 backdrop-blur-md text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 shadow-sm appearance-none cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                    className={`${SETTINGS_SELECT_CLASS} min-w-0 disabled:cursor-wait disabled:opacity-60`}
                     style={SELECT_CHEVRON_STYLE}
                   >
                     <option value="auto">
