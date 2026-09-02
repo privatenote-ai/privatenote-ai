@@ -558,13 +558,17 @@ export function VoiceMessageRecorderDialog({
     facing === "environment"
       ? (t.takePhotoSwitchToFront ?? "Switch to front camera")
       : (t.takePhotoSwitchToBack ?? "Switch to back camera");
+  const dialogShellClass =
+    "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.25rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:p-6 sm:pb-6";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={recordMode === "video" ? "sm:max-w-lg" : "sm:max-w-md"}>
+      <DialogContent
+        className={`${dialogShellClass} ${recordMode === "video" ? "sm:max-w-lg" : "sm:max-w-md"}`}
+      >
         <DialogHeader>
           <DialogTitle>{t.recordMessageTitle ?? "Record a message"}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className={recordMode === "video" ? "line-clamp-2 sm:line-clamp-none" : undefined}>
             {recordMode === "video"
               ? (t.recordVideoDescription ??
                 "Record a private video with sound. It is encrypted in your browser like a file attachment before upload.")
@@ -610,9 +614,9 @@ export function VoiceMessageRecorderDialog({
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-5 py-1">
+        <div className={`flex w-full flex-col items-center ${recordMode === "video" ? "gap-3 py-0" : "gap-5 py-1"}`}>
           {showLiveVideo ? (
-            <div className="relative w-full overflow-hidden rounded-lg bg-black aspect-[3/4] sm:aspect-video">
+            <div className="relative mx-auto w-full max-h-[min(38svh,13.5rem)] overflow-hidden rounded-lg bg-black aspect-video sm:max-h-[min(42vh,18rem)]">
               <video
                 ref={videoRef}
                 className={`h-full w-full object-cover${facing === "user" ? " -scale-x-100" : ""}`}
@@ -663,7 +667,7 @@ export function VoiceMessageRecorderDialog({
 
           <div className="flex flex-col items-center gap-1.5">
             <p
-              className="text-[2rem] font-semibold leading-none tracking-tight tabular-nums text-gray-900 dark:text-gray-50"
+              className={`text-xl font-semibold leading-none tracking-tight tabular-nums text-gray-900 dark:text-gray-50 sm:text-[2rem]`}
               aria-live="polite"
               aria-atomic="true"
             >
@@ -702,7 +706,13 @@ export function VoiceMessageRecorderDialog({
 
           {phase === "preview" && previewUrl ? (
             previewIsVideo ? (
-              <video controls playsInline src={previewUrl} className="w-full rounded-lg" preload="metadata">
+              <video
+                controls
+                playsInline
+                src={previewUrl}
+                className="mx-auto max-h-[min(38svh,13.5rem)] w-full rounded-lg sm:max-h-[min(42vh,18rem)]"
+                preload="metadata"
+              >
                 {t.recordMessagePreviewUnsupported ?? "Your browser cannot preview this recording."}
               </video>
             ) : (
@@ -719,7 +729,7 @@ export function VoiceMessageRecorderDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-center sm:space-x-0 sm:gap-2">
+        <DialogFooter className="sticky bottom-0 z-10 mt-auto gap-2 bg-background pt-2 sm:static sm:justify-center sm:space-x-0 sm:gap-2">
           {phase === "idle" ? (
             <Button type="button" onClick={() => void startRecording()} disabled={isStarting}>
               {recordMode === "video" ? (

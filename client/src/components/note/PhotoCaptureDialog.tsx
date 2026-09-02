@@ -228,7 +228,7 @@ export function PhotoCaptureDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.25rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-lg sm:p-6 sm:pb-6">
         <DialogHeader>
           <DialogTitle>{t.takePhotoTitle ?? "Take a photo"}</DialogTitle>
           <DialogDescription>
@@ -238,7 +238,7 @@ export function PhotoCaptureDialog({
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3">
-          <div className="relative w-full overflow-hidden rounded-lg bg-black aspect-[3/4] sm:aspect-video">
+          <div className="relative mx-auto w-full max-h-[min(38svh,13.5rem)] overflow-hidden rounded-lg bg-black aspect-video sm:max-h-[min(42vh,18rem)]">
             <video
               ref={videoRef}
               className={`h-full w-full object-cover${
@@ -283,7 +283,7 @@ export function PhotoCaptureDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-center sm:space-x-0 sm:gap-2">
+        <DialogFooter className="sticky bottom-0 z-10 mt-auto gap-2 bg-background pt-2 sm:static sm:justify-center sm:space-x-0 sm:gap-2">
           {phase === "live" ? (
             <Button
               type="button"
