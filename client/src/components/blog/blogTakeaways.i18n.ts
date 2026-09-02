@@ -205,6 +205,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Erkennbarkeit im Bild ist meist das größere Risiko als Nacktheit selbst.",
+    "Einverständnis ist nötig, nicht übertragbar und gilt nie für Minderjährige.",
+    "Die Übergabe verschlüsseln und befristen; Screenshots und ein entschlossener Empfänger bleiben möglich.",
+    "Bei Erpressung Beweise sichern, nicht zahlen und StopNCII.org nutzen.",
+  ],
 
 
 };
@@ -413,6 +419,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "L’identification dans le cadre est souvent plus risquée que la nudité elle-même.",
+    "Le consentement est obligatoire, non transférable, et ne s’applique jamais aux mineurs.",
+    "Chiffrez et limitez dans le temps la remise ; captures d’écran et destinataire déterminé restent possibles.",
+    "En cas d’extorsion, gardez les preuves, ne payez pas, et utilisez StopNCII.org.",
   ],
 
 
@@ -623,6 +635,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "La identificación en el encuadre suele ser un riesgo mayor que la desnudez.",
+    "El consentimiento es obligatorio, intransferible y nunca aplica a menores de 18.",
+    "Cifra y limita el tiempo de la entrega; las capturas y un destinatario decidido siguen existiendo.",
+    "Si hay extorsión, conserva pruebas, no pagues y usa StopNCII.org.",
+  ],
 
 
 };
@@ -831,6 +849,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "L’identificazione nell’inquadratura è di solito un rischio maggiore della nudità.",
+    "Il consenso è necessario, non trasferibile e non vale mai per i minorenni.",
+    "Cifra e limita nel tempo la consegna; screenshot e un destinatario determinato restano possibili.",
+    "In caso di estorsione, conserva le prove, non pagare e usa StopNCII.org.",
   ],
 
 
@@ -1041,6 +1065,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Herkenbaarheid in beeld is meestal een groter risico dan naaktheid zelf.",
+    "Toestemming is vereist, niet overdraagbaar, en geldt nooit voor minderjarigen.",
+    "Versleutel en beperk de overdracht in de tijd; screenshots en een vastberaden ontvanger blijven mogelijk.",
+    "Bij afpersing: bewijs bewaren, niet betalen, en StopNCII.org gebruiken.",
+  ],
 
 
 };
@@ -1249,6 +1279,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "A identificação no enquadramento costuma ser um risco maior do que a nudez.",
+    "O consentimento é obrigatório, intransferível e nunca se aplica a menores de 18.",
+    "Cifre e limite o tempo da entrega; capturas de tela e um destinatário determinado ainda existem.",
+    "Em caso de extorsão, conserve provas, não pague e use StopNCII.org.",
   ],
 
 
@@ -1459,6 +1495,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Prepoznatljivost u kadru obično je veći rizik od golotinje same.",
+    "Saglasnost je neophodna, nije prenosiva i nikad ne važi za maloletnike.",
+    "Šifrujte i vremenski ograničite predaju; snimci ekrana i odlučan primalac i dalje postoje.",
+    "Ako dođe do ucene, sačuvajte dokaze, ne plaćajte i koristite StopNCII.org.",
+  ],
 
 
 };
@@ -1667,6 +1709,12 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "Prepoznatljivost u kadru obično je veći rizik od golotinje same.",
+    "Pristanak je nužan, nije prenosiv i nikad ne vrijedi za maloljetnike.",
+    "Šifrirajte i vremenski ograničite predaju; snimke zaslona i odlučan primatelj i dalje postoje.",
+    "Ako dođe do ucjene, sačuvajte dokaze, ne plaćajte i koristite StopNCII.org.",
   ],
 
 

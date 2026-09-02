@@ -216,6 +216,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Identification in the frame is usually a bigger risk than nudity itself.",
+    "Consent is required, non-transferable, and never applies to anyone under 18.",
+    "Encrypt and expire the handoff; screenshots and a determined recipient still exist.",
+    "If a photo is used for extortion, keep evidence, do not pay, and use StopNCII.org.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

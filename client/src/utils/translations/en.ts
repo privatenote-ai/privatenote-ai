@@ -1865,6 +1865,13 @@ export const en: Translations = {
   blogDelayedRevealMetaTitle: "Delayed reveal for one-time secret links",
   blogDelayedRevealMetaDescription:
     "Set Do not allow opening before a UTC time on PrivateNote. Share encrypted links early for handovers, HR, and embargoes.",
+  blogHowToSendNudesSafelyTitle: "How to Send Nudes Safely",
+  blogHowToSendNudesSafelySubtitle: "A Practical Privacy Guide for Adults",
+  blogHowToSendNudesSafelyExcerpt:
+    "Sending an intimate photo is an act of trust. Your phone does not understand trust. Reduce what the image reveals, where copies land, and how long they survive.",
+  blogHowToSendNudesSafelyMetaTitle: "How to send nudes safely",
+  blogHowToSendNudesSafelyMetaDescription:
+    "A practical privacy guide for adults: consent, identification, metadata, one-time encrypted links, and what to do if a photo is shared without consent.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

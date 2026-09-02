@@ -44,6 +44,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "know-when-secret-link-opened": "secrets",
   "revoke-unopened-note-proof-of-access": "secrets",
   "delayed-reveal-scheduled-secret-links": "secrets",
+  "how-to-send-nudes-safely": "secrets",
   "how-to-make-a-private-note": "secrets",
   "how-we-generate-passwords": "secrets",
 

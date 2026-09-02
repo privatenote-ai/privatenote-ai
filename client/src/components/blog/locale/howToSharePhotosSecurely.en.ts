@@ -167,7 +167,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
       paragraphs: [
         "When sharing sensitive photos, the goal isn’t simply to encrypt the connection—it’s to minimise how many copies exist and how long they survive.",
         "Cropping unnecessary details, re-encoding supported images to remove common metadata, encrypting before upload, and setting short access windows reduce long-term exposure. They do not guarantee that no trace remains: the recipient can retain the decrypted image, and the complete delivery link must itself be protected.",
-        "The same approach works for [sensitive documents](blog:send-sensitive-documents-securely) of any kind—not only photos.",
+        "The same approach works for [sensitive documents](blog:send-sensitive-documents-securely) of any kind—not only photos. For intimate images between adults, see [how to send nudes safely](blog:how-to-send-nudes-safely).",
       ],
     },
   ],
