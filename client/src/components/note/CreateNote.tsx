@@ -2955,9 +2955,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   // ── Create form ───────────────────────────────────────────────────────────
   return (
     <section className="mx-auto w-full min-w-0 max-w-full">
-      <div className={isFileTransferMode ? "pt-0" : "pt-4"}>
+      <div className={isFileTransferMode ? "pt-0" : "pt-2 sm:pt-4"}>
         {!isFileTransferMode ? (
-        <div className="mb-6">
+        <div className="mb-3 sm:mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
             <button
               type="button"
@@ -2965,7 +2965,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setIsAiMode(false);
                 setAiDraftAccepted(false);
               }}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 text-center text-sm font-medium transition-colors sm:py-3 ${
                 !isAiMode
                   ? "border-b-2 border-primary bg-primary/10 text-primary dark:border-blue-300 dark:bg-blue-400/10 dark:text-white"
                   : "text-primary hover:bg-gray-50 dark:text-blue-300 dark:hover:bg-gray-800/60 dark:hover:text-white"
@@ -2981,7 +2981,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               onClick={() => {
                 enterAiMode();
               }}
-              className={`flex-1 py-3 px-4 text-center text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 text-center text-sm font-medium transition-colors sm:py-3 ${
                 isAiMode
                   ? "border-b-2 border-primary bg-primary/10 text-primary dark:border-blue-300 dark:bg-blue-400/10 dark:text-white"
                   : "text-primary hover:bg-gray-50 dark:text-blue-300 dark:hover:bg-gray-800/60 dark:hover:text-white"

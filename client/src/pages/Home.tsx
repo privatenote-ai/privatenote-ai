@@ -128,7 +128,7 @@ const Home: React.FC = () => {
   return (
     <div className="min-w-0 max-w-full overflow-x-clip pt-16 pb-28 sm:pb-32">
       {!isCreateSuccessView && (
-        <section className="relative mx-auto max-w-4xl px-4 pt-3 sm:px-6 sm:pt-5 lg:px-8">
+        <section className="relative mx-auto max-w-4xl px-4 pt-1 sm:px-6 sm:pt-5 lg:px-8">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
               <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
@@ -138,7 +138,7 @@ const Home: React.FC = () => {
                 {t.homeHeroLine2}
               </span>
             </h1>
-            <p className="mx-auto mt-2 max-w-4xl text-lg text-gray-500 dark:text-gray-400 sm:mt-3 sm:text-xl md:max-w-5xl md:text-[1.375rem]">
+            <p className="sr-only sm:not-sr-only mx-auto mt-2 max-w-4xl text-lg text-gray-500 dark:text-gray-400 sm:mt-3 sm:text-xl md:max-w-5xl md:text-[1.375rem]">
               {t.homeHeroSubtitle}
             </p>
           </div>
@@ -146,7 +146,7 @@ const Home: React.FC = () => {
       )}
 
       <div
-        className={`${isCreateSuccessView ? "mt-0" : "mt-4 sm:mt-6"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
+        className={`${isCreateSuccessView ? "mt-0" : "mt-2.5 sm:mt-6"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
       >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
