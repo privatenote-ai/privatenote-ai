@@ -231,14 +231,14 @@ export function PhotoCaptureDialog({
       <DialogContent className="flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.25rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-lg sm:p-6 sm:pb-6">
         <DialogHeader>
           <DialogTitle>{t.takePhotoTitle ?? "Take a photo"}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="line-clamp-2 sm:line-clamp-none">
             {t.takePhotoDescription ??
               "Capture a private photo. It is encrypted in your browser like a file attachment before upload."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3">
-          <div className="relative mx-auto w-full max-h-[min(38svh,13.5rem)] overflow-hidden rounded-lg bg-black aspect-video sm:max-h-[min(42vh,18rem)]">
+          <div className="relative mx-auto h-[min(62svh,26rem)] w-auto max-w-full aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-[min(68vh,28rem)]">
             <video
               ref={videoRef}
               className={`h-full w-full object-cover${

@@ -616,7 +616,7 @@ export function VoiceMessageRecorderDialog({
 
         <div className={`flex w-full flex-col items-center ${recordMode === "video" ? "gap-3 py-0" : "gap-5 py-1"}`}>
           {showLiveVideo ? (
-            <div className="relative mx-auto w-full max-h-[min(38svh,13.5rem)] overflow-hidden rounded-lg bg-black aspect-video sm:max-h-[min(42vh,18rem)]">
+            <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-[min(62vh,26rem)]">
               <video
                 ref={videoRef}
                 className={`h-full w-full object-cover${facing === "user" ? " -scale-x-100" : ""}`}
@@ -710,7 +710,7 @@ export function VoiceMessageRecorderDialog({
                 controls
                 playsInline
                 src={previewUrl}
-                className="mx-auto max-h-[min(38svh,13.5rem)] w-full rounded-lg sm:max-h-[min(42vh,18rem)]"
+                className="mx-auto h-[min(56svh,24rem)] w-auto max-w-full rounded-lg object-contain sm:h-[min(62vh,26rem)]"
                 preload="metadata"
               >
                 {t.recordMessagePreviewUnsupported ?? "Your browser cannot preview this recording."}
