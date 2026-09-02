@@ -69,6 +69,8 @@ import {
   Paperclip,
   FolderArchive,
   Mic,
+  Video,
+  Camera,
   X,
 } from "lucide-react";
 import {
@@ -84,6 +86,8 @@ import { usePrefillFromFragment } from "@/hooks/usePrefillFromFragment";
 import { isCustomizeSheetExperimentEnabled } from "@/features/customizeSheetExperiment";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile, isVoiceRecordingSupported } from "@/utils/voiceMessageRecording";
+import { isVideoMessageFile } from "@/utils/videoMessageRecording";
+import { isCameraCaptureSupported, isCapturedPhotoFile } from "@/utils/photoCapture";
 import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
@@ -98,6 +102,9 @@ const CreateNoteDeferredDialogs = lazy(() =>
 );
 const VoiceMessageRecorderDialog = lazy(() =>
   import("./VoiceMessageRecorderDialog").then((m) => ({ default: m.VoiceMessageRecorderDialog })),
+);
+const PhotoCaptureDialog = lazy(() =>
+  import("./PhotoCaptureDialog").then((m) => ({ default: m.PhotoCaptureDialog })),
 );
 const NoteSettingsPanel = lazy(() =>
   import("./NoteSettingsPanel").then((m) => ({ default: m.NoteSettingsPanel })),
@@ -488,6 +495,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [folderInputMounted, setFolderInputMounted] = useState(false);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false);
+  const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
   const fileTransferFileInputId = useId();
   const noteFileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -563,6 +571,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const handleVoiceMessageRecorded = (file: File) => {
+    if (rejectOversizedAttachment(file)) return;
+    setSelectedFile(file);
+  };
+
+  const handlePhotoCaptured = (file: File) => {
     if (rejectOversizedAttachment(file)) return;
     setSelectedFile(file);
   };
@@ -666,6 +679,24 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setVoiceRecorderOpen(true);
   };
 
+  const handleTakePhotoClick = () => {
+    if (!canAttachFiles) {
+      saveAuthRedirectDraft();
+      window.location.href = attachFileSignInHref;
+      return;
+    }
+    if (!isCameraCaptureSupported()) {
+      toast({
+        title: t.takePhotoUnsupportedTitle ?? "Camera unavailable",
+        description:
+          t.takePhotoUnsupported ?? "Camera capture is not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setPhotoCaptureOpen(true);
+  };
+
   const handleAttachFolderClick = () => {
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
@@ -736,14 +767,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const selectedFileIsVoice = isVoiceMessageFile(selectedFile);
+  const selectedFileIsVideo = isVideoMessageFile(selectedFile);
+  const selectedFileIsPhoto = isCapturedPhotoFile(selectedFile);
   const attachFileButtonLabel = selectedFile
     ? formatAttachmentDisplayName(selectedFile.name)
     : isFileTransferMode
       ? t.sftAttachFile
       : t.attachFile;
-  const recordMessageButtonLabel = selectedFileIsVoice
+  const recordMessageButtonLabel =
+    selectedFileIsVoice || selectedFileIsVideo
+      ? formatAttachmentDisplayName(selectedFile!.name)
+      : (t.recordMessage ?? "Record message");
+  const takePhotoButtonLabel = selectedFileIsPhoto
     ? formatAttachmentDisplayName(selectedFile!.name)
-    : (t.recordMessage ?? "Record message");
+    : (t.takePhoto ?? "Take photo");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -3406,7 +3443,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         </>
                       )}
                     </button>
-                    {selectedFileIsVoice ? (
+                    {selectedFileIsVoice || selectedFileIsVideo ? (
                       <button
                         type="button"
                         onClick={handleRecordMessageClick}
@@ -3414,8 +3451,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         className={`${attachActionButtonClass} ${mobileIconActionClass} lg:max-w-[14rem]`}
                         aria-label={recordMessageButtonLabel}
                       >
-                        <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                        <span className="hidden truncate lg:inline">{recordMessageButtonLabel}</span>
+                      <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                      <span className="hidden truncate lg:inline">{recordMessageButtonLabel}</span>
+                      </button>
+                    ) : selectedFileIsPhoto ? (
+                      <button
+                        type="button"
+                        onClick={handleTakePhotoClick}
+                        title={selectedFile.name}
+                        className={`${attachActionButtonClass} ${mobileIconActionClass} lg:max-w-[14rem]`}
+                        aria-label={takePhotoButtonLabel}
+                      >
+                        <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                        <span className="hidden truncate lg:inline">{takePhotoButtonLabel}</span>
                       </button>
                     ) : (
                       <DropdownMenu>
@@ -3556,6 +3604,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <button
+                      type="button"
+                      onClick={handleTakePhotoClick}
+                      disabled={isPreparingFolder}
+                      className={`${attachActionButtonClass} ${mobileIconActionClass} sm:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
+                      aria-label={takePhotoButtonLabel}
+                      title={takePhotoButtonLabel}
+                    >
+                      <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                      <span className="hidden truncate lg:inline">{takePhotoButtonLabel}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={handleRecordMessageClick}
@@ -3736,6 +3795,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             formatPreference={
               isPremiumUser ? readVoiceRecordingFormatPreference() : "auto"
             }
+            initialMode={selectedFileIsVideo ? "video" : "audio"}
+          />
+        </Suspense>
+      ) : null}
+
+      {photoCaptureOpen ? (
+        <Suspense fallback={null}>
+          <PhotoCaptureDialog
+            open={photoCaptureOpen}
+            onOpenChange={setPhotoCaptureOpen}
+            onCaptured={handlePhotoCaptured}
+            maxBytes={fileLimitBytes}
           />
         </Suspense>
       ) : null}

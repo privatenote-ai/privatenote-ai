@@ -14,6 +14,7 @@ import {
   FileText,
   Image as ImageIcon,
   Mic,
+  Video,
   BadgeCheck,
   Tags,
   ChevronDown,
@@ -42,6 +43,7 @@ import {
   canBrowserPlayVoiceAttachment,
   isVoiceMessageAttachment,
 } from '@/utils/voiceMessageRecording';
+import { isVideoMessageAttachment } from '@/utils/videoMessageRecording';
 import {
   convertVoiceAttachmentForDownload,
   isVoiceDownloadConversionAvailable,
@@ -160,7 +162,7 @@ type AttachmentDisplayMetadata = {
   size: number;
 };
 
-type AttachmentPreviewKind = "image" | "pdf" | "audio";
+type AttachmentPreviewKind = "image" | "pdf" | "audio" | "video";
 
 const IMAGE_FILE_EXTENSIONS = new Set([
   "jpg",
@@ -188,6 +190,7 @@ function getAttachmentPreviewKind(
   const normalizedMime = mimeType?.trim().toLowerCase();
   if (normalizedMime?.startsWith("image/")) return "image";
   if (normalizedMime === "application/pdf" || normalizedMime === "application/x-pdf") return "pdf";
+  if (isVideoMessageAttachment(mimeType, fileName)) return "video";
   if (isVoiceMessageAttachment(mimeType, fileName)) return "audio";
 
   const ext = getFileExtension(fileName);
@@ -218,6 +221,12 @@ function getAttachmentBlobMimeType(
     if (ext === "wav") return "audio/wav";
     if (ext === "aac") return "audio/aac";
     return "audio/webm";
+  }
+  if (previewKind === "video") {
+    if (ext === "mp4" || ext === "m4v") return "video/mp4";
+    if (ext === "mov") return "video/quicktime";
+    if (ext === "webm") return "video/webm";
+    return "video/mp4";
   }
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "png") return "image/png";
@@ -897,7 +906,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }, [id]);
 
   useEffect(() => {
-    if (attachmentPreviewKind !== "image" && attachmentPreviewKind !== "audio") return;
+    if (attachmentPreviewKind !== "image" && attachmentPreviewKind !== "audio" && attachmentPreviewKind !== "video") return;
     if (!contentKey || !noteData?.attachment) return;
     if (previewObjectUrl || thumbnailLoadAttemptedRef.current) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) return;
@@ -910,11 +919,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         if (cancelled || !result) return;
         setPreviewObjectUrl(result.url);
         setPreviewMimeType(result.mimeType);
-        if (attachmentPreviewKind === "audio") {
+        if (attachmentPreviewKind === "audio" || attachmentPreviewKind === "video") {
           setShowInlinePreview(true);
-          setAudioPlaybackUnsupported(
-            !canBrowserPlayVoiceAttachment(result.mimeType, attachmentMetadata?.name),
-          );
+          if (attachmentPreviewKind === "audio") {
+            setAudioPlaybackUnsupported(
+              !canBrowserPlayVoiceAttachment(result.mimeType, attachmentMetadata?.name),
+            );
+          }
         }
       })
       .catch((error) => {
@@ -1945,12 +1956,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     ) : (
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/8 text-primary dark:border-primary/25 dark:bg-primary/15">
                         {isLoadingThumbnail &&
-                        (attachmentPreviewKind === "image" || attachmentPreviewKind === "audio") ? (
+                        (attachmentPreviewKind === "image" || attachmentPreviewKind === "audio" || attachmentPreviewKind === "video") ? (
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
                         ) : attachmentPreviewKind === "pdf" ? (
                           <FileText className="h-5 w-5" aria-hidden />
                         ) : attachmentPreviewKind === "audio" ? (
                           <Mic className="h-5 w-5" aria-hidden />
+                        ) : attachmentPreviewKind === "video" ? (
+                          <Video className="h-5 w-5" aria-hidden />
                         ) : attachmentPreviewKind === "image" ? (
                           <ImageIcon className="h-5 w-5" aria-hidden />
                         ) : (
@@ -1963,7 +1976,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                         {attachmentMetadata?.name ||
                           (attachmentPreviewKind === "audio"
                             ? (t.voiceMessageAttachment ?? "Voice message")
-                            : "Encrypted attachment")}
+                            : attachmentPreviewKind === "video"
+                              ? (t.videoMessageAttachment ?? "Video message")
+                              : "Encrypted attachment")}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {attachmentMetadata?.size != null
@@ -1977,7 +1992,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:shrink-0">
-                    {attachmentPreviewKind && attachmentPreviewKind !== "audio" && (
+                    {attachmentPreviewKind && attachmentPreviewKind !== "audio" && attachmentPreviewKind !== "video" && (
                       <button
                         type="button"
                         onClick={() => void handlePreviewAttachment()}
@@ -2068,7 +2083,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                         ? "Decrypting PDF… larger files may take a moment."
                         : attachmentPreviewKind === "audio"
                           ? (t.voiceMessageDecrypting ?? "Decrypting voice message…")
-                          : "Decrypting file…"}
+                          : attachmentPreviewKind === "video"
+                            ? (t.videoMessageDecrypting ?? "Decrypting video message…")
+                            : "Decrypting file…"}
                     </p>
                   </div>
                 ) : null}
@@ -2126,10 +2143,36 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   </div>
                 ) : null}
 
+                {attachmentPreviewKind === "video" &&
+                (isLoadingThumbnail || showInlinePreview) &&
+                !isViewingFile ? (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-600 dark:bg-gray-900/60">
+                    {previewObjectUrl ? (
+                      <video
+                        controls
+                        playsInline
+                        controlsList="nodownload"
+                        src={previewObjectUrl}
+                        className="w-full rounded-md"
+                        preload="metadata"
+                      >
+                        {t.recordMessagePreviewUnsupported ??
+                          "Your browser cannot play this video message."}
+                      </video>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
+                        {t.videoMessageDecrypting ?? "Decrypting video message…"}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {showInlinePreview &&
                 previewObjectUrl &&
                 !isViewingFile &&
-                attachmentPreviewKind !== "audio" ? (
+                attachmentPreviewKind !== "audio" &&
+                attachmentPreviewKind !== "video" ? (
                   <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900/60">
                     <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-2 dark:border-gray-600">
                       <p className="min-w-0 truncate text-xs font-medium text-gray-600 dark:text-gray-300">
