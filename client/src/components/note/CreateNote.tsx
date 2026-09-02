@@ -581,11 +581,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const secondaryActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-blue-300 dark:hover:bg-gray-800/80 lg:gap-1.5 lg:px-5";
+    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-blue-300 dark:hover:bg-gray-800/80 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
   const attachActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 lg:gap-1.5 lg:px-5";
-  const mobileIconActionClass =
-    "max-lg:h-11 max-lg:w-11 max-lg:shrink-0 max-lg:gap-0 max-lg:px-0";
+    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
+  const composeToolButtonClass =
+    "max-lg:h-auto max-lg:min-h-[3.55rem] max-lg:flex-1 max-lg:px-1 max-lg:py-2";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -3355,7 +3355,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         setShowAdvancedOptions(!showAdvancedOptions);
                       }
                     }}
-                    className={`${secondaryActionButtonClass} ${mobileIconActionClass} sm:flex-none`}
+                    className={`${secondaryActionButtonClass} ${composeToolButtonClass} sm:flex-none`}
                     aria-label={
                       customizeSheetExperiment || !showAdvancedOptions
                         ? t.customize
@@ -3382,7 +3382,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                    className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[180px]"
                   >
                     {isLoading ? (
                       <>
@@ -3407,7 +3407,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-2">
                 {selectedFile ? (
                   <div className="flex min-w-0 w-full flex-nowrap items-center gap-2 sm:flex-1">
                     <button
@@ -3419,7 +3419,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           setShowAdvancedOptions(!showAdvancedOptions);
                         }
                       }}
-                      className={`${secondaryActionButtonClass} ${mobileIconActionClass}`}
+                      className={`${secondaryActionButtonClass} ${composeToolButtonClass}`}
                       aria-label={
                         customizeSheetExperiment || !showAdvancedOptions
                           ? t.customize
@@ -3448,7 +3448,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         type="button"
                         onClick={handleRecordMessageClick}
                         title={selectedFile.name}
-                        className={`${attachActionButtonClass} ${mobileIconActionClass} lg:max-w-[14rem]`}
+                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
                         aria-label={recordMessageButtonLabel}
                       >
                       <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
@@ -3459,7 +3459,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         type="button"
                         onClick={handleTakePhotoClick}
                         title={selectedFile.name}
-                        className={`${attachActionButtonClass} ${mobileIconActionClass} lg:max-w-[14rem]`}
+                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
                         aria-label={takePhotoButtonLabel}
                       >
                         <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
@@ -3472,7 +3472,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                             type="button"
                             title={selectedFile.name}
                             disabled={isPreparingFolder}
-                            className={`${attachActionButtonClass} ${mobileIconActionClass} lg:max-w-[14rem] disabled:cursor-not-allowed disabled:opacity-50`}
+                            className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem] disabled:cursor-not-allowed disabled:opacity-50`}
                             aria-label={
                               isPreparingFolder
                                 ? (t.sftZippingFolder ?? "Zipping…")
@@ -3525,7 +3525,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     </button>
                   </div>
                 ) : (
-                  <div className="flex min-w-0 w-full flex-nowrap items-center gap-2 sm:flex-1">
+                  <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -3535,7 +3535,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           setShowAdvancedOptions(!showAdvancedOptions);
                         }
                       }}
-                      className={`${secondaryActionButtonClass} ${mobileIconActionClass} sm:flex-none`}
+                      className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:flex-none`}
                       aria-label={
                         customizeSheetExperiment || !showAdvancedOptions
                           ? t.customize
@@ -3550,11 +3550,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       {customizeSheetExperiment || !showAdvancedOptions ? (
                         <>
                           <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                            {t.composeActionOptions ?? "Options"}
+                          </span>
                           <span className="hidden truncate lg:inline">{t.customize}</span>
                         </>
                       ) : (
                         <>
                           <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                            {t.hideOptions}
+                          </span>
                           <span className="hidden truncate lg:inline">{t.hideOptions}</span>
                         </>
                       )}
@@ -3564,7 +3570,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         <button
                           type="button"
                           disabled={isPreparingFolder}
-                          className={`${attachActionButtonClass} ${mobileIconActionClass} sm:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
+                          className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
                           aria-label={
                             isPreparingFolder
                               ? (t.sftZippingFolder ?? "Zipping…")
@@ -3577,6 +3583,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           ) : (
                             <Paperclip className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
                           )}
+                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                            {isPreparingFolder
+                              ? (t.sftZippingFolder ?? "Zipping…")
+                              : (t.composeActionFile ?? "File")}
+                          </span>
                           <span className="hidden truncate lg:inline">
                             {isPreparingFolder
                               ? (t.sftZippingFolder ?? "Zipping…")
@@ -3608,22 +3619,28 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       type="button"
                       onClick={handleTakePhotoClick}
                       disabled={isPreparingFolder}
-                      className={`${attachActionButtonClass} ${mobileIconActionClass} sm:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
+                      className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
                       aria-label={takePhotoButtonLabel}
                       title={takePhotoButtonLabel}
                     >
                       <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                      <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                        {t.composeActionPhoto ?? "Photo"}
+                      </span>
                       <span className="hidden truncate lg:inline">{takePhotoButtonLabel}</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleRecordMessageClick}
                       disabled={isPreparingFolder}
-                      className={`${attachActionButtonClass} ${mobileIconActionClass} sm:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
+                      className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
                       aria-label={recordMessageButtonLabel}
                       title={recordMessageButtonLabel}
                     >
                       <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+                      <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                        {t.composeActionRecord ?? "Record"}
+                      </span>
                       <span className="hidden truncate lg:inline">{recordMessageButtonLabel}</span>
                     </button>
                   </div>
@@ -3632,7 +3649,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
+                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[180px]"
                 >
                   {isLoading ? (
                     <>
