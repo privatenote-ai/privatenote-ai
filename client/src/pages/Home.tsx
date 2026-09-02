@@ -146,7 +146,7 @@ const Home: React.FC = () => {
       )}
 
       <div
-        className={`${isCreateSuccessView ? "mt-0" : "mt-2.5 sm:mt-6"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
+        className={`${isCreateSuccessView ? "mt-0" : "mt-5 sm:mt-6"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
       >
         <div className="mx-auto min-w-0 max-w-4xl">
           {showCreateNote ? (
