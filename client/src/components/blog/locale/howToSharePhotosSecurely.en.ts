@@ -111,6 +111,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
       takeaway: "Most photo leaks are leftover access—not Hollywood hacking.",
       paragraphs: [
         "The most common mistakes are surprisingly ordinary. People often leave location data embedded in photos taken at home, assume the recipient will remember to delete the file, or keep permanent cloud-sharing links active long after the exchange is finished. Another frequent error is sending both the encrypted link and its passphrase in the same message, giving an attacker everything they need if that conversation is ever compromised.",
+        "A relationship is not standing consent, and consent to receive is never consent to redistribute.",
         "It’s also worth remembering that no sharing method can prevent a recipient from taking a screenshot or saving the image after opening it. Secure sharing reduces unnecessary copies and limits long-term exposure, but it cannot control what someone does once they have legitimate access.",
       ],
       bullets: [
