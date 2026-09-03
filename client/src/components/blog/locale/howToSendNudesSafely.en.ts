@@ -17,7 +17,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
     ],
     warningTitle: "If anyone depicted is under 18",
     warning:
-      "The legal line is absolute. Do not create, request, forward, save, or redistribute sexual images of minors—including a consensual selfie of yourself if you are under 18. Some places still treat that as a crime. Report through official channels such as [Take It Down](https://takeitdown.ncmec.org/)—do not circulate the file.",
+      "Do not use PrivateNote to create, request, send, store, or redistribute sexual images involving minors. Laws differ by jurisdiction, including how they treat self-produced images between minors, and the consequences can be serious. If an image of you was taken when you were under 18 and is being shared or threatened, use an official service such as [Take It Down](https://takeitdown.ncmec.org/). Do not redistribute the image while seeking help.",
   },
   identify: {
     title: "The bigger risk is identification",
@@ -30,7 +30,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       "A recognizable window view, landmark, poster, or a room that is clearly yours",
     ],
     after:
-      "If something identifying is still in the pixels, cover it. Clothing, a prop, shadow, a sharp angle, or a healing/blur tool can hide a tattoo or a slice of face that cropping missed. A mask only helps if it covers enough of your face.",
+      "Crop identifying details out of the frame where you can. If cropping is impractical, cover them completely with clothing, a prop, or an opaque mask. Use blur only if it is strong enough that the original detail cannot reasonably be recognized. A decorative mask only helps if it covers enough of your face.",
   },
   rules: {
     title: "How to send nudes safely in practice",
@@ -40,25 +40,25 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       {
         heading: "Clean the frame",
         paragraphs: [
-          "**Keep your face out of frame.** Removing your face strips the single strongest piece of identifying data—the detail that makes a leftover copy useful for extortion or forwarding.",
+          "**Keep your face out of frame.** A face is one of the strongest and easiest ways to connect an intimate image to your identity. A unique tattoo, an identifiable room, leftover metadata, or the account next to the link can be enough on their own.",
           "**Clean the background.** A plain wall is better than a room full of clues. Move work badges, mail, diplomas, sticky notes, family photos, posters, and distinctive décor out of shot. Close blinds on a window that shows a landmark or a street you could be placed by.",
           "**Check reflections.** A mirror or television can reveal a person or a room you thought was out of frame. Glance at glass and screens before you send.",
-          "**Cover or blur what you cannot crop.** If a tattoo, birthmark, or bit of face still shows, hide it with clothing, a prop, shadow, or a blur tool before you send. In PrivateNote, **Take photo** lets you crop the frame and paint blur over details before the JPEG is encrypted.",
+          "**Crop first, then cover, then blur.** Crop identifying details out entirely where possible. If cropping is impractical, cover them with clothing, a prop, shadow, or an opaque mask. Use blur only as a fallback, and only if it is strong enough that the original detail cannot reasonably be recognized. In PrivateNote, **Take photo** lets you crop before encryption; treat the blur brush as a last pass, not a substitute for cropping.",
         ],
       },
       {
         heading: "Keep copies off your devices",
         paragraphs: [
-          "**Bypass the permanent camera roll.** Taking the photo in your regular camera app often backs it up to iCloud or Google Photos and leaves a local original. **Take photo** in the PrivateNote composer uses the live camera in the browser, so the JPEG is created in memory and encrypted before upload. Picking an existing library picture does not give you that benefit.",
-          "**If you already used the regular camera, contain the backup.** Turn off iCloud Photos or Google Photos backup before you shoot. After you send, delete the image from the camera roll **and** from Recently Deleted or Trash—sync can restore anything still in the bin. If it already reached the cloud library, delete it there too. Then you can turn backup back on. **Take photo** still avoids this mess.",
-          "**Strip location and device metadata.** Photos often store EXIF data—GPS, timestamps, and phone model. Encryption does not remove that; it only scrambles the file as-is. PrivateNote can [re-encode supported images in the browser](blog:how-to-share-photos-securely) to drop common embedded metadata before encryption. Leave that toggle on.",
+          "**Capture inside the sharing tool when you can.** Taking the photo in your regular camera app often creates a copy in a cloud-synced photo library. **Take photo** in the PrivateNote composer uses the live camera in the browser and does not intentionally save the captured image to your photo library. The JPEG is then encrypted before upload. Picking an existing library picture does not give you that benefit.",
+          "**If you already took the photo with the regular camera,** check whether it has synced to iCloud Photos, Google Photos, or another backup service. Delete copies you no longer want from both the device and the synchronized library, including Recently Deleted or Trash. Do not toggle your entire photo backup system on and off around a single picture.",
+          "**Re-encode instead of trusting EXIF stripping.** Photos often store embedded metadata—GPS, timestamps, and phone model—in more than one structure. Encryption does not remove that; it only scrambles the file as-is. PrivateNote can create a new encoded version of supported images in the browser before encryption, discarding common embedded metadata rather than uploading the original file unchanged. Leave **Remove location & photo metadata** on. See [how to share photos securely](blog:how-to-share-photos-securely).",
           "**Resize the file.** You do not need a 48-megapixel original for a phone-sized view. Downsizing reduces leftover detail from zooming and often drops hidden metadata with it.",
         ],
       },
       {
         heading: "If you want to keep one",
         paragraphs: [
-          "Cloud photo libraries get hacked, shared, and scrolled by whoever picks up your phone. If you keep a nude, store it locally in a PIN- or biometric-locked folder, an encrypted disk image, or an encrypted drive—not in iCloud Photos, Google Photos, or an unlocked camera roll.",
+          "Avoid keeping highly sensitive images in your ordinary cloud-synced photo library. Those libraries optimize for availability, synchronization, and retention—often the opposite of what you want here. If you choose to retain one, prefer a protected or encrypted location with strong device and account authentication, and understand whether it is backed up or synchronized elsewhere.",
           "PrivateNote is a handoff, not an archive. Expiration removes our copy of the encrypted file; it does not create a private album on your device.",
         ],
       },
@@ -69,7 +69,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
           "**Treat view-once as risk reduction, not DRM.** [One-time secret links](blog:one-time-secret-links) keep photos from sitting in a thread for years. They cannot stop someone photographing the screen with another device.",
           "**Assume today’s partner can become tomorrow’s leak.** The person you trust now may not be trustworthy after a breakup. That is why a less-identifying frame still matters in a committed relationship: leftover copies outlive the relationship.",
           "**Verify who you are actually talking to.** Sextortion typically starts with a fake profile obtaining an explicit photo, then threatening exposure. Never send intimate media to someone you have not independently verified. A [recipient verification code](blog:recipient-verification-code-before-reveal) helps when the delivery channel itself may be weak, but it does not prove identity.",
-          "**Ask them to delete it.** After they have seen the photo, say so explicitly. That does not erase a screenshot, but it records that the image was for them only—which can matter if it is later forwarded.",
+          "**Ask them to delete it when they are done.** This is not a technical control and does not prevent screenshots, but it makes your expectation clear: the image was intended to be private and temporary, not forwarded or published.",
           "**Keep the accompanying text anonymous.** A sanitized photo next to “Hey, it’s Sarah from accounting” undoes the prep work. Consider the entire payload: image, caption, and profile handle.",
         ],
       },
@@ -77,6 +77,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
         heading: "Their phone is part of the send",
         paragraphs: [
           "None of this holds if their phone is unlocked on a bar table. Ask them to use a passcode or biometric lock. Unique passwords and two-factor authentication on their accounts make it harder for someone else to open the thread or the cloud backup later. A password manager helps if they cannot keep unique logins straight.",
+          "Think about notification previews. Do not describe the contents in the message carrying the link. Lock-screen notifications can expose the context even when the photo itself is encrypted. For particularly sensitive exchanges, both people should consider hiding message previews on the lock screen.",
           "If they will not lock the device, treat that as a reason not to send.",
         ],
       },
@@ -107,22 +108,22 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       },
       {
         label: "Capture",
-        action: "Use Take photo in PrivateNote so the image is created in the browser. Crop and blur identifying details before you encrypt.",
-        why: "Avoids iCloud / Google Photos backups of the original. If you used the regular camera instead, turn off cloud backup and empty Recently Deleted after.",
+        action: "Use Take photo in PrivateNote so the image is captured in the browser. Crop identifying details out; cover or strongly blur only what you cannot crop.",
+        why: "PrivateNote does not intentionally save the captured image to your photo library. A regular camera shot often lands in a synced album.",
       },
       {
         label: "Inspect",
-        action: "Take ten seconds on the edges of the frame before you send. Crop or blur anything that still identifies you.",
-        why: "A badge, a tattoo, a mirror, or a landmark in a window is easier to fix now than later.",
+        action: "Take ten seconds on the edges of the frame before you send. Crop identifiers out; cover what remains.",
+        why: "A badge, a tattoo, a mirror, or a landmark in a window is easier to crop or cover now than later.",
       },
       {
         label: "Deliver",
-        action: "Send a browser-encrypted, single-view link. Optionally add a separately delivered verification code. Ask them to delete the photo when they are done.",
-        why: "The server stores ciphertext. The complete URL is a bearer secret. Asking to delete records that the image was for them only.",
+        action: "Send a browser-encrypted, single-view link. Optionally add a separately delivered verification code. Do not describe the contents in the message that carries the link. Ask them to delete the photo when they are done.",
+        why: "The complete URL is a bearer secret. Notification previews can leak context. Asking them to delete states your expectation; it does not prevent a screenshot.",
       },
       {
         label: "Cleanup",
-        action: "Clear drafts, downloads, and working copies you do not need to keep. If you keep one, put it in a locked local folder—not Photos.",
+        action: "Clear drafts, downloads, and working copies you do not need to keep. If you keep one, use a protected location—not your ordinary synced photo library.",
         why: "Your own devices are often the longest-lived copy.",
       },
     ],
@@ -133,9 +134,9 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
     title: "How PrivateNote handles this",
     takeaway: "Encrypt locally and make service access temporary. The recipient can still save what they see.",
     paragraphs: [
-      "Some information only needs to exist long enough to be delivered. **Take photo** encodes a JPEG in the browser, then encrypts it on your device before upload—so the original stays out of your photo library. After capture you can crop the frame and blur tattoos, badges, or background details before encryption. Recipients open a unique link, decrypt locally, and the note follows its burn and expiry policy.",
+      "Some information only needs to exist long enough to be delivered. **Take photo** captures a frame in the browser and encrypts it on your device before upload. PrivateNote does not intentionally save that capture to your photo library. After capture you can crop the frame; treat blur as a fallback for details you cannot crop. Recipients open a unique link, decrypt locally, and the note follows its burn and expiry policy.",
       "Add [click-to-reveal](blog:click-to-reveal-private-notes) so a mis-tap does not decrypt, a [verification code](blog:recipient-verification-code-before-reveal) on a separate channel, and [open alerts](blog:know-when-secret-link-opened) for status only—never the photo. Sent to the wrong person and still unopened? [Revoke it](blog:revoke-unopened-note-proof-of-access).",
-      "Treat the **complete URL as a bearer secret**. It normally carries the decryption key after `#`. Do not paste the photo into the chat alongside the link.",
+      "Treat the **complete URL as a bearer secret**. It normally carries the decryption key after `#`. Do not paste the photo into the chat alongside the link, and do not describe the contents in the message that carries it.",
     ],
     calloutTitle: "Honest limit",
     callout:
@@ -149,7 +150,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       "**Do not panic-delete the thread.** Keep messages, account details, and headers as evidence for law enforcement or platform moderators.",
       "**Do not pay.** Paying or sending further material rarely stops extortion. Cut off contact and report the account.",
       "**Use removal tools.** For adults, [StopNCII.org](https://stopncii.org/) hashes the photo on your device so participating platforms can block uploads without taking the original.",
-      "**For minors:** [Take It Down](https://takeitdown.ncmec.org/) uses the same device-side hashing idea. Report through official channels; do not circulate the file.",
+      "**If the person depicted was under 18:** use [Take It Down](https://takeitdown.ncmec.org/). Report through official channels. Do not redistribute the file while seeking help.",
     ],
     after:
       "Use platform removal forms in parallel with law enforcement if you are being threatened. In the United States, covered platforms must provide a removal process for non-consensual intimate images.",
@@ -191,7 +192,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       {
         question: "What is the safest way to send nudes?",
         answer:
-          "There is no completely safe method. Reduce the risk by removing your face and other identifiers, stripping location metadata, keeping the original out of cloud-backed photo libraries, and using a browser-encrypted one-time link. Assume the recipient can still save what they see—including after a breakup.",
+          "There is no completely safe method. Reduce the risk by removing your face and other identifiers, stripping location metadata, keeping the original out of ordinary cloud-synced photo libraries, and using a browser-encrypted one-time link. Assume the recipient can still save what they see—including after a breakup.",
       },
       {
         question: "Can I send a surprise nude to my partner?",
@@ -211,17 +212,17 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       {
         question: "Does PrivateNote save the photo to my camera roll?",
         answer:
-          "Not if you use Take photo in the composer: the JPEG is created in the browser and encrypted before upload. Choosing a picture that already lives in Photos does not remove that library copy or its backups.",
+          "PrivateNote does not intentionally save a Take photo capture to your photo library. The frame is encoded in the browser and encrypted before upload. Choosing a picture that already lives in Photos does not remove that library copy or its backups.",
       },
       {
         question: "What if I already took the photo with my regular camera?",
         answer:
-          "Turn off iCloud Photos or Google Photos backup if it is still on, send through an encrypted one-time link with metadata removal on, then delete the image from the camera roll and from Recently Deleted or Trash before you turn backup back on. If it already synced, delete it from the cloud library too. Next time, use Take photo in the composer so the original never lands in that library.",
+          "Send it through an encrypted one-time link with metadata removal on. Then check whether it has synced to iCloud Photos, Google Photos, or another backup, and delete copies you no longer want from the device and the synchronized library—including Recently Deleted or Trash. Next time, use Take photo in the composer so you are not deliberately creating a library copy.",
       },
       {
         question: "How should I store a nude I want to keep?",
         answer:
-          "Not in a cloud photo album. Use a locked folder on the device, an encrypted disk image, or an encrypted drive. PrivateNote expires the handoff; it is not a vault for photos you want to keep.",
+          "Avoid your ordinary cloud-synced photo library. If you choose to retain one, prefer a protected or encrypted location with strong device and account authentication, and understand whether it is backed up or synchronized elsewhere. PrivateNote expires the handoff; it is not a vault for photos you want to keep.",
       },
       {
         question: "Should I send nudes to someone I have only met online?",
@@ -231,7 +232,7 @@ export const howToSendNudesSafelyEn: HowToSendNudesSafelyCopy = {
       {
         question: "Does asking the recipient to delete the photo actually help?",
         answer:
-          "It does not prevent a screenshot or a second-device photo. It does make clear the image was not meant to be kept or forwarded, which can matter if it is later shared without consent.",
+          "It is not a technical control and does not prevent a screenshot or a second-device photo. It makes your expectation clear: the image was intended to be private and temporary, not forwarded or published.",
       },
       {
         question: "What if I sent the link to the wrong person?",
