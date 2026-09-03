@@ -9,6 +9,7 @@ import {
   ENGLISH_ONLY_SECURITY_GUIDE_TOPICS,
   LOCALIZED_SECURITY_GUIDE_TOPICS,
 } from "./localizedSecurityGuides.ts";
+import { PREMIUM_PAGE_PUBLIC } from "./premiumPagePublic.ts";
 import { isLocaleHomeSegment, NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
 
 const LOCALIZED_LANGUAGE_CODES = NON_ENGLISH_LANGUAGE_CODES;
@@ -20,6 +21,7 @@ const NON_BLOG_LOCALIZED_MARKETING_PATHS = [
   "/privacy-tools",
   "/security-resources",
   "/how-it-works",
+  ...(PREMIUM_PAGE_PUBLIC ? (["/premium"] as const) : []),
   "/developers",
   "/about",
   "/contact",
