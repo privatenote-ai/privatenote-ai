@@ -147,14 +147,14 @@ function ArticleSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-5 sm:space-y-6">
-      <div className="space-y-2">
+    <section className="space-y-6 sm:space-y-7">
+      <div className="space-y-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h2>
         {takeaway ? (
-          <p className="text-base font-medium leading-snug text-primary">{takeaway}</p>
+          <p className="text-base font-semibold leading-relaxed text-primary">{takeaway}</p>
         ) : null}
       </div>
-      <div className="space-y-5 sm:space-y-6">{children}</div>
+      <div className="space-y-6 sm:space-y-7">{children}</div>
     </section>
   );
 }
@@ -211,7 +211,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
 
         <BlogArticleTakeaways slug={slug} />
 
-        <div className="space-y-12 text-base leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
+        <div className="space-y-14 text-base leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-16">
           <div className="space-y-5 sm:space-y-6">
             {article.intro.map((paragraph, index) => (
               <ArticleParagraph
@@ -285,7 +285,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
 
               {section.midCta ? (
                 <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-5 dark:border-primary/25 dark:bg-primary/[0.08] sm:px-6">
-                  <p className="text-lg leading-relaxed text-gray-800 dark:text-gray-200">
+                  <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">
                     {section.midCta.body}
                   </p>
                   <Link
@@ -310,9 +310,9 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
               ) : null}
 
               {section.faqs ? (
-                <div className="space-y-6">
+                <div className="space-y-7">
                   {section.faqs.map((faq) => (
-                    <div key={faq.question} className="space-y-2">
+                    <div key={faq.question} className="space-y-3">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{faq.question}</h3>
                       <ArticleParagraph text={faq.answer} resolveLink={resolveLink} />
                     </div>
@@ -327,7 +327,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
               <Shield className="mt-1 h-6 w-6 shrink-0 text-primary" aria-hidden />
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{article.ctaTitle}</h2>
-                <p className="mt-4 text-lg leading-relaxed text-gray-700 dark:text-gray-300">
+                <p className="mt-4 text-base leading-relaxed text-gray-700 dark:text-gray-300">
                   {article.ctaBody}
                 </p>
                 <Link
