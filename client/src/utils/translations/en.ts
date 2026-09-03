@@ -1869,9 +1869,9 @@ export const en: Translations = {
   blogHowToSendNudesSafelySubtitle: "A Practical Privacy Guide for Adults",
   blogHowToSendNudesSafelyExcerpt:
     "Sending an intimate photo is an act of trust. Your phone does not understand trust. Reduce what the image reveals, where copies land, and how long they survive.",
-  blogHowToSendNudesSafelyMetaTitle: "How to send nudes safely",
+  blogHowToSendNudesSafelyMetaTitle: "How to Send Nudes Safely: Adult Guide",
   blogHowToSendNudesSafelyMetaDescription:
-    "A practical privacy guide for adults: consent, identification, metadata, one-time encrypted links, and what to do if a photo is shared without consent.",
+    "Learn how to send intimate photos more safely: remove identifying details and metadata, avoid cloud copies, use encryption, and reduce sextortion risk.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:
