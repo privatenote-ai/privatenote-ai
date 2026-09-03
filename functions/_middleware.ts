@@ -147,7 +147,11 @@ export async function onRequest(context: {
     }
   }
 
-  if (isPublicMarketingPath(pathname) || pathname === "/admin") {
+  if (
+    isPublicMarketingPath(pathname) ||
+    pathname === "/admin" ||
+    (PREMIUM_PAGE_PUBLIC && isPremiumMarketingPath(pathname))
+  ) {
     const shell = await serveSpaShell({ request, env, next: context.next });
     if (shell.status === 200) {
       return applyHtmlPageSecurity(shell);

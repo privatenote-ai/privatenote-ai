@@ -15,6 +15,13 @@ describe("prerender incremental route selection", () => {
     assert.ok(!routes.has("/blog"));
   });
 
+  it("expands /premium to English and localized marketing paths", () => {
+    const routes = expandBasePaths(["/premium"]);
+    assert.ok(routes.has("/premium"));
+    assert.ok(routes.has("/de/premium"));
+    assert.ok(routes.has("/fr/premium"));
+  });
+
   it("treats Navbar changes as full prerender", () => {
     assert.equal(shouldFullPrerender(["client/src/components/Navbar.tsx"]), true);
   });

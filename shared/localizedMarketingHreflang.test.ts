@@ -11,8 +11,8 @@ import {
 
 test("isLocalizedMarketingHreflangRoute matches mirrored marketing paths", () => {
   assert.equal(isLocalizedMarketingHreflangRoute("/how-it-works"), true);
-  assert.equal(isLocalizedMarketingHreflangRoute("/premium"), false);
-  assert.equal(isLocalizedMarketingHreflangRoute("/de/premium"), false);
+  assert.equal(isLocalizedMarketingHreflangRoute("/premium"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/de/premium"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/security-resources"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/fr/blog"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/blog/privacy-tools"), true);
@@ -38,6 +38,14 @@ test("localizedMarketingHreflangAlternates mirrors blog category landings", () =
   const de = alternates.find((alternate) => alternate.hrefLang === "de");
   assert.equal(en?.path, "/blog/category/secrets");
   assert.equal(de?.path, "/de/blog/category/secrets");
+});
+
+test("buildLocalizedMarketingHreflangMarkup includes localized premium pages", () => {
+  const html = buildLocalizedMarketingHreflangMarkup("/de/premium");
+  assert.ok(html);
+  assert.match(html, /hreflang="en" href="https:\/\/privatenote\.ai\/premium"/);
+  assert.match(html, /hreflang="de" href="https:\/\/privatenote\.ai\/de\/premium"/);
+  assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/premium"/);
 });
 
 test("buildLocalizedMarketingHreflangMarkup uses absolute production URLs", () => {

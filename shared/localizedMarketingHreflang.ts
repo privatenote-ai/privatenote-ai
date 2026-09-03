@@ -11,6 +11,7 @@ import {
 } from "./homeSeoLinks.ts";
 import { isBlogCategory, blogCategoryPath } from "./blogCategories.ts";
 import { localizedBlogPostPath, resolveCanonicalBlogSlug } from "./localizedBlogSlugs.ts";
+import { PREMIUM_PAGE_PUBLIC } from "./premiumPagePublic.ts";
 import { isPublicMarketingPath, normalizeMarketingPathname } from "./publicMarketingPaths.ts";
 import { isSecurityGuideMarketingStem } from "./localizedSecurityGuides.ts";
 import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "./supportedLanguages.ts";
@@ -21,6 +22,7 @@ const LOCALIZED_MARKETING_STEMS = new Set([
   "privacy-tools",
   "security-resources",
   "how-it-works",
+  ...(PREMIUM_PAGE_PUBLIC ? ["premium"] : []),
   "developers",
   "about",
   "contact",
