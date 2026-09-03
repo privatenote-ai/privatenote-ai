@@ -204,6 +204,9 @@ export const HowToSendNudesSafelyPost: React.FC = () => {
                 </li>
               ))}
             </ul>
+            {article.identify.after ? (
+              <Body text={article.identify.after} resolveLink={resolveLink} />
+            ) : null}
           </ArticleSection>
 
           <ArticleSection title={article.workflow.title} takeaway={article.workflow.takeaway}>
