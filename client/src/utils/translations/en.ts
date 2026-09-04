@@ -1086,7 +1086,11 @@ export const en: Translations = {
   revealTrustEncrypted: "End-to-end encrypted",
   revealTrustSelfDestructs: "Self-destructs after opening",
   revealTrustNoAccount: "No account required",
+  revealSecuredByPrivateNote: "Secured by PrivateNote",
+  revealSharedWithYou: "A private note was shared with you",
+  revealDeletedAfterOpening: "Deleted after opening",
   revealBrandingSharedByFrom: "{sender} from {company} shared a private note",
+  settingsRevealBrandingSection: "Recipient branding",
   revealBrandingSharedBy: "Shared by {sender}",
   revealBrandingSharedByCompany: "Shared by {company}",
   revealIncompleteTitle: "This link looks incomplete",
@@ -2024,18 +2028,24 @@ export const en: Translations = {
     "If you find privateNote.ai valuable, consider supporting my work. Your contribution helps me maintain this service and develop new privacy-focused tools.",
   aboutCoffeeButton: "Buy Me a Coffee",
   aboutConnectTitle: "Connect With Me",
-  homeFaqSubtitle: "Get quick answers about encryption, expiration, metadata, and how to safely share sensitive notes.",
+  homeFaqSubtitle: "Get quick answers about encryption, photos, video, expiration, and how to share sensitive notes safely.",
   homeFaqStillUnsure: "Still unsure? See",
   homeFaqTryTestNote: "or start by writing a test note and opening it yourself; you can see the full flow in seconds.",
   homeFaq_howItWorks_question: "How does PrivateNote.ai work?",
   homeFaq_howItWorks_answer:
-    "You write a note directly in your browser. Your device encrypts it locally, and only the encrypted content is uploaded. You share a unique link with the recipient; by default, the note is deleted after it is opened once. If it is never opened, it is deleted when the chosen expiration time passes.",
+    "You write a note, take a photo, record a video, or attach a file in your browser. Your device encrypts it locally, and only the encrypted content is uploaded. You share a unique link; by default the note is deleted after it is opened once. If it is never opened, it is deleted when the chosen expiration time passes.",
   homeFaq_seeContent_question: "Can PrivateNote.ai see my note content?",
   homeFaq_seeContent_answer:
     "No. Notes are encrypted in your browser before they are uploaded. We only store the encrypted payload, so we cannot read your plaintext message.",
   homeFaq_afterOpen_question: "What happens after the note is opened?",
   homeFaq_afterOpen_answer:
-    "Notes are read-once for maximum privacy. After someone opens the link, the note is destroyed and cannot be viewed again. If it is never opened, it is deleted when the expiration time passes.",
+    "Notes are read-once for maximum privacy. After someone opens the link, the note is destroyed and cannot be viewed again. If it is never opened, it is deleted when the expiration time passes. Once a note is destroyed or expired, it cannot be recovered.",
+  homeFaq_takePhoto_question: "Can I take a photo and send it privately?",
+  homeFaq_takePhoto_answer:
+    "Yes. Use Take photo to capture from your camera. The image is encrypted in your browser like a file attachment before upload. You can crop and blur details first, and location metadata is removed by default for common photo formats. Sending photos requires a free account; recipients do not. They can still save or screenshot what they open.",
+  homeFaq_video_question: "Can I record a video message?",
+  homeFaq_video_answer:
+    "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment, then sent as a disappearing note. Recording voice or video is included on Starter and Business. Recipients can still download or save the video after they open the link.",
   homeFaq_linkLength_question: "Why is the link longer than other note-sharing services?",
   homeFaq_linkLength_answer:
     "The link is longer because the decryption key travels in the link itself, not on our servers. The key sits after the `#` in the URL. When someone opens the link, the browser only sends the part before `#` to websites—the rest stays on the device—so that key never reaches PrivateNote.ai.",
@@ -2059,13 +2069,13 @@ export const en: Translations = {
     "No. Once a note is deleted because it was read or expired, it cannot be recovered.",
   homeFaq_shareLink_question: "Is it safe to share the link over email or chat?",
   homeFaq_shareLink_answer:
-    "The encrypted note is safe, but the link is the key. Anyone with the link can open the note, so use trusted channels and short expirations.",
+    "The encrypted note is safe, but the link is the key. Anyone with the link can open the note, so use trusted channels and short expirations. Recipients can also forward the link, screenshot, or copy what they see—PrivateNote cannot prevent that after access.",
   homeFaq_forwarding_question: "Can recipients forward the note?",
   homeFaq_forwarding_answer:
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",
-  homeFaq_size_question: "What is the maximum note size?",
+  homeFaq_size_question: "How large can a note, photo, or video be?",
   homeFaq_size_answer:
-    "Notes are limited to 50 KB of UTF-8 text—enough for short to medium secrets. Larger pastes are trimmed or rejected so performance stays predictable.",
+    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free, 250 MB on Starter, and 1 GB on Business.",
   homeFaq_pricing_question: "Is PrivateNote.ai free?",
   homeFaq_pricing_answer:
     "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits.",

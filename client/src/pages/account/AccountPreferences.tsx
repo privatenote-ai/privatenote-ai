@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Smartphone,
   Bell,
   Cloud,
   ShieldOff,
@@ -21,6 +22,7 @@ import {
   ImageIcon,
   Upload,
   Trash2,
+  Unlock,
 } from "lucide-react";
 import {
   readLocalHostedAiAllowed,
@@ -52,14 +54,13 @@ import {
   BRANDING_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
-  brandingBannerStyle,
   brandingCtaStyle,
-  brandingHeroStyle,
-  brandingHeroUsesLightText,
-  brandingShowsBanner,
+  brandingUsesPortalSurface,
   contrastingTextOn,
+  type BrandingBackgroundStyle,
   type RevealBranding,
 } from "@shared/businessBranding";
+import { RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
 import {
@@ -69,83 +70,63 @@ import {
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 
-/** Scaled-down mirror of the reveal page header so branding edits are truthful. */
-const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }> = ({
-  branding,
-  senderLine,
-}) => {
-  const bannerStyle = brandingBannerStyle(branding);
-  const lightText = brandingHeroUsesLightText(branding);
+/** Scaled-down recipient portal so branding edits match what recipients see. */
+const BrandingPreview: React.FC<{
+  branding: RevealBranding;
+  viewport: "desktop" | "mobile";
+}> = ({ branding, viewport }) => {
+  const compact = brandingUsesPortalSurface(branding);
+  const buttonStyle = brandingCtaStyle(branding);
+  const logo = branding.logoUrl ? (
+    <img
+      src={branding.logoUrl}
+      alt=""
+      className="max-h-9 max-w-36 object-contain"
+    />
+  ) : null;
+  const sender = branding.senderName?.trim();
+  const company = branding.companyName?.trim();
+  const brandingLine = sender && company
+    ? `${sender} from ${company} shared a private note`
+    : sender
+      ? `Shared by ${sender}`
+      : company
+        ? `Shared by ${company}`
+        : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700">
-      <div className="relative min-h-48 text-center" style={brandingHeroStyle(branding)}>
-        <header>
-          {branding.accentColor ? (
-            <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
-          ) : null}
-          {branding.logoUrl || senderLine || branding.trustMessage ? (
-          <div
-            className={`flex flex-col items-center gap-2 border-b px-6 pb-5 pt-4 ${
-              lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
-            }`}
-          >
-            {branding.logoUrl ? (
-              <div className={lightText ? "rounded-lg bg-white px-3 py-2 shadow-sm" : ""}>
-                <img
-                  src={branding.logoUrl}
-                  alt="Brand preview"
-                  className="max-h-9 max-w-36 object-contain"
-                />
-              </div>
-            ) : null}
-            {senderLine ? (
-              <p
-                className={`m-0 text-sm font-medium ${
-                  lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
-                }`}
-              >
-                {senderLine}
-              </p>
-            ) : null}
-            {branding.trustMessage ? (
-              <p
-                className={`m-0 max-w-md text-xs ${
-                  lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                {branding.trustMessage}
-              </p>
-            ) : null}
-          </div>
-          ) : null}
-        </header>
-        <div className="px-6 py-8">
-          <p
-            className={`m-0 text-lg font-extrabold tracking-tight ${
-              lightText ? "text-white" : "text-gray-900 dark:text-white"
-            }`}
-          >
-            Reveal <span className="text-primary">Private Note</span>
-          </p>
-          {bannerStyle ? (
-            <div
-              className={`mx-auto mt-6 aspect-[8/3] w-full max-w-xs overflow-hidden rounded-lg border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
-                lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
-              }`}
-              style={bannerStyle}
-            />
-          ) : null}
+    <RecipientPortal
+      preview
+      previewViewport={viewport}
+      branding={branding}
+      language="en"
+      t={{
+        revealTrustEncrypted: "End-to-end encrypted",
+        revealTrustNoAccount: "No account required",
+        revealSecuredByPrivateNote: "Secured by PrivateNote",
+        language: "Language",
+      }}
+      surface={compact ? "card" : "plain"}
+    >
+      <RevealHandoffStack
+        compact={compact}
+        branding={branding}
+        brandingLine={brandingLine}
+        logo={logo}
+        title={compact ? "A private note was shared with you" : "Reveal Private Note"}
+        action={
           <button
             type="button"
-            className={`rounded-md px-5 py-2.5 text-sm font-semibold ${bannerStyle ? "mt-6" : "mt-8"}`}
-            style={brandingCtaStyle(branding)}
+            className="inline-flex w-full max-w-xs items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold"
+            style={buttonStyle}
           >
+            <Unlock className="mr-2 h-4 w-4" />
             Reveal note
           </button>
-        </div>
-      </div>
-    </div>
+        }
+        footnote={compact ? "Deleted after opening" : undefined}
+      />
+    </RecipientPortal>
   );
 };
 
@@ -154,52 +135,61 @@ const OpenedNoteBrandingPreview: React.FC<{
   branding: RevealBranding;
   senderLine: string;
   showBranding: boolean;
-}> = ({ branding, senderLine, showBranding }) => {
-  const lightText = showBranding ? brandingHeroUsesLightText(branding) : false;
+  viewport: "desktop" | "mobile";
+}> = ({ branding, senderLine, showBranding, viewport }) => {
+  const compact = brandingUsesPortalSurface(branding);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700">
-      <div
-        className="relative min-h-28 px-6 py-6 text-center"
-        style={showBranding ? brandingHeroStyle(branding) : undefined}
-      >
+    <RecipientPortal
+      preview
+      previewViewport={viewport}
+      branding={branding}
+      language="en"
+      t={{
+        revealTrustEncrypted: "End-to-end encrypted",
+        revealTrustNoAccount: "No account required",
+        revealSecuredByPrivateNote: "Secured by PrivateNote",
+        language: "Language",
+      }}
+      surface={compact ? "card" : "plain"}
+    >
+      <div className="text-center">
         {showBranding ? (
-          <>
-            <p className="m-0 text-base font-extrabold tracking-tight text-primary">
-              Private Note
-            </p>
-            {(branding.logoUrl || senderLine || branding.trustMessage) ? (
-              <div className="mt-3 flex flex-col items-center gap-1.5">
-                {branding.logoUrl ? (
-                  <img
-                    src={branding.logoUrl}
-                    alt=""
-                    className="max-h-8 max-w-28 object-contain"
-                  />
-                ) : null}
-                {senderLine ? (
-                  <p
-                    className={`m-0 text-xs font-medium ${
-                      lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
-                    }`}
-                  >
-                    {senderLine}
-                  </p>
-                ) : null}
-              </div>
+          <div className="mb-4 flex flex-col items-center gap-1.5">
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt=""
+                className="max-h-8 max-w-28 object-contain"
+              />
             ) : null}
-          </>
+            {senderLine ? (
+              <p className="m-0 text-xs font-medium text-gray-700 dark:text-gray-200">
+                {senderLine}
+              </p>
+            ) : null}
+          </div>
         ) : null}
-        <p className="m-0 mt-3 text-[10px] font-medium text-amber-800 dark:text-amber-200">
+        <p className="m-0 text-[10px] font-medium text-amber-800 dark:text-amber-200">
           This note will be deleted after you leave…
         </p>
         <div className="mx-auto mt-4 max-w-xs rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
           Secret content
         </div>
       </div>
-    </div>
+    </RecipientPortal>
   );
 };
+
+const BACKGROUND_CHOICES: Array<{
+  id: BrandingBackgroundStyle;
+  label: string;
+  hint: string;
+}> = [
+  { id: "neutral", label: "Default", hint: "PrivateNote dotted canvas" },
+  { id: "gradient", label: "Brand", hint: "Subtle gradient from your color" },
+  { id: "banner", label: "Custom", hint: "Full-page photograph" },
+];
 
 type NoteDefaultsForm = {
   expirySeconds: number;
@@ -325,6 +315,8 @@ export default function AccountPreferences() {
     useState<"neutral" | "gradient" | "banner">("neutral");
   const [businessShowBrandingAfterReveal, setBusinessShowBrandingAfterReveal] =
     useState(false);
+  const [brandingPreviewViewport, setBrandingPreviewViewport] =
+    useState<"desktop" | "mobile">("desktop");
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -919,12 +911,12 @@ export default function AccountPreferences() {
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-violet-600" aria-hidden />
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Reveal branding
+                    Recipient branding
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Synchronized Business defaults. New notes prefill these values,
-                  and you can still adjust them per note.
+                  Recognition and trust on secure delivery pages. Recipients see
+                  your identity; PrivateNote stays the trust layer.
                 </p>
               </div>
               {savedBrandingIndicator ? (
@@ -959,50 +951,25 @@ export default function AccountPreferences() {
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Brand colors</Label>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {([
-                    {
-                      id: "business-background-color",
-                      label: "Background",
-                      value: businessBackgroundColor,
-                      onChange: setBusinessBackgroundColor,
-                    },
-                    {
-                      id: "business-accent-color",
-                      label: "Accent",
-                      value: businessAccentColor,
-                      onChange: setBusinessAccentColor,
-                    },
-                    {
-                      id: "business-text-color",
-                      label: "Text",
-                      value: businessTextColor,
-                      onChange: setBusinessTextColor,
-                    },
-                  ] as const).map((swatch) => (
-                    <div key={swatch.id}>
-                      <Label htmlFor={swatch.id} className="mb-2 block text-xs text-gray-500 dark:text-gray-400">
-                        {swatch.label}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          id={swatch.id}
-                          type="color"
-                          value={swatch.value}
-                          onChange={(event) => swatch.onChange(event.target.value)}
-                          className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
-                        />
-                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                          {swatch.value}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                <Label className="mb-2 block text-sm">Brand color</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="business-accent-color"
+                    type="color"
+                    value={businessAccentColor}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setBusinessAccentColor(next);
+                      setBusinessTextColor(contrastingTextOn(next));
+                    }}
+                    className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
+                  />
+                  <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                    {businessAccentColor}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Background tints the reveal page. Accent fills Reveal and Copy.
-                  Text is the label on those buttons.
+                  Used for Reveal and Copy. Brand background generates a gradient from this colour.
                 </p>
               </div>
 
@@ -1086,66 +1053,137 @@ export default function AccountPreferences() {
               </div>
 
               <div>
-                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                  <Label className="text-sm">Reveal banner</Label>
-                  <p className="m-0 font-mono text-xs text-gray-500 dark:text-gray-400">
-                    {BRANDING_BANNER_SIZE_LABEL} px · 8:3
-                  </p>
-                </div>
-                <div
-                  className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
-                  style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
-                >
-                  {businessBannerUrl ? (
-                    <img
-                      src={businessBannerUrl}
-                      alt="Reveal banner preview"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
-                      <p className="m-0 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
-                      </p>
-                      <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
-                        8:3 landscape cover · PNG, JPEG, or WebP
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <Label className="mb-2 block text-sm">Background</Label>
                 <div className="mb-3 grid grid-cols-3 gap-2">
-                  {(["neutral", "gradient", "banner"] as const).map((style) => (
-                    <button key={style} type="button" onClick={() => setBusinessBackgroundStyle(style)}
-                      disabled={style === "banner" && !businessBannerUrl}
-                      className={`rounded-lg border px-3 py-2 text-sm capitalize ${businessBackgroundStyle === style ? "border-primary bg-primary/5 text-primary" : "border-gray-200 dark:border-gray-700"} disabled:opacity-40`}>
-                      {style}
+                  {BACKGROUND_CHOICES.map((choice) => (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      onClick={() => {
+                        if (choice.id === "banner" && !businessBannerUrl) {
+                          bannerInputRef.current?.click();
+                          return;
+                        }
+                        setBusinessBackgroundStyle(choice.id);
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-left ${
+                        businessBackgroundStyle === choice.id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-gray-200 dark:border-gray-700"
+                      }`}
+                    >
+                      <span className="block text-sm font-medium">{choice.label}</span>
+                      <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                        {choice.hint}
+                      </span>
                     </button>
                   ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <input ref={bannerInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only"
-                    onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadBusinessBanner(file); }} />
-                  <Button type="button" variant="outline" disabled={uploadingBanner}
-                    onClick={() => bannerInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />{uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace banner" : "Upload banner"}
-                  </Button>
-                  {businessBannerUrl ? <Button type="button" variant="ghost" disabled={uploadingBanner}
-                    onClick={() => void removeBusinessBanner()}><Trash2 className="mr-2 h-4 w-4" />Remove</Button> : null}
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Export at {BRANDING_BANNER_SIZE_LABEL} pixels (8:3). Maximum{" "}
-                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. The banner shows in a
-                  card just above the Reveal button at its full 8:3 shape, so nothing is cropped.
-                  Your logo appears separately at the top of the page.
-                </p>
+                {businessBackgroundStyle === "banner" || businessBannerUrl ? (
+                  <>
+                    <div
+                      className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
+                      style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
+                    >
+                      {businessBannerUrl ? (
+                        <img
+                          src={businessBannerUrl}
+                          alt="Custom recipient background"
+                          className="h-full w-full object-cover object-center"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
+                          <p className="m-0 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                            {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
+                          </p>
+                          <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                            Landscape photograph · PNG, JPEG, or WebP
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        ref={bannerInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void uploadBusinessBanner(file);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingBanner}
+                        onClick={() => bannerInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace image" : "Upload image"}
+                      </Button>
+                      {businessBannerUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={uploadingBanner}
+                          onClick={() => void removeBusinessBanner()}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Recommended {BRANDING_BANNER_SIZE_LABEL} (16:9). Maximum{" "}
+                      {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. PrivateNote
+                      covers the page and darkens the photo so the reveal card stays readable.
+                      The image is atmospheric — never the place for headlines.
+                    </p>
+                  </>
+                ) : (
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadBusinessBanner(file);
+                    }}
+                  />
+                )}
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Live recipient preview</Label>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <Label className="text-sm">Preview</Label>
+                  <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+                    {([
+                      { id: "desktop" as const, label: "Desktop", Icon: Monitor },
+                      { id: "mobile" as const, label: "Mobile", Icon: Smartphone },
+                    ]).map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setBrandingPreviewViewport(option.id)}
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                          brandingPreviewViewport === option.id
+                            ? "bg-primary/10 text-primary"
+                            : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+                        }`}
+                      >
+                        <option.Icon className="h-3.5 w-3.5" aria-hidden />
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                   Reveal gate
                 </p>
                 <BrandingPreview
+                  viewport={brandingPreviewViewport}
                   branding={{
                     companyName: businessDisplayName || undefined,
                     senderName: businessSenderName || undefined,
@@ -1159,16 +1197,12 @@ export default function AccountPreferences() {
                     backgroundStyle: businessBackgroundStyle,
                     showBrandingAfterReveal: businessShowBrandingAfterReveal,
                   }}
-                  senderLine={
-                    businessSenderName || businessDisplayName
-                      ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                      : ""
-                  }
                 />
                 <p className="mb-2 mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
                   After open (screenshot risk)
                 </p>
                 <OpenedNoteBrandingPreview
+                  viewport={brandingPreviewViewport}
                   branding={{
                     companyName: businessDisplayName || undefined,
                     senderName: businessSenderName || undefined,
@@ -1238,9 +1272,10 @@ export default function AccountPreferences() {
                     Available with Business
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                    Add your display name, hosted logo, and three brand colors
-                    (background, accent, and text) to note reveal pages. Stored
-                    branding remains retained if you downgrade.
+                    Add your logo, brand color, and recipient background
+                    (Default, Brand gradient, or Custom image) to secure
+                    delivery pages. Stored branding remains retained if you
+                    downgrade.
                   </p>
                   {(businessDisplayName || businessLogoUrl) ? (
                     <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">

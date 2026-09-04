@@ -146,7 +146,7 @@ function planHighlights(planId: AccountType): string[] {
   }
   return [
     "Everything in Starter",
-    "Company branding on reveal pages",
+    "Recipient branding on secure delivery pages",
     "Custom AI prompt templates, saved in this browser",
     "Largest attachments and payload capacity",
     "Highest hosted AI draft allowance",
@@ -243,7 +243,7 @@ const comparisonSections: {
       { key: "receiptAcknowledgment", label: "Receipt confirmation" },
       { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
       { key: "revokeUnopened", label: "Revoke unopened notes" },
-      { key: "revealBranding", label: "Company branding on reveal" },
+      { key: "revealBranding", label: "Recipient branding" },
     ],
   },
   {
@@ -277,7 +277,7 @@ const featureCards = [
   },
   {
     icon: Building2,
-    title: "Business branding",
+    title: "Recipient branding",
     text: "Business adds company profile, logo, and accent on reveal pages.",
   },
 ];
@@ -306,7 +306,7 @@ function buildFaqs(currency: BillingCurrency) {
     },
     {
       q: "What is the difference between Starter and Business?",
-      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds company branding on reveal pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
+      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds recipient branding on secure delivery pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
     },
     {
       q: "How does annual billing work?",
@@ -750,19 +750,19 @@ export default function Premium() {
 
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left">
+            <table className="w-full min-w-[640px] border-collapse text-left sm:min-w-[720px]">
               <caption className="sr-only">
                 Feature comparison for Free, Starter, and Business plans
               </caption>
               <colgroup>
-                <col className="w-[32%]" />
-                <col className="w-[23%]" />
-                <col className="w-[23%]" />
-                <col className="w-[22%]" />
+                <col className="w-[24%] sm:w-[28%] lg:w-[32%]" />
+                <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
+                <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
+                <col className="w-[26%] sm:w-[24%] lg:w-[22%]" />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
-                  <th scope="col" className="sticky left-0 z-[1] bg-gray-50 px-5 py-3.5 dark:bg-gray-900/70">
+                  <th scope="col" className="sticky left-0 z-[1] bg-gray-50 px-3 py-3 sm:px-5 sm:py-3.5 dark:bg-gray-900/70">
                     Feature
                   </th>
                   {PLAN_ORDER.map((planId) => (
@@ -787,7 +787,7 @@ export default function Premium() {
                     <th
                       scope="colgroup"
                       colSpan={4}
-                      className="px-5 py-3 text-left font-normal"
+                      className="px-3 py-3 text-left font-normal sm:px-5"
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
                         {section.title}
@@ -808,7 +808,7 @@ export default function Premium() {
                       <th
                         scope="row"
                         className={[
-                          "sticky left-0 z-[1] px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-gray-100",
+                          "sticky left-0 z-[1] px-3 py-3 text-[13px] font-medium leading-snug text-gray-900 sm:px-5 sm:py-3.5 sm:text-sm sm:leading-5 dark:text-gray-100",
                           rowIndex % 2 === 1
                             ? "bg-gray-50/95 dark:bg-gray-900/80"
                             : "bg-white dark:bg-gray-950",
@@ -820,7 +820,7 @@ export default function Premium() {
                         <td
                           key={planId}
                           className={[
-                            "px-4 py-3.5 align-middle",
+                            "px-2 py-3 align-middle sm:px-4 sm:py-3.5",
                             planId === HIGHLIGHTED_PLAN
                               ? "bg-primary/5 dark:bg-primary/10"
                               : "",

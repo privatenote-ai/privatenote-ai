@@ -55,7 +55,7 @@ const ViewNote: React.FC = () => {
   }
   
   return (
-    <div className="min-w-0 overflow-x-clip pb-20 pt-24">
+    <div className="min-w-0 overflow-x-clip">
       <NoteDisplay
         id={params.id}
         encryptionKey={encryptionKey}

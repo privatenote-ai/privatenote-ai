@@ -26,12 +26,12 @@ export const BRANDING_LOGO_MAX_BYTES = 1024 * 1024;
 export const BRANDING_BANNER_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_LOGO_RECOMMENDED_PX = { width: 512, height: 512 } as const;
 /**
- * Reveal-page cover art. It renders at its full 8:3 shape in a card above the
- * Reveal button, so nothing is cropped; 1920px wide keeps it sharp on retina at
- * the card's ~600px display width without wasting bytes.
+ * Full-page recipient background. 1920×1080 stays sharp on a desktop canvas
+ * without asking senders for print-resolution photography. The image is
+ * `object-cover`’d, so a 16:9 landscape is the crop-safe recommendation.
  */
-export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 720 } as const;
-export const BRANDING_BANNER_ASPECT_RATIO = "8 / 3" as const;
+export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 1080 } as const;
+export const BRANDING_BANNER_ASPECT_RATIO = "16 / 9" as const;
 export const BRANDING_BANNER_SIZE_LABEL =
   `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
 
@@ -85,6 +85,12 @@ export type BrandingHeroStyle = {
   backgroundPosition?: string;
   background?: string;
 };
+
+export type BrandingPageBackground =
+  | { kind: "none" }
+  | { kind: "gradient"; background: string }
+  | { kind: "color"; backgroundColor: string }
+  | { kind: "image"; url: string };
 
 export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   companyName: null,
@@ -316,11 +322,8 @@ export function brandingShowsBanner(
 }
 
 /**
- * Cover art for the bounded banner card between the reveal copy and the CTA.
- *
- * The banner is deliberately not used as the page background: a full-bleed
- * wordmark competes with the reveal headline and the button, and any overlay
- * dark enough to fix that turns the whole page into an unreadable slab.
+ * Cover-crop style for a custom recipient photograph. Applied to a dedicated
+ * `<img>` so the URL never enters a CSS `url()` string.
  */
 export function brandingBannerStyle(
   branding: RevealBranding | undefined,
@@ -333,20 +336,64 @@ export function brandingBannerStyle(
   };
 }
 
+function gradientWashColor(branding: RevealBranding): string {
+  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
+    return branding.backgroundColor;
+  }
+  return brandingRelativeLuminance(branding.accentColor ?? "#2563eb") > 0.45
+    ? "#f8fafc"
+    : "#eef2ff";
+}
+
+function brandGradientBackground(accent: string, wash: string): string {
+  return [
+    `radial-gradient(ellipse 80% 55% at 12% -8%, ${accent}3d 0%, transparent 58%)`,
+    `radial-gradient(ellipse 70% 50% at 92% 108%, ${accent}2e 0%, transparent 52%)`,
+    `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
+  ].join(", ");
+}
+
 /**
- * Page-level wash behind the reveal hero.
- *
- * Near-white values are dropped so branding never draws a white card on top of
- * the app background, and the banner is excluded because it renders as a band.
+ * Full-viewport recipient background. Custom images are atmospheric; copy never
+ * sits on the photograph. Gradient and solid colour are generated from the
+ * stored brand colours.
+ */
+export function brandingPageBackground(
+  branding: RevealBranding | undefined,
+): BrandingPageBackground {
+  if (!branding) return { kind: "none" };
+  if (brandingShowsBanner(branding) && branding.bannerUrl) {
+    return { kind: "image", url: branding.bannerUrl };
+  }
+  if (branding.backgroundStyle === "gradient" && branding.accentColor) {
+    return {
+      kind: "gradient",
+      background: brandGradientBackground(branding.accentColor, gradientWashColor(branding)),
+    };
+  }
+  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
+    return { kind: "color", backgroundColor: branding.backgroundColor };
+  }
+  return { kind: "none" };
+}
+
+/** True when the reveal UI must sit on its own card over a brand surface. */
+export function brandingUsesPortalSurface(branding: RevealBranding | undefined): boolean {
+  const page = brandingPageBackground(branding);
+  return page.kind !== "none";
+}
+
+/**
+ * Page-level wash behind the reveal hero. Kept for older snapshots that still
+ * tint a bounded hero; the recipient portal prefers `brandingPageBackground`.
  */
 export function brandingHeroStyle(
   branding: RevealBranding | undefined,
 ): BrandingHeroStyle | undefined {
   if (!branding) return undefined;
   if (branding.backgroundStyle === "gradient" && branding.accentColor) {
-    const base = branding.backgroundColor ?? "transparent";
     return {
-      background: `linear-gradient(135deg, ${branding.accentColor}20, ${base})`,
+      background: brandGradientBackground(branding.accentColor, gradientWashColor(branding)),
     };
   }
   if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
@@ -356,8 +403,17 @@ export function brandingHeroStyle(
 }
 
 export function brandingHeroUsesLightText(branding: RevealBranding | undefined): boolean {
-  if (branding?.backgroundColor) {
-    return contrastingTextOn(branding.backgroundColor) === "#ffffff";
+  return brandingChromeUsesLightText(branding);
+}
+
+/** Chrome (PrivateNote mark, language, footer) over the page background. */
+export function brandingChromeUsesLightText(branding: RevealBranding | undefined): boolean {
+  const page = brandingPageBackground(branding);
+  if (page.kind === "image") return true;
+  if (page.kind === "color") return contrastingTextOn(page.backgroundColor) === "#ffffff";
+  if (page.kind === "gradient") {
+    const wash = branding ? gradientWashColor(branding) : "#f8fafc";
+    return contrastingTextOn(wash) === "#ffffff";
   }
   return false;
 }

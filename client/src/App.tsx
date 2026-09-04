@@ -285,19 +285,21 @@ function Router() {
     return () => cancelAnimationFrame(frame);
   }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
+  const isNoteRoute = location.startsWith("/note/");
   const showNavbar =
-    !isAuthRoute ||
-    location.startsWith("/auth/magic") ||
-    location === "/magic" ||
-    location.startsWith("/auth/email-change") ||
-    location.startsWith("/auth/totp");
+    !isNoteRoute &&
+    (!isAuthRoute ||
+      location.startsWith("/auth/magic") ||
+      location === "/magic" ||
+      location.startsWith("/auth/email-change") ||
+      location.startsWith("/auth/totp"));
 
   const showInternalRoutes = canAccessInternalAppRoutes();
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col">
       {showNavbar && <Navbar />}
-      <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
+      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
           {/*
@@ -393,7 +395,7 @@ function Router() {
           <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>
       </main>
-      {!isAuthRoute && <Footer />}
+      {!isAuthRoute && !isNoteRoute && <Footer />}
     </div>
   );
 }

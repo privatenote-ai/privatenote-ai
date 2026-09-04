@@ -12,7 +12,10 @@ import {
   brandingHeroUsesLightText,
   brandingIsEmpty,
   brandingShowsAfterReveal,
+  brandingPageBackground,
   brandingShowsBanner,
+  brandingUsesPortalSurface,
+  brandingChromeUsesLightText,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
   parseBusinessBrandingInput,
@@ -411,6 +414,32 @@ describe("brandingHeroStyle", () => {
   });
 });
 
+describe("brandingPageBackground", () => {
+  it("uses a custom photograph as a full-page image, not a hero band", () => {
+    const branding = {
+      bannerUrl: "https://passwords.lu/banner.webp",
+      backgroundStyle: "banner",
+    } as const;
+    assert.deepEqual(brandingPageBackground(branding), {
+      kind: "image",
+      url: "https://passwords.lu/banner.webp",
+    });
+    assert.equal(brandingUsesPortalSurface(branding), true);
+    assert.equal(brandingChromeUsesLightText(branding), true);
+  });
+
+  it("builds a subtle accent gradient for Brand style", () => {
+    const branding = {
+      accentColor: "#e11d48",
+      backgroundStyle: "gradient",
+    } as const;
+    const page = brandingPageBackground(branding);
+    assert.equal(page.kind, "gradient");
+    assert.equal(page.kind === "gradient" && page.background.includes("#e11d48"), true);
+    assert.equal(brandingUsesPortalSurface(branding), true);
+  });
+});
+
 describe("brandingBannerStyle", () => {
   it("covers and centers the banner in the header band", () => {
     const branding = {
@@ -437,11 +466,11 @@ describe("brandingBannerStyle", () => {
 });
 
 describe("branding asset sizes", () => {
-  it("defines an 8:3 reveal banner at 1920×720", () => {
+  it("defines a 16:9 full-page recipient photograph at 1920×1080", () => {
     assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width, 1920);
-    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.height, 720);
-    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width / BRANDING_BANNER_RECOMMENDED_PX.height, 8 / 3);
-    assert.equal(BRANDING_BANNER_SIZE_LABEL, "1920×720");
+    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.height, 1080);
+    assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width / BRANDING_BANNER_RECOMMENDED_PX.height, 16 / 9);
+    assert.equal(BRANDING_BANNER_SIZE_LABEL, "1920×1080");
     assert.equal(BRANDING_BANNER_MAX_BYTES, 3 * 1024 * 1024);
   });
 });

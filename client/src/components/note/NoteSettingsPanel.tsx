@@ -1591,8 +1591,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading
                 id="note-reveal-branding-heading"
-                title={t.settingsRevealBrandingSection ?? "Reveal branding"}
-                showPremiumBadge={!isConfiguredBusiness}
+                title={t.settingsRevealBrandingSection ?? "Recipient branding"}
+                showPremiumBadge={!brandingAllowed}
                 premiumLabel={t.settingsPlanBusiness ?? "Business"}
               />
               <div className={SETTINGS_TOGGLE_ROW}>
@@ -1640,7 +1640,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   )}
                 </div>
               </div>
-              {!isConfiguredBusiness ? (
+              {!brandingAllowed ? (
                 <div className="space-y-2">
                   <p className="px-1 text-xs leading-snug text-violet-700 dark:text-violet-300">
                     Business adds your company identity to the recipient reveal page.

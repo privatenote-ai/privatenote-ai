@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import {
   Copy,
   RefreshCw,
   Unlock,
   Eye,
   EyeOff,
-  ShieldCheck,
-  Trash2,
-  UserX,
   Download,
   Paperclip,
   ExternalLink,
@@ -51,18 +48,19 @@ import {
 } from '@/utils/voiceMessageDownloadFormat';
 import { useToast } from '@/hooks/use-toast';
 import {
-  brandingBannerStyle,
   brandingCtaStyle,
-  brandingHeroStyle,
-  brandingHeroUsesLightText,
   brandingShowsAfterReveal,
-  brandingShowsBanner,
+  brandingUsesPortalSurface,
 } from '@shared/businessBranding';
+import {
+  RecipientPortal,
+  RevealHandoffStack,
+  type RecipientPortalSurface,
+} from '@/components/note/RecipientPortal';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
 import {
   getTranslations,
-  LANGUAGE_OPTIONS,
   loadTranslations,
   normalizeLanguageCode,
   type SupportedLanguage,
@@ -266,13 +264,12 @@ async function createAttachmentPreviewUrl(blob: Blob, previewKind: AttachmentPre
 }
 
 interface RevealHeroProps {
-  noteId: string;
   isRevealing: boolean;
   isRevealButtonReady: boolean;
   onReveal: (e: React.MouseEvent<HTMLButtonElement>) => Promise<void>;
   branding?: RevealBranding;
-  readerLanguageLabel: string;
   t: Translations;
+  compact: boolean;
 }
 
 /** Shared hero subtitle: matches Secure File Transfer / Password Generator rhythm. */
@@ -294,27 +291,6 @@ function isDecryptKeyFailureMessage(message: string): boolean {
     m.includes("Missing encryption key in URL. The note cannot be decrypted.")
   );
 }
-
-const TrustSignals: React.FC<{ t: Translations; lightText?: boolean }> = ({ t, lightText }) => (
-  <ul
-    className={`mt-40 sm:mt-44 flex flex-col items-center gap-2.5 lg:flex-row lg:justify-center lg:gap-6 text-xs sm:text-sm ${
-      lightText ? "text-white/75" : "text-gray-600/75 dark:text-gray-300/72"
-    }`}
-  >
-    <li className="inline-flex items-center gap-1.5">
-      <ShieldCheck className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustEncrypted ?? "End-to-end encrypted"}</span>
-    </li>
-    <li className="inline-flex items-center gap-1.5">
-      <Trash2 className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustSelfDestructs ?? "Self-destructs after opening"}</span>
-    </li>
-    <li className="inline-flex items-center gap-1.5">
-      <UserX className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustNoAccount ?? "No account required"}</span>
-    </li>
-  </ul>
-);
 
 const getBrandingLine = (branding: RevealBranding | undefined, t: Translations): string | null => {
   if (!branding) return null;
@@ -536,112 +512,85 @@ const BrandingIdentity: React.FC<{
   );
 };
 
-/**
- * Brand banner shown between the reveal copy and the CTA, where the layout
- * already leaves a deliberate gap. Kept as a bounded card so it reads as the
- * sender's artwork rather than a page background.
- */
-const BrandingBanner: React.FC<{ branding?: RevealBranding; lightText: boolean }> = ({
-  branding,
-  lightText,
-}) => {
-  const bannerStyle = brandingBannerStyle(branding);
-  if (!bannerStyle) return null;
-
-  return (
-    <div
-      role="img"
-      aria-label={branding?.companyName ? `${branding.companyName} banner` : "Sender banner"}
-      className={`mx-auto aspect-[8/3] w-full max-w-xl overflow-hidden rounded-xl border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
-        lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
-      }`}
-      style={bannerStyle}
-    />
-  );
-};
-
 const RevealHero: React.FC<RevealHeroProps> = ({
-  noteId,
   isRevealing,
   isRevealButtonReady,
   onReveal,
   branding,
-  readerLanguageLabel,
   t,
+  compact,
 }) => {
   const brandingLine = getBrandingLine(branding, t);
   const buttonStyle = brandingCtaStyle(branding);
-  const brandedHeroStyle = brandingHeroStyle(branding);
-  const lightText = brandingHeroUsesLightText(branding);
-  const showBanner = brandingShowsBanner(branding);
-  const framedHero = Boolean(brandedHeroStyle);
+  const logo = branding?.logoUrl ? (
+    <img
+      src={branding.logoUrl}
+      alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      className="max-h-14 w-auto object-contain sm:max-h-16"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  ) : null;
+
+  const action = (
+    <div className="flex w-full justify-center">
+      <button
+        type="button"
+        onClick={(ev) => void onReveal(ev)}
+        disabled={isRevealing || !isRevealButtonReady}
+        style={buttonStyle}
+        className={`inline-flex w-full max-w-sm items-center justify-center rounded-md px-5 py-3 text-base font-semibold transition-all duration-200 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+          buttonStyle
+            ? "hover:shadow-[0_0_18px_rgba(15,23,42,0.18)] focus-visible:ring-gray-400"
+            : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus-visible:ring-primary"
+        }`}
+      >
+        {isRevealing ? (
+          <>
+            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-current" />
+            {t.revealing ?? "Revealing..."}
+          </>
+        ) : (
+          <>
+            <Unlock className="mr-2 h-4 w-4" />
+            {t.revealNote ?? "Reveal Note"}
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <RevealHandoffStack
+        compact
+        branding={branding}
+        brandingLine={brandingLine}
+        logo={logo}
+        title={t.revealSharedWithYou ?? "A private note was shared with you"}
+        action={action}
+        footnote={t.revealDeletedAfterOpening ?? "Deleted after opening"}
+      />
+    );
+  }
 
   return (
     <section className={NOTE_VIEW_SHELL}>
-      <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
-        style={brandedHeroStyle}
-      >
-        <div className="text-center">
-          <h1 className={`page-title ${lightText ? "text-white" : "text-gray-900 dark:text-white"}`}>
-            {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
-          </h1>
-          <div className={`mt-3 text-xs leading-relaxed ${lightText ? "text-white/70" : "text-gray-500/85 dark:text-gray-400/85"}`}>
-            <p className="m-0 font-medium">{(t.revealPrivateNoteId ?? "Private note #{id}").replace("{id}", noteId)}</p>
-            <p className="m-0">{(t.revealLanguageLine ?? "Language: {language}").replace("{language}", readerLanguageLabel)}</p>
-          </div>
-          <p className={`${NOTE_VIEW_HERO_SUBTITLE} ${lightText ? "!text-white/85" : ""}`}>
-            {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
-          </p>
-
-          {(brandingLine || branding?.logoUrl || branding?.trustMessage) ? (
-            <div className="mt-8 sm:mt-10">
-              <BrandingIdentity branding={branding} brandingLine={brandingLine} lightText={lightText} />
-            </div>
-          ) : null}
-
-          {showBanner ? (
-            <div className="mt-12 sm:mt-14">
-              <BrandingBanner branding={branding} lightText={lightText} />
-            </div>
-          ) : null}
-
-          <div className={`${showBanner ? "mt-12 sm:mt-14" : "mt-10 sm:mt-12"} w-full flex justify-center`}>
-            <button
-              type="button"
-              onClick={(ev) => void onReveal(ev)}
-              disabled={isRevealing || !isRevealButtonReady}
-              style={buttonStyle}
-              className={`w-full max-w-sm inline-flex items-center justify-center px-5 py-3 text-base font-semibold rounded-md transition-all duration-200 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                buttonStyle
-                  ? "hover:shadow-[0_0_18px_rgba(15,23,42,0.18)] focus-visible:ring-gray-400"
-                  : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus-visible:ring-primary"
-              }`}
-            >
-              {isRevealing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2" />
-                  {t.revealing ?? "Revealing..."}
-                </>
-              ) : (
-                <>
-                  <Unlock className="h-4 w-4 mr-2" />
-                  {t.revealNote ?? "Reveal Note"}
-                </>
-              )}
-            </button>
-          </div>
-
-          <p
-            className={`mt-4 sm:mt-5 text-sm ${
-              lightText ? "text-white/70" : "text-gray-600/62 dark:text-gray-300/58"
-            }`}
-          >
-            {t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
-          </p>
-
-          <TrustSignals t={t} lightText={lightText} />
-        </div>
+      <section className={NOTE_VIEW_HERO_SECTION}>
+        <RevealHandoffStack
+          branding={branding}
+          brandingLine={brandingLine}
+          logo={logo}
+          title={
+            <>
+              {t.revealTitlePrefix ?? "Reveal"}{" "}
+              <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
+            </>
+          }
+          subtitle={t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
+          action={action}
+          footnote={t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
+        />
       </section>
     </section>
   );
@@ -654,7 +603,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyMissing = false,
   linkKeyTruncated = false,
 }) => {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
   // Branding is returned as public note metadata before reveal. Keep it in local
   // state because ViewNote cannot know a note's snapshotted branding up front.
@@ -726,9 +675,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   useEffect(() => {
     setLabelsImported(false);
   }, [noteContent]);
-  const readerLanguageLabel =
-    LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
-
   useEffect(() => {
     let cancelled = false;
     setReaderTranslations(getTranslations(readerLanguage));
@@ -1655,51 +1601,68 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     window.location.href = '/';
   };
 
+  const portalSurface = brandingUsesPortalSurface(activeRevealBranding);
+  const wrapRecipient = (node: ReactNode, surface?: RecipientPortalSurface) => (
+    <RecipientPortal
+      branding={activeRevealBranding}
+      t={t}
+      language={readerLanguage}
+      onLanguageChange={(next) => {
+        setSenderSelectedLanguage(next);
+        setLanguage(next);
+      }}
+      surface={surface ?? (portalSurface ? "card" : "plain")}
+    >
+      {node}
+    </RecipientPortal>
+  );
+
   if (isLoading || recipientGateLoading || !delayedRevealChecked) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+    return wrapRecipient(
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
+      </div>,
+      "plain",
     );
   }
 
   const verificationPending = recipientGateRequired && !recipientGateVerified;
 
   if (delayedRevealOpensAt && !hasRevealed) {
-    return (
+    return wrapRecipient(
       <NoteAccessProblem
         variant="not_yet_available"
         opensAt={delayedRevealOpensAt}
         verificationPending={verificationPending}
         t={t}
-      />
+      />,
     );
   }
 
   if (error) {
     const isNotYetAvailable = error === "note_not_yet_available";
-    return (
+    return wrapRecipient(
       <NoteAccessProblem
         variant={isNotYetAvailable ? "not_yet_available" : "note_gone"}
         keyMismatch={keyMismatchError}
         opensAt={delayedRevealOpensAt}
         verificationPending={isNotYetAvailable && verificationPending}
         t={t}
-      />
+      />,
     );
   }
 
   if (linkKeyMissing && !hasRevealed) {
-    return <NoteAccessProblem variant="link_incomplete" t={t} />;
+    return wrapRecipient(<NoteAccessProblem variant="link_incomplete" t={t} />);
   }
 
   if (linkKeyTruncated && !hasRevealed) {
-    return <NoteAccessProblem variant="key_truncated" t={t} />;
+    return wrapRecipient(<NoteAccessProblem variant="key_truncated" t={t} />);
   }
 
   if (!hasRevealed) {
     if (recipientGateRequired && !recipientGateVerified) {
-      return (
+      return wrapRecipient(
         <section className={NOTE_VIEW_SHELL}>
           <section className={NOTE_VIEW_HERO_SECTION}>
               <h1 className="page-title text-gray-900 dark:text-white">
@@ -1761,26 +1724,25 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 </button>
               </form>
           </section>
-        </section>
+        </section>,
       );
     }
 
-    return (
+    return wrapRecipient(
       <RevealHero
-        noteId={id}
         isRevealing={isRevealing}
         isRevealButtonReady={isRevealButtonReady}
         onReveal={handleReveal}
         branding={activeRevealBranding}
-        readerLanguageLabel={readerLanguageLabel}
         t={t}
-      />
+        compact={portalSurface}
+      />,
     );
   }
 
   // If password protected and not yet decrypted, show password input
   if (isPasswordProtected && !noteContent) {
-    return (
+    return wrapRecipient(
       <section className={NOTE_VIEW_SHELL}>
         <section className={NOTE_VIEW_HERO_SECTION}>
           <div className="text-center">
@@ -1853,7 +1815,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             </div>
           </div>
         </section>
-      </section>
+      </section>,
     );
   }
 
@@ -1862,21 +1824,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const accentStyle = showBrandingOnOpenedNote
     ? brandingCtaStyle(activeRevealBranding)
     : undefined;
-  const revealedBackgroundStyle = showBrandingOnOpenedNote
-    ? brandingHeroStyle(activeRevealBranding)
-    : undefined;
-  const revealedLightText = showBrandingOnOpenedNote
-    ? brandingHeroUsesLightText(activeRevealBranding)
-    : false;
-  const framedHero = Boolean(revealedBackgroundStyle);
 
   // Regular note content view (either after password decryption or for non-password notes)
-  return (
+  return wrapRecipient(
     <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
-      <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
-        style={revealedBackgroundStyle}
-      >
+      <section className={NOTE_VIEW_HERO_SECTION}>
         <div className="mb-8 text-center sm:mb-10">
           {showBrandingOnOpenedNote ? (
             <h1 className="page-title text-primary">{t.privateNote}</h1>
@@ -1894,7 +1846,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               <BrandingIdentity
                 branding={activeRevealBranding}
                 brandingLine={brandingLine}
-                lightText={revealedLightText}
+                lightText={false}
               />
             </div>
           ) : null}
@@ -2308,6 +2260,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         ) : null}
       </section>
       <AttachmentProgressDialog progress={attachmentDecryptProgress} />
-    </section>
+    </section>,
+    portalSurface ? "wide" : "plain",
   );
 };
