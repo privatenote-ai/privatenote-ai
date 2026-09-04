@@ -36,6 +36,32 @@ export const BRANDING_BANNER_SIZE_LABEL =
   `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
+export type BrandingCardPosition = "left" | "center" | "right";
+export type BrandingBackgroundFit = "fill" | "fit";
+export type BrandingOverlay = "light" | "medium" | "dark";
+
+export type BrandingPortalLayout = {
+  cardPosition: BrandingCardPosition;
+  backgroundFit: BrandingBackgroundFit;
+  overlay: BrandingOverlay;
+  focalX: number;
+  focalY: number;
+};
+
+/** Light overlay is ~16% so photography stays visible behind an opaque card. */
+export const BRANDING_OVERLAY_OPACITY: Record<BrandingOverlay, number> = {
+  light: 0.16,
+  medium: 0.32,
+  dark: 0.5,
+};
+
+export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
+  cardPosition: "center",
+  backgroundFit: "fill",
+  overlay: "light",
+  focalX: 50,
+  focalY: 50,
+};
 
 /** Persisted shape. `null` means "not configured". */
 export type BusinessBranding = {
@@ -49,6 +75,11 @@ export type BusinessBranding = {
   backgroundColor?: string | null;
   textColor?: string | null;
   backgroundStyle?: BrandingBackgroundStyle;
+  cardPosition?: BrandingCardPosition | null;
+  backgroundFit?: BrandingBackgroundFit | null;
+  overlay?: BrandingOverlay | null;
+  focalX?: number | null;
+  focalY?: number | null;
   /**
    * When true, sender branding also appears on the opened-note view.
    * Default false so screenshots of secrets do not carry logo/attribution.
@@ -68,6 +99,11 @@ export type RevealBranding = {
   backgroundColor?: string;
   textColor?: string;
   backgroundStyle?: BrandingBackgroundStyle;
+  cardPosition?: BrandingCardPosition;
+  backgroundFit?: BrandingBackgroundFit;
+  overlay?: BrandingOverlay;
+  focalX?: number;
+  focalY?: number;
   /** Present only when true; missing/false means hide branding after open. */
   showBrandingAfterReveal?: boolean;
 };
@@ -103,6 +139,11 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   backgroundColor: null,
   textColor: null,
   backgroundStyle: "neutral",
+  cardPosition: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
+  backgroundFit: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
+  overlay: DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
+  focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
+  focalY: DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
   showBrandingAfterReveal: false,
 };
 
@@ -125,6 +166,10 @@ export type BrandingErrorCode =
   | "invalid_background_color"
   | "invalid_text_color"
   | "invalid_background_style"
+  | "invalid_card_position"
+  | "invalid_background_fit"
+  | "invalid_overlay"
+  | "invalid_image_position"
   | "invalid_show_branding_after_reveal";
 
 export type BusinessBrandingParseResult =
@@ -245,6 +290,146 @@ function parseBackgroundStyle(
     : { ok: false };
 }
 
+function parseCardPosition(
+  raw: unknown,
+): { ok: true; value: BrandingCardPosition } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition };
+  }
+  return raw === "left" || raw === "center" || raw === "right"
+    ? { ok: true, value: raw }
+    : { ok: false };
+}
+
+function parseBackgroundFit(
+  raw: unknown,
+): { ok: true; value: BrandingBackgroundFit } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit };
+  }
+  return raw === "fill" || raw === "fit" ? { ok: true, value: raw } : { ok: false };
+}
+
+function parseOverlay(
+  raw: unknown,
+): { ok: true; value: BrandingOverlay } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: DEFAULT_BRANDING_PORTAL_LAYOUT.overlay };
+  }
+  return raw === "light" || raw === "medium" || raw === "dark"
+    ? { ok: true, value: raw }
+    : { ok: false };
+}
+
+function parseFocalPercent(
+  raw: unknown,
+  fallback: number,
+): { ok: true; value: number } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") return { ok: true, value: fallback };
+  if (typeof raw === "number") {
+    if (!Number.isInteger(raw) || raw < 0 || raw > 100) return { ok: false };
+    return { ok: true, value: raw };
+  }
+  if (typeof raw !== "string") return { ok: false };
+  const trimmed = raw.trim();
+  if (!/^(?:0|[1-9]\d?|100)$/.test(trimmed)) return { ok: false };
+  return { ok: true, value: Number(trimmed) };
+}
+
+function parsePortalLayoutFields(body: Record<string, unknown>): {
+  ok: true;
+  layout: BrandingPortalLayout;
+} | { ok: false; code: BrandingErrorCode; message: string } {
+  const cardPosition = parseCardPosition(body.cardPosition);
+  if (!cardPosition.ok) {
+    return { ok: false, code: "invalid_card_position", message: "Card position must be left, center, or right" };
+  }
+  const backgroundFit = parseBackgroundFit(body.backgroundFit);
+  if (!backgroundFit.ok) {
+    return { ok: false, code: "invalid_background_fit", message: "Background must be fill or fit" };
+  }
+  const overlay = parseOverlay(body.overlay);
+  if (!overlay.ok) {
+    return { ok: false, code: "invalid_overlay", message: "Overlay must be light, medium, or dark" };
+  }
+  const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
+  const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
+  if (!focalX.ok || !focalY.ok) {
+    return { ok: false, code: "invalid_image_position", message: "Image position must be 0–100" };
+  }
+  return {
+    ok: true,
+    layout: {
+      cardPosition: cardPosition.value,
+      backgroundFit: backgroundFit.value,
+      overlay: overlay.value,
+      focalX: focalX.value,
+      focalY: focalY.value,
+    },
+  };
+}
+
+function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortalLayout {
+  const cardPosition = parseCardPosition(body.cardPosition);
+  const backgroundFit = parseBackgroundFit(body.backgroundFit);
+  const overlay = parseOverlay(body.overlay);
+  const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
+  const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
+  return {
+    cardPosition: cardPosition.ok ? cardPosition.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
+    backgroundFit: backgroundFit.ok ? backgroundFit.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
+    overlay: overlay.ok ? overlay.value : DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
+    focalX: focalX.ok ? focalX.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
+    focalY: focalY.ok ? focalY.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
+  };
+}
+
+export function brandingPortalLayout(
+  branding: Pick<RevealBranding, "cardPosition" | "backgroundFit" | "overlay" | "focalX" | "focalY"> | undefined,
+): BrandingPortalLayout {
+  return parsePortalLayoutLenient({
+    cardPosition: branding?.cardPosition,
+    backgroundFit: branding?.backgroundFit,
+    overlay: branding?.overlay,
+    focalX: branding?.focalX,
+    focalY: branding?.focalY,
+  });
+}
+
+export function brandingOverlayOpacity(branding: RevealBranding | undefined): number {
+  return BRANDING_OVERLAY_OPACITY[brandingPortalLayout(branding).overlay];
+}
+
+export function parseStoredPortalLayoutJson(raw: string | null | undefined): BrandingPortalLayout {
+  if (!raw || typeof raw !== "string") return { ...DEFAULT_BRANDING_PORTAL_LAYOUT };
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { ...DEFAULT_BRANDING_PORTAL_LAYOUT };
+    }
+    const parsed = parsePortalLayoutLenient(value as Record<string, unknown>);
+    return parsed;
+  } catch {
+    return { ...DEFAULT_BRANDING_PORTAL_LAYOUT };
+  }
+}
+
+export function stringifyPortalLayout(layout: BrandingPortalLayout): string {
+  return JSON.stringify(layout);
+}
+
+export function parseBusinessPortalLayoutInput(
+  raw: unknown,
+): { ok: true; layout: BrandingPortalLayout } | { ok: false; message: string } {
+  if (raw == null) return { ok: true, layout: { ...DEFAULT_BRANDING_PORTAL_LAYOUT } };
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, message: "Portal layout must be an object" };
+  }
+  const parsed = parsePortalLayoutFields(raw as Record<string, unknown>);
+  if (!parsed.ok) return { ok: false, message: parsed.message };
+  return { ok: true, layout: parsed.layout };
+}
+
 export function parseBrandingHexColor(
   raw: unknown,
 ): { ok: true; value: string | null } | { ok: false } {
@@ -329,10 +514,11 @@ export function brandingBannerStyle(
   branding: RevealBranding | undefined,
 ): BrandingHeroStyle | undefined {
   if (!brandingShowsBanner(branding) || !branding?.bannerUrl) return undefined;
+  const layout = brandingPortalLayout(branding);
   return {
     backgroundImage: `url(${branding.bannerUrl})`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
+    backgroundSize: layout.backgroundFit === "fit" ? "contain" : "cover",
+    backgroundPosition: `${layout.focalX}% ${layout.focalY}%`,
   };
 }
 
@@ -517,6 +703,10 @@ export function parseBusinessBrandingInput(
     return { ok: false, code: "invalid_background_style", status: 400,
       message: "Background style must be neutral, gradient, or banner" };
   }
+  const layout = parsePortalLayoutFields(body);
+  if (!layout.ok) {
+    return { ok: false, code: layout.code, status: 400, message: layout.message };
+  }
   const showAfterRaw = body.showBrandingAfterReveal;
   let showBrandingAfterReveal = false;
   if (showAfterRaw === true) {
@@ -547,6 +737,11 @@ export function parseBusinessBrandingInput(
       backgroundColor: backgroundColor.value,
       textColor: textColor.value,
       backgroundStyle: backgroundStyle.value,
+      cardPosition: layout.layout.cardPosition,
+      backgroundFit: layout.layout.backgroundFit,
+      overlay: layout.layout.overlay,
+      focalX: layout.layout.focalX,
+      focalY: layout.layout.focalY,
       showBrandingAfterReveal,
     },
   };
@@ -571,6 +766,14 @@ export function toRevealBranding(
   branding: BusinessBranding | null | undefined,
 ): RevealBranding | undefined {
   if (brandingIsEmpty(branding) || !branding) return undefined;
+  const layout = brandingPortalLayout({
+    cardPosition: branding.cardPosition ?? undefined,
+    backgroundFit: branding.backgroundFit ?? undefined,
+    overlay: branding.overlay ?? undefined,
+    focalX: branding.focalX ?? undefined,
+    focalY: branding.focalY ?? undefined,
+  });
+  const defaults = DEFAULT_BRANDING_PORTAL_LAYOUT;
   return {
     ...(branding.companyName ? { companyName: branding.companyName } : {}),
     ...(branding.senderName ? { senderName: branding.senderName } : {}),
@@ -584,6 +787,11 @@ export function toRevealBranding(
     ...(branding.backgroundStyle && branding.backgroundStyle !== "neutral"
       ? { backgroundStyle: branding.backgroundStyle }
       : {}),
+    ...(layout.cardPosition !== defaults.cardPosition ? { cardPosition: layout.cardPosition } : {}),
+    ...(layout.backgroundFit !== defaults.backgroundFit ? { backgroundFit: layout.backgroundFit } : {}),
+    ...(layout.overlay !== defaults.overlay ? { overlay: layout.overlay } : {}),
+    ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
+    ...(layout.focalY !== defaults.focalY ? { focalY: layout.focalY } : {}),
     ...(branding.showBrandingAfterReveal === true
       ? { showBrandingAfterReveal: true }
       : {}),
@@ -612,6 +820,7 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
   const backgroundColor = parseBrandingHexColor(source.backgroundColor);
   const textColor = parseBrandingHexColor(source.textColor);
   const backgroundStyle = parseBackgroundStyle(source.backgroundStyle);
+  const layout = parsePortalLayoutLenient(source);
 
   return toRevealBranding({
     companyName: companyName.ok ? companyName.value : null,
@@ -624,6 +833,11 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
     textColor: textColor.ok ? textColor.value : null,
     backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
+    cardPosition: layout.cardPosition,
+    backgroundFit: layout.backgroundFit,
+    overlay: layout.overlay,
+    focalX: layout.focalX,
+    focalY: layout.focalY,
     showBrandingAfterReveal: source.showBrandingAfterReveal === true,
   });
 }

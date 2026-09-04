@@ -567,13 +567,16 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   );
 
   if (compact) {
+    const hasIdentity = Boolean(
+      branding?.logoUrl || branding?.senderName || branding?.companyName,
+    );
     return (
       <RevealHandoffStack
         compact
         branding={branding}
         brandingLine={brandingLine}
         logo={logo}
-        title={t.revealSharedWithYou ?? "A private note was shared with you"}
+        title={hasIdentity ? undefined : (t.privateNote ?? "Private note")}
         action={action}
         footnote={t.revealDeletedAfterOpening ?? "Deleted after opening"}
       />

@@ -3,7 +3,9 @@ import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
   brandingChromeUsesLightText,
+  brandingOverlayOpacity,
   brandingPageBackground,
+  brandingPortalLayout,
   brandingUsesPortalSurface,
   type RevealBranding,
 } from "@shared/businessBranding";
@@ -52,12 +54,26 @@ export function RecipientPortal({
   previewViewport = "desktop",
 }: RecipientPortalProps) {
   const page = brandingPageBackground(branding);
+  const layout = brandingPortalLayout(branding);
+  const overlayOpacity = brandingOverlayOpacity(branding);
   const resolvedSurface = resolveSurface(branding, surface);
   const useCard = resolvedSurface === "card" || resolvedSurface === "wide";
   const lightChrome = brandingChromeUsesLightText(branding);
   const languageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;
+  const cardAlign =
+    layout.cardPosition === "left"
+      ? "items-start"
+      : layout.cardPosition === "right"
+        ? "items-end"
+        : "items-center";
+  const cardGutter =
+    layout.cardPosition === "left"
+      ? "pl-4 sm:pl-8 lg:pl-14 pr-4"
+      : layout.cardPosition === "right"
+        ? "pr-4 sm:pr-8 lg:pr-14 pl-4"
+        : "px-4 sm:px-6";
 
   const chromeText = lightChrome
     ? "text-white"
@@ -72,7 +88,7 @@ export function RecipientPortal({
   const shellClass = preview
     ? previewViewport === "mobile"
       ? "relative mx-auto flex min-h-[34rem] w-[20rem] flex-col overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700"
-      : "relative flex min-h-[26rem] w-full flex-col overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700"
+      : "relative flex min-h-[28rem] w-full flex-col overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700"
     : "relative flex min-h-[100dvh] w-full flex-col";
 
   return (
@@ -83,7 +99,9 @@ export function RecipientPortal({
           ? { background: page.background }
           : page.kind === "color"
             ? { backgroundColor: page.backgroundColor }
-            : undefined
+            : page.kind === "image"
+              ? { backgroundColor: "#020617" }
+              : undefined
       }
     >
       {page.kind === "image" ? (
@@ -91,22 +109,26 @@ export function RecipientPortal({
           <img
             src={page.url}
             alt=""
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+            className={`pointer-events-none absolute inset-0 h-full w-full ${
+              layout.backgroundFit === "fit" ? "object-contain" : "object-cover"
+            }`}
+            style={{ objectPosition: `${layout.focalX}% ${layout.focalY}%` }}
             loading={preview ? "lazy" : "eager"}
             referrerPolicy="no-referrer"
           />
           <div
-            className="pointer-events-none absolute inset-0 bg-slate-950/45"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(15,23,42,0.45)_100%)]"
+            className="pointer-events-none absolute inset-0"
+            style={{ backgroundColor: `rgba(15, 23, 42, ${overlayOpacity})` }}
             aria-hidden
           />
         </>
       ) : null}
 
-      <header className="relative z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <header
+        className={`relative z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-6 ${
+          page.kind === "image" ? "bg-gradient-to-b from-black/55 to-transparent" : ""
+        }`}
+      >
         <a
           href="/"
           className={`inline-flex items-center gap-2 ${chromeText} ${preview ? "pointer-events-none" : ""}`}
@@ -158,14 +180,14 @@ export function RecipientPortal({
       </header>
 
       <div
-        className={`relative z-10 flex flex-1 flex-col items-center px-4 py-6 sm:px-6 ${
-          useCard ? "justify-center py-10 sm:py-14" : "pt-4 sm:pt-6"
+        className={`relative z-10 flex flex-1 flex-col ${cardAlign} ${
+          useCard ? `justify-center py-8 sm:py-12 ${cardGutter}` : "px-4 pt-4 sm:px-6 sm:pt-6"
         }`}
       >
         {useCard ? (
           <div
-            className={`w-full rounded-2xl bg-white/95 p-6 shadow-2xl ring-1 ring-black/5 backdrop-blur-md sm:p-8 [&_h1.page-title]:text-2xl [&_h1.page-title]:sm:text-3xl ${
-              resolvedSurface === "wide" ? "max-w-3xl" : "max-w-md"
+            className={`w-full rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 sm:p-6 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
+              resolvedSurface === "wide" ? "max-w-3xl" : "max-w-[20rem] sm:max-w-sm"
             }`}
           >
             {children}
@@ -178,7 +200,7 @@ export function RecipientPortal({
       <footer
         className={`relative z-20 px-4 py-4 text-center sm:px-6 ${footerMuted} ${
           preview ? "text-[10px]" : "text-xs sm:text-sm"
-        }`}
+        } ${page.kind === "image" ? "bg-gradient-to-t from-black/50 to-transparent" : ""}`}
       >
         <p className="m-0 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           <Lock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
@@ -197,7 +219,7 @@ type RevealHandoffCardProps = {
   branding?: RevealBranding;
   brandingLine: string | null;
   logo: ReactNode;
-  title: ReactNode;
+  title?: ReactNode;
   subtitle?: string;
   action: ReactNode;
   footnote?: string;
@@ -219,24 +241,27 @@ export function RevealHandoffStack({
   const role = branding?.senderRole?.trim();
   const company = branding?.companyName?.trim();
   const meta = [role, company].filter(Boolean).join(" · ");
+  const hasIdentity = Boolean(logo || sender || company || brandingLine);
 
   return (
     <div className="flex flex-col items-center text-center">
-      {logo ? <div className="mb-5">{logo}</div> : null}
-      <h1
-        className={
-          compact
-            ? "m-0 text-2xl font-extrabold tracking-tight text-gray-900"
-            : "page-title text-gray-900 dark:text-white"
-        }
-      >
-        {title}
-      </h1>
+      {logo ? <div className={compact ? "mb-3" : "mb-5"}>{logo}</div> : null}
+      {title ? (
+        <h1
+          className={
+            compact
+              ? "m-0 text-lg font-bold tracking-tight text-gray-900"
+              : "page-title text-gray-900 dark:text-white"
+          }
+        >
+          {title}
+        </h1>
+      ) : null}
       {subtitle ? (
         <p
           className={
             compact
-              ? "m-0 mt-2 max-w-sm text-sm leading-relaxed text-gray-500"
+              ? "m-0 mt-1.5 max-w-sm text-sm leading-relaxed text-gray-500"
               : "m-0 mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-gray-500 dark:text-gray-400 sm:text-xl"
           }
         >
@@ -244,8 +269,8 @@ export function RevealHandoffStack({
         </p>
       ) : null}
 
-      {sender || meta || brandingLine || branding?.trustMessage ? (
-        <div className={compact ? "mt-6 space-y-1" : "mt-8 space-y-1 sm:mt-10"}>
+      {hasIdentity || branding?.trustMessage ? (
+        <div className={compact ? `${title ? "mt-4" : ""} space-y-0.5` : "mt-8 space-y-1 sm:mt-10"}>
           {sender ? (
             <p className="m-0 text-base font-semibold text-gray-900">{sender}</p>
           ) : brandingLine ? (
@@ -253,16 +278,16 @@ export function RevealHandoffStack({
           ) : null}
           {meta ? <p className="m-0 text-sm text-gray-500">{meta}</p> : null}
           {branding?.trustMessage ? (
-            <p className="m-0 mx-auto mt-3 max-w-sm text-sm leading-relaxed text-gray-600">
+            <p className={`m-0 mx-auto max-w-sm text-sm leading-relaxed text-gray-600 ${compact ? "mt-2" : "mt-3"}`}>
               {branding.trustMessage}
             </p>
           ) : null}
         </div>
       ) : null}
 
-      <div className={`${compact ? "mt-8" : "mt-10 sm:mt-12"} w-full`}>{action}</div>
+      <div className={`${compact ? "mt-6" : "mt-10 sm:mt-12"} w-full`}>{action}</div>
       {footnote ? (
-        <p className={`m-0 ${compact ? "mt-4 text-xs text-gray-500" : "mt-4 text-sm text-gray-600/70 dark:text-gray-300/60 sm:mt-5"}`}>
+        <p className={`m-0 ${compact ? "mt-3 text-xs text-gray-500" : "mt-4 text-sm text-gray-600/70 dark:text-gray-300/60 sm:mt-5"}`}>
           {footnote}
         </p>
       ) : null}

@@ -93,7 +93,7 @@ import {
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
-import { parseStoredRevealBranding, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
+import { parseStoredRevealBranding, parseStoredPortalLayoutJson, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
 import { parseRevealBodyFont } from "@shared/revealBodyFont";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
@@ -921,7 +921,8 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
   const selectFull = `SELECT business_display_name, business_sender_name, business_sender_role,
               business_trust_message, business_logo_key, business_banner_key,
               business_accent_color, business_background_color, business_text_color,
-              business_background_style
+              business_background_style, business_portal_layout,
+              business_show_branding_after_reveal
        FROM users WHERE id = ? LIMIT 1`;
   const selectCore = `SELECT business_display_name, business_logo_key, business_accent_color,
               business_background_color, business_text_color
@@ -935,6 +936,7 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       row = await env.AUTH_DB.prepare(selectCore).bind(session.id).first<Record<string, string | null>>();
     }
     if (!row) return undefined;
+    const layout = parseStoredPortalLayoutJson(row.business_portal_layout);
     return toRevealBranding({
       companyName: row.business_display_name,
       senderName: row.business_sender_name,
@@ -946,6 +948,8 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       backgroundColor: row.business_background_color,
       textColor: row.business_text_color,
       backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "banner",
+      ...layout,
+      showBrandingAfterReveal: String(row.business_show_branding_after_reveal ?? "") === "1",
     });
   } catch (error) {
     console.warn("[BRANDING] Could not resolve account branding:", error);

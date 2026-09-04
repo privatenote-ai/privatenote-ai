@@ -14,6 +14,11 @@ import {
   type AccountType,
   type PlanFeatureFlags,
 } from "@shared/planCatalog";
+import {
+  DEFAULT_BRANDING_PORTAL_LAYOUT,
+  brandingPortalLayout,
+  type BrandingPortalLayout,
+} from "@shared/businessBranding";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/context/AuthContext";
 import { ACCOUNT_ENTITLEMENTS_INVALIDATED_EVENT } from "@/utils/accountEntitlementEvents";
@@ -38,6 +43,7 @@ export type AccountEntitlementSnapshot = {
   businessTrustMessage: string | null;
   businessBannerUrl: string | null;
   businessBackgroundStyle: "neutral" | "gradient" | "banner";
+  businessPortalLayout: BrandingPortalLayout;
   businessShowBrandingAfterReveal: boolean;
   hostedAiUsage: {
     used: number;
@@ -68,6 +74,7 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   businessTrustMessage: null,
   businessBannerUrl: null,
   businessBackgroundStyle: "neutral",
+  businessPortalLayout: { ...DEFAULT_BRANDING_PORTAL_LAYOUT },
   businessShowBrandingAfterReveal: false,
   hostedAiUsage: {
     used: 0,
@@ -132,6 +139,7 @@ export function AccountEntitlementsProvider({
       businessTrustMessage?: string | null;
       businessBannerUrl?: string | null;
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessPortalLayout?: BrandingPortalLayout | null;
       businessShowBrandingAfterReveal?: boolean;
       hostedAiUsage?: {
         used?: number;
@@ -175,6 +183,7 @@ export function AccountEntitlementsProvider({
           businessTrustMessage: summary.businessTrustMessage ?? null,
           businessBannerUrl: summary.businessBannerUrl ?? null,
           businessBackgroundStyle: summary.businessBackgroundStyle ?? "neutral",
+          businessPortalLayout: brandingPortalLayout(summary.businessPortalLayout ?? undefined),
           businessShowBrandingAfterReveal:
             summary.businessShowBrandingAfterReveal === true,
           hostedAiUsage: {

@@ -57,7 +57,15 @@ import {
   brandingCtaStyle,
   brandingUsesPortalSurface,
   contrastingTextOn,
+  DEFAULT_BRANDING_PORTAL_LAYOUT,
+  parseBrandingHexColor,
+  parseStoredPortalLayoutJson,
+  brandingPortalLayout,
+  type BrandingBackgroundFit,
   type BrandingBackgroundStyle,
+  type BrandingCardPosition,
+  type BrandingOverlay,
+  type BrandingPortalLayout,
   type RevealBranding,
 } from "@shared/businessBranding";
 import { RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
@@ -74,6 +82,17 @@ import {
   formatNoteFileAccessWindow,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
+
+const DEFAULT_BRAND_COLOR = "#2563eb";
+
+/** `#rgb` / `#rrggbb`, or the same digits without `#`. */
+function normalizeBrandColorInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  const parsed = parseBrandingHexColor(withHash);
+  return parsed.ok && parsed.value ? parsed.value : null;
+}
 
 /** Scaled-down recipient portal so branding edits match what recipients see. */
 const BrandingPreview: React.FC<{
@@ -118,7 +137,13 @@ const BrandingPreview: React.FC<{
         branding={branding}
         brandingLine={brandingLine}
         logo={logo}
-        title={compact ? "A private note was shared with you" : "Reveal Private Note"}
+        title={
+          compact && (branding.logoUrl || branding.senderName || branding.companyName)
+            ? undefined
+            : compact
+              ? "Private note"
+              : "Reveal Private Note"
+        }
         action={
           <button
             type="button"
@@ -134,6 +159,7 @@ const BrandingPreview: React.FC<{
     </RecipientPortal>
   );
 };
+
 
 /** Compact preview of what a screenshot of the opened note would capture. */
 const OpenedNoteBrandingPreview: React.FC<{
@@ -195,6 +221,40 @@ const BACKGROUND_CHOICES: Array<{
   { id: "gradient", label: "Brand", hint: "Subtle gradient from your color" },
   { id: "banner", label: "Custom", hint: "Full-page photograph" },
 ];
+
+function ChoiceRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ id: T; label: string }>;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div>
+      <Label className="mb-2 block text-sm">{label}</Label>
+      <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              value === option.id
+                ? "bg-primary/10 text-primary"
+                : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type NoteDefaultsForm = {
   expirySeconds: number;
@@ -310,7 +370,8 @@ export default function AccountPreferences() {
   const [resettingNoteDefaults, setResettingNoteDefaults] = useState(false);
   const [savedNoteDefaultsIndicator, setSavedNoteDefaultsIndicator] = useState(false);
   const [businessDisplayName, setBusinessDisplayName] = useState("");
-  const [businessAccentColor, setBusinessAccentColor] = useState("#2563eb");
+  const [businessAccentColor, setBusinessAccentColor] = useState(DEFAULT_BRAND_COLOR);
+  const [businessAccentColorDraft, setBusinessAccentColorDraft] = useState(DEFAULT_BRAND_COLOR);
   const [businessBackgroundColor, setBusinessBackgroundColor] = useState("#ffffff");
   const [businessTextColor, setBusinessTextColor] = useState("#ffffff");
   const [businessLogoUrl, setBusinessLogoUrl] = useState<string | null>(null);
@@ -320,6 +381,9 @@ export default function AccountPreferences() {
   const [businessBannerUrl, setBusinessBannerUrl] = useState<string | null>(null);
   const [businessBackgroundStyle, setBusinessBackgroundStyle] =
     useState<"neutral" | "gradient" | "banner">("neutral");
+  const [portalLayout, setPortalLayout] = useState<BrandingPortalLayout>({
+    ...DEFAULT_BRANDING_PORTAL_LAYOUT,
+  });
   const [businessShowBrandingAfterReveal, setBusinessShowBrandingAfterReveal] =
     useState(false);
   const [brandingPreviewViewport, setBrandingPreviewViewport] =
@@ -379,6 +443,7 @@ export default function AccountPreferences() {
         businessTrustMessage?: string | null;
         businessBannerUrl?: string | null;
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+        businessPortalLayout?: BrandingPortalLayout | string | null;
         businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
@@ -391,17 +456,24 @@ export default function AccountPreferences() {
       if (data.ok) {
         setBusinessDisplayName(data.businessDisplayName ?? "");
         setBusinessLogoUrl(data.businessLogoUrl ?? null);
-        setBusinessAccentColor(data.businessAccentColor ?? "#2563eb");
+        const accent = data.businessAccentColor ?? DEFAULT_BRAND_COLOR;
+        setBusinessAccentColor(accent);
+        setBusinessAccentColorDraft(accent);
         setBusinessBackgroundColor(data.businessBackgroundColor ?? "#ffffff");
         setBusinessTextColor(
           data.businessTextColor
-            ?? contrastingTextOn(data.businessAccentColor ?? "#2563eb"),
+            ?? contrastingTextOn(accent),
         );
         setBusinessSenderName(data.businessSenderName ?? "");
         setBusinessSenderRole(data.businessSenderRole ?? "");
         setBusinessTrustMessage(data.businessTrustMessage ?? "");
         setBusinessBannerUrl(data.businessBannerUrl ?? null);
         setBusinessBackgroundStyle(data.businessBackgroundStyle ?? "neutral");
+        setPortalLayout(
+          typeof data.businessPortalLayout === "string"
+            ? parseStoredPortalLayoutJson(data.businessPortalLayout)
+            : brandingPortalLayout(data.businessPortalLayout ?? undefined),
+        );
         setBusinessShowBrandingAfterReveal(
           data.businessShowBrandingAfterReveal === true,
         );
@@ -581,6 +653,7 @@ export default function AccountPreferences() {
         businessAccentColor: string | null;
         businessBackgroundColor: string | null;
         businessTextColor: string | null;
+        businessPortalLayout?: BrandingPortalLayout;
         businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/preferences", "PATCH", {
         businessDisplayName,
@@ -591,15 +664,21 @@ export default function AccountPreferences() {
         businessSenderRole,
         businessTrustMessage,
         businessBackgroundStyle,
+        businessPortalLayout: portalLayout,
         businessShowBrandingAfterReveal,
       });
       setBusinessDisplayName(response.businessDisplayName ?? "");
-      setBusinessAccentColor(response.businessAccentColor ?? "#2563eb");
+      const accent = response.businessAccentColor ?? DEFAULT_BRAND_COLOR;
+      setBusinessAccentColor(accent);
+      setBusinessAccentColorDraft(accent);
       setBusinessBackgroundColor(response.businessBackgroundColor ?? "#ffffff");
       setBusinessTextColor(
         response.businessTextColor
-          ?? contrastingTextOn(response.businessAccentColor ?? "#2563eb"),
+          ?? contrastingTextOn(accent),
       );
+      if (response.businessPortalLayout) {
+        setPortalLayout(brandingPortalLayout(response.businessPortalLayout));
+      }
       if (typeof response.businessShowBrandingAfterReveal === "boolean") {
         setBusinessShowBrandingAfterReveal(response.businessShowBrandingAfterReveal);
       }
@@ -960,25 +1039,53 @@ export default function AccountPreferences() {
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Brand color</Label>
+                <Label htmlFor="business-accent-color-hex" className="mb-2 block text-sm">
+                  Brand color
+                </Label>
                 <div className="flex items-center gap-3">
                   <input
                     id="business-accent-color"
                     type="color"
                     value={businessAccentColor}
+                    aria-label="Brand color picker"
                     onChange={(event) => {
                       const next = event.target.value;
                       setBusinessAccentColor(next);
+                      setBusinessAccentColorDraft(next);
                       setBusinessTextColor(contrastingTextOn(next));
                     }}
-                    className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
+                    className="h-10 w-12 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
                   />
-                  <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                    {businessAccentColor}
-                  </span>
+                  <input
+                    id="business-accent-color-hex"
+                    value={businessAccentColorDraft}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setBusinessAccentColorDraft(next);
+                      const parsed = normalizeBrandColorInput(next);
+                      if (parsed) {
+                        setBusinessAccentColor(parsed);
+                        setBusinessTextColor(contrastingTextOn(parsed));
+                      }
+                    }}
+                    onBlur={() => setBusinessAccentColorDraft(businessAccentColor)}
+                    spellCheck={false}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    inputMode="text"
+                    maxLength={7}
+                    placeholder={DEFAULT_BRAND_COLOR}
+                    aria-invalid={normalizeBrandColorInput(businessAccentColorDraft) == null}
+                    className={`w-32 rounded-md border bg-white px-3 py-2 font-mono text-sm dark:bg-gray-900 ${
+                      normalizeBrandColorInput(businessAccentColorDraft)
+                        ? "border-gray-300 dark:border-gray-700"
+                        : "border-red-400 dark:border-red-500"
+                    }`}
+                  />
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Used for Reveal and Copy. Brand background generates a gradient from this colour.
+                  Hex value such as #2563eb. Used for Reveal and Copy. Brand
+                  background generates a gradient from this colour.
                 </p>
               </div>
 
@@ -1091,21 +1198,44 @@ export default function AccountPreferences() {
                 {businessBackgroundStyle === "banner" || businessBannerUrl ? (
                   <>
                     <div
-                      className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
+                      className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
                       style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
                     >
                       {businessBannerUrl ? (
-                        <img
-                          src={businessBannerUrl}
-                          alt="Custom recipient background"
-                          className="h-full w-full object-cover object-center"
-                        />
+                        <button
+                          type="button"
+                          className="relative block h-full w-full cursor-crosshair"
+                          aria-label="Set image focal point"
+                          onClick={(event) => {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const x = Math.round(((event.clientX - rect.left) / rect.width) * 100);
+                            const y = Math.round(((event.clientY - rect.top) / rect.height) * 100);
+                            setPortalLayout((prev) => ({
+                              ...prev,
+                              focalX: Math.min(100, Math.max(0, x)),
+                              focalY: Math.min(100, Math.max(0, y)),
+                            }));
+                          }}
+                        >
+                          <img
+                            src={businessBannerUrl}
+                            alt="Custom recipient background"
+                            className="h-full w-full object-contain"
+                          />
+                          <span
+                            className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow"
+                            style={{
+                              left: `${portalLayout.focalX}%`,
+                              top: `${portalLayout.focalY}%`,
+                            }}
+                          />
+                        </button>
                       ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
-                          <p className="m-0 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                          <p className="m-0 text-sm font-semibold text-gray-200">
                             {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
                           </p>
-                          <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                          <p className="m-0 text-xs text-gray-400">
                             Landscape photograph · PNG, JPEG, or WebP
                           </p>
                         </div>
@@ -1145,10 +1275,36 @@ export default function AccountPreferences() {
                     </div>
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                       Recommended {BRANDING_BANNER_SIZE_LABEL} (16:9). Maximum{" "}
-                      {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. PrivateNote
-                      covers the page and darkens the photo so the reveal card stays readable.
-                      The image is atmospheric — never the place for headlines.
+                      {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.
+                      Click the photo to set the focal point. Recipients cannot move the image.
                     </p>
+                    {businessBackgroundStyle === "banner" ? (
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <ChoiceRow<BrandingBackgroundFit>
+                          label="Image"
+                          value={portalLayout.backgroundFit}
+                          onChange={(backgroundFit) =>
+                            setPortalLayout((prev) => ({ ...prev, backgroundFit }))
+                          }
+                          options={[
+                            { id: "fill", label: "Fill" },
+                            { id: "fit", label: "Fit" },
+                          ]}
+                        />
+                        <ChoiceRow<BrandingOverlay>
+                          label="Overlay"
+                          value={portalLayout.overlay}
+                          onChange={(overlay) =>
+                            setPortalLayout((prev) => ({ ...prev, overlay }))
+                          }
+                          options={[
+                            { id: "light", label: "Light" },
+                            { id: "medium", label: "Medium" },
+                            { id: "dark", label: "Dark" },
+                          ]}
+                        />
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <input
@@ -1163,6 +1319,21 @@ export default function AccountPreferences() {
                   />
                 )}
               </div>
+
+              {businessBackgroundStyle !== "neutral" ? (
+                <ChoiceRow<BrandingCardPosition>
+                  label="Card position"
+                  value={portalLayout.cardPosition}
+                  onChange={(cardPosition) =>
+                    setPortalLayout((prev) => ({ ...prev, cardPosition }))
+                  }
+                  options={[
+                    { id: "left", label: "Left" },
+                    { id: "center", label: "Center" },
+                    { id: "right", label: "Right" },
+                  ]}
+                />
+              ) : null}
 
               <div>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -1204,6 +1375,7 @@ export default function AccountPreferences() {
                     backgroundColor: businessBackgroundColor,
                     textColor: businessTextColor,
                     backgroundStyle: businessBackgroundStyle,
+                    ...portalLayout,
                     showBrandingAfterReveal: businessShowBrandingAfterReveal,
                   }}
                 />
@@ -1223,6 +1395,7 @@ export default function AccountPreferences() {
                     backgroundColor: businessBackgroundColor,
                     textColor: businessTextColor,
                     backgroundStyle: businessBackgroundStyle,
+                    ...portalLayout,
                     showBrandingAfterReveal: businessShowBrandingAfterReveal,
                   }}
                   senderLine={
@@ -1267,8 +1440,8 @@ export default function AccountPreferences() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Branding is public metadata on the reveal gate. It never includes
-                note content, titles, or previews. After open, branding stays hidden
+                Branding is public reveal metadata only. It never includes note
+                content, titles, or previews. After open, branding stays hidden
                 unless you opt in above.
               </p>
             </div>

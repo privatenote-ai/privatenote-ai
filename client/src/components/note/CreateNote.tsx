@@ -524,6 +524,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     backgroundColor: entitlements.businessBackgroundColor,
     textColor: entitlements.businessTextColor,
     backgroundStyle: entitlements.businessBackgroundStyle,
+    ...entitlements.businessPortalLayout,
     showBrandingAfterReveal: entitlements.businessShowBrandingAfterReveal,
   });
   const hasRevealBranding = Boolean(revealBrandingSnapshot);

@@ -11,8 +11,10 @@ import {
   brandingHeroStyle,
   brandingHeroUsesLightText,
   brandingIsEmpty,
-  brandingShowsAfterReveal,
   brandingPageBackground,
+  brandingOverlayOpacity,
+  brandingPortalLayout,
+  brandingShowsAfterReveal,
   brandingShowsBanner,
   brandingUsesPortalSurface,
   brandingChromeUsesLightText,
@@ -70,9 +72,15 @@ describe("parseBusinessBrandingInput", () => {
       backgroundColor: "#ffffff",
       textColor: "#111827",
       backgroundStyle: "banner",
+      cardPosition: "center",
+      backgroundFit: "fill",
+      overlay: "light",
+      focalX: 50,
+      focalY: 50,
       showBrandingAfterReveal: false,
     });
   });
+
 
   it("accepts showBrandingAfterReveal opt-in", () => {
     const result = parseBusinessBrandingInput(
@@ -136,6 +144,33 @@ describe("parseBusinessBrandingInput", () => {
 
     const badText = parseBusinessBrandingInput({ textColor: "rgb(0,0,0)" }, allowed);
     assert.equal(badText.ok === false && badText.code, "invalid_text_color");
+  });
+
+  it("accepts sender layout controls and rejects CSS-carrying overlay values", () => {
+    const result = parseBusinessBrandingInput(
+      {
+        accentColor: "#2563eb",
+        backgroundStyle: "banner",
+        bannerUrl: "https://passwords.lu/banner.webp",
+        cardPosition: "left",
+        backgroundFit: "fit",
+        overlay: "medium",
+        focalX: 20,
+        focalY: 80,
+      },
+      allowed,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.ok === true && result.branding.cardPosition, "left");
+    assert.equal(result.ok === true && result.branding.backgroundFit, "fit");
+    assert.equal(result.ok === true && result.branding.overlay, "medium");
+    assert.equal(result.ok === true && result.branding.focalX, 20);
+    assert.equal(result.ok === true && result.branding.focalY, 80);
+
+    const badOverlay = parseBusinessBrandingInput({ overlay: "rgba(0,0,0,0.8)" }, allowed);
+    assert.equal(badOverlay.ok === false && badOverlay.code, "invalid_overlay");
+    const badFocal = parseBusinessBrandingInput({ focalX: 150 }, allowed);
+    assert.equal(badFocal.ok === false && badFocal.code, "invalid_image_position");
   });
 });
 
@@ -247,38 +282,6 @@ describe("toRevealBranding", () => {
     );
     assert.equal(toRevealBranding(null), undefined);
   });
-
-  it("includes showBrandingAfterReveal only when true", () => {
-    assert.equal(
-      toRevealBranding({
-        companyName: "Acme",
-        senderName: null,
-        logoUrl: null,
-        accentColor: null,
-        showBrandingAfterReveal: true,
-      })?.showBrandingAfterReveal,
-      true,
-    );
-    assert.equal(
-      toRevealBranding({
-        companyName: "Acme",
-        senderName: null,
-        logoUrl: null,
-        accentColor: null,
-        showBrandingAfterReveal: false,
-      })?.showBrandingAfterReveal,
-      undefined,
-    );
-  });
-});
-
-describe("brandingShowsAfterReveal", () => {
-  it("defaults to false when the flag is missing", () => {
-    assert.equal(brandingShowsAfterReveal(undefined), false);
-    assert.equal(brandingShowsAfterReveal({}), false);
-    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: false }), false);
-    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: true }), true);
-  });
 });
 
 describe("parseStoredRevealBranding", () => {
@@ -296,23 +299,6 @@ describe("parseStoredRevealBranding", () => {
         logoUrl: path,
         accentColor: "#2563eb",
       },
-    );
-  });
-
-  it("preserves showBrandingAfterReveal from stored note metadata", () => {
-    assert.equal(
-      parseStoredRevealBranding({
-        companyName: "Acme",
-        showBrandingAfterReveal: true,
-      })?.showBrandingAfterReveal,
-      true,
-    );
-  });
-
-  it("treats a missing showBrandingAfterReveal as off", () => {
-    assert.equal(
-      parseStoredRevealBranding({ companyName: "Acme" })?.showBrandingAfterReveal,
-      undefined,
     );
   });
 
@@ -450,7 +436,7 @@ describe("brandingBannerStyle", () => {
     assert.deepEqual(brandingBannerStyle(branding), {
       backgroundImage: "url(https://passwords.lu/banner.webp)",
       backgroundSize: "cover",
-      backgroundPosition: "center",
+      backgroundPosition: "50% 50%",
     });
   });
 
@@ -462,6 +448,61 @@ describe("brandingBannerStyle", () => {
     } as const;
     assert.equal(brandingShowsBanner(branding), false);
     assert.equal(brandingBannerStyle(branding), undefined);
+  });
+});
+
+
+describe("brandingShowsAfterReveal", () => {
+  it("defaults to false when the flag is missing", () => {
+    assert.equal(brandingShowsAfterReveal(undefined), false);
+    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: false }), false);
+    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: true }), true);
+  });
+});
+
+describe("branding portal layout", () => {
+  it("defaults overlay to light (~16%) so photography stays visible", () => {
+    assert.equal(brandingOverlayOpacity({ backgroundStyle: "banner" }), 0.16);
+    assert.equal(brandingPortalLayout(undefined).overlay, "light");
+    assert.equal(brandingPortalLayout(undefined).cardPosition, "center");
+  });
+
+  it("omits default layout from the note snapshot and keeps non-defaults", () => {
+    const defaultsOnly = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+    });
+    assert.deepEqual(defaultsOnly, {
+      companyName: "Acme",
+      accentColor: "#2563eb",
+    });
+
+    const custom = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      cardPosition: "left",
+      overlay: "dark",
+      focalY: 18,
+    });
+    assert.equal(custom?.cardPosition, "left");
+    assert.equal(custom?.overlay, "dark");
+    assert.equal(custom?.focalY, 18);
+    assert.equal("backgroundFit" in (custom ?? {}), false);
+  });
+
+  it("drops a bad overlay on stored notes without denying the reveal", () => {
+    const wire = parseStoredRevealBranding({
+      companyName: "passwords.lu",
+      overlay: "rgba(0,0,0,0.9)",
+      cardPosition: "right",
+    });
+    assert.equal(wire?.companyName, "passwords.lu");
+    assert.equal(wire?.cardPosition, "right");
+    assert.equal(wire?.overlay, undefined);
   });
 });
 
