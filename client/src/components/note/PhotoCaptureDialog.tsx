@@ -416,7 +416,7 @@ export function PhotoCaptureDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-3">
+        <div className="mt-3 flex flex-col items-center gap-3 sm:mt-0">
           <div className="relative mx-auto h-[min(62svh,26rem)] w-auto max-w-full aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-[min(68vh,28rem)]">
             <video
               ref={videoRef}
@@ -505,7 +505,7 @@ export function PhotoCaptureDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="z-10 mt-auto flex-wrap gap-2 bg-background pt-2 sm:static sm:justify-center sm:space-x-0 sm:gap-2">
+        <DialogFooter className="z-10 mt-auto flex-wrap gap-2 bg-background pt-5 sm:static sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2">
           {phase === "live" ? (
             <Button
               type="button"
