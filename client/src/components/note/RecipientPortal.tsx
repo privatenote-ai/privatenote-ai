@@ -222,8 +222,12 @@ export function RecipientPortal({
       >
         {useCard ? (
           <div
-            className={`w-full rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 sm:p-6 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
-              resolvedSurface === "wide" ? "max-w-3xl" : "max-w-[20rem] sm:max-w-sm"
+            className={`w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
+              resolvedSurface === "wide"
+                ? "max-w-3xl p-5 sm:p-6"
+                : preview && previewViewport === "desktop"
+                  ? "max-w-[13rem] p-3.5"
+                  : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
             }`}
           >
             {children}
