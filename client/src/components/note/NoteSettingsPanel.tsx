@@ -178,13 +178,13 @@ function SettingsFieldLabel({
           {icon}
         </span>
       </SettingsInfoTooltip>
-      <span className={`min-w-0 leading-snug${singleLine ? " whitespace-nowrap" : ""}`}>
+      <span className={`min-w-0 leading-snug${singleLine ? " sm:whitespace-nowrap" : ""}`}>
         {label}
       </span>
     </>
   );
   const className = singleLine
-    ? "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+    ? "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:items-center"
     : "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
   if (htmlFor) {
     return (
@@ -904,7 +904,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
                         label={
                           t.settingsEmailAlertOnOpenedDestroyed ??
-                          "Email alert when this note is opened and destroyed"
+                          "Email alert when note is opened and destroyed"
                         }
                         info={
                           t.settingsEmailAlertOnOpenedDestroyedInfo ??
@@ -935,7 +935,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
                           iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
                           label={
-                            t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
+                            t.settingsEmailAlertOnOpen ?? "Email alert when note is opened"
                           }
                           info={
                             t.settingsEmailAlertOnOpenInfo ??
@@ -962,7 +962,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           iconToneClassName="bg-rose-50 dark:bg-rose-900/30"
                           label={
                             t.settingsEmailAlertOnDestroyed ??
-                            "Email alert when this note is destroyed"
+                            "Email alert when note is destroyed"
                           }
                           info={
                             t.settingsEmailAlertOnDestroyedInfo ??
@@ -999,9 +999,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         label={
                           hasVoiceMessage
                             ? (t.settingsEmailAlertOnRecordingDownload ??
-                              "Email alert when a recording is downloaded")
+                              "Email alert when recording is downloaded")
                             : (t.settingsEmailAlertOnAttachmentDownload ??
-                              "Email alert when an attachment is downloaded")
+                              "Email alert when attachment is downloaded")
                         }
                         info={
                           hasVoiceMessage

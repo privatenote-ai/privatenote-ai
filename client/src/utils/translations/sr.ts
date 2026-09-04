@@ -528,6 +528,9 @@ export const sr: Translations = {
   settingsEmailAlertOnOpenInfo: "Jedna e-poruka kada se pristupi linku. Sadržaj poruke se nikada ne uključuje.",
   settingsEmailAlertOnDestroyed: "Kada se ova poruka uništi",
   settingsEmailAlertOnDestroyedInfo: "Jedna e-poruka kada se poruka više ne može otvoriti.",
+  settingsEmailAlertOnOpenedDestroyed: "Kada se ova poruka otvori i uništi",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Jedna e-poruka kada se pristupi jednokratnom linku i poruka se uništi. Sadržaj poruke se nikada ne uključuje.",
   settingsNoteLabel: "Oznaka poruke",
   settingsNoteLabelPlaceholder: "npr. Paket za uključivanje klijenta",
   settingsNoteLabelHint: "Opciono. Prikazuje se samo u vašem centru za obaveštenja na ovom uređaju — nikada se ne šalje uz poruku.",

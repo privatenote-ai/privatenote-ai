@@ -528,6 +528,9 @@ export const hr: Translations = {
   settingsEmailAlertOnOpenInfo: "Jedna e-poruka kada se pristupi vezi. Sadržaj poruke nikada nije uključen.",
   settingsEmailAlertOnDestroyed: "Kad se ova bilješka uništi",
   settingsEmailAlertOnDestroyedInfo: "Jedna e-poruka kada se bilješka više ne može otvoriti.",
+  settingsEmailAlertOnOpenedDestroyed: "Kada se ova bilješka otvori i uništi",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Jedna e-poruka kada se pristupi jednokratnoj vezi i bilješka se uništi. Sadržaj poruke nikada nije uključen.",
   settingsNoteLabel: "Oznaka bilješke",
   settingsNoteLabelPlaceholder: "npr. Paket za integraciju klijenta",
   settingsNoteLabelHint: "Neobavezno. Prikazuje se samo u vašem Centru za obavijesti na ovom uređaju — nikad se ne šalje s porukom.",

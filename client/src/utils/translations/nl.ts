@@ -543,6 +543,9 @@ export const nl: Translations = {
   settingsEmailAlertOnOpenInfo: "Eén e-mail wanneer de link wordt geopend. De inhoud van het bericht wordt nooit opgenomen.",
   settingsEmailAlertOnDestroyed: "Wanneer deze notitie wordt vernietigd",
   settingsEmailAlertOnDestroyedInfo: "Eén e-mail wanneer de notitie niet meer kan worden geopend.",
+  settingsEmailAlertOnOpenedDestroyed: "Wanneer deze notitie wordt geopend en vernietigd",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Eén e-mail wanneer de eenmalige link wordt geopend en de notitie wordt vernietigd. De inhoud van het bericht wordt nooit opgenomen.",
   settingsNoteLabel: "Let op etiket",
   settingsNoteLabelPlaceholder: "bijv. Onboardingpakket voor klanten",
   settingsNoteLabelHint: "Optioneel. Wordt alleen weergegeven in uw berichtencentrum op dit apparaat en wordt nooit meegestuurd met de notitie.",

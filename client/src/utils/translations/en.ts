@@ -632,17 +632,17 @@ export const en: Translations = {
   fileAccessWindow1Hour: "1 hour",
   settingsEmailAlerts: "Email alerts",
   settingsNotificationCenter: "Notification Center",
-  settingsEmailAlertOnOpen: "Email alert when this note is opened",
+  settingsEmailAlertOnOpen: "Email alert when note is opened",
   settingsEmailAlertOnOpenInfo: "One email when the link is accessed. Message content is never included.",
-  settingsEmailAlertOnDestroyed: "Email alert when this note is destroyed",
+  settingsEmailAlertOnDestroyed: "Email alert when note is destroyed",
   settingsEmailAlertOnDestroyedInfo: "One email when the note can no longer be opened.",
-  settingsEmailAlertOnOpenedDestroyed: "Email alert when this note is opened and destroyed",
+  settingsEmailAlertOnOpenedDestroyed: "Email alert when note is opened and destroyed",
   settingsEmailAlertOnOpenedDestroyedInfo:
     "One email when the one-time link is accessed and the note is destroyed. Message content is never included.",
-  settingsEmailAlertOnAttachmentDownload: "Email alert when an attachment is downloaded",
+  settingsEmailAlertOnAttachmentDownload: "Email alert when attachment is downloaded",
   settingsEmailAlertOnAttachmentDownloadInfo:
     "One email when the encrypted attachment is requested for download. File contents are never included.",
-  settingsEmailAlertOnRecordingDownload: "Email alert when a recording is downloaded",
+  settingsEmailAlertOnRecordingDownload: "Email alert when recording is downloaded",
   settingsEmailAlertOnRecordingDownloadInfo:
     "One email when the encrypted voice recording is requested for download. Audio contents are never included.",
   settingsEmailAlertDestinations: "Where to send alerts",

@@ -528,6 +528,9 @@ export const it: Translations = {
   settingsEmailAlertOnOpenInfo: "Una e-mail quando si accede al collegamento. Il contenuto del messaggio non viene mai incluso.",
   settingsEmailAlertOnDestroyed: "Quando questa nota verrà distrutta",
   settingsEmailAlertOnDestroyedInfo: "Un'e-mail quando la nota non può più essere aperta.",
+  settingsEmailAlertOnOpenedDestroyed: "Quando questa nota viene aperta e distrutta",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Una e-mail quando si accede al collegamento monouso e la nota viene distrutta. Il contenuto del messaggio non viene mai incluso.",
   settingsNoteLabel: "Etichetta della nota",
   settingsNoteLabelPlaceholder: "per esempio. Pacchetto di onboarding del cliente",
   settingsNoteLabelHint: "Opzionale. Mostrato solo nel Centro notifiche su questo dispositivo: mai inviato con la nota.",

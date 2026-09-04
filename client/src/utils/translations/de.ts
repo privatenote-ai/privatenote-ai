@@ -543,6 +543,9 @@ export const de: Translations = {
   settingsEmailAlertOnOpenInfo: "Eine E-Mail, wenn auf den Link zugegriffen wird. Der Nachrichteninhalt ist niemals enthalten.",
   settingsEmailAlertOnDestroyed: "Wenn diese Notiz zerstört wird",
   settingsEmailAlertOnDestroyedInfo: "Eine E-Mail, wenn die Notiz nicht mehr geöffnet werden kann.",
+  settingsEmailAlertOnOpenedDestroyed: "Wenn diese Notiz geöffnet und zerstört wird",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Eine E-Mail, wenn der einmalige Link geöffnet und die Notiz zerstört wird. Der Nachrichteninhalt ist niemals enthalten.",
   settingsNoteLabel: "Notizlabel",
   settingsNoteLabelPlaceholder: "z.B. Kunden-Onboarding-Paket",
   settingsNoteLabelHint: "Optional. Wird nur in Ihrem Benachrichtigungscenter auf diesem Gerät angezeigt – nie mit der Notiz gesendet.",

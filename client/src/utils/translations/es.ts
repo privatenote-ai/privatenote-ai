@@ -543,6 +543,9 @@ export const es: Translations = {
   settingsEmailAlertOnOpenInfo: "Te avisamos por correo cuando alguien abre el enlace. Nunca incluimos el contenido del mensaje.",
   settingsEmailAlertOnDestroyed: "Cuando se destruya esta nota",
   settingsEmailAlertOnDestroyedInfo: "Te avisamos por correo cuando la nota ya no se pueda abrir.",
+  settingsEmailAlertOnOpenedDestroyed: "Cuando esta nota se abra y destruya",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Un correo cuando se acceda al enlace de un solo uso y se destruya la nota. El contenido del mensaje nunca se incluye.",
   settingsNoteLabel: "Etiqueta de nota",
   settingsNoteLabelPlaceholder: "p. ej. Paquete de onboarding del cliente",
   settingsNoteLabelHint: "Opcional. Solo se muestra en tu centro de notificaciones en este dispositivo; nunca se envía con la nota.",

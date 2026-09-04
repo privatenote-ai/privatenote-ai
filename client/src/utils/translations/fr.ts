@@ -528,6 +528,9 @@ export const fr: Translations = {
   settingsEmailAlertOnOpenInfo: "Un e-mail lorsque le lien est consulté. Le contenu du message n'est jamais inclus.",
   settingsEmailAlertOnDestroyed: "Quand cette note est détruite",
   settingsEmailAlertOnDestroyedInfo: "Un e-mail lorsque la note ne peut plus être ouverte.",
+  settingsEmailAlertOnOpenedDestroyed: "Quand cette note est ouverte et détruite",
+  settingsEmailAlertOnOpenedDestroyedInfo:
+    "Un e-mail lorsque le lien à usage unique est consulté et que la note est détruite. Le contenu du message n'est jamais inclus.",
   settingsNoteLabel: "Étiquette de note",
   settingsNoteLabelPlaceholder: "par ex. Pack d'intégration client",
   settingsNoteLabelHint: "Facultatif. Affiché uniquement dans votre centre de notifications sur cet appareil ; jamais envoyé avec la note.",
