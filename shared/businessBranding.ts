@@ -49,6 +49,11 @@ export type BusinessBranding = {
   backgroundColor?: string | null;
   textColor?: string | null;
   backgroundStyle?: BrandingBackgroundStyle;
+  /**
+   * When true, sender branding also appears on the opened-note view.
+   * Default false so screenshots of secrets do not carry logo/attribution.
+   */
+  showBrandingAfterReveal?: boolean | null;
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
@@ -63,6 +68,8 @@ export type RevealBranding = {
   backgroundColor?: string;
   textColor?: string;
   backgroundStyle?: BrandingBackgroundStyle;
+  /** Present only when true; missing/false means hide branding after open. */
+  showBrandingAfterReveal?: boolean;
 };
 
 export type BrandingCtaStyle = {
@@ -90,7 +97,15 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   backgroundColor: null,
   textColor: null,
   backgroundStyle: "neutral",
+  showBrandingAfterReveal: false,
 };
+
+/** True when the opened-note view should keep sender branding (opt-in). */
+export function brandingShowsAfterReveal(
+  branding: Pick<RevealBranding, "showBrandingAfterReveal"> | undefined,
+): boolean {
+  return branding?.showBrandingAfterReveal === true;
+}
 
 export type BrandingErrorCode =
   | "premium_required"
@@ -103,7 +118,8 @@ export type BrandingErrorCode =
   | "invalid_accent_color"
   | "invalid_background_color"
   | "invalid_text_color"
-  | "invalid_background_style";
+  | "invalid_background_style"
+  | "invalid_show_branding_after_reveal";
 
 export type BusinessBrandingParseResult =
   | { ok: true; branding: BusinessBranding }
@@ -445,6 +461,22 @@ export function parseBusinessBrandingInput(
     return { ok: false, code: "invalid_background_style", status: 400,
       message: "Background style must be neutral, gradient, or banner" };
   }
+  const showAfterRaw = body.showBrandingAfterReveal;
+  let showBrandingAfterReveal = false;
+  if (showAfterRaw === true) {
+    showBrandingAfterReveal = true;
+  } else if (
+    showAfterRaw !== false &&
+    showAfterRaw !== null &&
+    showAfterRaw !== undefined
+  ) {
+    return {
+      ok: false,
+      code: "invalid_show_branding_after_reveal",
+      status: 400,
+      message: "showBrandingAfterReveal must be a boolean",
+    };
+  }
 
   return {
     ok: true,
@@ -459,6 +491,7 @@ export function parseBusinessBrandingInput(
       backgroundColor: backgroundColor.value,
       textColor: textColor.value,
       backgroundStyle: backgroundStyle.value,
+      showBrandingAfterReveal,
     },
   };
 }
@@ -494,6 +527,9 @@ export function toRevealBranding(
     ...(branding.textColor ? { textColor: branding.textColor } : {}),
     ...(branding.backgroundStyle && branding.backgroundStyle !== "neutral"
       ? { backgroundStyle: branding.backgroundStyle }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true
+      ? { showBrandingAfterReveal: true }
       : {}),
   };
 }
@@ -532,5 +568,6 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
     textColor: textColor.ok ? textColor.value : null,
     backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
+    showBrandingAfterReveal: source.showBrandingAfterReveal === true,
   });
 }

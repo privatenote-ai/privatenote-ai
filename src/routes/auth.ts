@@ -536,6 +536,7 @@ type UsersTableColumns = {
   business_trust_message: boolean;
   business_banner_key: boolean;
   business_background_style: boolean;
+  business_show_branding_after_reveal: boolean;
   email_notifications: boolean;
   preferred_language: boolean;
   allow_hosted_ai: boolean;
@@ -555,6 +556,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     business_trust_message: false,
     business_banner_key: false,
     business_background_style: false,
+    business_show_branding_after_reveal: false,
     email_notifications: false,
     preferred_language: false,
     allow_hosted_ai: false,
@@ -576,6 +578,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       business_trust_message: names.has("business_trust_message"),
       business_banner_key: names.has("business_banner_key"),
       business_background_style: names.has("business_background_style"),
+      business_show_branding_after_reveal: names.has("business_show_branding_after_reveal"),
       email_notifications: names.has("email_notifications"),
       preferred_language: names.has("preferred_language"),
       allow_hosted_ai: names.has("allow_hosted_ai"),
@@ -599,6 +602,9 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.business_trust_message) columns.push("business_trust_message");
   if (optionalColumns.business_banner_key) columns.push("business_banner_key");
   if (optionalColumns.business_background_style) columns.push("business_background_style");
+  if (optionalColumns.business_show_branding_after_reveal) {
+    columns.push("business_show_branding_after_reveal");
+  }
   if (optionalColumns.email_notifications) columns.push("email_notifications");
   if (optionalColumns.preferred_language) columns.push("preferred_language");
   if (optionalColumns.allow_hosted_ai) columns.push("allow_hosted_ai");
@@ -4363,6 +4369,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_trust_message?: string | null;
         business_banner_key?: string | null;
         business_background_style?: string | null;
+        business_show_branding_after_reveal?: number | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
       }>();
@@ -4398,6 +4405,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessTrustMessage: user?.business_trust_message ?? null,
         businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
         businessBackgroundStyle: user?.business_background_style ?? "neutral",
+        businessShowBrandingAfterReveal:
+          (user?.business_show_branding_after_reveal ?? 0) === 1,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
       }),
@@ -4436,6 +4445,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_trust_message?: string | null;
         business_banner_key?: string | null;
         business_background_style?: string | null;
+        business_show_branding_after_reveal?: number | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
         allow_hosted_ai?: number | null;
@@ -4552,6 +4562,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessTrustMessage: user?.business_trust_message ?? null,
         businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
         businessBackgroundStyle: user?.business_background_style ?? "neutral",
+        businessShowBrandingAfterReveal:
+          (user?.business_show_branding_after_reveal ?? 0) === 1,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
         allowHostedAi: userColumns.allow_hosted_ai ? user?.allow_hosted_ai === 1 : false,
@@ -4983,6 +4995,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessShowBrandingAfterReveal?: boolean;
     };
     try {
       body = (await readJsonBody(request)) as {
@@ -4997,6 +5010,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+        businessShowBrandingAfterReveal?: boolean;
       };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
@@ -5012,9 +5026,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const hasBusinessSenderRole = Object.prototype.hasOwnProperty.call(body, "businessSenderRole");
     const hasBusinessTrustMessage = Object.prototype.hasOwnProperty.call(body, "businessTrustMessage");
     const hasBusinessBackgroundStyle = Object.prototype.hasOwnProperty.call(body, "businessBackgroundStyle");
+    const hasBusinessShowBrandingAfterReveal =
+      typeof body.businessShowBrandingAfterReveal === "boolean";
     const hasBrandingPreference = hasBusinessDisplayName || hasBusinessAccentColor
       || hasBusinessBackgroundColor || hasBusinessTextColor || hasBusinessSenderName
-      || hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle;
+      || hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle
+      || hasBusinessShowBrandingAfterReveal;
     if (
       !hasEmailNotifications &&
       !hasPreferredLanguage &&
@@ -5050,7 +5067,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         (hasBusinessSenderName && !userColumns.business_sender_name) ||
         (hasBusinessSenderRole && !userColumns.business_sender_role) ||
         (hasBusinessTrustMessage && !userColumns.business_trust_message) ||
-        (hasBusinessBackgroundStyle && !userColumns.business_background_style)) {
+        (hasBusinessBackgroundStyle && !userColumns.business_background_style) ||
+        (hasBusinessShowBrandingAfterReveal && !userColumns.business_show_branding_after_reveal)) {
       return jsonResponse({ message: "Business branding migration is required" }, 503, request);
     }
     if (hasBrandingPreference) {
@@ -5172,6 +5190,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (hasBusinessSenderRole) { updates.push("business_sender_role = ?"); bindings.push(normalizedBusinessSenderRole ?? null); }
     if (hasBusinessTrustMessage) { updates.push("business_trust_message = ?"); bindings.push(normalizedBusinessTrustMessage ?? null); }
     if (hasBusinessBackgroundStyle) { updates.push("business_background_style = ?"); bindings.push(normalizedBusinessBackgroundStyle ?? "neutral"); }
+    if (hasBusinessShowBrandingAfterReveal) {
+      updates.push("business_show_branding_after_reveal = ?");
+      bindings.push(body.businessShowBrandingAfterReveal ? 1 : 0);
+    }
     updates.push("updated_at = datetime('now')");
     bindings.push(session.id);
 
@@ -5204,6 +5226,9 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessSenderRole: hasBusinessSenderRole ? normalizedBusinessSenderRole ?? null : undefined,
         businessTrustMessage: hasBusinessTrustMessage ? normalizedBusinessTrustMessage ?? null : undefined,
         businessBackgroundStyle: hasBusinessBackgroundStyle ? normalizedBusinessBackgroundStyle : undefined,
+        businessShowBrandingAfterReveal: hasBusinessShowBrandingAfterReveal
+          ? Boolean(body.businessShowBrandingAfterReveal)
+          : undefined,
       }),
       { status: 200, headers }
     );

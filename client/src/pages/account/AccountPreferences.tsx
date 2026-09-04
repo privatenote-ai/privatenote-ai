@@ -149,6 +149,58 @@ const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }
   );
 };
 
+/** Compact preview of what a screenshot of the opened note would capture. */
+const OpenedNoteBrandingPreview: React.FC<{
+  branding: RevealBranding;
+  senderLine: string;
+  showBranding: boolean;
+}> = ({ branding, senderLine, showBranding }) => {
+  const lightText = showBranding ? brandingHeroUsesLightText(branding) : false;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700">
+      <div
+        className="relative min-h-28 px-6 py-6 text-center"
+        style={showBranding ? brandingHeroStyle(branding) : undefined}
+      >
+        {showBranding ? (
+          <>
+            <p className="m-0 text-base font-extrabold tracking-tight text-primary">
+              Private Note
+            </p>
+            {(branding.logoUrl || senderLine || branding.trustMessage) ? (
+              <div className="mt-3 flex flex-col items-center gap-1.5">
+                {branding.logoUrl ? (
+                  <img
+                    src={branding.logoUrl}
+                    alt=""
+                    className="max-h-8 max-w-28 object-contain"
+                  />
+                ) : null}
+                {senderLine ? (
+                  <p
+                    className={`m-0 text-xs font-medium ${
+                      lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
+                    }`}
+                  >
+                    {senderLine}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        <p className="m-0 mt-3 text-[10px] font-medium text-amber-800 dark:text-amber-200">
+          This note will be deleted after you leave…
+        </p>
+        <div className="mx-auto mt-4 max-w-xs rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          Secret content
+        </div>
+      </div>
+    </div>
+  );
+};
+
 type NoteDefaultsForm = {
   expirySeconds: number;
   maxReads: NoteReadLimit;
@@ -271,6 +323,8 @@ export default function AccountPreferences() {
   const [businessBannerUrl, setBusinessBannerUrl] = useState<string | null>(null);
   const [businessBackgroundStyle, setBusinessBackgroundStyle] =
     useState<"neutral" | "gradient" | "banner">("neutral");
+  const [businessShowBrandingAfterReveal, setBusinessShowBrandingAfterReveal] =
+    useState(false);
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -326,6 +380,7 @@ export default function AccountPreferences() {
         businessTrustMessage?: string | null;
         businessBannerUrl?: string | null;
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+        businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
@@ -348,6 +403,9 @@ export default function AccountPreferences() {
         setBusinessTrustMessage(data.businessTrustMessage ?? "");
         setBusinessBannerUrl(data.businessBannerUrl ?? null);
         setBusinessBackgroundStyle(data.businessBackgroundStyle ?? "neutral");
+        setBusinessShowBrandingAfterReveal(
+          data.businessShowBrandingAfterReveal === true,
+        );
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
         setPreferredLanguage(data.preferredLanguage);
@@ -522,6 +580,7 @@ export default function AccountPreferences() {
         businessAccentColor: string | null;
         businessBackgroundColor: string | null;
         businessTextColor: string | null;
+        businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/preferences", "PATCH", {
         businessDisplayName,
         businessAccentColor,
@@ -531,6 +590,7 @@ export default function AccountPreferences() {
         businessSenderRole,
         businessTrustMessage,
         businessBackgroundStyle,
+        businessShowBrandingAfterReveal,
       });
       setBusinessDisplayName(response.businessDisplayName ?? "");
       setBusinessAccentColor(response.businessAccentColor ?? "#2563eb");
@@ -539,6 +599,9 @@ export default function AccountPreferences() {
         response.businessTextColor
           ?? contrastingTextOn(response.businessAccentColor ?? "#2563eb"),
       );
+      if (typeof response.businessShowBrandingAfterReveal === "boolean") {
+        setBusinessShowBrandingAfterReveal(response.businessShowBrandingAfterReveal);
+      }
       setSavedBrandingIndicator(true);
       setTimeout(() => setSavedBrandingIndicator(false), 2000);
       await refreshEntitlements();
@@ -1079,6 +1142,9 @@ export default function AccountPreferences() {
 
               <div>
                 <Label className="mb-2 block text-sm">Live recipient preview</Label>
+                <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Reveal gate
+                </p>
                 <BrandingPreview
                   branding={{
                     companyName: businessDisplayName || undefined,
@@ -1091,6 +1157,7 @@ export default function AccountPreferences() {
                     backgroundColor: businessBackgroundColor,
                     textColor: businessTextColor,
                     backgroundStyle: businessBackgroundStyle,
+                    showBrandingAfterReveal: businessShowBrandingAfterReveal,
                   }}
                   senderLine={
                     businessSenderName || businessDisplayName
@@ -1098,6 +1165,53 @@ export default function AccountPreferences() {
                       : ""
                   }
                 />
+                <p className="mb-2 mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
+                  After open (screenshot risk)
+                </p>
+                <OpenedNoteBrandingPreview
+                  branding={{
+                    companyName: businessDisplayName || undefined,
+                    senderName: businessSenderName || undefined,
+                    senderRole: businessSenderRole || undefined,
+                    trustMessage: businessTrustMessage || undefined,
+                    logoUrl: businessLogoUrl ?? undefined,
+                    bannerUrl: businessBannerUrl ?? undefined,
+                    accentColor: businessAccentColor,
+                    backgroundColor: businessBackgroundColor,
+                    textColor: businessTextColor,
+                    backgroundStyle: businessBackgroundStyle,
+                    showBrandingAfterReveal: businessShowBrandingAfterReveal,
+                  }}
+                  senderLine={
+                    businessSenderName || businessDisplayName
+                      ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
+                      : ""
+                  }
+                  showBranding={businessShowBrandingAfterReveal}
+                />
+              </div>
+
+              <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/30">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <Label
+                      htmlFor="business-show-branding-after-reveal"
+                      className="text-sm font-medium text-amber-950 dark:text-amber-50"
+                    >
+                      Show branding after the note is opened
+                    </Label>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
+                      Off by default. When on, screenshots of the opened note will
+                      include your logo, sender name, and company identity.
+                    </p>
+                  </div>
+                  <Switch
+                    id="business-show-branding-after-reveal"
+                    checked={businessShowBrandingAfterReveal}
+                    onCheckedChange={setBusinessShowBrandingAfterReveal}
+                    aria-label="Show branding after the note is opened"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end border-t border-violet-100 pt-4 dark:border-violet-900/40">
@@ -1110,8 +1224,9 @@ export default function AccountPreferences() {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Branding is public reveal metadata only. It never includes note
-                content, titles, or previews.
+                Branding is public metadata on the reveal gate. It never includes
+                note content, titles, or previews. After open, branding stays hidden
+                unless you opt in above.
               </p>
             </div>
           ) : (

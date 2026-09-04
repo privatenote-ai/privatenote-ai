@@ -11,6 +11,7 @@ import {
   brandingHeroStyle,
   brandingHeroUsesLightText,
   brandingIsEmpty,
+  brandingShowsAfterReveal,
   brandingShowsBanner,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
@@ -66,7 +67,26 @@ describe("parseBusinessBrandingInput", () => {
       backgroundColor: "#ffffff",
       textColor: "#111827",
       backgroundStyle: "banner",
+      showBrandingAfterReveal: false,
     });
+  });
+
+  it("accepts showBrandingAfterReveal opt-in", () => {
+    const result = parseBusinessBrandingInput(
+      { companyName: "Acme", showBrandingAfterReveal: true },
+      allowed,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.ok === true && result.branding.showBrandingAfterReveal, true);
+  });
+
+  it("rejects a non-boolean showBrandingAfterReveal", () => {
+    const result = parseBusinessBrandingInput(
+      { showBrandingAfterReveal: "yes" },
+      allowed,
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.ok === false && result.code, "invalid_show_branding_after_reveal");
   });
 
   it("treats an empty payload as fully unconfigured", () => {
@@ -224,6 +244,38 @@ describe("toRevealBranding", () => {
     );
     assert.equal(toRevealBranding(null), undefined);
   });
+
+  it("includes showBrandingAfterReveal only when true", () => {
+    assert.equal(
+      toRevealBranding({
+        companyName: "Acme",
+        senderName: null,
+        logoUrl: null,
+        accentColor: null,
+        showBrandingAfterReveal: true,
+      })?.showBrandingAfterReveal,
+      true,
+    );
+    assert.equal(
+      toRevealBranding({
+        companyName: "Acme",
+        senderName: null,
+        logoUrl: null,
+        accentColor: null,
+        showBrandingAfterReveal: false,
+      })?.showBrandingAfterReveal,
+      undefined,
+    );
+  });
+});
+
+describe("brandingShowsAfterReveal", () => {
+  it("defaults to false when the flag is missing", () => {
+    assert.equal(brandingShowsAfterReveal(undefined), false);
+    assert.equal(brandingShowsAfterReveal({}), false);
+    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: false }), false);
+    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: true }), true);
+  });
 });
 
 describe("parseStoredRevealBranding", () => {
@@ -241,6 +293,23 @@ describe("parseStoredRevealBranding", () => {
         logoUrl: path,
         accentColor: "#2563eb",
       },
+    );
+  });
+
+  it("preserves showBrandingAfterReveal from stored note metadata", () => {
+    assert.equal(
+      parseStoredRevealBranding({
+        companyName: "Acme",
+        showBrandingAfterReveal: true,
+      })?.showBrandingAfterReveal,
+      true,
+    );
+  });
+
+  it("treats a missing showBrandingAfterReveal as off", () => {
+    assert.equal(
+      parseStoredRevealBranding({ companyName: "Acme" })?.showBrandingAfterReveal,
+      undefined,
     );
   });
 

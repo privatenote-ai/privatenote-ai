@@ -55,6 +55,7 @@ import {
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
+  brandingShowsAfterReveal,
   brandingShowsBanner,
 } from '@shared/businessBranding';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
@@ -1857,9 +1858,16 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   }
 
   const brandingLine = getBrandingLine(activeRevealBranding, t);
-  const accentStyle = brandingCtaStyle(activeRevealBranding);
-  const revealedBackgroundStyle = brandingHeroStyle(activeRevealBranding);
-  const revealedLightText = brandingHeroUsesLightText(activeRevealBranding);
+  const showBrandingOnOpenedNote = brandingShowsAfterReveal(activeRevealBranding);
+  const accentStyle = showBrandingOnOpenedNote
+    ? brandingCtaStyle(activeRevealBranding)
+    : undefined;
+  const revealedBackgroundStyle = showBrandingOnOpenedNote
+    ? brandingHeroStyle(activeRevealBranding)
+    : undefined;
+  const revealedLightText = showBrandingOnOpenedNote
+    ? brandingHeroUsesLightText(activeRevealBranding)
+    : false;
   const framedHero = Boolean(revealedBackgroundStyle);
 
   // Regular note content view (either after password decryption or for non-password notes)
@@ -1870,18 +1878,26 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         style={revealedBackgroundStyle}
       >
         <div className="mb-8 text-center sm:mb-10">
-          <h1 className="page-title text-primary">{t.privateNote}</h1>
-          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+          {showBrandingOnOpenedNote ? (
+            <h1 className="page-title text-primary">{t.privateNote}</h1>
+          ) : null}
+          <p
+            className={`m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100 ${
+              showBrandingOnOpenedNote ? "mt-4" : ""
+            }`}
+          >
             <span aria-hidden>⚠️</span>
             {t.noteDeletedWarning}
           </p>
-          <div className="mt-6">
-            <BrandingIdentity
-              branding={activeRevealBranding}
-              brandingLine={brandingLine}
-              lightText={revealedLightText}
-            />
-          </div>
+          {showBrandingOnOpenedNote ? (
+            <div className="mt-6">
+              <BrandingIdentity
+                branding={activeRevealBranding}
+                brandingLine={brandingLine}
+                lightText={revealedLightText}
+              />
+            </div>
+          ) : null}
         </div>
 
         {canImportNoteLabels && importedLabelsPack && noteContent ? (

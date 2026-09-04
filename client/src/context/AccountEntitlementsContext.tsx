@@ -38,6 +38,7 @@ export type AccountEntitlementSnapshot = {
   businessTrustMessage: string | null;
   businessBannerUrl: string | null;
   businessBackgroundStyle: "neutral" | "gradient" | "banner";
+  businessShowBrandingAfterReveal: boolean;
   hostedAiUsage: {
     used: number;
     limit: number;
@@ -67,6 +68,7 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   businessTrustMessage: null,
   businessBannerUrl: null,
   businessBackgroundStyle: "neutral",
+  businessShowBrandingAfterReveal: false,
   hostedAiUsage: {
     used: 0,
     limit: planFeaturesFor("free").hostedAiMonthly,
@@ -130,6 +132,7 @@ export function AccountEntitlementsProvider({
       businessTrustMessage?: string | null;
       businessBannerUrl?: string | null;
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessShowBrandingAfterReveal?: boolean;
       hostedAiUsage?: {
         used?: number;
         limit?: number;
@@ -172,6 +175,8 @@ export function AccountEntitlementsProvider({
           businessTrustMessage: summary.businessTrustMessage ?? null,
           businessBannerUrl: summary.businessBannerUrl ?? null,
           businessBackgroundStyle: summary.businessBackgroundStyle ?? "neutral",
+          businessShowBrandingAfterReveal:
+            summary.businessShowBrandingAfterReveal === true,
           hostedAiUsage: {
             used: Math.max(0, Number(summary.hostedAiUsage?.used ?? 0)),
             limit: Math.max(
