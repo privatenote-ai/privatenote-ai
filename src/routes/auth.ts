@@ -49,6 +49,7 @@ import { readHostedAiQuotaSnapshot } from "../planHostedAi";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { parseNoteFileAccessWindowFromBody } from "@shared/noteFileAccess";
 import { isSupportedLanguage } from "@shared/supportedLanguages";
+import { parseRevealBodyFont } from "@shared/revealBodyFont";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -5252,6 +5253,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
             maxReads: row.max_reads,
             fileAccessWindowSeconds: row.file_access_window_seconds,
             readerLanguage: row.reader_language,
+            bodyFont: parseRevealBodyFont(row.body_font) ?? null,
             notifyOnOpen: row.notify_on_open === 1,
             requireRecipientVerification: row.require_recipient_verification === 1,
           }
@@ -5302,6 +5304,15 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         request,
       );
     }
+    const bodyFontRaw =
+      body.bodyFont == null || body.bodyFont === "system" ? null : body.bodyFont;
+    const bodyFont = parseRevealBodyFont(bodyFontRaw);
+    if (bodyFontRaw != null && !bodyFont) {
+      return jsonResponse({ error: "invalid_body_font" }, 400, request);
+    }
+    if (bodyFont && !capabilities.revealBodyFont) {
+      return jsonResponse({ error: "premium_required" }, 403, request);
+    }
     const requireRecipientVerification = body.requireRecipientVerification === true;
     if (requireRecipientVerification && !capabilities.recipientVerification) {
       return jsonResponse({ error: "premium_required" }, 403, request);
@@ -5311,6 +5322,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       maxReads: reads.maxReads,
       fileAccessWindowSeconds: fileWindow.seconds,
       readerLanguage: typeof readerLanguage === "string" ? readerLanguage : null,
+      bodyFont: bodyFont ?? null,
       notifyOnOpen: body.notifyOnOpen === true,
       requireRecipientVerification,
     });

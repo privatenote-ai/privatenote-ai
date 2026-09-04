@@ -17,6 +17,7 @@ import {
   Mail,
   Clock,
   BadgeCheck,
+  Type,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -35,6 +36,10 @@ import {
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 import type { AccountType } from "@shared/planCatalog";
+import {
+  type RevealBodyFont,
+} from "@shared/revealBodyFont";
+import { RevealBodyFontPicker } from "@/components/note/RevealBodyFontPicker";
 import {
   BUSINESS_RECEIPT_ACK_PRESETS,
   RECEIPT_ACK_STATEMENT_MAX_LENGTH,
@@ -419,6 +424,9 @@ export type NoteSettingsPanelProps = {
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
+  bodyFont: RevealBodyFont;
+  setBodyFont: (value: RevealBodyFont) => void;
+  canChooseBodyFont?: boolean;
   /** Business — show the account's saved branding on the reveal page. */
   canBrandRevealPage?: boolean;
   configuredAccountType?: AccountType;
@@ -491,6 +499,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
+  bodyFont,
+  setBodyFont,
+  canChooseBodyFont = false,
   canBrandRevealPage = false,
   configuredAccountType = "free",
   hasRevealBranding = false,
@@ -1573,6 +1584,49 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                       "Auto uses the recipient's browser language."}
                   </SettingsFieldHelper>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <SettingsFieldLabel
+                  htmlFor="reveal-body-font"
+                  icon={<Type className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                  iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                  label={t.settingsRevealBodyFont ?? "Message typeface"}
+                  info={
+                    t.settingsRevealBodyFontInfo ??
+                    "Choose the typeface used for the opened note. Recipients see this after they reveal the message."
+                  }
+                />
+                <RevealBodyFontPicker
+                  value={bodyFont}
+                  disabled={premiumStatusLoading}
+                  locked={!canChooseBodyFont && !isPremiumUser}
+                  onLockedSelect={() =>
+                    setSelectedPremiumFeature({
+                      title: t.settingsRevealBodyFont ?? "Message typeface",
+                      description:
+                        t.settingsRevealBodyFontInfo ??
+                        "Choose the typeface used for the opened note. Recipients see this after they reveal the message.",
+                      plan: "starter",
+                    })
+                  }
+                  onChange={setBodyFont}
+                  labels={{
+                    system: t.settingsRevealBodyFontSystem ?? "Inter",
+                    "source-serif": t.settingsRevealBodyFontSourceSerif ?? "Source Serif 4",
+                    fraunces: t.settingsRevealBodyFontFraunces ?? "Fraunces",
+                    "jetbrains-mono": t.settingsRevealBodyFontMono ?? "JetBrains Mono",
+                  }}
+                  hints={{
+                    system: t.settingsRevealBodyFontSystemHint ?? "Default — clear and professional",
+                    "source-serif": t.settingsRevealBodyFontSourceSerifHint ?? "Letter and document",
+                    fraunces: t.settingsRevealBodyFontFrauncesHint ?? "Warm editorial",
+                    "jetbrains-mono": t.settingsRevealBodyFontMonoHint ?? "Passwords, keys, and code",
+                  }}
+                />
+                <SettingsFieldHelper>
+                  {t.settingsRevealBodyFontHint ??
+                    "Starter and Business can choose an open-source typeface for the revealed message."}
+                </SettingsFieldHelper>
               </div>
               {!isPremiumUser ? (
                 <a

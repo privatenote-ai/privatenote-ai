@@ -1768,6 +1768,18 @@ export const sr: Translations = {
     "Ključ za šifrovanje ostaje u URL fragmentu (#...) i obrađuje se lokalno u vašem pretraživaču. Ne šalje se PrivateNote serverima u uobičajenim zahtevima stranice — zato neko sa samo hostname-om linka ne može dešifrovati vaše datoteke.",
   settingsReaderLanguage: "Jezik čitaoca",
   settingsReaderLanguageAuto: "Auto",
+  settingsRevealBodyFont: "Tipografija poruke",
+  settingsRevealBodyFontInfo: "Izaberite font otvorene beleške. Primalac ga vidi nakon otvaranja.",
+  settingsRevealBodyFontHint: "Starter i Business mogu da izaberu open-source font za otvorenu poruku.",
+  settingsRevealBodyFontSystem: "Inter",
+  settingsRevealBodyFontSystemHint: "Podrazumevano — jasno i profesionalno",
+  settingsRevealBodyFontSourceSerif: "Source Serif 4",
+  settingsRevealBodyFontSourceSerifHint: "Pismo i dokument",
+  settingsRevealBodyFontFraunces: "Fraunces",
+  settingsRevealBodyFontFrauncesHint: "Toplo urednički",
+  settingsRevealBodyFontMono: "JetBrains Mono",
+  settingsRevealBodyFontMonoHint: "Lozinke, ključevi i kod",
+  revealNoteSheetLabel: "Sadržaj beleške",
   settingsReaderLanguageDescription:
     "Izaberite jezik stranice za otvaranje poruke. Auto koristi jezik pretraživača primaoca.",
   settingsReaderLanguageInfo:

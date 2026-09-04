@@ -1768,6 +1768,18 @@ export const pt: Translations = {
     "A chave de criptografia permanece no fragmento da URL (#...) e é tratada localmente no seu navegador. Ela não é enviada aos servidores do PrivateNote em solicitações normais da página — por isso alguém com apenas o hostname do link não pode descriptografar seus arquivos.",
   settingsReaderLanguage: "Idioma do leitor",
   settingsReaderLanguageAuto: "Auto",
+  settingsRevealBodyFont: "Tipografia da mensagem",
+  settingsRevealBodyFontInfo: "Escolha o tipo de letra da nota aberta. O destinatário vê-o após revelar a mensagem.",
+  settingsRevealBodyFontHint: "Starter e Business podem escolher um tipo de letra open source para a mensagem revelada.",
+  settingsRevealBodyFontSystem: "Inter",
+  settingsRevealBodyFontSystemHint: "Predefinido — claro e profissional",
+  settingsRevealBodyFontSourceSerif: "Source Serif 4",
+  settingsRevealBodyFontSourceSerifHint: "Carta e documento",
+  settingsRevealBodyFontFraunces: "Fraunces",
+  settingsRevealBodyFontFrauncesHint: "Editorial caloroso",
+  settingsRevealBodyFontMono: "JetBrains Mono",
+  settingsRevealBodyFontMonoHint: "Palavras-passe, chaves e código",
+  revealNoteSheetLabel: "Conteúdo da nota",
   settingsReaderLanguageDescription:
     "Escolha o idioma usado na página de revelação da nota. Auto usa o idioma do navegador do destinatário.",
   settingsReaderLanguageInfo:

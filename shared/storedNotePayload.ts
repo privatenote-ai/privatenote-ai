@@ -16,6 +16,10 @@ import {
   parseStoredRevealBranding,
   type RevealBranding,
 } from "./businessBranding.ts";
+import {
+  parseRevealBodyFont,
+  type StoredRevealBodyFont,
+} from "./revealBodyFont.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
@@ -69,6 +73,8 @@ export interface ParsedStoredNoteCiphertext {
   attachment?: StoredNoteAttachment;
   fileAccessWindowSeconds?: number;
   readerLanguage?: SupportedLanguage;
+  /** Optional Starter+ body typeface snapshotted at create time. */
+  bodyFont?: StoredRevealBodyFont;
   /** Optional Business branded reveal chrome snapshotted at create time. */
   revealBranding?: RevealBranding;
 }
@@ -328,6 +334,13 @@ export function parseStoredNoteCiphertextForReveal(
     if (!isSupportedLanguage(o.readerLanguage)) return null;
     ciphertext.readerLanguage = o.readerLanguage;
   } else if (o.readerLanguage != null) {
+    return null;
+  }
+  // Unknown font ids are dropped rather than failing reveal — decoration only.
+  const bodyFont = parseRevealBodyFont(o.bodyFont);
+  if (bodyFont) {
+    ciphertext.bodyFont = bodyFont;
+  } else if (o.bodyFont != null && typeof o.bodyFont !== "string") {
     return null;
   }
   const attachment = parseStoredNoteAttachmentForNote(o.attachment, noteId);

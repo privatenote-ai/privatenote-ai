@@ -26,6 +26,8 @@ export type PlanFeatureFlags = {
   maxVoiceMessageSeconds: number;
   recipientLinkDelivery: boolean;
   readerLanguage: boolean;
+  /** Starter+: pick a body typeface for the revealed note sheet. */
+  revealBodyFont: boolean;
   /** Business: company profile / logo / accent on reveal. */
   revealBranding: boolean;
   proofOfAccess: boolean;
@@ -85,6 +87,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxVoiceMessageSeconds: 5 * 60,
       recipientLinkDelivery: false,
       readerLanguage: false,
+      revealBodyFont: false,
       revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
@@ -117,6 +120,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxVoiceMessageSeconds: 15 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
+      revealBodyFont: true,
       revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
@@ -149,6 +153,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       maxVoiceMessageSeconds: 30 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
+      revealBodyFont: true,
       revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,

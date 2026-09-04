@@ -139,6 +139,7 @@ function planHighlights(planId: AccountType): string[] {
       "Everything in Free",
       "Proof of access and recipient verification",
       "Sent-notes dashboard and revoke unopened",
+      "Open-source typefaces on the opened note",
       "Larger attachments and longer expiry",
       "Document summary and privacy check AI templates",
       "Note defaults synchronized across devices",
@@ -189,6 +190,8 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return flag(features.revokeUnopened);
     case "revealBranding":
       return flag(features.revealBranding);
+    case "revealBodyFont":
+      return flag(features.revealBodyFont);
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes));
     case "payloadBuffer":
@@ -243,6 +246,7 @@ const comparisonSections: {
       { key: "receiptAcknowledgment", label: "Receipt confirmation" },
       { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
       { key: "revokeUnopened", label: "Revoke unopened notes" },
+      { key: "revealBodyFont", label: "Reveal typeface" },
       { key: "revealBranding", label: "Recipient branding" },
     ],
   },
@@ -306,7 +310,7 @@ function buildFaqs(currency: BillingCurrency) {
     },
     {
       q: "What is the difference between Starter and Business?",
-      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds recipient branding on secure delivery pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
+      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, reveal typefaces, and higher limits. Business (${businessMonthly}/month) adds recipient branding on secure delivery pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
     },
     {
       q: "How does annual billing work?",

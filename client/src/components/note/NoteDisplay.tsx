@@ -15,6 +15,7 @@ import {
   BadgeCheck,
   Tags,
   ChevronDown,
+  Lock,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
@@ -52,6 +53,11 @@ import {
   brandingShowsAfterReveal,
   brandingUsesPortalSurface,
 } from '@shared/businessBranding';
+import {
+  parseRevealBodyFont,
+  revealBodyFontClassName,
+  type StoredRevealBodyFont,
+} from '@shared/revealBodyFont';
 import {
   RecipientPortal,
   RevealHandoffStack,
@@ -609,6 +615,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   // state because ViewNote cannot know a note's snapshotted branding up front.
   const [resolvedRevealBranding, setResolvedRevealBranding] =
     useState<RevealBranding | undefined>(revealBranding);
+  const [bodyFont, setBodyFont] = useState<StoredRevealBodyFont | undefined>(undefined);
   const activeRevealBranding = resolvedRevealBranding ?? revealBranding;
   const readerLanguage = senderSelectedLanguage ?? language ?? "en";
   const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
@@ -697,7 +704,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     let cancelled = false;
     setResolvedRevealBranding(revealBranding);
     setDelayedRevealChecked(false);
-    void apiRequest<{ readerLanguage?: string; revealBranding?: RevealBranding }>(
+    void apiRequest<{ readerLanguage?: string; revealBranding?: RevealBranding; bodyFont?: string }>(
       `/api/notes/${id}`,
       "GET",
     )
@@ -710,6 +717,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             : null,
         );
         setResolvedRevealBranding(meta.revealBranding ?? revealBranding);
+        setBodyFont(parseRevealBodyFont(meta.bodyFont));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -1172,6 +1180,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       if (data.revealBranding) {
         setResolvedRevealBranding(data.revealBranding);
       }
+      setBodyFont(parseRevealBodyFont((data as { bodyFont?: string }).bodyFont));
       const receiptAck = data.receiptAck as
         | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null; statement?: string | null }
         | undefined;
@@ -1894,11 +1903,29 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         ) : null}
 
         <article
-          className="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-md dark:border-gray-700 dark:bg-gray-900"
-          aria-label="Note content"
+          className={`overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] dark:bg-gray-900 ${
+            portalSurface
+              ? "border-gray-200/70 shadow-none dark:border-gray-700/80"
+              : "border-gray-200/90 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.45)] dark:border-gray-700 dark:shadow-black/40"
+          }`}
+          style={
+            activeRevealBranding?.accentColor
+              ? { borderTopColor: activeRevealBranding.accentColor, borderTopWidth: 3 }
+              : undefined
+          }
+          aria-label={t.revealNoteSheetLabel ?? "Note content"}
         >
-          <div className="px-5 py-6 sm:px-7 sm:py-7">
-            <span className="note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.05rem] sm:text-lg leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
+          <header className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3 sm:px-7 dark:border-white/10">
+            <p className="m-0 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+              <Lock className="h-3.5 w-3.5" aria-hidden />
+              {t.privateNote}
+            </p>
+            <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+              {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
+            </p>
+          </header>
+          <div className="px-5 py-7 sm:px-8 sm:py-9">
+            <span className={`note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.08rem] sm:text-[1.2rem] leading-[1.7] text-gray-900 dark:text-gray-100 select-text ${revealBodyFontClassName(bodyFont)}`}>
               {noteContent.trimEnd()}
             </span>
           </div>

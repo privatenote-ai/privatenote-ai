@@ -26,6 +26,11 @@ import {
 } from "@shared/noteExpiry";
 import { planFeaturesFor } from "@shared/planCatalog";
 import { toRevealBranding } from "@shared/businessBranding";
+import {
+  isRevealBodyFont,
+  parseRevealBodyFont,
+  type RevealBodyFont,
+} from "@shared/revealBodyFont";
 import { BUSINESS_RECEIPT_ACK_PRESETS } from "@shared/receiptAcknowledgment";
 import {
   NOTE_READ_LIMIT_DEFAULT,
@@ -235,6 +240,7 @@ type CreateNoteAuthDraft = {
   readCount: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   readerLanguage: ReaderLanguageSetting;
+  bodyFont: RevealBodyFont;
   preferHostedCloudAfterLocalFailure: boolean;
   cloudAssistConsentGiven: boolean;
 };
@@ -350,6 +356,7 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
           : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
       readerLanguage:
         isReaderLanguageSetting(parsed.readerLanguage) ? parsed.readerLanguage : "auto",
+      bodyFont: isRevealBodyFont(parsed.bodyFont) ? parsed.bodyFont : "system",
       preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
       cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
@@ -486,6 +493,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
+  const [bodyFont, setBodyFont] = useState<RevealBodyFont>("system");
   const [applyBranding, setApplyBranding] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
@@ -609,6 +617,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           readCount,
           fileAccessWindowSeconds,
           readerLanguage,
+          bodyFont,
           preferHostedCloudAfterLocalFailure,
           cloudAssistConsentGiven,
           ...overrides,
@@ -631,6 +640,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       originalPrompt,
       preferHostedCloudAfterLocalFailure,
       readerLanguage,
+      bodyFont,
       readCount,
       selectedTemplateId,
       showPrompt,
@@ -863,6 +873,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setReadCount(draft.readCount);
     setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
     setReaderLanguage(draft.readerLanguage);
+    setBodyFont(draft.bodyFont);
     if (draft.preferHostedCloudAfterLocalFailure) {
       setPreferHostedCloudAfterLocalFailure(true);
       setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
@@ -916,6 +927,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             maxReads: NoteReadLimit | null;
             fileAccessWindowSeconds: number | null;
             readerLanguage: SupportedLanguage | null;
+            bodyFont: string | null;
             notifyOnOpen: boolean;
             requireRecipientVerification: boolean;
           } | null;
@@ -941,6 +953,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         } else {
           setReaderLanguage("auto");
         }
+        const nextBodyFont = parseRevealBodyFont(defaults.bodyFont);
+        setBodyFont(nextBodyFont ?? "system");
         setNotifyOnOpen(defaults.notifyOnOpen === true);
         setRequireRecipientVerification(defaults.requireRecipientVerification === true);
       } catch {
@@ -1039,7 +1053,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
-  }, [isPremiumUser, readerLanguage, recipientEmail, requireRecipientVerification]);
+    if (bodyFont !== "system") setBodyFont("system");
+  }, [isPremiumUser, readerLanguage, bodyFont, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1532,6 +1547,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
+    const applyBodyFont =
+      planCapabilities.revealBodyFont && bodyFont !== "system"
+        ? parseRevealBodyFont(bodyFont)
+        : undefined;
     const tracksDelivery =
       planCapabilities.revokeUnopened ||
       (canNotifyOnOpen &&
@@ -1975,6 +1994,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ...(applyNoteLabel ? { label: applyNoteLabel } : {}),
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
+        ...(applyBodyFont ? { bodyFont: applyBodyFont } : {}),
         ...(opensAtIso ? { opensAt: opensAtIso } : {}),
         ...(canBrandRevealPage && applyBranding && revealBrandingSnapshot
           ? { revealBranding: revealBrandingSnapshot }
@@ -2354,6 +2374,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       maxReads: readCount,
       fileAccessWindowSeconds,
       readerLanguage: readerLanguage === "auto" ? null : readerLanguage,
+      bodyFont: bodyFont === "system" ? null : bodyFont,
       notifyOnOpen,
       requireRecipientVerification,
     });
@@ -2367,6 +2388,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     notifyOnOpen,
     readCount,
     readerLanguage,
+    bodyFont,
     requireRecipientVerification,
     toast,
   ]);
@@ -3273,6 +3295,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setFileAccessWindowSeconds={setFileAccessWindowSeconds}
                 readerLanguage={readerLanguage}
                 setReaderLanguage={setReaderLanguage}
+                bodyFont={bodyFont}
+                setBodyFont={setBodyFont}
+                canChooseBodyFont={planCapabilities.revealBodyFont}
                 canBrandRevealPage={canBrandRevealPage}
                 configuredAccountType={entitlements.configuredAccountType}
                 hasRevealBranding={hasRevealBranding}
@@ -3791,6 +3816,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setFileAccessWindowSeconds,
               readerLanguage,
               setReaderLanguage,
+              bodyFont,
+              setBodyFont,
+              canChooseBodyFont: planCapabilities.revealBodyFont,
               canBrandRevealPage,
               configuredAccountType: entitlements.configuredAccountType,
               hasRevealBranding,

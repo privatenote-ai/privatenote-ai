@@ -119,9 +119,29 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.equal(p!.readerLanguage, "fr");
   });
 
-  it("rejects unsupported reader language metadata", () => {
-    const raw = JSON.stringify(basePayload({ readerLanguage: "ja" }));
-    assert.equal(parseStoredNoteCiphertextForReveal(raw), null);
+  it("accepts allowlisted body font metadata and drops unknown ids", () => {
+    const stored = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "source-serif" })),
+    );
+    assert.ok(stored);
+    assert.equal(stored!.bodyFont, "source-serif");
+    const omitted = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "system" })),
+    );
+    assert.ok(omitted);
+    assert.equal(omitted!.bodyFont, undefined);
+    const dropped = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "Comic Sans MS" })),
+    );
+    assert.ok(dropped);
+    assert.equal(dropped!.bodyFont, undefined);
+  });
+
+  it("rejects non-string body font metadata", () => {
+    assert.equal(
+      parseStoredNoteCiphertextForReveal(JSON.stringify(basePayload({ bodyFont: { id: "source-serif" } }))),
+      null,
+    );
   });
 
   it("accepts password-protected payload with v2 kdfParams", () => {

@@ -79,6 +79,7 @@ describe("planCatalog", () => {
   it("enables workflow on Starter and branding on Business", () => {
     assert.equal(planDefinitionFor("free").features.proofOfAccess, false);
     assert.equal(planDefinitionFor("personal_premium").features.proofOfAccess, true);
+    assert.equal(planFeaturesFor("personal_premium").revealBodyFont, true);
     assert.equal(planFeaturesFor("personal_premium").revealBranding, false);
     assert.equal(planFeaturesFor("personal_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("personal_premium").customPromptTemplates, false);
@@ -104,7 +105,9 @@ describe("planCatalog", () => {
     assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);
+    assert.equal(starter.revealBodyFont, true);
     assert.equal(starter.delayedReveal, true);
+    assert.equal(free.revealBodyFont, false);
     assert.equal(free.receiptAcknowledgment, false);
     assert.equal(starter.receiptAcknowledgment, true);
   });

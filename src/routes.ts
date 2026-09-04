@@ -94,6 +94,7 @@ import {
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
 import { parseStoredRevealBranding, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
+import { parseRevealBodyFont } from "@shared/revealBodyFont";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
@@ -9307,6 +9308,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           : false;
         if (parsedClientBranding && allowed) requestBody.revealBranding = parsedClientBranding;
         else delete requestBody.revealBranding;
+      }
+    }
+
+    if (requestBody?.bodyFont != null) {
+      const parsedBodyFont = parseRevealBodyFont(requestBody.bodyFont);
+      if (parsedBodyFont && noteCreationFeatures.revealBodyFont) {
+        requestBody.bodyFont = parsedBodyFont;
+      } else {
+        delete requestBody.bodyFont;
       }
     }
 

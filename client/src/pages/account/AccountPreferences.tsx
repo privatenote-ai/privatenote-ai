@@ -64,6 +64,11 @@ import { RecipientPortal, RevealHandoffStack } from "@/components/note/Recipient
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
 import {
+  parseRevealBodyFont,
+  type RevealBodyFont,
+} from "@shared/revealBodyFont";
+import { RevealBodyFontPicker } from "@/components/note/RevealBodyFontPicker";
+import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   NOTE_FILE_ACCESS_WINDOW_OPTIONS,
   formatNoteFileAccessWindow,
@@ -196,6 +201,7 @@ type NoteDefaultsForm = {
   maxReads: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   readerLanguage: "auto" | SupportedLanguage;
+  bodyFont: RevealBodyFont;
   notifyOnOpen: boolean;
   requireRecipientVerification: boolean;
 };
@@ -205,6 +211,7 @@ const INITIAL_NOTE_DEFAULTS: NoteDefaultsForm = {
   maxReads: 1,
   fileAccessWindowSeconds: NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   readerLanguage: "auto",
+  bodyFont: "system",
   notifyOnOpen: false,
   requireRecipientVerification: false,
 };
@@ -423,6 +430,7 @@ export default function AccountPreferences() {
             maxReads: NoteReadLimit | null;
             fileAccessWindowSeconds: NoteFileAccessWindowSeconds | null;
             readerLanguage: SupportedLanguage | null;
+            bodyFont: string | null;
             notifyOnOpen: boolean;
             requireRecipientVerification: boolean;
           } | null;
@@ -436,6 +444,7 @@ export default function AccountPreferences() {
               defaultsResponse.defaults.fileAccessWindowSeconds ??
               INITIAL_NOTE_DEFAULTS.fileAccessWindowSeconds,
             readerLanguage: defaultsResponse.defaults.readerLanguage ?? "auto",
+            bodyFont: parseRevealBodyFont(defaultsResponse.defaults.bodyFont) ?? "system",
             notifyOnOpen: defaultsResponse.defaults.notifyOnOpen,
             requireRecipientVerification:
               defaultsResponse.defaults.requireRecipientVerification,
@@ -1462,6 +1471,21 @@ export default function AccountPreferences() {
                       </select>
                     </div>
                   </div>
+
+                  {planCapabilities.revealBodyFont ? (
+                    <div>
+                      <Label className="mb-2 block text-sm">Message typeface</Label>
+                      <RevealBodyFontPicker
+                        value={noteDefaults.bodyFont}
+                        onChange={(next) =>
+                          setNoteDefaults((current) => ({ ...current, bodyFont: next }))
+                        }
+                      />
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Used on the page where the recipient opens the note.
+                      </p>
+                    </div>
+                  ) : null}
 
                   <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
                     <div className="flex items-center justify-between gap-4 px-4 py-3">
