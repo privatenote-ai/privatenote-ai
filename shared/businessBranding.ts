@@ -836,6 +836,33 @@ export function brandingUsesPortalSurface(branding: RevealBranding | undefined):
   return page.kind !== "none";
 }
 
+/** Logo is the only sender identity — no name or company to sit beside it. */
+export function brandingLogoIsSolo(
+  branding: Pick<RevealBranding, "logoUrl" | "senderName" | "companyName"> | undefined,
+): boolean {
+  if (!branding?.logoUrl) return false;
+  return !branding.senderName?.trim() && !branding.companyName?.trim();
+}
+
+/**
+ * Reveal-card logo size. A mark next to a name stays ~64px; a logo-only card
+ * can go ~96px so the brand still reads without filling the card.
+ */
+export function brandingRevealLogoClassName(
+  branding: Pick<RevealBranding, "logoUrl" | "senderName" | "companyName"> | undefined,
+  options?: { preview?: boolean },
+): string {
+  const solo = brandingLogoIsSolo(branding);
+  if (options?.preview) {
+    return solo
+      ? "max-h-12 max-w-[7.5rem] object-contain"
+      : "max-h-7 max-w-24 object-contain";
+  }
+  return solo
+    ? "max-h-24 w-auto max-w-[11rem] object-contain sm:max-h-28"
+    : "max-h-14 w-auto object-contain sm:max-h-16";
+}
+
 /**
  * Page-level wash behind the reveal hero. Kept for older snapshots that still
  * tint a bounded hero; the recipient portal prefers `brandingPageBackground`.

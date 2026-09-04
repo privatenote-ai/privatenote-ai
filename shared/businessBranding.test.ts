@@ -18,6 +18,8 @@ import {
   brandingShowsBanner,
   brandingUsesPortalSurface,
   brandingChromeUsesLightText,
+  brandingLogoIsSolo,
+  brandingRevealLogoClassName,
   parseBrandingAccentColor,
   parseBrandingLogoUrl,
   parseBusinessBrandingInput,
@@ -576,5 +578,26 @@ describe("opened-note branding", () => {
     assert.equal(opened?.companyName, undefined);
     assert.equal(opened?.backgroundStyle, undefined);
     assert.equal(opened?.bannerUrl, undefined);
+  });
+});
+
+describe("branding reveal logo size", () => {
+  it("treats a logo without names as a solo mark and sizes it larger", () => {
+    assert.equal(brandingLogoIsSolo({ logoUrl: "https://acme.example/logo.png" }), true);
+    assert.equal(
+      brandingLogoIsSolo({ logoUrl: "https://acme.example/logo.png", senderName: "Ada" }),
+      false,
+    );
+    assert.match(
+      brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),
+      /max-h-24/,
+    );
+    assert.match(
+      brandingRevealLogoClassName({
+        logoUrl: "https://acme.example/logo.png",
+        companyName: "Acme",
+      }),
+      /max-h-14/,
+    );
   });
 });

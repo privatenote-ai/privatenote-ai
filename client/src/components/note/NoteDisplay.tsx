@@ -54,6 +54,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import {
   brandingCtaStyle,
+  brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
 } from '@shared/businessBranding';
@@ -448,7 +449,7 @@ const RevealHero: React.FC<RevealHeroProps> = ({
     <img
       src={branding.logoUrl}
       alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
-      className="max-h-14 w-auto object-contain sm:max-h-16"
+      className={brandingRevealLogoClassName(branding)}
       loading="lazy"
       referrerPolicy="no-referrer"
     />

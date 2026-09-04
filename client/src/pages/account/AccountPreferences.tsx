@@ -55,6 +55,7 @@ import {
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
   brandingCtaStyle,
+  brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   contrastingTextOn,
   DEFAULT_BRANDING_PORTAL_LAYOUT,
@@ -128,7 +129,7 @@ const BrandingPreview: React.FC<{
     <img
       src={branding.logoUrl}
       alt=""
-      className="max-h-9 max-w-36 object-contain"
+      className={brandingRevealLogoClassName(branding, { preview: true })}
     />
   ) : null;
   const sender = branding.senderName?.trim();
