@@ -875,20 +875,18 @@ type BrandingCardMarkSource = Pick<
   "logoUrl" | "bannerUrl" | "cardImage" | "senderName" | "companyName"
 >;
 
-/** Image shown on the reveal card: the logo mark, or the uploaded banner. */
+/** Image shown on the reveal card. Page photography (`bannerUrl`) stays behind the card. */
 export function brandingCardMarkUrl(
   branding: BrandingCardMarkSource | undefined,
 ): string | undefined {
-  if (!branding) return undefined;
-  if (branding.cardImage === "banner") return branding.bannerUrl;
-  return branding.logoUrl;
+  return branding?.logoUrl;
 }
 
-/** True when the reveal card is showing the wide banner instead of a square logo. */
+/** True when the reveal card shows a wide lockup instead of a logo and names. */
 export function brandingCardMarkIsBanner(
   branding: BrandingCardMarkSource | undefined,
 ): boolean {
-  return branding?.cardImage === "banner" && Boolean(branding.bannerUrl);
+  return branding?.cardImage === "banner" && Boolean(branding.logoUrl);
 }
 
 /** Logo is the only sender identity — no name or company to sit beside it. */

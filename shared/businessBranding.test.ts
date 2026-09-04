@@ -639,20 +639,34 @@ describe("branding reveal logo size", () => {
     );
   });
 
-  it("uses the banner on the card when cardImage is banner", () => {
+  it("uses a wide lockup on the card when cardImage is banner", () => {
     const branding = {
       logoUrl: "https://acme.example/logo.png",
-      bannerUrl: "https://acme.example/banner.png",
+      bannerUrl: "https://acme.example/office.jpg",
       cardImage: "banner" as const,
       senderName: "Ada",
       companyName: "Acme",
     };
-    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/banner.png");
+    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/logo.png");
     assert.equal(brandingLogoIsSolo(branding), true);
     assert.match(brandingRevealLogoClassName(branding), /max-h-44/);
     assert.equal(
       brandingCardMarkUrl({ logoUrl: "https://acme.example/logo.png" }),
       "https://acme.example/logo.png",
     );
+  });
+
+  it("keeps the page photograph when the card uses a banner lockup", () => {
+    const branding = {
+      logoUrl: "https://acme.example/lockup.png",
+      bannerUrl: "https://acme.example/office.jpg",
+      backgroundStyle: "banner" as const,
+      cardImage: "banner" as const,
+    };
+    assert.deepEqual(brandingPageBackground(branding), {
+      kind: "image",
+      url: "https://acme.example/office.jpg",
+    });
+    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/lockup.png");
   });
 });

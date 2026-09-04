@@ -4,6 +4,7 @@ import { Logo } from "@/components/Logo";
 import {
   brandingChromeUsesLightText,
   brandingLogoIsSolo,
+  brandingCardMarkIsBanner,
   brandingOverlayOpacity,
   brandingPageBackground,
   brandingPortalLayout,
@@ -283,11 +284,12 @@ export function RevealHandoffStack({
   footnote,
   compact = false,
 }: RevealHandoffCardProps) {
-  const sender = branding?.senderName?.trim();
-  const role = branding?.senderRole?.trim();
-  const company = branding?.companyName?.trim();
+  const bannerOnly = brandingCardMarkIsBanner(branding);
+  const sender = bannerOnly ? undefined : branding?.senderName?.trim();
+  const role = bannerOnly ? undefined : branding?.senderRole?.trim();
+  const company = bannerOnly ? undefined : branding?.companyName?.trim();
   const meta = [role, company].filter(Boolean).join(" · ");
-  const hasIdentity = Boolean(logo || sender || company || brandingLine);
+  const hasIdentity = Boolean(logo || sender || company || (!bannerOnly && brandingLine));
 
   return (
     <div className="flex flex-col items-center text-center">
