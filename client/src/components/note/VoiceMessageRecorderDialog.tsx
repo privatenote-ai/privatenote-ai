@@ -624,7 +624,7 @@ export function VoiceMessageRecorderDialog({
           className={`flex w-full flex-col items-center ${
             recordMode === "video"
               ? "mt-2 min-h-0 flex-1 gap-3 sm:mt-0 sm:overflow-hidden"
-              : "gap-5 py-1"
+              : "gap-7 py-5"
           }`}
         >
           {showLiveVideo ? (
@@ -770,8 +770,8 @@ export function VoiceMessageRecorderDialog({
         <DialogFooter
           className={
             recordMode === "video"
-              ? "z-10 mt-auto flex-wrap gap-2 bg-background pt-5 sm:static sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2"
-              : "sticky bottom-0 z-10 mt-2 shrink-0 gap-2 bg-background pt-3 pb-[env(safe-area-inset-bottom)] sm:static sm:mt-0 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2 sm:pb-0"
+              ? "z-10 mt-auto flex-wrap gap-2 bg-background pt-7 sm:static sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-3"
+              : "sticky bottom-0 z-10 mt-6 shrink-0 gap-2 bg-background pt-5 pb-[env(safe-area-inset-bottom)] sm:static sm:mt-4 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-3 sm:pb-0"
           }
         >
           {phase === "idle" ? (
