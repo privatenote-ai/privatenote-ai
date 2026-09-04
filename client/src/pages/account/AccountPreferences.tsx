@@ -89,6 +89,24 @@ import {
 } from "@shared/noteFileAccess";
 
 const DEFAULT_BRAND_COLOR = "#2563eb";
+const BRANDING_AUTOSAVE_MS = 650;
+
+type BrandingAutosavePayload = {
+  businessDisplayName: string;
+  businessAccentColor: string;
+  businessBackgroundColor: string;
+  businessTextColor: string;
+  businessSenderName: string;
+  businessSenderRole: string;
+  businessTrustMessage: string;
+  businessBackgroundStyle: BrandingBackgroundStyle;
+  businessPortalLayout: BrandingPortalLayout;
+  businessOpenedBranding: OpenedNoteBrandingSettings;
+};
+
+function brandingAutosaveKey(payload: BrandingAutosavePayload): string {
+  return JSON.stringify(payload);
+}
 
 /** `#rgb` / `#rrggbb`, or the same digits without `#`. */
 function normalizeBrandColorInput(raw: string): string | null {
@@ -492,6 +510,11 @@ export default function AccountPreferences() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
   const [savedBrandingIndicator, setSavedBrandingIndicator] = useState(false);
+  const brandingHydratedRef = useRef(false);
+  const skipBrandingAutosaveRef = useRef(false);
+  const brandingSaveTimerRef = useRef<number | null>(null);
+  const savedBrandingTimeoutRef = useRef<number | null>(null);
+  const lastSavedBrandingKeyRef = useRef("");
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -749,7 +772,10 @@ export default function AccountPreferences() {
     }
   };
 
-  const saveBrandingDefaults = async () => {
+  const saveBrandingDefaults = useCallback(async (payload: BrandingAutosavePayload) => {
+    const key = brandingAutosaveKey(payload);
+    if (!user) return;
+    if (key === lastSavedBrandingKeyRef.current) return;
     setSavingBranding(true);
     try {
       const response = await apiRequest<{
@@ -758,18 +784,9 @@ export default function AccountPreferences() {
         businessBackgroundColor: string | null;
         businessTextColor: string | null;
         businessPortalLayout?: BrandingPortalLayout;
-      }>("/api/auth/account/preferences", "PATCH", {
-        businessDisplayName,
-        businessAccentColor,
-        businessBackgroundColor,
-        businessTextColor,
-        businessSenderName,
-        businessSenderRole,
-        businessTrustMessage,
-        businessBackgroundStyle,
-        businessPortalLayout: portalLayout,
-        businessOpenedBranding: openedNoteBranding,
-      });
+      }>("/api/auth/account/preferences", "PATCH", payload);
+      skipBrandingAutosaveRef.current = true;
+      lastSavedBrandingKeyRef.current = key;
       setBusinessDisplayName(response.businessDisplayName ?? "");
       const accent = response.businessAccentColor ?? DEFAULT_BRAND_COLOR;
       setBusinessAccentColor(accent);
@@ -782,13 +799,14 @@ export default function AccountPreferences() {
       if (response.businessPortalLayout) {
         setPortalLayout(brandingPortalLayout(response.businessPortalLayout));
       }
+      if (savedBrandingTimeoutRef.current) {
+        window.clearTimeout(savedBrandingTimeoutRef.current);
+      }
       setSavedBrandingIndicator(true);
-      setTimeout(() => setSavedBrandingIndicator(false), 2000);
+      savedBrandingTimeoutRef.current = window.setTimeout(() => {
+        setSavedBrandingIndicator(false);
+      }, 2000);
       await refreshEntitlements();
-      toast({
-        title: "Branding defaults saved",
-        description: "New notes will start with this reveal branding.",
-      });
     } catch (error) {
       toast({
         title: "Could not save branding",
@@ -798,7 +816,73 @@ export default function AccountPreferences() {
     } finally {
       setSavingBranding(false);
     }
-  };
+  }, [refreshEntitlements, toast, user]);
+
+  useEffect(() => {
+    if (prefsLoading || authLoading || !user) return;
+    if (!accountEntitlements.capabilities.revealBranding) {
+      brandingHydratedRef.current = false;
+      return;
+    }
+    const payload: BrandingAutosavePayload = {
+      businessDisplayName,
+      businessAccentColor,
+      businessBackgroundColor,
+      businessTextColor,
+      businessSenderName,
+      businessSenderRole,
+      businessTrustMessage,
+      businessBackgroundStyle,
+      businessPortalLayout: portalLayout,
+      businessOpenedBranding: openedNoteBranding,
+    };
+    const key = brandingAutosaveKey(payload);
+    if (!brandingHydratedRef.current) {
+      lastSavedBrandingKeyRef.current = key;
+      brandingHydratedRef.current = true;
+      return;
+    }
+    if (skipBrandingAutosaveRef.current) {
+      skipBrandingAutosaveRef.current = false;
+      lastSavedBrandingKeyRef.current = key;
+      return;
+    }
+    if (key === lastSavedBrandingKeyRef.current) return;
+    if (brandingSaveTimerRef.current) window.clearTimeout(brandingSaveTimerRef.current);
+    brandingSaveTimerRef.current = window.setTimeout(() => {
+      void saveBrandingDefaults(payload);
+    }, BRANDING_AUTOSAVE_MS);
+    return () => {
+      if (brandingSaveTimerRef.current) {
+        window.clearTimeout(brandingSaveTimerRef.current);
+        brandingSaveTimerRef.current = null;
+      }
+    };
+  }, [
+    accountEntitlements.capabilities.revealBranding,
+    authLoading,
+    businessAccentColor,
+    businessBackgroundColor,
+    businessBackgroundStyle,
+    businessDisplayName,
+    businessSenderName,
+    businessSenderRole,
+    businessTextColor,
+    businessTrustMessage,
+    openedNoteBranding,
+    portalLayout,
+    prefsLoading,
+    saveBrandingDefaults,
+    user,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (savedBrandingTimeoutRef.current) {
+        window.clearTimeout(savedBrandingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const uploadBusinessBanner = async (file: File) => {
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
@@ -815,7 +899,7 @@ export default function AccountPreferences() {
       setBusinessBannerUrl(response.bannerUrl);
       setBusinessBackgroundStyle("banner");
       await refreshEntitlements();
-      toast({ title: "Banner uploaded", description: "Save branding defaults to use the banner treatment." });
+      toast({ title: "Banner uploaded" });
     } catch (error) {
       toast({ title: "Could not upload banner", description: describeApiPreferenceError(error), variant: "destructive" });
     } finally {
@@ -1104,18 +1188,24 @@ export default function AccountPreferences() {
                 </div>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Recognition and trust on secure delivery pages. Recipients see
-                  your identity; PrivateNote stays the trust layer.
+                  your identity; PrivateNote stays the trust layer. Changes save
+                  automatically.
                 </p>
               </div>
-              {savedBrandingIndicator ? (
-                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  Saved
-                </span>
-              ) : (
-                <span className="shrink-0 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/50 dark:text-violet-200">
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {savingBranding ? (
+                  <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                    Saving…
+                  </span>
+                ) : savedBrandingIndicator ? (
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    Saved
+                  </span>
+                ) : null}
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/50 dark:text-violet-200">
                   Business
                 </span>
-              )}
+              </div>
             </div>
           </div>
 
@@ -1628,19 +1718,10 @@ export default function AccountPreferences() {
                 ) : null}
               </div>
 
-              <div className="flex justify-end border-t border-violet-100 pt-4 dark:border-violet-900/40">
-                <Button
-                  type="button"
-                  disabled={savingBranding}
-                  onClick={() => void saveBrandingDefaults()}
-                >
-                  {savingBranding ? "Saving…" : "Save branding defaults"}
-                </Button>
-              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Branding is public reveal metadata only. It never includes note
                 content, titles, or previews. After open, branding stays hidden
-                unless you opt in above.
+                unless you opt in above. Changes save automatically.
               </p>
             </div>
           ) : (
