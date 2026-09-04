@@ -20,6 +20,10 @@ import {
   parseRevealBodyFont,
   type StoredRevealBodyFont,
 } from "./revealBodyFont.ts";
+import {
+  parseAttachmentRecipientPermission,
+  type StoredAttachmentRecipientPermission,
+} from "./attachmentRecipientPermission.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
@@ -75,6 +79,8 @@ export interface ParsedStoredNoteCiphertext {
   readerLanguage?: SupportedLanguage;
   /** Optional Starter+ body typeface snapshotted at create time. */
   bodyFont?: StoredRevealBodyFont;
+  /** Optional Business view-only handling policy for the attachment. */
+  attachmentPermission?: StoredAttachmentRecipientPermission;
   /** Optional Business branded reveal chrome snapshotted at create time. */
   revealBranding?: RevealBranding;
 }
@@ -341,6 +347,12 @@ export function parseStoredNoteCiphertextForReveal(
   if (bodyFont) {
     ciphertext.bodyFont = bodyFont;
   } else if (o.bodyFont != null && typeof o.bodyFont !== "string") {
+    return null;
+  }
+  const attachmentPermission = parseAttachmentRecipientPermission(o.attachmentPermission);
+  if (attachmentPermission) {
+    ciphertext.attachmentPermission = attachmentPermission;
+  } else if (o.attachmentPermission != null && typeof o.attachmentPermission !== "string") {
     return null;
   }
   const attachment = parseStoredNoteAttachmentForNote(o.attachment, noteId);

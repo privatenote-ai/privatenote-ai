@@ -15,7 +15,6 @@ import {
   brandingPageBackground,
   brandingOverlayOpacity,
   brandingPortalLayout,
-  brandingShowsAfterReveal,
   brandingShowsBanner,
   brandingUsesPortalSurface,
   brandingChromeUsesLightText,
@@ -24,6 +23,9 @@ import {
   parseBusinessBrandingInput,
   parseStoredRevealBranding,
   toRevealBranding,
+  applyOpenedNoteBranding,
+  parseOpenedNoteBrandingSettings,
+  DEFAULT_OPENED_NOTE_BRANDING,
 } from "./businessBranding";
 
 const allowed = { revealBrandingAllowed: true };
@@ -80,6 +82,11 @@ describe("parseBusinessBrandingInput", () => {
       focalX: 50,
       focalY: 50,
       showBrandingAfterReveal: false,
+      openedBackground: "same",
+      openedShowLogo: true,
+      openedShowSenderName: true,
+      openedShowCompanyName: true,
+      openedShowTrustMessage: true,
     });
   });
 
@@ -163,24 +170,6 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(corners.ok === true && corners.branding.cardPositionMobile, "bottom");
     const badPosition = parseBusinessBrandingInput({ cardPosition: "flex-start" }, allowed);
     assert.equal(badPosition.ok === false && badPosition.code, "invalid_card_position");
-  });
-
-  it("accepts showBrandingAfterReveal opt-in", () => {
-    const result = parseBusinessBrandingInput(
-      { companyName: "Acme", showBrandingAfterReveal: true },
-      allowed,
-    );
-    assert.equal(result.ok, true);
-    assert.equal(result.ok === true && result.branding.showBrandingAfterReveal, true);
-  });
-
-  it("rejects a non-boolean showBrandingAfterReveal", () => {
-    const result = parseBusinessBrandingInput(
-      { showBrandingAfterReveal: "yes" },
-      allowed,
-    );
-    assert.equal(result.ok, false);
-    assert.equal(result.ok === false && result.code, "invalid_show_branding_after_reveal");
   });
 });
 
@@ -461,14 +450,6 @@ describe("brandingBannerStyle", () => {
   });
 });
 
-describe("brandingShowsAfterReveal", () => {
-  it("defaults to false when the flag is missing", () => {
-    assert.equal(brandingShowsAfterReveal(undefined), false);
-    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: false }), false);
-    assert.equal(brandingShowsAfterReveal({ showBrandingAfterReveal: true }), true);
-  });
-});
-
 describe("branding portal layout", () => {
   it("defaults overlay to light (~16%) so photography stays visible", () => {
     assert.equal(brandingOverlayOpacity({ backgroundStyle: "banner" }), 0.16);
@@ -542,5 +523,58 @@ describe("branding asset sizes", () => {
     assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width / BRANDING_BANNER_RECOMMENDED_PX.height, 16 / 9);
     assert.equal(BRANDING_BANNER_SIZE_LABEL, "1920×1080");
     assert.equal(BRANDING_BANNER_MAX_BYTES, 3 * 1024 * 1024);
+  });
+});
+
+describe("opened-note branding", () => {
+  it("is off by default and omitted from the snapshot until opted in", () => {
+    const settings = parseOpenedNoteBrandingSettings(undefined);
+    assert.deepEqual(settings, DEFAULT_OPENED_NOTE_BRANDING);
+    const wire = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      showBrandingAfterReveal: false,
+    });
+    assert.equal(wire?.showBrandingAfterReveal, undefined);
+    assert.equal(applyOpenedNoteBranding(wire), undefined);
+  });
+
+  it("keeps identity and gate background on the opened page when opted in", () => {
+    const wire = toRevealBranding({
+      companyName: "Acme",
+      senderName: "Ada",
+      logoUrl: "https://acme.example/logo.png",
+      accentColor: "#2563eb",
+      backgroundStyle: "gradient",
+      showBrandingAfterReveal: true,
+    });
+    assert.equal(wire?.showBrandingAfterReveal, true);
+    const opened = applyOpenedNoteBranding(wire);
+    assert.equal(opened?.companyName, "Acme");
+    assert.equal(opened?.senderName, "Ada");
+    assert.equal(opened?.logoUrl, "https://acme.example/logo.png");
+    assert.equal(opened?.backgroundStyle, "gradient");
+    assert.equal(opened?.showBrandingAfterReveal, undefined);
+  });
+
+  it("can hide name text and switch the opened background independently", () => {
+    const opened = applyOpenedNoteBranding({
+      companyName: "Acme",
+      senderName: "Ada",
+      logoUrl: "https://acme.example/logo.png",
+      bannerUrl: "https://acme.example/banner.jpg",
+      backgroundStyle: "banner",
+      showBrandingAfterReveal: true,
+      openedBackground: "neutral",
+      openedShowSenderName: false,
+      openedShowCompanyName: false,
+    });
+    assert.equal(opened?.logoUrl, "https://acme.example/logo.png");
+    assert.equal(opened?.senderName, undefined);
+    assert.equal(opened?.companyName, undefined);
+    assert.equal(opened?.backgroundStyle, undefined);
+    assert.equal(opened?.bannerUrl, undefined);
   });
 });

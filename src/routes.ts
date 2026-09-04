@@ -93,8 +93,9 @@ import {
 } from "./sentNotesService";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
-import { parseStoredRevealBranding, parseStoredPortalLayoutJson, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
+import { parseStoredRevealBranding, parseStoredPortalLayoutJson, openedSettingsFromAccountColumns, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
 import { parseRevealBodyFont } from "@shared/revealBodyFont";
+import { parseAttachmentRecipientPermission } from "@shared/attachmentRecipientPermission";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
@@ -922,7 +923,7 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
               business_trust_message, business_logo_key, business_banner_key,
               business_accent_color, business_background_color, business_text_color,
               business_background_style, business_portal_layout,
-              business_show_branding_after_reveal
+              business_show_branding_after_reveal, business_opened_branding
        FROM users WHERE id = ? LIMIT 1`;
   const selectCore = `SELECT business_display_name, business_logo_key, business_accent_color,
               business_background_color, business_text_color
@@ -937,6 +938,10 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
     }
     if (!row) return undefined;
     const layout = parseStoredPortalLayoutJson(row.business_portal_layout);
+    const opened = openedSettingsFromAccountColumns(
+      row.business_opened_branding,
+      row.business_show_branding_after_reveal,
+    );
     return toRevealBranding({
       companyName: row.business_display_name,
       senderName: row.business_sender_name,
@@ -949,7 +954,12 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       textColor: row.business_text_color,
       backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "banner",
       ...layout,
-      showBrandingAfterReveal: String(row.business_show_branding_after_reveal ?? "") === "1",
+      showBrandingAfterReveal: opened.show,
+      openedBackground: opened.background,
+      openedShowLogo: opened.showLogo,
+      openedShowSenderName: opened.showSenderName,
+      openedShowCompanyName: opened.showCompanyName,
+      openedShowTrustMessage: opened.showTrustMessage,
     });
   } catch (error) {
     console.warn("[BRANDING] Could not resolve account branding:", error);
@@ -9321,6 +9331,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         requestBody.bodyFont = parsedBodyFont;
       } else {
         delete requestBody.bodyFont;
+      }
+    }
+
+    if (requestBody?.attachmentPermission != null) {
+      const parsedPermission = parseAttachmentRecipientPermission(requestBody.attachmentPermission);
+      if (parsedPermission && noteCreationFeatures.attachmentViewOnly) {
+        requestBody.attachmentPermission = parsedPermission;
+      } else {
+        delete requestBody.attachmentPermission;
       }
     }
 

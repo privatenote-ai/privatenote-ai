@@ -84,6 +84,8 @@ describe("planCatalog", () => {
     assert.equal(planFeaturesFor("personal_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("personal_premium").customPromptTemplates, false);
     assert.equal(planFeaturesFor("business_premium").revealBranding, true);
+    assert.equal(planFeaturesFor("personal_premium").attachmentViewOnly, false);
+    assert.equal(planFeaturesFor("business_premium").attachmentViewOnly, true);
     assert.equal(planFeaturesFor("business_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("business_premium").customPromptTemplates, true);
     assert.equal(planFeaturesFor("personal_premium").noteLabelPortability, false);

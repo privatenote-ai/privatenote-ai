@@ -137,6 +137,28 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.equal(dropped!.bodyFont, undefined);
   });
 
+  it("accepts view-only attachment permission and drops unknown tokens", () => {
+    const stored = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "view-only" })),
+    );
+    assert.ok(stored);
+    assert.equal(stored!.attachmentPermission, "view-only");
+    const omitted = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "download" })),
+    );
+    assert.ok(omitted);
+    assert.equal(omitted!.attachmentPermission, undefined);
+    const dropped = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "print" })),
+    );
+    assert.ok(dropped);
+    assert.equal(dropped!.attachmentPermission, undefined);
+    assert.equal(
+      parseStoredNoteCiphertextForReveal(JSON.stringify(basePayload({ attachmentPermission: { id: "view-only" } }))),
+      null,
+    );
+  });
+
   it("rejects non-string body font metadata", () => {
     assert.equal(
       parseStoredNoteCiphertextForReveal(JSON.stringify(basePayload({ bodyFont: { id: "source-serif" } }))),

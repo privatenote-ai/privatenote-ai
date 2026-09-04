@@ -17,7 +17,10 @@ import {
 import {
   DEFAULT_BRANDING_PORTAL_LAYOUT,
   brandingPortalLayout,
+  openedSettingsFromAccountColumns,
+  DEFAULT_OPENED_NOTE_BRANDING,
   type BrandingPortalLayout,
+  type OpenedNoteBrandingSettings,
 } from "@shared/businessBranding";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/context/AuthContext";
@@ -44,7 +47,7 @@ export type AccountEntitlementSnapshot = {
   businessBannerUrl: string | null;
   businessBackgroundStyle: "neutral" | "gradient" | "banner";
   businessPortalLayout: BrandingPortalLayout;
-  businessShowBrandingAfterReveal: boolean;
+  businessOpenedBranding: OpenedNoteBrandingSettings;
   hostedAiUsage: {
     used: number;
     limit: number;
@@ -75,7 +78,7 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   businessBannerUrl: null,
   businessBackgroundStyle: "neutral",
   businessPortalLayout: { ...DEFAULT_BRANDING_PORTAL_LAYOUT },
-  businessShowBrandingAfterReveal: false,
+  businessOpenedBranding: { ...DEFAULT_OPENED_NOTE_BRANDING },
   hostedAiUsage: {
     used: 0,
     limit: planFeaturesFor("free").hostedAiMonthly,
@@ -140,6 +143,7 @@ export function AccountEntitlementsProvider({
       businessBannerUrl?: string | null;
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
       businessPortalLayout?: BrandingPortalLayout | null;
+      businessOpenedBranding?: OpenedNoteBrandingSettings | null;
       businessShowBrandingAfterReveal?: boolean;
       hostedAiUsage?: {
         used?: number;
@@ -184,8 +188,10 @@ export function AccountEntitlementsProvider({
           businessBannerUrl: summary.businessBannerUrl ?? null,
           businessBackgroundStyle: summary.businessBackgroundStyle ?? "neutral",
           businessPortalLayout: brandingPortalLayout(summary.businessPortalLayout ?? undefined),
-          businessShowBrandingAfterReveal:
-            summary.businessShowBrandingAfterReveal === true,
+          businessOpenedBranding: openedSettingsFromAccountColumns(
+            summary.businessOpenedBranding,
+            summary.businessShowBrandingAfterReveal,
+          ),
           hostedAiUsage: {
             used: Math.max(0, Number(summary.hostedAiUsage?.used ?? 0)),
             limit: Math.max(

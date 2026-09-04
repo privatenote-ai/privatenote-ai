@@ -2,6 +2,7 @@ import React from "react";
 import {
   Crown,
   Eye,
+  EyeOff,
   Lock,
   Timer,
   Shield,
@@ -39,6 +40,9 @@ import type { AccountType } from "@shared/planCatalog";
 import {
   type RevealBodyFont,
 } from "@shared/revealBodyFont";
+import {
+  type AttachmentRecipientPermission,
+} from "@shared/attachmentRecipientPermission";
 import { RevealBodyFontPicker } from "@/components/note/RevealBodyFontPicker";
 import {
   BUSINESS_RECEIPT_ACK_PRESETS,
@@ -427,6 +431,9 @@ export type NoteSettingsPanelProps = {
   bodyFont: RevealBodyFont;
   setBodyFont: (value: RevealBodyFont) => void;
   canChooseBodyFont?: boolean;
+  attachmentPermission: AttachmentRecipientPermission;
+  setAttachmentPermission: (value: AttachmentRecipientPermission) => void;
+  canChooseAttachmentPermission?: boolean;
   /** Business — show the account's saved branding on the reveal page. */
   canBrandRevealPage?: boolean;
   configuredAccountType?: AccountType;
@@ -502,6 +509,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   bodyFont,
   setBodyFont,
   canChooseBodyFont = false,
+  attachmentPermission,
+  setAttachmentPermission,
+  canChooseAttachmentPermission = false,
   canBrandRevealPage = false,
   configuredAccountType = "free",
   hasRevealBranding = false,
@@ -760,6 +770,77 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               <SettingsFieldHelper>
                 {t.settingsFileDownloadsHint ??
                   "How long attachments stay downloadable after the note is opened."}
+              </SettingsFieldHelper>
+            </div>
+          </div>
+
+          <div className={SETTINGS_FIELD_ROW}>
+            <div>
+              <SettingsFieldLabel
+                icon={<EyeOff className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                label={t.settingsAttachmentPermission ?? "Recipient file access"}
+                info={
+                  t.settingsAttachmentPermissionInfo ??
+                  "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen."
+                }
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    {
+                      id: "download" as const,
+                      title: t.settingsAttachmentPermissionDownload ?? "View + download",
+                      hint:
+                        t.settingsAttachmentPermissionDownloadHint ??
+                        "The recipient may download the file during the access window.",
+                    },
+                    {
+                      id: "view-only" as const,
+                      title: t.settingsAttachmentPermissionViewOnly ?? "View only",
+                      hint:
+                        t.settingsAttachmentPermissionViewOnlyHint ??
+                        "The recipient can open the secure viewer. Download is hidden.",
+                    },
+                  ] as const
+                ).map((option) => {
+                  const selected = attachmentPermission === option.id;
+                  const locked = option.id === "view-only" && !canChooseAttachmentPermission;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        if (locked) {
+                          setSelectedPremiumFeature({
+                            title: t.settingsAttachmentPermission ?? "Recipient file access",
+                            description:
+                              t.settingsAttachmentPermissionInfo ??
+                              "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen.",
+                            plan: "business",
+                          });
+                          return;
+                        }
+                        setAttachmentPermission(option.id);
+                      }}
+                      className={`${receiptAckOptionBase} ${selected ? receiptAckOptionActive : receiptAckOptionIdle}`}
+                      aria-pressed={selected}
+                    >
+                      <span className="block font-medium">
+                        {withPlanUnlock(option.title, option.id === "view-only" ? "business" : "free", t)}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {option.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <SettingsFieldHelper>
+                {t.settingsAttachmentPermissionHint ??
+                  "View only is available on Business. It does not prevent screenshots."}
               </SettingsFieldHelper>
             </div>
           </div>

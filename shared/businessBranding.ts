@@ -102,11 +102,34 @@ export type BusinessBranding = {
   overlay?: BrandingOverlay | null;
   focalX?: number | null;
   focalY?: number | null;
-  /**
-   * When true, sender branding also appears on the opened-note view.
-   * Default false so screenshots of secrets do not carry logo/attribution.
-   */
   showBrandingAfterReveal?: boolean | null;
+  openedBackground?: OpenedNoteBackground | null;
+  openedShowLogo?: boolean | null;
+  openedShowSenderName?: boolean | null;
+  openedShowCompanyName?: boolean | null;
+  openedShowTrustMessage?: boolean | null;
+};
+
+export const OPENED_NOTE_BACKGROUNDS = ["same", "neutral", "gradient", "banner"] as const;
+export type OpenedNoteBackground = (typeof OPENED_NOTE_BACKGROUNDS)[number];
+
+export type OpenedNoteBrandingSettings = {
+  /** Off by default. Screenshots of the opened note stay unbranded unless this is true. */
+  show: boolean;
+  background: OpenedNoteBackground;
+  showLogo: boolean;
+  showSenderName: boolean;
+  showCompanyName: boolean;
+  showTrustMessage: boolean;
+};
+
+export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
+  show: false,
+  background: "same",
+  showLogo: true,
+  showSenderName: true,
+  showCompanyName: true,
+  showTrustMessage: true,
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
@@ -127,8 +150,14 @@ export type RevealBranding = {
   overlay?: BrandingOverlay;
   focalX?: number;
   focalY?: number;
-  /** Present only when true; missing/false means hide branding after open. */
   showBrandingAfterReveal?: boolean;
+  openedBackground?: OpenedNoteBackground;
+  openedShowLogo?: boolean;
+  openedShowSenderName?: boolean;
+  openedShowCompanyName?: boolean;
+  openedShowTrustMessage?: boolean;
+  /** Legacy alias still accepted when reading stored notes. */
+  sharerName?: string;
 };
 
 export type BrandingCtaStyle = {
@@ -169,6 +198,11 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
   focalY: DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
   showBrandingAfterReveal: false,
+  openedBackground: "same",
+  openedShowLogo: true,
+  openedShowSenderName: true,
+  openedShowCompanyName: true,
+  openedShowTrustMessage: true,
 };
 
 /** True when the opened-note view should keep sender branding (opt-in). */
@@ -176,6 +210,123 @@ export function brandingShowsAfterReveal(
   branding: Pick<RevealBranding, "showBrandingAfterReveal"> | undefined,
 ): boolean {
   return branding?.showBrandingAfterReveal === true;
+}
+
+/** Prefer the JSON column; fall back to the legacy 0/1 flag for existing accounts. */
+export function openedSettingsFromAccountColumns(
+  json: unknown,
+  showAfterRevealFlag: unknown,
+): OpenedNoteBrandingSettings {
+  if (json && typeof json === "object") {
+    return parseOpenedNoteBrandingSettings(json);
+  }
+  if (typeof json === "string" && json.trim() !== "") {
+    return parseOpenedNoteBrandingSettings(json);
+  }
+  const flagOn =
+    showAfterRevealFlag === 1 ||
+    showAfterRevealFlag === "1" ||
+    showAfterRevealFlag === true;
+  return { ...DEFAULT_OPENED_NOTE_BRANDING, show: flagOn };
+}
+
+export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandingSettings {
+  let source: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      source = JSON.parse(raw) as unknown;
+    } catch {
+      return { ...DEFAULT_OPENED_NOTE_BRANDING };
+    }
+  }
+  const record =
+    source && typeof source === "object" && !Array.isArray(source)
+      ? (source as Record<string, unknown>)
+      : {};
+  const backgroundRaw = record.background;
+  const background = OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
+    ? (backgroundRaw as OpenedNoteBackground)
+    : "same";
+  return {
+    show: record.show === true,
+    background,
+    showLogo: record.showLogo !== false,
+    showSenderName: record.showSenderName !== false,
+    showCompanyName: record.showCompanyName !== false,
+    showTrustMessage: record.showTrustMessage !== false,
+  };
+}
+
+export function stringifyOpenedNoteBrandingSettings(
+  settings: OpenedNoteBrandingSettings,
+): string {
+  return JSON.stringify({
+    show: settings.show === true,
+    background: settings.background,
+    showLogo: settings.showLogo !== false,
+    showSenderName: settings.showSenderName !== false,
+    showCompanyName: settings.showCompanyName !== false,
+    showTrustMessage: settings.showTrustMessage !== false,
+  });
+}
+
+export function openedSettingsFromBranding(
+  branding: Pick<
+    BusinessBranding,
+    | "showBrandingAfterReveal"
+    | "openedBackground"
+    | "openedShowLogo"
+    | "openedShowSenderName"
+    | "openedShowCompanyName"
+    | "openedShowTrustMessage"
+  > | null | undefined,
+): OpenedNoteBrandingSettings {
+  return parseOpenedNoteBrandingSettings({
+    show: branding?.showBrandingAfterReveal === true,
+    background: branding?.openedBackground ?? "same",
+    showLogo: branding?.openedShowLogo !== false,
+    showSenderName: branding?.openedShowSenderName !== false,
+    showCompanyName: branding?.openedShowCompanyName !== false,
+    showTrustMessage: branding?.openedShowTrustMessage !== false,
+  });
+}
+
+/**
+ * Projects the reveal-gate snapshot onto the opened-note page.
+ * Returns undefined when after-open branding is off so screenshots stay unbranded.
+ */
+export function applyOpenedNoteBranding(
+  gate: RevealBranding | undefined,
+): RevealBranding | undefined {
+  if (!gate || gate.showBrandingAfterReveal !== true) return undefined;
+  const next: RevealBranding = { ...gate };
+  delete next.showBrandingAfterReveal;
+  delete next.openedBackground;
+  delete next.openedShowLogo;
+  delete next.openedShowSenderName;
+  delete next.openedShowCompanyName;
+  delete next.openedShowTrustMessage;
+
+  if (gate.openedShowLogo === false) delete next.logoUrl;
+  if (gate.openedShowSenderName === false) {
+    delete next.senderName;
+    delete next.senderRole;
+    delete next.sharerName;
+  }
+  if (gate.openedShowCompanyName === false) delete next.companyName;
+  if (gate.openedShowTrustMessage === false) delete next.trustMessage;
+
+  const background = gate.openedBackground ?? "same";
+  if (background === "neutral") {
+    delete next.backgroundStyle;
+    delete next.bannerUrl;
+  } else if (background === "gradient") {
+    next.backgroundStyle = "gradient";
+    delete next.bannerUrl;
+  } else if (background === "banner" && next.bannerUrl) {
+    next.backgroundStyle = "banner";
+  }
+  return next;
 }
 
 export type BrandingErrorCode =
@@ -194,7 +345,7 @@ export type BrandingErrorCode =
   | "invalid_background_fit"
   | "invalid_overlay"
   | "invalid_image_position"
-  | "invalid_show_branding_after_reveal";
+  | "invalid_opened_note_branding";
 
 export type BusinessBrandingParseResult =
   | { ok: true; branding: BusinessBranding }
@@ -304,6 +455,54 @@ export function parseBrandingLogoUrl(
 }
 
 export const parseBrandingBannerUrl = parseBrandingLogoUrl;
+
+function parseOptionalBoolean(
+  raw: unknown,
+): { ok: true; value: boolean | null } | { ok: false } {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (raw === true || raw === false) return { ok: true, value: raw };
+  return { ok: false };
+}
+
+function parseOpenedFields(
+  body: Record<string, unknown>,
+):
+  | { ok: true; settings: OpenedNoteBrandingSettings }
+  | { ok: false; message: string } {
+  if (body.openedNote != null && typeof body.openedNote === "object" && !Array.isArray(body.openedNote)) {
+    return { ok: true, settings: parseOpenedNoteBrandingSettings(body.openedNote) };
+  }
+  const show = parseOptionalBoolean(body.showBrandingAfterReveal);
+  if (!show.ok) {
+    return { ok: false, message: "showBrandingAfterReveal must be a boolean" };
+  }
+  const backgroundRaw = body.openedBackground;
+  if (
+    backgroundRaw != null &&
+    backgroundRaw !== "" &&
+    !OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
+  ) {
+    return { ok: false, message: "openedBackground must be same, neutral, gradient, or banner" };
+  }
+  const showLogo = parseOptionalBoolean(body.openedShowLogo);
+  const showSenderName = parseOptionalBoolean(body.openedShowSenderName);
+  const showCompanyName = parseOptionalBoolean(body.openedShowCompanyName);
+  const showTrustMessage = parseOptionalBoolean(body.openedShowTrustMessage);
+  if (!showLogo.ok || !showSenderName.ok || !showCompanyName.ok || !showTrustMessage.ok) {
+    return { ok: false, message: "Opened-note identity flags must be booleans" };
+  }
+  return {
+    ok: true,
+    settings: parseOpenedNoteBrandingSettings({
+      show: show.value === true,
+      background: backgroundRaw,
+      showLogo: showLogo.value,
+      showSenderName: showSenderName.value,
+      showCompanyName: showCompanyName.value,
+      showTrustMessage: showTrustMessage.value,
+    }),
+  };
+}
 
 function parseBackgroundStyle(
   raw: unknown,
@@ -775,20 +974,14 @@ export function parseBusinessBrandingInput(
   if (!layout.ok) {
     return { ok: false, code: layout.code, status: 400, message: layout.message };
   }
-  const showAfterRaw = body.showBrandingAfterReveal;
-  let showBrandingAfterReveal = false;
-  if (showAfterRaw === true) {
-    showBrandingAfterReveal = true;
-  } else if (
-    showAfterRaw !== false &&
-    showAfterRaw !== null &&
-    showAfterRaw !== undefined
-  ) {
+
+  const opened = parseOpenedFields(body);
+  if (!opened.ok) {
     return {
       ok: false,
-      code: "invalid_show_branding_after_reveal",
+      code: "invalid_opened_note_branding",
       status: 400,
-      message: "showBrandingAfterReveal must be a boolean",
+      message: opened.message,
     };
   }
 
@@ -811,7 +1004,12 @@ export function parseBusinessBrandingInput(
       overlay: layout.layout.overlay,
       focalX: layout.layout.focalX,
       focalY: layout.layout.focalY,
-      showBrandingAfterReveal,
+      showBrandingAfterReveal: opened.settings.show,
+      openedBackground: opened.settings.background,
+      openedShowLogo: opened.settings.showLogo,
+      openedShowSenderName: opened.settings.showSenderName,
+      openedShowCompanyName: opened.settings.showCompanyName,
+      openedShowTrustMessage: opened.settings.showTrustMessage,
     },
   };
 }
@@ -865,8 +1063,23 @@ export function toRevealBranding(
     ...(layout.overlay !== defaults.overlay ? { overlay: layout.overlay } : {}),
     ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
     ...(layout.focalY !== defaults.focalY ? { focalY: layout.focalY } : {}),
-    ...(branding.showBrandingAfterReveal === true
-      ? { showBrandingAfterReveal: true }
+    ...(branding.showBrandingAfterReveal === true ? { showBrandingAfterReveal: true } : {}),
+    ...(branding.showBrandingAfterReveal === true &&
+    branding.openedBackground &&
+    branding.openedBackground !== "same"
+      ? { openedBackground: branding.openedBackground }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedShowLogo === false
+      ? { openedShowLogo: false }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedShowSenderName === false
+      ? { openedShowSenderName: false }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedShowCompanyName === false
+      ? { openedShowCompanyName: false }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedShowTrustMessage === false
+      ? { openedShowTrustMessage: false }
       : {}),
   };
 }
@@ -894,6 +1107,8 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
   const textColor = parseBrandingHexColor(source.textColor);
   const backgroundStyle = parseBackgroundStyle(source.backgroundStyle);
   const layout = parsePortalLayoutLenient(source);
+  const opened = parseOpenedFields(source);
+  const openedSettings = opened.ok ? opened.settings : DEFAULT_OPENED_NOTE_BRANDING;
 
   return toRevealBranding({
     companyName: companyName.ok ? companyName.value : null,
@@ -912,6 +1127,11 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     overlay: layout.overlay,
     focalX: layout.focalX,
     focalY: layout.focalY,
-    showBrandingAfterReveal: source.showBrandingAfterReveal === true,
+    showBrandingAfterReveal: openedSettings.show,
+    openedBackground: openedSettings.background,
+    openedShowLogo: openedSettings.showLogo,
+    openedShowSenderName: openedSettings.showSenderName,
+    openedShowCompanyName: openedSettings.showCompanyName,
+    openedShowTrustMessage: openedSettings.showTrustMessage,
   });
 }

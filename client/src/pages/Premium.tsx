@@ -148,6 +148,7 @@ function planHighlights(planId: AccountType): string[] {
   return [
     "Everything in Starter",
     "Recipient branding on secure delivery pages",
+    "View-only file access for confidential documents",
     "Custom AI prompt templates, saved in this browser",
     "Largest attachments and payload capacity",
     "Highest hosted AI draft allowance",
@@ -192,6 +193,8 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return flag(features.revealBranding);
     case "revealBodyFont":
       return flag(features.revealBodyFont);
+    case "attachmentViewOnly":
+      return flag(features.attachmentViewOnly);
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes));
     case "payloadBuffer":
@@ -247,6 +250,7 @@ const comparisonSections: {
       { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
       { key: "revokeUnopened", label: "Revoke unopened notes" },
       { key: "revealBodyFont", label: "Reveal typeface" },
+      { key: "attachmentViewOnly", label: "View-only files" },
       { key: "revealBranding", label: "Recipient branding" },
     ],
   },

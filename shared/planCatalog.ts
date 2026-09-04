@@ -28,6 +28,8 @@ export type PlanFeatureFlags = {
   readerLanguage: boolean;
   /** Starter+: pick a body typeface for the revealed note sheet. */
   revealBodyFont: boolean;
+  /** Business: hide the normal download action on the recipient viewer. */
+  attachmentViewOnly: boolean;
   /** Business: company profile / logo / accent on reveal. */
   revealBranding: boolean;
   proofOfAccess: boolean;
@@ -88,6 +90,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       recipientLinkDelivery: false,
       readerLanguage: false,
       revealBodyFont: false,
+      attachmentViewOnly: false,
       revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
@@ -121,6 +124,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBodyFont: true,
+      attachmentViewOnly: false,
       revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
@@ -154,6 +158,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       recipientLinkDelivery: true,
       readerLanguage: true,
       revealBodyFont: true,
+      attachmentViewOnly: true,
       revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,

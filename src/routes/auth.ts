@@ -27,7 +27,7 @@ import {
   type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout } from "@shared/businessBranding";
+import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, parseOpenedNoteBrandingSettings, stringifyOpenedNoteBrandingSettings, openedSettingsFromAccountColumns, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout, type OpenedNoteBrandingSettings } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -539,6 +539,7 @@ type UsersTableColumns = {
   business_background_style: boolean;
   business_portal_layout: boolean;
   business_show_branding_after_reveal: boolean;
+  business_opened_branding: boolean;
   email_notifications: boolean;
   preferred_language: boolean;
   allow_hosted_ai: boolean;
@@ -560,6 +561,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
     business_background_style: false,
     business_portal_layout: false,
     business_show_branding_after_reveal: false,
+    business_opened_branding: false,
     email_notifications: false,
     preferred_language: false,
     allow_hosted_ai: false,
@@ -583,6 +585,7 @@ async function getUsersTableColumns(env: Env): Promise<UsersTableColumns> {
       business_background_style: names.has("business_background_style"),
       business_portal_layout: names.has("business_portal_layout"),
       business_show_branding_after_reveal: names.has("business_show_branding_after_reveal"),
+      business_opened_branding: names.has("business_opened_branding"),
       email_notifications: names.has("email_notifications"),
       preferred_language: names.has("preferred_language"),
       allow_hosted_ai: names.has("allow_hosted_ai"),
@@ -610,6 +613,7 @@ function buildUserSelect(baseColumns: string[], optionalColumns: UsersTableColum
   if (optionalColumns.business_show_branding_after_reveal) {
     columns.push("business_show_branding_after_reveal");
   }
+  if (optionalColumns.business_opened_branding) columns.push("business_opened_branding");
   if (optionalColumns.email_notifications) columns.push("email_notifications");
   if (optionalColumns.preferred_language) columns.push("preferred_language");
   if (optionalColumns.allow_hosted_ai) columns.push("allow_hosted_ai");
@@ -4376,12 +4380,17 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_background_style?: string | null;
         business_portal_layout?: string | null;
         business_show_branding_after_reveal?: number | null;
+        business_opened_branding?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
       }>();
 
     const usablePasskeyCount = await countUsableWebauthnCredentialsForUser(env, session.id);
     const entitlements = await getAccountEntitlements(env, session.id);
+    const openedNoteBranding = openedSettingsFromAccountColumns(
+      user?.business_opened_branding,
+      user?.business_show_branding_after_reveal,
+    );
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
@@ -4412,8 +4421,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
         businessBackgroundStyle: user?.business_background_style ?? "neutral",
         businessPortalLayout: parseStoredPortalLayoutJson(user?.business_portal_layout),
-        businessShowBrandingAfterReveal:
-          (user?.business_show_branding_after_reveal ?? 0) === 1,
+        businessOpenedBranding: openedNoteBranding,
+        businessShowBrandingAfterReveal: openedNoteBranding.show,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
       }),
@@ -4454,12 +4463,17 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         business_background_style?: string | null;
         business_portal_layout?: string | null;
         business_show_branding_after_reveal?: number | null;
+        business_opened_branding?: string | null;
         email_notifications?: number | null;
         preferred_language?: string | null;
         allow_hosted_ai?: number | null;
       }>();
 
     const entitlements = await getAccountEntitlements(env, session.id);
+    const openedNoteBranding = openedSettingsFromAccountColumns(
+      user?.business_opened_branding,
+      user?.business_show_branding_after_reveal,
+    );
     const normalizedAccountType = entitlements.accountType;
     const limits = usageLimitsForPlan(normalizedAccountType);
     const hostedAiUsage = await readHostedAiQuotaSnapshot(
@@ -4571,8 +4585,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessBannerUrl: businessBannerPublicUrl(request, user?.business_banner_key),
         businessBackgroundStyle: user?.business_background_style ?? "neutral",
         businessPortalLayout: parseStoredPortalLayoutJson(user?.business_portal_layout),
-        businessShowBrandingAfterReveal:
-          (user?.business_show_branding_after_reveal ?? 0) === 1,
+        businessOpenedBranding: openedNoteBranding,
+        businessShowBrandingAfterReveal: openedNoteBranding.show,
         emailNotifications: (user?.email_notifications ?? 1) === 1,
         preferredLanguage: user?.preferred_language ?? null,
         allowHostedAi: userColumns.allow_hosted_ai ? user?.allow_hosted_ai === 1 : false,
@@ -5006,6 +5020,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
       businessPortalLayout?: BrandingPortalLayout | null;
       businessShowBrandingAfterReveal?: boolean;
+      businessOpenedBranding?: OpenedNoteBrandingSettings | null;
     };
     try {
       body = (await readJsonBody(request)) as {
@@ -5022,6 +5037,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
         businessPortalLayout?: BrandingPortalLayout | null;
         businessShowBrandingAfterReveal?: boolean;
+        businessOpenedBranding?: OpenedNoteBrandingSettings | null;
       };
     } catch {
       return jsonResponse({ message: "Invalid JSON" }, 400, request);
@@ -5040,10 +5056,11 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     const hasBusinessPortalLayout = Object.prototype.hasOwnProperty.call(body, "businessPortalLayout");
     const hasBusinessShowBrandingAfterReveal =
       typeof body.businessShowBrandingAfterReveal === "boolean";
+    const hasBusinessOpenedBranding = Object.prototype.hasOwnProperty.call(body, "businessOpenedBranding");
     const hasBrandingPreference = hasBusinessDisplayName || hasBusinessAccentColor
       || hasBusinessBackgroundColor || hasBusinessTextColor || hasBusinessSenderName
       || hasBusinessSenderRole || hasBusinessTrustMessage || hasBusinessBackgroundStyle
-      || hasBusinessShowBrandingAfterReveal || hasBusinessPortalLayout;
+      || hasBusinessShowBrandingAfterReveal || hasBusinessPortalLayout || hasBusinessOpenedBranding;
     if (
       !hasEmailNotifications &&
       !hasPreferredLanguage &&
@@ -5080,7 +5097,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         (hasBusinessSenderRole && !userColumns.business_sender_role) ||
         (hasBusinessTrustMessage && !userColumns.business_trust_message) ||
         (hasBusinessBackgroundStyle && !userColumns.business_background_style) ||
-        (hasBusinessShowBrandingAfterReveal && !userColumns.business_show_branding_after_reveal) ||
+        (hasBusinessShowBrandingAfterReveal && !userColumns.business_show_branding_after_reveal && !userColumns.business_opened_branding) ||
+        (hasBusinessOpenedBranding && !userColumns.business_opened_branding && !userColumns.business_show_branding_after_reveal) ||
         (hasBusinessPortalLayout && !userColumns.business_portal_layout)) {
       return jsonResponse({ message: "Business branding migration is required" }, 503, request);
     }
@@ -5178,6 +5196,23 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       normalizedBusinessPortalLayout = parsed.layout;
       normalizedBusinessPortalLayoutJson = stringifyPortalLayout(parsed.layout);
     }
+    let normalizedOpenedBranding: OpenedNoteBrandingSettings | undefined;
+    let normalizedOpenedBrandingJson: string | undefined;
+    if (hasBusinessOpenedBranding || hasBusinessShowBrandingAfterReveal) {
+      normalizedOpenedBranding = hasBusinessOpenedBranding
+        ? parseOpenedNoteBrandingSettings(body.businessOpenedBranding)
+        : {
+            ...parseOpenedNoteBrandingSettings(null),
+            show: body.businessShowBrandingAfterReveal === true,
+          };
+      if (hasBusinessShowBrandingAfterReveal && !hasBusinessOpenedBranding) {
+        normalizedOpenedBranding = {
+          ...normalizedOpenedBranding,
+          show: body.businessShowBrandingAfterReveal === true,
+        };
+      }
+      normalizedOpenedBrandingJson = stringifyOpenedNoteBrandingSettings(normalizedOpenedBranding);
+    }
 
     const updates: string[] = [];
     const bindings: Array<number | string | null> = [];
@@ -5214,9 +5249,15 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (hasBusinessTrustMessage) { updates.push("business_trust_message = ?"); bindings.push(normalizedBusinessTrustMessage ?? null); }
     if (hasBusinessBackgroundStyle) { updates.push("business_background_style = ?"); bindings.push(normalizedBusinessBackgroundStyle ?? "neutral"); }
     if (hasBusinessPortalLayout) { updates.push("business_portal_layout = ?"); bindings.push(normalizedBusinessPortalLayoutJson ?? null); }
-    if (hasBusinessShowBrandingAfterReveal) {
-      updates.push("business_show_branding_after_reveal = ?");
-      bindings.push(body.businessShowBrandingAfterReveal ? 1 : 0);
+    if (normalizedOpenedBranding) {
+      if (userColumns.business_opened_branding) {
+        updates.push("business_opened_branding = ?");
+        bindings.push(normalizedOpenedBrandingJson ?? null);
+      }
+      if (userColumns.business_show_branding_after_reveal) {
+        updates.push("business_show_branding_after_reveal = ?");
+        bindings.push(normalizedOpenedBranding.show ? 1 : 0);
+      }
     }
     updates.push("updated_at = datetime('now')");
     bindings.push(session.id);
@@ -5251,9 +5292,12 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessTrustMessage: hasBusinessTrustMessage ? normalizedBusinessTrustMessage ?? null : undefined,
         businessBackgroundStyle: hasBusinessBackgroundStyle ? normalizedBusinessBackgroundStyle : undefined,
         businessPortalLayout: hasBusinessPortalLayout ? normalizedBusinessPortalLayout : undefined,
-        businessShowBrandingAfterReveal: hasBusinessShowBrandingAfterReveal
-          ? Boolean(body.businessShowBrandingAfterReveal)
-          : undefined,
+        businessOpenedBranding: normalizedOpenedBranding,
+        businessShowBrandingAfterReveal: normalizedOpenedBranding
+          ? normalizedOpenedBranding.show
+          : hasBusinessShowBrandingAfterReveal
+            ? Boolean(body.businessShowBrandingAfterReveal)
+            : undefined,
       }),
       { status: 200, headers }
     );

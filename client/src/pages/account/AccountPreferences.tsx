@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -58,14 +58,19 @@ import {
   brandingUsesPortalSurface,
   contrastingTextOn,
   DEFAULT_BRANDING_PORTAL_LAYOUT,
+  DEFAULT_OPENED_NOTE_BRANDING,
   parseBrandingHexColor,
   parseStoredPortalLayoutJson,
+  openedSettingsFromAccountColumns,
   brandingPortalLayout,
+  applyOpenedNoteBranding,
   type BrandingBackgroundFit,
   type BrandingBackgroundStyle,
   type BrandingCardPosition,
   type BrandingOverlay,
   type BrandingPortalLayout,
+  type OpenedNoteBackground,
+  type OpenedNoteBrandingSettings,
   type RevealBranding,
 } from "@shared/businessBranding";
 import { RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
@@ -160,15 +165,20 @@ const BrandingPreview: React.FC<{
   );
 };
 
-
-/** Compact preview of what a screenshot of the opened note would capture. */
 const OpenedNoteBrandingPreview: React.FC<{
-  branding: RevealBranding;
-  senderLine: string;
-  showBranding: boolean;
+  branding: RevealBranding | undefined;
   viewport: "desktop" | "mobile";
-}> = ({ branding, senderLine, showBranding, viewport }) => {
+}> = ({ branding, viewport }) => {
   const compact = brandingUsesPortalSurface(branding);
+  const sender = branding?.senderName?.trim();
+  const company = branding?.companyName?.trim();
+  const brandingLine = sender && company
+    ? `${sender} from ${company} shared a private note`
+    : sender
+      ? `Shared by ${sender}`
+      : company
+        ? `Shared by ${company}`
+        : null;
 
   return (
     <RecipientPortal
@@ -185,18 +195,17 @@ const OpenedNoteBrandingPreview: React.FC<{
       surface={compact ? "wide" : "plain"}
     >
       <div className="text-center">
-        {showBranding ? (
+        {branding?.logoUrl || brandingLine || branding?.trustMessage ? (
           <div className="mb-4 flex flex-col items-center gap-1.5">
-            {branding.logoUrl ? (
-              <img
-                src={branding.logoUrl}
-                alt=""
-                className="max-h-8 max-w-28 object-contain"
-              />
+            {branding?.logoUrl ? (
+              <img src={branding.logoUrl} alt="" className="max-h-8 max-w-28 object-contain" />
             ) : null}
-            {senderLine ? (
-              <p className="m-0 text-xs font-medium text-gray-700 dark:text-gray-200">
-                {senderLine}
+            {brandingLine ? (
+              <p className="m-0 text-xs font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
+            ) : null}
+            {branding?.trustMessage ? (
+              <p className="m-0 max-w-xs text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                {branding.trustMessage}
               </p>
             ) : null}
           </div>
@@ -211,6 +220,44 @@ const OpenedNoteBrandingPreview: React.FC<{
     </RecipientPortal>
   );
 };
+
+function BrandingPageHeading({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+          {eyebrow}
+        </p>
+        <h3 className="mt-1 text-xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
+          {title}
+        </h3>
+        <p className="mt-1 max-w-xl text-sm text-gray-500 dark:text-gray-400">{description}</p>
+      </div>
+      {actions}
+    </div>
+  );
+}
+
+const OPENED_BACKGROUND_CHOICES: Array<{
+  id: OpenedNoteBackground;
+  label: string;
+  hint: string;
+}> = [
+  { id: "same", label: "Same as reveal gate", hint: "Reuse the page above" },
+  { id: "neutral", label: "Default", hint: "PrivateNote dotted canvas" },
+  { id: "gradient", label: "Brand", hint: "Subtle gradient from your color" },
+  { id: "banner", label: "Custom", hint: "Full-page photograph" },
+];
 
 const BACKGROUND_CHOICES: Array<{
   id: BrandingBackgroundStyle;
@@ -437,10 +484,10 @@ export default function AccountPreferences() {
   const [portalLayout, setPortalLayout] = useState<BrandingPortalLayout>({
     ...DEFAULT_BRANDING_PORTAL_LAYOUT,
   });
-  const [businessShowBrandingAfterReveal, setBusinessShowBrandingAfterReveal] =
-    useState(false);
   const [brandingPreviewViewport, setBrandingPreviewViewport] =
     useState<"desktop" | "mobile">("desktop");
+  const [openedNoteBranding, setOpenedNoteBranding] =
+    useState<OpenedNoteBrandingSettings>({ ...DEFAULT_OPENED_NOTE_BRANDING });
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -497,6 +544,7 @@ export default function AccountPreferences() {
         businessBannerUrl?: string | null;
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
         businessPortalLayout?: BrandingPortalLayout | string | null;
+        businessOpenedBranding?: OpenedNoteBrandingSettings | string | null;
         businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
@@ -527,8 +575,11 @@ export default function AccountPreferences() {
             ? parseStoredPortalLayoutJson(data.businessPortalLayout)
             : brandingPortalLayout(data.businessPortalLayout ?? undefined),
         );
-        setBusinessShowBrandingAfterReveal(
-          data.businessShowBrandingAfterReveal === true,
+        setOpenedNoteBranding(
+          openedSettingsFromAccountColumns(
+            data.businessOpenedBranding,
+            data.businessShowBrandingAfterReveal,
+          ),
         );
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
@@ -707,7 +758,6 @@ export default function AccountPreferences() {
         businessBackgroundColor: string | null;
         businessTextColor: string | null;
         businessPortalLayout?: BrandingPortalLayout;
-        businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/preferences", "PATCH", {
         businessDisplayName,
         businessAccentColor,
@@ -718,7 +768,7 @@ export default function AccountPreferences() {
         businessTrustMessage,
         businessBackgroundStyle,
         businessPortalLayout: portalLayout,
-        businessShowBrandingAfterReveal,
+        businessOpenedBranding: openedNoteBranding,
       });
       setBusinessDisplayName(response.businessDisplayName ?? "");
       const accent = response.businessAccentColor ?? DEFAULT_BRAND_COLOR;
@@ -731,9 +781,6 @@ export default function AccountPreferences() {
       );
       if (response.businessPortalLayout) {
         setPortalLayout(brandingPortalLayout(response.businessPortalLayout));
-      }
-      if (typeof response.businessShowBrandingAfterReveal === "boolean") {
-        setBusinessShowBrandingAfterReveal(response.businessShowBrandingAfterReveal);
       }
       setSavedBrandingIndicator(true);
       setTimeout(() => setSavedBrandingIndicator(false), 2000);
@@ -1221,6 +1268,36 @@ export default function AccountPreferences() {
                 </p>
               </div>
 
+              <div className="border-t border-violet-100 pt-6 dark:border-violet-900/40">
+                <BrandingPageHeading
+                  eyebrow="Page"
+                  title="Reveal gate"
+                  description="What recipients see before they open the note — background, image, and overlay."
+                  actions={
+                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+                      {([
+                        { id: "desktop" as const, label: "Desktop", Icon: Monitor },
+                        { id: "mobile" as const, label: "Mobile", Icon: Smartphone },
+                      ]).map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setBrandingPreviewViewport(option.id)}
+                          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                            brandingPreviewViewport === option.id
+                              ? "bg-primary/10 text-primary"
+                              : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+                          }`}
+                        >
+                          <option.Icon className="h-3.5 w-3.5" aria-hidden />
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                />
+              </div>
+
               <div>
                 <Label className="mb-2 block text-sm">Background</Label>
                 <div className="mb-3 grid grid-cols-3 gap-2">
@@ -1403,32 +1480,6 @@ export default function AccountPreferences() {
               ) : null}
 
               <div>
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <Label className="text-sm">Preview</Label>
-                  <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
-                    {([
-                      { id: "desktop" as const, label: "Desktop", Icon: Monitor },
-                      { id: "mobile" as const, label: "Mobile", Icon: Smartphone },
-                    ]).map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => setBrandingPreviewViewport(option.id)}
-                        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
-                          brandingPreviewViewport === option.id
-                            ? "bg-primary/10 text-primary"
-                            : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
-                        }`}
-                      >
-                        <option.Icon className="h-3.5 w-3.5" aria-hidden />
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Reveal gate
-                </p>
                 <BrandingPreview
                   viewport={brandingPreviewViewport}
                   branding={{
@@ -1443,58 +1494,138 @@ export default function AccountPreferences() {
                     textColor: businessTextColor,
                     backgroundStyle: businessBackgroundStyle,
                     ...portalLayout,
-                    showBrandingAfterReveal: businessShowBrandingAfterReveal,
                   }}
-                />
-                <p className="mb-2 mt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
-                  After open (screenshot risk)
-                </p>
-                <OpenedNoteBrandingPreview
-                  viewport={brandingPreviewViewport}
-                  branding={{
-                    companyName: businessDisplayName || undefined,
-                    senderName: businessSenderName || undefined,
-                    senderRole: businessSenderRole || undefined,
-                    trustMessage: businessTrustMessage || undefined,
-                    logoUrl: businessLogoUrl ?? undefined,
-                    bannerUrl: businessBannerUrl ?? undefined,
-                    accentColor: businessAccentColor,
-                    backgroundColor: businessBackgroundColor,
-                    textColor: businessTextColor,
-                    backgroundStyle: businessBackgroundStyle,
-                    ...portalLayout,
-                    showBrandingAfterReveal: businessShowBrandingAfterReveal,
-                  }}
-                  senderLine={
-                    businessSenderName || businessDisplayName
-                      ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                      : ""
-                  }
-                  showBranding={businessShowBrandingAfterReveal}
                 />
               </div>
 
-              <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/30">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <Label
-                      htmlFor="business-show-branding-after-reveal"
-                      className="text-sm font-medium text-amber-950 dark:text-amber-50"
-                    >
-                      Show branding after the note is opened
-                    </Label>
-                    <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
-                      Off by default. When on, screenshots of the opened note will
-                      include your logo, sender name, and company identity.
-                    </p>
+              <div className="space-y-5 border-t border-violet-100 pt-6 dark:border-violet-900/40">
+                <BrandingPageHeading
+                  eyebrow="Page"
+                  title="After the note is opened"
+                  description="Off by default so screenshots of the message stay unbranded."
+                />
+                <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/30">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <Label
+                        htmlFor="business-show-branding-after-reveal"
+                        className="text-sm font-medium text-amber-950 dark:text-amber-50"
+                      >
+                        Show branding after the note is opened
+                      </Label>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
+                        Off by default. When on, screenshots of the opened note will
+                        include your logo, sender name, and company identity.
+                      </p>
+                    </div>
+                    <Switch
+                      id="business-show-branding-after-reveal"
+                      checked={openedNoteBranding.show}
+                      onCheckedChange={(checked) =>
+                        setOpenedNoteBranding((current) => ({ ...current, show: checked }))
+                      }
+                      aria-label="Show branding after the note is opened"
+                    />
                   </div>
-                  <Switch
-                    id="business-show-branding-after-reveal"
-                    checked={businessShowBrandingAfterReveal}
-                    onCheckedChange={setBusinessShowBrandingAfterReveal}
-                    aria-label="Show branding after the note is opened"
-                  />
                 </div>
+
+                {openedNoteBranding.show ? (
+                  <>
+                    <div>
+                      <Label className="mb-2 block text-sm">Background</Label>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {OPENED_BACKGROUND_CHOICES.map((choice) => (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            onClick={() => {
+                              if (choice.id === "banner" && !businessBannerUrl) {
+                                bannerInputRef.current?.click();
+                                setOpenedNoteBranding((current) => ({
+                                  ...current,
+                                  background: "banner",
+                                }));
+                                return;
+                              }
+                              setOpenedNoteBranding((current) => ({
+                                ...current,
+                                background: choice.id,
+                              }));
+                            }}
+                            className={`rounded-lg border px-3 py-2 text-left ${
+                              openedNoteBranding.background === choice.id
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-gray-200 dark:border-gray-700"
+                            }`}
+                          >
+                            <span className="block text-sm font-medium">{choice.label}</span>
+                            <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                              {choice.hint}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {openedNoteBranding.background === "banner" ? (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Uses the same photograph as the reveal gate. Upload one above if you have not already.
+                        </p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-sm">Show on the opened note</Label>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(
+                          [
+                            ["showLogo", "Logo"],
+                            ["showSenderName", "Sender name"],
+                            ["showCompanyName", "Company name"],
+                            ["showTrustMessage", "Trust message"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <label
+                            key={key}
+                            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:text-gray-100"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={openedNoteBranding[key]}
+                              onChange={(event) =>
+                                setOpenedNoteBranding((current) => ({
+                                  ...current,
+                                  [key]: event.target.checked,
+                                }))
+                              }
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <OpenedNoteBrandingPreview
+                      viewport={brandingPreviewViewport}
+                      branding={applyOpenedNoteBranding({
+                        companyName: businessDisplayName || undefined,
+                        senderName: businessSenderName || undefined,
+                        senderRole: businessSenderRole || undefined,
+                        trustMessage: businessTrustMessage || undefined,
+                        logoUrl: businessLogoUrl ?? undefined,
+                        bannerUrl: businessBannerUrl ?? undefined,
+                        accentColor: businessAccentColor,
+                        backgroundColor: businessBackgroundColor,
+                        textColor: businessTextColor,
+                        backgroundStyle: businessBackgroundStyle,
+                        ...portalLayout,
+                        showBrandingAfterReveal: true,
+                        openedBackground: openedNoteBranding.background,
+                        openedShowLogo: openedNoteBranding.showLogo,
+                        openedShowSenderName: openedNoteBranding.showSenderName,
+                        openedShowCompanyName: openedNoteBranding.showCompanyName,
+                        openedShowTrustMessage: openedNoteBranding.showTrustMessage,
+                      })}
+                    />
+                  </>
+                ) : null}
               </div>
 
               <div className="flex justify-end border-t border-violet-100 pt-4 dark:border-violet-900/40">

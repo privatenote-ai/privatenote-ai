@@ -26,6 +26,7 @@ import {
 import { isSupportedLanguage } from "@shared/supportedLanguages";
 import { parseStoredRevealBranding } from "@shared/businessBranding";
 import { parseRevealBodyFont } from "@shared/revealBodyFont";
+import { parseAttachmentRecipientPermission } from "@shared/attachmentRecipientPermission";
 
 type StoredCiphertext = ParsedStoredNoteCiphertext;
 
@@ -224,6 +225,7 @@ export class SecureNoteStorageSql {
       fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
       readerLanguage: readerLanguageRaw = undefined,
       bodyFont: bodyFontRaw = undefined,
+      attachmentPermission: attachmentPermissionRaw = undefined,
       revealBranding: revealBrandingRaw = undefined,
       opensAt: opensAtRaw = undefined,
     } = body || {};
@@ -436,6 +438,13 @@ export class SecureNoteStorageSql {
         headers: { "Content-Type": "application/json" },
       });
     }
+    const attachmentPermission = parseAttachmentRecipientPermission(attachmentPermissionRaw);
+    if (attachmentPermissionRaw != null && typeof attachmentPermissionRaw !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid attachment permission" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     // The Worker resolves branding from the sender's account and strips anything
     // the client sent, so this only has to drop values that are unsafe to render.
     const revealBranding = parseStoredRevealBranding(revealBrandingRaw);
@@ -464,6 +473,7 @@ export class SecureNoteStorageSql {
       ...(attachment ? { fileAccessWindowSeconds } : {}),
       ...(readerLanguage ? { readerLanguage } : {}),
       ...(bodyFont ? { bodyFont } : {}),
+      ...(attachmentPermission ? { attachmentPermission } : {}),
       ...(revealBranding ? { revealBranding } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
       ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
@@ -554,6 +564,9 @@ export class SecureNoteStorageSql {
         ...(row.opens_at ? { opensAt: row.opens_at } : {}),
         ...(ciphertext?.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
         ...(ciphertext?.bodyFont ? { bodyFont: ciphertext.bodyFont } : {}),
+        ...(ciphertext?.attachmentPermission
+          ? { attachmentPermission: ciphertext.attachmentPermission }
+          : {}),
         // Needed before reveal so the branding frames the confirmation step.
         ...(ciphertext?.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
       }),
@@ -633,6 +646,9 @@ export class SecureNoteStorageSql {
           ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
           ...(ciphertext.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
           ...(ciphertext.bodyFont ? { bodyFont: ciphertext.bodyFont } : {}),
+          ...(ciphertext.attachmentPermission
+            ? { attachmentPermission: ciphertext.attachmentPermission }
+            : {}),
           ...(ciphertext.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
           ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
           ...(ciphertext.attachment

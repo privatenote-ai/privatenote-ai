@@ -31,6 +31,11 @@ import {
   parseRevealBodyFont,
   type RevealBodyFont,
 } from "@shared/revealBodyFont";
+import {
+  isAttachmentRecipientPermission,
+  parseAttachmentRecipientPermission,
+  type AttachmentRecipientPermission,
+} from "@shared/attachmentRecipientPermission";
 import { BUSINESS_RECEIPT_ACK_PRESETS } from "@shared/receiptAcknowledgment";
 import {
   NOTE_READ_LIMIT_DEFAULT,
@@ -241,6 +246,7 @@ type CreateNoteAuthDraft = {
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   readerLanguage: ReaderLanguageSetting;
   bodyFont: RevealBodyFont;
+  attachmentPermission: AttachmentRecipientPermission;
   preferHostedCloudAfterLocalFailure: boolean;
   cloudAssistConsentGiven: boolean;
 };
@@ -357,6 +363,9 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
       readerLanguage:
         isReaderLanguageSetting(parsed.readerLanguage) ? parsed.readerLanguage : "auto",
       bodyFont: isRevealBodyFont(parsed.bodyFont) ? parsed.bodyFont : "system",
+      attachmentPermission: isAttachmentRecipientPermission(parsed.attachmentPermission)
+        ? parsed.attachmentPermission
+        : "download",
       preferHostedCloudAfterLocalFailure: parsed.preferHostedCloudAfterLocalFailure === true,
       cloudAssistConsentGiven: parsed.cloudAssistConsentGiven === true,
     };
@@ -494,6 +503,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
   const [bodyFont, setBodyFont] = useState<RevealBodyFont>("system");
+  const [attachmentPermission, setAttachmentPermission] =
+    useState<AttachmentRecipientPermission>("download");
   const [applyBranding, setApplyBranding] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
@@ -525,7 +536,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     textColor: entitlements.businessTextColor,
     backgroundStyle: entitlements.businessBackgroundStyle,
     ...entitlements.businessPortalLayout,
-    showBrandingAfterReveal: entitlements.businessShowBrandingAfterReveal,
+    showBrandingAfterReveal: entitlements.businessOpenedBranding.show,
+    openedBackground: entitlements.businessOpenedBranding.background,
+    openedShowLogo: entitlements.businessOpenedBranding.showLogo,
+    openedShowSenderName: entitlements.businessOpenedBranding.showSenderName,
+    openedShowCompanyName: entitlements.businessOpenedBranding.showCompanyName,
+    openedShowTrustMessage: entitlements.businessOpenedBranding.showTrustMessage,
   });
   const hasRevealBranding = Boolean(revealBrandingSnapshot);
   const canAttachFiles = Boolean(user);
@@ -619,6 +635,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           fileAccessWindowSeconds,
           readerLanguage,
           bodyFont,
+          attachmentPermission,
           preferHostedCloudAfterLocalFailure,
           cloudAssistConsentGiven,
           ...overrides,
@@ -642,6 +659,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       preferHostedCloudAfterLocalFailure,
       readerLanguage,
       bodyFont,
+      attachmentPermission,
       readCount,
       selectedTemplateId,
       showPrompt,
@@ -875,6 +893,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setFileAccessWindowSeconds(draft.fileAccessWindowSeconds);
     setReaderLanguage(draft.readerLanguage);
     setBodyFont(draft.bodyFont);
+    setAttachmentPermission(draft.attachmentPermission);
     if (draft.preferHostedCloudAfterLocalFailure) {
       setPreferHostedCloudAfterLocalFailure(true);
       setCloudAssistConsentGiven(draft.cloudAssistConsentGiven);
@@ -1056,6 +1075,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (readerLanguage !== "auto") setReaderLanguage("auto");
     if (bodyFont !== "system") setBodyFont("system");
   }, [isPremiumUser, readerLanguage, bodyFont, recipientEmail, requireRecipientVerification]);
+
+  useEffect(() => {
+    if (planCapabilities.attachmentViewOnly) return;
+    if (attachmentPermission !== "download") setAttachmentPermission("download");
+  }, [attachmentPermission, planCapabilities.attachmentViewOnly]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1552,6 +1576,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       planCapabilities.revealBodyFont && bodyFont !== "system"
         ? parseRevealBodyFont(bodyFont)
         : undefined;
+    const applyAttachmentPermission =
+      planCapabilities.attachmentViewOnly && selectedFile
+        ? parseAttachmentRecipientPermission(attachmentPermission)
+        : undefined;
     const tracksDelivery =
       planCapabilities.revokeUnopened ||
       (canNotifyOnOpen &&
@@ -1996,6 +2024,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         fileAccessWindowSeconds,
         ...(applyReaderLanguage ? { readerLanguage: applyReaderLanguage } : {}),
         ...(applyBodyFont ? { bodyFont: applyBodyFont } : {}),
+        ...(applyAttachmentPermission ? { attachmentPermission: applyAttachmentPermission } : {}),
         ...(opensAtIso ? { opensAt: opensAtIso } : {}),
         ...(canBrandRevealPage && applyBranding && revealBrandingSnapshot
           ? { revealBranding: revealBrandingSnapshot }
@@ -3299,6 +3328,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 bodyFont={bodyFont}
                 setBodyFont={setBodyFont}
                 canChooseBodyFont={planCapabilities.revealBodyFont}
+                attachmentPermission={attachmentPermission}
+                setAttachmentPermission={setAttachmentPermission}
+                canChooseAttachmentPermission={planCapabilities.attachmentViewOnly}
                 canBrandRevealPage={canBrandRevealPage}
                 configuredAccountType={entitlements.configuredAccountType}
                 hasRevealBranding={hasRevealBranding}
@@ -3820,6 +3852,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               bodyFont,
               setBodyFont,
               canChooseBodyFont: planCapabilities.revealBodyFont,
+              attachmentPermission,
+              setAttachmentPermission,
+              canChooseAttachmentPermission: planCapabilities.attachmentViewOnly,
               canBrandRevealPage,
               configuredAccountType: entitlements.configuredAccountType,
               hasRevealBranding,
