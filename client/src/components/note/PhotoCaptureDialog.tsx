@@ -42,7 +42,7 @@ const DEFAULT_CAPTURE_CROP: ImageCropRect = {
   height: 0.92,
 };
 
-type CapturePhase = "live" | "crop" | "blur";
+type CapturePhase = "live" | "crop" | "cropConfirmed" | "blur";
 
 type PhotoCaptureDialogProps = {
   open: boolean;
@@ -262,7 +262,7 @@ export function PhotoCaptureDialog({
     return true;
   };
 
-  const handleContinueToBlur = async () => {
+  const handleConfirmCrop = async () => {
     const blob = capturedBlobRef.current;
     if (!blob || isBusy) return;
     setIsBusy(true);
@@ -288,12 +288,19 @@ export function PhotoCaptureDialog({
         revokeUrl(prev);
         return url;
       });
-      setPhase("blur");
+      setPhase("cropConfirmed");
     } catch {
       setErrorMessage(t.takePhotoCropFailed ?? "Could not crop the photo. Try again.");
     } finally {
       setIsBusy(false);
     }
+  };
+
+  const handleContinueToBlur = async () => {
+    // Crop confirmation already created `blurUrl` + `croppedBlobRef`.
+    if (isBusy) return;
+    if (!blurUrl) return;
+    setPhase("blur");
   };
 
   const handleUsePhoto = async () => {
@@ -308,6 +315,13 @@ export function PhotoCaptureDialog({
           return;
         }
         finishWithBlob(exported);
+        return;
+      }
+
+      if (phase === "cropConfirmed") {
+        const cropped = croppedBlobRef.current;
+        if (!cropped) return;
+        finishWithBlob(cropped);
         return;
       }
 
@@ -368,6 +382,8 @@ export function PhotoCaptureDialog({
   const title =
     phase === "crop"
       ? (t.takePhotoCropTitle ?? "Crop photo")
+      : phase === "cropConfirmed"
+        ? "Crop confirmed"
       : phase === "blur"
         ? (t.takePhotoBlurTitle ?? "Blur details")
         : (t.takePhotoTitle ?? "Take a photo");
@@ -376,6 +392,8 @@ export function PhotoCaptureDialog({
     phase === "crop"
       ? (t.takePhotoCropDescription ??
         "Drag the frame to remove faces, badges, or other identifying details before the photo is encrypted.")
+      : phase === "cropConfirmed"
+        ? "Review the cropped photo in full. You can blur details, or confirm without blur."
       : phase === "blur"
         ? (t.takePhotoBlurDescription ??
           "Paint over tattoos, birthmarks, badges, or background details you want airbrushed out before encryption.")
@@ -415,6 +433,14 @@ export function PhotoCaptureDialog({
                 crop={crop}
                 onCropChange={setCrop}
                 ariaLabel={t.takePhotoCropTitle ?? "Crop photo"}
+              />
+            ) : null}
+            {phase === "cropConfirmed" && blurUrl ? (
+              <img
+                src={blurUrl}
+                alt=""
+                draggable={false}
+                className="absolute inset-0 h-full w-full object-contain"
               />
             ) : null}
             {phase === "blur" && blurUrl ? (
@@ -479,7 +505,7 @@ export function PhotoCaptureDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="sticky bottom-0 z-10 mt-auto flex-wrap gap-2 bg-background pt-2 sm:static sm:justify-center sm:space-x-0 sm:gap-2">
+        <DialogFooter className="z-10 mt-auto flex-wrap gap-2 bg-background pt-2 sm:static sm:justify-center sm:space-x-0 sm:gap-2">
           {phase === "live" ? (
             <Button
               type="button"
@@ -503,11 +529,37 @@ export function PhotoCaptureDialog({
                 <Crop className="mr-1.5 h-4 w-4" aria-hidden />
                 {t.takePhotoCropReset ?? "Reset crop"}
               </Button>
-              <Button type="button" onClick={() => void handleContinueToBlur()} disabled={isBusy}>
-                <Bandage className="mr-1.5 h-4 w-4" aria-hidden />
+              <Button type="button" onClick={() => void handleConfirmCrop()} disabled={isBusy}>
+                <Check className="mr-1.5 h-4 w-4" aria-hidden />
                 {isBusy
                   ? (t.takePhotoCropping ?? "Cropping…")
-                  : (t.takePhotoContinueToBlur ?? "Blur details")}
+                  : "Confirm crop"}
+              </Button>
+            </>
+          ) : null}
+
+          {phase === "cropConfirmed" ? (
+            <>
+              <Button type="button" variant="outline" onClick={handleRetake} disabled={isBusy}>
+                <RotateCcw className="mr-1.5 h-4 w-4" aria-hidden />
+                {t.takePhotoRetake ?? "Retake"}
+              </Button>
+              <Button type="button" variant="outline" onClick={handleBackToCrop} disabled={isBusy}>
+                <Crop className="mr-1.5 h-4 w-4" aria-hidden />
+                {t.takePhotoBackToCrop ?? "Back to crop"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleContinueToBlur()}
+                disabled={isBusy}
+              >
+                <Bandage className="mr-1.5 h-4 w-4" aria-hidden />
+                {t.takePhotoContinueToBlur ?? "Blur details"}
+              </Button>
+              <Button type="button" onClick={() => void handleUsePhoto()} disabled={isBusy}>
+                <Check className="mr-1.5 h-4 w-4" aria-hidden />
+                {t.takePhotoUse ?? "Use photo"}
               </Button>
             </>
           ) : null}

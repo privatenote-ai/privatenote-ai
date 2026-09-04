@@ -619,7 +619,7 @@ export function VoiceMessageRecorderDialog({
         <div
           className={`flex w-full flex-col items-center ${
             recordMode === "video"
-              ? "min-h-0 flex-1 gap-3 py-0 pb-16 sm:overflow-hidden sm:pb-0"
+              ? "min-h-0 flex-1 gap-3 py-0 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:overflow-hidden sm:pb-0"
               : "gap-5 py-1"
           }`}
         >
@@ -741,7 +741,7 @@ export function VoiceMessageRecorderDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="sticky bottom-0 z-10 mt-2 shrink-0 gap-2 bg-background pt-3 sm:static sm:mt-0 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2">
+        <DialogFooter className="sticky bottom-0 z-10 mt-2 shrink-0 gap-2 bg-background pt-3 pb-[env(safe-area-inset-bottom)] sm:static sm:mt-0 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2 sm:pb-0">
           {phase === "idle" ? (
             <Button type="button" onClick={() => void startRecording()} disabled={isStarting}>
               {recordMode === "video" ? (

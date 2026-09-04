@@ -65,11 +65,6 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
           className="flex max-h-[90vh] flex-col gap-0 rounded-t-2xl p-0"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            const passwordInput = document.getElementById("note-password");
-            if (passwordInput instanceof HTMLElement) {
-              passwordInput.focus();
-              return;
-            }
             const done = document.getElementById("customize-settings-done-mobile");
             if (done instanceof HTMLElement) done.focus();
           }}
@@ -96,11 +91,6 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
         className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          const passwordInput = document.getElementById("note-password");
-          if (passwordInput instanceof HTMLElement) {
-            passwordInput.focus();
-            return;
-          }
           const done = document.getElementById("customize-settings-done");
           if (done instanceof HTMLElement) done.focus();
         }}
