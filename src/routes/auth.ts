@@ -27,7 +27,7 @@ import {
   type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath } from "@shared/businessBranding";
+import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -5004,13 +5004,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
       businessBackgroundStyle?: "neutral" | "gradient" | "banner";
-      businessPortalLayout?: {
-        cardPosition?: "left" | "center" | "right";
-        backgroundFit?: "fill" | "fit";
-        overlay?: "light" | "medium" | "dark";
-        focalX?: number;
-        focalY?: number;
-      } | null;
+      businessPortalLayout?: BrandingPortalLayout | null;
       businessShowBrandingAfterReveal?: boolean;
     };
     try {
@@ -5026,13 +5020,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
-        businessPortalLayout?: {
-          cardPosition?: "left" | "center" | "right";
-          backgroundFit?: "fill" | "fit";
-          overlay?: "light" | "medium" | "dark";
-          focalX?: number;
-          focalY?: number;
-        } | null;
+        businessPortalLayout?: BrandingPortalLayout | null;
         businessShowBrandingAfterReveal?: boolean;
       };
     } catch {

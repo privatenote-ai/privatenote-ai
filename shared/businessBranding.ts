@@ -36,12 +36,32 @@ export const BRANDING_BANNER_SIZE_LABEL =
   `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
-export type BrandingCardPosition = "left" | "center" | "right";
+export const BRANDING_CARD_POSITIONS = [
+  "top-left",
+  "top",
+  "top-right",
+  "left",
+  "center",
+  "right",
+  "bottom-left",
+  "bottom",
+  "bottom-right",
+] as const;
+export type BrandingCardPosition = (typeof BRANDING_CARD_POSITIONS)[number];
+export type BrandingCardAxis = {
+  x: "left" | "center" | "right";
+  y: "top" | "middle" | "bottom";
+};
 export type BrandingBackgroundFit = "fill" | "fit";
 export type BrandingOverlay = "light" | "medium" | "dark";
 
+const BRANDING_CARD_POSITION_SET = new Set<string>(BRANDING_CARD_POSITIONS);
+
 export type BrandingPortalLayout = {
+  /** Desktop / `sm+` placement. Older notes used this for every viewport. */
   cardPosition: BrandingCardPosition;
+  /** Phone placement. Omitted on older notes, which then follow `cardPosition`. */
+  cardPositionMobile: BrandingCardPosition;
   backgroundFit: BrandingBackgroundFit;
   overlay: BrandingOverlay;
   focalX: number;
@@ -57,6 +77,7 @@ export const BRANDING_OVERLAY_OPACITY: Record<BrandingOverlay, number> = {
 
 export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   cardPosition: "center",
+  cardPositionMobile: "center",
   backgroundFit: "fill",
   overlay: "light",
   focalX: 50,
@@ -76,6 +97,7 @@ export type BusinessBranding = {
   textColor?: string | null;
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition | null;
+  cardPositionMobile?: BrandingCardPosition | null;
   backgroundFit?: BrandingBackgroundFit | null;
   overlay?: BrandingOverlay | null;
   focalX?: number | null;
@@ -100,6 +122,7 @@ export type RevealBranding = {
   textColor?: string;
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition;
+  cardPositionMobile?: BrandingCardPosition;
   backgroundFit?: BrandingBackgroundFit;
   overlay?: BrandingOverlay;
   focalX?: number;
@@ -140,6 +163,7 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   textColor: null,
   backgroundStyle: "neutral",
   cardPosition: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
+  cardPositionMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile,
   backgroundFit: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
   overlay: DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
   focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
@@ -290,15 +314,36 @@ function parseBackgroundStyle(
     : { ok: false };
 }
 
-function parseCardPosition(
+function parseCardPositionToken(
   raw: unknown,
-): { ok: true; value: BrandingCardPosition } | { ok: false } {
-  if (raw === undefined || raw === null || raw === "") {
-    return { ok: true, value: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition };
+): { kind: "value"; value: BrandingCardPosition } | { kind: "omitted" } | { kind: "invalid" } {
+  if (raw === undefined || raw === null || raw === "") return { kind: "omitted" };
+  return typeof raw === "string" && BRANDING_CARD_POSITION_SET.has(raw)
+    ? { kind: "value", value: raw as BrandingCardPosition }
+    : { kind: "invalid" };
+}
+
+export function brandingCardAxis(position: BrandingCardPosition): BrandingCardAxis {
+  switch (position) {
+    case "top-left":
+      return { x: "left", y: "top" };
+    case "top":
+      return { x: "center", y: "top" };
+    case "top-right":
+      return { x: "right", y: "top" };
+    case "left":
+      return { x: "left", y: "middle" };
+    case "center":
+      return { x: "center", y: "middle" };
+    case "right":
+      return { x: "right", y: "middle" };
+    case "bottom-left":
+      return { x: "left", y: "bottom" };
+    case "bottom":
+      return { x: "center", y: "bottom" };
+    case "bottom-right":
+      return { x: "right", y: "bottom" };
   }
-  return raw === "left" || raw === "center" || raw === "right"
-    ? { ok: true, value: raw }
-    : { ok: false };
 }
 
 function parseBackgroundFit(
@@ -340,9 +385,13 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
   ok: true;
   layout: BrandingPortalLayout;
 } | { ok: false; code: BrandingErrorCode; message: string } {
-  const cardPosition = parseCardPosition(body.cardPosition);
-  if (!cardPosition.ok) {
-    return { ok: false, code: "invalid_card_position", message: "Card position must be left, center, or right" };
+  const desktop = parseCardPositionToken(body.cardPosition);
+  if (desktop.kind === "invalid") {
+    return { ok: false, code: "invalid_card_position", message: "Card position must be a placement on the page" };
+  }
+  const mobile = parseCardPositionToken(body.cardPositionMobile);
+  if (mobile.kind === "invalid") {
+    return { ok: false, code: "invalid_card_position", message: "Mobile card position must be a placement on the page" };
   }
   const backgroundFit = parseBackgroundFit(body.backgroundFit);
   if (!backgroundFit.ok) {
@@ -360,7 +409,9 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
   return {
     ok: true,
     layout: {
-      cardPosition: cardPosition.value,
+      cardPosition: desktop.kind === "value" ? desktop.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
+      cardPositionMobile:
+        mobile.kind === "value" ? mobile.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile,
       backgroundFit: backgroundFit.value,
       overlay: overlay.value,
       focalX: focalX.value,
@@ -370,13 +421,19 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
 }
 
 function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortalLayout {
-  const cardPosition = parseCardPosition(body.cardPosition);
+  const desktopToken = parseCardPositionToken(body.cardPosition);
+  const desktop =
+    desktopToken.kind === "value"
+      ? desktopToken.value
+      : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition;
+  const mobileToken = parseCardPositionToken(body.cardPositionMobile);
   const backgroundFit = parseBackgroundFit(body.backgroundFit);
   const overlay = parseOverlay(body.overlay);
   const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
   const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
   return {
-    cardPosition: cardPosition.ok ? cardPosition.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
+    cardPosition: desktop,
+    cardPositionMobile: mobileToken.kind === "value" ? mobileToken.value : desktop,
     backgroundFit: backgroundFit.ok ? backgroundFit.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
     overlay: overlay.ok ? overlay.value : DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
     focalX: focalX.ok ? focalX.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
@@ -385,10 +442,21 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
 }
 
 export function brandingPortalLayout(
-  branding: Pick<RevealBranding, "cardPosition" | "backgroundFit" | "overlay" | "focalX" | "focalY"> | undefined,
+  branding:
+    | Pick<
+        RevealBranding,
+        | "cardPosition"
+        | "cardPositionMobile"
+        | "backgroundFit"
+        | "overlay"
+        | "focalX"
+        | "focalY"
+      >
+    | undefined,
 ): BrandingPortalLayout {
   return parsePortalLayoutLenient({
     cardPosition: branding?.cardPosition,
+    cardPositionMobile: branding?.cardPositionMobile,
     backgroundFit: branding?.backgroundFit,
     overlay: branding?.overlay,
     focalX: branding?.focalX,
@@ -738,6 +806,7 @@ export function parseBusinessBrandingInput(
       textColor: textColor.value,
       backgroundStyle: backgroundStyle.value,
       cardPosition: layout.layout.cardPosition,
+      cardPositionMobile: layout.layout.cardPositionMobile,
       backgroundFit: layout.layout.backgroundFit,
       overlay: layout.layout.overlay,
       focalX: layout.layout.focalX,
@@ -768,6 +837,7 @@ export function toRevealBranding(
   if (brandingIsEmpty(branding) || !branding) return undefined;
   const layout = brandingPortalLayout({
     cardPosition: branding.cardPosition ?? undefined,
+    cardPositionMobile: branding.cardPositionMobile ?? undefined,
     backgroundFit: branding.backgroundFit ?? undefined,
     overlay: branding.overlay ?? undefined,
     focalX: branding.focalX ?? undefined,
@@ -788,6 +858,9 @@ export function toRevealBranding(
       ? { backgroundStyle: branding.backgroundStyle }
       : {}),
     ...(layout.cardPosition !== defaults.cardPosition ? { cardPosition: layout.cardPosition } : {}),
+    ...(layout.cardPositionMobile !== layout.cardPosition
+      ? { cardPositionMobile: layout.cardPositionMobile }
+      : {}),
     ...(layout.backgroundFit !== defaults.backgroundFit ? { backgroundFit: layout.backgroundFit } : {}),
     ...(layout.overlay !== defaults.overlay ? { overlay: layout.overlay } : {}),
     ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
@@ -834,6 +907,7 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     textColor: textColor.ok ? textColor.value : null,
     backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
     cardPosition: layout.cardPosition,
+    cardPositionMobile: layout.cardPositionMobile,
     backgroundFit: layout.backgroundFit,
     overlay: layout.overlay,
     focalX: layout.focalX,

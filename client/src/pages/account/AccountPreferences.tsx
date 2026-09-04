@@ -182,7 +182,7 @@ const OpenedNoteBrandingPreview: React.FC<{
         revealSecuredByPrivateNote: "Secured by PrivateNote",
         language: "Language",
       }}
-      surface={compact ? "card" : "plain"}
+      surface={compact ? "wide" : "plain"}
     >
       <div className="text-center">
         {showBranding ? (
@@ -251,6 +251,59 @@ function ChoiceRow<T extends string>({
             {option.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const CARD_POSITION_CELLS: Array<{ id: BrandingCardPosition; label: string }> = [
+  { id: "top-left", label: "Top left" },
+  { id: "top", label: "Top" },
+  { id: "top-right", label: "Top right" },
+  { id: "left", label: "Left" },
+  { id: "center", label: "Center" },
+  { id: "right", label: "Right" },
+  { id: "bottom-left", label: "Bottom left" },
+  { id: "bottom", label: "Bottom" },
+  { id: "bottom-right", label: "Bottom right" },
+];
+
+function CardPositionPad({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: BrandingCardPosition;
+  onChange: (id: BrandingCardPosition) => void;
+}) {
+  return (
+    <div>
+      <Label className="mb-2 block text-sm">{label}</Label>
+      <div
+        className="grid w-[6.75rem] grid-cols-3 gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-700"
+        role="radiogroup"
+        aria-label={label}
+      >
+        {CARD_POSITION_CELLS.map((cell) => {
+          const selected = value === cell.id;
+          return (
+            <button
+              key={cell.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={cell.label}
+              title={cell.label}
+              onClick={() => onChange(cell.id)}
+              className={`h-7 rounded-md ${
+                selected
+                  ? "bg-primary shadow-sm"
+                  : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              }`}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -1321,18 +1374,32 @@ export default function AccountPreferences() {
               </div>
 
               {businessBackgroundStyle !== "neutral" ? (
-                <ChoiceRow<BrandingCardPosition>
-                  label="Card position"
-                  value={portalLayout.cardPosition}
-                  onChange={(cardPosition) =>
-                    setPortalLayout((prev) => ({ ...prev, cardPosition }))
-                  }
-                  options={[
-                    { id: "left", label: "Left" },
-                    { id: "center", label: "Center" },
-                    { id: "right", label: "Right" },
-                  ]}
-                />
+                <div>
+                  <div className="mb-3">
+                    <Label className="text-sm">Card position</Label>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Place the reveal card separately on desktop and on phones.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-8">
+                    <CardPositionPad
+                      label="Desktop"
+                      value={portalLayout.cardPosition}
+                      onChange={(cardPosition) => {
+                        setPortalLayout((prev) => ({ ...prev, cardPosition }));
+                        setBrandingPreviewViewport("desktop");
+                      }}
+                    />
+                    <CardPositionPad
+                      label="Mobile"
+                      value={portalLayout.cardPositionMobile}
+                      onChange={(cardPositionMobile) => {
+                        setPortalLayout((prev) => ({ ...prev, cardPositionMobile }));
+                        setBrandingPreviewViewport("mobile");
+                      }}
+                    />
+                  </div>
+                </div>
               ) : null}
 
               <div>

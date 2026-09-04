@@ -7,6 +7,7 @@ import {
   BRANDING_COMPANY_NAME_MAX,
   BRANDING_LOGO_URL_MAX,
   brandingBannerStyle,
+  brandingCardAxis,
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
@@ -73,31 +74,13 @@ describe("parseBusinessBrandingInput", () => {
       textColor: "#111827",
       backgroundStyle: "banner",
       cardPosition: "center",
+      cardPositionMobile: "center",
       backgroundFit: "fill",
       overlay: "light",
       focalX: 50,
       focalY: 50,
       showBrandingAfterReveal: false,
     });
-  });
-
-
-  it("accepts showBrandingAfterReveal opt-in", () => {
-    const result = parseBusinessBrandingInput(
-      { companyName: "Acme", showBrandingAfterReveal: true },
-      allowed,
-    );
-    assert.equal(result.ok, true);
-    assert.equal(result.ok === true && result.branding.showBrandingAfterReveal, true);
-  });
-
-  it("rejects a non-boolean showBrandingAfterReveal", () => {
-    const result = parseBusinessBrandingInput(
-      { showBrandingAfterReveal: "yes" },
-      allowed,
-    );
-    assert.equal(result.ok, false);
-    assert.equal(result.ok === false && result.code, "invalid_show_branding_after_reveal");
   });
 
   it("treats an empty payload as fully unconfigured", () => {
@@ -162,6 +145,7 @@ describe("parseBusinessBrandingInput", () => {
     );
     assert.equal(result.ok, true);
     assert.equal(result.ok === true && result.branding.cardPosition, "left");
+    assert.equal(result.ok === true && result.branding.cardPositionMobile, "center");
     assert.equal(result.ok === true && result.branding.backgroundFit, "fit");
     assert.equal(result.ok === true && result.branding.overlay, "medium");
     assert.equal(result.ok === true && result.branding.focalX, 20);
@@ -171,6 +155,32 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(badOverlay.ok === false && badOverlay.code, "invalid_overlay");
     const badFocal = parseBusinessBrandingInput({ focalX: 150 }, allowed);
     assert.equal(badFocal.ok === false && badFocal.code, "invalid_image_position");
+    const corners = parseBusinessBrandingInput(
+      { cardPosition: "top-left", cardPositionMobile: "bottom" },
+      allowed,
+    );
+    assert.equal(corners.ok === true && corners.branding.cardPosition, "top-left");
+    assert.equal(corners.ok === true && corners.branding.cardPositionMobile, "bottom");
+    const badPosition = parseBusinessBrandingInput({ cardPosition: "flex-start" }, allowed);
+    assert.equal(badPosition.ok === false && badPosition.code, "invalid_card_position");
+  });
+
+  it("accepts showBrandingAfterReveal opt-in", () => {
+    const result = parseBusinessBrandingInput(
+      { companyName: "Acme", showBrandingAfterReveal: true },
+      allowed,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.ok === true && result.branding.showBrandingAfterReveal, true);
+  });
+
+  it("rejects a non-boolean showBrandingAfterReveal", () => {
+    const result = parseBusinessBrandingInput(
+      { showBrandingAfterReveal: "yes" },
+      allowed,
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.ok === false && result.code, "invalid_show_branding_after_reveal");
   });
 });
 
@@ -451,7 +461,6 @@ describe("brandingBannerStyle", () => {
   });
 });
 
-
 describe("brandingShowsAfterReveal", () => {
   it("defaults to false when the flag is missing", () => {
     assert.equal(brandingShowsAfterReveal(undefined), false);
@@ -465,6 +474,10 @@ describe("branding portal layout", () => {
     assert.equal(brandingOverlayOpacity({ backgroundStyle: "banner" }), 0.16);
     assert.equal(brandingPortalLayout(undefined).overlay, "light");
     assert.equal(brandingPortalLayout(undefined).cardPosition, "center");
+    assert.equal(brandingPortalLayout(undefined).cardPositionMobile, "center");
+    assert.deepEqual(brandingCardAxis("top-left"), { x: "left", y: "top" });
+    assert.deepEqual(brandingCardAxis("bottom-right"), { x: "right", y: "bottom" });
+    assert.deepEqual(brandingCardAxis("left"), { x: "left", y: "middle" });
   });
 
   it("omits default layout from the note snapshot and keeps non-defaults", () => {
@@ -492,6 +505,22 @@ describe("branding portal layout", () => {
     assert.equal(custom?.overlay, "dark");
     assert.equal(custom?.focalY, 18);
     assert.equal("backgroundFit" in (custom ?? {}), false);
+    assert.equal("cardPositionMobile" in (custom ?? {}), false);
+
+    const split = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      cardPosition: "left",
+      cardPositionMobile: "center",
+    });
+    assert.equal(split?.cardPosition, "left");
+    assert.equal(split?.cardPositionMobile, "center");
+
+    const legacyLeft = brandingPortalLayout({ cardPosition: "left" });
+    assert.equal(legacyLeft.cardPosition, "left");
+    assert.equal(legacyLeft.cardPositionMobile, "left");
   });
 
   it("drops a bad overlay on stored notes without denying the reveal", () => {

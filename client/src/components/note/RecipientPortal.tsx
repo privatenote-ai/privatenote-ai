@@ -7,6 +7,8 @@ import {
   brandingPageBackground,
   brandingPortalLayout,
   brandingUsesPortalSurface,
+  brandingCardAxis,
+  type BrandingCardPosition,
   type RevealBranding,
 } from "@shared/businessBranding";
 import {
@@ -43,6 +45,44 @@ function resolveSurface(
   return brandingUsesPortalSurface(branding) ? "card" : "plain";
 }
 
+function cardPlacementClassName(
+  desktop: BrandingCardPosition,
+  mobile: BrandingCardPosition,
+  mode: "live" | "desktop" | "mobile",
+): string {
+  const axisClass = (
+    position: BrandingCardPosition,
+    breakpoint: "base" | "sm",
+  ): string => {
+    const { x, y } = brandingCardAxis(position);
+    if (breakpoint === "base") {
+      const xClass = x === "left" ? "items-start" : x === "right" ? "items-end" : "items-center";
+      const yClass = y === "top" ? "justify-start" : y === "bottom" ? "justify-end" : "justify-center";
+      return `${xClass} ${yClass}`;
+    }
+    const xClass = x === "left" ? "sm:items-start" : x === "right" ? "sm:items-end" : "sm:items-center";
+    const yClass = y === "top" ? "sm:justify-start" : y === "bottom" ? "sm:justify-end" : "sm:justify-center";
+    return `${xClass} ${yClass}`;
+  };
+
+  if (mode === "desktop") {
+    const { x, y } = brandingCardAxis(desktop);
+    const gutter = x === "left" ? "pl-8 pr-6" : x === "right" ? "pr-8 pl-6" : "px-6";
+    const stack = y === "top" ? "pt-6 pb-12" : y === "bottom" ? "pt-12 pb-6" : "py-12";
+    return `${axisClass(desktop, "base")} ${gutter} ${stack}`;
+  }
+  if (mode === "mobile") {
+    return `${axisClass(mobile, "base")} px-4 py-8`;
+  }
+
+  const { x, y } = brandingCardAxis(desktop);
+  const gutter =
+    x === "left" ? "sm:pl-8 sm:pr-6 lg:pl-14" : x === "right" ? "sm:pr-8 sm:pl-6 lg:pr-14" : "sm:px-6";
+  const stack =
+    y === "top" ? "sm:pt-6 sm:pb-12" : y === "bottom" ? "sm:pt-12 sm:pb-6" : "sm:py-12";
+  return `${axisClass(mobile, "base")} px-4 py-8 ${axisClass(desktop, "sm")} ${gutter} ${stack}`;
+}
+
 export function RecipientPortal({
   branding,
   children,
@@ -62,18 +102,14 @@ export function RecipientPortal({
   const languageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;
-  const cardAlign =
-    layout.cardPosition === "left"
-      ? "items-start"
-      : layout.cardPosition === "right"
-        ? "items-end"
-        : "items-center";
-  const cardGutter =
-    layout.cardPosition === "left"
-      ? "pl-4 sm:pl-8 lg:pl-14 pr-4"
-      : layout.cardPosition === "right"
-        ? "pr-4 sm:pr-8 lg:pr-14 pl-4"
-        : "px-4 sm:px-6";
+  const placementMode = preview ? previewViewport : "live";
+  /** Opened note (`wide`) stays centered; only the pre-reveal card follows sender placement. */
+  const honorSenderPlacement = resolvedSurface === "card";
+  const cardPlacement = cardPlacementClassName(
+    honorSenderPlacement ? layout.cardPosition : "center",
+    honorSenderPlacement ? layout.cardPositionMobile : "center",
+    placementMode,
+  );
 
   const chromeText = lightChrome
     ? "text-white"
@@ -180,8 +216,8 @@ export function RecipientPortal({
       </header>
 
       <div
-        className={`relative z-10 flex flex-1 flex-col ${cardAlign} ${
-          useCard ? `justify-center py-8 sm:py-12 ${cardGutter}` : "px-4 pt-4 sm:px-6 sm:pt-6"
+        className={`relative z-10 flex flex-1 flex-col ${
+          useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"
         }`}
       >
         {useCard ? (
@@ -193,7 +229,7 @@ export function RecipientPortal({
             {children}
           </div>
         ) : (
-          <div className="w-full max-w-5xl">{children}</div>
+          <div className="w-full max-w-6xl">{children}</div>
         )}
       </div>
 
