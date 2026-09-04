@@ -34,6 +34,10 @@ export const BRANDING_BANNER_RECOMMENDED_PX = { width: 1920, height: 1080 } as c
 export const BRANDING_BANNER_ASPECT_RATIO = "16 / 9" as const;
 export const BRANDING_BANNER_SIZE_LABEL =
   `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
+/** Wide lockup on the reveal card (not the full-page photograph). */
+export const BRANDING_CARD_BANNER_RECOMMENDED_PX = { width: 1200, height: 400 } as const;
+export const BRANDING_CARD_BANNER_SIZE_LABEL =
+  `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width}×${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
 export const BRANDING_CARD_POSITIONS = [
@@ -54,6 +58,8 @@ export type BrandingCardAxis = {
 };
 export type BrandingBackgroundFit = "fill" | "fit";
 export type BrandingOverlay = "light" | "medium" | "dark";
+export type BrandingCardImage = "logo" | "banner";
+export const BRANDING_CARD_IMAGES = ["logo", "banner"] as const;
 
 const BRANDING_CARD_POSITION_SET = new Set<string>(BRANDING_CARD_POSITIONS);
 
@@ -62,6 +68,8 @@ export type BrandingPortalLayout = {
   cardPosition: BrandingCardPosition;
   /** Phone placement. Omitted on older notes, which then follow `cardPosition`. */
   cardPositionMobile: BrandingCardPosition;
+  /** Which hosted image sits on the reveal card. */
+  cardImage: BrandingCardImage;
   backgroundFit: BrandingBackgroundFit;
   overlay: BrandingOverlay;
   focalX: number;
@@ -78,6 +86,7 @@ export const BRANDING_OVERLAY_OPACITY: Record<BrandingOverlay, number> = {
 export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   cardPosition: "center",
   cardPositionMobile: "center",
+  cardImage: "logo",
   backgroundFit: "fill",
   overlay: "light",
   focalX: 50,
@@ -98,6 +107,7 @@ export type BusinessBranding = {
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition | null;
   cardPositionMobile?: BrandingCardPosition | null;
+  cardImage?: BrandingCardImage | null;
   backgroundFit?: BrandingBackgroundFit | null;
   overlay?: BrandingOverlay | null;
   focalX?: number | null;
@@ -146,6 +156,7 @@ export type RevealBranding = {
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition;
   cardPositionMobile?: BrandingCardPosition;
+  cardImage?: BrandingCardImage;
   backgroundFit?: BrandingBackgroundFit;
   overlay?: BrandingOverlay;
   focalX?: number;
@@ -193,6 +204,7 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   backgroundStyle: "neutral",
   cardPosition: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
   cardPositionMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile,
+  cardImage: DEFAULT_BRANDING_PORTAL_LAYOUT.cardImage,
   backgroundFit: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
   overlay: DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
   focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
@@ -307,7 +319,10 @@ export function applyOpenedNoteBranding(
   delete next.openedShowCompanyName;
   delete next.openedShowTrustMessage;
 
-  if (gate.openedShowLogo === false) delete next.logoUrl;
+  if (gate.openedShowLogo === false) {
+    delete next.logoUrl;
+    delete next.cardImage;
+  }
   if (gate.openedShowSenderName === false) {
     delete next.senderName;
     delete next.senderRole;
@@ -342,6 +357,7 @@ export type BrandingErrorCode =
   | "invalid_text_color"
   | "invalid_background_style"
   | "invalid_card_position"
+  | "invalid_card_image"
   | "invalid_background_fit"
   | "invalid_overlay"
   | "invalid_image_position"
@@ -565,6 +581,15 @@ function parseOverlay(
     : { ok: false };
 }
 
+function parseCardImage(
+  raw: unknown,
+): { ok: true; value: BrandingCardImage } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: DEFAULT_BRANDING_PORTAL_LAYOUT.cardImage };
+  }
+  return raw === "logo" || raw === "banner" ? { ok: true, value: raw } : { ok: false };
+}
+
 function parseFocalPercent(
   raw: unknown,
   fallback: number,
@@ -600,6 +625,10 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
   if (!overlay.ok) {
     return { ok: false, code: "invalid_overlay", message: "Overlay must be light, medium, or dark" };
   }
+  const cardImage = parseCardImage(body.cardImage);
+  if (!cardImage.ok) {
+    return { ok: false, code: "invalid_card_image", message: "Card image must be logo or banner" };
+  }
   const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
   const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
   if (!focalX.ok || !focalY.ok) {
@@ -611,6 +640,7 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       cardPosition: desktop.kind === "value" ? desktop.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
       cardPositionMobile:
         mobile.kind === "value" ? mobile.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile,
+      cardImage: cardImage.value,
       backgroundFit: backgroundFit.value,
       overlay: overlay.value,
       focalX: focalX.value,
@@ -628,11 +658,13 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
   const mobileToken = parseCardPositionToken(body.cardPositionMobile);
   const backgroundFit = parseBackgroundFit(body.backgroundFit);
   const overlay = parseOverlay(body.overlay);
+  const cardImage = parseCardImage(body.cardImage);
   const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
   const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
   return {
     cardPosition: desktop,
     cardPositionMobile: mobileToken.kind === "value" ? mobileToken.value : desktop,
+    cardImage: cardImage.ok ? cardImage.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardImage,
     backgroundFit: backgroundFit.ok ? backgroundFit.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundFit,
     overlay: overlay.ok ? overlay.value : DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
     focalX: focalX.ok ? focalX.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
@@ -646,6 +678,7 @@ export function brandingPortalLayout(
         RevealBranding,
         | "cardPosition"
         | "cardPositionMobile"
+        | "cardImage"
         | "backgroundFit"
         | "overlay"
         | "focalX"
@@ -656,6 +689,7 @@ export function brandingPortalLayout(
   return parsePortalLayoutLenient({
     cardPosition: branding?.cardPosition,
     cardPositionMobile: branding?.cardPositionMobile,
+    cardImage: branding?.cardImage,
     backgroundFit: branding?.backgroundFit,
     overlay: branding?.overlay,
     focalX: branding?.focalX,
@@ -836,30 +870,50 @@ export function brandingUsesPortalSurface(branding: RevealBranding | undefined):
   return page.kind !== "none";
 }
 
-/** Logo is the only sender identity — no name or company to sit beside it. */
-export function brandingLogoIsSolo(
-  branding: Pick<RevealBranding, "logoUrl" | "senderName" | "companyName"> | undefined,
+type BrandingCardMarkSource = Pick<
+  RevealBranding,
+  "logoUrl" | "bannerUrl" | "cardImage" | "senderName" | "companyName"
+>;
+
+/** Image shown on the reveal card: the logo mark, or the uploaded banner. */
+export function brandingCardMarkUrl(
+  branding: BrandingCardMarkSource | undefined,
+): string | undefined {
+  if (!branding) return undefined;
+  if (branding.cardImage === "banner") return branding.bannerUrl;
+  return branding.logoUrl;
+}
+
+/** True when the reveal card is showing the wide banner instead of a square logo. */
+export function brandingCardMarkIsBanner(
+  branding: BrandingCardMarkSource | undefined,
 ): boolean {
-  if (!branding?.logoUrl) return false;
-  return !branding.senderName?.trim() && !branding.companyName?.trim();
+  return branding?.cardImage === "banner" && Boolean(branding.bannerUrl);
+}
+
+/** Logo is the only sender identity — no name or company to sit beside it. */
+export function brandingLogoIsSolo(branding: BrandingCardMarkSource | undefined): boolean {
+  if (!brandingCardMarkUrl(branding)) return false;
+  if (brandingCardMarkIsBanner(branding)) return true;
+  return !branding?.senderName?.trim() && !branding?.companyName?.trim();
 }
 
 /**
- * Reveal-card logo size. A mark next to a name stays ~64px; a logo-only card
- * can go ~96px so the brand still reads without filling the card.
+ * Reveal-card logo size. A mark next to a name stays ~64px. A logo-only banner
+ * uses a wider card and up to ~208px tall so a firm lockup can actually read.
  */
 export function brandingRevealLogoClassName(
-  branding: Pick<RevealBranding, "logoUrl" | "senderName" | "companyName"> | undefined,
+  branding: BrandingCardMarkSource | undefined,
   options?: { preview?: boolean },
 ): string {
   const solo = brandingLogoIsSolo(branding);
   if (options?.preview) {
     return solo
-      ? "max-h-12 max-w-[7.5rem] object-contain"
+      ? "mx-auto max-h-24 w-auto max-w-full object-contain"
       : "max-h-7 max-w-24 object-contain";
   }
   return solo
-    ? "max-h-24 w-auto max-w-[11rem] object-contain sm:max-h-28"
+    ? "mx-auto max-h-44 w-auto max-w-full object-contain sm:max-h-52"
     : "max-h-14 w-auto object-contain sm:max-h-16";
 }
 
@@ -1027,6 +1081,7 @@ export function parseBusinessBrandingInput(
       backgroundStyle: backgroundStyle.value,
       cardPosition: layout.layout.cardPosition,
       cardPositionMobile: layout.layout.cardPositionMobile,
+      cardImage: layout.layout.cardImage,
       backgroundFit: layout.layout.backgroundFit,
       overlay: layout.layout.overlay,
       focalX: layout.layout.focalX,
@@ -1063,6 +1118,7 @@ export function toRevealBranding(
   const layout = brandingPortalLayout({
     cardPosition: branding.cardPosition ?? undefined,
     cardPositionMobile: branding.cardPositionMobile ?? undefined,
+    cardImage: branding.cardImage ?? undefined,
     backgroundFit: branding.backgroundFit ?? undefined,
     overlay: branding.overlay ?? undefined,
     focalX: branding.focalX ?? undefined,
@@ -1086,6 +1142,7 @@ export function toRevealBranding(
     ...(layout.cardPositionMobile !== layout.cardPosition
       ? { cardPositionMobile: layout.cardPositionMobile }
       : {}),
+    ...(layout.cardImage !== defaults.cardImage ? { cardImage: layout.cardImage } : {}),
     ...(layout.backgroundFit !== defaults.backgroundFit ? { backgroundFit: layout.backgroundFit } : {}),
     ...(layout.overlay !== defaults.overlay ? { overlay: layout.overlay } : {}),
     ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
@@ -1150,6 +1207,7 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     backgroundStyle: backgroundStyle.ok ? backgroundStyle.value : "neutral",
     cardPosition: layout.cardPosition,
     cardPositionMobile: layout.cardPositionMobile,
+    cardImage: layout.cardImage,
     backgroundFit: layout.backgroundFit,
     overlay: layout.overlay,
     focalX: layout.focalX,

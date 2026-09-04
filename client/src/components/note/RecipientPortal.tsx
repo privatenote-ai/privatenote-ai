@@ -3,6 +3,7 @@ import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
   brandingChromeUsesLightText,
+  brandingLogoIsSolo,
   brandingOverlayOpacity,
   brandingPageBackground,
   brandingPortalLayout,
@@ -110,6 +111,7 @@ export function RecipientPortal({
     honorSenderPlacement ? layout.cardPositionMobile : "center",
     placementMode,
   );
+  const soloLogo = brandingLogoIsSolo(branding);
 
   const chromeText = lightChrome
     ? "text-white"
@@ -226,8 +228,12 @@ export function RecipientPortal({
               resolvedSurface === "wide"
                 ? "max-w-3xl p-5 sm:p-6"
                 : preview && previewViewport === "desktop"
-                  ? "max-w-[13rem] p-3.5"
-                  : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
+                  ? soloLogo
+                    ? "max-w-[18rem] p-3.5"
+                    : "max-w-[13rem] p-3.5"
+                  : soloLogo
+                    ? "max-w-md p-5 sm:max-w-xl sm:p-7"
+                    : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
             }`}
           >
             {children}
@@ -285,7 +291,11 @@ export function RevealHandoffStack({
 
   return (
     <div className="flex flex-col items-center text-center">
-      {logo ? <div className={compact ? "mb-3" : "mb-5"}>{logo}</div> : null}
+      {logo ? (
+        <div className={`flex w-full justify-center ${compact ? "mb-3" : "mb-5"}`}>
+          {logo}
+        </div>
+      ) : null}
       {title ? (
         <h1
           className={

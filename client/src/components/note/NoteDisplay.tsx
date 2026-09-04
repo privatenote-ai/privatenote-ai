@@ -54,6 +54,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import {
   brandingCtaStyle,
+  brandingCardMarkUrl,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
@@ -113,6 +114,7 @@ interface RevealBranding {
   backgroundColor?: string;
   textColor?: string;
   bannerUrl?: string;
+  cardImage?: "logo" | "banner";
   backgroundStyle?: "neutral" | "gradient" | "banner";
   showBrandingAfterReveal?: boolean;
   openedBackground?: "same" | "neutral" | "gradient" | "banner";
@@ -390,14 +392,15 @@ const BrandingIdentity: React.FC<{
   brandingLine: string | null;
   lightText: boolean;
 }> = ({ branding, brandingLine, lightText }) => {
-  const hasLogo = Boolean(branding?.logoUrl);
+  const markUrl = brandingCardMarkUrl(branding);
+  const hasLogo = Boolean(markUrl);
   const hasTrustMessage = Boolean(branding?.trustMessage?.trim());
   if (!brandingLine && !hasLogo && !hasTrustMessage) return null;
 
-  const logo = branding?.logoUrl ? (
+  const logo = markUrl ? (
     <img
-      src={branding.logoUrl}
-      alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      src={markUrl}
+      alt={branding?.companyName ? `${branding.companyName} logo` : "Sender logo"}
       className="max-h-14 w-auto object-contain sm:max-h-16"
       loading="lazy"
       referrerPolicy="no-referrer"
@@ -445,10 +448,11 @@ const RevealHero: React.FC<RevealHeroProps> = ({
 }) => {
   const brandingLine = getBrandingLine(branding, t);
   const buttonStyle = brandingCtaStyle(branding);
-  const logo = branding?.logoUrl ? (
+  const markUrl = brandingCardMarkUrl(branding);
+  const logo = markUrl ? (
     <img
-      src={branding.logoUrl}
-      alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      src={markUrl}
+      alt={branding?.companyName ? `${branding.companyName} logo` : "Sender logo"}
       className={brandingRevealLogoClassName(branding)}
       loading="lazy"
       referrerPolicy="no-referrer"
@@ -484,16 +488,12 @@ const RevealHero: React.FC<RevealHeroProps> = ({
   );
 
   if (compact) {
-    const hasIdentity = Boolean(
-      branding?.logoUrl || branding?.senderName || branding?.companyName,
-    );
     return (
       <RevealHandoffStack
         compact
         branding={branding}
         brandingLine={brandingLine}
         logo={logo}
-        title={hasIdentity ? undefined : (t.privateNote ?? "Private note")}
         action={action}
         footnote={t.revealDeletedAfterOpening ?? "Deleted after opening"}
       />

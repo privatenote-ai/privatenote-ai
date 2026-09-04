@@ -52,8 +52,10 @@ import {
   BRANDING_BANNER_MAX_BYTES,
   BRANDING_BANNER_RECOMMENDED_PX,
   BRANDING_BANNER_SIZE_LABEL,
+  BRANDING_CARD_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
+  brandingCardMarkUrl,
   brandingCtaStyle,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
@@ -125,9 +127,10 @@ const BrandingPreview: React.FC<{
 }> = ({ branding, viewport }) => {
   const compact = brandingUsesPortalSurface(branding);
   const buttonStyle = brandingCtaStyle(branding);
-  const logo = branding.logoUrl ? (
+  const markUrl = brandingCardMarkUrl(branding);
+  const logo = markUrl ? (
     <img
-      src={branding.logoUrl}
+      src={markUrl}
       alt=""
       className={brandingRevealLogoClassName(branding, { preview: true })}
     />
@@ -161,13 +164,7 @@ const BrandingPreview: React.FC<{
         branding={branding}
         brandingLine={brandingLine}
         logo={logo}
-        title={
-          compact && (branding.logoUrl || branding.senderName || branding.companyName)
-            ? undefined
-            : compact
-              ? "Private note"
-              : "Reveal Private Note"
-        }
+        title={compact ? undefined : "Reveal Private Note"}
         action={
           <button
             type="button"
@@ -198,6 +195,7 @@ const OpenedNoteBrandingPreview: React.FC<{
       : company
         ? `Shared by ${company}`
         : null;
+  const markUrl = brandingCardMarkUrl(branding);
 
   return (
     <RecipientPortal
@@ -214,10 +212,10 @@ const OpenedNoteBrandingPreview: React.FC<{
       surface={compact ? "wide" : "plain"}
     >
       <div className="text-center">
-        {branding?.logoUrl || brandingLine || branding?.trustMessage ? (
+        {markUrl || brandingLine || branding?.trustMessage ? (
           <div className="mb-4 flex flex-col items-center gap-1.5">
-            {branding?.logoUrl ? (
-              <img src={branding.logoUrl} alt="" className="max-h-8 max-w-28 object-contain" />
+            {markUrl ? (
+              <img src={markUrl} alt="" className="max-h-8 max-w-28 object-contain" />
             ) : null}
             {brandingLine ? (
               <p className="m-0 text-xs font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
@@ -518,6 +516,7 @@ export default function AccountPreferences() {
   const lastSavedBrandingKeyRef = useRef("");
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const cardBannerInputRef = useRef<HTMLInputElement>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [voiceFormatPreference, setVoiceFormatPreference] = useState<VoiceRecordingFormatPreference>(
     () => readVoiceRecordingFormatPreference(),
@@ -885,7 +884,10 @@ export default function AccountPreferences() {
     };
   }, []);
 
-  const uploadBusinessBanner = async (file: File) => {
+  const uploadBusinessBanner = async (
+    file: File,
+    options?: { asPageBackground?: boolean; asCardImage?: boolean },
+  ) => {
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
       toast({
         title: "Unsupported banner",
@@ -898,14 +900,23 @@ export default function AccountPreferences() {
     try {
       const response = await apiUploadRequest<{ bannerUrl: string }>("/api/auth/account/branding/banner", file);
       setBusinessBannerUrl(response.bannerUrl);
-      setBusinessBackgroundStyle("banner");
+      if (options?.asPageBackground) setBusinessBackgroundStyle("banner");
+      if (options?.asCardImage) {
+        setPortalLayout((prev) => ({ ...prev, cardImage: "banner" }));
+      }
       await refreshEntitlements();
-      toast({ title: "Banner uploaded" });
+      toast({
+        title: "Banner uploaded",
+        description: options?.asCardImage
+          ? "It will appear on the reveal card when Banner is selected."
+          : undefined,
+      });
     } catch (error) {
       toast({ title: "Could not upload banner", description: describeApiPreferenceError(error), variant: "destructive" });
     } finally {
       setUploadingBanner(false);
       if (bannerInputRef.current) bannerInputRef.current.value = "";
+      if (cardBannerInputRef.current) cardBannerInputRef.current.value = "";
     }
   };
 
@@ -915,6 +926,9 @@ export default function AccountPreferences() {
       await apiRequest("/api/auth/account/branding/banner", "DELETE");
       setBusinessBannerUrl(null);
       if (businessBackgroundStyle === "banner") setBusinessBackgroundStyle("neutral");
+      setPortalLayout((prev) =>
+        prev.cardImage === "banner" ? { ...prev, cardImage: "logo" } : prev,
+      );
       await refreshEntitlements();
     } finally {
       setUploadingBanner(false);
@@ -1307,56 +1321,145 @@ export default function AccountPreferences() {
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Logo</Label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
-                    {businessLogoUrl ? (
-                      <img
-                        src={businessLogoUrl}
-                        alt="Current reveal logo"
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    ) : (
-                      <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                    )}
-                  </div>
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadBusinessLogo(file);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploadingLogo || removingLogo}
-                    onClick={() => logoInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploadingLogo ? "Uploading…" : businessLogoUrl ? "Replace logo" : "Upload logo"}
-                  </Button>
-                  {businessLogoUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={uploadingLogo || removingLogo}
-                      onClick={() => void removeBusinessLogo()}
+                <Label className="mb-2 block text-sm">Show on the reveal card</Label>
+                <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["logo", "Logo", businessLogoUrl],
+                      ["banner", "Banner", businessBannerUrl],
+                    ] as const
+                  ).map(([id, label, url]) => (
+                    <label
+                      key={id}
+                      className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:text-gray-100"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {removingLogo ? "Removing…" : "Remove"}
-                    </Button>
-                  ) : null}
+                      <input
+                        type="checkbox"
+                        checked={portalLayout.cardImage === id}
+                        onChange={() => {
+                          if (id === "banner" && !businessBannerUrl) {
+                            cardBannerInputRef.current?.click();
+                          }
+                          if (id === "logo" && !businessLogoUrl) {
+                            logoInputRef.current?.click();
+                          }
+                          setPortalLayout((prev) => ({ ...prev, cardImage: id }));
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <span className="font-medium">{label}</span>
+                      {!url ? (
+                        <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                          Upload below
+                        </span>
+                      ) : null}
+                    </label>
+                  ))}
                 </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  PNG, JPEG, or WebP; maximum {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB.
-                  Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height} (square)
-                  or a wider lockup up to about 1200×400. Uploaded logos are served from
-                  PrivateNote instead of an external host.
-                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-2 block text-sm">Logo</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
+                        {businessLogoUrl ? (
+                          <img
+                            src={businessLogoUrl}
+                            alt="Current reveal logo"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                        )}
+                      </div>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void uploadBusinessLogo(file);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingLogo || removingLogo}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploadingLogo ? "Uploading…" : businessLogoUrl ? "Replace" : "Upload"}
+                      </Button>
+                      {businessLogoUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={uploadingLogo || removingLogo}
+                          onClick={() => void removeBusinessLogo()}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {removingLogo ? "Removing…" : "Remove"}
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Square mark. PNG, JPEG, or WebP; maximum{" "}
+                      {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB.
+                      Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height}.
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-sm">Banner</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
+                        {businessBannerUrl ? (
+                          <img
+                            src={businessBannerUrl}
+                            alt="Current reveal banner"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                        )}
+                      </div>
+                      <input
+                        ref={cardBannerInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void uploadBusinessBanner(file, { asCardImage: true });
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingBanner}
+                        onClick={() => cardBannerInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace" : "Upload"}
+                      </Button>
+                      {businessBannerUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={uploadingBanner}
+                          onClick={() => void removeBusinessBanner()}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Wide lockup, about {BRANDING_CARD_BANNER_SIZE_LABEL}.
+                      Leave names blank if the banner already includes them.
+                      The same file can be used as the Custom page photograph.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="border-t border-violet-100 pt-6 dark:border-violet-900/40">
@@ -1470,7 +1573,7 @@ export default function AccountPreferences() {
                         className="sr-only"
                         onChange={(event) => {
                           const file = event.target.files?.[0];
-                          if (file) void uploadBusinessBanner(file);
+                          if (file) void uploadBusinessBanner(file, { asPageBackground: true });
                         }}
                       />
                       <Button
@@ -1667,7 +1770,7 @@ export default function AccountPreferences() {
                       <div className="grid gap-2 sm:grid-cols-2">
                         {(
                           [
-                            ["showLogo", "Logo"],
+                            ["showLogo", "Logo / banner"],
                             ["showSenderName", "Sender name"],
                             ["showCompanyName", "Company name"],
                             ["showTrustMessage", "Trust message"],

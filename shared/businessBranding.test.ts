@@ -4,10 +4,12 @@ import {
   BRANDING_BANNER_MAX_BYTES,
   BRANDING_BANNER_RECOMMENDED_PX,
   BRANDING_BANNER_SIZE_LABEL,
+  BRANDING_CARD_BANNER_RECOMMENDED_PX,
   BRANDING_COMPANY_NAME_MAX,
   BRANDING_LOGO_URL_MAX,
   brandingBannerStyle,
   brandingCardAxis,
+  brandingCardMarkUrl,
   brandingCtaStyle,
   brandingHeroStyle,
   brandingHeroUsesLightText,
@@ -79,6 +81,7 @@ describe("parseBusinessBrandingInput", () => {
       backgroundStyle: "banner",
       cardPosition: "center",
       cardPositionMobile: "center",
+      cardImage: "logo",
       backgroundFit: "fill",
       overlay: "light",
       focalX: 50,
@@ -172,6 +175,10 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(corners.ok === true && corners.branding.cardPositionMobile, "bottom");
     const badPosition = parseBusinessBrandingInput({ cardPosition: "flex-start" }, allowed);
     assert.equal(badPosition.ok === false && badPosition.code, "invalid_card_position");
+    const cardBanner = parseBusinessBrandingInput({ cardImage: "banner" }, allowed);
+    assert.equal(cardBanner.ok === true && cardBanner.branding.cardImage, "banner");
+    const badCardImage = parseBusinessBrandingInput({ cardImage: "hero" }, allowed);
+    assert.equal(badCardImage.ok === false && badCardImage.code, "invalid_card_image");
   });
 });
 
@@ -458,6 +465,7 @@ describe("branding portal layout", () => {
     assert.equal(brandingPortalLayout(undefined).overlay, "light");
     assert.equal(brandingPortalLayout(undefined).cardPosition, "center");
     assert.equal(brandingPortalLayout(undefined).cardPositionMobile, "center");
+    assert.equal(brandingPortalLayout(undefined).cardImage, "logo");
     assert.deepEqual(brandingCardAxis("top-left"), { x: "left", y: "top" });
     assert.deepEqual(brandingCardAxis("bottom-right"), { x: "right", y: "bottom" });
     assert.deepEqual(brandingCardAxis("left"), { x: "left", y: "middle" });
@@ -489,6 +497,16 @@ describe("branding portal layout", () => {
     assert.equal(custom?.focalY, 18);
     assert.equal("backgroundFit" in (custom ?? {}), false);
     assert.equal("cardPositionMobile" in (custom ?? {}), false);
+    assert.equal("cardImage" in (custom ?? {}), false);
+
+    const bannerMark = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      cardImage: "banner",
+    });
+    assert.equal(bannerMark?.cardImage, "banner");
 
     const split = toRevealBranding({
       companyName: "Acme",
@@ -525,6 +543,8 @@ describe("branding asset sizes", () => {
     assert.equal(BRANDING_BANNER_RECOMMENDED_PX.width / BRANDING_BANNER_RECOMMENDED_PX.height, 16 / 9);
     assert.equal(BRANDING_BANNER_SIZE_LABEL, "1920×1080");
     assert.equal(BRANDING_BANNER_MAX_BYTES, 3 * 1024 * 1024);
+    assert.equal(BRANDING_CARD_BANNER_RECOMMENDED_PX.width, 1200);
+    assert.equal(BRANDING_CARD_BANNER_RECOMMENDED_PX.height, 400);
   });
 });
 
@@ -578,6 +598,20 @@ describe("opened-note branding", () => {
     assert.equal(opened?.companyName, undefined);
     assert.equal(opened?.backgroundStyle, undefined);
     assert.equal(opened?.bannerUrl, undefined);
+    assert.equal(opened?.cardImage, undefined);
+  });
+
+  it("hides a card banner after open without dropping the page photograph", () => {
+    const opened = applyOpenedNoteBranding({
+      bannerUrl: "https://acme.example/banner.jpg",
+      backgroundStyle: "banner",
+      cardImage: "banner",
+      showBrandingAfterReveal: true,
+      openedShowLogo: false,
+    });
+    assert.equal(opened?.cardImage, undefined);
+    assert.equal(opened?.bannerUrl, "https://acme.example/banner.jpg");
+    assert.equal(opened?.backgroundStyle, "banner");
   });
 });
 
@@ -590,7 +624,11 @@ describe("branding reveal logo size", () => {
     );
     assert.match(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),
-      /max-h-24/,
+      /max-h-44/,
+    );
+    assert.match(
+      brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),
+      /max-w-full/,
     );
     assert.match(
       brandingRevealLogoClassName({
@@ -598,6 +636,23 @@ describe("branding reveal logo size", () => {
         companyName: "Acme",
       }),
       /max-h-14/,
+    );
+  });
+
+  it("uses the banner on the card when cardImage is banner", () => {
+    const branding = {
+      logoUrl: "https://acme.example/logo.png",
+      bannerUrl: "https://acme.example/banner.png",
+      cardImage: "banner" as const,
+      senderName: "Ada",
+      companyName: "Acme",
+    };
+    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/banner.png");
+    assert.equal(brandingLogoIsSolo(branding), true);
+    assert.match(brandingRevealLogoClassName(branding), /max-h-44/);
+    assert.equal(
+      brandingCardMarkUrl({ logoUrl: "https://acme.example/logo.png" }),
+      "https://acme.example/logo.png",
     );
   });
 });
